@@ -12,14 +12,23 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
+    JumpStartBenchmarkStat,
     JumpStartECRSpecs,
     JumpStartHyperparameter,
     JumpStartInstanceTypeVariants,
     JumpStartModelSpecs,
     JumpStartModelHeader,
+    JumpStartConfigComponent,
 )
-from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
+from tests.unit.sagemaker.jumpstart.constants import (
+    BASE_SPEC,
+    INFERENCE_CONFIG_RANKINGS,
+    INFERENCE_CONFIGS,
+    TRAINING_CONFIG_RANKINGS,
+    TRAINING_CONFIGS,
+)
 
 INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
     {
@@ -413,8 +422,9 @@ def test_jumpstart_model_specs():
 
     assert specs1.to_json() == BASE_SPEC
 
-    BASE_SPEC["model_id"] = "diff model ID"
-    specs2 = JumpStartModelSpecs(BASE_SPEC)
+    BASE_SPEC_COPY = copy.deepcopy(BASE_SPEC)
+    BASE_SPEC_COPY["model_id"] = "diff model ID"
+    specs2 = JumpStartModelSpecs(BASE_SPEC_COPY)
     assert specs1 != specs2
 
     specs3 = copy.deepcopy(specs1)
@@ -901,4 +911,284 @@ def test_jumpstart_resource_requirements_instance_variants():
             instance_type="ml.p99.12xlarge"
         )
         == {}
+    )
+
+
+def test_inference_configs_parsing():
+    spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    specs1 = JumpStartModelSpecs(spec)
+
+    assert list(specs1.inference_config_components.keys()) == [
+        "neuron-base",
+        "neuron-inference",
+        "neuron-budget",
+        "gpu-inference",
+        "gpu-inference-budget",
+    ]
+
+    # Non-overrided fields in top config
+    assert specs1.model_id == "pytorch-ic-mobilenet-v2"
+    assert specs1.version == "1.0.0"
+    assert specs1.min_sdk_version == "2.49.0"
+    assert specs1.training_supported
+    assert specs1.incremental_training_supported
+    assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
+        {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        }
+    )
+    assert specs1.training_ecr_specs == JumpStartECRSpecs(
+        {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        }
+    )
+    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
+    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.hosting_script_key
+        == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+    )
+    assert (
+        specs1.training_script_key
+        == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+    )
+    assert specs1.hyperparameters == [
+        JumpStartHyperparameter(
+            {
+                "name": "epochs",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "adam-learning-rate",
+                "type": "float",
+                "default": 0.05,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "batch-size",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1024,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            }
+        ),
+    ]
+
+    # Overrided fields in top config
+    assert specs1.supported_inference_instance_types == ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
+
+    config = specs1.inference_configs.get_top_config_from_ranking()
+
+    assert config.benchmark_metrics == {
+        "ml.inf2.2xlarge": JumpStartBenchmarkStat(
+            {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+        )
+    }
+    assert len(config.config_components) == 1
+    assert config.config_components["neuron-base"] == JumpStartConfigComponent(
+        "neuron-base",
+        {"supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"]},
+    )
+    assert list(config.config_components.keys()) == ["neuron-base"]
+
+
+def test_training_configs_parsing():
+    spec = {**BASE_SPEC, **TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
+    specs1 = JumpStartModelSpecs(spec)
+
+    assert list(specs1.training_config_components.keys()) == [
+        "neuron-training",
+        "gpu-training",
+        "neuron-training-budget",
+        "gpu-training-budget",
+    ]
+
+    # Non-overrided fields in top config
+    # By default training config is not applied to model spec
+    assert specs1.model_id == "pytorch-ic-mobilenet-v2"
+    assert specs1.version == "1.0.0"
+    assert specs1.min_sdk_version == "2.49.0"
+    assert specs1.training_supported
+    assert specs1.incremental_training_supported
+    assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
+        {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        }
+    )
+    assert specs1.training_ecr_specs == JumpStartECRSpecs(
+        {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        }
+    )
+    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
+    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.hosting_script_key
+        == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+    )
+    assert (
+        specs1.training_script_key
+        == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+    )
+    assert specs1.hyperparameters == [
+        JumpStartHyperparameter(
+            {
+                "name": "epochs",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "adam-learning-rate",
+                "type": "float",
+                "default": 0.05,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "batch-size",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1024,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            }
+        ),
+    ]
+
+    config = specs1.training_configs.get_top_config_from_ranking()
+
+    assert config.benchmark_metrics == {
+        "ml.tr1n1.2xlarge": JumpStartBenchmarkStat(
+            {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+        ),
+        "ml.tr1n1.4xlarge": JumpStartBenchmarkStat(
+            {"name": "Latency", "value": "50", "unit": "Tokens/S"}
+        ),
+    }
+    assert len(config.config_components) == 1
+    assert config.config_components["neuron-training"] == JumpStartConfigComponent(
+        "neuron-training",
+        {
+            "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
+            "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training/model/",
+            "training_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "neuron-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-training-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {"trn1": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
+            },
+        },
+    )
+    assert list(config.config_components.keys()) == ["neuron-training"]
+
+
+def test_set_inference_config():
+    spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    specs1 = JumpStartModelSpecs(spec)
+
+    assert specs1.supported_inference_instance_types == ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
+    specs1.set_config("gpu-inference-budget")
+
+    assert specs1.supported_inference_instance_types == ["ml.p2.xlarge", "ml.p3.2xlarge"]
+    assert (
+        specs1.hosting_artifact_key
+        == "artifacts/meta-textgeneration-llama-2-7b/gpu-inference-budget/model/"
+    )
+
+
+def test_set_training_config():
+    spec = {**BASE_SPEC, **TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
+    specs1 = JumpStartModelSpecs(spec)
+
+    assert specs1.supported_training_instance_types == [
+        "ml.p3.2xlarge",
+        "ml.p2.xlarge",
+        "ml.g4dn.2xlarge",
+        "ml.m5.xlarge",
+        "ml.c5.2xlarge",
+    ]
+    specs1.set_config("gpu-training-budget", scope=JumpStartScriptScope.TRAINING)
+
+    assert specs1.supported_training_instance_types == ["ml.p2.xlarge", "ml.p3.2xlarge"]
+    assert (
+        specs1.training_artifact_key
+        == "artifacts/meta-textgeneration-llama-2-7b/gpu-training-budget/model/"
     )
