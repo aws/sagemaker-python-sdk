@@ -14,7 +14,9 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
+import pandas as pd
+from IPython.display import display
 from botocore.exceptions import ClientError
 
 from sagemaker import payloads
@@ -40,6 +42,7 @@ from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
+    get_jumpstart_configs,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -280,6 +283,8 @@ class JumpStartModel(Model):
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
+
+        self.__deployment_configs = None
 
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
@@ -785,6 +790,70 @@ class JumpStartModel(Model):
         model_package.deploy = register_deploy_wrapper
 
         return model_package
+
+    def display_benchmark_metrics(self):
+        """Display Benchmark Metrics for deployment configs."""
+        config_names = []
+        latencies = []
+        through_puts = []
+        instance_types = []
+        instance_rates = []
+        for deployment_config in self.list_deployment_configs():
+            config_names.append(deployment_config.get("ConfigName"))
+            instance_types.append(deployment_config.get("BenchmarkMetrics").key()[0])
+
+            for benchmark_metric in deployment_config.get("BenchmarkMetrics").values():
+                if benchmark_metric["name"] == "Latency":
+                    latencies.append(benchmark_metric["value"])
+                if benchmark_metric["name"] == "Throughput":
+                    through_puts.append(benchmark_metric["value"])
+                if benchmark_metric["name"] == "Cost":
+                    instance_rates.append(benchmark_metric["value"])
+
+        df = pd.DataFrame(
+            {
+                "Config Name": config_names,
+                "Min. Latency<br>(Ms/Token)": latencies,
+                "Max. Throughput<br>(Tokens/Second)": through_puts,
+                "Instance Type": instance_types,
+                "Instance Rate<br>($/Hour)": instance_rates,
+            }
+        )
+
+        df["Instance Rate<br>($/Hour)"] = df["Instance Rate<br>($/Hour)"].apply(
+            lambda rate: "${0:.2f}".format(float(rate))
+        )
+        headers = {"selector": "th", "props": "text-align: left; width: 10%"}
+        df = (
+            df.style.set_caption("Benchmark Metrics")
+            .set_table_styles([headers])
+            .set_properties(**{"text-align": "left"})
+        )
+
+        display(df)
+
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for ``This`` model in the current region."""
+        if self.__deployment_configs is None:
+            self.__deployment_configs = get_jumpstart_configs(
+                region=self.region,
+                model_id=self.model_id,
+                model_version=self.model_version,
+                sagemaker_session=self.sagemaker_session,
+            )
+
+        configs = []
+        for config_name in self.__deployment_configs.keys():
+            jumpstart_metadata_config = configs.get(config_name)
+            configs.append(
+                {
+                    "ConfigName": config_name,
+                    "BenchmarkMetrics": jumpstart_metadata_config.benchmark_metrics,
+                    "DeploymentConfig": jumpstart_metadata_config.resolved_config,
+                }
+            )
+
+        return configs
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""
