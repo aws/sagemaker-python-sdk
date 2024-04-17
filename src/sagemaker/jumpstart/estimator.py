@@ -1126,7 +1126,7 @@ class JumpStartEstimator(Estimator):
         )
         return list(configs_dict.values())
 
-    def set_config(self, config_name: str) -> None:
+    def set_training_config(self, config_name: str) -> None:
         """Sets the config to apply to the model.
 
         Args:

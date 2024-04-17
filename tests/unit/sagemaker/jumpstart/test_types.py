@@ -1019,9 +1019,9 @@ def test_inference_configs_parsing():
     config = specs1.inference_configs.get_top_config_from_ranking()
 
     assert config.benchmark_metrics == {
-        "ml.inf2.2xlarge": JumpStartBenchmarkStat(
-            {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-        )
+        "ml.inf2.2xlarge": [
+            JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+        ]
     }
     assert len(config.config_components) == 1
     assert config.config_components["neuron-base"] == JumpStartConfigComponent(
@@ -1133,12 +1133,12 @@ def test_training_configs_parsing():
     config = specs1.training_configs.get_top_config_from_ranking()
 
     assert config.benchmark_metrics == {
-        "ml.tr1n1.2xlarge": JumpStartBenchmarkStat(
-            {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-        ),
-        "ml.tr1n1.4xlarge": JumpStartBenchmarkStat(
-            {"name": "Latency", "value": "50", "unit": "Tokens/S"}
-        ),
+        "ml.tr1n1.2xlarge": [
+            JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+        ],
+        "ml.tr1n1.4xlarge": [
+            JumpStartBenchmarkStat({"name": "Latency", "value": "50", "unit": "Tokens/S"})
+        ],
     }
     assert len(config.config_components) == 1
     assert config.config_components["neuron-training"] == JumpStartConfigComponent(

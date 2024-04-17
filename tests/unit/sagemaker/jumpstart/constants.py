@@ -7658,25 +7658,25 @@ INFERENCE_CONFIGS = {
     "inference_configs": {
         "neuron-inference": {
             "benchmark_metrics": {
-                "ml.inf2.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.inf2.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
             },
             "component_names": ["neuron-base"],
         },
         "neuron-inference-budget": {
             "benchmark_metrics": {
-                "ml.inf2.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.inf2.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
             },
             "component_names": ["neuron-base"],
         },
         "gpu-inference-budget": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.p3.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
             },
             "component_names": ["gpu-inference-budget"],
         },
         "gpu-inference": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.p3.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
             },
             "component_names": ["gpu-inference"],
         },
@@ -7738,27 +7738,27 @@ TRAINING_CONFIGS = {
     "training_configs": {
         "neuron-training": {
             "benchmark_metrics": {
-                "ml.tr1n1.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"},
-                "ml.tr1n1.4xlarge": {"name": "Latency", "value": "50", "unit": "Tokens/S"},
+                "ml.tr1n1.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}],
+                "ml.tr1n1.4xlarge": [{"name": "Latency", "value": "50", "unit": "Tokens/S"}],
             },
             "component_names": ["neuron-training"],
         },
         "neuron-training-budget": {
             "benchmark_metrics": {
-                "ml.tr1n1.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"},
-                "ml.tr1n1.4xlarge": {"name": "Latency", "value": "50", "unit": "Tokens/S"},
+                "ml.tr1n1.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}],
+                "ml.tr1n1.4xlarge": [{"name": "Latency", "value": "50", "unit": "Tokens/S"}],
             },
             "component_names": ["neuron-training-budget"],
         },
         "gpu-training": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "200", "unit": "Tokens/S"},
+                "ml.p3.2xlarge": [{"name": "Latency", "value": "200", "unit": "Tokens/S"}],
             },
             "component_names": ["gpu-training"],
         },
         "gpu-training-budget": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": {"name": "Latency", "value": "100", "unit": "Tokens/S"}
+                "ml.p3.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
             },
             "component_names": ["gpu-training-budget"],
         },
