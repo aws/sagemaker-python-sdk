@@ -202,6 +202,33 @@ def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
                 ), f"{caught_ex} was thrown when running transformers sagemaker endpoint test"
 
 
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_NOT_310,
+    reason="Testing Schema Builder Simplification feature - Remote Schema",
+)
+@pytest.mark.parametrize(
+    "model_id, task_provided, instance_type_provided",
+    [("openai/whisper-tiny.en", "automatic-speech-recognition", "ml.m5.4xlarge")],
+)
+def test_model_builder_with_task_provided_remote_schema_mode_asr(
+    model_id, task_provided, sagemaker_session, instance_type_provided
+):
+    model_builder = ModelBuilder(
+        model=model_id,
+        model_metadata={"HF_TASK": task_provided},
+        instance_type=instance_type_provided,
+    )
+    model = model_builder.build(sagemaker_session=sagemaker_session)
+
+    assert model is not None
+    assert model_builder.schema_builder is not None
+
+    remote_hf_schema_helper = remote_schema_retriever.RemoteSchemaRetriever()
+    inputs, outputs = remote_hf_schema_helper.get_resolved_hf_schema_for_task(task_provided)
+    assert model_builder.schema_builder.sample_input == inputs
+    assert model_builder.schema_builder.sample_output == outputs
+
+
 def test_model_builder_negative_path_with_invalid_task(sagemaker_session):
     model_builder = ModelBuilder(
         model="bert-base-uncased", model_metadata={"HF_TASK": "invalid-task"}
