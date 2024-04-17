@@ -896,7 +896,7 @@ def get_config_names(
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> List[str]:
     """Returns a list of config names for the given model ID and region.
-    
+
     Raises:
         ValueError: If the script scope is not supported by JumpStart.
     """
@@ -929,7 +929,7 @@ def get_benchmark_stats(
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> Dict[str, List[JumpStartBenchmarkStat]]:
     """Returns benchmark stats for the given model ID and region.
-    
+
     Raises:
         ValueError: If the script scope is not supported by JumpStart.
     """
@@ -971,7 +971,7 @@ def get_jumpstart_configs(
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> Dict[str, JumpStartMetadataConfig]:
     """Returns metadata configs for the given model ID and region.
-    
+
     Raises:
         ValueError: If the script scope is not supported by JumpStart.
     """

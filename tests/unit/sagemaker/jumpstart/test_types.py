@@ -934,9 +934,9 @@ def test_inference_configs_parsing():
     assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
         {
-            "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework": "huggingface-llm-neuronx",
+            "framework_version": "0.0.17",
+            "py_version": "py310",
         }
     )
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
@@ -946,7 +946,10 @@ def test_inference_configs_parsing():
             "py_version": "py3",
         }
     )
-    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.hosting_artifact_key
+        == "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/"
+    )
     assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
     assert (
         specs1.hosting_script_key
@@ -1024,11 +1027,29 @@ def test_inference_configs_parsing():
         ]
     }
     assert len(config.config_components) == 1
-    assert config.config_components["neuron-base"] == JumpStartConfigComponent(
-        "neuron-base",
-        {"supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"]},
+    assert config.config_components["neuron-inference"] == JumpStartConfigComponent(
+        "neuron-inference",
+        {
+            "default_inference_instance_type": "ml.inf2.xlarge",
+            "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"],
+            "hosting_ecr_specs": {
+                "framework": "huggingface-llm-neuronx",
+                "framework_version": "0.0.17",
+                "py_version": "py310",
+            },
+            "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/",
+            "hosting_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "neuron-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "huggingface-pytorch-hosting:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    }
+                },
+                "variants": {"inf2": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
+            },
+        },
     )
-    assert list(config.config_components.keys()) == ["neuron-base"]
+    assert list(config.config_components.keys()) == ["neuron-inference"]
 
 
 def test_training_configs_parsing():

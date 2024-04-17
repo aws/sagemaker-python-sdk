@@ -6270,6 +6270,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
             "framework_version": "1.5.0",
             "py_version": "py3",
         },
+        "default_inference_instance_type": "ml.p2.xlarge",
         "hosting_artifact_key": "pytorch-infer/infer-pytorch-eqa-bert-base-cased.tar.gz",
         "hosting_script_key": "source-directory-tarballs/pytorch/inference/eqa/v1.0.0/sourcedir.tar.gz",
         "inference_vulnerable": False,
@@ -7660,7 +7661,7 @@ INFERENCE_CONFIGS = {
             "benchmark_metrics": {
                 "ml.inf2.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
             },
-            "component_names": ["neuron-base"],
+            "component_names": ["neuron-inference"],
         },
         "neuron-inference-budget": {
             "benchmark_metrics": {
@@ -7686,7 +7687,13 @@ INFERENCE_CONFIGS = {
             "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
         },
         "neuron-inference": {
+            "default_inference_instance_type": "ml.inf2.xlarge",
             "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"],
+            "hosting_ecr_specs": {
+                "framework": "huggingface-llm-neuronx",
+                "framework_version": "0.0.17",
+                "py_version": "py310",
+            },
             "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/",
             "hosting_instance_type_variants": {
                 "regional_aliases": {

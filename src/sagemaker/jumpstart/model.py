@@ -36,9 +36,8 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
-from sagemaker.jumpstart.types import JumpStartMetadataConfig, JumpStartSerializablePayload
+from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
-    get_jumpstart_configs,
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
 )
@@ -410,31 +409,17 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
         )
 
-    def list_deployment_configs(self) -> List[JumpStartMetadataConfig]:
-        """Returns a list of deployment configs associated with the model.
-
-        Raises:
-            ValueError: If the combination of arguments specified is not supported.
-            VulnerableJumpStartModelError: If any of the dependencies required by the script have
-                known security vulnerabilities.
-            DeprecatedJumpStartModelError: If the version of the model is deprecated.
-        """
-        configs_dict = get_jumpstart_configs(
-            model_id=self.model_id,
-            model_version=self.model_version,
-            model_type=self.model_type,
-            region=self.region,
-            sagemaker_session=self.sagemaker_session,
-        )
-        return list(configs_dict.values())
-
-    def set_deployment_config(self, config_name: str) -> None:
+    def set_deployment_config(self, config_name: str | None) -> None:
         """Sets the deployment config to apply to the model.
 
         Args:
-            config_name (str): The name of the deployment config.
+            config_name (str | None):
+                The name of the deployment config. Set to None to unset
+                any existing config that is applied to the model.
         """
-        self.__init__(**self.init_kwargs, config_name=config_name)
+        self.__init__(
+            model_id=self.model_id, model_version=self.model_version, config_name=config_name
+        )
 
     def _create_sagemaker_model(
         self,

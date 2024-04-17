@@ -503,7 +503,8 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
-            config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+            config_name (Optional[str]): 
+                Name of the JumpStart Model config to apply. (Default: None).
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -1107,7 +1108,7 @@ class JumpStartEstimator(Estimator):
         # If a predictor class was passed, do not mutate predictor
         return predictor
 
-    def list_configs(self) -> List[JumpStartMetadataConfig]:
+    def list_training_configs(self) -> List[JumpStartMetadataConfig]:
         """Returns a list of configs associated with the estimator.
 
         Raises:

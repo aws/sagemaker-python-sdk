@@ -1345,7 +1345,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             config_name (str): Name of the config.
             scope (JumpStartScriptScope, optional):
                 Scope of the config. Defaults to JumpStartScriptScope.INFERENCE.
-        
+
         Raises:
             ValueError: If the scope is not supported, or cannot find config name.
         """
