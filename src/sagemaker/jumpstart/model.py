@@ -93,7 +93,6 @@ class JumpStartModel(Model):
         model_package_arn: Optional[str] = None,
         resources: Optional[ResourceRequirements] = None,
         config_name: Optional[str] = None,
-        **kwargs,
     ):
         """Initializes a ``JumpStartModel``.
 

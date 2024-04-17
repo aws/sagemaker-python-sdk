@@ -717,7 +717,6 @@ class ModelTest(unittest.TestCase):
             "instance_type",
             "model_package_arn",
             "config_name",
-            "kwargs",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 

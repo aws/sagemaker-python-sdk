@@ -503,7 +503,7 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
-            config_name (Optional[str]): 
+            config_name (Optional[str]):
                 Name of the JumpStart Model config to apply. (Default: None).
 
         Raises:
