@@ -71,10 +71,8 @@ FILTER_OPERATOR_STRING_MAPPINGS = {
 }
 
 
-_PAD_ALPHABETIC_OPERATOR = (
-    lambda operator: f" {operator} "
-    if any(character.isalpha() for character in operator)
-    else operator
+_PAD_ALPHABETIC_OPERATOR = lambda operator: (  # noqa E731
+    f" {operator} " if any(character.isalpha() for character in operator) else operator
 )
 
 ACCEPTABLE_OPERATORS_IN_PARSE_ORDER = (

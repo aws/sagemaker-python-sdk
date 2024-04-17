@@ -1,4 +1,5 @@
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 import io
 import logging
@@ -230,18 +231,26 @@ class SchemaBuilder(TritonSchemaBuilder):
     def generate_marshalling_map(self) -> dict:
         """Generate marshalling map for the schema builder"""
         return {
-            "input_serializer": self.input_serializer.__class__.__name__
-            if hasattr(self, "input_serializer")
-            else None,
-            "output_serializer": self.output_serializer.__class__.__name__
-            if hasattr(self, "output_serializer")
-            else None,
-            "input_deserializer": self._input_deserializer.__class__.__name__
-            if hasattr(self, "_input_deserializer")
-            else None,
-            "output_deserializer": self._output_deserializer.__class__.__name__
-            if hasattr(self, "_output_deserializer")
-            else None,
+            "input_serializer": (
+                self.input_serializer.__class__.__name__
+                if hasattr(self, "input_serializer")
+                else None
+            ),
+            "output_serializer": (
+                self.output_serializer.__class__.__name__
+                if hasattr(self, "output_serializer")
+                else None
+            ),
+            "input_deserializer": (
+                self._input_deserializer.__class__.__name__
+                if hasattr(self, "_input_deserializer")
+                else None
+            ),
+            "output_deserializer": (
+                self._output_deserializer.__class__.__name__
+                if hasattr(self, "_output_deserializer")
+                else None
+            ),
             "custom_input_translator": hasattr(self, "custom_input_translator"),
             "custom_output_translator": hasattr(self, "custom_output_translator"),
         }

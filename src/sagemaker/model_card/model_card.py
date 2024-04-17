@@ -507,9 +507,11 @@ class ModelPackage(_DefaultToRequestDict, _DefaultFromDict):
                 "SourceAlgorithms"
             ]
             source_algorithms = [
-                SourceAlgorithm(sa["AlgorithmName"], sa["ModelDataUrl"])
-                if "ModelDataUrl" in sa
-                else SourceAlgorithm(sa["AlgorithmName"])
+                (
+                    SourceAlgorithm(sa["AlgorithmName"], sa["ModelDataUrl"])
+                    if "ModelDataUrl" in sa
+                    else SourceAlgorithm(sa["AlgorithmName"])
+                )
                 for sa in source_algorithms_response
             ]
 
@@ -948,18 +950,22 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
                 "training_environment": Environment(
                     container_image=[training_job_data["AlgorithmSpecification"]["TrainingImage"]]
                 ),
-                "training_metrics": [
-                    TrainingMetric(i["MetricName"], i["Value"])
-                    for i in training_job_data["FinalMetricDataList"]
-                ]
-                if "FinalMetricDataList" in training_job_data
-                else [],
-                "hyper_parameters": [
-                    HyperParameter(key, value)
-                    for key, value in training_job_data["HyperParameters"].items()
-                ]
-                if "HyperParameters" in training_job_data
-                else [],
+                "training_metrics": (
+                    [
+                        TrainingMetric(i["MetricName"], i["Value"])
+                        for i in training_job_data["FinalMetricDataList"]
+                    ]
+                    if "FinalMetricDataList" in training_job_data
+                    else []
+                ),
+                "hyper_parameters": (
+                    [
+                        HyperParameter(key, value)
+                        for key, value in training_job_data["HyperParameters"].items()
+                    ]
+                    if "HyperParameters" in training_job_data
+                    else []
+                ),
             }
             kwargs.update({"training_job_details": TrainingJobDetails(**job)})
             instance = cls(**kwargs)

@@ -1,4 +1,5 @@
 """Module for the MultiModel Local and Remote servers"""
+
 from __future__ import absolute_import
 
 import requests

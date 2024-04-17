@@ -143,8 +143,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version,
     ):
         # setup mocks
-        mock_detect_container.side_effect = (
-            lambda model, region, instance_type: mock_image_uri
+        mock_detect_container.side_effect = lambda model, region, instance_type: (
+            mock_image_uri
             if model == mock_fw_model
             and region == mock_session.boto_region_name
             and instance_type == "ml.c5.xlarge"
@@ -154,14 +154,16 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version.return_value = framework, version
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == session
-            and image_uri == mock_image_uri
-            and inference_spec is None
-            else None
+            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: (
+                mock_secret_key
+                if model_path == MODEL_PATH
+                and shared_libs == []
+                and dependencies == {"auto": False}
+                and session == session
+                and image_uri == mock_image_uri
+                and inference_spec is None
+                else None
+            )
         )
 
         # Mock _ServeSettings
@@ -172,13 +174,11 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
-            if inference_spec is None and model_server == ModelServer.TORCHSERVE
-            else None
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = (
-            lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+            (
                 model_data,
                 ENV_VAR_PAIR,
             )
@@ -191,8 +191,8 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+            mock_model_obj
             if image_uri == mock_image_uri
             and image_config == MOCK_IMAGE_CONFIG
             and vpc_config == MOCK_VPC_CONFIG
@@ -247,8 +247,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version,
     ):
         # setup mocks
-        mock_detect_container.side_effect = (
-            lambda model, region, instance_type: mock_1p_dlc_image_uri
+        mock_detect_container.side_effect = lambda model, region, instance_type: (
+            mock_1p_dlc_image_uri
             if model == mock_fw_model
             and region == mock_session.boto_region_name
             and instance_type == "ml.c5.xlarge"
@@ -257,14 +257,16 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version.return_value = framework, version
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == session
-            and image_uri == mock_1p_dlc_image_uri
-            and inference_spec is None
-            else None
+            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: (
+                mock_secret_key
+                if model_path == MODEL_PATH
+                and shared_libs == []
+                and dependencies == {"auto": False}
+                and session == session
+                and image_uri == mock_1p_dlc_image_uri
+                and inference_spec is None
+                else None
+            )
         )
 
         # Mock _ServeSettings
@@ -275,13 +277,11 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
-            if inference_spec is None and model_server == ModelServer.TORCHSERVE
-            else None
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = (
-            lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+            (
                 model_data,
                 ENV_VAR_PAIR,
             )
@@ -294,8 +294,8 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+            mock_model_obj
             if image_uri == mock_1p_dlc_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -347,14 +347,14 @@ class TestModelBuilder(unittest.TestCase):
     ):
         # setup mocks
         mock_native_model = Mock()
-        mock_inference_spec.load = (
-            lambda model_path: mock_native_model if model_path == MODEL_PATH else None
+        mock_inference_spec.load = lambda model_path: (
+            mock_native_model if model_path == MODEL_PATH else None
         )
 
         mock_detect_fw_version.return_value = framework, version
 
-        mock_detect_container.side_effect = (
-            lambda model, region, instance_type: mock_image_uri
+        mock_detect_container.side_effect = lambda model, region, instance_type: (
+            mock_image_uri
             if model == mock_native_model
             and region == mock_session.boto_region_name
             and instance_type == "ml.c5.xlarge"
@@ -362,14 +362,16 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == mock_session
-            and image_uri == mock_image_uri
-            and inference_spec == mock_inference_spec
-            else None
+            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: (
+                mock_secret_key
+                if model_path == MODEL_PATH
+                and shared_libs == []
+                and dependencies == {"auto": False}
+                and session == mock_session
+                and image_uri == mock_image_uri
+                and inference_spec == mock_inference_spec
+                else None
+            )
         )
 
         # Mock _ServeSettings
@@ -380,13 +382,13 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode
             if inference_spec == mock_inference_spec and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_mode.prepare.side_effect = (
-            lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+            (
                 model_data,
                 ENV_VAR_PAIR,
             )
@@ -399,8 +401,8 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+            mock_model_obj
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -447,8 +449,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version,
     ):
         # setup mocks
-        mock_detect_container.side_effect = (
-            lambda model, region, instance_type: mock_image_uri
+        mock_detect_container.side_effect = lambda model, region, instance_type: (
+            mock_image_uri
             if model == mock_fw_model
             and region == mock_session.boto_region_name
             and instance_type == "ml.c5.xlarge"
@@ -458,14 +460,16 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version.return_value = framework, version
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == session
-            and image_uri == mock_image_uri
-            and inference_spec is None
-            else None
+            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: (
+                mock_secret_key
+                if model_path == MODEL_PATH
+                and shared_libs == []
+                and dependencies == {"auto": False}
+                and session == session
+                and image_uri == mock_image_uri
+                and inference_spec is None
+                else None
+            )
         )
 
         # Mock _ServeSettings
@@ -476,13 +480,11 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
-            if inference_spec is None and model_server == ModelServer.TORCHSERVE
-            else None
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = (
-            lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+            (
                 model_data,
                 ENV_VAR_PAIR,
             )
@@ -495,8 +497,8 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+            mock_model_obj
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -551,8 +553,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_xgb,
     ):
         # setup mocks
-        mock_detect_container.side_effect = (
-            lambda model, region, instance_type: mock_image_uri
+        mock_detect_container.side_effect = lambda model, region, instance_type: (
+            mock_image_uri
             if model == mock_fw_model
             and region == mock_session.boto_region_name
             and instance_type == "ml.c5.xlarge"
@@ -562,14 +564,16 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version.return_value = "xgboost", version
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == session
-            and image_uri == mock_image_uri
-            and inference_spec is None
-            else None
+            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: (
+                mock_secret_key
+                if model_path == MODEL_PATH
+                and shared_libs == []
+                and dependencies == {"auto": False}
+                and session == session
+                and image_uri == mock_image_uri
+                and inference_spec is None
+                else None
+            )
         )
 
         # Mock _ServeSettings
@@ -580,13 +584,11 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
-            if inference_spec is None and model_server == ModelServer.TORCHSERVE
-            else None
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = (
-            lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+            (
                 model_data,
                 ENV_VAR_PAIR,
             )
@@ -599,8 +601,8 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+            mock_model_obj
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -655,12 +657,12 @@ class TestModelBuilder(unittest.TestCase):
     ):
         # setup mocks
         mock_native_model = Mock()
-        mock_inference_spec.load = (
-            lambda model_path: mock_native_model if model_path == MODEL_PATH else None
+        mock_inference_spec.load = lambda model_path: (
+            mock_native_model if model_path == MODEL_PATH else None
         )
 
-        mock_detect_container.side_effect = (
-            lambda model, region, instance_type: mock_image_uri
+        mock_detect_container.side_effect = lambda model, region, instance_type: (
+            mock_image_uri
             if model == mock_native_model
             and region == mock_session.boto_region_name
             and instance_type == "ml.c5.xlarge"
@@ -668,14 +670,16 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == mock_session
-            and image_uri == mock_image_uri
-            and inference_spec == mock_inference_spec
-            else None
+            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: (
+                mock_secret_key
+                if model_path == MODEL_PATH
+                and shared_libs == []
+                and dependencies == {"auto": False}
+                and session == mock_session
+                and image_uri == mock_image_uri
+                and inference_spec == mock_inference_spec
+                else None
+            )
         )
 
         # Mock _ServeSettings
@@ -687,21 +691,23 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_mode = Mock()
         mock_localContainerMode.side_effect = (
-            lambda inference_spec, schema_builder, session, model_path, env_vars, model_server: mock_mode
-            if inference_spec == mock_inference_spec
-            and schema_builder == schema_builder
-            and model_server == ModelServer.TORCHSERVE
-            and session == mock_session
-            and model_path == MODEL_PATH
-            and env_vars == {}
-            and model_server == ModelServer.TORCHSERVE
-            else None
+            lambda inference_spec, schema_builder, session, model_path, env_vars, model_server: (
+                mock_mode
+                if inference_spec == mock_inference_spec
+                and schema_builder == schema_builder
+                and model_server == ModelServer.TORCHSERVE
+                and session == mock_session
+                and model_path == MODEL_PATH
+                and env_vars == {}
+                and model_server == ModelServer.TORCHSERVE
+                else None
+            )
         )
         mock_mode.prepare.side_effect = lambda: None
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+            mock_model_obj
             if image_uri == mock_image_uri
             and model_data is None
             and role == mock_role_arn
@@ -751,14 +757,14 @@ class TestModelBuilder(unittest.TestCase):
     ):
         # setup mocks
         mock_native_model = Mock()
-        mock_inference_spec.load = (
-            lambda model_path: mock_native_model if model_path == MODEL_PATH else None
+        mock_inference_spec.load = lambda model_path: (
+            mock_native_model if model_path == MODEL_PATH else None
         )
 
         mock_detect_fw_version.return_value = framework, version
 
-        mock_detect_container.side_effect = (
-            lambda model, region, instance_type: mock_image_uri
+        mock_detect_container.side_effect = lambda model, region, instance_type: (
+            mock_image_uri
             if model == mock_native_model
             and region == mock_session.boto_region_name
             and instance_type == "ml.c5.xlarge"
@@ -766,14 +772,16 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == mock_session
-            and image_uri == mock_image_uri
-            and inference_spec == mock_inference_spec
-            else None
+            lambda model_path, shared_libs, dependencies, session, image_uri, inference_spec: (
+                mock_secret_key
+                if model_path == MODEL_PATH
+                and shared_libs == []
+                and dependencies == {"auto": False}
+                and session == mock_session
+                and image_uri == mock_image_uri
+                and inference_spec == mock_inference_spec
+                else None
+            )
         )
 
         # Mock _ServeSettings
@@ -785,26 +793,28 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_lc_mode = Mock()
         mock_localContainerMode.side_effect = (
-            lambda inference_spec, schema_builder, session, model_path, env_vars, model_server: mock_lc_mode
-            if inference_spec == mock_inference_spec
-            and schema_builder == schema_builder
-            and model_server == ModelServer.TORCHSERVE
-            and session == mock_session
-            and model_path == MODEL_PATH
-            and env_vars == {}
-            and model_server == ModelServer.TORCHSERVE
-            else None
+            lambda inference_spec, schema_builder, session, model_path, env_vars, model_server: (
+                mock_lc_mode
+                if inference_spec == mock_inference_spec
+                and schema_builder == schema_builder
+                and model_server == ModelServer.TORCHSERVE
+                and session == mock_session
+                and model_path == MODEL_PATH
+                and env_vars == {}
+                and model_server == ModelServer.TORCHSERVE
+                else None
+            )
         )
         mock_lc_mode.prepare.side_effect = lambda: None
 
         mock_sagemaker_endpoint_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_sagemaker_endpoint_mode
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_sagemaker_endpoint_mode
             if inference_spec == mock_inference_spec and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_sagemaker_endpoint_mode.prepare.side_effect = (
-            lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (
+        mock_sagemaker_endpoint_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+            (
                 model_data,
                 ENV_VAR_PAIR,
             )
@@ -817,8 +827,8 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+            mock_model_obj
             if image_uri == mock_image_uri
             and model_data is None
             and role == mock_role_arn
@@ -848,8 +858,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_predictor = Mock()
 
         builder._original_deploy = Mock()
-        builder._original_deploy.side_effect = (
-            lambda *args, **kwargs: mock_predictor
+        builder._original_deploy.side_effect = lambda *args, **kwargs: (
+            mock_predictor
             if kwargs.get("initial_instance_count") == 1
             and kwargs.get("instance_type") == mock_instance_type
             else None
@@ -893,8 +903,8 @@ class TestModelBuilder(unittest.TestCase):
         # setup mocks
         mock_detect_fw_version.return_value = framework, version
 
-        mock_detect_container.side_effect = (
-            lambda model, region, instance_type: mock_image_uri
+        mock_detect_container.side_effect = lambda model, region, instance_type: (
+            mock_image_uri
             if model == mock_fw_model
             and region == mock_session.boto_region_name
             and instance_type == "ml.c5.xlarge"
@@ -902,14 +912,16 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_prepare_for_torchserve.side_effect = (
-            lambda model_path, shared_libs, dependencies, image_uri, session, inference_spec: mock_secret_key
-            if model_path == MODEL_PATH
-            and shared_libs == []
-            and dependencies == {"auto": False}
-            and session == mock_session
-            and inference_spec is None
-            and image_uri == mock_image_uri
-            else None
+            lambda model_path, shared_libs, dependencies, image_uri, session, inference_spec: (
+                mock_secret_key
+                if model_path == MODEL_PATH
+                and shared_libs == []
+                and dependencies == {"auto": False}
+                and session == mock_session
+                and inference_spec is None
+                and image_uri == mock_image_uri
+                else None
+            )
         )
 
         # Mock _ServeSettings
@@ -920,13 +932,11 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
-            if inference_spec is None and model_server == ModelServer.TORCHSERVE
-            else None
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = (
-            lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+            (
                 model_data,
                 ENV_VAR_PAIR,
             )
@@ -940,27 +950,31 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_lc_mode = Mock()
         mock_localContainerMode.side_effect = (
-            lambda inference_spec, schema_builder, session, model_path, env_vars, model_server: mock_lc_mode
-            if inference_spec is None
-            and schema_builder == schema_builder
-            and model_server == ModelServer.TORCHSERVE
-            and session == mock_session
-            and model_path == MODEL_PATH
-            and env_vars == ENV_VARS
-            else None
+            lambda inference_spec, schema_builder, session, model_path, env_vars, model_server: (
+                mock_lc_mode
+                if inference_spec is None
+                and schema_builder == schema_builder
+                and model_server == ModelServer.TORCHSERVE
+                and session == mock_session
+                and model_path == MODEL_PATH
+                and env_vars == ENV_VARS
+                else None
+            )
         )
         mock_lc_mode.prepare.side_effect = lambda: None
         mock_lc_mode.create_server.side_effect = (
-            lambda image_uri, container_timeout_seconds, secret_key, predictor: None
-            if image_uri == mock_image_uri
-            and secret_key == mock_secret_key
-            and container_timeout_seconds == 60
-            else None
+            lambda image_uri, container_timeout_seconds, secret_key, predictor: (
+                None
+                if image_uri == mock_image_uri
+                and secret_key == mock_secret_key
+                and container_timeout_seconds == 60
+                else None
+            )
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = (
-            lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: mock_model_obj  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+            mock_model_obj
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
@@ -1708,10 +1722,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
-            if inference_spec is None and model_server == ModelServer.TORCHSERVE
-            else None
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
         mock_mode.prepare.return_value = (
             model_data,
@@ -1785,10 +1797,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
-            if inference_spec is None and model_server == ModelServer.TORCHSERVE
-            else None
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
         mock_mode.prepare.return_value = (
             model_data,
@@ -1861,10 +1871,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
 
         mock_mode = Mock()
-        mock_sageMakerEndpointMode.side_effect = (
-            lambda inference_spec, model_server: mock_mode
-            if inference_spec is None and model_server == ModelServer.TORCHSERVE
-            else None
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
         mock_mode.prepare.return_value = (
             model_data,

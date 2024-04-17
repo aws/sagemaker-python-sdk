@@ -1,6 +1,7 @@
 """
 Integ test file script_1.py
 """
+
 import pathlib
 
 if __name__ == "__main__":
