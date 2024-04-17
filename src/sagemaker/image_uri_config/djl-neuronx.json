@@ -19,7 +19,7 @@
                 "ca-west-1": "204538143572"
             },
             "repository": "djl-inference",
-            "tag_prefix": "0.27.0-neuronx-sdk2.18.0"
+            "tag_prefix": "0.27.0-neuronx-sdk2.18.1"
         },
          "0.26.0": {
             "registries": {
