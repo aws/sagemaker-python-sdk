@@ -1,4 +1,5 @@
 """DJL ModelBuilder Utils"""
+
 from __future__ import absolute_import
 from urllib.error import HTTPError
 import math

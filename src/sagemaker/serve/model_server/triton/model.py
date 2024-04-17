@@ -1,4 +1,5 @@
 """This module is for Triton Python backend."""
+
 from __future__ import absolute_import
 import os
 import logging

@@ -530,9 +530,9 @@ def test_jumpstart_validate_all_hyperparameters(
         )
     assert str(e.value) == "Cannot find hyperparameter for 'sagemaker_submit_directory'."
 
-    hyperparameter_to_test[
-        "sagemaker_submit_directory"
-    ] = "/opt/ml/input/data/code/sourcedir.tar.gz"
+    hyperparameter_to_test["sagemaker_submit_directory"] = (
+        "/opt/ml/input/data/code/sourcedir.tar.gz"
+    )
     del hyperparameter_to_test["epochs"]
 
     with pytest.raises(JumpStartHyperparametersError) as e:

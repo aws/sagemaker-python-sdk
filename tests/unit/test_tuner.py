@@ -830,7 +830,7 @@ def _assert_parameter_ranges(expected, actual, is_framework_estimator):
     continuous_ranges = []
     integer_ranges = []
     categorical_ranges = []
-    for (name, param_range) in expected.items():
+    for name, param_range in expected.items():
         if isinstance(param_range, ContinuousParameter):
             continuous_ranges.append(param_range.as_tuning_range(name))
         elif isinstance(param_range, IntegerParameter):

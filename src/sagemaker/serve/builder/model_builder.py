@@ -141,6 +141,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             The schema builder translates the input into bytes and converts the response
             into a stream. All translations between the server and the client are handled
             automatically with the specified input and output.
+            The schema builder can be omitted for HuggingFace models with task types TextGeneration,
+            TextClassification, and QuestionAnswering. Omitting SchemaBuilder is in
+            beta for FillMask, and AutomaticSpeechRecognition use-cases.
         model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
             inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or ``inference_spec``
             is required for the model builder to build the artifact.
@@ -164,10 +167,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
             ``TRITON``, and``TGI``.
         model_metadata (Optional[Dict[str, Any]): Dictionary used to override model metadata.
-            Currently, ``HF_TASK`` is overridable for HuggingFace model. ``MLFLOW_MODEL_PATH``
-            is available for providing local path or s3 path to MLflow artifacts. However,
-            ``MLFLOW_MODEL_PATH`` is experimental and is not intended for production use
-            at this moment.
+            Currently, ``HF_TASK`` is overridable for HuggingFace model. HF_TASK should be set for
+            new models without task metadata in the Hub, adding unsupported task types will throw
+            an exception. ``MLFLOW_MODEL_PATH`` is available for providing local path or s3 path
+            to MLflow artifacts. However, ``MLFLOW_MODEL_PATH`` is experimental and is not
+            intended for production use at this moment.
     """
 
     model_path: Optional[str] = field(
@@ -268,7 +272,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         default=None,
         metadata={
             "help": "Define the model metadata to override, currently supports `HF_TASK`, "
-            "`MLFLOW_MODEL_PATH`"
+            "`MLFLOW_MODEL_PATH`. HF_TASK should be set for new models without task metadata in "
+            "the Hub, Adding unsupported task types will throw an exception"
         },
     )
 

@@ -118,9 +118,12 @@ def create_auto_ml_job_v2_if_not_exist(sagemaker_session, auto_ml_job_name, prob
         inputs = [
             AutoMLDataChannel(
                 s3_data_type="S3Prefix",
-                s3_uri=s3_uri
-                if DATA_CONFIGS[problem_type]["path"] != os.path.join(DATA_DIR, "cifar10_subset")
-                else s3_uri + "/",
+                s3_uri=(
+                    s3_uri
+                    if DATA_CONFIGS[problem_type]["path"]
+                    != os.path.join(DATA_DIR, "cifar10_subset")
+                    else s3_uri + "/"
+                ),
                 channel_type="training",
                 content_type=DATA_CONFIGS[problem_type]["content_type"],
             )

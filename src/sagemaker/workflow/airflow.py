@@ -68,13 +68,13 @@ def prepare_framework(estimator, s3_operations):
         ]
     estimator._hyperparameters[sagemaker.model.DIR_PARAM_NAME] = code_dir
     estimator._hyperparameters[sagemaker.model.SCRIPT_PARAM_NAME] = script
-    estimator._hyperparameters[
-        sagemaker.model.CONTAINER_LOG_LEVEL_PARAM_NAME
-    ] = estimator.container_log_level
+    estimator._hyperparameters[sagemaker.model.CONTAINER_LOG_LEVEL_PARAM_NAME] = (
+        estimator.container_log_level
+    )
     estimator._hyperparameters[sagemaker.model.JOB_NAME_PARAM_NAME] = estimator._current_job_name
-    estimator._hyperparameters[
-        sagemaker.model.SAGEMAKER_REGION_PARAM_NAME
-    ] = estimator.sagemaker_session.boto_region_name
+    estimator._hyperparameters[sagemaker.model.SAGEMAKER_REGION_PARAM_NAME] = (
+        estimator.sagemaker_session.boto_region_name
+    )
 
 
 def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
@@ -422,7 +422,7 @@ def _extract_training_config_list_from_estimator_dict(
     )
 
     train_config_dict = {}
-    for (estimator_name, estimator) in tuner.estimator_dict.items():
+    for estimator_name, estimator in tuner.estimator_dict.items():
         train_config_dict[estimator_name] = training_base_config(
             estimator=estimator,
             inputs=inputs.get(estimator_name) if inputs else None,
@@ -439,9 +439,9 @@ def _extract_training_config_list_from_estimator_dict(
         train_config.pop("HyperParameters", None)
         train_config["StaticHyperParameters"] = tuner.static_hyperparameters_dict[estimator_name]
 
-        train_config["AlgorithmSpecification"][
-            "MetricDefinitions"
-        ] = tuner.metric_definitions_dict.get(estimator_name)
+        train_config["AlgorithmSpecification"]["MetricDefinitions"] = (
+            tuner.metric_definitions_dict.get(estimator_name)
+        )
 
         train_config["DefinitionName"] = estimator_name
         train_config["TuningObjective"] = {
@@ -461,7 +461,7 @@ def _merge_s3_operations(s3_operations_list):
     """Merge a list of S3 operation dictionaries into one"""
     s3_operations_merged = {}
     for s3_operations in s3_operations_list:
-        for (key, operations) in s3_operations.items():
+        for key, operations in s3_operations.items():
             if key not in s3_operations_merged:
                 s3_operations_merged[key] = []
             for operation in operations:

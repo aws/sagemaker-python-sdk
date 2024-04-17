@@ -1,4 +1,5 @@
 """Implements class converts data from and to np.ndarray"""
+
 from __future__ import absolute_import
 
 import logging

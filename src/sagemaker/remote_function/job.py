@@ -863,9 +863,9 @@ class _Job:
             request_dict["EnableNetworkIsolation"] = job_settings.enable_network_isolation
 
         if job_settings.encrypt_inter_container_traffic is not None:
-            request_dict[
-                "EnableInterContainerTrafficEncryption"
-            ] = job_settings.encrypt_inter_container_traffic
+            request_dict["EnableInterContainerTrafficEncryption"] = (
+                job_settings.encrypt_inter_container_traffic
+            )
 
         if job_settings.vpc_config:
             request_dict["VpcConfig"] = job_settings.vpc_config
@@ -1080,9 +1080,11 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
     if user_workspace_s3uri:
         input_data_config.append(
             dict(
-                ChannelName=REMOTE_FUNCTION_WORKSPACE
-                if not step_compilation_context
-                else step_compilation_context.pipeline_build_time,
+                ChannelName=(
+                    REMOTE_FUNCTION_WORKSPACE
+                    if not step_compilation_context
+                    else step_compilation_context.pipeline_build_time
+                ),
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": user_workspace_s3uri,

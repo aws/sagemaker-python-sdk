@@ -1090,7 +1090,6 @@ class EstimatorTest(unittest.TestCase):
         mock_attach.assert_not_called()
 
     def test_jumpstart_estimator_kwargs_match_parent_class(self):
-
         """If you add arguments to <Estimator constructor>, this test will fail.
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""

@@ -377,9 +377,11 @@ class Collection(object):
                     {
                         "Name": collection_name,
                         "Arn": collection_arn,
-                        "Type": resource_group["Identifier"]["ResourceType"]
-                        if is_model_group
-                        else "Collection",
+                        "Type": (
+                            resource_group["Identifier"]["ResourceType"]
+                            if is_model_group
+                            else "Collection"
+                        ),
                     }
                 )
         return collection_details
