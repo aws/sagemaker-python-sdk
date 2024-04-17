@@ -2460,9 +2460,9 @@ def boto_session_complete():
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     boto_mock.client("sagemaker").describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    boto_mock.client(
-        "sagemaker"
-    ).describe_transform_job.return_value = COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT
+    boto_mock.client("sagemaker").describe_transform_job.return_value = (
+        COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT
+    )
     return boto_mock
 
 
@@ -2482,9 +2482,9 @@ def boto_session_stopped():
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     boto_mock.client("sagemaker").describe_training_job.return_value = STOPPED_DESCRIBE_JOB_RESULT
-    boto_mock.client(
-        "sagemaker"
-    ).describe_transform_job.return_value = STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT
+    boto_mock.client("sagemaker").describe_transform_job.return_value = (
+        STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT
+    )
     return boto_mock
 
 

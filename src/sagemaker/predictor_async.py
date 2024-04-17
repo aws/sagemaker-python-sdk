@@ -313,12 +313,14 @@ class AsyncPredictor:
         failure_object = self.s3_client.get_object(Bucket=failure_bucket, Key=failure_key)
         failure_response = self.predictor._handle_response(response=failure_object)
 
-        raise AsyncInferenceModelError(
-            message=failure_response
-        ) if failure_file_found.is_set() else PollingTimeoutError(
-            message="Inference could still be running",
-            output_path=output_path,
-            seconds=waiter_config.delay * waiter_config.max_attempts,
+        raise (
+            AsyncInferenceModelError(message=failure_response)
+            if failure_file_found.is_set()
+            else PollingTimeoutError(
+                message="Inference could still be running",
+                output_path=output_path,
+                seconds=waiter_config.delay * waiter_config.max_attempts,
+            )
         )
 
     def update_endpoint(

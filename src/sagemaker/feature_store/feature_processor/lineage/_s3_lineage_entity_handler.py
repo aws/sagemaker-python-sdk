@@ -172,9 +172,9 @@ class S3LineageEntityHandler:
                 sagemaker_session=sagemaker_session,
             )
             pipeline_schedule_artifact.properties["pipeline_name"] = pipeline_schedule.pipeline_name
-            pipeline_schedule_artifact.properties[
-                "schedule_expression"
-            ] = pipeline_schedule.schedule_expression
+            pipeline_schedule_artifact.properties["schedule_expression"] = (
+                pipeline_schedule.schedule_expression
+            )
             pipeline_schedule_artifact.properties["state"] = pipeline_schedule.state
             pipeline_schedule_artifact.properties["start_date"] = pipeline_schedule.start_date
             pipeline_schedule_artifact.save()

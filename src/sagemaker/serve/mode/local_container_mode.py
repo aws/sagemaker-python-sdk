@@ -1,4 +1,5 @@
 """Module that defines the LocalContainerMode class"""
+
 from __future__ import absolute_import
 from pathlib import Path
 import logging

@@ -3470,9 +3470,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training_job_definition["EnableNetworkIsolation"] = enable_network_isolation
 
         if encrypt_inter_container_traffic:
-            training_job_definition[
-                "EnableInterContainerTrafficEncryption"
-            ] = encrypt_inter_container_traffic
+            training_job_definition["EnableInterContainerTrafficEncryption"] = (
+                encrypt_inter_container_traffic
+            )
 
         if use_spot_instances:
             # use_spot_instances may be a Pipeline ParameterBoolean object
@@ -6405,7 +6405,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self,
         request: typing.Dict,
         create,
-        func_name: str = None
+        func_name: str = None,
         # pylint: disable=unused-argument
     ):
         """This function intercepts the create job request.

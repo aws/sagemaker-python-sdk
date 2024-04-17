@@ -31,7 +31,7 @@ Float32Tensor = _reflection.GeneratedProtocolMessageType(
     (_message.Message,),
     {
         "DESCRIPTOR": _FLOAT32TENSOR,
-        "__module__": "record_pb2"
+        "__module__": "record_pb2",
         # @@protoc_insertion_point(class_scope:aialgs.data.Float32Tensor)
     },
 )
@@ -42,7 +42,7 @@ Float64Tensor = _reflection.GeneratedProtocolMessageType(
     (_message.Message,),
     {
         "DESCRIPTOR": _FLOAT64TENSOR,
-        "__module__": "record_pb2"
+        "__module__": "record_pb2",
         # @@protoc_insertion_point(class_scope:aialgs.data.Float64Tensor)
     },
 )
@@ -53,7 +53,7 @@ Int32Tensor = _reflection.GeneratedProtocolMessageType(
     (_message.Message,),
     {
         "DESCRIPTOR": _INT32TENSOR,
-        "__module__": "record_pb2"
+        "__module__": "record_pb2",
         # @@protoc_insertion_point(class_scope:aialgs.data.Int32Tensor)
     },
 )
@@ -64,7 +64,7 @@ Bytes = _reflection.GeneratedProtocolMessageType(
     (_message.Message,),
     {
         "DESCRIPTOR": _BYTES,
-        "__module__": "record_pb2"
+        "__module__": "record_pb2",
         # @@protoc_insertion_point(class_scope:aialgs.data.Bytes)
     },
 )
@@ -75,7 +75,7 @@ Value = _reflection.GeneratedProtocolMessageType(
     (_message.Message,),
     {
         "DESCRIPTOR": _VALUE,
-        "__module__": "record_pb2"
+        "__module__": "record_pb2",
         # @@protoc_insertion_point(class_scope:aialgs.data.Value)
     },
 )
@@ -90,7 +90,7 @@ Record = _reflection.GeneratedProtocolMessageType(
             (_message.Message,),
             {
                 "DESCRIPTOR": _RECORD_FEATURESENTRY,
-                "__module__": "record_pb2"
+                "__module__": "record_pb2",
                 # @@protoc_insertion_point(class_scope:aialgs.data.Record.FeaturesEntry)
             },
         ),
@@ -99,12 +99,12 @@ Record = _reflection.GeneratedProtocolMessageType(
             (_message.Message,),
             {
                 "DESCRIPTOR": _RECORD_LABELENTRY,
-                "__module__": "record_pb2"
+                "__module__": "record_pb2",
                 # @@protoc_insertion_point(class_scope:aialgs.data.Record.LabelEntry)
             },
         ),
         "DESCRIPTOR": _RECORD,
-        "__module__": "record_pb2"
+        "__module__": "record_pb2",
         # @@protoc_insertion_point(class_scope:aialgs.data.Record)
     },
 )

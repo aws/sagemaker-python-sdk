@@ -1,4 +1,5 @@
 """Module for Local Torch Server"""
+
 from __future__ import absolute_import
 
 import requests
