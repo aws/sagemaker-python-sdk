@@ -1,5 +1,29 @@
 # Changelog
 
+## v2.216.0 (2024-04-17)
+
+### Features
+
+ * optimum 0.0.21
+ * Add TF 2.14 Graviton Inference support
+ * JumpStart alternative config parsing
+ * TGI 1.4.5
+
+### Bug Fixes and Other Changes
+
+ * chore(deps): bump black from 22.3.0 to 24.3.0 in /requirements/extras
+ * Add back serialization for automatic speech recognition
+ * bump apache-airflow version to 2.8.4
+ * remove trailing slash when uploading to S3 with dataset_builder.to_csv_file
+ * Update Collaborator Check workflow to check for users which are part of collaborator team
+ * forward network_isolation parameter to Estimators when False
+ * Flaky slow test
+ * Revert "Test SM PySDK Variations"
+
+### Documentation Changes
+
+ * Add supported task types to schema builder omission
+
 ## v2.215.0 (2024-04-12)
 
 ### Features
