@@ -1723,7 +1723,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_mode = Mock()
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
-	        mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
         mock_mode.prepare.return_value = (
             model_data,
