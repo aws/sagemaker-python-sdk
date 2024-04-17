@@ -220,9 +220,9 @@ class Run(object):
             trial_component_name=self._trial_component.trial_component_name,
             sagemaker_session=sagemaker_session,
             artifact_bucket=artifact_bucket,
-            artifact_prefix=_DEFAULT_ARTIFACT_PREFIX
-            if artifact_prefix is None
-            else artifact_prefix,
+            artifact_prefix=(
+                _DEFAULT_ARTIFACT_PREFIX if artifact_prefix is None else artifact_prefix
+            ),
         )
         self._lineage_artifact_tracker = _LineageArtifactTracker(
             trial_component_arn=self._trial_component.trial_component_arn,

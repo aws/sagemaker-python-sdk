@@ -846,9 +846,7 @@ def test_valid_model_config(content_type, accept_type):
     content_template = (
         '{"instances":$features}'
         if content_type == "application/jsonlines"
-        else "$records"
-        if content_type == "application/json"
-        else None
+        else "$records" if content_type == "application/json" else None
     )
     record_template = "$features_kvp" if content_type == "application/json" else None
     model_config = ModelConfig(
@@ -1071,9 +1069,7 @@ class TestTimeSeriesModelConfig:
         content_template = (
             '{"instances":$features}'
             if content_type == "application/jsonlines"
-            else "$records"
-            if content_type == "application/json"
-            else None
+            else "$records" if content_type == "application/json" else None
         )
         record_template = "$features_kvp" if content_type == "application/json" else None
         # create mock config for TimeSeriesModelConfig

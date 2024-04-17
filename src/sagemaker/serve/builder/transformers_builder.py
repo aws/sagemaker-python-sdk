@@ -94,7 +94,7 @@ class Transformers(ABC):
         )
         hf_config = image_uris.config_for_framework("huggingface").get("inference")
         config = hf_config["versions"]
-        base_hf_version = sorted(config.keys(), key=lambda v: Version(v))[0]
+        base_hf_version = sorted(config.keys(), key=lambda v: Version(v), reverse=True)[0]
 
         if hf_model_md is None:
             raise ValueError("Could not fetch HF metadata")
@@ -269,7 +269,7 @@ class Transformers(ABC):
                 if len(hugging_face_version.split(".")) == 2:
                     base_fw_version = ".".join(base_fw_version.split(".")[:-1])
                 versions_to_return.append(base_fw_version)
-        return sorted(versions_to_return)[0]
+        return sorted(versions_to_return, reverse=True)[0]
 
     def _build_for_transformers(self):
         """Method that triggers model build

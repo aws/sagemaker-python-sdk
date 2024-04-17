@@ -243,9 +243,11 @@ JUMPSTART_LOGGER.addHandler(
         "",
         (logging.StreamHandler,),
         {
-            "emit": lambda self, *args, **kwargs: logging.StreamHandler.emit(self, *args, **kwargs)
-            if not os.environ.get(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING)
-            else None
+            "emit": lambda self, *args, **kwargs: (
+                logging.StreamHandler.emit(self, *args, **kwargs)
+                if not os.environ.get(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING)
+                else None
+            )
         },
     )()
 )

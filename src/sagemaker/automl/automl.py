@@ -930,9 +930,9 @@ class AutoMLJob(_Job):
 
         auto_ml_model_deploy_config = {}
         if auto_ml.auto_generate_endpoint_name is not None:
-            auto_ml_model_deploy_config[
-                "AutoGenerateEndpointName"
-            ] = auto_ml.auto_generate_endpoint_name
+            auto_ml_model_deploy_config["AutoGenerateEndpointName"] = (
+                auto_ml.auto_generate_endpoint_name
+            )
         if not auto_ml.auto_generate_endpoint_name and auto_ml.endpoint_name is not None:
             auto_ml_model_deploy_config["EndpointName"] = auto_ml.endpoint_name
 
@@ -1034,9 +1034,9 @@ class AutoMLJob(_Job):
         if max_candidates is not None:
             stopping_condition["MaxCandidates"] = max_candidates
         if max_runtime_per_training_job_in_seconds is not None:
-            stopping_condition[
-                "MaxRuntimePerTrainingJobInSeconds"
-            ] = max_runtime_per_training_job_in_seconds
+            stopping_condition["MaxRuntimePerTrainingJobInSeconds"] = (
+                max_runtime_per_training_job_in_seconds
+            )
         if total_job_runtime_in_seconds is not None:
             stopping_condition["MaxAutoMLJobRuntimeInSeconds"] = total_job_runtime_in_seconds
 

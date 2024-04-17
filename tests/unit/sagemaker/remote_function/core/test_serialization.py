@@ -439,8 +439,7 @@ def test_serialize_deserialize_service_error():
 def test_serialize_deserialize_exception_with_traceback():
     s3_uri = random_s3_uri()
 
-    class CustomError(Exception):
-        ...
+    class CustomError(Exception): ...  # noqa E701
 
     def func_a():
         raise TypeError
@@ -469,8 +468,7 @@ def test_serialize_deserialize_exception_with_traceback():
 def test_serialize_deserialize_custom_exception_with_traceback():
     s3_uri = random_s3_uri()
 
-    class CustomError(Exception):
-        ...
+    class CustomError(Exception): ...  # noqa: E701
 
     def func_a():
         raise TypeError
@@ -500,8 +498,7 @@ def test_serialize_deserialize_custom_exception_with_traceback():
 def test_serialize_deserialize_remote_function_error_with_traceback():
     s3_uri = random_s3_uri()
 
-    class CustomError(Exception):
-        ...
+    class CustomError(Exception): ...  # noqa: E701
 
     def func_a():
         raise TypeError

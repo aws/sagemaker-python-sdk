@@ -76,16 +76,16 @@ def retrieve_all_examples(
             "Must specify JumpStart `model_id` and `model_version` when retrieving payloads."
         )
 
-    unserialized_payload_dict: Optional[
-        Dict[str, JumpStartSerializablePayload]
-    ] = artifacts._retrieve_example_payloads(
-        model_id,
-        model_version,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
-        sagemaker_session=sagemaker_session,
-        model_type=model_type,
+    unserialized_payload_dict: Optional[Dict[str, JumpStartSerializablePayload]] = (
+        artifacts._retrieve_example_payloads(
+            model_id,
+            model_version,
+            region,
+            tolerate_vulnerable_model,
+            tolerate_deprecated_model,
+            sagemaker_session=sagemaker_session,
+            model_type=model_type,
+        )
     )
 
     if unserialized_payload_dict is None:

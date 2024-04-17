@@ -1,4 +1,5 @@
 """Module for Local DJL Serving"""
+
 from __future__ import absolute_import
 
 import requests

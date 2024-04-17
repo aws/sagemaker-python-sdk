@@ -667,9 +667,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self.repacked_model_data or self.model_data,
             deploy_env,
             image_config=self.image_config,
-            accept_eula=accept_eula
-            if accept_eula is not None
-            else getattr(self, "accept_eula", None),
+            accept_eula=(
+                accept_eula if accept_eula is not None else getattr(self, "accept_eula", None)
+            ),
         )
 
     def is_repack(self) -> bool:
@@ -1009,9 +1009,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         """Placeholder Docstring"""
         input_model_config = {
             "S3Uri": self.model_data,
-            "DataInputConfig": json.dumps(input_shape)
-            if isinstance(input_shape, dict)
-            else input_shape,
+            "DataInputConfig": (
+                json.dumps(input_shape) if isinstance(input_shape, dict) else input_shape
+            ),
             "Framework": framework.upper(),
         }
 
@@ -1449,9 +1449,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         ):
             tags = add_jumpstart_uri_tags(
                 tags=tags,
-                inference_model_uri=self.model_data
-                if isinstance(self.model_data, (str, dict))
-                else None,
+                inference_model_uri=(
+                    self.model_data if isinstance(self.model_data, (str, dict)) else None
+                ),
                 inference_script_uri=self.source_dir,
             )
 
@@ -1566,13 +1566,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             # [TODO]: Refactor to a module
             startup_parameters = {}
             if model_data_download_timeout:
-                startup_parameters[
-                    "ModelDataDownloadTimeoutInSeconds"
-                ] = model_data_download_timeout
+                startup_parameters["ModelDataDownloadTimeoutInSeconds"] = (
+                    model_data_download_timeout
+                )
             if container_startup_health_check_timeout:
-                startup_parameters[
-                    "ContainerStartupHealthCheckTimeoutInSeconds"
-                ] = container_startup_health_check_timeout
+                startup_parameters["ContainerStartupHealthCheckTimeoutInSeconds"] = (
+                    container_startup_health_check_timeout
+                )
 
             inference_component_spec = {
                 "ModelName": self.name,

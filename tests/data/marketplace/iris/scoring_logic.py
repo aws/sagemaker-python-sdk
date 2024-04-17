@@ -63,6 +63,7 @@ SUPPORTED_RESPONSE_MIMETYPES = ["application/json", "application/jsonlines", "te
 app = Flask(__name__)
 model = IrisModel(model_path="/opt/ml/model/model-artifacts.joblib")
 
+
 # Create a path for health checks
 @app.route("/ping")
 def endpoint_ping():

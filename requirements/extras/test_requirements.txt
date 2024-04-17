@@ -9,7 +9,7 @@ coverage>=5.2, <6.2
 mock==4.0.3
 contextlib2==21.6.0
 awslogs==0.14.0
-black==22.3.0
+black==24.3.0
 stopit==1.1.2
 # Update tox.ini to have correct version of airflow constraints file
 apache-airflow==2.8.4

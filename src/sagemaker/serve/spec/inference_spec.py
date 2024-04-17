@@ -1,4 +1,5 @@
 """Implements class that holds custom load and invoke function of a model"""
+
 from __future__ import absolute_import
 import abc
 

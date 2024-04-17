@@ -1,4 +1,5 @@
 """Defines CustomPayloadTranslator class that holds custom serialization/deserialization code"""
+
 from __future__ import absolute_import
 import abc
 from typing import IO

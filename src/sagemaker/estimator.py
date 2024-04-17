@@ -2539,9 +2539,9 @@ class _TrainingJob(_Job):
         # which is parsed in execution time
         # This does not check config because the EstimatorBase constuctor already did that check
         if estimator.encrypt_inter_container_traffic:
-            train_args[
-                "encrypt_inter_container_traffic"
-            ] = estimator.encrypt_inter_container_traffic
+            train_args["encrypt_inter_container_traffic"] = (
+                estimator.encrypt_inter_container_traffic
+            )
 
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             train_args["algorithm_arn"] = estimator.algorithm_arn
@@ -2556,9 +2556,9 @@ class _TrainingJob(_Job):
             train_args["debugger_hook_config"] = estimator.debugger_hook_config._to_request_dict()
 
         if estimator.tensorboard_output_config:
-            train_args[
-                "tensorboard_output_config"
-            ] = estimator.tensorboard_output_config._to_request_dict()
+            train_args["tensorboard_output_config"] = (
+                estimator.tensorboard_output_config._to_request_dict()
+            )
 
         cls._add_spot_checkpoint_args(local_mode, estimator, train_args)
 

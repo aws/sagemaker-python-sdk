@@ -1,4 +1,5 @@
 """TGI ModelBuilder Utils"""
+
 from __future__ import absolute_import
 
 from typing import Dict
