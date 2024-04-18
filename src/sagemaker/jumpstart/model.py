@@ -798,11 +798,11 @@ class JumpStartModel(Model):
 
         for i in range(0, len(self._deployment_configs)):
             deployment_config = self._deployment_configs[i]
-            benchmark_metrics = deployment_config.get("PerformanceMetrics")
+            benchmark_metrics = deployment_config.get("benchmark_metrics")
 
-            data["Config Name"].append(deployment_config.get("ConfigId"))
+            data["Config Name"].append(deployment_config.get("config_name"))
             data["Instance Type"].append(
-                deployment_config.get("DeploymentConfiguration").get("InstanceType")
+                deployment_config.get("deployment_config").get("instance_type")
             )
 
             # TODO: We should not hard code these
