@@ -2089,6 +2089,41 @@ def test_framework_disable_remote_debug(sagemaker_session):
     assert len(args) == 2
 
 
+def test_framework_with_session_chaining_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_session_tag_chaining=True,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["session_chaining_config"]["EnableSessionTagChaining"]
+    assert f.get_session_chaining_config()["EnableSessionTagChaining"]
+
+
+def test_framework_without_session_chaining_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("SessionTagChaining") is None
+    assert f.get_remote_debug_config() is None
+
+
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_custom_code_bucket(time, sagemaker_session):
     code_bucket = "codebucket"
