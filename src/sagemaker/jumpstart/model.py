@@ -792,12 +792,12 @@ class JumpStartModel(Model):
 
     def display_benchmark_metrics(self):
         """Display Benchmark Metrics for deployment configs."""
-        self._deployment_configs = self.list_deployment_configs()
+        deployment_configs = self.list_deployment_configs()
 
         data = {"Config Name": [], "Instance Type": [], "Selected": [], "Accelerated": []}
 
-        for i in range(0, len(self._deployment_configs)):
-            deployment_config = self._deployment_configs[i]
+        for i in range(0, len(deployment_configs)):
+            deployment_config = deployment_configs[i]
             benchmark_metrics = deployment_config.get("benchmark_metrics")
 
             data["Config Name"].append(deployment_config.get("config_name"))
@@ -838,18 +838,38 @@ class JumpStartModel(Model):
                 sagemaker_session=self.sagemaker_session,
             )
 
-            self._deployment_configs = (
-                [
-                    DeploymentConfigMetadata(
-                        config_name, jumpstart_configs.get(config_name), self.sagemaker_session
-                    ).to_json()
-                    for config_name in jumpstart_configs.keys()
-                ]
-                if jumpstart_configs
-                else []
-            )
+            for config_name in jumpstart_configs.keys():
+                jumpstart_config = jumpstart_configs.get(config_name)
+                resolved_config = jumpstart_config.resolved_config
+                model_id = resolved_config.get("model_id")
+                default_inference_instance_type = resolved_config.get(
+                    "default_inference_instance_type"
+                )
 
-        return self._deployment_configs
+                init_kwargs = get_init_kwargs(
+                    model_id=model_id,
+                    instance_type=default_inference_instance_type,
+                    sagemaker_session=self.sagemaker_session,
+                )
+                deploy_kwargs = get_deploy_kwargs(
+                    model_id=model_id,
+                    instance_type=default_inference_instance_type,
+                    sagemaker_session=self.sagemaker_session,
+                )
+
+                deployment_config_metadata = DeploymentConfigMetadata(
+                    config_name,
+                    jumpstart_config.benchmark_metrics.get(default_inference_instance_type),
+                    init_kwargs,
+                    deploy_kwargs,
+                )
+
+                if self._deployment_configs is None:
+                    self._deployment_configs = [deployment_config_metadata.to_json()]
+                else:
+                    self._deployment_configs.append(deployment_config_metadata.to_json())
+
+        return self._deployment_configs if self._deployment_configs is not None else []
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

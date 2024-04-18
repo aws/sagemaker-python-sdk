@@ -16,7 +16,6 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 
-from sagemaker.jumpstart.factory.model import get_init_kwargs, get_deploy_kwargs
 from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
@@ -2168,28 +2167,17 @@ class DeploymentConfigMetadata(JumpStartDataHolderType):
     ]
 
     def __init__(
-        self, config_name: str, metadata_config: JumpStartMetadataConfig, sagemaker_session: Session
+        self,
+        config_name: str,
+        benchmark_metrics: List[JumpStartBenchmarkStat],
+        init_kwargs: JumpStartModelInitKwargs,
+        deploy_kwargs: JumpStartModelDeployKwargs,
     ):
         """Instantiates DeploymentConfigMetadata object."""
 
         self.config_name = config_name
-        self.from_jumpstart_metadata_config(metadata_config, sagemaker_session)
-
-    def from_jumpstart_metadata_config(
-        self, metadata_config: JumpStartMetadataConfig, sagemaker_session: Session
-    ) -> None:
-        """Instantiates DeploymentConfig object.
-
-        Args:
-            metadata_config (JumpStartMetadataConfig):
-            sagemaker_session (Session): SageMaker Session object.
-        """
-        resolved_config = metadata_config.resolved_config
-        default_inference_instance_type = resolved_config.get("default_inference_instance_type")
-        self.benchmark_metrics = metadata_config.benchmark_metrics.get(
-            default_inference_instance_type
-        )
-        self.deployment_config = DeploymentConfig(resolved_config, sagemaker_session)
+        self.benchmark_metrics = benchmark_metrics
+        self.deployment_config = DeploymentConfig(init_kwargs, deploy_kwargs)
 
     def to_json(self) -> Dict[str, Any]:
         """Represents DeploymentConfigMetadata as JSON."""
@@ -2231,41 +2219,16 @@ class DeploymentConfig(JumpStartDataHolderType):
         "compute_resource_requirements",
     ]
 
-    def __init__(self, resolved_config: dict[str, Any], sagemaker_session: Session):
+    def __init__(
+        self, init_kwargs: JumpStartModelInitKwargs, deploy_kwargs: JumpStartModelDeployKwargs
+    ):
         """Instantiates DeploymentConfig object."""
-        self.from_resolved_config(resolved_config, sagemaker_session)
-
-    def from_resolved_config(
-        self, resolved_config: Dict[str, Any], sagemaker_session: Session
-    ) -> None:
-        """Instantiates DeploymentConfig object.
-
-        Args:
-            resolved_config (Dict[str, Any]): Dictionary representation of resolved cconfig.
-            sagemaker_session (Session): SageMaker Session object.
-        """
-        default_inference_instance_type = resolved_config.get("default_inference_instance_type")
-        model_id = resolved_config.get("model_id")
-
-        model_init_kwargs = get_init_kwargs(
-            model_id=model_id,
-            model_from_estimator=False,
-            instance_type=default_inference_instance_type,
-            sagemaker_session=sagemaker_session,
-        )
-
-        deploy_kwargs = get_deploy_kwargs(
-            model_id=model_id,
-            instance_type=default_inference_instance_type,
-            sagemaker_session=sagemaker_session,
-        )
-
-        self.image_uri = model_init_kwargs.image_uri
-        self.model_data = model_init_kwargs.model_data
-        self.instance_type = default_inference_instance_type
-        self.environment = model_init_kwargs.env
+        self.image_uri = init_kwargs.image_uri
+        self.model_data = init_kwargs.model_data
+        self.instance_type = init_kwargs
+        self.environment = init_kwargs.env
         self.compute_resource_requirements = ComputeResourceRequirementsMetadataConfig(
-            model_init_kwargs.resources
+            init_kwargs.resources
         )
         self.model_data_download_timeout = deploy_kwargs.model_data_download_timeout
         self.container_startup_health_check_timeout = (
