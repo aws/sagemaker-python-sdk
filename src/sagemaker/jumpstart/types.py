@@ -15,6 +15,8 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+
+from sagemaker.jumpstart.factory.model import get_init_kwargs, get_deploy_kwargs
 from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
@@ -2154,3 +2156,164 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+
+
+class DeploymentConfigMetadata(JumpStartDataHolderType):
+    """Dataclass representing a Deployment Config Metadata"""
+
+    __slots__ = [
+        "config_name",
+        "benchmark_metrics",
+        "deployment_config",
+    ]
+
+    def __init__(
+        self, config_name: str, metadata_config: JumpStartMetadataConfig, sagemaker_session: Session
+    ):
+        """Instantiates DeploymentConfigMetadata object."""
+
+        self.config_name = config_name
+        self.from_jumpstart_metadata_config(metadata_config, sagemaker_session)
+
+    def from_jumpstart_metadata_config(
+        self, metadata_config: JumpStartMetadataConfig, sagemaker_session: Session
+    ) -> None:
+        """Instantiates DeploymentConfig object.
+
+        Args:
+            metadata_config (JumpStartMetadataConfig):
+            sagemaker_session (Session): SageMaker Session object.
+        """
+        resolved_config = metadata_config.resolved_config
+        default_inference_instance_type = resolved_config.get("default_inference_instance_type")
+        self.benchmark_metrics = metadata_config.benchmark_metrics.get(
+            default_inference_instance_type
+        )
+        self.deployment_config = DeploymentConfig(resolved_config, sagemaker_session)
+
+    def to_json(self) -> Dict[str, Any]:
+        """Represents DeploymentConfigMetadata as JSON."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                elif isinstance(cur_val, list):
+                    json_obj[att] = []
+                    for obj in cur_val:
+                        if issubclass(type(obj), JumpStartDataHolderType):
+                            json_obj[att].append(obj.to_json())
+                        else:
+                            json_obj[att].append(obj)
+                elif isinstance(cur_val, dict):
+                    json_obj[att] = {}
+                    for key, val in cur_val.items():
+                        if issubclass(type(val), JumpStartDataHolderType):
+                            json_obj[att][key] = val.to_json()
+                        else:
+                            json_obj[att][key] = val
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
+
+class DeploymentConfig(JumpStartDataHolderType):
+    """Dataclass representing a Deployment Config."""
+
+    __slots__ = [
+        "model_data_download_timeout",
+        "container_startup_health_check_timeout",
+        "image_uri",
+        "model_data",
+        "instance_type",
+        "environment",
+        "compute_resource_requirements",
+    ]
+
+    def __init__(self, resolved_config: dict[str, Any], sagemaker_session: Session):
+        """Instantiates DeploymentConfig object."""
+        self.from_resolved_config(resolved_config, sagemaker_session)
+
+    def from_resolved_config(
+        self, resolved_config: Dict[str, Any], sagemaker_session: Session
+    ) -> None:
+        """Instantiates DeploymentConfig object.
+
+        Args:
+            resolved_config (Dict[str, Any]): Dictionary representation of resolved cconfig.
+            sagemaker_session (Session): SageMaker Session object.
+        """
+        default_inference_instance_type = resolved_config.get("default_inference_instance_type")
+        model_id = resolved_config.get("model_id")
+
+        model_init_kwargs = get_init_kwargs(
+            model_id=model_id,
+            model_from_estimator=False,
+            instance_type=default_inference_instance_type,
+            sagemaker_session=sagemaker_session,
+        )
+
+        deploy_kwargs = get_deploy_kwargs(
+            model_id=model_id,
+            instance_type=default_inference_instance_type,
+            sagemaker_session=sagemaker_session,
+        )
+
+        self.image_uri = model_init_kwargs.image_uri
+        self.model_data = model_init_kwargs.model_data
+        self.instance_type = default_inference_instance_type
+        self.environment = model_init_kwargs.env
+        self.compute_resource_requirements = ComputeResourceRequirementsMetadataConfig(
+            model_init_kwargs.resources
+        )
+        self.model_data_download_timeout = deploy_kwargs.model_data_download_timeout
+        self.container_startup_health_check_timeout = (
+            deploy_kwargs.container_startup_health_check_timeout
+        )
+
+    def to_json(self) -> Dict[str, Any]:
+        """Represents DeploymentConfig as JSON."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                elif isinstance(cur_val, dict):
+                    json_obj[att] = {}
+                    for key, val in cur_val.items():
+                        if issubclass(type(val), JumpStartDataHolderType):
+                            json_obj[att][key] = val.to_json()
+                        else:
+                            json_obj[att][key] = val
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
+
+class ComputeResourceRequirementsMetadataConfig(JumpStartDataHolderType):
+    """Data class of Compute Resource Requirements"""
+
+    __slots__ = [
+        "min_memory_required_in_mb",
+        "number_of_accelerator_devices_required",
+    ]
+
+    def __init__(self, resources: ResourceRequirements):
+        """Instantiates ComputeResourceRequirementsMetadataConfig object."""
+        self.min_memory_required_in_mb = resources.get_compute_resource_requirements().get(
+            "MinMemoryRequiredInMb"
+        )
+        self.number_of_accelerator_devices_required = (
+            resources.get_compute_resource_requirements().get("NumberOfAcceleratorDevicesRequired")
+        )
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns a JSON representation of ``This`` object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                json_obj[att] = cur_val
+        return json_obj

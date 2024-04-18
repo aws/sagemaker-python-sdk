@@ -69,7 +69,6 @@ required_packages = [
     "docker",
     "tqdm",
     "psutil",
-    "ipython~=8.18.1",
 ]
 
 # Specific use case dependencies

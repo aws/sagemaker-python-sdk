@@ -16,7 +16,6 @@ from __future__ import absolute_import
 
 from typing import Dict, List, Optional, Union, Any
 import pandas as pd
-from IPython.display import display
 from botocore.exceptions import ClientError
 
 from sagemaker import payloads
@@ -38,7 +37,7 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
-from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.types import JumpStartSerializablePayload, DeploymentConfigMetadata
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
@@ -284,7 +283,7 @@ class JumpStartModel(Model):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        self.__deployment_configs = None
+        self._deployment_configs = None
 
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
@@ -793,67 +792,64 @@ class JumpStartModel(Model):
 
     def display_benchmark_metrics(self):
         """Display Benchmark Metrics for deployment configs."""
-        config_names = []
-        latencies = []
-        through_puts = []
-        instance_types = []
-        instance_rates = []
-        for deployment_config in self.list_deployment_configs():
-            config_names.append(deployment_config.get("ConfigName"))
-            instance_types.append(deployment_config.get("BenchmarkMetrics").key()[0])
+        self._deployment_configs = self.list_deployment_configs()
 
-            for benchmark_metric in deployment_config.get("BenchmarkMetrics").values():
-                if benchmark_metric["name"] == "Latency":
-                    latencies.append(benchmark_metric["value"])
-                if benchmark_metric["name"] == "Throughput":
-                    through_puts.append(benchmark_metric["value"])
-                if benchmark_metric["name"] == "Cost":
-                    instance_rates.append(benchmark_metric["value"])
+        data = {"Config Name": [], "Instance Type": [], "Selected": [], "Accelerated": []}
 
-        df = pd.DataFrame(
-            {
-                "Config Name": config_names,
-                "Min. Latency<br>(Ms/Token)": latencies,
-                "Max. Throughput<br>(Tokens/Second)": through_puts,
-                "Instance Type": instance_types,
-                "Instance Rate<br>($/Hour)": instance_rates,
-            }
-        )
+        for i in range(0, len(self._deployment_configs)):
+            deployment_config = self._deployment_configs[i]
+            benchmark_metrics = deployment_config.get("PerformanceMetrics")
 
-        df["Instance Rate<br>($/Hour)"] = df["Instance Rate<br>($/Hour)"].apply(
-            lambda rate: "${0:.2f}".format(float(rate))
-        )
-        headers = {"selector": "th", "props": "text-align: left; width: 10%"}
-        df = (
-            df.style.set_caption("Benchmark Metrics")
-            .set_table_styles([headers])
-            .set_properties(**{"text-align": "left"})
-        )
+            data["Config Name"].append(deployment_config.get("ConfigId"))
+            data["Instance Type"].append(
+                deployment_config.get("DeploymentConfiguration").get("InstanceType")
+            )
 
-        display(df)
+            # TODO: We should not hard code these
+            if i == 0:
+                data["Selected"].append("Yes")
+            else:
+                data["Selected"].append(" - ")
 
-    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+            # TODO: We should not hard code these
+            if i % 2 == 0:
+                data["Accelerated"].append("Yes")
+            else:
+                data["Accelerated"].append("No")
+
+            for benchmark_metric in benchmark_metrics:
+                column_name = f"{benchmark_metric.get('name')} {benchmark_metric.get('unit')}"
+                if column_name in data:
+                    data[column_name].append(benchmark_metric.get("value"))
+                else:
+                    data[column_name] = [benchmark_metric.get("value")]
+
+        df = pd.DataFrame(data)
+        # Temporarily print markdown
+        print(df.to_markdown())
+
+    def list_deployment_configs(self) -> Union[list[dict[str, Any]], list]:
         """List deployment configs for ``This`` model in the current region."""
-        if self.__deployment_configs is None:
-            self.__deployment_configs = get_jumpstart_configs(
+        if self._deployment_configs is None:
+            jumpstart_configs = get_jumpstart_configs(
                 region=self.region,
                 model_id=self.model_id,
                 model_version=self.model_version,
                 sagemaker_session=self.sagemaker_session,
             )
 
-        configs = []
-        for config_name in self.__deployment_configs.keys():
-            jumpstart_metadata_config = configs.get(config_name)
-            configs.append(
-                {
-                    "ConfigName": config_name,
-                    "BenchmarkMetrics": jumpstart_metadata_config.benchmark_metrics,
-                    "DeploymentConfig": jumpstart_metadata_config.resolved_config,
-                }
+            self._deployment_configs = (
+                [
+                    DeploymentConfigMetadata(
+                        config_name, jumpstart_configs.get(config_name), self.sagemaker_session
+                    ).to_json()
+                    for config_name in jumpstart_configs.keys()
+                ]
+                if jumpstart_configs
+                else []
             )
 
-        return configs
+        return self._deployment_configs
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""
