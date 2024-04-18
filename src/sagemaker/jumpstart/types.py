@@ -2157,55 +2157,6 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.source_uri = source_uri
 
 
-class DeploymentConfigMetadata(JumpStartDataHolderType):
-    """Dataclass representing a Deployment Config Metadata"""
-
-    __slots__ = [
-        "config_name",
-        "benchmark_metrics",
-        "deployment_config",
-    ]
-
-    def __init__(
-        self,
-        config_name: str,
-        benchmark_metrics: List[JumpStartBenchmarkStat],
-        init_kwargs: JumpStartModelInitKwargs,
-        deploy_kwargs: JumpStartModelDeployKwargs,
-    ):
-        """Instantiates DeploymentConfigMetadata object."""
-
-        self.config_name = config_name
-        self.benchmark_metrics = benchmark_metrics
-        self.deployment_config = DeploymentConfig(init_kwargs, deploy_kwargs)
-
-    def to_json(self) -> Dict[str, Any]:
-        """Represents DeploymentConfigMetadata as JSON."""
-        json_obj = {}
-        for att in self.__slots__:
-            if hasattr(self, att):
-                cur_val = getattr(self, att)
-                if issubclass(type(cur_val), JumpStartDataHolderType):
-                    json_obj[att] = cur_val.to_json()
-                elif isinstance(cur_val, list):
-                    json_obj[att] = []
-                    for obj in cur_val:
-                        if issubclass(type(obj), JumpStartDataHolderType):
-                            json_obj[att].append(obj.to_json())
-                        else:
-                            json_obj[att].append(obj)
-                elif isinstance(cur_val, dict):
-                    json_obj[att] = {}
-                    for key, val in cur_val.items():
-                        if issubclass(type(val), JumpStartDataHolderType):
-                            json_obj[att][key] = val.to_json()
-                        else:
-                            json_obj[att][key] = val
-                else:
-                    json_obj[att] = cur_val
-        return json_obj
-
-
 class DeploymentConfig(JumpStartDataHolderType):
     """Dataclass representing a Deployment Config."""
 
@@ -2279,4 +2230,51 @@ class ComputeResourceRequirementsMetadataConfig(JumpStartDataHolderType):
             if hasattr(self, att):
                 cur_val = getattr(self, att)
                 json_obj[att] = cur_val
+        return json_obj
+
+
+class DeploymentConfigMetadata(JumpStartDataHolderType):
+    """Dataclass representing a Deployment Config Metadata"""
+
+    __slots__ = [
+        "config_name",
+        "benchmark_metrics",
+        "deployment_config",
+    ]
+
+    def __init__(
+        self,
+        config_name: str,
+        benchmark_metrics: List[JumpStartBenchmarkStat],
+        deployment_config: DeploymentConfig,
+    ):
+        """Instantiates DeploymentConfigMetadata object."""
+        self.config_name = config_name
+        self.benchmark_metrics = benchmark_metrics
+        self.deployment_config = deployment_config
+
+    def to_json(self) -> Dict[str, Any]:
+        """Represents DeploymentConfigMetadata as JSON."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                elif isinstance(cur_val, list):
+                    json_obj[att] = []
+                    for obj in cur_val:
+                        if issubclass(type(obj), JumpStartDataHolderType):
+                            json_obj[att].append(obj.to_json())
+                        else:
+                            json_obj[att].append(obj)
+                elif isinstance(cur_val, dict):
+                    json_obj[att] = {}
+                    for key, val in cur_val.items():
+                        if issubclass(type(val), JumpStartDataHolderType):
+                            json_obj[att][key] = val.to_json()
+                        else:
+                            json_obj[att][key] = val
+                else:
+                    json_obj[att] = cur_val
         return json_obj

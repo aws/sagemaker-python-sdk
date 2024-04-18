@@ -37,7 +37,11 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
-from sagemaker.jumpstart.types import JumpStartSerializablePayload, DeploymentConfigMetadata
+from sagemaker.jumpstart.types import (
+    JumpStartSerializablePayload,
+    DeploymentConfigMetadata,
+    DeploymentConfig,
+)
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
@@ -860,8 +864,7 @@ class JumpStartModel(Model):
                 deployment_config_metadata = DeploymentConfigMetadata(
                     config_name,
                     jumpstart_config.benchmark_metrics.get(default_inference_instance_type),
-                    init_kwargs,
-                    deploy_kwargs,
+                    DeploymentConfig(init_kwargs, deploy_kwargs),
                 )
 
                 if self._deployment_configs is None:
