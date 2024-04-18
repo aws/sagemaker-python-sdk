@@ -29,6 +29,7 @@ from sagemaker.djl_inference import defaults
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
+from sagemaker.serve.builder.tf_serving_builder import TensorflowServing
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
 from sagemaker.serve.mode.local_container_mode import LocalContainerMode
@@ -90,12 +91,13 @@ supported_model_server = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
+    ModelServer.TENSORFLOW_SERVING,
 }
 
 
-# pylint: disable=attribute-defined-outside-init, disable=E1101
+# pylint: disable=attribute-defined-outside-init, disable=E1101, disable=R0901
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
+class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing):
     """Class that builds a deployable model.
 
     Args:
@@ -780,6 +782,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         if self.model_server == ModelServer.TRITON:
             return self._build_for_triton()
+
+        if self.model_server == ModelServer.TENSORFLOW_SERVING:
+            return self._build_for_tensorflow_serving()
 
         raise ValueError("%s model server is not supported" % self.model_server)
 
