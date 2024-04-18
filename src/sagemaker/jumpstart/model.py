@@ -828,7 +828,7 @@ class JumpStartModel(Model):
         # Temporarily print markdown
         print(df.to_markdown())
 
-    def list_deployment_configs(self) -> Union[list[dict[str, Any]], list]:
+    def list_deployment_configs(self) -> list[dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region."""
         if self._deployment_configs is None:
             jumpstart_configs = get_jumpstart_configs(
