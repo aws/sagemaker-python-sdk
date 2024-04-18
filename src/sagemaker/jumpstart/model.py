@@ -408,11 +408,11 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
         )
 
-    def set_deployment_config(self, config_name: str | None) -> None:
+    def set_deployment_config(self, config_name: Optional[str]) -> None:
         """Sets the deployment config to apply to the model.
 
         Args:
-            config_name (str | None):
+            config_name (Optional[str]):
                 The name of the deployment config. Set to None to unset
                 any existing config that is applied to the model.
         """
