@@ -2176,7 +2176,7 @@ class DeploymentConfig(JumpStartDataHolderType):
         """Instantiates DeploymentConfig object."""
         self.image_uri = init_kwargs.image_uri
         self.model_data = init_kwargs.model_data
-        self.instance_type = init_kwargs
+        self.instance_type = init_kwargs.instance_type
         self.environment = init_kwargs.env
         self.compute_resource_requirements = ComputeResourceRequirementsMetadataConfig(
             init_kwargs.resources
