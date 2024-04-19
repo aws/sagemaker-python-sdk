@@ -40,6 +40,7 @@ from sagemaker.jumpstart.factory.model import (
 from sagemaker.jumpstart.types import (
     JumpStartSerializablePayload,
     DeploymentConfigMetadata,
+    JumpStartMetadataConfig,
 )
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
@@ -805,13 +806,13 @@ class JumpStartModel(Model):
             if deployment_config.get("DeploymentConfig") is None:
                 continue
 
-            data["Config Name"].append(deployment_config.get("ConfigName"))
-            data["Instance Type"].append(
-                deployment_config.get("DeploymentConfig").get("InstanceType")
-            )
-
             benchmark_metrics = deployment_config.get("BenchmarkMetrics")
             if benchmark_metrics is not None:
+                data["Config Name"].append(deployment_config.get("ConfigName"))
+                data["Instance Type"].append(
+                    deployment_config.get("DeploymentConfig").get("InstanceType")
+                )
+
                 for benchmark_metric in benchmark_metrics:
                     if benchmark_metric is not None:
                         column_name = (
@@ -838,8 +839,12 @@ class JumpStartModel(Model):
         # Temporarily print markdown
         print(df.to_markdown())
 
-    def list_deployment_configs(self) -> list[dict[str, Any]]:
-        """List deployment configs for ``This`` model in the current region."""
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for ``This`` model in the current region.
+
+        Returns:
+            A list of deployment configs (List[Dict[str, Any]]).
+        """
         if self._metadata_configs is None:
             self._metadata_configs = get_jumpstart_configs(
                 region=self.region,
@@ -849,17 +854,19 @@ class JumpStartModel(Model):
             )
 
             self._deployment_configs = [
-                self._deployment_config_metadata_from_config_name(config_name)
-                for config_name in self._metadata_configs.keys()
+                self._convert_to_deployment_config_metadata(config_name, config)
+                for config_name, config in self._metadata_configs
             ]
 
         return self._deployment_configs
 
-    def _deployment_config_metadata_from_config_name(self, config_name: str) -> dict[str, Any]:
+    def _convert_to_deployment_config_metadata(
+        self, config_name: str, metadata_config: JumpStartMetadataConfig
+    ) -> dict[str, Any]:
         """Retrieve deployment config for config name."""
-        metadata_config = self._metadata_configs.get(config_name)
-        resolved_config = metadata_config.resolved_config
-        default_inference_instance_type = resolved_config.get("default_inference_instance_type")
+        default_inference_instance_type = metadata_config.resolved_config.get(
+            "default_inference_instance_type"
+        )
 
         benchmark_metrics = metadata_config.benchmark_metrics.get(default_inference_instance_type)
 
