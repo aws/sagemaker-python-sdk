@@ -800,23 +800,39 @@ class JumpStartModel(Model):
 
         data = {"Config Name": [], "Instance Type": []}
 
+        data_raw_position = 0
         for deployment_config in deployment_configs:
             if deployment_config.get("DeploymentConfig") is None:
                 continue
-
-            benchmark_metrics = deployment_config.get("BenchmarkMetrics")
 
             data["Config Name"].append(deployment_config.get("ConfigName"))
             data["Instance Type"].append(
                 deployment_config.get("DeploymentConfig").get("InstanceType")
             )
 
-            for benchmark_metric in benchmark_metrics:
-                column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
-                if column_name in data:
-                    data[column_name].append(benchmark_metric.get("value"))
-                else:
-                    data[column_name] = [benchmark_metric.get("value")]
+            benchmark_metrics = deployment_config.get("BenchmarkMetrics")
+            if benchmark_metrics is not None:
+                for benchmark_metric in benchmark_metrics:
+                    if benchmark_metric is not None:
+                        column_name = (
+                            f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
+                        )
+                        if column_name not in data:
+                            data[column_name] = []
+
+                        current_column_len = len(data[column_name])
+                        for i in range(current_column_len, data_raw_position):
+                            data[column_name].append(" - ")
+                        data[column_name].append(benchmark_metric.get("value"))
+
+            for dynamic_column_name in data.keys():
+                if dynamic_column_name not in ["Config Name", "Instance Type"]:
+                    current_column_len = len(data[dynamic_column_name])
+                    if current_column_len < data_raw_position + 1:
+                        for i in range(current_column_len, data_raw_position + 1):
+                            data[dynamic_column_name].append(" - ")
+
+            data_raw_position += 1
 
         df = pd.DataFrame(data)
         # Temporarily print markdown
