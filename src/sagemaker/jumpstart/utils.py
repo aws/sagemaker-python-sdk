@@ -129,9 +129,9 @@ def get_jumpstart_content_bucket(
         ValueError: If JumpStart is not launched in ``region``.
     """
 
-    old_content_bucket: Optional[
-        str
-    ] = accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket()
+    old_content_bucket: Optional[str] = (
+        accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket()
+    )
 
     info_logs: List[str] = []
 
