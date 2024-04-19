@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
+import pytest
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
     JumpStartBenchmarkStat,
@@ -1052,6 +1053,30 @@ def test_inference_configs_parsing():
     assert list(config.config_components.keys()) == ["neuron-inference"]
 
 
+def test_set_inference_configs():
+    spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    specs1 = JumpStartModelSpecs(spec)
+
+    assert list(specs1.inference_config_components.keys()) == [
+        "neuron-base",
+        "neuron-inference",
+        "neuron-budget",
+        "gpu-inference",
+        "gpu-inference-budget",
+    ]
+
+    with pytest.raises(ValueError) as error:
+        specs1.set_config("invalid_name")
+    assert "Cannot find Jumpstart config name invalid_name."
+    "List of config names that is supported by the model: "
+    "['neuron-inference', 'neuron-inference-budget', "
+    "'gpu-inference-budget', 'gpu-inference']" in str(error.value)
+
+    assert specs1.supported_inference_instance_types == ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
+    specs1.set_config("gpu-inference")
+    assert specs1.supported_inference_instance_types == ["ml.p2.xlarge", "ml.p3.2xlarge"]
+
+
 def test_training_configs_parsing():
     spec = {**BASE_SPEC, **TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
     specs1 = JumpStartModelSpecs(spec)
@@ -1213,3 +1238,13 @@ def test_set_training_config():
         specs1.training_artifact_key
         == "artifacts/meta-textgeneration-llama-2-7b/gpu-training-budget/model/"
     )
+
+    with pytest.raises(ValueError) as error:
+        specs1.set_config("invalid_name", scope=JumpStartScriptScope.TRAINING)
+    assert "Cannot find Jumpstart config name invalid_name."
+    "List of config names that is supported by the model: "
+    "['neuron-training', 'neuron-training-budget', "
+    "'gpu-training-budget', 'gpu-training']" in str(error.value)
+
+    with pytest.raises(ValueError) as error:
+        specs1.set_config("invalid_name", scope="unknown scope")

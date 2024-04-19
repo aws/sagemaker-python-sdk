@@ -661,6 +661,7 @@ def _add_training_job_name_to_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
+        scope=JumpStartScriptScope.TRAINING,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         sagemaker_session=kwargs.sagemaker_session,

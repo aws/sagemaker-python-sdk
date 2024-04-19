@@ -35,6 +35,7 @@ def _retrieve_resource_name_base(
     tolerate_deprecated_model: bool = False,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
     config_name: Optional[str] = None,
 ) -> bool:
     """Returns default resource name.
@@ -69,7 +70,7 @@ def _retrieve_resource_name_base(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
-        scope=JumpStartScriptScope.INFERENCE,
+        scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,

@@ -286,3 +286,28 @@ def test_proprietary_jumpstart_model(setup):
     response = predictor.predict(payload)
 
     assert response is not None
+
+
+def test_model_alt_config_llama_7b(setup):
+
+    model_id = "meta-textgeneration-llama-2-7b"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="4.0.0",
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+    model.set_deployment_config(config_name="neuron-inference")
+
+    model.deploy()
+    # print(model)
+
+    # predictor = model.deploy(
+    #     tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}]
+    # )
+    # payload = {"prompt": "To be, or", "maxTokens": 4, "temperature": 0, "numResults": 1}
+
+    # response = predictor.predict(payload)
+
+    # assert response is not None
