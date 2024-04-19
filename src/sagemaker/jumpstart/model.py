@@ -862,8 +862,14 @@ class JumpStartModel(Model):
 
     def _convert_to_deployment_config_metadata(
         self, config_name: str, metadata_config: JumpStartMetadataConfig
-    ) -> dict[str, Any]:
-        """Retrieve deployment config for config name."""
+    ) -> Dict[str, Any]:
+        """Retrieve deployment config for config name.
+        Args:
+            config_name (str): Name of deployment config.
+            metadata_config (JumpStartMetadataConfig): Metadata config for deployment config.
+        Returns:
+            A deployment metadata config for config name (dict[str, Any]).
+        """
         default_inference_instance_type = metadata_config.resolved_config.get(
             "default_inference_instance_type"
         )
