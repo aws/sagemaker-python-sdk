@@ -838,7 +838,7 @@ class JumpStartModel(Model):
                 for config_name in self._metadata_configs.keys()
             ]
 
-        return self._deployment_configs if self._deployment_configs is not None else []
+        return self._deployment_configs
 
     def _deployment_config_metadata_from_config_name(self, config_name: str) -> dict[str, Any]:
         """Retrieve deployment config for config name."""
