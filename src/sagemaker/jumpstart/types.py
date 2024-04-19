@@ -15,7 +15,6 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-
 from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
