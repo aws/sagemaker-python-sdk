@@ -115,17 +115,17 @@ def _retrieve_default_environment_variables(
 
             default_environment_variables.update(instance_specific_environment_variables)
 
-            retrieve_gated_env_var_for_instance_type: Callable[
-                [str], Optional[str]
-            ] = lambda instance_type: _retrieve_gated_model_uri_env_var_value(
-                model_id=model_id,
-                model_version=model_version,
-                region=region,
-                tolerate_vulnerable_model=tolerate_vulnerable_model,
-                tolerate_deprecated_model=tolerate_deprecated_model,
-                sagemaker_session=sagemaker_session,
-                instance_type=instance_type,
-                config_name=config_name,
+            retrieve_gated_env_var_for_instance_type: Callable[[str], Optional[str]] = (
+                lambda instance_type: _retrieve_gated_model_uri_env_var_value(
+                    model_id=model_id,
+                    model_version=model_version,
+                    region=region,
+                    tolerate_vulnerable_model=tolerate_vulnerable_model,
+                    tolerate_deprecated_model=tolerate_deprecated_model,
+                    sagemaker_session=sagemaker_session,
+                    instance_type=instance_type,
+                    config_name=config_name,
+                )
             )
 
             gated_model_env_var: Optional[str] = retrieve_gated_env_var_for_instance_type(
@@ -220,10 +220,10 @@ def _retrieve_gated_model_uri_env_var_value(
         config_name=config_name,
     )
 
-    s3_key: Optional[
-        str
-    ] = model_specs.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value(  # noqa E501  # pylint: disable=c0301
-        instance_type
+    s3_key: Optional[str] = (
+        model_specs.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value(  # noqa E501  # pylint: disable=c0301
+            instance_type
+        )
     )
     if s3_key is None:
         return None
