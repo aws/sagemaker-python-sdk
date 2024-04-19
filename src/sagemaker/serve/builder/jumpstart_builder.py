@@ -436,7 +436,11 @@ class JumpStart(ABC):
         self.pysdk_model.display_benchmark_metrics()
 
     def list_deployment_configs(self) -> list[dict[str, Any]]:
-        """List deployment configs for ``This`` model in the current region."""
+        """List deployment configs for ``This`` model in the current region.
+
+        Returns:
+            A list of deployment configs (List[Dict[str, Any]]).
+        """
         return self.pysdk_model.list_deployment_configs()
 
     def _build_for_jumpstart(self):
