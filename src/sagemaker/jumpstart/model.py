@@ -40,7 +40,6 @@ from sagemaker.jumpstart.factory.model import (
 from sagemaker.jumpstart.types import (
     JumpStartSerializablePayload,
     DeploymentConfigMetadata,
-    DeploymentConfig,
 )
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
@@ -288,6 +287,7 @@ class JumpStartModel(Model):
         """
 
         self._deployment_configs = None
+        self._metadata_configs = None
 
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
@@ -798,10 +798,12 @@ class JumpStartModel(Model):
         """Display Benchmark Metrics for deployment configs."""
         deployment_configs = self.list_deployment_configs()
 
-        data = {"Config Name": [], "Instance Type": [], "Selected": [], "Accelerated": []}
+        data = {"Config Name": [], "Instance Type": []}
 
-        for i in range(0, len(deployment_configs)):
-            deployment_config = deployment_configs[i]
+        for deployment_config in deployment_configs:
+            if deployment_config.get("deployment_config") is None:
+                continue
+
             benchmark_metrics = deployment_config.get("benchmark_metrics")
 
             data["Config Name"].append(deployment_config.get("config_name"))
@@ -809,20 +811,8 @@ class JumpStartModel(Model):
                 deployment_config.get("deployment_config").get("instance_type")
             )
 
-            # TODO: We should not hard code these
-            if i == 0:
-                data["Selected"].append("Yes")
-            else:
-                data["Selected"].append(" - ")
-
-            # TODO: We should not hard code these
-            if i % 2 == 0:
-                data["Accelerated"].append("Yes")
-            else:
-                data["Accelerated"].append("No")
-
             for benchmark_metric in benchmark_metrics:
-                column_name = f"{benchmark_metric.get('name')} {benchmark_metric.get('unit')}"
+                column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
                 if column_name in data:
                     data[column_name].append(benchmark_metric.get("value"))
                 else:
@@ -830,49 +820,62 @@ class JumpStartModel(Model):
 
         df = pd.DataFrame(data)
         # Temporarily print markdown
-        print(df.to_markdown())
+        if len(deployment_configs) > 0:
+            print(df.to_markdown())
 
     def list_deployment_configs(self) -> list[dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region."""
-        if self._deployment_configs is None:
-            jumpstart_configs = get_jumpstart_configs(
+        if self._metadata_configs is None:
+            self._metadata_configs = get_jumpstart_configs(
                 region=self.region,
                 model_id=self.model_id,
                 model_version=self.model_version,
                 sagemaker_session=self.sagemaker_session,
             )
 
-            for config_name in jumpstart_configs.keys():
-                jumpstart_config = jumpstart_configs.get(config_name)
-                resolved_config = jumpstart_config.resolved_config
-                model_id = resolved_config.get("model_id")
-                default_inference_instance_type = resolved_config.get(
-                    "default_inference_instance_type"
-                )
-
-                init_kwargs = get_init_kwargs(
-                    model_id=model_id,
-                    instance_type=default_inference_instance_type,
-                    sagemaker_session=self.sagemaker_session,
-                )
-                deploy_kwargs = get_deploy_kwargs(
-                    model_id=model_id,
-                    instance_type=default_inference_instance_type,
-                    sagemaker_session=self.sagemaker_session,
-                )
-
-                deployment_config_metadata = DeploymentConfigMetadata(
-                    config_name,
-                    jumpstart_config.benchmark_metrics.get(default_inference_instance_type),
-                    DeploymentConfig(init_kwargs, deploy_kwargs),
-                )
-
-                if self._deployment_configs is None:
-                    self._deployment_configs = [deployment_config_metadata.to_json()]
-                else:
-                    self._deployment_configs.append(deployment_config_metadata.to_json())
+            self._deployment_configs = [
+                self._deployment_config_metadata_from_config_name(config_name)
+                for config_name in self._metadata_configs.keys()
+            ]
 
         return self._deployment_configs if self._deployment_configs is not None else []
+
+    def _deployment_config_metadata_from_config_name(self, config_name: str) -> dict[str, Any]:
+        """Retrieve deployment config for config name."""
+        metadata_config = self._metadata_configs.get(config_name)
+        resolved_config = metadata_config.resolved_config
+        default_inference_instance_type = resolved_config.get("default_inference_instance_type")
+        supported_inference_instance_types = resolved_config.get(
+            "supported_inference_instance_types"
+        )
+
+        init_kwargs = get_init_kwargs(
+            model_id=self.model_id,
+            instance_type=default_inference_instance_type,
+            sagemaker_session=self.sagemaker_session,
+        )
+        deploy_kwargs = get_deploy_kwargs(
+            model_id=self.model_id,
+            instance_type=default_inference_instance_type,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+        benchmark_metrics = {}
+        if default_inference_instance_type in self._metadata_configs.benchmark_metrics.keys():
+            benchmark_metrics = self._metadata_configs.benchmark_metrics.get(
+                default_inference_instance_type
+            )
+        else:
+            for instance_type in supported_inference_instance_types:
+                if instance_type in self._metadata_configs.benchmark_metrics.keys():
+                    benchmark_metrics = self._metadata_configs.benchmark_metrics.get(instance_type)
+                    break
+
+        deployment_config_metadata = DeploymentConfigMetadata(
+            config_name, benchmark_metrics, init_kwargs, deploy_kwargs
+        )
+
+        return deployment_config_metadata.to_json()
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""
