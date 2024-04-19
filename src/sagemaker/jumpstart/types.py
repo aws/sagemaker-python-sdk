@@ -1723,7 +1723,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "disable_output_compression",
         "enable_infra_check",
         "enable_remote_debug",
-        "enable_session_tag_chaining",,
+        "enable_session_tag_chaining",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
