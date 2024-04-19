@@ -2169,19 +2169,19 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
             if hasattr(self, att):
                 cur_val = getattr(self, att)
                 att = self._convert_str_to_camel_case(att)
-                if issubclass(type(cur_val), BaseDeploymentConfigDataHolder):
+                if issubclass(type(cur_val), JumpStartDataHolderType):
                     json_obj[att] = cur_val.to_json()
                 elif isinstance(cur_val, list):
                     json_obj[att] = []
                     for obj in cur_val:
-                        if issubclass(type(obj), BaseDeploymentConfigDataHolder):
+                        if issubclass(type(obj), JumpStartDataHolderType):
                             json_obj[att].append(obj.to_json())
                         else:
                             json_obj[att].append(obj)
                 elif isinstance(cur_val, dict):
                     json_obj[att] = {}
                     for key, val in cur_val.items():
-                        if issubclass(type(val), BaseDeploymentConfigDataHolder):
+                        if issubclass(type(val), JumpStartDataHolderType):
                             json_obj[att][self._convert_str_to_camel_case(key)] = val.to_json()
                         else:
                             if isinstance(key, str):

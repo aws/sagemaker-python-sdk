@@ -801,14 +801,14 @@ class JumpStartModel(Model):
         data = {"Config Name": [], "Instance Type": []}
 
         for deployment_config in deployment_configs:
-            if deployment_config.get("deployment_config") is None:
+            if deployment_config.get("DeploymentConfig") is None:
                 continue
 
-            benchmark_metrics = deployment_config.get("benchmark_metrics")
+            benchmark_metrics = deployment_config.get("BenchmarkMetrics")
 
-            data["Config Name"].append(deployment_config.get("config_name"))
+            data["Config Name"].append(deployment_config.get("ConfigName"))
             data["Instance Type"].append(
-                deployment_config.get("deployment_config").get("instance_type")
+                deployment_config.get("DeploymentConfig").get("InstanceType")
             )
 
             for benchmark_metric in benchmark_metrics:
@@ -820,8 +820,7 @@ class JumpStartModel(Model):
 
         df = pd.DataFrame(data)
         # Temporarily print markdown
-        if len(deployment_configs) > 0:
-            print(df.to_markdown())
+        print(df.to_markdown())
 
     def list_deployment_configs(self) -> list[dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region."""
@@ -861,14 +860,14 @@ class JumpStartModel(Model):
         )
 
         benchmark_metrics = {}
-        if default_inference_instance_type in self._metadata_configs.benchmark_metrics.keys():
-            benchmark_metrics = self._metadata_configs.benchmark_metrics.get(
+        if default_inference_instance_type in metadata_config.benchmark_metrics.keys():
+            benchmark_metrics = metadata_config.benchmark_metrics.get(
                 default_inference_instance_type
             )
         else:
             for instance_type in supported_inference_instance_types:
-                if instance_type in self._metadata_configs.benchmark_metrics.keys():
-                    benchmark_metrics = self._metadata_configs.benchmark_metrics.get(instance_type)
+                if instance_type in metadata_config.benchmark_metrics.keys():
+                    benchmark_metrics = metadata_config.benchmark_metrics.get(instance_type)
                     break
 
         deployment_config_metadata = DeploymentConfigMetadata(
