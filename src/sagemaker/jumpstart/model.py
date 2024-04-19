@@ -844,9 +844,8 @@ class JumpStartModel(Model):
         metadata_config = self._metadata_configs.get(config_name)
         resolved_config = metadata_config.resolved_config
         default_inference_instance_type = resolved_config.get("default_inference_instance_type")
-        supported_inference_instance_types = resolved_config.get(
-            "supported_inference_instance_types"
-        )
+
+        benchmark_metrics = metadata_config.benchmark_metrics.get(default_inference_instance_type)
 
         init_kwargs = get_init_kwargs(
             model_id=self.model_id,
@@ -858,17 +857,6 @@ class JumpStartModel(Model):
             instance_type=default_inference_instance_type,
             sagemaker_session=self.sagemaker_session,
         )
-
-        benchmark_metrics = {}
-        if default_inference_instance_type in metadata_config.benchmark_metrics.keys():
-            benchmark_metrics = metadata_config.benchmark_metrics.get(
-                default_inference_instance_type
-            )
-        else:
-            for instance_type in supported_inference_instance_types:
-                if instance_type in metadata_config.benchmark_metrics.keys():
-                    benchmark_metrics = metadata_config.benchmark_metrics.get(instance_type)
-                    break
 
         deployment_config_metadata = DeploymentConfigMetadata(
             config_name, benchmark_metrics, init_kwargs, deploy_kwargs

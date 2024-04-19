@@ -2184,10 +2184,7 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
                         if issubclass(type(val), JumpStartDataHolderType):
                             json_obj[att][self._convert_str_to_camel_case(key)] = val.to_json()
                         else:
-                            if isinstance(key, str):
-                                json_obj[att][self._convert_str_to_camel_case(key)] = val
-                            else:
-                                json_obj[att][key] = val
+                            json_obj[att][key] = val
                 else:
                     json_obj[att] = cur_val
         return json_obj
