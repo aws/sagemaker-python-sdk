@@ -855,7 +855,7 @@ class JumpStartModel(Model):
 
             self._deployment_configs = [
                 self._convert_to_deployment_config_metadata(config_name, config)
-                for config_name, config in self._metadata_configs
+                for config_name, config in self._metadata_configs.items()
             ]
 
         return self._deployment_configs
