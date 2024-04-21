@@ -44,6 +44,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartVersionedModelId,
 )
+from tests.unit.sagemaker.jumpstart.constants import PRICING_RESULT
 from tests.unit.sagemaker.jumpstart.utils import (
     get_base_spec_with_prototype_configs,
     get_spec_from_base_spec,
@@ -1708,3 +1709,23 @@ class TestBenchmarkStats:
                 )
             },
         }
+
+
+@patch("boto3.client")
+def test_get_instance_rate_per_hour(mock_client):
+    mock_client.get_products.side_effect = lambda *args, **kwargs: PRICING_RESULT
+    instance_rate = utils.get_instance_rate_per_hour(
+        instance_type="ml.t4g.nano", region="us-west-2", pricing_client=mock_client
+    )
+
+    assert instance_rate == {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"}
+
+
+@patch("boto3.client")
+def test_get_instance_rate_per_hour_ex(mock_client):
+    mock_client.get_products.side_effect = lambda *args, **kwargs: Exception()
+    instance_rate = utils.get_instance_rate_per_hour(
+        instance_type="ml.t4g.nano", region="us-west-2", pricing_client=mock_client
+    )
+
+    assert instance_rate is None

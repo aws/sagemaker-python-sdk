@@ -1416,6 +1416,7 @@ class ModelTest(unittest.TestCase):
             endpoint_logging=False,
         )
 
+    @mock.patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -1429,7 +1430,13 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
         mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_instance_rate_per_hour: mock.Mock,
     ):
+        mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
+            "name": "Instance Rate",
+            "unit": "USD/Hrs",
+            "value": "0.0083000000",
+        }
         mock_verify_model_region_and_return_specs.side_effect = get_base_spec_with_prototype_configs
         mock_get_model_specs.side_effect = get_prototype_model_spec
         mock_get_manifest.side_effect = (
@@ -1478,6 +1485,7 @@ class ModelTest(unittest.TestCase):
 
         self.assertEqual(configs, [])
 
+    @mock.patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -1491,7 +1499,13 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
         mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_instance_rate_per_hour: mock.Mock,
     ):
+        mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
+            "name": "Instance Rate",
+            "unit": "USD/Hrs",
+            "value": "0.0083000000",
+        }
         mock_verify_model_region_and_return_specs.side_effect = get_base_spec_with_prototype_configs
         mock_get_model_specs.side_effect = get_prototype_model_spec
         mock_get_manifest.side_effect = (

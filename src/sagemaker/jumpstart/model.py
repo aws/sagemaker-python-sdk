@@ -41,11 +41,13 @@ from sagemaker.jumpstart.types import (
     JumpStartSerializablePayload,
     DeploymentConfigMetadata,
     JumpStartMetadataConfig,
+    JumpStartBenchmarkStat,
 )
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
     get_jumpstart_configs,
+    get_instance_rate_per_hour,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -832,6 +834,7 @@ class JumpStartModel(Model):
         df.style.set_caption("Benchmark Metrics").set_table_styles([headers]).set_properties(
             **{"text-align": "left"}
         )
+        return df
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
@@ -868,7 +871,13 @@ class JumpStartModel(Model):
             "default_inference_instance_type"
         )
 
+        instance_rate = get_instance_rate_per_hour(
+            instance_type=default_inference_instance_type, region=self.region
+        )
+
         benchmark_metrics = metadata_config.benchmark_metrics.get(default_inference_instance_type)
+        if benchmark_metrics is not None and instance_rate is not None:
+            benchmark_metrics.append(JumpStartBenchmarkStat(instance_rate))
 
         init_kwargs = get_init_kwargs(
             model_id=self.model_id,

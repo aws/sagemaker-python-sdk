@@ -7905,6 +7905,7 @@ DEPLOYMENT_CONFIGS = [
         "BenchmarkMetrics": [
             {"name": "Latency", "value": "100", "unit": "Tokens/S"},
             {"name": "Throughput", "value": "1867", "unit": "Tokens/S"},
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"},
         ],
         "DeploymentConfig": {
             "ModelDataDownloadTimeout": 1200,
@@ -7942,6 +7943,7 @@ DEPLOYMENT_CONFIGS = [
         "BenchmarkMetrics": [
             {"name": "Latency", "value": "100", "unit": "Tokens/S"},
             {"name": "Throughput", "value": "1867", "unit": "Tokens/S"},
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"},
         ],
         "DeploymentConfig": {
             "ModelDataDownloadTimeout": 1200,
@@ -7977,6 +7979,7 @@ DEPLOYMENT_CONFIGS = [
         "BenchmarkMetrics": [
             {"name": "Latency", "value": "100", "unit": "Tokens/S"},
             {"name": "Throughput", "value": "1867", "unit": "Tokens/S"},
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"},
         ],
         "DeploymentConfig": {
             "ModelDataDownloadTimeout": 1200,
@@ -8014,6 +8017,7 @@ DEPLOYMENT_CONFIGS = [
         "BenchmarkMetrics": [
             {"name": "Latency", "value": "100", "unit": "Tokens/S"},
             {"name": "Throughput", "value": "1867", "unit": "Tokens/S"},
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"},
         ],
         "DeploymentConfig": {
             "ModelDataDownloadTimeout": 1200,
@@ -8047,3 +8051,10 @@ DEPLOYMENT_CONFIGS = [
         },
     },
 ]
+
+
+PRICING_RESULT = {
+    "PriceList": [
+        '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": "$0.0083 per On Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": "22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": "0.0083000000"}}}, "sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF", "termAttributes": {}}}}}'
+    ]
+}

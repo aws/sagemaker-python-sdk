@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+
+import json
 import logging
 import os
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
@@ -982,3 +984,52 @@ def get_jumpstart_configs(
         if metadata_configs
         else {}
     )
+
+
+def get_instance_rate_per_hour(
+    instance_type: str,
+    region: str,
+    pricing_client: boto3.client = boto3.client("pricing", region_name="us-east-1"),
+) -> Union[Dict[str, str], None]:
+
+    if len(instance_type.split(".")) > 2:
+        instance_type = instance_type[instance_type.index(".") + 1 :]
+
+    instance_rate = None
+    try:
+        res = pricing_client.get_products(
+            ServiceCode="AmazonEC2",
+            Filters=[
+                {"Type": "TERM_MATCH", "Field": "instanceType", "Value": instance_type},
+                {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
+                # {
+                #     'Type': 'TERM_MATCH',
+                #     'Field': 'region',
+                #     'Value': region
+                # },
+            ],
+        )
+
+        price_list = res.get("PriceList", [])
+        if len(price_list) > 0:
+            price_data = price_list[0]
+            if isinstance(price_data, str):
+                price_data = json.loads(price_data)
+
+            price_dimensions = price_data.get("terms", {}).get("OnDemand", {}).values()
+            for dimension in price_dimensions:
+                for price in dimension.get("priceDimensions", {}).values():
+                    for currency in price.get("pricePerUnit", {}).keys():
+                        instance_rate = {
+                            "unit": f"{currency}/{price.get('unit', 'Hrs')}",
+                            "value": price.get("pricePerUnit", {}).get(currency),
+                            "name": "Instance Rate",
+                        }
+                        break
+                    break
+                break
+    except Exception as e:
+        logging.exception("Error getting instance rate: %s", e)
+        return None
+
+    return instance_rate
