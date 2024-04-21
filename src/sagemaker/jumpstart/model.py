@@ -796,13 +796,12 @@ class JumpStartModel(Model):
         return model_package
 
     def display_benchmark_metrics(self):
-        """Display Benchmark Metrics for deployment configs."""
+        """Display Benchmark Metrics for deployment configs with Pandas DataFrame."""
         deployment_configs = self.list_deployment_configs()
 
-        data = {"Config Name": [], "Instance Type": []}
-
-        data_raw_position = 0
-        for deployment_config in deployment_configs:
+        data = {"Config Name": [], "Instance Type": [], "Selected": []}
+        for i in range(len(deployment_configs)):
+            deployment_config = deployment_configs[i]
             if deployment_config.get("DeploymentConfig") is None:
                 continue
 
@@ -812,32 +811,27 @@ class JumpStartModel(Model):
                 data["Instance Type"].append(
                     deployment_config.get("DeploymentConfig").get("InstanceType")
                 )
+                data["Selected"].append(
+                    "Yes" if self.config_name == deployment_config.get("ConfigName") else "No"
+                )
 
-                for benchmark_metric in benchmark_metrics:
-                    if benchmark_metric is not None:
+                if i == 0:
+                    for benchmark_metric in benchmark_metrics:
                         column_name = (
                             f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
                         )
-                        if column_name not in data:
-                            data[column_name] = []
+                        data[column_name] = []
 
-                        current_column_len = len(data[column_name])
-                        for i in range(current_column_len, data_raw_position):
-                            data[column_name].append(" - ")
+                for benchmark_metric in benchmark_metrics:
+                    column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
+                    if column_name in data.keys():
                         data[column_name].append(benchmark_metric.get("value"))
 
-            for dynamic_column_name in data.keys():
-                if dynamic_column_name not in ["Config Name", "Instance Type"]:
-                    current_column_len = len(data[dynamic_column_name])
-                    if current_column_len < data_raw_position + 1:
-                        for i in range(current_column_len, data_raw_position + 1):
-                            data[dynamic_column_name].append(" - ")
-
-            data_raw_position += 1
-
         df = pd.DataFrame(data)
-        # Temporarily print markdown
-        print(df.to_markdown())
+        headers = {"selector": "th", "props": "text-align: left;"}
+        df.style.set_caption("Benchmark Metrics").set_table_styles([headers]).set_properties(
+            **{"text-align": "left"}
+        )
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.

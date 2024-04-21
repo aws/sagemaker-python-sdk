@@ -43,6 +43,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
     SPECIAL_MODEL_SPECS_DICT,
     TRAINING_CONFIG_RANKINGS,
     TRAINING_CONFIGS,
+    DEPLOYMENT_CONFIGS,
 )
 
 
@@ -280,3 +281,7 @@ def overwrite_dictionary(
         base_dictionary[key] = value
 
     return base_dictionary
+
+
+def get_base_deployment_configs() -> list[dict[str, any]]:
+    return DEPLOYMENT_CONFIGS
