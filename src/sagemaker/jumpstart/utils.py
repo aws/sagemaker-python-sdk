@@ -991,7 +991,17 @@ def get_instance_rate_per_hour(
     region: str,
     pricing_client: boto3.client = boto3.client("pricing", region_name="us-east-1"),
 ) -> Union[Dict[str, str], None]:
+    """Gets instance rate per hour for the given instance type.
 
+    Args:
+        instance_type (str): The instance type.
+        region (str): The region.
+        pricing_client (OPTIONAL[boto3.client]): The pricing client.
+
+    Returns:
+        Union[Dict[str, str], None]: Instance rate per hour.
+         Example: {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"}.
+    """
     if len(instance_type.split(".")) > 2:
         instance_type = instance_type[instance_type.index(".") + 1 :]
 
