@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
+import pytest
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
     JumpStartBenchmarkStat,
@@ -934,9 +935,9 @@ def test_inference_configs_parsing():
     assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
         {
-            "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework": "huggingface-llm-neuronx",
+            "framework_version": "0.0.17",
+            "py_version": "py310",
         }
     )
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
@@ -946,7 +947,10 @@ def test_inference_configs_parsing():
             "py_version": "py3",
         }
     )
-    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.hosting_artifact_key
+        == "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/"
+    )
     assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
     assert (
         specs1.hosting_script_key
@@ -1019,16 +1023,58 @@ def test_inference_configs_parsing():
     config = specs1.inference_configs.get_top_config_from_ranking()
 
     assert config.benchmark_metrics == {
-        "ml.inf2.2xlarge": JumpStartBenchmarkStat(
-            {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-        )
+        "ml.inf2.2xlarge": [
+            JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+        ]
     }
     assert len(config.config_components) == 1
-    assert config.config_components["neuron-base"] == JumpStartConfigComponent(
-        "neuron-base",
-        {"supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"]},
+    assert config.config_components["neuron-inference"] == JumpStartConfigComponent(
+        "neuron-inference",
+        {
+            "default_inference_instance_type": "ml.inf2.xlarge",
+            "supported_inference_instance_types": ["ml.inf2.xlarge", "ml.inf2.2xlarge"],
+            "hosting_ecr_specs": {
+                "framework": "huggingface-llm-neuronx",
+                "framework_version": "0.0.17",
+                "py_version": "py310",
+            },
+            "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/",
+            "hosting_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "neuron-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "huggingface-pytorch-hosting:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    }
+                },
+                "variants": {"inf2": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
+            },
+        },
     )
-    assert list(config.config_components.keys()) == ["neuron-base"]
+    assert list(config.config_components.keys()) == ["neuron-inference"]
+
+
+def test_set_inference_configs():
+    spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    specs1 = JumpStartModelSpecs(spec)
+
+    assert list(specs1.inference_config_components.keys()) == [
+        "neuron-base",
+        "neuron-inference",
+        "neuron-budget",
+        "gpu-inference",
+        "gpu-inference-budget",
+    ]
+
+    with pytest.raises(ValueError) as error:
+        specs1.set_config("invalid_name")
+    assert "Cannot find Jumpstart config name invalid_name."
+    "List of config names that is supported by the model: "
+    "['neuron-inference', 'neuron-inference-budget', "
+    "'gpu-inference-budget', 'gpu-inference']" in str(error.value)
+
+    assert specs1.supported_inference_instance_types == ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
+    specs1.set_config("gpu-inference")
+    assert specs1.supported_inference_instance_types == ["ml.p2.xlarge", "ml.p3.2xlarge"]
 
 
 def test_training_configs_parsing():
@@ -1133,12 +1179,12 @@ def test_training_configs_parsing():
     config = specs1.training_configs.get_top_config_from_ranking()
 
     assert config.benchmark_metrics == {
-        "ml.tr1n1.2xlarge": JumpStartBenchmarkStat(
-            {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-        ),
-        "ml.tr1n1.4xlarge": JumpStartBenchmarkStat(
-            {"name": "Latency", "value": "50", "unit": "Tokens/S"}
-        ),
+        "ml.tr1n1.2xlarge": [
+            JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+        ],
+        "ml.tr1n1.4xlarge": [
+            JumpStartBenchmarkStat({"name": "Latency", "value": "50", "unit": "Tokens/S"})
+        ],
     }
     assert len(config.config_components) == 1
     assert config.config_components["neuron-training"] == JumpStartConfigComponent(
@@ -1192,3 +1238,13 @@ def test_set_training_config():
         specs1.training_artifact_key
         == "artifacts/meta-textgeneration-llama-2-7b/gpu-training-budget/model/"
     )
+
+    with pytest.raises(ValueError) as error:
+        specs1.set_config("invalid_name", scope=JumpStartScriptScope.TRAINING)
+    assert "Cannot find Jumpstart config name invalid_name."
+    "List of config names that is supported by the model: "
+    "['neuron-training', 'neuron-training-budget', "
+    "'gpu-training-budget', 'gpu-training']" in str(error.value)
+
+    with pytest.raises(ValueError) as error:
+        specs1.set_config("invalid_name", scope="unknown scope")
