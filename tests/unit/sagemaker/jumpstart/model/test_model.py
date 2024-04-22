@@ -1566,6 +1566,111 @@ class ModelTest(unittest.TestCase):
             endpoint_logging=False,
         )
 
+    @mock.patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+    @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_list_deployment_configs(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_instance_rate_per_hour: mock.Mock,
+    ):
+        mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
+            "name": "Instance Rate",
+            "unit": "USD/Hrs",
+            "value": "0.0083000000",
+        }
+        mock_verify_model_region_and_return_specs.side_effect = get_base_spec_with_prototype_configs
+        mock_get_model_specs.side_effect = get_prototype_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-ic-mobilenet-v2", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        configs = model.list_deployment_configs()
+
+        self.assertEqual(configs, get_base_deployment_configs())
+
+    @mock.patch("sagemaker.jumpstart.utils.get_jumpstart_configs")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_list_deployment_configs_empty(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
+    ):
+        mock_get_jumpstart_configs.return_value = {}
+        mock_get_model_specs.side_effect = get_prototype_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-ic-mobilenet-v2", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        configs = model.list_deployment_configs()
+
+        self.assertEqual(configs, [])
+
+    @mock.patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+    @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_model_display_benchmark_metrics(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_instance_rate_per_hour: mock.Mock,
+    ):
+        mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
+            "name": "Instance Rate",
+            "unit": "USD/Hrs",
+            "value": "0.0083000000",
+        }
+        mock_verify_model_region_and_return_specs.side_effect = get_base_spec_with_prototype_configs
+        mock_get_model_specs.side_effect = get_prototype_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-ic-mobilenet-v2", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        model.display_benchmark_metrics()
+
 
 def test_jumpstart_model_requires_model_id():
     with pytest.raises(ValueError):
