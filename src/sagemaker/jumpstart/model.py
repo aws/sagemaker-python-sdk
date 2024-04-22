@@ -824,8 +824,7 @@ class JumpStartModel(Model):
         deployment_configs = self.list_deployment_configs()
 
         data = {"Config Name": [], "Instance Type": [], "Selected": []}
-        for i in range(len(deployment_configs)):
-            deployment_config = deployment_configs[i]
+        for index, deployment_config in enumerate(deployment_configs):
             if deployment_config.get("DeploymentConfig") is None:
                 continue
 
@@ -839,7 +838,7 @@ class JumpStartModel(Model):
                     "Yes" if self.config_name == deployment_config.get("ConfigName") else "No"
                 )
 
-                if i == 0:
+                if index == 0:
                     for benchmark_metric in benchmark_metrics:
                         column_name = (
                             f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
@@ -852,11 +851,7 @@ class JumpStartModel(Model):
                         data[column_name].append(benchmark_metric.get("value"))
 
         df = pd.DataFrame(data)
-        headers = {"selector": "th", "props": "text-align: left;"}
-        df.style.set_caption("Benchmark Metrics").set_table_styles([headers]).set_properties(
-            **{"text-align": "left"}
-        )
-        return df
+        print(df.to_markdown())
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.

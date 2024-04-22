@@ -1049,7 +1049,7 @@ def get_instance_rate_per_hour(
                         break
                     break
                 break
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0703
         logging.exception("Error getting instance rate: %s", e)
         return None
 

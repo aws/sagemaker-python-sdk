@@ -62,10 +62,12 @@ DEPLOYMENT_CONFIGS = [
         "DeploymentConfig": {
             "ModelDataDownloadTimeout": 1200,
             "ContainerStartupHealthCheckTimeout": 1200,
-            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
             "ModelData": {
                 "S3DataSource": {
-                    "S3Uri": "s3://jumpstart-private-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-7b/artifacts/inference-prepack/v1.0.0/",
+                    "S3Uri": "s3://jumpstart-private-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration"
+                    "-llama-2-7b/artifacts/inference-prepack/v1.0.0/",
                     "S3DataType": "S3Prefix",
                     "CompressionType": "None",
                 }

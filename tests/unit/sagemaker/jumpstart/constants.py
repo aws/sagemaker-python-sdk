@@ -7958,10 +7958,12 @@ DEPLOYMENT_CONFIGS = [
         "DeploymentConfig": {
             "ModelDataDownloadTimeout": 1200,
             "ContainerStartupHealthCheckTimeout": 1200,
-            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
             "ModelData": {
                 "S3DataSource": {
-                    "S3Uri": "s3://jumpstart-private-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-7b/artifacts/inference-prepack/v1.0.0/",
+                    "S3Uri": "s3://jumpstart-private-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration"
+                    "-llama-2-7b/artifacts/inference-prepack/v1.0.0/",
                     "S3DataType": "S3Prefix",
                     "CompressionType": "None",
                 }
@@ -8065,6 +8067,11 @@ DEPLOYMENT_CONFIGS = [
 
 PRICING_RESULT = {
     "PriceList": [
-        '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": "$0.0083 per On Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": "22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": "0.0083000000"}}}, "sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF", "termAttributes": {}}}}}'
+        '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+        '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": "$0.0083 per On '
+        'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+        '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": "0.0083000000"}}}, '
+        '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF", '
+        '"termAttributes": {}}}}}'
     ]
 }
