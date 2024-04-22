@@ -1000,23 +1000,17 @@ def get_instance_rate_per_hour(
 
     Returns:
         Union[Dict[str, str], None]: Instance rate per hour.
-         Example: {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"}.
+         Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.1250000000'}}.
     """
-    if len(instance_type.split(".")) > 2:
-        instance_type = instance_type[instance_type.index(".") + 1 :]
 
     instance_rate = None
     try:
         res = pricing_client.get_products(
-            ServiceCode="AmazonEC2",
+            ServiceCode="AmazonSageMaker",
             Filters=[
                 {"Type": "TERM_MATCH", "Field": "instanceType", "Value": instance_type},
                 {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
-                # {
-                #     'Type': 'TERM_MATCH',
-                #     'Field': 'region',
-                #     'Value': region
-                # },
+                {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
             ],
         )
 
