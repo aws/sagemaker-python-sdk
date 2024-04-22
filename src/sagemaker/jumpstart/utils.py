@@ -1025,7 +1025,7 @@ def get_instance_rate_per_hour(
         res = pricing_client.get_products(
             ServiceCode="AmazonSageMaker",
             Filters=[
-                {"Type": "TERM_MATCH", "Field": "instanceType", "Value": instance_type},
+                {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
                 {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
                 {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
             ],
