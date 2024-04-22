@@ -819,8 +819,22 @@ class JumpStartModel(Model):
 
         return model_package
 
-    def display_benchmark_metrics(self):
-        """Display Benchmark Metrics for deployment configs with Pandas DataFrame."""
+    def display_benchmark_metrics(self, content_type: str = "markdown") -> str:
+        """Benchmark Metrics for deployment configs with Pandas DataFrame.
+
+        To display this metrics on a notebook, use.
+        - IPython.core.display.HTML(display_benchmark_metrics(content_type="html"))
+        or
+        - IPython.core.display.JSON(display_benchmark_metrics(content_type="json"))
+        Default: Print the Benchmark Metrics on a Jupyter Notebook as Markdown
+        - print(display_benchmark_metrics())
+
+        Args:
+            content_type (str): Content type for displaying Benchmark Metrics [markdown, json, html].
+
+        Returns:
+            str: Benchmark Metrics in Pandas DataFrame.
+        """
         deployment_configs = self.list_deployment_configs()
 
         data = {"Config Name": [], "Instance Type": [], "Selected": []}
@@ -851,7 +865,11 @@ class JumpStartModel(Model):
                         data[column_name].append(benchmark_metric.get("value"))
 
         df = pd.DataFrame(data)
-        print(df.to_markdown())
+        if content_type == "json":
+            return df.to_json()
+        if content_type == "html":
+            return df.to_html()
+        return df.to_markdown()
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
