@@ -40,6 +40,7 @@ from sagemaker.enums import EndpointType
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
 from tests.unit.sagemaker.jumpstart.utils import (
+    get_prototype_spec_with_configs,
     get_spec_from_base_spec,
     get_special_model_spec,
     overwrite_dictionary,
@@ -717,6 +718,7 @@ class ModelTest(unittest.TestCase):
             "tolerate_deprecated_model",
             "instance_type",
             "model_package_arn",
+            "config_name",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -788,6 +790,7 @@ class ModelTest(unittest.TestCase):
             tolerate_vulnerable_model=False,
             sagemaker_session=model.sagemaker_session,
             model_type=JumpStartModelType.OPEN_WEIGHTS,
+            config_name=None,
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)
@@ -1402,6 +1405,153 @@ class ModelTest(unittest.TestCase):
         mock_session.return_value = sagemaker_session
 
         model = JumpStartModel(model_id=model_id, instance_type="ml.p2.xlarge")
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_initialization_with_config_name(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id, config_name="neuron-inference")
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.inf2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_set_deployment_config(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+        mock_get_model_specs.reset_mock()
+        mock_model_deploy.reset_mock()
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        model.set_deployment_config("neuron-inference")
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.inf2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_unset_deployment_config(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id, config_name="neuron-inference")
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.inf2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+        mock_get_model_specs.reset_mock()
+        mock_model_deploy.reset_mock()
+        mock_get_model_specs.side_effect = get_prototype_model_spec
+        model.set_deployment_config(None)
 
         model.deploy()
 

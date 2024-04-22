@@ -744,12 +744,12 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
 
 class JumpStartBenchmarkStat(JumpStartDataHolderType):
-    """Data class JumpStart benchmark stats."""
+    """Data class JumpStart benchmark stat."""
 
     __slots__ = ["name", "value", "unit"]
 
     def __init__(self, spec: Dict[str, Any]):
-        """Initializes a JumpStartBenchmarkStat object
+        """Initializes a JumpStartBenchmarkStat object.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of benchmark stat.
@@ -858,7 +858,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "model_subscription_link",
     ]
 
-    def __init__(self, fields: Optional[Dict[str, Any]]):
+    def __init__(self, fields: Dict[str, Any]):
         """Initializes a JumpStartMetadataFields object.
 
         Args:
@@ -877,7 +877,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.version: str = json_obj.get("version")
         self.min_sdk_version: str = json_obj.get("min_sdk_version")
         self.incremental_training_supported: bool = bool(
-            json_obj.get("incremental_training_supported")
+            json_obj.get("incremental_training_supported", False)
         )
         self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
             JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
@@ -1038,7 +1038,7 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
 
     __slots__ = slots + JumpStartMetadataBaseFields.__slots__
 
-    def __init__(  # pylint: disable=super-init-not-called
+    def __init__(
         self,
         component_name: str,
         component: Optional[Dict[str, Any]],
@@ -1049,7 +1049,10 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
             component_name (str): Name of the component.
             component (Dict[str, Any]):
                 Dictionary representation of the config component.
+        Raises:
+            ValueError: If the component field is invalid.
         """
+        super().__init__(component)
         self.component_name = component_name
         self.from_json(component)
 
@@ -1080,7 +1083,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         self,
         base_fields: Dict[str, Any],
         config_components: Dict[str, JumpStartConfigComponent],
-        benchmark_metrics: Dict[str, JumpStartBenchmarkStat],
+        benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]],
     ):
         """Initializes a JumpStartMetadataConfig object from its json representation.
 
@@ -1089,12 +1092,12 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
                 The default base fields that are used to construct the final resolved config.
             config_components (Dict[str, JumpStartConfigComponent]):
                 The list of components that are used to construct the resolved config.
-            benchmark_metrics (Dict[str, JumpStartBenchmarkStat]):
+            benchmark_metrics (Dict[str, List[JumpStartBenchmarkStat]]):
                 The dictionary of benchmark metrics with name being the key.
         """
         self.base_fields = base_fields
         self.config_components: Dict[str, JumpStartConfigComponent] = config_components
-        self.benchmark_metrics: Dict[str, JumpStartBenchmarkStat] = benchmark_metrics
+        self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = benchmark_metrics
         self.resolved_metadata_config: Optional[Dict[str, Any]] = None
 
     def to_json(self) -> Dict[str, Any]:
@@ -1104,7 +1107,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
 
     @property
     def resolved_config(self) -> Dict[str, Any]:
-        """Returns the final config that is resolved from the list of components.
+        """Returns the final config that is resolved from the components map.
 
         Construct the final config by applying the list of configs from list index,
         and apply to the base default fields in the current model specs.
@@ -1139,7 +1142,7 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
 
         Args:
             configs (Dict[str, JumpStartMetadataConfig]):
-                List of configs that the current model has.
+                The map of JumpStartMetadataConfig object, with config name being the key.
             config_rankings (JumpStartConfigRanking):
                 Config ranking class represents the ranking of the configs in the model.
             scope (JumpStartScriptScope):
@@ -1158,19 +1161,30 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
         self,
         ranking_name: str = JumpStartConfigRankingName.DEFAULT,
         instance_type: Optional[str] = None,
-    ) -> JumpStartMetadataConfig:
-        """Gets the best the config based on config ranking."""
+    ) -> Optional[JumpStartMetadataConfig]:
+        """Gets the best the config based on config ranking.
+
+        Args:
+            ranking_name (str):
+                The ranking name that config priority is based on.
+            instance_type (Optional[str]):
+                The instance type which the config selection is based on.
+
+        Raises:
+            ValueError: If the config exists but missing config ranking.
+            NotImplementedError: If the scope is unrecognized.
+        """
         if self.configs and (
             not self.config_rankings or not self.config_rankings.get(ranking_name)
         ):
-            raise ValueError("Config exists but missing config ranking.")
+            raise ValueError(f"Config exists but missing config ranking {ranking_name}.")
 
         if self.scope == JumpStartScriptScope.INFERENCE:
             instance_type_attribute = "supported_inference_instance_types"
         elif self.scope == JumpStartScriptScope.TRAINING:
             instance_type_attribute = "supported_training_instance_types"
         else:
-            raise ValueError(f"Unknown script scope {self.scope}")
+            raise NotImplementedError(f"Unknown script scope {self.scope}")
 
         rankings = self.config_rankings.get(ranking_name)
         for config_name in rankings.rankings:
@@ -1198,12 +1212,13 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     __slots__ = JumpStartMetadataBaseFields.__slots__ + slots
 
-    def __init__(self, spec: Dict[str, Any]):  # pylint: disable=super-init-not-called
+    def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartModelSpecs object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
         """
+        super().__init__(spec)
         self.from_json(spec)
         if self.inference_configs and self.inference_configs.get_top_config_from_ranking():
             super().from_json(self.inference_configs.get_top_config_from_ranking().resolved_config)
@@ -1245,8 +1260,8 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                     ),
                     (
                         {
-                            stat_name: JumpStartBenchmarkStat(stat)
-                            for stat_name, stat in config.get("benchmark_metrics").items()
+                            stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
+                            for stat_name, stats in config.get("benchmark_metrics").items()
                         }
                         if config and config.get("benchmark_metrics")
                         else None
@@ -1297,8 +1312,8 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                         ),
                         (
                             {
-                                stat_name: JumpStartBenchmarkStat(stat)
-                                for stat_name, stat in config.get("benchmark_metrics").items()
+                                stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
+                                for stat_name, stats in config.get("benchmark_metrics").items()
                             }
                             if config and config.get("benchmark_metrics")
                             else None
@@ -1330,13 +1345,26 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             config_name (str): Name of the config.
             scope (JumpStartScriptScope, optional):
                 Scope of the config. Defaults to JumpStartScriptScope.INFERENCE.
+
+        Raises:
+            ValueError: If the scope is not supported, or cannot find config name.
         """
         if scope == JumpStartScriptScope.INFERENCE:
-            super().from_json(self.inference_configs.configs[config_name].resolved_config)
+            metadata_configs = self.inference_configs
         elif scope == JumpStartScriptScope.TRAINING and self.training_supported:
-            super().from_json(self.training_configs.configs[config_name].resolved_config)
+            metadata_configs = self.training_configs
         else:
-            raise ValueError(f"Unknown Jumpstart Script scope {scope}.")
+            raise ValueError(f"Unknown Jumpstart script scope {scope}.")
+
+        config_object = metadata_configs.configs.get(config_name)
+        if not config_object:
+            error_msg = f"Cannot find Jumpstart config name {config_name}. "
+            config_names = list(metadata_configs.configs.keys())
+            if config_names:
+                error_msg += f"List of config names that is supported by the model: {config_names}"
+            raise ValueError(error_msg)
+
+        super().from_json(config_object.resolved_config)
 
     def supports_prepacked_inference(self) -> bool:
         """Returns True if the model has a prepacked inference artifact."""
@@ -1437,11 +1465,11 @@ class JumpStartKwargs(JumpStartDataHolderType):
 
     SERIALIZATION_EXCLUSION_SET: Set[str] = set()
 
-    def to_kwargs_dict(self):
+    def to_kwargs_dict(self, exclude_keys: bool = True):
         """Serializes object to dictionary to be used for kwargs for method arguments."""
         kwargs_dict = {}
         for field in self.__slots__:
-            if field not in self.SERIALIZATION_EXCLUSION_SET:
+            if exclude_keys and field not in self.SERIALIZATION_EXCLUSION_SET or not exclude_keys:
                 att_value = getattr(self, field)
                 if att_value is not None:
                     kwargs_dict[field] = getattr(self, field)
@@ -1479,6 +1507,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_package_arn",
         "training_instance_type",
         "resources",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1491,6 +1520,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "region",
         "model_package_arn",
         "training_instance_type",
+        "config_name",
     }
 
     def __init__(
@@ -1522,6 +1552,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         model_package_arn: Optional[str] = None,
         training_instance_type: Optional[str] = None,
         resources: Optional[ResourceRequirements] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -1552,6 +1583,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.model_package_arn = model_package_arn
         self.training_instance_type = training_instance_type
         self.resources = resources
+        self.config_name = config_name
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -1587,6 +1619,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "endpoint_logging",
         "resources",
         "endpoint_type",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1598,6 +1631,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "sagemaker_session",
         "training_instance_type",
+        "config_name",
     }
 
     def __init__(
@@ -1631,6 +1665,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_logging: Optional[bool] = None,
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: Optional[EndpointType] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1663,6 +1698,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_logging = endpoint_logging
         self.resources = resources
         self.endpoint_type = endpoint_type
+        self.config_name = config_name
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -1723,6 +1759,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "disable_output_compression",
         "enable_infra_check",
         "enable_remote_debug",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1732,6 +1769,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "model_type",
+        "config_name",
     }
 
     def __init__(
@@ -1790,6 +1828,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         disable_output_compression: Optional[bool] = None,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1849,6 +1888,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.disable_output_compression = disable_output_compression
         self.enable_infra_check = enable_infra_check
         self.enable_remote_debug = enable_remote_debug
+        self.config_name = config_name
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
@@ -1867,6 +1907,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
         "sagemaker_session",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1877,6 +1918,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -1893,6 +1935,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Session] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1908,6 +1951,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.sagemaker_session = sagemaker_session
+        self.config_name = config_name
 
 
 class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
@@ -1953,6 +1997,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "model_name",
         "use_compiled_model",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1962,6 +2007,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -2005,6 +2051,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         use_compiled_model: bool = False,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2047,6 +2094,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.use_compiled_model = use_compiled_model
+        self.config_name = config_name
 
 
 class JumpStartModelRegisterKwargs(JumpStartKwargs):
@@ -2081,6 +2129,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "data_input_configuration",
         "skip_model_validation",
         "source_uri",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2090,6 +2139,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -2122,6 +2172,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelRegisterKwargs object."""
 

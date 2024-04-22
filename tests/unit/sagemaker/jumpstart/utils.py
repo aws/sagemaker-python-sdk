@@ -223,6 +223,23 @@ def get_base_spec_with_prototype_configs(
     return JumpStartModelSpecs(spec)
 
 
+def get_prototype_spec_with_configs(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+) -> JumpStartModelSpecs:
+    spec = copy.deepcopy(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
+    inference_configs = {**INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    training_configs = {**TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
+
+    spec.update(inference_configs)
+    spec.update(training_configs)
+
+    return JumpStartModelSpecs(spec)
+
+
 def patched_retrieval_function(
     _modelCacheObj: JumpStartModelsCache,
     key: JumpStartCachedS3ContentKey,
