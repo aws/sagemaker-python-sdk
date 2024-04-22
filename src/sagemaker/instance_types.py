@@ -36,6 +36,7 @@ def retrieve_default(
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     training_instance_type: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> str:
     """Retrieves the default instance type for the model matching the given arguments.
 
@@ -64,6 +65,7 @@ def retrieve_default(
             Optionally supply this to get a inference instance type conditioned
             on the training instance, to ensure compatability of training artifact to inference
             instance. (Default: None).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         str: The default instance type to use for the model.
 
@@ -88,6 +90,7 @@ def retrieve_default(
         sagemaker_session=sagemaker_session,
         training_instance_type=training_instance_type,
         model_type=model_type,
+        config_name=config_name,
     )
 
 
