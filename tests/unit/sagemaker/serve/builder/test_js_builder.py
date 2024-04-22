@@ -672,7 +672,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
-        mock_pre_trained_model.list_deployment_configs.side_effect = lambda: DEPLOYMENT_CONFIGS
+        mock_pre_trained_model.return_value.list_deployment_configs.side_effect = (
+            lambda: DEPLOYMENT_CONFIGS
+        )
 
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
@@ -713,7 +715,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         )
 
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
-        mock_pre_trained_model.list_deployment_configs.side_effect = lambda: DEPLOYMENT_CONFIGS
+        mock_pre_trained_model.return_value.display_benchmark_metrics.side_effect = (
+            lambda *args, **kwargs: "metric data"
+        )
 
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True

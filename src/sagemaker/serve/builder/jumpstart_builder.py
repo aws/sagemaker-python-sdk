@@ -431,23 +431,9 @@ class JumpStart(ABC):
             sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
         )
 
-    def display_benchmark_metrics(self, content_type: str = "markdown") -> str:
-        """Benchmark Metrics for deployment configs with Pandas DataFrame.
-
-        To display this metrics on a notebook, use ``sagemaker.jumpstart.display_benchmark_metrics()``.
-        - IPython.core.display.HTML(display_benchmark_metrics(content_type="html"))
-        or
-        - IPython.core.display.JSON(display_benchmark_metrics(content_type="json"))
-        Default: Print the Benchmark Metrics on a Jupyter Notebook as Markdown
-        - print(display_benchmark_metrics())
-
-        Args:
-            content_type (str): Content type for displaying Benchmark Metrics [markdown, json, html].
-
-        Returns:
-            str: Benchmark Metrics in Pandas DataFrame.
-        """
-        return self.pysdk_model.display_benchmark_metrics(content_type=content_type)
+    def display_benchmark_metrics(self):
+        """Display Markdown Benchmark Metrics for deployment configs."""
+        self.pysdk_model.display_benchmark_metrics()
 
     def list_deployment_configs(self) -> list[dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.

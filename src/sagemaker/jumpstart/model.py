@@ -294,6 +294,7 @@ class JumpStartModel(Model):
 
         self._deployment_configs = None
         self._metadata_configs = None
+        self._benchmark_metrics = None
 
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
@@ -819,57 +820,47 @@ class JumpStartModel(Model):
 
         return model_package
 
-    def display_benchmark_metrics(self, content_type: str = "markdown") -> str:
-        """Benchmark Metrics for deployment configs with Pandas DataFrame.
+    @property
+    def benchmark_metrics(self) -> pd.DataFrame:
+        """Pandas DataFrame object of Benchmark Metrics for deployment configs"""
+        if self._benchmark_metrics is None:
+            deployment_configs = self.list_deployment_configs()
 
-        To display this metrics on a notebook, use.
-        - IPython.core.display.HTML(display_benchmark_metrics(content_type="html"))
-        or
-        - IPython.core.display.JSON(display_benchmark_metrics(content_type="json"))
-        Default: Print the Benchmark Metrics on a Jupyter Notebook as Markdown
-        - print(display_benchmark_metrics())
+            data = {"Config Name": [], "Instance Type": [], "Selected": []}
+            for index, deployment_config in enumerate(deployment_configs):
+                if deployment_config.get("DeploymentConfig") is None:
+                    continue
 
-        Args:
-            content_type (str): Content type for displaying Benchmark Metrics [markdown, json, html].
+                benchmark_metrics = deployment_config.get("BenchmarkMetrics")
+                if benchmark_metrics is not None:
+                    data["Config Name"].append(deployment_config.get("ConfigName"))
+                    data["Instance Type"].append(
+                        deployment_config.get("DeploymentConfig").get("InstanceType")
+                    )
+                    data["Selected"].append(
+                        "Yes" if self.config_name == deployment_config.get("ConfigName") else "No"
+                    )
 
-        Returns:
-            str: Benchmark Metrics in Pandas DataFrame.
-        """
-        deployment_configs = self.list_deployment_configs()
+                    if index == 0:
+                        for benchmark_metric in benchmark_metrics:
+                            column_name = (
+                                f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
+                            )
+                            data[column_name] = []
 
-        data = {"Config Name": [], "Instance Type": [], "Selected": []}
-        for index, deployment_config in enumerate(deployment_configs):
-            if deployment_config.get("DeploymentConfig") is None:
-                continue
-
-            benchmark_metrics = deployment_config.get("BenchmarkMetrics")
-            if benchmark_metrics is not None:
-                data["Config Name"].append(deployment_config.get("ConfigName"))
-                data["Instance Type"].append(
-                    deployment_config.get("DeploymentConfig").get("InstanceType")
-                )
-                data["Selected"].append(
-                    "Yes" if self.config_name == deployment_config.get("ConfigName") else "No"
-                )
-
-                if index == 0:
                     for benchmark_metric in benchmark_metrics:
                         column_name = (
                             f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
                         )
-                        data[column_name] = []
+                        if column_name in data.keys():
+                            data[column_name].append(benchmark_metric.get("value"))
 
-                for benchmark_metric in benchmark_metrics:
-                    column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
-                    if column_name in data.keys():
-                        data[column_name].append(benchmark_metric.get("value"))
+            self._benchmark_metrics = pd.DataFrame(data)
+        return self._benchmark_metrics
 
-        df = pd.DataFrame(data)
-        if content_type == "json":
-            return df.to_json()
-        if content_type == "html":
-            return df.to_html()
-        return df.to_markdown()
+    def display_benchmark_metrics(self):
+        """Display Benchmark Metrics for deployment configs."""
+        print(self.benchmark_metrics.to_markdown())
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
