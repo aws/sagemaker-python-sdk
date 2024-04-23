@@ -1002,7 +1002,7 @@ def get_jumpstart_configs(
 
 
 def extract_metrics_from_deployment_configs(
-    deployment_configs: list[dict[str, Any]], config_name: str
+    deployment_configs: List[Dict[str, Any]], config_name: str
 ) -> Dict[str, List[str]]:
     """Extracts metrics from deployment configs.
 
