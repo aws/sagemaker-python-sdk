@@ -846,7 +846,11 @@ class JumpStartModel(Model):
             instance_type=default_inference_instance_type, region=self.region
         )
 
-        benchmark_metrics = metadata_config.benchmark_metrics.get(default_inference_instance_type)
+        benchmark_metrics = (
+            metadata_config.benchmark_metrics.get(default_inference_instance_type)
+            if metadata_config.benchmark_metrics is not None
+            else None
+        )
         if instance_rate is not None:
             if benchmark_metrics is not None:
                 benchmark_metrics.append(JumpStartBenchmarkStat(instance_rate))
