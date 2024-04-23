@@ -547,6 +547,7 @@ def verify_model_region_and_return_specs(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -569,6 +570,7 @@ def verify_model_region_and_return_specs(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -633,6 +635,9 @@ def verify_model_region_and_return_specs(
                 vulnerabilities=model_specs.training_vulnerabilities,
                 scope=constants.JumpStartScriptScope.TRAINING,
             )
+
+    if model_specs and config_name:
+        model_specs.set_config(config_name, scope)
 
     return model_specs
 
@@ -890,7 +895,11 @@ def get_config_names(
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> List[str]:
-    """Returns a list of config names for the given model ID and region."""
+    """Returns a list of config names for the given model ID and region.
+
+    Raises:
+        ValueError: If the script scope is not supported by JumpStart.
+    """
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
@@ -905,7 +914,7 @@ def get_config_names(
     elif scope == enums.JumpStartScriptScope.TRAINING:
         metadata_configs = model_specs.training_configs
     else:
-        raise ValueError(f"Unknown script scope {scope}.")
+        raise ValueError(f"Unknown script scope: {scope}.")
 
     return list(metadata_configs.configs.keys()) if metadata_configs else []
 
@@ -919,7 +928,11 @@ def get_benchmark_stats(
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> Dict[str, List[JumpStartBenchmarkStat]]:
-    """Returns benchmark stats for the given model ID and region."""
+    """Returns benchmark stats for the given model ID and region.
+
+    Raises:
+        ValueError: If the script scope is not supported by JumpStart.
+    """
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
@@ -934,7 +947,7 @@ def get_benchmark_stats(
     elif scope == enums.JumpStartScriptScope.TRAINING:
         metadata_configs = model_specs.training_configs
     else:
-        raise ValueError(f"Unknown script scope {scope}.")
+        raise ValueError(f"Unknown script scope: {scope}.")
 
     if not config_names:
         config_names = metadata_configs.configs.keys() if metadata_configs else []
@@ -942,7 +955,7 @@ def get_benchmark_stats(
     benchmark_stats = {}
     for config_name in config_names:
         if config_name not in metadata_configs.configs:
-            raise ValueError(f"Unknown config name: '{config_name}'")
+            raise ValueError(f"Unknown config name: {config_name}")
         benchmark_stats[config_name] = metadata_configs.configs.get(config_name).benchmark_metrics
 
     return benchmark_stats
@@ -956,8 +969,12 @@ def get_jumpstart_configs(
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
-) -> Dict[str, List[JumpStartMetadataConfig]]:
-    """Returns metadata configs for the given model ID and region."""
+) -> Dict[str, JumpStartMetadataConfig]:
+    """Returns metadata configs for the given model ID and region.
+
+    Raises:
+        ValueError: If the script scope is not supported by JumpStart.
+    """
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
@@ -972,7 +989,7 @@ def get_jumpstart_configs(
     elif scope == enums.JumpStartScriptScope.TRAINING:
         metadata_configs = model_specs.training_configs
     else:
-        raise ValueError(f"Unknown script scope {scope}.")
+        raise ValueError(f"Unknown script scope: {scope}.")
 
     if not config_names:
         config_names = metadata_configs.configs.keys() if metadata_configs else []
