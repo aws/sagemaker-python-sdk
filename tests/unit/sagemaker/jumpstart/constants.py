@@ -7897,3 +7897,160 @@ TRAINING_CONFIG_RANKINGS = {
         },
     }
 }
+
+
+DEPLOYMENT_CONFIGS = [
+    {
+        "ConfigName": "neuron-inference",
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
+        "DeploymentConfig": {
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
+            "ModelData": {
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface"
+                    "-textgeneration-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "InstanceType": "ml.p2.xlarge",
+            "Environment": {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "2047",
+                "MAX_TOTAL_TOKENS": "2048",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+        },
+    },
+    {
+        "ConfigName": "neuron-inference-budget",
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
+        "DeploymentConfig": {
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
+            "ModelData": {
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface"
+                    "-textgeneration-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "InstanceType": "ml.p2.xlarge",
+            "Environment": {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "2047",
+                "MAX_TOTAL_TOKENS": "2048",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+        },
+    },
+    {
+        "ConfigName": "gpu-inference-budget",
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
+        "DeploymentConfig": {
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
+            "ModelData": {
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface"
+                    "-textgeneration-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "InstanceType": "ml.p2.xlarge",
+            "Environment": {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "2047",
+                "MAX_TOTAL_TOKENS": "2048",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+        },
+    },
+    {
+        "ConfigName": "gpu-inference",
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
+        "DeploymentConfig": {
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
+            "ModelData": {
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface"
+                    "-textgeneration-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "InstanceType": "ml.p2.xlarge",
+            "Environment": {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "2047",
+                "MAX_TOTAL_TOKENS": "2048",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+        },
+    },
+]
+
+
+INIT_KWARGS = {
+    "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu"
+    "-py310-cu121-ubuntu20.04",
+    "model_data": {
+        "S3DataSource": {
+            "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface-textgeneration"
+            "-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    },
+    "instance_type": "ml.p2.xlarge",
+    "env": {
+        "SAGEMAKER_PROGRAM": "inference.py",
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "HF_MODEL_ID": "/opt/ml/model",
+        "SM_NUM_GPUS": "1",
+        "MAX_INPUT_LENGTH": "2047",
+        "MAX_TOTAL_TOKENS": "2048",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+    },
+    "role": "arn:aws:iam::312206380606:role/service-role/AmazonSageMaker-ExecutionRole-20230707T131628",
+    "name": "hf-textgeneration-bloom-1b1-2024-04-22-20-23-48-799",
+    "enable_network_isolation": True,
+}

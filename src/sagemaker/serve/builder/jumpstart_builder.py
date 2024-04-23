@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import copy
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type
+from typing import Type, Any
 import logging
 
 from sagemaker.model import Model
@@ -430,6 +430,17 @@ class JumpStart(ABC):
         return self._tune_for_js(
             sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
         )
+
+    def display_benchmark_metrics(self):
+        """Display Markdown Benchmark Metrics for deployment configs."""
+        self.pysdk_model.display_benchmark_metrics()
+
+    def list_deployment_configs(self) -> list[dict[str, Any]]:
+        """List deployment configs for ``This`` model in the current region.
+        Returns:
+            A list of deployment configs (List[Dict[str, Any]]).
+        """
+        return self.pysdk_model.list_deployment_configs()
 
     def _build_for_jumpstart(self):
         """Placeholder docstring"""
