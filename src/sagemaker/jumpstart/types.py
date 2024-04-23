@@ -2160,7 +2160,13 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
     """Base class for Deployment Config Data."""
 
     def _convert_to_pascal_case(self, attr_name: str) -> str:
-        """Converts a snake_case attribute name into a camelCased string."""
+        """Converts a snake_case attribute name into a camelCased string.
+
+        Args:
+            attr_name (str): The snake_case attribute name.
+        Returns:
+            str: The PascalCased attribute name.
+        """
         return attr_name.replace("_", " ").title().replace(" ", "")
 
     def to_json(self) -> Dict[str, Any]:

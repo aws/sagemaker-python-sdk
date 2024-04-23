@@ -290,9 +290,16 @@ class JumpStartModel(Model):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        self._deployment_configs = None
-        self._metadata_configs = None
-        self._benchmark_metrics = None
+        metadata_configs = get_jumpstart_configs(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            sagemaker_session=sagemaker_session,
+        )
+        self._deployment_configs = self._deployment_configs = [
+            self._convert_to_deployment_config_metadata(config_name, config)
+            for config_name, config in metadata_configs.items()
+        ]
 
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
@@ -804,12 +811,10 @@ class JumpStartModel(Model):
     def benchmark_metrics(self) -> pd.DataFrame:
         """Pandas DataFrame object of Benchmark Metrics for deployment configs"""
         data = extract_metrics_from_deployment_configs(
-            deployment_configs=self.list_deployment_configs(),
+            deployment_configs=self._deployment_configs,
             config_name=self.config_name,
         )
-
-        self._benchmark_metrics = pd.DataFrame(data)
-        return self._benchmark_metrics
+        return pd.DataFrame(data)
 
     def display_benchmark_metrics(self):
         """Display Benchmark Metrics for deployment configs."""
@@ -820,21 +825,9 @@ class JumpStartModel(Model):
         Returns:
             A list of deployment configs (List[Dict[str, Any]]).
         """
-        if self._metadata_configs is None:
-            self._metadata_configs = get_jumpstart_configs(
-                region=self.region,
-                model_id=self.model_id,
-                model_version=self.model_version,
-                sagemaker_session=self.sagemaker_session,
-            )
-
-            self._deployment_configs = [
-                self._convert_to_deployment_config_metadata(config_name, config)
-                for config_name, config in self._metadata_configs.items()
-            ]
-
         return self._deployment_configs
 
+    @lru_cache
     def _convert_to_deployment_config_metadata(
         self, config_name: str, metadata_config: JumpStartMetadataConfig
     ) -> Dict[str, Any]:
