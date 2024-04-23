@@ -2328,7 +2328,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         return (
             None
             if self._enable_session_tag_chaining is None
-            else {"EnableSessionChaining": self._enable_session_tag_chaining}
+            else {"EnableSessionTagChaining": self._enable_session_tag_chaining}
         )
 
     def enable_remote_debug(self):
