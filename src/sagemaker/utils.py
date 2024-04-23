@@ -1677,7 +1677,7 @@ def get_instance_rate_per_hour(
     region_name = "us-east-1"
     if region.startswith("eu") or region.startswith("af"):
         region_name = "eu-central-1"
-    if region.startswith("ap") or region.startswith("cn"):
+    elif region.startswith("ap") or region.startswith("cn"):
         region_name = "ap-south-1"
 
     pricing_client: boto3.client = boto3.client("pricing", region_name=region_name)
