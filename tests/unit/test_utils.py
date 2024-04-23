@@ -1882,7 +1882,7 @@ class TestDeepMergeDict(TestCase):
 )
 @patch("boto3.client")
 def test_get_instance_rate_per_hour(mock_client, instance, region):
-    amazon_ec2_price_result = {
+    amazon_sagemaker_price_result = {
         "PriceList": [
             '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
             '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": "$0.0083 per '
@@ -1895,7 +1895,7 @@ def test_get_instance_rate_per_hour(mock_client, instance, region):
     }
 
     mock_client.return_value.get_products.side_effect = (
-        lambda *args, **kwargs: amazon_ec2_price_result
+        lambda *args, **kwargs: amazon_sagemaker_price_result
     )
     instance_rate = get_instance_rate_per_hour(instance_type=instance, region=region)
 
