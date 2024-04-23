@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import copy
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Any
+from typing import Type, Any, List, Dict
 import logging
 
 from sagemaker.model import Model
@@ -435,7 +435,7 @@ class JumpStart(ABC):
         """Display Markdown Benchmark Metrics for deployment configs."""
         self.pysdk_model.display_benchmark_metrics(args, kwargs)
 
-    def list_deployment_configs(self) -> list[dict[str, Any]]:
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
 
         Returns:
