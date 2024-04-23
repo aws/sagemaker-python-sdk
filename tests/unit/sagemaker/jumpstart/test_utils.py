@@ -1598,24 +1598,24 @@ class TestBenchmarkStats:
             "mock-region", "mock-model", "mock-model-version", config_names=None
         ) == {
             "neuron-inference": {
-                "ml.inf2.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                )
+                "ml.inf2.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
             },
             "neuron-inference-budget": {
-                "ml.inf2.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                )
+                "ml.inf2.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
             },
             "gpu-inference-budget": {
-                "ml.p3.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                )
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
             },
             "gpu-inference": {
-                "ml.p3.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                )
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
             },
         }
 
@@ -1633,14 +1633,14 @@ class TestBenchmarkStats:
             config_names=["neuron-inference-budget", "gpu-inference-budget"],
         ) == {
             "neuron-inference-budget": {
-                "ml.inf2.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                )
+                "ml.inf2.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
             },
             "gpu-inference-budget": {
-                "ml.p3.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                )
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
             },
         }
 
@@ -1658,9 +1658,9 @@ class TestBenchmarkStats:
             config_names=["neuron-inference-budget"],
         ) == {
             "neuron-inference-budget": {
-                "ml.inf2.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                )
+                "ml.inf2.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
             }
         }
 
@@ -1695,16 +1695,16 @@ class TestBenchmarkStats:
             config_names=["neuron-training", "gpu-training-budget"],
         ) == {
             "neuron-training": {
-                "ml.tr1n1.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                ),
-                "ml.tr1n1.4xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "50", "unit": "Tokens/S"}
-                ),
+                "ml.tr1n1.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ],
+                "ml.tr1n1.4xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "50", "unit": "Tokens/S"})
+                ],
             },
             "gpu-training-budget": {
-                "ml.p3.2xlarge": JumpStartBenchmarkStat(
-                    {"name": "Latency", "value": "100", "unit": "Tokens/S"}
-                )
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
             },
         }
