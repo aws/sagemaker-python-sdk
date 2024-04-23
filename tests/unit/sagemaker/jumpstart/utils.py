@@ -12,7 +12,11 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from typing import List
+from typing import (
+    List,
+    Dict,
+    Any
+)
 import boto3
 
 from sagemaker.compute_resource_requirements import ResourceRequirements
@@ -303,7 +307,7 @@ def overwrite_dictionary(
     return base_dictionary
 
 
-def get_base_deployment_configs() -> list[dict[str, any]]:
+def get_base_deployment_configs() -> List[Dict[str, Any]]:
     return DEPLOYMENT_CONFIGS
 
 
