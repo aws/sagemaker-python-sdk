@@ -46,6 +46,8 @@ from tests.integ.sagemaker.jumpstart.utils import get_training_dataset_for_model
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
 from tests.unit.sagemaker.jumpstart.utils import (
+    get_prototype_manifest,
+    get_prototype_spec_with_configs,
     get_special_model_spec,
     overwrite_dictionary,
 )
@@ -1113,6 +1115,7 @@ class EstimatorTest(unittest.TestCase):
             "region",
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
+            "config_name",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -1370,6 +1373,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=sagemaker_session,
+            config_name=None,
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
@@ -1421,6 +1425,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=sagemaker_session,
+            config_name=None,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -1851,6 +1856,55 @@ class EstimatorTest(unittest.TestCase):
         s3_clients = {call[1]["s3_client"] for call in mock_get_model_specs.call_args_list}
         assert len(s3_clients) == 1
         assert list(s3_clients)[0] == session.s3_client
+
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_estimator_initialization_with_config_name(
+        self,
+        mock_estimator_init: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_estimator_fit.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(model_id=model_id, config_name="neuron-training")
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.p2.xlarge",
+            instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/meta-textgeneration-llama-2-7b/"
+            "neuron-training/model/",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
+            "transfer_learning/eqa/v1.0.0/sourcedir.tar.gz",
+            entry_point="transfer_learning.py",
+            hyperparameters={"epochs": "3", "adam-learning-rate": "2e-05", "batch-size": "4"},
+            role="fake role! do not use!",
+            sagemaker_session=sagemaker_session,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            enable_network_isolation=False,
+        )
+
+        estimator.fit()
+
+        mock_estimator_fit.assert_called_once_with(wait=True)
 
 
 def test_jumpstart_estimator_requires_model_id():
