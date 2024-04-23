@@ -13,7 +13,6 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 
-import json
 import logging
 import os
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
@@ -1003,54 +1002,42 @@ def get_jumpstart_configs(
     )
 
 
-def get_instance_rate_per_hour(
-    instance_type: str,
-    region: str,
-    pricing_client: boto3.client = boto3.client("pricing", region_name="us-east-1"),
-) -> Union[Dict[str, str], None]:
-    """Gets instance rate per hour for the given instance type.
+def extract_metrics_from_deployment_configs(
+    deployment_configs: list[dict[str, Any]], config_name: str
+) -> Dict[str, List[str]]:
+    """Extracts metrics from deployment configs.
 
     Args:
-        instance_type (str): The instance type.
-        region (str): The region.
-        pricing_client (OPTIONAL[boto3.client]): The pricing client.
-
-    Returns:
-        Union[Dict[str, str], None]: Instance rate per hour.
-         Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.1250000000'}}.
+        deployment_configs (list[dict[str, Any]]): List of deployment configs.
+        config_name (str): The name of the deployment config use by the model.
     """
 
-    instance_rate = None
-    try:
-        res = pricing_client.get_products(
-            ServiceCode="AmazonSageMaker",
-            Filters=[
-                {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
-                {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
-                {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
-            ],
-        )
+    data = {"Config Name": [], "Instance Type": [], "Selected": []}
 
-        price_list = res.get("PriceList", [])
-        if len(price_list) > 0:
-            price_data = price_list[0]
-            if isinstance(price_data, str):
-                price_data = json.loads(price_data)
+    for index, deployment_config in enumerate(deployment_configs):
+        if deployment_config.get("DeploymentConfig") is None:
+            continue
 
-            price_dimensions = price_data.get("terms", {}).get("OnDemand", {}).values()
-            for dimension in price_dimensions:
-                for price in dimension.get("priceDimensions", {}).values():
-                    for currency in price.get("pricePerUnit", {}).keys():
-                        instance_rate = {
-                            "unit": f"{currency}/{price.get('unit', 'Hrs')}",
-                            "value": price.get("pricePerUnit", {}).get(currency),
-                            "name": "Instance Rate",
-                        }
-                        break
-                    break
-                break
-    except Exception as e:  # pylint: disable=W0703
-        logging.exception("Error getting instance rate: %s", e)
-        return None
+        benchmark_metrics = deployment_config.get("BenchmarkMetrics")
+        if benchmark_metrics is not None:
+            data["Config Name"].append(deployment_config.get("ConfigName"))
+            data["Instance Type"].append(
+                deployment_config.get("DeploymentConfig").get("InstanceType")
+            )
+            data["Selected"].append(
+                "Yes"
+                if (config_name is not None and config_name == deployment_config.get("ConfigName"))
+                else "No"
+            )
 
-    return instance_rate
+            if index == 0:
+                for benchmark_metric in benchmark_metrics:
+                    column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
+                    data[column_name] = []
+
+            for benchmark_metric in benchmark_metrics:
+                column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
+                if column_name in data.keys():
+                    data[column_name].append(benchmark_metric.get("value"))
+
+    return data

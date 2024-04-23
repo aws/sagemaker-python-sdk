@@ -2210,7 +2210,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
 class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
     """Base class for Deployment Config Data."""
 
-    def _convert_to_camel_case(self, attr_name: str) -> str:
+    def _convert_to_pascal_case(self, attr_name: str) -> str:
         """Converts a snake_case attribute name into a camelCased string."""
         return attr_name.replace("_", " ").title().replace(" ", "")
 
@@ -2220,7 +2220,7 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
         for att in self.__slots__:
             if hasattr(self, att):
                 cur_val = getattr(self, att)
-                att = self._convert_to_camel_case(att)
+                att = self._convert_to_pascal_case(att)
                 if issubclass(type(cur_val), JumpStartDataHolderType):
                     json_obj[att] = cur_val.to_json()
                 elif isinstance(cur_val, list):
@@ -2234,7 +2234,7 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
                     json_obj[att] = {}
                     for key, val in cur_val.items():
                         if issubclass(type(val), JumpStartDataHolderType):
-                            json_obj[att][self._convert_to_camel_case(key)] = val.to_json()
+                            json_obj[att][self._convert_to_pascal_case(key)] = val.to_json()
                         else:
                             json_obj[att][key] = val
                 else:

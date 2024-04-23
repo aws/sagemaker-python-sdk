@@ -50,6 +50,7 @@ from sagemaker.utils import (
     _is_bad_link,
     custom_extractall_tarfile,
     can_model_package_source_uri_autopopulate,
+    get_instance_rate_per_hour,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -1866,3 +1867,35 @@ class TestDeepMergeDict(TestCase):
         expected_result = {"a": 1, "b": {"x": 20, "y": 3, "z": 30}, "c": [4, 5]}
 
         self.assertEqual(deep_override_dict(dict1, dict2, skip_keys=["c", "d"]), expected_result)
+
+
+@patch("boto3.client")
+def test_get_instance_rate_per_hour(mock_client):
+    amazon_ec2_price_result = {
+        "PriceList": [
+            '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+            '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": "$0.0083 per '
+            "On"
+            'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+            '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": "0.0083000000"}}}, '
+            '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF", '
+            '"termAttributes": {}}}}}'
+        ]
+    }
+
+    mock_client.get_products.side_effect = lambda *args, **kwargs: amazon_ec2_price_result
+    instance_rate = get_instance_rate_per_hour(
+        instance_type="t4g.nano", region="us-west-2", pricing_client=mock_client
+    )
+
+    assert instance_rate == {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"}
+
+
+@patch("boto3.client")
+def test_get_instance_rate_per_hour_ex(mock_client):
+    mock_client.get_products.side_effect = lambda *args, **kwargs: Exception()
+    instance_rate = get_instance_rate_per_hour(
+        instance_type="ml.t4g.nano", region="us-west-2", pricing_client=mock_client
+    )
+
+    assert instance_rate is None

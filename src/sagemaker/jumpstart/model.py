@@ -47,11 +47,11 @@ from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
     get_jumpstart_configs,
-    get_instance_rate_per_hour,
+    extract_metrics_from_deployment_configs,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
-from sagemaker.utils import stringify_object, format_tags, Tags
+from sagemaker.utils import stringify_object, format_tags, Tags, get_instance_rate_per_hour
 from sagemaker.model import (
     Model,
     ModelPackage,
@@ -823,39 +823,15 @@ class JumpStartModel(Model):
     @property
     def benchmark_metrics(self) -> pd.DataFrame:
         """Pandas DataFrame object of Benchmark Metrics for deployment configs"""
-        if self._benchmark_metrics is None:
-            deployment_configs = self.list_deployment_configs()
+        if self._benchmark_metrics:
+            return self._benchmark_metrics
 
-            data = {"Config Name": [], "Instance Type": [], "Selected": []}
-            for index, deployment_config in enumerate(deployment_configs):
-                if deployment_config.get("DeploymentConfig") is None:
-                    continue
+        data = extract_metrics_from_deployment_configs(
+            deployment_configs=self.list_deployment_configs(),
+            config_name=self.config_name,
+        )
 
-                benchmark_metrics = deployment_config.get("BenchmarkMetrics")
-                if benchmark_metrics is not None:
-                    data["Config Name"].append(deployment_config.get("ConfigName"))
-                    data["Instance Type"].append(
-                        deployment_config.get("DeploymentConfig").get("InstanceType")
-                    )
-                    data["Selected"].append(
-                        "Yes" if self.config_name == deployment_config.get("ConfigName") else "No"
-                    )
-
-                    if index == 0:
-                        for benchmark_metric in benchmark_metrics:
-                            column_name = (
-                                f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
-                            )
-                            data[column_name] = []
-
-                    for benchmark_metric in benchmark_metrics:
-                        column_name = (
-                            f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
-                        )
-                        if column_name in data.keys():
-                            data[column_name].append(benchmark_metric.get("value"))
-
-            self._benchmark_metrics = pd.DataFrame(data)
+        self._benchmark_metrics = pd.DataFrame(data)
         return self._benchmark_metrics
 
     def display_benchmark_metrics(self):

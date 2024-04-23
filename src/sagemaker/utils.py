@@ -33,6 +33,8 @@ from datetime import datetime
 from os.path import abspath, realpath, dirname, normpath, join as joinpath
 
 from importlib import import_module
+
+import boto3
 import botocore
 from botocore.utils import merge_dicts
 from six.moves.urllib import parse
@@ -1655,3 +1657,56 @@ def deep_override_dict(
     )
     flattened_dict1.update(flattened_dict2)
     return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
+
+
+def get_instance_rate_per_hour(
+    instance_type: str,
+    region: str,
+    pricing_client: boto3.client = boto3.client("pricing", region_name="us-east-1"),
+) -> Union[Dict[str, str], None]:
+    """Gets instance rate per hour for the given instance type.
+
+    Args:
+        instance_type (str): The instance type.
+        region (str): The region.
+        pricing_client (OPTIONAL[boto3.client]): The pricing client.
+
+    Returns:
+        Union[Dict[str, str], None]: Instance rate per hour.
+         Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.1250000000'}}.
+    """
+
+    instance_rate = None
+    try:
+        res = pricing_client.get_products(
+            ServiceCode="AmazonSageMaker",
+            Filters=[
+                {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
+                {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
+                {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
+            ],
+        )
+
+        price_list = res.get("PriceList", [])
+        if len(price_list) > 0:
+            price_data = price_list[0]
+            if isinstance(price_data, str):
+                price_data = json.loads(price_data)
+
+            price_dimensions = price_data.get("terms", {}).get("OnDemand", {}).values()
+            for dimension in price_dimensions:
+                for price in dimension.get("priceDimensions", {}).values():
+                    for currency in price.get("pricePerUnit", {}).keys():
+                        instance_rate = {
+                            "unit": f"{currency}/{price.get('unit', 'Hrs')}",
+                            "value": price.get("pricePerUnit", {}).get(currency),
+                            "name": "Instance Rate",
+                        }
+                        break
+                    break
+                break
+    except Exception as e:  # pylint: disable=W0703
+        logging.exception("Error getting instance rate: %s", e)
+        return None
+
+    return instance_rate

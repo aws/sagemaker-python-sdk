@@ -44,12 +44,12 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartVersionedModelId,
 )
-from tests.unit.sagemaker.jumpstart.constants import PRICING_RESULT
 from tests.unit.sagemaker.jumpstart.utils import (
     get_base_spec_with_prototype_configs,
     get_spec_from_base_spec,
     get_special_model_spec,
     get_prototype_manifest,
+    get_base_deployment_configs,
 )
 from mock import MagicMock
 
@@ -1711,21 +1711,50 @@ class TestBenchmarkStats:
         }
 
 
-@patch("boto3.client")
-def test_get_instance_rate_per_hour(mock_client):
-    mock_client.get_products.side_effect = lambda *args, **kwargs: PRICING_RESULT
-    instance_rate = utils.get_instance_rate_per_hour(
-        instance_type="ml.t4g.nano", region="us-west-2", pricing_client=mock_client
-    )
+@pytest.mark.parametrize(
+    "config_name, expected",
+    [
+        (
+            None,
+            {
+                "Config Name": [
+                    "neuron-inference",
+                    "neuron-inference-budget",
+                    "gpu-inference-budget",
+                    "gpu-inference",
+                ],
+                "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
+                "Selected": ["No", "No", "No", "No"],
+                "Instance Rate (USD/Hrs)": [
+                    "0.0083000000",
+                    "0.0083000000",
+                    "0.0083000000",
+                    "0.0083000000",
+                ],
+            },
+        ),
+        (
+            "neuron-inference",
+            {
+                "Config Name": [
+                    "neuron-inference",
+                    "neuron-inference-budget",
+                    "gpu-inference-budget",
+                    "gpu-inference",
+                ],
+                "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
+                "Selected": ["Yes", "No", "No", "No"],
+                "Instance Rate (USD/Hrs)": [
+                    "0.0083000000",
+                    "0.0083000000",
+                    "0.0083000000",
+                    "0.0083000000",
+                ],
+            },
+        ),
+    ],
+)
+def test_extract_metrics_from_deployment_configs(config_name, expected):
+    data = utils.extract_metrics_from_deployment_configs(get_base_deployment_configs(), config_name)
 
-    assert instance_rate == {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"}
-
-
-@patch("boto3.client")
-def test_get_instance_rate_per_hour_ex(mock_client):
-    mock_client.get_products.side_effect = lambda *args, **kwargs: Exception()
-    instance_rate = utils.get_instance_rate_per_hour(
-        instance_type="ml.t4g.nano", region="us-west-2", pricing_client=mock_client
-    )
-
-    assert instance_rate is None
+    assert data == expected
