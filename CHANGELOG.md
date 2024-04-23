@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.216.1 (2024-04-22)
+
+### Bug Fixes and Other Changes
+
+ * add DXB and CGK to Jumpstart regions
+ * chore(deps): bump apache-airflow from 2.8.4 to 2.9.0 in /requirements/extras
+ * bump djl-inference 0.27.0 neuronx sdk to 2.18.1
+ * chore: release TGI 2.0.0
+
 ## v2.216.0 (2024-04-17)
 
 ### Features
