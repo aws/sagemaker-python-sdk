@@ -736,7 +736,7 @@ class JumpStartEstimator(Estimator):
             model_id, model_version, config_name = get_model_id_version_from_training_job(
                 training_job_name=training_job_name, sagemaker_session=sagemaker_session
             )
-        
+
         model_version = model_version or "*"
 
         additional_kwargs = {"model_id": model_id, "model_version": model_version}

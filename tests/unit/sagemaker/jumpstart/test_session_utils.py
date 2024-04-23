@@ -23,7 +23,7 @@ def test_get_model_id_version_from_training_job_happy_case(
     mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
         "model_id",
         "model_version",
-        None
+        None,
     )
 
     retval = get_model_id_version_from_training_job("bLaH", sagemaker_session=mock_sm_session)
@@ -46,7 +46,7 @@ def test_get_model_id_version_from_training_job_config_name(
     mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
         "model_id",
         "model_version",
-        "config_name"
+        "config_name",
     )
 
     retval = get_model_id_version_from_training_job("bLaH", sagemaker_session=mock_sm_session)
@@ -297,7 +297,7 @@ def test_get_model_id_version_from_endpoint_inference_component_endpoint_with_in
     mock_get_model_id_version_from_inference_component_endpoint_with_inference_component_name.return_value = (
         "model_id",
         "model_version",
-        None
+        None,
     )
 
     retval = get_model_id_version_from_endpoint(

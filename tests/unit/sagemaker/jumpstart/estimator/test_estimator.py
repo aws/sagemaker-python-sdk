@@ -1033,7 +1033,7 @@ class EstimatorTest(unittest.TestCase):
         get_model_id_version_from_training_job.return_value = (
             "js-trainable-model-prepacked",
             "1.0.0",
-            None
+            None,
         )
 
         mock_get_model_specs.side_effect = get_special_model_spec

@@ -1359,7 +1359,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             (None, "model_version", None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
-    
+
     def test_no_config_name_found(self):
         mock_list_tags = Mock()
         mock_sagemaker_session = Mock()
@@ -1373,14 +1373,14 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             (None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
-    
+
     def test_config_name_found(self):
         mock_list_tags = Mock()
         mock_sagemaker_session = Mock()
         mock_sagemaker_session.list_tags = mock_list_tags
         mock_list_tags.return_value = [
             {"Key": "blah", "Value": "blah1"},
-            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name"}
+            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name"},
         ]
 
         self.assertEquals(
@@ -1468,7 +1468,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             (None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
-    
+
     def test_multiple_config_names_found_aliases_inconsistent(self):
         mock_list_tags = Mock()
         mock_sagemaker_session = Mock()
@@ -1478,7 +1478,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
             {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
             {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name_1"},
-            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name_2"}
+            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name_2"},
         ]
 
         self.assertEquals(

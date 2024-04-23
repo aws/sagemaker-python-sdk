@@ -865,7 +865,8 @@ def get_jumpstart_model_id_version_from_resource_arn(
         if config_name_key_from_tag is not None:
             if config_name is not None and config_name_key != config_name:
                 constants.JUMPSTART_LOGGER.warning(
-                    "Found multiple model config names tags on the following resource: %s", resource_arn
+                    "Found multiple model config names tags on the following resource: %s",
+                    resource_arn
                 )
                 config_name = None
                 break

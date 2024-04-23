@@ -1162,7 +1162,7 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
         instance_type: Optional[str] = None,
     ) -> Optional[JumpStartMetadataConfig]:
         """Gets the best the config based on config ranking.
-        
+
         Fallback to use the ordering in config names if
         ranking is not available.
         Args:
@@ -1174,7 +1174,7 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
         Raises:
             NotImplementedError: If the scope is unrecognized.
         """
-        
+
 
         if self.scope == JumpStartScriptScope.INFERENCE:
             instance_type_attribute = "supported_inference_instance_types"

@@ -196,9 +196,11 @@ def get_model_id_version_from_training_job(
         f"arn:{partition}:sagemaker:{region}:{account_id}:training-job/{training_job_name}"
     )
 
-    model_id, inferred_model_version, config_name = get_jumpstart_model_id_version_from_resource_arn(
-        training_job_arn, sagemaker_session
-    )
+    (
+        model_id,
+        inferred_model_version,
+        config_name,
+    ) = get_jumpstart_model_id_version_from_resource_arn(training_job_arn, sagemaker_session)
 
     model_version = inferred_model_version or None
 
