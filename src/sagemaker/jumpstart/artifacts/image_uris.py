@@ -46,6 +46,7 @@ def _retrieve_image_uri(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
 ):
     """Retrieves the container image URI for JumpStart models.
 
@@ -95,6 +96,7 @@ def _retrieve_image_uri(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
 
@@ -116,6 +118,7 @@ def _retrieve_image_uri(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     if image_scope == JumpStartScriptScope.INFERENCE:
@@ -200,4 +203,5 @@ def _retrieve_image_uri(
         distribution=distribution,
         base_framework_version=base_framework_version_override or base_framework_version,
         training_compiler_config=training_compiler_config,
+        config_name=config_name,
     )
