@@ -34,7 +34,9 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
+from sagemaker.jumpstart.types import JumpStartMetadataConfig
 from sagemaker.jumpstart.utils import (
+    get_jumpstart_configs,
     validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -110,6 +112,7 @@ class JumpStartEstimator(Estimator):
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
+        config_name: Optional[str] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -503,6 +506,8 @@ class JumpStartEstimator(Estimator):
                 Specifies whether RemoteDebug is enabled for the training job
             enable_session_tag_chaining (bool or PipelineVariable): Optional.
                 Specifies whether SessionTagChaining is enabled for the training job
+            config_name (Optional[str]):
+                Name of the JumpStart Model config to apply. (Default: None).
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -582,6 +587,7 @@ class JumpStartEstimator(Estimator):
             enable_infra_check=enable_infra_check,
             enable_remote_debug=enable_remote_debug,
             enable_session_tag_chaining=enable_session_tag_chaining,
+            config_name=config_name,
         )
 
         self.model_id = estimator_init_kwargs.model_id
@@ -595,6 +601,8 @@ class JumpStartEstimator(Estimator):
         self.role = estimator_init_kwargs.role
         self.sagemaker_session = estimator_init_kwargs.sagemaker_session
         self._enable_network_isolation = estimator_init_kwargs.enable_network_isolation
+        self.config_name = estimator_init_kwargs.config_name
+        self.init_kwargs = estimator_init_kwargs.to_kwargs_dict(False)
 
         super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
 
@@ -669,6 +677,7 @@ class JumpStartEstimator(Estimator):
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             sagemaker_session=self.sagemaker_session,
+            config_name=self.config_name,
         )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
@@ -1085,6 +1094,7 @@ class JumpStartEstimator(Estimator):
             git_config=git_config,
             use_compiled_model=use_compiled_model,
             training_instance_type=self.instance_type,
+            config_name=self.config_name,
         )
 
         predictor = super(JumpStartEstimator, self).deploy(
@@ -1101,10 +1111,38 @@ class JumpStartEstimator(Estimator):
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
+                # config_name=self.config_name,
             )
 
         # If a predictor class was passed, do not mutate predictor
         return predictor
+
+    def list_training_configs(self) -> List[JumpStartMetadataConfig]:
+        """Returns a list of configs associated with the estimator.
+
+        Raises:
+            ValueError: If the combination of arguments specified is not supported.
+            VulnerableJumpStartModelError: If any of the dependencies required by the script have
+                known security vulnerabilities.
+            DeprecatedJumpStartModelError: If the version of the model is deprecated.
+        """
+        configs_dict = get_jumpstart_configs(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            model_type=self.model_type,
+            region=self.region,
+            scope=JumpStartScriptScope.TRAINING,
+            sagemaker_session=self.sagemaker_session,
+        )
+        return list(configs_dict.values())
+
+    def set_training_config(self, config_name: str) -> None:
+        """Sets the config to apply to the model.
+
+        Args:
+            config_name (str): The name of the config.
+        """
+        self.__init__(**self.init_kwargs, config_name=config_name)
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

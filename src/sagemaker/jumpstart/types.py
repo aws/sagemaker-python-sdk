@@ -1464,11 +1464,11 @@ class JumpStartKwargs(JumpStartDataHolderType):
 
     SERIALIZATION_EXCLUSION_SET: Set[str] = set()
 
-    def to_kwargs_dict(self):
+    def to_kwargs_dict(self, exclude_keys: bool = True):
         """Serializes object to dictionary to be used for kwargs for method arguments."""
         kwargs_dict = {}
         for field in self.__slots__:
-            if field not in self.SERIALIZATION_EXCLUSION_SET:
+            if exclude_keys and field not in self.SERIALIZATION_EXCLUSION_SET or not exclude_keys:
                 att_value = getattr(self, field)
                 if att_value is not None:
                     kwargs_dict[field] = getattr(self, field)
@@ -1506,6 +1506,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_package_arn",
         "training_instance_type",
         "resources",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1518,6 +1519,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "region",
         "model_package_arn",
         "training_instance_type",
+        "config_name",
     }
 
     def __init__(
@@ -1549,6 +1551,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         model_package_arn: Optional[str] = None,
         training_instance_type: Optional[str] = None,
         resources: Optional[ResourceRequirements] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -1579,6 +1582,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.model_package_arn = model_package_arn
         self.training_instance_type = training_instance_type
         self.resources = resources
+        self.config_name = config_name
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -1614,6 +1618,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "endpoint_logging",
         "resources",
         "endpoint_type",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1625,6 +1630,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "sagemaker_session",
         "training_instance_type",
+        "config_name",
     }
 
     def __init__(
@@ -1658,6 +1664,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_logging: Optional[bool] = None,
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: Optional[EndpointType] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1690,6 +1697,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_logging = endpoint_logging
         self.resources = resources
         self.endpoint_type = endpoint_type
+        self.config_name = config_name
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -1751,6 +1759,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "enable_infra_check",
         "enable_remote_debug",
         "enable_session_tag_chaining",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1760,6 +1769,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "model_type",
+        "config_name",
     }
 
     def __init__(
@@ -1819,6 +1829,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1879,6 +1890,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_infra_check = enable_infra_check
         self.enable_remote_debug = enable_remote_debug
         self.enable_session_tag_chaining = enable_session_tag_chaining
+        self.config_name = config_name
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
@@ -1897,6 +1909,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
         "sagemaker_session",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1907,6 +1920,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -1923,6 +1937,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Session] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1938,6 +1953,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.sagemaker_session = sagemaker_session
+        self.config_name = config_name
 
 
 class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
@@ -1983,6 +1999,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "model_name",
         "use_compiled_model",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1992,6 +2009,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -2035,6 +2053,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         use_compiled_model: bool = False,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2077,6 +2096,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.use_compiled_model = use_compiled_model
+        self.config_name = config_name
 
 
 class JumpStartModelRegisterKwargs(JumpStartKwargs):
@@ -2111,6 +2131,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "data_input_configuration",
         "skip_model_validation",
         "source_uri",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2120,6 +2141,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -2152,6 +2174,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelRegisterKwargs object."""
 
@@ -2184,3 +2207,4 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+        self.config_name = config_name
