@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import os
+import io
+import sys
 import time
 from unittest import mock
 
@@ -52,7 +54,6 @@ GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS = {
 
 
 def test_non_prepacked_jumpstart_model(setup):
-
     model_id = "catboost-classification-model"
 
     model = JumpStartModel(
@@ -81,7 +82,6 @@ def test_non_prepacked_jumpstart_model(setup):
 
 
 def test_prepacked_jumpstart_model(setup):
-
     model_id = "huggingface-txt2img-conflictx-complex-lineart"
 
     model = JumpStartModel(
@@ -105,7 +105,6 @@ def test_prepacked_jumpstart_model(setup):
     reason=f"JumpStart model package inference models unavailable in {tests.integ.test_region()}.",
 )
 def test_model_package_arn_jumpstart_model(setup):
-
     model_id = "meta-textgeneration-llama-2-7b"
 
     model = JumpStartModel(
@@ -135,7 +134,6 @@ def test_model_package_arn_jumpstart_model(setup):
     reason=f"INF2 instances unavailable in {tests.integ.test_region()}.",
 )
 def test_jumpstart_gated_model_neuron(setup):
-
     model_id = "meta-textgenerationneuron-llama-2-7b"
 
     model = JumpStartModel(
@@ -160,12 +158,12 @@ def test_jumpstart_gated_model_neuron(setup):
 
 
 def test_jumpstart_gated_model(setup):
-
     model_id = "meta-textgeneration-llama-2-7b"
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="3.*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        model_version="3.*",
+        # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
@@ -187,12 +185,12 @@ def test_jumpstart_gated_model(setup):
 
 
 def test_jumpstart_gated_model_inference_component_enabled(setup):
-
     model_id = "meta-textgeneration-llama-2-7b"
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="3.*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        model_version="3.*",
+        # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
@@ -222,7 +220,6 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
 
 @mock.patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning")
 def test_instatiating_model(mock_warning_logger, setup):
-
     model_id = "catboost-regression-model"
 
     start_time = time.perf_counter()
@@ -268,7 +265,6 @@ def test_jumpstart_model_register(setup):
     reason="Only enable if test account is subscribed to the proprietary model",
 )
 def test_proprietary_jumpstart_model(setup):
-
     model_id = "ai21-jurassic-2-light"
 
     model = JumpStartModel(
@@ -286,3 +282,52 @@ def test_proprietary_jumpstart_model(setup):
     response = predictor.predict(payload)
 
     assert response is not None
+
+
+def test_jumpstart_model_with_deployment_configs(setup):
+    # TODO: Update to prod buckets when GA
+    env_variable_name = "AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE"
+    original_value = os.environ.get(env_variable_name, None)
+    updated_value = "jumpstart-cache-alpha-us-west-2"
+    os.environ[env_variable_name] = updated_value
+
+    model_id = "meta-textgeneration-llama-2-7b"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="4.0.0",
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    captured_output = io.StringIO()
+    sys.stdout = captured_output
+    model.display_benchmark_metrics()
+    sys.stdout = sys.__stdout__
+    assert captured_output.getvalue() is not None
+
+    configs = model.list_deployment_configs()
+    assert len(configs) > 0
+
+    model.set_deployment_config(configs[0]["ConfigName"])
+    assert model.config_name == configs[0]["ConfigName"]
+    assert model.deployment_config == configs[0]
+
+    predictor = model.deploy(
+        accept_eula=True,
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
+
+    payload = {
+        "inputs": "some-payload",
+        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
+    }
+
+    response = predictor.predict(payload, custom_attributes="accept_eula=true")
+
+    assert response is not None
+
+    if original_value is not None:
+        os.environ[env_variable_name] = original_value
+    else:
+        del os.environ[env_variable_name]
