@@ -816,9 +816,9 @@ class JumpStartModel(Model):
         )
         return pd.DataFrame(data)
 
-    def display_benchmark_metrics(self):
+    def display_benchmark_metrics(self, *args, **kwargs):
         """Display Benchmark Metrics for deployment configs."""
-        print(self.benchmark_metrics.to_markdown())
+        print(self.benchmark_metrics.to_markdown(), args, kwargs)
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
