@@ -162,6 +162,7 @@ def get_jumpstart_content_bucket(
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
     return bucket_to_return
+    # return "jumpstart-cache-alpha-us-west-2"
 
 
 def get_formatted_manifest(
@@ -318,6 +319,7 @@ def add_single_jumpstart_tag(
                     tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_TYPE, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.MODEL_CONFIG_NAME, curr_tags)
                 )
                 if is_uri
                 else False
@@ -353,6 +355,7 @@ def add_jumpstart_model_id_version_tags(
     model_id: str,
     model_version: str,
     model_type: Optional[enums.JumpStartModelType] = None,
+    config_name: Optional[str] = None,
 ) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
@@ -373,6 +376,13 @@ def add_jumpstart_model_id_version_tags(
         tags = add_single_jumpstart_tag(
             enums.JumpStartModelType.PROPRIETARY.value,
             enums.JumpStartTag.MODEL_TYPE,
+            tags,
+            is_uri=False,
+        )
+    if config_name:
+        tags = add_single_jumpstart_tag(
+            config_name,
+            enums.JumpStartTag.MODEL_CONFIG_NAME,
             tags,
             is_uri=False,
         )
@@ -803,19 +813,21 @@ def validate_model_id_and_get_type(
 def get_jumpstart_model_id_version_from_resource_arn(
     resource_arn: str,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[Optional[str], Optional[str]]:
-    """Returns the JumpStart model ID and version if in resource tags.
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Returns the JumpStart model ID, version and config name if in resource tags.
 
-    Returns 'None' if model ID or version cannot be inferred from tags.
+    Returns 'None' if model ID or version or config name cannot be inferred from tags.
     """
 
     list_tags_result = sagemaker_session.list_tags(resource_arn)
 
     model_id: Optional[str] = None
     model_version: Optional[str] = None
+    config_name: Optional[str] = None
 
     model_id_keys = [enums.JumpStartTag.MODEL_ID, *constants.EXTRA_MODEL_ID_TAGS]
     model_version_keys = [enums.JumpStartTag.MODEL_VERSION, *constants.EXTRA_MODEL_VERSION_TAGS]
+    model_config_name_keys = [enums.JumpStartTag.MODEL_CONFIG_NAME]
 
     for model_id_key in model_id_keys:
         try:
@@ -845,7 +857,21 @@ def get_jumpstart_model_id_version_from_resource_arn(
                 break
             model_version = model_version_from_tag
 
-    return model_id, model_version
+    for config_name_key in model_config_name_keys:
+        try:
+            config_name_key_from_tag = get_tag_value(config_name_key, list_tags_result)
+        except KeyError:
+            continue
+        if config_name_key_from_tag is not None:
+            if config_name is not None and config_name_key != config_name:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple model config names tags on the following resource: %s", resource_arn
+                )
+                config_name = None
+                break
+            config_name = config_name_key_from_tag
+
+    return model_id, model_version, config_name
 
 
 def get_region_fallback(

@@ -109,6 +109,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
         "predictor-specs-model",
         "1.2.3",
         None,
+        None,
     )
 
     mock_session = Mock()
@@ -128,6 +129,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
         tolerate_vulnerable_model=False,
         sagemaker_session=mock_session,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        config_name=None,
     )
 
 

@@ -23,11 +23,35 @@ def test_get_model_id_version_from_training_job_happy_case(
     mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
         "model_id",
         "model_version",
+        None
     )
 
     retval = get_model_id_version_from_training_job("bLaH", sagemaker_session=mock_sm_session)
 
-    assert retval == ("model_id", "model_version")
+    assert retval == ("model_id", "model_version", None)
+
+    mock_get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
+        "arn:aws:sagemaker:us-west-2:123456789012:training-job/bLaH", mock_sm_session
+    )
+
+
+@patch("sagemaker.jumpstart.session_utils.get_jumpstart_model_id_version_from_resource_arn")
+def test_get_model_id_version_from_training_job_config_name(
+    mock_get_jumpstart_model_id_version_from_resource_arn,
+):
+    mock_sm_session = Mock()
+    mock_sm_session.boto_region_name = "us-west-2"
+    mock_sm_session.account_id = Mock(return_value="123456789012")
+
+    mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
+        "model_id",
+        "model_version",
+        "config_name"
+    )
+
+    retval = get_model_id_version_from_training_job("bLaH", sagemaker_session=mock_sm_session)
+
+    assert retval == ("model_id", "model_version", "config_name")
 
     mock_get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
         "arn:aws:sagemaker:us-west-2:123456789012:training-job/bLaH", mock_sm_session
@@ -62,13 +86,14 @@ def test_get_model_id_version_from_model_based_endpoint_happy_case(
     mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
         "model_id",
         "model_version",
+        None,
     )
 
     retval = _get_model_id_version_from_model_based_endpoint(
         "bLaH", inference_component_name=None, sagemaker_session=mock_sm_session
     )
 
-    assert retval == ("model_id", "model_version")
+    assert retval == ("model_id", "model_version", None)
 
     mock_get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
         "arn:aws:sagemaker:us-west-2:123456789012:endpoint/blah", mock_sm_session
@@ -86,6 +111,7 @@ def test_get_model_id_version_from_model_based_endpoint_inference_component_supp
     mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
         "model_id",
         "model_version",
+        None,
     )
 
     with pytest.raises(ValueError):
@@ -124,13 +150,14 @@ def test_get_model_id_version_from_inference_component_endpoint_with_inference_c
     mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
         "model_id",
         "model_version",
+        None,
     )
 
     retval = _get_model_id_version_from_inference_component_endpoint_with_inference_component_name(
         "bLaH", sagemaker_session=mock_sm_session
     )
 
-    assert retval == ("model_id", "model_version")
+    assert retval == ("model_id", "model_version", None)
 
     mock_get_jumpstart_model_id_version_from_resource_arn.assert_called_once_with(
         "arn:aws:sagemaker:us-west-2:123456789012:inference-component/bLaH", mock_sm_session
@@ -146,6 +173,7 @@ def test_get_model_id_version_from_inference_component_endpoint_with_inference_c
     mock_sm_session.account_id = Mock(return_value="123456789012")
 
     mock_get_jumpstart_model_id_version_from_resource_arn.return_value = (
+        None,
         None,
         None,
     )
@@ -245,11 +273,12 @@ def test_get_model_id_version_from_endpoint_non_inference_component_endpoint(
     mock_get_model_id_version_from_model_based_endpoint.return_value = (
         "model_id",
         "model_version",
+        None,
     )
 
     retval = get_model_id_version_from_endpoint("blah", sagemaker_session=mock_sm_session)
 
-    assert retval == ("model_id", "model_version", None)
+    assert retval == ("model_id", "model_version", None, None)
     mock_get_model_id_version_from_model_based_endpoint.assert_called_once_with(
         "blah", None, mock_sm_session
     )
@@ -268,13 +297,14 @@ def test_get_model_id_version_from_endpoint_inference_component_endpoint_with_in
     mock_get_model_id_version_from_inference_component_endpoint_with_inference_component_name.return_value = (
         "model_id",
         "model_version",
+        None
     )
 
     retval = get_model_id_version_from_endpoint(
         "blah", inference_component_name="icname", sagemaker_session=mock_sm_session
     )
 
-    assert retval == ("model_id", "model_version", "icname")
+    assert retval == ("model_id", "model_version", "icname", None)
     mock_get_model_id_version_from_inference_component_endpoint_with_inference_component_name.assert_called_once_with(
         "icname", mock_sm_session
     )
@@ -294,9 +324,32 @@ def test_get_model_id_version_from_endpoint_inference_component_endpoint_without
         "model_id",
         "model_version",
         "inferred-icname",
+        None,
     )
 
     retval = get_model_id_version_from_endpoint("blah", sagemaker_session=mock_sm_session)
 
-    assert retval == ("model_id", "model_version", "inferred-icname")
+    assert retval == ("model_id", "model_version", "inferred-icname", None)
+    mock_get_model_id_version_from_inference_component_endpoint_without_inference_component_name.assert_called_once()
+
+
+@patch(
+    "sagemaker.jumpstart.session_utils._get_model_id_version_from_inference_component_"
+    "endpoint_without_inference_component_name"
+)
+def test_get_model_id_version_from_endpoint_inference_component_endpoint_with_config_name(
+    mock_get_model_id_version_from_inference_component_endpoint_without_inference_component_name,
+):
+    mock_sm_session = Mock()
+    mock_sm_session.is_inference_component_based_endpoint.return_value = True
+    mock_get_model_id_version_from_inference_component_endpoint_without_inference_component_name.return_value = (
+        "model_id",
+        "model_version",
+        "inferred-icname",
+        "config_name",
+    )
+
+    retval = get_model_id_version_from_endpoint("blah", sagemaker_session=mock_sm_session)
+
+    assert retval == ("model_id", "model_version", "inferred-icname", "config_name")
     mock_get_model_id_version_from_inference_component_endpoint_without_inference_component_name.assert_called_once()

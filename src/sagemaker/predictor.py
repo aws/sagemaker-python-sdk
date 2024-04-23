@@ -78,6 +78,7 @@ def retrieve_default(
             inferred_model_id,
             inferred_model_version,
             inferred_inference_component_name,
+            inferred_config_name,
         ) = get_model_id_version_from_endpoint(
             endpoint_name, inference_component_name, sagemaker_session
         )
@@ -92,8 +93,10 @@ def retrieve_default(
         model_id = inferred_model_id
         model_version = model_version or inferred_model_version or "*"
         inference_component_name = inference_component_name or inferred_inference_component_name
+        config_name = inferred_config_name or None
     else:
         model_version = model_version or "*"
+        config_name = None
 
     predictor = Predictor(
         endpoint_name=endpoint_name,
@@ -110,4 +113,5 @@ def retrieve_default(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )

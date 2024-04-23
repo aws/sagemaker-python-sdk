@@ -1033,6 +1033,7 @@ class EstimatorTest(unittest.TestCase):
         get_model_id_version_from_training_job.return_value = (
             "js-trainable-model-prepacked",
             "1.0.0",
+            None
         )
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -1212,6 +1213,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=estimator.sagemaker_session,
+            config_name=None,
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)
@@ -1894,6 +1896,7 @@ class EstimatorTest(unittest.TestCase):
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "neuron-training"},
             ],
             enable_network_isolation=False,
         )

@@ -730,13 +730,13 @@ class JumpStartEstimator(Estimator):
             ValueError: if the model ID or version cannot be inferred from the training job.
 
         """
-
+        config_name = None
         if model_id is None:
 
-            model_id, model_version = get_model_id_version_from_training_job(
+            model_id, model_version, config_name = get_model_id_version_from_training_job(
                 training_job_name=training_job_name, sagemaker_session=sagemaker_session
             )
-
+        
         model_version = model_version or "*"
 
         additional_kwargs = {"model_id": model_id, "model_version": model_version}
@@ -749,6 +749,7 @@ class JumpStartEstimator(Estimator):
             tolerate_deprecated_model=True,  # model is already trained, so tolerate if deprecated
             tolerate_vulnerable_model=True,  # model is already trained, so tolerate if vulnerable
             sagemaker_session=sagemaker_session,
+            config_name=config_name,
         )
 
         # eula was already accepted if the model was successfully trained
@@ -1102,7 +1103,7 @@ class JumpStartEstimator(Estimator):
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
-                # config_name=self.config_name,
+                config_name=self.config_name,
             )
 
         # If a predictor class was passed, do not mutate predictor

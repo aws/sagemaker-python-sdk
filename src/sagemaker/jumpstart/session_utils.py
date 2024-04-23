@@ -26,8 +26,8 @@ def get_model_id_version_from_endpoint(
     endpoint_name: str,
     inference_component_name: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[str, str, Optional[str]]:
-    """Given an endpoint and optionally inference component names, return the model ID and version.
+) -> Tuple[str, str, Optional[str], Optional[str]]:
+    """Given an endpoint and optionally inference component names, return the model ID, version and config name.
 
     Infers the model ID and version based on the resource tags. Returns a tuple of the model ID
     and version. A third string element is included in the tuple for any inferred inference
@@ -46,6 +46,7 @@ def get_model_id_version_from_endpoint(
             (
                 model_id,
                 model_version,
+                config_name,
             ) = _get_model_id_version_from_inference_component_endpoint_with_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 inference_component_name, sagemaker_session
             )
@@ -55,21 +56,22 @@ def get_model_id_version_from_endpoint(
                 model_id,
                 model_version,
                 inference_component_name,
+                config_name,
             ) = _get_model_id_version_from_inference_component_endpoint_without_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 endpoint_name, sagemaker_session
             )
 
     else:
-        model_id, model_version = _get_model_id_version_from_model_based_endpoint(
+        model_id, model_version, config_name = _get_model_id_version_from_model_based_endpoint(
             endpoint_name, inference_component_name, sagemaker_session
         )
-    return model_id, model_version, inference_component_name
+    return model_id, model_version, inference_component_name, config_name
 
 
 def _get_model_id_version_from_inference_component_endpoint_without_inference_component_name(
     endpoint_name: str, sagemaker_session: Session
 ) -> Tuple[str, str, str]:
-    """Given an endpoint name, derives the model ID, version, and inferred inference component name.
+    """Given an endpoint name, derives the model ID, version, config name and inferred inference component name.
 
     This function assumes the endpoint corresponds to an inference-component-based endpoint.
     An endpoint is inference-component-based if and only if the associated endpoint config
@@ -123,7 +125,7 @@ def _get_model_id_version_from_inference_component_endpoint_with_inference_compo
         f"inference-component/{inference_component_name}"
     )
 
-    model_id, model_version = get_jumpstart_model_id_version_from_resource_arn(
+    model_id, model_version, config_name = get_jumpstart_model_id_version_from_resource_arn(
         inference_component_arn, sagemaker_session
     )
 
@@ -134,15 +136,15 @@ def _get_model_id_version_from_inference_component_endpoint_with_inference_compo
             "when retrieving default predictor for this inference component."
         )
 
-    return model_id, model_version
+    return model_id, model_version, config_name
 
 
 def _get_model_id_version_from_model_based_endpoint(
     endpoint_name: str,
     inference_component_name: Optional[str],
     sagemaker_session: Session,
-) -> Tuple[str, str]:
-    """Returns the model ID and version inferred from a model-based endpoint.
+) -> Tuple[str, str, Optional[str]]:
+    """Returns the model ID, version and config name inferred from a model-based endpoint.
 
     Raises:
         ValueError: If an inference component name is supplied, or if the endpoint does
@@ -161,7 +163,7 @@ def _get_model_id_version_from_model_based_endpoint(
 
     endpoint_arn = f"arn:{partition}:sagemaker:{region}:{account_id}:endpoint/{endpoint_name}"
 
-    model_id, model_version = get_jumpstart_model_id_version_from_resource_arn(
+    model_id, model_version, config_name = get_jumpstart_model_id_version_from_resource_arn(
         endpoint_arn, sagemaker_session
     )
 
@@ -172,14 +174,14 @@ def _get_model_id_version_from_model_based_endpoint(
             "predictor for this endpoint."
         )
 
-    return model_id, model_version
+    return model_id, model_version, config_name
 
 
 def get_model_id_version_from_training_job(
     training_job_name: str,
     sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[str, str]:
-    """Returns the model ID and version inferred from a training job.
+) -> Tuple[str, str, Optional[str]]:
+    """Returns the model ID and version and config name inferred from a training job.
 
     Raises:
         ValueError: If the training job does not have tags from which the model ID
@@ -194,7 +196,7 @@ def get_model_id_version_from_training_job(
         f"arn:{partition}:sagemaker:{region}:{account_id}:training-job/{training_job_name}"
     )
 
-    model_id, inferred_model_version = get_jumpstart_model_id_version_from_resource_arn(
+    model_id, inferred_model_version, config_name = get_jumpstart_model_id_version_from_resource_arn(
         training_job_arn, sagemaker_session
     )
 
@@ -207,4 +209,4 @@ def get_model_id_version_from_training_job(
             "for this training job."
         )
 
-    return model_id, model_version
+    return model_id, model_version, config_name
