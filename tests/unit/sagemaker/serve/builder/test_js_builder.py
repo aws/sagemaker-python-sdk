@@ -658,13 +658,13 @@ class TestJumpStartBuilder(unittest.TestCase):
         "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
     )
     def test_list_deployment_configs(
-            self,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
             model="facebook/galactica-mock-model-id",
@@ -701,13 +701,13 @@ class TestJumpStartBuilder(unittest.TestCase):
         "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
     )
     def test_display_benchmark_metrics(
-            self,
-            mock_get_nb_instance,
-            mock_get_ram_usage_mb,
-            mock_prepare_for_tgi,
-            mock_pre_trained_model,
-            mock_is_jumpstart_model,
-            mock_telemetry,
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
             model="facebook/galactica-mock-model-id",

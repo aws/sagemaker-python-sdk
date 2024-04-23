@@ -51,6 +51,7 @@ from sagemaker.utils import (
     custom_extractall_tarfile,
     can_model_package_source_uri_autopopulate,
     get_instance_rate_per_hour,
+    extract_instance_rate_per_hour,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -1869,8 +1870,18 @@ class TestDeepMergeDict(TestCase):
         self.assertEqual(deep_override_dict(dict1, dict2, skip_keys=["c", "d"]), expected_result)
 
 
+@pytest.mark.parametrize(
+    "instance, region",
+    [
+        ("t4g.nano", "us-west-2"),
+        ("t4g.nano", "eu-central-1"),
+        ("t4g.nano", "af-south-1"),
+        ("t4g.nano", "ap-northeast-2"),
+        ("t4g.nano", "cn-north-1"),
+    ],
+)
 @patch("boto3.client")
-def test_get_instance_rate_per_hour(mock_client):
+def test_get_instance_rate_per_hour(mock_client, instance, region):
     amazon_ec2_price_result = {
         "PriceList": [
             '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
@@ -1883,20 +1894,51 @@ def test_get_instance_rate_per_hour(mock_client):
         ]
     }
 
-    mock_client.get_products.side_effect = lambda *args, **kwargs: amazon_ec2_price_result
-    instance_rate = get_instance_rate_per_hour(
-        instance_type="t4g.nano", region="us-west-2", pricing_client=mock_client
+    mock_client.return_value.get_products.side_effect = (
+        lambda *args, **kwargs: amazon_ec2_price_result
     )
+    instance_rate = get_instance_rate_per_hour(instance_type=instance, region=region)
 
     assert instance_rate == {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"}
 
 
 @patch("boto3.client")
 def test_get_instance_rate_per_hour_ex(mock_client):
-    mock_client.get_products.side_effect = lambda *args, **kwargs: Exception()
-    instance_rate = get_instance_rate_per_hour(
-        instance_type="ml.t4g.nano", region="us-west-2", pricing_client=mock_client
-    )
+    mock_client.return_value.get_products.side_effect = lambda *args, **kwargs: Exception()
+    instance_rate = get_instance_rate_per_hour(instance_type="ml.t4g.nano", region="us-west-2")
 
     assert instance_rate is None
 
+
+@pytest.mark.parametrize(
+    "price_data, expected_result",
+    [
+        (None, None),
+        (
+            {
+                "terms": {
+                    "OnDemand": {
+                        "3WK7G7WSYVS3K492.JRTCKXETXF": {
+                            "priceDimensions": {
+                                "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7": {
+                                    "unit": "Hrs",
+                                    "endRange": "Inf",
+                                    "description": "$0.9 per Unused Reservation Linux p2.xlarge Instance Hour",
+                                    "appliesTo": [],
+                                    "rateCode": "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7",
+                                    "beginRange": "0",
+                                    "pricePerUnit": {"USD": "0.9000000000"},
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.9000000000"},
+        ),
+    ],
+)
+def test_extract_instance_rate_per_hour(price_data, expected_result):
+    out = extract_instance_rate_per_hour(price_data)
+
+    assert out == expected_result

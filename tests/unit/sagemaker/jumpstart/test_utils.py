@@ -48,7 +48,8 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_base_spec_with_prototype_configs,
     get_spec_from_base_spec,
     get_special_model_spec,
-    get_prototype_manifest, get_base_deployment_configs,
+    get_prototype_manifest,
+    get_base_deployment_configs,
 )
 from mock import MagicMock
 

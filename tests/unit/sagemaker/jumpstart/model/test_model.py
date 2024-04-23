@@ -1427,14 +1427,14 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_list_deployment_configs(
-            self,
-            mock_model_deploy: mock.Mock,
-            mock_get_model_specs: mock.Mock,
-            mock_session: mock.Mock,
-            mock_get_manifest: mock.Mock,
-            mock_get_instance_rate_per_hour: mock.Mock,
-            mock_verify_model_region_and_return_specs: mock.Mock,
-            mock_get_init_kwargs: mock.Mock,
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_instance_rate_per_hour: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_init_kwargs: mock.Mock,
     ):
         model_id, _ = "pytorch-eqa-bert-base-cased", "*"
 
@@ -1469,13 +1469,13 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_list_deployment_configs_empty(
-            self,
-            mock_model_deploy: mock.Mock,
-            mock_get_model_specs: mock.Mock,
-            mock_session: mock.Mock,
-            mock_get_manifest: mock.Mock,
-            mock_get_instance_rate_per_hour: mock.Mock,
-            mock_verify_model_region_and_return_specs: mock.Mock,
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_instance_rate_per_hour: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
     ):
         model_id, _ = "pytorch-eqa-bert-base-cased", "*"
 
@@ -1510,14 +1510,14 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_display_benchmark_metrics(
-            self,
-            mock_model_deploy: mock.Mock,
-            mock_get_model_specs: mock.Mock,
-            mock_session: mock.Mock,
-            mock_get_manifest: mock.Mock,
-            mock_get_instance_rate_per_hour: mock.Mock,
-            mock_verify_model_region_and_return_specs: mock.Mock,
-            mock_get_init_kwargs: mock.Mock,
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_instance_rate_per_hour: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_init_kwargs: mock.Mock,
     ):
         model_id, _ = "pytorch-eqa-bert-base-cased", "*"
 
@@ -1551,14 +1551,14 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_benchmark_metrics(
-            self,
-            mock_model_deploy: mock.Mock,
-            mock_get_model_specs: mock.Mock,
-            mock_session: mock.Mock,
-            mock_get_manifest: mock.Mock,
-            mock_get_instance_rate_per_hour: mock.Mock,
-            mock_verify_model_region_and_return_specs: mock.Mock,
-            mock_get_init_kwargs: mock.Mock,
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_instance_rate_per_hour: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_init_kwargs: mock.Mock,
     ):
         model_id, _ = "pytorch-eqa-bert-base-cased", "*"
 

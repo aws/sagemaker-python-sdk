@@ -14,6 +14,7 @@
 
 from __future__ import absolute_import
 
+from functools import lru_cache
 from typing import Dict, List, Optional, Union, Any
 import pandas as pd
 from botocore.exceptions import ClientError
@@ -41,7 +42,7 @@ from sagemaker.jumpstart.types import (
     JumpStartSerializablePayload,
     DeploymentConfigMetadata,
     JumpStartBenchmarkStat,
-    JumpStartMetadataConfig
+    JumpStartMetadataConfig,
 )
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
@@ -51,12 +52,7 @@ from sagemaker.jumpstart.utils import (
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
-from sagemaker.utils import (
-    stringify_object,
-    format_tags,
-    Tags,
-    get_instance_rate_per_hour
-)
+from sagemaker.utils import stringify_object, format_tags, Tags, get_instance_rate_per_hour
 from sagemaker.model import (
     Model,
     ModelPackage,
@@ -803,12 +799,10 @@ class JumpStartModel(Model):
 
         return model_package
 
+    @lru_cache
     @property
     def benchmark_metrics(self) -> pd.DataFrame:
         """Pandas DataFrame object of Benchmark Metrics for deployment configs"""
-        if self._benchmark_metrics:
-            return self._benchmark_metrics
-
         data = extract_metrics_from_deployment_configs(
             deployment_configs=self.list_deployment_configs(),
             config_name=self.config_name,
@@ -842,7 +836,7 @@ class JumpStartModel(Model):
         return self._deployment_configs
 
     def _convert_to_deployment_config_metadata(
-            self, config_name: str, metadata_config: JumpStartMetadataConfig
+        self, config_name: str, metadata_config: JumpStartMetadataConfig
     ) -> Dict[str, Any]:
         """Retrieve deployment config for config name.
         Args:

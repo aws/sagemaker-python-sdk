@@ -25,6 +25,7 @@ import shutil
 import tarfile
 import tempfile
 import time
+from functools import lru_cache
 from typing import Union, Any, List, Optional, Dict
 import json
 import abc
@@ -1662,19 +1663,23 @@ def deep_override_dict(
 def get_instance_rate_per_hour(
     instance_type: str,
     region: str,
-    pricing_client: boto3.client = boto3.client("pricing", region_name="us-east-1"),
 ) -> Union[Dict[str, str], None]:
     """Gets instance rate per hour for the given instance type.
     Args:
         instance_type (str): The instance type.
         region (str): The region.
-        pricing_client (OPTIONAL[boto3.client]): The pricing client.
     Returns:
         Union[Dict[str, str], None]: Instance rate per hour.
          Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.1250000000'}}.
     """
 
-    instance_rate = None
+    region_name = "us-east-1"
+    if region.startswith("eu") or region.startswith("af"):
+        region_name = "eu-central-1"
+    if region.startswith("ap") or region.startswith("cn"):
+        region_name = "ap-south-1"
+
+    pricing_client: boto3.client = boto3.client("pricing", region_name=region_name)
     try:
         res = pricing_client.get_products(
             ServiceCode="AmazonSageMaker",
@@ -1691,20 +1696,29 @@ def get_instance_rate_per_hour(
             if isinstance(price_data, str):
                 price_data = json.loads(price_data)
 
-            price_dimensions = price_data.get("terms", {}).get("OnDemand", {}).values()
-            for dimension in price_dimensions:
-                for price in dimension.get("priceDimensions", {}).values():
-                    for currency in price.get("pricePerUnit", {}).keys():
-                        instance_rate = {
-                            "unit": f"{currency}/{price.get('unit', 'Hrs')}",
-                            "value": price.get("pricePerUnit", {}).get(currency),
-                            "name": "Instance Rate",
-                        }
-                        break
-                    break
-                break
+            return extract_instance_rate_per_hour(price_data)
     except Exception as e:  # pylint: disable=W0703
         logging.exception("Error getting instance rate: %s", e)
-        return None
+    return None
 
-    return instance_rate
+
+def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Union[Dict[str, str], None]:
+    """Extract instance rate per hour for the given Price JSON data.
+
+    Args:
+        price_data (Dict[str, Any]): The Price JSON data.
+    Returns:
+        Union[Dict[str, str], None]: Instance rate per hour.
+    """
+
+    if price_data is not None:
+        price_dimensions = price_data.get("terms", {}).get("OnDemand", {}).values()
+        for dimension in price_dimensions:
+            for price in dimension.get("priceDimensions", {}).values():
+                for currency in price.get("pricePerUnit", {}).keys():
+                    return {
+                        "unit": f"{currency}/{price.get('unit', 'Hrs')}",
+                        "value": price.get("pricePerUnit", {}).get(currency),
+                        "name": "Instance Rate",
+                    }
+    return None
