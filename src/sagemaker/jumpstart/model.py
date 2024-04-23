@@ -832,8 +832,8 @@ class JumpStartModel(Model):
     def benchmark_metrics(self) -> pd.DataFrame:
         """Pandas DataFrame object of Benchmark Metrics for deployment configs"""
         data = extract_metrics_from_deployment_configs(
-            deployment_configs=self._deployment_configs,
-            config_name=self.config_name,
+            self._deployment_configs,
+            self.config_name,
         )
         return pd.DataFrame(data)
 
