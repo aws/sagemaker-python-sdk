@@ -1666,6 +1666,7 @@ def get_instance_rate_per_hour(
     region: str,
 ) -> Union[Dict[str, str], None]:
     """Gets instance rate per hour for the given instance type.
+
     Args:
         instance_type (str): The instance type.
         region (str): The region.

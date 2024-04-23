@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 
-from functools import lru_cache
+from functools import cached_property
 from typing import Dict, List, Optional, Union, Any
 import pandas as pd
 from botocore.exceptions import ClientError
@@ -293,17 +293,6 @@ class JumpStartModel(Model):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
-        metadata_configs = get_jumpstart_configs(
-            region=region,
-            model_id=model_id,
-            model_version=model_version,
-            sagemaker_session=sagemaker_session,
-        )
-        self._deployment_configs = self._deployment_configs = [
-            self._convert_to_deployment_config_metadata(config_name, config)
-            for config_name, config in metadata_configs.items()
-        ]
-
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
                 model_id=model_id,
@@ -371,6 +360,17 @@ class JumpStartModel(Model):
 
         self.model_package_arn = model_init_kwargs.model_package_arn
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
+
+        metadata_configs = get_jumpstart_configs(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            sagemaker_session=sagemaker_session,
+        )
+        self._deployment_configs = [
+            self._convert_to_deployment_config_metadata(config_name, config)
+            for config_name, config in metadata_configs.items()
+        ]
 
     def log_subscription_warning(self) -> None:
         """Log message prompting the customer to subscribe to the proprietary model."""
@@ -828,8 +828,7 @@ class JumpStartModel(Model):
 
         return model_package
 
-    @lru_cache
-    @property
+    @cached_property
     def benchmark_metrics(self) -> pd.DataFrame:
         """Pandas DataFrame object of Benchmark Metrics for deployment configs"""
         data = extract_metrics_from_deployment_configs(
@@ -844,16 +843,17 @@ class JumpStartModel(Model):
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
+
         Returns:
-            A list of deployment configs (List[Dict[str, Any]]).
+            List[Dict[str, Any]]: A list of deployment configs.
         """
         return self._deployment_configs
 
-    @lru_cache
     def _convert_to_deployment_config_metadata(
         self, config_name: str, metadata_config: JumpStartMetadataConfig
     ) -> Dict[str, Any]:
         """Retrieve deployment config for config name.
+
         Args:
             config_name (str): Name of deployment config.
             metadata_config (JumpStartMetadataConfig): Metadata config for deployment config.

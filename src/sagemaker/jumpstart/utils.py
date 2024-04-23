@@ -1005,6 +1005,7 @@ def extract_metrics_from_deployment_configs(
     deployment_configs: list[dict[str, Any]], config_name: str
 ) -> Dict[str, List[str]]:
     """Extracts metrics from deployment configs.
+
     Args:
         deployment_configs (list[dict[str, Any]]): List of deployment configs.
         config_name (str): The name of the deployment config use by the model.

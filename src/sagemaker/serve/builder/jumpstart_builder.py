@@ -431,14 +431,15 @@ class JumpStart(ABC):
             sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
         )
 
-    def display_benchmark_metrics(self):
+    def display_benchmark_metrics(self, *args, **kwargs):
         """Display Markdown Benchmark Metrics for deployment configs."""
-        self.pysdk_model.display_benchmark_metrics()
+        self.pysdk_model.display_benchmark_metrics(args, kwargs)
 
     def list_deployment_configs(self) -> list[dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
+
         Returns:
-            A list of deployment configs (List[Dict[str, Any]]).
+            List[Dict[str, Any]]: A list of deployment configs.
         """
         return self.pysdk_model.list_deployment_configs()
 
