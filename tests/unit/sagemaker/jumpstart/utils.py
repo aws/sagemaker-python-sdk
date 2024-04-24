@@ -12,9 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from typing import List
+from typing import List, Dict, Any
 import boto3
 
+from sagemaker.compute_resource_requirements import ResourceRequirements
 from sagemaker.jumpstart.cache import JumpStartModelsCache
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -27,6 +28,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartModelHeader,
+    JumpStartModelInitKwargs,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import get_formatted_manifest
@@ -43,6 +45,8 @@ from tests.unit.sagemaker.jumpstart.constants import (
     SPECIAL_MODEL_SPECS_DICT,
     TRAINING_CONFIG_RANKINGS,
     TRAINING_CONFIGS,
+    DEPLOYMENT_CONFIGS,
+    INIT_KWARGS,
 )
 
 
@@ -297,3 +301,19 @@ def overwrite_dictionary(
         base_dictionary[key] = value
 
     return base_dictionary
+
+
+def get_base_deployment_configs() -> List[Dict[str, Any]]:
+    return DEPLOYMENT_CONFIGS
+
+
+def get_mock_init_kwargs(model_id) -> JumpStartModelInitKwargs:
+    return JumpStartModelInitKwargs(
+        model_id=model_id,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
+        model_data=INIT_KWARGS.get("model_data"),
+        image_uri=INIT_KWARGS.get("image_uri"),
+        instance_type=INIT_KWARGS.get("instance_type"),
+        env=INIT_KWARGS.get("env"),
+        resources=ResourceRequirements(),
+    )

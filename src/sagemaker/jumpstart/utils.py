@@ -999,3 +999,44 @@ def get_jumpstart_configs(
         if metadata_configs
         else {}
     )
+
+
+def extract_metrics_from_deployment_configs(
+    deployment_configs: List[Dict[str, Any]], config_name: str
+) -> Dict[str, List[str]]:
+    """Extracts metrics from deployment configs.
+
+    Args:
+        deployment_configs (list[dict[str, Any]]): List of deployment configs.
+        config_name (str): The name of the deployment config use by the model.
+    """
+
+    data = {"Config Name": [], "Instance Type": [], "Selected": []}
+
+    for index, deployment_config in enumerate(deployment_configs):
+        if deployment_config.get("DeploymentConfig") is None:
+            continue
+
+        benchmark_metrics = deployment_config.get("BenchmarkMetrics")
+        if benchmark_metrics is not None:
+            data["Config Name"].append(deployment_config.get("ConfigName"))
+            data["Instance Type"].append(
+                deployment_config.get("DeploymentConfig").get("InstanceType")
+            )
+            data["Selected"].append(
+                "Yes"
+                if (config_name is not None and config_name == deployment_config.get("ConfigName"))
+                else "No"
+            )
+
+            if index == 0:
+                for benchmark_metric in benchmark_metrics:
+                    column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
+                    data[column_name] = []
+
+            for benchmark_metric in benchmark_metrics:
+                column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
+                if column_name in data.keys():
+                    data[column_name].append(benchmark_metric.get("value"))
+
+    return data
