@@ -439,6 +439,9 @@ class JumpStart(ABC):
                 The name of the deployment config. Set to None to unset
                 any existing config that is applied to the model.
         """
+        if self.pysdk_model is None:
+            self.pysdk_model = self._create_pre_trained_js_model()
+
         self.pysdk_model.set_deployment_config(config_name)
 
     def get_deployment_config(self) -> Optional[Dict[str, Any]]:
@@ -447,10 +450,16 @@ class JumpStart(ABC):
         Returns:
             Union[Dict[str, Any], None]: Deployment config to apply to this model.
         """
+        if self.pysdk_model is None:
+            self.pysdk_model = self._create_pre_trained_js_model()
+
         return self.pysdk_model.deployment_config
 
     def display_benchmark_metrics(self):
         """Display Markdown Benchmark Metrics for deployment configs."""
+        if self.pysdk_model is None:
+            self.pysdk_model = self._create_pre_trained_js_model()
+
         self.pysdk_model.display_benchmark_metrics()
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
@@ -459,6 +468,9 @@ class JumpStart(ABC):
         Returns:
             List[Dict[str, Any]]: A list of deployment configs.
         """
+        if self.pysdk_model is None:
+            self.pysdk_model = self._create_pre_trained_js_model()
+
         return self.pysdk_model.list_deployment_configs()
 
     def _build_for_jumpstart(self):
@@ -467,7 +479,11 @@ class JumpStart(ABC):
         self.secret_key = None
         self.jumpstart = True
 
-        pysdk_model = self._create_pre_trained_js_model()
+        pysdk_model = (
+            self.pysdk_model
+            if self.pysdk_model is not None
+            else self._create_pre_trained_js_model()
+        )
 
         image_uri = pysdk_model.image_uri
 
