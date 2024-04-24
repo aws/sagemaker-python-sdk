@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 from functools import lru_cache
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
 
@@ -442,7 +442,7 @@ class JumpStartModel(Model):
         )
 
     @property
-    def deployment_config(self) -> Union[Dict[str, Any], None]:
+    def deployment_config(self) -> Optional[Dict[str, Any]]:
         """The deployment config to apply to the model.
 
         Returns:
@@ -859,7 +859,7 @@ class JumpStartModel(Model):
 
         return model_package
 
-    @lru_cache(typed=True)
+    @lru_cache
     def _get_benchmarks_data(self, config_name: str) -> Dict[str, List[str]]:
         """Constructs deployment configs benchmark data.
 
@@ -873,8 +873,8 @@ class JumpStartModel(Model):
             config_name,
         )
 
-    @lru_cache(typed=True)
-    def _retrieve_selected_deployment_config(self, config_name: str) -> Union[Dict[str, Any], None]:
+    @lru_cache
+    def _retrieve_selected_deployment_config(self, config_name: str) -> Optional[Dict[str, Any]]:
         """Retrieve the deployment config to apply to the model.
 
         Args:

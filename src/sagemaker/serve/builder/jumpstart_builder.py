@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import copy
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Any, List, Dict, Optional, Union
+from typing import Type, Any, List, Dict, Optional
 import logging
 
 from sagemaker.model import Model
@@ -441,7 +441,7 @@ class JumpStart(ABC):
         """
         self.pysdk_model.set_deployment_config(config_name)
 
-    def get_deployment_config(self) -> Union[Dict[str, Any], None]:
+    def get_deployment_config(self) -> Optional[Dict[str, Any]]:
         """Gets the deployment config to apply to the model.
 
         Returns:
