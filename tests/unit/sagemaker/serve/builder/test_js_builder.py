@@ -676,12 +676,95 @@ class TestJumpStartBuilder(unittest.TestCase):
             lambda: DEPLOYMENT_CONFIGS
         )
 
-        model = builder.build()
+        builder.build()
         builder.serve_settings.telemetry_opt_out = True
 
-        configs = model.list_deployment_configs()
+        configs = builder.list_deployment_configs()
 
         self.assertEqual(configs, DEPLOYMENT_CONFIGS)
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
+    def test_get_deployment_config(
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="facebook/galactica-mock-model-id",
+            schema_builder=mock_schema_builder,
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+
+        expected = DEPLOYMENT_CONFIGS[0]
+        mock_pre_trained_model.return_value.deployment_config = expected
+
+        builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+
+        self.assertEqual(builder.get_deployment_config(), expected)
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
+    def test_set_deployment_config(
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="facebook/galactica-mock-model-id",
+            schema_builder=mock_schema_builder,
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+
+        builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+
+        builder.set_deployment_config("config_name")
+
+        mock_pre_trained_model.return_value.set_deployment_config.assert_called_once_with(
+            "config_name"
+        )
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch(
@@ -719,7 +802,7 @@ class TestJumpStartBuilder(unittest.TestCase):
             lambda *args, **kwargs: "metric data"
         )
 
-        model = builder.build()
+        builder.build()
         builder.serve_settings.telemetry_opt_out = True
 
-        model.display_benchmark_metrics()
+        builder.display_benchmark_metrics()

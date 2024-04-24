@@ -1660,7 +1660,7 @@ def deep_override_dict(
     return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
 
 
-@lru_cache
+@lru_cache(typed=True)
 def get_instance_rate_per_hour(
     instance_type: str,
     region: str,
