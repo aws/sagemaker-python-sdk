@@ -2208,3 +2208,99 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
         self.config_name = config_name
+
+
+class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
+    """Base class for Deployment Config Data."""
+
+    def _convert_to_pascal_case(self, attr_name: str) -> str:
+        """Converts a snake_case attribute name into a camelCased string.
+
+        Args:
+            attr_name (str): The snake_case attribute name.
+        Returns:
+            str: The PascalCased attribute name.
+        """
+        return attr_name.replace("_", " ").title().replace(" ", "")
+
+    def to_json(self) -> Dict[str, Any]:
+        """Represents ``This`` object as JSON."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                att = self._convert_to_pascal_case(att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                elif isinstance(cur_val, list):
+                    json_obj[att] = []
+                    for obj in cur_val:
+                        if issubclass(type(obj), JumpStartDataHolderType):
+                            json_obj[att].append(obj.to_json())
+                        else:
+                            json_obj[att].append(obj)
+                elif isinstance(cur_val, dict):
+                    json_obj[att] = {}
+                    for key, val in cur_val.items():
+                        if issubclass(type(val), JumpStartDataHolderType):
+                            json_obj[att][self._convert_to_pascal_case(key)] = val.to_json()
+                        else:
+                            json_obj[att][key] = val
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
+
+class DeploymentConfig(BaseDeploymentConfigDataHolder):
+    """Dataclass representing a Deployment Config."""
+
+    __slots__ = [
+        "model_data_download_timeout",
+        "container_startup_health_check_timeout",
+        "image_uri",
+        "model_data",
+        "instance_type",
+        "environment",
+        "compute_resource_requirements",
+    ]
+
+    def __init__(
+        self, init_kwargs: JumpStartModelInitKwargs, deploy_kwargs: JumpStartModelDeployKwargs
+    ):
+        """Instantiates DeploymentConfig object."""
+        if init_kwargs is not None:
+            self.image_uri = init_kwargs.image_uri
+            self.model_data = init_kwargs.model_data
+            self.instance_type = init_kwargs.instance_type
+            self.environment = init_kwargs.env
+            if init_kwargs.resources is not None:
+                self.compute_resource_requirements = (
+                    init_kwargs.resources.get_compute_resource_requirements()
+                )
+        if deploy_kwargs is not None:
+            self.model_data_download_timeout = deploy_kwargs.model_data_download_timeout
+            self.container_startup_health_check_timeout = (
+                deploy_kwargs.container_startup_health_check_timeout
+            )
+
+
+class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
+    """Dataclass representing a Deployment Config Metadata"""
+
+    __slots__ = [
+        "config_name",
+        "benchmark_metrics",
+        "deployment_config",
+    ]
+
+    def __init__(
+        self,
+        config_name: str,
+        benchmark_metrics: List[JumpStartBenchmarkStat],
+        init_kwargs: JumpStartModelInitKwargs,
+        deploy_kwargs: JumpStartModelDeployKwargs,
+    ):
+        """Instantiates DeploymentConfigMetadata object."""
+        self.config_name = config_name
+        self.benchmark_metrics = benchmark_metrics
+        self.deployment_config = DeploymentConfig(init_kwargs, deploy_kwargs)
