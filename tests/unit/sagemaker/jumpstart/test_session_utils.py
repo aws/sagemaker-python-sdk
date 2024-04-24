@@ -153,10 +153,8 @@ def test_get_model_info_from_inference_component_endpoint_with_inference_compone
         None,
     )
 
-    retval = (
-        _get_model_info_from_inference_component_endpoint_with_inference_component_name(
-            "bLaH", sagemaker_session=mock_sm_session
-        )
+    retval = _get_model_info_from_inference_component_endpoint_with_inference_component_name(
+        "bLaH", sagemaker_session=mock_sm_session
     )
 
     assert retval == ("model_id", "model_version", None)
@@ -202,10 +200,8 @@ def test_get_model_info_from_inference_component_endpoint_without_inference_comp
         return_value=["icname"]
     )
 
-    retval = (
-        _get_model_info_from_inference_component_endpoint_without_inference_component_name(
-            "blahblah", mock_sm_session
-        )
+    retval = _get_model_info_from_inference_component_endpoint_without_inference_component_name(
+        "blahblah", mock_sm_session
     )
 
     assert retval == ("model_id", "model_version", "icname")
