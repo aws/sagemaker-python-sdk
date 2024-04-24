@@ -62,9 +62,9 @@ class NetworkConfig(object):
         network_config_request = {"EnableNetworkIsolation": enable_network_isolation}
 
         if self.encrypt_inter_container_traffic is not None:
-            network_config_request[
-                "EnableInterContainerTrafficEncryption"
-            ] = self.encrypt_inter_container_traffic
+            network_config_request["EnableInterContainerTrafficEncryption"] = (
+                self.encrypt_inter_container_traffic
+            )
 
         if self.security_group_ids is not None or self.subnets is not None:
             network_config_request["VpcConfig"] = {}

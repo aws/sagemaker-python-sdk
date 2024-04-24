@@ -1,4 +1,5 @@
 """Load a pickled object to detect the dependencies it requires"""
+
 from __future__ import absolute_import
 from pathlib import Path
 from typing import List

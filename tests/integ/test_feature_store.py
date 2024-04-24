@@ -2221,9 +2221,9 @@ def test_ingest_in_memory_multi_process_with_collection_types(
             [3.0, 4.0],
             ["a", "b"],
         ]
-        pandas_data_frame_with_collection_type.loc[
-            len(pandas_data_frame_with_collection_type)
-        ] = new_row_data
+        pandas_data_frame_with_collection_type.loc[len(pandas_data_frame_with_collection_type)] = (
+            new_row_data
+        )
         with pytest.raises(IngestionError):
             feature_group.ingest(
                 data_frame=pandas_data_frame_with_collection_type,
@@ -2284,9 +2284,9 @@ def test_ingest_in_memory_single_process_with_collection_types(
             [3.0, 4.0],
             ["a", "b"],
         ]
-        pandas_data_frame_with_collection_type.loc[
-            len(pandas_data_frame_with_collection_type)
-        ] = new_row_data
+        pandas_data_frame_with_collection_type.loc[len(pandas_data_frame_with_collection_type)] = (
+            new_row_data
+        )
         with pytest.raises(IngestionError):
             feature_group.ingest(
                 data_frame=pandas_data_frame_with_collection_type,
@@ -2333,9 +2333,9 @@ def test_ingest_standard_multi_process_with_collection_types(
             [3.0, 4.0],
             ["a", "b"],
         ]
-        pandas_data_frame_with_collection_type.loc[
-            len(pandas_data_frame_with_collection_type)
-        ] = new_row_data
+        pandas_data_frame_with_collection_type.loc[len(pandas_data_frame_with_collection_type)] = (
+            new_row_data
+        )
 
         ingestion_manager = feature_group.ingest(
             data_frame=pandas_data_frame_with_collection_type,

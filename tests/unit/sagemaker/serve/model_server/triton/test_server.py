@@ -40,8 +40,8 @@ class TritonServerTests(TestCase):
     @patch("sagemaker.serve.model_server.triton.server.importlib")
     def test_start_invoke_destroy_local_triton_server_gpu(self, mock_importlib):
         mock_triton_client = Mock()
-        mock_importlib.import_module.side_effect = (
-            lambda module_name: mock_triton_client if module_name == "tritonclient.http" else None
+        mock_importlib.import_module.side_effect = lambda module_name: (
+            mock_triton_client if module_name == "tritonclient.http" else None
         )
 
         mock_container = Mock()
@@ -99,8 +99,8 @@ class TritonServerTests(TestCase):
     @patch("sagemaker.serve.model_server.triton.server.importlib")
     def test_start_invoke_destroy_local_triton_server_cpu(self, mock_importlib):
         mock_triton_client = Mock()
-        mock_importlib.import_module.side_effect = (
-            lambda module_name: mock_triton_client if module_name == "tritonclient.http" else None
+        mock_importlib.import_module.side_effect = lambda module_name: (
+            mock_triton_client if module_name == "tritonclient.http" else None
         )
 
         mock_container = Mock()
@@ -158,8 +158,8 @@ class TritonServerTests(TestCase):
     def test_upload_artifacts_sagemaker_triton_server(self, mock_upload, mock_platform):
         mock_session = Mock()
         mock_platform.python_version.return_value = "3.8"
-        mock_upload.side_effect = (
-            lambda session, repo, bucket, prefix: S3_URI
+        mock_upload.side_effect = lambda session, repo, bucket, prefix: (
+            S3_URI
             if session == mock_session
             and repo == MODEL_PATH + "/model_repository"
             and bucket == "mock_model_data_uri"

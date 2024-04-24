@@ -294,9 +294,9 @@ class _SageMakerContainer(object):
         }
         training_env_vars.update(environment)
         if self.sagemaker_session.s3_resource is not None:
-            training_env_vars[
-                S3_ENDPOINT_URL_ENV_NAME
-            ] = self.sagemaker_session.s3_resource.meta.client._endpoint.host
+            training_env_vars[S3_ENDPOINT_URL_ENV_NAME] = (
+                self.sagemaker_session.s3_resource.meta.client._endpoint.host
+            )
 
         compose_data = self._generate_compose_file(
             "train", additional_volumes=volumes, additional_env_vars=training_env_vars

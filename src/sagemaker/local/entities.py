@@ -832,7 +832,7 @@ class _LocalPipelineExecution(object):
         merged_parameters = {}
         default_parameters = {parameter.name: parameter for parameter in self.pipeline.parameters}
         if overridden_parameters is not None:
-            for (param_name, param_value) in overridden_parameters.items():
+            for param_name, param_value in overridden_parameters.items():
                 if param_name not in default_parameters:
                     error_msg = self._construct_validation_exception_message(
                         "Unknown parameter '{}'".format(param_name)

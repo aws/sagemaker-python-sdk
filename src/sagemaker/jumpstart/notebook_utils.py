@@ -436,19 +436,19 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             manifest_specs_cached_values[val] = getattr(model_manifest, val)
 
         if is_task_filter:
-            manifest_specs_cached_values[
-                SpecialSupportedFilterKeys.TASK
-            ] = extract_framework_task_model(model_manifest.model_id)[1]
+            manifest_specs_cached_values[SpecialSupportedFilterKeys.TASK] = (
+                extract_framework_task_model(model_manifest.model_id)[1]
+            )
 
         if is_framework_filter:
-            manifest_specs_cached_values[
-                SpecialSupportedFilterKeys.FRAMEWORK
-            ] = extract_framework_task_model(model_manifest.model_id)[0]
+            manifest_specs_cached_values[SpecialSupportedFilterKeys.FRAMEWORK] = (
+                extract_framework_task_model(model_manifest.model_id)[0]
+            )
 
         if is_model_type_filter:
-            manifest_specs_cached_values[
-                SpecialSupportedFilterKeys.MODEL_TYPE
-            ] = extract_model_type_filter_representation(model_manifest.spec_key)
+            manifest_specs_cached_values[SpecialSupportedFilterKeys.MODEL_TYPE] = (
+                extract_model_type_filter_representation(model_manifest.spec_key)
+            )
 
         if Version(model_manifest.min_version) > Version(get_sagemaker_version()):
             return None

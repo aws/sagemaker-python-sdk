@@ -2197,6 +2197,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     CONTAINER_ENTRY_POINT = ["bin/bash", "test.sh"]
     CONTAINER_ARGUMENTS = ["--arg1", "value1", "--arg2", "value2"]
     remote_debug_config = {"EnableRemoteDebug": True}
+    session_chaining_config = {"EnableSessionTagChaining": True}
 
     sagemaker_session.train(
         image_uri=IMAGE,
@@ -2222,6 +2223,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         container_entry_point=CONTAINER_ENTRY_POINT,
         container_arguments=CONTAINER_ARGUMENTS,
         remote_debug_config=remote_debug_config,
+        session_chaining_config=session_chaining_config,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -2245,6 +2247,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     )
     assert actual_train_args["AlgorithmSpecification"]["ContainerArguments"] == CONTAINER_ARGUMENTS
     assert actual_train_args["RemoteDebugConfig"]["EnableRemoteDebug"]
+    assert actual_train_args["SessionChainingConfig"]["EnableSessionTagChaining"]
 
 
 def test_create_transform_job_with_sagemaker_config_injection(sagemaker_session):
@@ -2460,9 +2463,9 @@ def boto_session_complete():
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     boto_mock.client("sagemaker").describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    boto_mock.client(
-        "sagemaker"
-    ).describe_transform_job.return_value = COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT
+    boto_mock.client("sagemaker").describe_transform_job.return_value = (
+        COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT
+    )
     return boto_mock
 
 
@@ -2482,9 +2485,9 @@ def boto_session_stopped():
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     boto_mock.client("sagemaker").describe_training_job.return_value = STOPPED_DESCRIBE_JOB_RESULT
-    boto_mock.client(
-        "sagemaker"
-    ).describe_transform_job.return_value = STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT
+    boto_mock.client("sagemaker").describe_transform_job.return_value = (
+        STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT
+    )
     return boto_mock
 
 
