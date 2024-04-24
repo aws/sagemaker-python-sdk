@@ -362,10 +362,11 @@ class JumpStartModel(Model):
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
 
         metadata_configs = get_jumpstart_configs(
-            region=region,
-            model_id=model_id,
-            model_version=model_version,
-            sagemaker_session=sagemaker_session,
+            region=self.region,
+            model_id=self.model_id,
+            model_version=self.model_version,
+            sagemaker_session=self.sagemaker_session,
+            model_type=self.model_type,
         )
         self._deployment_configs = [
             self._convert_to_deployment_config_metadata(config_name, config)
