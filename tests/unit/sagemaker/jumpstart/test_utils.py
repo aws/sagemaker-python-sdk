@@ -49,6 +49,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_spec_from_base_spec,
     get_special_model_spec,
     get_prototype_manifest,
+    get_base_deployment_configs,
 )
 from mock import MagicMock
 
@@ -1759,3 +1760,52 @@ class TestBenchmarkStats:
                 ]
             },
         }
+
+
+@pytest.mark.parametrize(
+    "config_name, expected",
+    [
+        (
+            None,
+            {
+                "Config Name": [
+                    "neuron-inference",
+                    "neuron-inference-budget",
+                    "gpu-inference-budget",
+                    "gpu-inference",
+                ],
+                "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
+                "Selected": ["No", "No", "No", "No"],
+                "Instance Rate (USD/Hrs)": [
+                    "0.0083000000",
+                    "0.0083000000",
+                    "0.0083000000",
+                    "0.0083000000",
+                ],
+            },
+        ),
+        (
+            "neuron-inference",
+            {
+                "Config Name": [
+                    "neuron-inference",
+                    "neuron-inference-budget",
+                    "gpu-inference-budget",
+                    "gpu-inference",
+                ],
+                "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
+                "Selected": ["Yes", "No", "No", "No"],
+                "Instance Rate (USD/Hrs)": [
+                    "0.0083000000",
+                    "0.0083000000",
+                    "0.0083000000",
+                    "0.0083000000",
+                ],
+            },
+        ),
+    ],
+)
+def test_extract_metrics_from_deployment_configs(config_name, expected):
+    data = utils.extract_metrics_from_deployment_configs(get_base_deployment_configs(), config_name)
+
+    assert data == expected

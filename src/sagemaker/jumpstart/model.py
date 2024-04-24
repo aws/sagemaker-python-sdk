@@ -14,7 +14,9 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, List, Optional, Union
+from functools import lru_cache
+from typing import Dict, List, Optional, Union, Any
+import pandas as pd
 from botocore.exceptions import ClientError
 
 from sagemaker import payloads
@@ -36,14 +38,21 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
-from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.types import (
+    JumpStartSerializablePayload,
+    DeploymentConfigMetadata,
+    JumpStartBenchmarkStat,
+    JumpStartMetadataConfig,
+)
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
+    get_jumpstart_configs,
+    extract_metrics_from_deployment_configs,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
-from sagemaker.utils import stringify_object, format_tags, Tags
+from sagemaker.utils import stringify_object, format_tags, Tags, get_instance_rate_per_hour
 from sagemaker.model import (
     Model,
     ModelPackage,
@@ -352,6 +361,18 @@ class JumpStartModel(Model):
         self.model_package_arn = model_init_kwargs.model_package_arn
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
 
+        metadata_configs = get_jumpstart_configs(
+            region=self.region,
+            model_id=self.model_id,
+            model_version=self.model_version,
+            sagemaker_session=self.sagemaker_session,
+            model_type=self.model_type,
+        )
+        self._deployment_configs = [
+            self._convert_to_deployment_config_metadata(config_name, config)
+            for config_name, config in metadata_configs.items()
+        ]
+
     def log_subscription_warning(self) -> None:
         """Log message prompting the customer to subscribe to the proprietary model."""
         subscription_link = verify_model_region_and_return_specs(
@@ -419,6 +440,27 @@ class JumpStartModel(Model):
         self.__init__(
             model_id=self.model_id, model_version=self.model_version, config_name=config_name
         )
+
+    @property
+    def benchmark_metrics(self) -> pd.DataFrame:
+        """Benchmark Metrics for deployment configs
+
+        Returns:
+            Metrics: Pandas DataFrame object.
+        """
+        return pd.DataFrame(self._get_benchmark_data(self.config_name))
+
+    def display_benchmark_metrics(self) -> None:
+        """Display Benchmark Metrics for deployment configs."""
+        print(self.benchmark_metrics.to_markdown())
+
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for ``This`` model.
+
+        Returns:
+            List[Dict[str, Any]]: A list of deployment configs.
+        """
+        return self._deployment_configs
 
     def _create_sagemaker_model(
         self,
@@ -807,6 +849,67 @@ class JumpStartModel(Model):
         model_package.deploy = register_deploy_wrapper
 
         return model_package
+
+    @lru_cache
+    def _get_benchmark_data(self, config_name: str) -> Dict[str, List[str]]:
+        """Constructs deployment configs benchmark data.
+
+        Args:
+            config_name (str): The name of the selected deployment config.
+        Returns:
+            Dict[str, List[str]]: Deployment config benchmark data.
+        """
+        return extract_metrics_from_deployment_configs(
+            self._deployment_configs,
+            config_name,
+        )
+
+    def _convert_to_deployment_config_metadata(
+        self, config_name: str, metadata_config: JumpStartMetadataConfig
+    ) -> Dict[str, Any]:
+        """Retrieve deployment config for config name.
+
+        Args:
+            config_name (str): Name of deployment config.
+            metadata_config (JumpStartMetadataConfig): Metadata config for deployment config.
+        Returns:
+            A deployment metadata config for config name (dict[str, Any]).
+        """
+        default_inference_instance_type = metadata_config.resolved_config.get(
+            "default_inference_instance_type"
+        )
+
+        instance_rate = get_instance_rate_per_hour(
+            instance_type=default_inference_instance_type, region=self.region
+        )
+
+        benchmark_metrics = (
+            metadata_config.benchmark_metrics.get(default_inference_instance_type)
+            if metadata_config.benchmark_metrics is not None
+            else None
+        )
+        if instance_rate is not None:
+            if benchmark_metrics is not None:
+                benchmark_metrics.append(JumpStartBenchmarkStat(instance_rate))
+            else:
+                benchmark_metrics = [JumpStartBenchmarkStat(instance_rate)]
+
+        init_kwargs = get_init_kwargs(
+            model_id=self.model_id,
+            instance_type=default_inference_instance_type,
+            sagemaker_session=self.sagemaker_session,
+        )
+        deploy_kwargs = get_deploy_kwargs(
+            model_id=self.model_id,
+            instance_type=default_inference_instance_type,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+        deployment_config_metadata = DeploymentConfigMetadata(
+            config_name, benchmark_metrics, init_kwargs, deploy_kwargs
+        )
+
+        return deployment_config_metadata.to_json()
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

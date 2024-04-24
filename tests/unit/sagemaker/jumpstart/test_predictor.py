@@ -160,7 +160,9 @@ def test_jumpstart_predictor_support_no_model_id_supplied_sad_case(
     )
     patched_get_default_predictor.assert_not_called()
 
-
+@patch(
+    "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+)
 @patch("sagemaker.predictor.get_model_generic_info_from_endpoint")
 @patch("sagemaker.jumpstart.payload_utils.JumpStartS3PayloadAccessor.get_object_cached")
 @patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
@@ -172,6 +174,7 @@ def test_jumpstart_serializable_payload_with_predictor(
     patched_validate_model_id_and_get_type,
     patched_get_object_cached,
     patched_get_model_generic_info_from_endpoint,
+    patched_get_jumpstart_configs,
 ):
 
     patched_get_object_cached.return_value = base64.b64decode("encodedimage")
