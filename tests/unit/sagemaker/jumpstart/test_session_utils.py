@@ -153,8 +153,10 @@ def test_get_model_generic_info_from_inference_component_endpoint_with_inference
         None,
     )
 
-    retval = _get_model_generic_info_from_inference_component_endpoint_with_inference_component_name(
-        "bLaH", sagemaker_session=mock_sm_session
+    retval = (
+        _get_model_generic_info_from_inference_component_endpoint_with_inference_component_name(
+            "bLaH", sagemaker_session=mock_sm_session
+        )
     )
 
     assert retval == ("model_id", "model_version", None)
