@@ -22,7 +22,7 @@ from sagemaker.session import Session
 from sagemaker.utils import aws_partition
 
 
-def get_model_generic_info_from_endpoint(
+def get_model_info_from_endpoint(
     endpoint_name: str,
     inference_component_name: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -47,7 +47,7 @@ def get_model_generic_info_from_endpoint(
                 model_id,
                 model_version,
                 config_name,
-            ) = _get_model_generic_info_from_inference_component_endpoint_with_inference_component_name(  # noqa E501  # pylint: disable=c0301
+            ) = _get_model_info_from_inference_component_endpoint_with_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 inference_component_name, sagemaker_session
             )
 
@@ -57,18 +57,18 @@ def get_model_generic_info_from_endpoint(
                 model_version,
                 inference_component_name,
                 config_name,
-            ) = _get_model_generic_info_from_inference_component_endpoint_without_inference_component_name(  # noqa E501  # pylint: disable=c0301
+            ) = _get_model_info_from_inference_component_endpoint_without_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 endpoint_name, sagemaker_session
             )
 
     else:
-        model_id, model_version, config_name = _get_model_generic_info_from_model_based_endpoint(
+        model_id, model_version, config_name = _get_model_info_from_model_based_endpoint(
             endpoint_name, inference_component_name, sagemaker_session
         )
     return model_id, model_version, inference_component_name, config_name
 
 
-def _get_model_generic_info_from_inference_component_endpoint_without_inference_component_name(
+def _get_model_info_from_inference_component_endpoint_without_inference_component_name(
     endpoint_name: str, sagemaker_session: Session
 ) -> Tuple[str, str, str]:
     """Derives the model ID, version, config name and inferred inference component name.
@@ -100,14 +100,14 @@ def _get_model_generic_info_from_inference_component_endpoint_without_inference_
         )
     inference_component_name = inference_component_names[0]
     return (
-        *_get_model_generic_info_from_inference_component_endpoint_with_inference_component_name(
+        *_get_model_info_from_inference_component_endpoint_with_inference_component_name(
             inference_component_name, sagemaker_session
         ),
         inference_component_name,
     )
 
 
-def _get_model_generic_info_from_inference_component_endpoint_with_inference_component_name(
+def _get_model_info_from_inference_component_endpoint_with_inference_component_name(
     inference_component_name: str, sagemaker_session: Session
 ):
     """Returns the model ID and version inferred from a SageMaker inference component.
@@ -139,7 +139,7 @@ def _get_model_generic_info_from_inference_component_endpoint_with_inference_com
     return model_id, model_version, config_name
 
 
-def _get_model_generic_info_from_model_based_endpoint(
+def _get_model_info_from_model_based_endpoint(
     endpoint_name: str,
     inference_component_name: Optional[str],
     sagemaker_session: Session,
@@ -177,7 +177,7 @@ def _get_model_generic_info_from_model_based_endpoint(
     return model_id, model_version, config_name
 
 
-def get_model_generic_info_from_training_job(
+def get_model_info_from_training_job(
     training_job_name: str,
     sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> Tuple[str, str, Optional[str]]:

@@ -33,7 +33,7 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.session_utils import get_model_generic_info_from_training_job
+from sagemaker.jumpstart.session_utils import get_model_info_from_training_job
 from sagemaker.jumpstart.types import JumpStartMetadataConfig
 from sagemaker.jumpstart.utils import (
     get_jumpstart_configs,
@@ -733,7 +733,7 @@ class JumpStartEstimator(Estimator):
         config_name = None
         if model_id is None:
 
-            model_id, model_version, config_name = get_model_generic_info_from_training_job(
+            model_id, model_version, config_name = get_model_info_from_training_job(
                 training_job_name=training_job_name, sagemaker_session=sagemaker_session
             )
 

@@ -1175,7 +1175,6 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
             NotImplementedError: If the scope is unrecognized.
         """
 
-
         if self.scope == JumpStartScriptScope.INFERENCE:
             instance_type_attribute = "supported_inference_instance_types"
         elif self.scope == JumpStartScriptScope.TRAINING:

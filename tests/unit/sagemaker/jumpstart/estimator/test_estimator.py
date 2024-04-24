@@ -1016,7 +1016,7 @@ class EstimatorTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
-    @mock.patch("sagemaker.jumpstart.estimator.get_model_generic_info_from_training_job")
+    @mock.patch("sagemaker.jumpstart.estimator.get_model_info_from_training_job")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -1024,13 +1024,13 @@ class EstimatorTest(unittest.TestCase):
         self,
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
-        get_model_generic_info_from_training_job: mock.Mock,
+        get_model_info_from_training_job: mock.Mock,
         mock_attach: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
-        get_model_generic_info_from_training_job.return_value = (
+        get_model_info_from_training_job.return_value = (
             "js-trainable-model-prepacked",
             "1.0.0",
             None,
@@ -1044,7 +1044,7 @@ class EstimatorTest(unittest.TestCase):
             training_job_name="some-training-job-name", sagemaker_session=mock_session
         )
 
-        get_model_generic_info_from_training_job.assert_called_once_with(
+        get_model_info_from_training_job.assert_called_once_with(
             training_job_name="some-training-job-name",
             sagemaker_session=mock_session,
         )
@@ -1060,7 +1060,7 @@ class EstimatorTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
-    @mock.patch("sagemaker.jumpstart.estimator.get_model_generic_info_from_training_job")
+    @mock.patch("sagemaker.jumpstart.estimator.get_model_info_from_training_job")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -1068,13 +1068,13 @@ class EstimatorTest(unittest.TestCase):
         self,
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
-        get_model_generic_info_from_training_job: mock.Mock,
+        get_model_info_from_training_job: mock.Mock,
         mock_attach: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
-        get_model_generic_info_from_training_job.side_effect = ValueError()
+        get_model_info_from_training_job.side_effect = ValueError()
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
@@ -1085,7 +1085,7 @@ class EstimatorTest(unittest.TestCase):
                 training_job_name="some-training-job-name", sagemaker_session=mock_session
             )
 
-        get_model_generic_info_from_training_job.assert_called_once_with(
+        get_model_info_from_training_job.assert_called_once_with(
             training_job_name="some-training-job-name",
             sagemaker_session=mock_session,
         )

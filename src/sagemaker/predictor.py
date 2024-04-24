@@ -18,7 +18,7 @@ from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartModelType
 
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.session_utils import get_model_generic_info_from_endpoint
+from sagemaker.jumpstart.session_utils import get_model_info_from_endpoint
 
 
 from sagemaker.session import Session
@@ -79,7 +79,7 @@ def retrieve_default(
             inferred_model_version,
             inferred_inference_component_name,
             inferred_config_name,
-        ) = get_model_generic_info_from_endpoint(
+        ) = get_model_info_from_endpoint(
             endpoint_name, inference_component_name, sagemaker_session
         )
 
