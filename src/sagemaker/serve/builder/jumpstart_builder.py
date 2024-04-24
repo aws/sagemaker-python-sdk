@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import copy
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Any, List, Dict, Optional, Union
+from typing import Type, Any, List, Dict
 import logging
 
 from sagemaker.model import Model
@@ -430,24 +430,6 @@ class JumpStart(ABC):
         return self._tune_for_js(
             sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
         )
-
-    def set_deployment_config(self, config_name: Optional[str]) -> None:
-        """Sets the deployment config to apply to the model.
-
-        Args:
-            config_name (Optional[str]):
-                The name of the deployment config. Set to None to unset
-                any existing config that is applied to the model.
-        """
-        self.pysdk_model.set_deployment_config(config_name)
-
-    def get_deployment_config(self) -> Union[Dict[str, Any], None]:
-        """Gets the deployment config to apply to the model.
-
-        Returns:
-            Union[Dict[str, Any], None]: Deployment config to apply to this model.
-        """
-        return self.pysdk_model.deployment_config
 
     def display_benchmark_metrics(self):
         """Display Markdown Benchmark Metrics for deployment configs."""
