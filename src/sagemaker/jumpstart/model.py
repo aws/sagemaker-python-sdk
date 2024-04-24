@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 
-from functools import cached_property
+from functools import lru_cache
 from typing import Dict, List, Optional, Union, Any
 import pandas as pd
 from botocore.exceptions import ClientError
@@ -441,6 +441,27 @@ class JumpStartModel(Model):
             model_id=self.model_id, model_version=self.model_version, config_name=config_name
         )
 
+    @property
+    def benchmark_metrics(self) -> pd.DataFrame:
+        """Benchmark Metrics for deployment configs
+
+        Returns:
+            Metrics: Pandas DataFrame object.
+        """
+        return pd.DataFrame(self._get_benchmark_data(self.config_name))
+
+    def display_benchmark_metrics(self) -> None:
+        """Display Benchmark Metrics for deployment configs."""
+        print(self.benchmark_metrics.to_markdown())
+
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for ``This`` model.
+
+        Returns:
+            List[Dict[str, Any]]: A list of deployment configs.
+        """
+        return self._deployment_configs
+
     def _create_sagemaker_model(
         self,
         instance_type=None,
@@ -829,26 +850,19 @@ class JumpStartModel(Model):
 
         return model_package
 
-    @cached_property
-    def benchmark_metrics(self) -> pd.DataFrame:
-        """Pandas DataFrame object of Benchmark Metrics for deployment configs"""
-        data = extract_metrics_from_deployment_configs(
-            self._deployment_configs,
-            self.config_name,
-        )
-        return pd.DataFrame(data)
+    @lru_cache
+    def _get_benchmark_data(self, config_name: str) -> Dict[str, List[str]]:
+        """Constructs deployment configs benchmark data.
 
-    def display_benchmark_metrics(self, *args, **kwargs):
-        """Display Benchmark Metrics for deployment configs."""
-        print(self.benchmark_metrics.to_markdown(), args, kwargs)
-
-    def list_deployment_configs(self) -> List[Dict[str, Any]]:
-        """List deployment configs for ``This`` model in the current region.
-
+        Args:
+            config_name (str): The name of the selected deployment config.
         Returns:
-            List[Dict[str, Any]]: A list of deployment configs.
+            Dict[str, List[str]]: Deployment config benchmark data.
         """
-        return self._deployment_configs
+        return extract_metrics_from_deployment_configs(
+            self._deployment_configs,
+            config_name,
+        )
 
     def _convert_to_deployment_config_metadata(
         self, config_name: str, metadata_config: JumpStartMetadataConfig

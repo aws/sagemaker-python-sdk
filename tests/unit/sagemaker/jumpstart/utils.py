@@ -12,11 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from typing import (
-    List,
-    Dict,
-    Any
-)
+from typing import List, Dict, Any
 import boto3
 
 from sagemaker.compute_resource_requirements import ResourceRequirements
