@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.217.0 (2024-04-24)
+
+### Features
+
+ * support session tag chaining for training job
+
+### Bug Fixes and Other Changes
+
+ * Add Triton v24.03 URI
+ * mainline alt config parsing
+ * Fix tox installs
+ * Add PT 2.2 Graviton Inference DLC
+
 ## v2.216.1 (2024-04-22)
 
 ### Bug Fixes and Other Changes
