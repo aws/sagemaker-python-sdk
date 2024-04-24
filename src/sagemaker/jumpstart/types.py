@@ -1186,7 +1186,7 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
         if self.configs and (
             not self.config_rankings or not self.config_rankings.get(ranking_name)
         ):
-            ranked_config_names = list(self.configs.keys())
+            ranked_config_names = sorted(list(self.configs.keys()))
         else:
             rankings = self.config_rankings.get(ranking_name)
             ranked_config_names = rankings.rankings

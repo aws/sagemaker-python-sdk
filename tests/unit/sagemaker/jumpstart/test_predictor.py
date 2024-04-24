@@ -18,7 +18,7 @@ from sagemaker.serializers import IdentitySerializer, JSONSerializer
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec, get_spec_from_base_spec
 
 
-@patch("sagemaker.predictor.get_model_id_version_from_endpoint")
+@patch("sagemaker.predictor.get_model_generic_info_from_endpoint")
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_predictor_support(
@@ -52,7 +52,7 @@ def test_jumpstart_predictor_support(
     assert js_predictor.accept == MIMEType.JSON
 
 
-@patch("sagemaker.predictor.get_model_id_version_from_endpoint")
+@patch("sagemaker.predictor.get_model_generic_info_from_endpoint")
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_proprietary_predictor_support(
@@ -91,7 +91,7 @@ def test_proprietary_predictor_support(
 
 @patch("sagemaker.predictor.Predictor")
 @patch("sagemaker.predictor.get_default_predictor")
-@patch("sagemaker.predictor.get_model_id_version_from_endpoint")
+@patch("sagemaker.predictor.get_model_generic_info_from_endpoint")
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
@@ -134,7 +134,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
 
 
 @patch("sagemaker.predictor.get_default_predictor")
-@patch("sagemaker.predictor.get_model_id_version_from_endpoint")
+@patch("sagemaker.predictor.get_model_generic_info_from_endpoint")
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_predictor_support_no_model_id_supplied_sad_case(
@@ -161,7 +161,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_sad_case(
     patched_get_default_predictor.assert_not_called()
 
 
-@patch("sagemaker.predictor.get_model_id_version_from_endpoint")
+@patch("sagemaker.predictor.get_model_generic_info_from_endpoint")
 @patch("sagemaker.jumpstart.payload_utils.JumpStartS3PayloadAccessor.get_object_cached")
 @patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
 @patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
@@ -171,7 +171,7 @@ def test_jumpstart_serializable_payload_with_predictor(
     patched_verify_model_region_and_return_specs,
     patched_validate_model_id_and_get_type,
     patched_get_object_cached,
-    patched_get_model_id_version_from_endpoint,
+    patched_get_model_generic_info_from_endpoint,
 ):
 
     patched_get_object_cached.return_value = base64.b64decode("encodedimage")
@@ -181,7 +181,7 @@ def test_jumpstart_serializable_payload_with_predictor(
     patched_get_model_specs.side_effect = get_special_model_spec
 
     model_id, model_version = "default_payloads", "*"
-    patched_get_model_id_version_from_endpoint.return_value = model_id, model_version, None
+    patched_get_model_generic_info_from_endpoint.return_value = model_id, model_version, None
 
     js_predictor = predictor.retrieve_default(
         endpoint_name="blah", model_id=model_id, model_version=model_version
