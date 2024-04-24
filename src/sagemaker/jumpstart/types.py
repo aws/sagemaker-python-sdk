@@ -2205,6 +2205,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+        self.config_name = config_name
 
 
 class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
