@@ -162,7 +162,6 @@ def get_jumpstart_content_bucket(
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
     return bucket_to_return
-    # return "jumpstart-cache-alpha-us-west-2"
 
 
 def get_formatted_manifest(
