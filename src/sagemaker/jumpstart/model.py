@@ -442,6 +442,15 @@ class JumpStartModel(Model):
         )
 
     @property
+    def deployment_config(self) -> Union[Dict[str, Any], None]:
+        """The deployment config to apply to the model..
+
+        Returns:
+            Union[Dict[str, Any], None]: Deployment config to apply to this model.
+        """
+        return self._retrieve_selected_deployment_config(self.config_name)
+
+    @property
     def benchmark_metrics(self) -> pd.DataFrame:
         """Benchmark Metrics for deployment configs
 
@@ -850,7 +859,7 @@ class JumpStartModel(Model):
 
         return model_package
 
-    @lru_cache
+    @lru_cache(typed=True)
     def _get_benchmark_data(self, config_name: str) -> Dict[str, List[str]]:
         """Constructs deployment configs benchmark data.
 
@@ -863,6 +872,23 @@ class JumpStartModel(Model):
             self._deployment_configs,
             config_name,
         )
+
+    @lru_cache(typed=True)
+    def _retrieve_selected_deployment_config(self, config_name: str) -> Union[Dict[str, Any], None]:
+        """Retrieve the deployment config to apply to the model.
+
+        Args:
+            config_name (str): The name of the selected deployment config.
+        Returns:
+            Union[Dict[str, Any], None]: The deployment config to apply to the model.
+        """
+        if config_name is None:
+            return None
+
+        for deployment_config in self._deployment_configs:
+            if deployment_config.get("ConfigName") == config_name:
+                return deployment_config
+        return None
 
     def _convert_to_deployment_config_metadata(
         self, config_name: str, metadata_config: JumpStartMetadataConfig
