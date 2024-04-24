@@ -109,6 +109,7 @@ class JumpStartEstimator(Estimator):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
+        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -500,6 +501,8 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
+            enable_session_tag_chaining (bool or PipelineVariable): Optional.
+                Specifies whether SessionTagChaining is enabled for the training job
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -578,6 +581,7 @@ class JumpStartEstimator(Estimator):
             disable_output_compression=disable_output_compression,
             enable_infra_check=enable_infra_check,
             enable_remote_debug=enable_remote_debug,
+            enable_session_tag_chaining=enable_session_tag_chaining,
         )
 
         self.model_id = estimator_init_kwargs.model_id
