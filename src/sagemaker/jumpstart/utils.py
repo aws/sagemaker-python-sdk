@@ -829,7 +829,9 @@ def _extract_value_from_list_of_tags(
         if value_from_tag is not None:
             if resolved_value is not None and value_from_tag != resolved_value:
                 constants.JUMPSTART_LOGGER.warning(
-                    f"Found multiple {resource_name} tags on the following resource: {resource_arn}"
+                    "Found multiple  %s tags on the following resource: %s",
+                    resource_name,
+                    resource_arn,
                 )
                 resolved_value = None
                 break
