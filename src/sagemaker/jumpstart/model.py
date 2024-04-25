@@ -443,10 +443,10 @@ class JumpStartModel(Model):
 
     @property
     def deployment_config(self) -> Optional[Dict[str, Any]]:
-        """The deployment config to apply to the model.
+        """The deployment config that will be applied to the model.
 
         Returns:
-            Union[Dict[str, Any], None]: Deployment config to apply to this model.
+            Union[Dict[str, Any], None]: Deployment config that will be applied to the model.
         """
         return self._retrieve_selected_deployment_config(self.config_name)
 
@@ -861,7 +861,7 @@ class JumpStartModel(Model):
 
     @lru_cache
     def _get_benchmarks_data(self, config_name: str) -> Dict[str, List[str]]:
-        """Constructs deployment configs benchmark data.
+        """Deployment configs benchmark metrics.
 
         Args:
             config_name (str): The name of the selected deployment config.
@@ -878,9 +878,9 @@ class JumpStartModel(Model):
         """Retrieve the deployment config to apply to the model.
 
         Args:
-            config_name (str): The name of the selected deployment config.
+            config_name (str): The name of the deployment config to retrieve.
         Returns:
-            Union[Dict[str, Any], None]: The deployment config to apply to the model.
+            Optional[Dict[str, Any]]: The retrieved deployment config.
         """
         if config_name is None:
             return None

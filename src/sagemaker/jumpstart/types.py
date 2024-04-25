@@ -2286,7 +2286,6 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
     """Dataclass representing a Deployment Config Metadata"""
 
     __slots__ = [
-        "version",
         "deployment_config_name",
         "deployment_args",
         "acceleration_configs",
@@ -2301,7 +2300,6 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
         deploy_kwargs: JumpStartModelDeployKwargs,
     ):
         """Instantiates DeploymentConfigMetadata object."""
-        self.version = "1.0.0"
         self.deployment_config_name = config_name
         self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs)
         self.acceleration_configs = None

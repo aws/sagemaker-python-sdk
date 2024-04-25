@@ -439,6 +439,9 @@ class JumpStart(ABC):
                 The name of the deployment config. Set to None to unset
                 any existing config that is applied to the model.
         """
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            raise Exception("Cannot set deployment config to an uninitialized model")
+
         self.pysdk_model.set_deployment_config(config_name)
 
     def get_deployment_config(self) -> Optional[Dict[str, Any]]:
@@ -447,13 +450,17 @@ class JumpStart(ABC):
         Returns:
             Union[Dict[str, Any], None]: Deployment config to apply to this model.
         """
-        return getattr(self, "pysdk_model", self._create_pre_trained_js_model()).deployment_config
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        return self.pysdk_model.deployment_config
 
     def display_benchmark_metrics(self):
         """Display Markdown Benchmark Metrics for deployment configs."""
-        getattr(
-            self, "pysdk_model", self._create_pre_trained_js_model()
-        ).display_benchmark_metrics()
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        self.pysdk_model.display_benchmark_metrics()
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
@@ -461,9 +468,10 @@ class JumpStart(ABC):
         Returns:
             List[Dict[str, Any]]: A list of deployment configs.
         """
-        return getattr(
-            self, "pysdk_model", self._create_pre_trained_js_model()
-        ).list_deployment_configs()
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        return self.pysdk_model.list_deployment_configs()
 
     def _build_for_jumpstart(self):
         """Placeholder docstring"""
@@ -471,32 +479,29 @@ class JumpStart(ABC):
         self.secret_key = None
         self.jumpstart = True
 
-        pysdk_model = getattr(self, "pysdk_model", self._create_pre_trained_js_model())
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self.pysdk_model = self._create_pre_trained_js_model()
 
-        image_uri = pysdk_model.image_uri
+        logger.info(
+            "JumpStart ID %s is packaged with Image URI: %s", self.model, self.pysdk_model.image_uri
+        )
 
-        logger.info("JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri)
-
-        if self._is_gated_model(pysdk_model) and self.mode != Mode.SAGEMAKER_ENDPOINT:
+        if self._is_gated_model() and self.mode != Mode.SAGEMAKER_ENDPOINT:
             raise ValueError(
                 "JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode."
             )
 
-        if "djl-inference" in image_uri:
+        if "djl-inference" in self.pysdk_model.image_uri:
             logger.info("Building for DJL JumpStart Model ID...")
             self.model_server = ModelServer.DJL_SERVING
-
-            self.pysdk_model = pysdk_model
             self.image_uri = self.pysdk_model.image_uri
 
             self._build_for_djl_jumpstart()
 
             self.pysdk_model.tune = self.tune_for_djl_jumpstart
-        elif "tgi-inference" in image_uri:
+        elif "tgi-inference" in self.pysdk_model.image_uri:
             logger.info("Building for TGI JumpStart Model ID...")
             self.model_server = ModelServer.TGI
-
-            self.pysdk_model = pysdk_model
             self.image_uri = self.pysdk_model.image_uri
 
             self._build_for_tgi_jumpstart()
@@ -509,15 +514,13 @@ class JumpStart(ABC):
 
         return self.pysdk_model
 
-    def _is_gated_model(self, model) -> bool:
+    def _is_gated_model(self) -> bool:
         """Determine if ``this`` Model is Gated
 
-        Args:
-            model (Model): Jumpstart Model
         Returns:
             bool: ``True`` if ``this`` Model is Gated
         """
-        s3_uri = model.model_data
+        s3_uri = self.pysdk_model.model_data
         if isinstance(s3_uri, dict):
             s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
 

@@ -7911,7 +7911,6 @@ TRAINING_CONFIG_RANKINGS = {
 
 DEPLOYMENT_CONFIGS = [
     {
-        "Version": "1.0.0",
         "DeploymentConfigName": "neuron-inference",
         "DeploymentArgs": {
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
@@ -7944,7 +7943,6 @@ DEPLOYMENT_CONFIGS = [
         "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
     },
     {
-        "Version": "1.0.0",
         "DeploymentConfigName": "neuron-inference-budget",
         "DeploymentArgs": {
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
@@ -7977,7 +7975,6 @@ DEPLOYMENT_CONFIGS = [
         "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
     },
     {
-        "Version": "1.0.0",
         "DeploymentConfigName": "gpu-inference-budget",
         "DeploymentArgs": {
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
@@ -8010,7 +8007,6 @@ DEPLOYMENT_CONFIGS = [
         "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
     },
     {
-        "Version": "1.0.0",
         "DeploymentConfigName": "gpu-inference",
         "DeploymentArgs": {
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
