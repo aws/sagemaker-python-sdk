@@ -321,8 +321,8 @@ def test_get_model_info_from_endpoint_inference_component_endpoint_without_infer
     mock_get_model_info_from_inference_component_endpoint_without_inference_component_name.return_value = (
         "model_id",
         "model_version",
-        "inferred-icname",
         None,
+        "inferred-icname",
     )
 
     retval = get_model_info_from_endpoint("blah", sagemaker_session=mock_sm_session)
@@ -343,8 +343,8 @@ def test_get_model_info_from_endpoint_inference_component_endpoint_with_config_n
     mock_get_model_info_from_inference_component_endpoint_without_inference_component_name.return_value = (
         "model_id",
         "model_version",
-        "inferred-icname",
         "config_name",
+        "inferred-icname",
     )
 
     retval = get_model_info_from_endpoint("blah", sagemaker_session=mock_sm_session)
