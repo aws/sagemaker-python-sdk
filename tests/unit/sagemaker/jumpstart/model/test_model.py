@@ -1723,11 +1723,6 @@ class ModelTest(unittest.TestCase):
 
         configs = model.list_deployment_configs()
 
-        print("******************************")
-        for config in configs:
-            print(config)
-            print()
-
         self.assertEqual(configs, get_base_deployment_configs())
 
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
