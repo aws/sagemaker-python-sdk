@@ -1550,7 +1550,7 @@ class ModelTest(unittest.TestCase):
         mock_session.return_value = sagemaker_session
 
         model = JumpStartModel(model_id=model_id, config_name="neuron-inference")
-        
+
         assert model.config_name == "neuron-inference"
 
         model.deploy()
@@ -1594,7 +1594,7 @@ class ModelTest(unittest.TestCase):
         mock_session.return_value = sagemaker_session
 
         model = JumpStartModel(model_id=model_id)
-        
+
         assert model.config_name == None
 
         model.deploy()
@@ -1614,7 +1614,7 @@ class ModelTest(unittest.TestCase):
         mock_model_deploy.reset_mock()
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         model.set_deployment_config("neuron-inference")
-        
+
         assert model.config_name == "neuron-inference"
 
         model.deploy()
@@ -1658,7 +1658,7 @@ class ModelTest(unittest.TestCase):
         mock_session.return_value = sagemaker_session
 
         model = JumpStartModel(model_id=model_id, config_name="neuron-inference")
-        
+
         assert model.config_name == "neuron-inference"
 
         model.deploy()
