@@ -307,6 +307,14 @@ def get_base_deployment_configs() -> List[Dict[str, Any]]:
     return DEPLOYMENT_CONFIGS
 
 
+def get_base_deployment_configs_with_acceleration_configs() -> List[Dict[str, Any]]:
+    configs = copy.deepcopy(DEPLOYMENT_CONFIGS)
+    configs[0]["AccelerationConfigs"] = [
+        {"Type": "Speculative-Decoding", "Enabled": True, "Spec": {"Version": "0.1"}}
+    ]
+    return configs
+
+
 def get_mock_init_kwargs(model_id) -> JumpStartModelInitKwargs:
     return JumpStartModelInitKwargs(
         model_id=model_id,
