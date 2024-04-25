@@ -886,7 +886,7 @@ class JumpStartModel(Model):
             return None
 
         for deployment_config in self._deployment_configs:
-            if deployment_config.get("ConfigName") == config_name:
+            if deployment_config.get("DeploymentConfigName") == config_name:
                 return deployment_config
         return None
 

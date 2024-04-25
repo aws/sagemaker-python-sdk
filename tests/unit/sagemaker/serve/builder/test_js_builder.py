@@ -676,9 +676,6 @@ class TestJumpStartBuilder(unittest.TestCase):
             lambda: DEPLOYMENT_CONFIGS
         )
 
-        builder.build()
-        builder.serve_settings.telemetry_opt_out = True
-
         configs = builder.list_deployment_configs()
 
         self.assertEqual(configs, DEPLOYMENT_CONFIGS)
@@ -718,9 +715,6 @@ class TestJumpStartBuilder(unittest.TestCase):
 
         expected = DEPLOYMENT_CONFIGS[0]
         mock_pre_trained_model.return_value.deployment_config = expected
-
-        builder.build()
-        builder.serve_settings.telemetry_opt_out = True
 
         self.assertEqual(builder.get_deployment_config(), expected)
 
@@ -771,10 +765,7 @@ class TestJumpStartBuilder(unittest.TestCase):
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
         return_value=True,
     )
-    @patch(
-        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
-        return_value=MagicMock(),
-    )
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model")
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
         return_value=({"model_type": "t5", "n_head": 71}, True),
@@ -796,13 +787,6 @@ class TestJumpStartBuilder(unittest.TestCase):
             model="facebook/galactica-mock-model-id",
             schema_builder=mock_schema_builder,
         )
-
-        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
-        mock_pre_trained_model.return_value.display_benchmark_metrics.side_effect = (
-            lambda *args, **kwargs: "metric data"
-        )
-
-        builder.build()
-        builder.serve_settings.telemetry_opt_out = True
-
         builder.display_benchmark_metrics()
+
+        mock_pre_trained_model.return_value.display_benchmark_metrics.assert_called_once()

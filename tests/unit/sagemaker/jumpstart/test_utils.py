@@ -1725,6 +1725,7 @@ class TestBenchmarkStats:
                 ],
                 "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
                 "Selected": ["No", "No", "No", "No"],
+                "Accelerated": ["Yes", "No", "No", "No"],
                 "Instance Rate (USD/Hrs)": [
                     "0.0083000000",
                     "0.0083000000",
@@ -1744,6 +1745,7 @@ class TestBenchmarkStats:
                 ],
                 "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
                 "Selected": ["Yes", "No", "No", "No"],
+                "Accelerated": ["Yes", "No", "No", "No"],
                 "Instance Rate (USD/Hrs)": [
                     "0.0083000000",
                     "0.0083000000",
@@ -1755,6 +1757,11 @@ class TestBenchmarkStats:
     ],
 )
 def test_extract_metrics_from_deployment_configs(config_name, expected):
-    data = utils.extract_metrics_from_deployment_configs(get_base_deployment_configs(), config_name)
+    configs = get_base_deployment_configs()
+    configs[0]["AccelerationConfigs"] = [
+        {"Type": "Speculative-Decoding", "Enabled": True, "Spec": {"Version": "0.1"}}
+    ]
+
+    data = utils.extract_metrics_from_deployment_configs(configs, config_name)
 
     assert data == expected

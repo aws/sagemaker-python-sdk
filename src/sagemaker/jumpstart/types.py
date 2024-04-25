@@ -2249,17 +2249,17 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
         return json_obj
 
 
-class DeploymentConfig(BaseDeploymentConfigDataHolder):
+class DeploymentArgs(BaseDeploymentConfigDataHolder):
     """Dataclass representing a Deployment Config."""
 
     __slots__ = [
-        "model_data_download_timeout",
-        "container_startup_health_check_timeout",
         "image_uri",
         "model_data",
-        "instance_type",
         "environment",
+        "instance_type",
         "compute_resource_requirements",
+        "model_data_download_timeout",
+        "container_startup_health_check_timeout",
     ]
 
     def __init__(
@@ -2286,9 +2286,11 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
     """Dataclass representing a Deployment Config Metadata"""
 
     __slots__ = [
-        "config_name",
+        "version",
+        "deployment_config_name",
+        "deployment_args",
+        "acceleration_configs",
         "benchmark_metrics",
-        "deployment_config",
     ]
 
     def __init__(
@@ -2299,6 +2301,8 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
         deploy_kwargs: JumpStartModelDeployKwargs,
     ):
         """Instantiates DeploymentConfigMetadata object."""
-        self.config_name = config_name
+        self.version = "1.0.0"
+        self.deployment_config_name = config_name
+        self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs)
+        self.acceleration_configs = None
         self.benchmark_metrics = benchmark_metrics
-        self.deployment_config = DeploymentConfig(init_kwargs, deploy_kwargs)

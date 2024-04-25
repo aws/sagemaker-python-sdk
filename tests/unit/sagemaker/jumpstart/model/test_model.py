@@ -1723,6 +1723,11 @@ class ModelTest(unittest.TestCase):
 
         configs = model.list_deployment_configs()
 
+        print("******************************")
+        for config in configs:
+            print(config)
+            print()
+
         self.assertEqual(configs, get_base_deployment_configs())
 
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
@@ -1805,7 +1810,7 @@ class ModelTest(unittest.TestCase):
         model = JumpStartModel(model_id=model_id)
 
         expected = get_base_deployment_configs()[0]
-        model.set_deployment_config(expected.get("ConfigName"))
+        model.set_deployment_config(expected.get("DeploymentConfigName"))
 
         self.assertEqual(model.deployment_config, expected)
 
