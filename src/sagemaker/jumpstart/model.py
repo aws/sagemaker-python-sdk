@@ -351,7 +351,7 @@ class JumpStartModel(Model):
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
         self.sagemaker_session = model_init_kwargs.sagemaker_session
-        self.config_name = config_name
+        self.config_name = model_init_kwargs.config_name
 
         if self.model_type == JumpStartModelType.PROPRIETARY:
             self.log_subscription_warning()

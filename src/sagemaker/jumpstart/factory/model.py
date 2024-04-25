@@ -543,6 +543,29 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
     return kwargs
 
 
+def _add_config_name_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+    """Sets default config name to the kwargs. Returns full kwargs."""
+
+    specs = verify_model_region_and_return_specs(
+        model_id=kwargs.model_id,
+        version=kwargs.model_version,
+        scope=JumpStartScriptScope.INFERENCE,
+        region=kwargs.region,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        model_type=kwargs.model_type,
+        config_name=kwargs.config_name,
+    )
+    if (
+        specs.inference_configs
+        and specs.inference_configs.get_top_config_from_ranking().resolved_config
+    ):
+        kwargs.config_name = specs.inference_configs.get_top_config_from_ranking().config_name
+
+    return kwargs
+
+
 def get_deploy_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
@@ -808,5 +831,6 @@ def get_init_kwargs(
     model_init_kwargs = _add_model_package_arn_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_resources_to_kwargs(kwargs=model_init_kwargs)
+    model_init_kwargs = _add_config_name_to_kwargs(kwargs=model_init_kwargs)
 
     return model_init_kwargs
