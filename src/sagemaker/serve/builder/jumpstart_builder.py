@@ -440,7 +440,7 @@ class JumpStart(ABC):
                 any existing config that is applied to the model.
         """
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-            raise Exception("Cannot set deployment config to an uninitialized model")
+            raise Exception("Cannot set deployment config to an uninitialized model.")
 
         self.pysdk_model.set_deployment_config(config_name)
 
