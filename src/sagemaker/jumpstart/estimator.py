@@ -33,7 +33,7 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
+from sagemaker.jumpstart.session_utils import get_model_info_from_training_job
 from sagemaker.jumpstart.types import JumpStartMetadataConfig
 from sagemaker.jumpstart.utils import (
     get_jumpstart_configs,
@@ -734,10 +734,10 @@ class JumpStartEstimator(Estimator):
             ValueError: if the model ID or version cannot be inferred from the training job.
 
         """
-
+        config_name = None
         if model_id is None:
 
-            model_id, model_version = get_model_id_version_from_training_job(
+            model_id, model_version, config_name = get_model_info_from_training_job(
                 training_job_name=training_job_name, sagemaker_session=sagemaker_session
             )
 
@@ -758,6 +758,7 @@ class JumpStartEstimator(Estimator):
             tolerate_deprecated_model=True,  # model is already trained, so tolerate if deprecated
             tolerate_vulnerable_model=True,  # model is already trained, so tolerate if vulnerable
             sagemaker_session=sagemaker_session,
+            config_name=config_name,
         )
 
         # eula was already accepted if the model was successfully trained
@@ -1111,7 +1112,7 @@ class JumpStartEstimator(Estimator):
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
-                # config_name=self.config_name,
+                config_name=self.config_name,
             )
 
         # If a predictor class was passed, do not mutate predictor
