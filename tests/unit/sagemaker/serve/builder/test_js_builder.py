@@ -833,3 +833,37 @@ class TestJumpStartBuilder(unittest.TestCase):
         builder.display_benchmark_metrics()
 
         mock_pre_trained_model.return_value.display_benchmark_metrics.assert_called_once()
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
+    def test_display_benchmark_metrics_initial(
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="facebook/galactica-mock-model-id",
+            schema_builder=mock_schema_builder,
+        )
+        builder.display_benchmark_metrics()
+
+        mock_pre_trained_model.return_value.display_benchmark_metrics.assert_called_once()
