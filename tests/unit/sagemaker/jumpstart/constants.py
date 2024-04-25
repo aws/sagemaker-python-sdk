@@ -7911,11 +7911,8 @@ TRAINING_CONFIG_RANKINGS = {
 
 DEPLOYMENT_CONFIGS = [
     {
-        "ConfigName": "neuron-inference",
-        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
-        "DeploymentConfig": {
-            "ModelDataDownloadTimeout": None,
-            "ContainerStartupHealthCheckTimeout": None,
+        "DeploymentConfigName": "neuron-inference",
+        "DeploymentArgs": {
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
             ".0-gpu-py310-cu121-ubuntu20.04",
             "ModelData": {
@@ -7926,7 +7923,6 @@ DEPLOYMENT_CONFIGS = [
                     "CompressionType": "None",
                 }
             },
-            "InstanceType": "ml.p2.xlarge",
             "Environment": {
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -7938,15 +7934,17 @@ DEPLOYMENT_CONFIGS = [
                 "MAX_TOTAL_TOKENS": "2048",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
+            "InstanceType": "ml.p2.xlarge",
             "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
         },
+        "AccelerationConfigs": None,
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
     },
     {
-        "ConfigName": "neuron-inference-budget",
-        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
-        "DeploymentConfig": {
-            "ModelDataDownloadTimeout": None,
-            "ContainerStartupHealthCheckTimeout": None,
+        "DeploymentConfigName": "neuron-inference-budget",
+        "DeploymentArgs": {
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
             ".0-gpu-py310-cu121-ubuntu20.04",
             "ModelData": {
@@ -7957,7 +7955,6 @@ DEPLOYMENT_CONFIGS = [
                     "CompressionType": "None",
                 }
             },
-            "InstanceType": "ml.p2.xlarge",
             "Environment": {
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -7969,15 +7966,17 @@ DEPLOYMENT_CONFIGS = [
                 "MAX_TOTAL_TOKENS": "2048",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
+            "InstanceType": "ml.p2.xlarge",
             "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
         },
+        "AccelerationConfigs": None,
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
     },
     {
-        "ConfigName": "gpu-inference-budget",
-        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
-        "DeploymentConfig": {
-            "ModelDataDownloadTimeout": None,
-            "ContainerStartupHealthCheckTimeout": None,
+        "DeploymentConfigName": "gpu-inference-budget",
+        "DeploymentArgs": {
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
             ".0-gpu-py310-cu121-ubuntu20.04",
             "ModelData": {
@@ -7988,7 +7987,6 @@ DEPLOYMENT_CONFIGS = [
                     "CompressionType": "None",
                 }
             },
-            "InstanceType": "ml.p2.xlarge",
             "Environment": {
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -8000,15 +7998,17 @@ DEPLOYMENT_CONFIGS = [
                 "MAX_TOTAL_TOKENS": "2048",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
+            "InstanceType": "ml.p2.xlarge",
             "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
         },
+        "AccelerationConfigs": None,
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
     },
     {
-        "ConfigName": "gpu-inference",
-        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
-        "DeploymentConfig": {
-            "ModelDataDownloadTimeout": None,
-            "ContainerStartupHealthCheckTimeout": None,
+        "DeploymentConfigName": "gpu-inference",
+        "DeploymentArgs": {
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
             ".0-gpu-py310-cu121-ubuntu20.04",
             "ModelData": {
@@ -8019,7 +8019,6 @@ DEPLOYMENT_CONFIGS = [
                     "CompressionType": "None",
                 }
             },
-            "InstanceType": "ml.p2.xlarge",
             "Environment": {
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -8031,8 +8030,13 @@ DEPLOYMENT_CONFIGS = [
                 "MAX_TOTAL_TOKENS": "2048",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
+            "InstanceType": "ml.p2.xlarge",
             "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
         },
+        "AccelerationConfigs": None,
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
     },
 ]
 
