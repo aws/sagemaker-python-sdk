@@ -559,7 +559,7 @@ def _add_config_name_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
     )
     if (
         specs.inference_configs
-        and specs.inference_configs.get_top_config_from_ranking().resolved_config
+        and specs.inference_configs.get_top_config_from_ranking().config_name
     ):
         kwargs.config_name = specs.inference_configs.get_top_config_from_ranking().config_name
 
