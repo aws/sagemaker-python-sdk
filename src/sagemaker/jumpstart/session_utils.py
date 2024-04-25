@@ -55,8 +55,8 @@ def get_model_info_from_endpoint(
             (
                 model_id,
                 model_version,
-                inference_component_name,
                 config_name,
+                inference_component_name,
             ) = _get_model_info_from_inference_component_endpoint_without_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 endpoint_name, sagemaker_session
             )
@@ -70,7 +70,7 @@ def get_model_info_from_endpoint(
 
 def _get_model_info_from_inference_component_endpoint_without_inference_component_name(
     endpoint_name: str, sagemaker_session: Session
-) -> Tuple[str, str, str]:
+) -> Tuple[str, str, str, str]:
     """Derives the model ID, version, config name and inferred inference component name.
 
     This function assumes the endpoint corresponds to an inference-component-based endpoint.
