@@ -1810,6 +1810,6 @@ class TestBenchmarkStats:
     ],
 )
 def test_extract_metrics_from_deployment_configs(config_name, configs, expected):
-    data = utils.extract_metrics_from_deployment_configs(configs, config_name)
+    data = utils.get_metrics_from_deployment_configs(configs, config_name)
 
     assert data == expected
