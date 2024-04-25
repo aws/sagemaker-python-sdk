@@ -1595,7 +1595,7 @@ class ModelTest(unittest.TestCase):
 
         model = JumpStartModel(model_id=model_id)
 
-        assert model.config_name == None
+        assert model.config_name is None
 
         model.deploy()
 
