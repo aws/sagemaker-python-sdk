@@ -142,8 +142,8 @@ def test_graph_visualize(sagemaker_session, extract_data_from_html):
         lq_result.visualize(path="testGraph.html")
 
         # check generated graph info
-        fo = open("testGraph.html", "r")
-        lines = fo.readlines()
+        with open("testGraph.html", "r") as fo:
+            lines = fo.readlines()
         for line in lines:
             if "nodes = " in line:
                 node = line
