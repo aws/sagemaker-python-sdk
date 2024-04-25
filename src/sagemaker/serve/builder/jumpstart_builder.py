@@ -451,14 +451,14 @@ class JumpStart(ABC):
             Union[Dict[str, Any], None]: Deployment config to apply to this model.
         """
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-            self._build_for_jumpstart()
+            self.pysdk_model = self._create_pre_trained_js_model()
 
         return self.pysdk_model.deployment_config
 
     def display_benchmark_metrics(self):
         """Display Markdown Benchmark Metrics for deployment configs."""
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-            self._build_for_jumpstart()
+            self.pysdk_model = self._create_pre_trained_js_model()
 
         self.pysdk_model.display_benchmark_metrics()
 
@@ -469,7 +469,7 @@ class JumpStart(ABC):
             List[Dict[str, Any]]: A list of deployment configs.
         """
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-            self._build_for_jumpstart()
+            self.pysdk_model = self._create_pre_trained_js_model()
 
         return self.pysdk_model.list_deployment_configs()
 
