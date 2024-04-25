@@ -446,7 +446,7 @@ class JumpStartModel(Model):
         """The deployment config that will be applied to the model.
 
         Returns:
-            Union[Dict[str, Any], None]: Deployment config that will be applied to the model.
+            Optional[Dict[str, Any]]: Deployment config that will be applied to the model.
         """
         return self._retrieve_selected_deployment_config(self.config_name)
 
