@@ -318,6 +318,7 @@ def add_single_jumpstart_tag(
                     tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_TYPE, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.MODEL_CONFIG_NAME, curr_tags)
                 )
                 if is_uri
                 else False
@@ -353,6 +354,7 @@ def add_jumpstart_model_id_version_tags(
     model_id: str,
     model_version: str,
     model_type: Optional[enums.JumpStartModelType] = None,
+    config_name: Optional[str] = None,
 ) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
@@ -373,6 +375,13 @@ def add_jumpstart_model_id_version_tags(
         tags = add_single_jumpstart_tag(
             enums.JumpStartModelType.PROPRIETARY.value,
             enums.JumpStartTag.MODEL_TYPE,
+            tags,
+            is_uri=False,
+        )
+    if config_name:
+        tags = add_single_jumpstart_tag(
+            config_name,
+            enums.JumpStartTag.MODEL_CONFIG_NAME,
             tags,
             is_uri=False,
         )
@@ -800,52 +809,72 @@ def validate_model_id_and_get_type(
     return None
 
 
+def _extract_value_from_list_of_tags(
+    tag_keys: List[str],
+    list_tags_result: List[str],
+    resource_name: str,
+    resource_arn: str,
+):
+    """Extracts value from list of tags with check of duplicate tags.
+
+    Returns None if no value is found.
+    """
+    resolved_value = None
+    for tag_key in tag_keys:
+        try:
+            value_from_tag = get_tag_value(tag_key, list_tags_result)
+        except KeyError:
+            continue
+        if value_from_tag is not None:
+            if resolved_value is not None and value_from_tag != resolved_value:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple  %s tags on the following resource: %s",
+                    resource_name,
+                    resource_arn,
+                )
+                resolved_value = None
+                break
+            resolved_value = value_from_tag
+    return resolved_value
+
+
 def get_jumpstart_model_id_version_from_resource_arn(
     resource_arn: str,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[Optional[str], Optional[str]]:
-    """Returns the JumpStart model ID and version if in resource tags.
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Returns the JumpStart model ID, version and config name if in resource tags.
 
-    Returns 'None' if model ID or version cannot be inferred from tags.
+    Returns 'None' if model ID or version or config name cannot be inferred from tags.
     """
 
     list_tags_result = sagemaker_session.list_tags(resource_arn)
 
-    model_id: Optional[str] = None
-    model_version: Optional[str] = None
-
     model_id_keys = [enums.JumpStartTag.MODEL_ID, *constants.EXTRA_MODEL_ID_TAGS]
     model_version_keys = [enums.JumpStartTag.MODEL_VERSION, *constants.EXTRA_MODEL_VERSION_TAGS]
+    model_config_name_keys = [enums.JumpStartTag.MODEL_CONFIG_NAME]
 
-    for model_id_key in model_id_keys:
-        try:
-            model_id_from_tag = get_tag_value(model_id_key, list_tags_result)
-        except KeyError:
-            continue
-        if model_id_from_tag is not None:
-            if model_id is not None and model_id_from_tag != model_id:
-                constants.JUMPSTART_LOGGER.warning(
-                    "Found multiple model ID tags on the following resource: %s", resource_arn
-                )
-                model_id = None
-                break
-            model_id = model_id_from_tag
+    model_id: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=model_id_keys,
+        list_tags_result=list_tags_result,
+        resource_name="model ID",
+        resource_arn=resource_arn,
+    )
 
-    for model_version_key in model_version_keys:
-        try:
-            model_version_from_tag = get_tag_value(model_version_key, list_tags_result)
-        except KeyError:
-            continue
-        if model_version_from_tag is not None:
-            if model_version is not None and model_version_from_tag != model_version:
-                constants.JUMPSTART_LOGGER.warning(
-                    "Found multiple model version tags on the following resource: %s", resource_arn
-                )
-                model_version = None
-                break
-            model_version = model_version_from_tag
+    model_version: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=model_version_keys,
+        list_tags_result=list_tags_result,
+        resource_name="model version",
+        resource_arn=resource_arn,
+    )
 
-    return model_id, model_version
+    config_name: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=model_config_name_keys,
+        list_tags_result=list_tags_result,
+        resource_name="model config name",
+        resource_arn=resource_arn,
+    )
+
+    return model_id, model_version, config_name
 
 
 def get_region_fallback(
@@ -1011,23 +1040,39 @@ def extract_metrics_from_deployment_configs(
         config_name (str): The name of the deployment config use by the model.
     """
 
-    data = {"Config Name": [], "Instance Type": [], "Selected": []}
+    data = {"Config Name": [], "Instance Type": [], "Selected": [], "Accelerated": []}
 
     for index, deployment_config in enumerate(deployment_configs):
-        if deployment_config.get("DeploymentConfig") is None:
+        if deployment_config.get("DeploymentArgs") is None:
             continue
 
         benchmark_metrics = deployment_config.get("BenchmarkMetrics")
         if benchmark_metrics is not None:
-            data["Config Name"].append(deployment_config.get("ConfigName"))
+            data["Config Name"].append(deployment_config.get("DeploymentConfigName"))
             data["Instance Type"].append(
-                deployment_config.get("DeploymentConfig").get("InstanceType")
+                deployment_config.get("DeploymentArgs").get("InstanceType")
             )
             data["Selected"].append(
                 "Yes"
-                if (config_name is not None and config_name == deployment_config.get("ConfigName"))
+                if (
+                    config_name is not None
+                    and config_name == deployment_config.get("DeploymentConfigName")
+                )
                 else "No"
             )
+
+            accelerated_configs = deployment_config.get("AccelerationConfigs")
+            if accelerated_configs is None:
+                data["Accelerated"].append("No")
+            else:
+                data["Accelerated"].append(
+                    "Yes"
+                    if (
+                        len(accelerated_configs) > 0
+                        and accelerated_configs[0].get("Enabled", False)
+                    )
+                    else "No"
+                )
 
             if index == 0:
                 for benchmark_metric in benchmark_metrics:
@@ -1039,4 +1084,6 @@ def extract_metrics_from_deployment_configs(
                 if column_name in data.keys():
                     data[column_name].append(benchmark_metric.get("value"))
 
+    if "Yes" not in data["Accelerated"]:
+        del data["Accelerated"]
     return data

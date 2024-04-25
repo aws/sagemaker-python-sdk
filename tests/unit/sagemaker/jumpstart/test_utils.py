@@ -50,6 +50,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec,
     get_prototype_manifest,
     get_base_deployment_configs,
+    get_base_deployment_configs_with_acceleration_configs,
 )
 from mock import MagicMock
 
@@ -1323,7 +1324,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
-            (None, None),
+            (None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1340,7 +1341,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
-            ("model_id", None),
+            ("model_id", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1357,7 +1358,38 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
-            (None, "model_version"),
+            (None, "model_version", None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_no_config_name_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_config_name_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None, "config_name"),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1375,7 +1407,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
-            ("model_id", "model_version"),
+            ("model_id", "model_version", None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1395,7 +1427,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
-            (None, None),
+            (None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1415,7 +1447,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
-            ("model_id_1", "model_version_1"),
+            ("model_id_1", "model_version_1", None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1435,7 +1467,27 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             utils.get_jumpstart_model_id_version_from_resource_arn(
                 "some-arn", mock_sagemaker_session
             ),
-            (None, None),
+            (None, None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_config_names_found_aliases_inconsistent(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name_1"},
+            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name_2"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id_1", "model_version_1", None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1712,10 +1764,11 @@ class TestBenchmarkStats:
 
 
 @pytest.mark.parametrize(
-    "config_name, expected",
+    "config_name, configs, expected",
     [
         (
             None,
+            get_base_deployment_configs(),
             {
                 "Config Name": [
                     "neuron-inference",
@@ -1735,6 +1788,7 @@ class TestBenchmarkStats:
         ),
         (
             "neuron-inference",
+            get_base_deployment_configs_with_acceleration_configs(),
             {
                 "Config Name": [
                     "neuron-inference",
@@ -1744,6 +1798,7 @@ class TestBenchmarkStats:
                 ],
                 "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
                 "Selected": ["Yes", "No", "No", "No"],
+                "Accelerated": ["Yes", "No", "No", "No"],
                 "Instance Rate (USD/Hrs)": [
                     "0.0083000000",
                     "0.0083000000",
@@ -1754,7 +1809,7 @@ class TestBenchmarkStats:
         ),
     ],
 )
-def test_extract_metrics_from_deployment_configs(config_name, expected):
-    data = utils.extract_metrics_from_deployment_configs(get_base_deployment_configs(), config_name)
+def test_extract_metrics_from_deployment_configs(config_name, configs, expected):
+    data = utils.extract_metrics_from_deployment_configs(configs, config_name)
 
     assert data == expected

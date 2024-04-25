@@ -1064,9 +1064,8 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
                 Dictionary representation of the config component.
         """
         for field in json_obj.keys():
-            if field not in self.__slots__:
-                raise ValueError(f"Invalid component field: {field}")
-            setattr(self, field, json_obj[field])
+            if field in self.__slots__:
+                setattr(self, field, json_obj[field])
 
 
 class JumpStartMetadataConfig(JumpStartDataHolderType):
@@ -1164,6 +1163,8 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
     ) -> Optional[JumpStartMetadataConfig]:
         """Gets the best the config based on config ranking.
 
+        Fallback to use the ordering in config names if
+        ranking is not available.
         Args:
             ranking_name (str):
                 The ranking name that config priority is based on.
@@ -1171,13 +1172,8 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
                 The instance type which the config selection is based on.
 
         Raises:
-            ValueError: If the config exists but missing config ranking.
             NotImplementedError: If the scope is unrecognized.
         """
-        if self.configs and (
-            not self.config_rankings or not self.config_rankings.get(ranking_name)
-        ):
-            raise ValueError(f"Config exists but missing config ranking {ranking_name}.")
 
         if self.scope == JumpStartScriptScope.INFERENCE:
             instance_type_attribute = "supported_inference_instance_types"
@@ -1186,8 +1182,14 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
         else:
             raise NotImplementedError(f"Unknown script scope {self.scope}")
 
-        rankings = self.config_rankings.get(ranking_name)
-        for config_name in rankings.rankings:
+        if self.configs and (
+            not self.config_rankings or not self.config_rankings.get(ranking_name)
+        ):
+            ranked_config_names = sorted(list(self.configs.keys()))
+        else:
+            rankings = self.config_rankings.get(ranking_name)
+            ranked_config_names = rankings.rankings
+        for config_name in ranked_config_names:
             resolved_config = self.configs[config_name].resolved_config
             if instance_type and instance_type not in getattr(
                 resolved_config, instance_type_attribute
@@ -2249,17 +2251,17 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
         return json_obj
 
 
-class DeploymentConfig(BaseDeploymentConfigDataHolder):
+class DeploymentArgs(BaseDeploymentConfigDataHolder):
     """Dataclass representing a Deployment Config."""
 
     __slots__ = [
-        "model_data_download_timeout",
-        "container_startup_health_check_timeout",
         "image_uri",
         "model_data",
-        "instance_type",
         "environment",
+        "instance_type",
         "compute_resource_requirements",
+        "model_data_download_timeout",
+        "container_startup_health_check_timeout",
     ]
 
     def __init__(
@@ -2286,9 +2288,10 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
     """Dataclass representing a Deployment Config Metadata"""
 
     __slots__ = [
-        "config_name",
+        "deployment_config_name",
+        "deployment_args",
+        "acceleration_configs",
         "benchmark_metrics",
-        "deployment_config",
     ]
 
     def __init__(
@@ -2299,6 +2302,7 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
         deploy_kwargs: JumpStartModelDeployKwargs,
     ):
         """Instantiates DeploymentConfigMetadata object."""
-        self.config_name = config_name
+        self.deployment_config_name = config_name
+        self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs)
+        self.acceleration_configs = None
         self.benchmark_metrics = benchmark_metrics
-        self.deployment_config = DeploymentConfig(init_kwargs, deploy_kwargs)
