@@ -50,11 +50,11 @@ def happy_model_builder(sagemaker_session):
 
 
 @pytest.fixture
-def huggingface_textgeneration_bloom_1b1_schema():
+def meta_textgeneration_llama_2_7b_f_schema():
     prompt = "Hello, I'm a language model,"
     response = "Hello, I'm a language model, and I'm here to help you with your English."
     sample_input = {
-        "text_inputs": prompt,
+        "inputs": prompt,
     }
     sample_output = [
         {
@@ -105,7 +105,7 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
 )
 @pytest.mark.slow_test
 def test_js_model_with_deployment_configs(
-        huggingface_textgeneration_bloom_1b1_schema,
+        meta_textgeneration_llama_2_7b_f_schema,
         sagemaker_session
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
@@ -119,8 +119,8 @@ def test_js_model_with_deployment_configs(
     os.environ[env_variable_name] = updated_value
 
     model_builder = ModelBuilder(
-        model="huggingface-textgeneration-bloom-1b1",
-        schema_builder=huggingface_textgeneration_bloom_1b1_schema,
+        model="meta-textgeneration-llama-2-7b-f",
+        schema_builder=meta_textgeneration_llama_2_7b_f_schema,
     )
     configs = model_builder.list_deployment_configs()
 
