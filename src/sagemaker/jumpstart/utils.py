@@ -1084,4 +1084,6 @@ def extract_metrics_from_deployment_configs(
                 if column_name in data.keys():
                     data[column_name].append(benchmark_metric.get("value"))
 
+    if "Yes" not in data["Accelerated"]:
+        del data["Accelerated"]
     return data
