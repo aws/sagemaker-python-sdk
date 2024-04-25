@@ -85,7 +85,7 @@ class RLEstimator(Framework):
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Creates an RLEstimator for managed Reinforcement Learning (RL).
 
@@ -205,7 +205,7 @@ class RLEstimator(Framework):
             hyperparameters,
             image_uri=image_uri,
             metric_definitions=metric_definitions,
-            **kwargs
+            **kwargs,
         )
 
     def create_model(
@@ -215,7 +215,7 @@ class RLEstimator(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``RLEstimatorModel`` object that can be deployed to an Endpoint.
 
@@ -303,9 +303,7 @@ class RLEstimator(Framework):
             return MXNetModel(
                 framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args
             )
-        raise ValueError(
-            f"An unknown RLFramework enum was passed in. framework: {self.framework}"
-        )
+        raise ValueError(f"An unknown RLFramework enum was passed in. framework: {self.framework}")
 
     def training_image_uri(self):
         """Return the Docker image to use for training.
@@ -431,9 +429,7 @@ class RLEstimator(Framework):
                 not_found_args.append("framework")
             if not_found_args:
                 not_found_args_joined = "`, `".join(not_found_args)
-                raise AttributeError(
-                    f"Provide `{not_found_args_joined}` or `image_uri` parameter."
-                )
+                raise AttributeError(f"Provide `{not_found_args_joined}` or `image_uri` parameter.")
         else:
             found_args = []
             if toolkit:
