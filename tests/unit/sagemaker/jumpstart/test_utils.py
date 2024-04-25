@@ -50,6 +50,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec,
     get_prototype_manifest,
     get_base_deployment_configs,
+    get_base_deployment_configs_with_acceleration_configs,
 )
 from mock import MagicMock
 
@@ -1763,10 +1764,11 @@ class TestBenchmarkStats:
 
 
 @pytest.mark.parametrize(
-    "config_name, expected",
+    "config_name, configs, expected",
     [
         (
             None,
+            get_base_deployment_configs(),
             {
                 "Config Name": [
                     "neuron-inference",
@@ -1786,6 +1788,7 @@ class TestBenchmarkStats:
         ),
         (
             "neuron-inference",
+            get_base_deployment_configs_with_acceleration_configs(),
             {
                 "Config Name": [
                     "neuron-inference",
@@ -1795,6 +1798,7 @@ class TestBenchmarkStats:
                 ],
                 "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
                 "Selected": ["Yes", "No", "No", "No"],
+                "Accelerated": ["Yes", "No", "No", "No"],
                 "Instance Rate (USD/Hrs)": [
                     "0.0083000000",
                     "0.0083000000",
@@ -1805,7 +1809,7 @@ class TestBenchmarkStats:
         ),
     ],
 )
-def test_extract_metrics_from_deployment_configs(config_name, expected):
-    data = utils.extract_metrics_from_deployment_configs(get_base_deployment_configs(), config_name)
+def test_extract_metrics_from_deployment_configs(config_name, configs, expected):
+    data = utils.extract_metrics_from_deployment_configs(configs, config_name)
 
     assert data == expected

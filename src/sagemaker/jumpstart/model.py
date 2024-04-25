@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 from functools import lru_cache
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
 
@@ -442,13 +442,22 @@ class JumpStartModel(Model):
         )
 
     @property
+    def deployment_config(self) -> Optional[Dict[str, Any]]:
+        """The deployment config that will be applied to the model.
+
+        Returns:
+            Optional[Dict[str, Any]]: Deployment config that will be applied to the model.
+        """
+        return self._retrieve_selected_deployment_config(self.config_name)
+
+    @property
     def benchmark_metrics(self) -> pd.DataFrame:
         """Benchmark Metrics for deployment configs
 
         Returns:
             Metrics: Pandas DataFrame object.
         """
-        return pd.DataFrame(self._get_benchmark_data(self.config_name))
+        return pd.DataFrame(self._get_benchmarks_data(self.config_name))
 
     def display_benchmark_metrics(self) -> None:
         """Display Benchmark Metrics for deployment configs."""
@@ -851,8 +860,8 @@ class JumpStartModel(Model):
         return model_package
 
     @lru_cache
-    def _get_benchmark_data(self, config_name: str) -> Dict[str, List[str]]:
-        """Constructs deployment configs benchmark data.
+    def _get_benchmarks_data(self, config_name: str) -> Dict[str, List[str]]:
+        """Deployment configs benchmark metrics.
 
         Args:
             config_name (str): The name of the selected deployment config.
@@ -863,6 +872,23 @@ class JumpStartModel(Model):
             self._deployment_configs,
             config_name,
         )
+
+    @lru_cache
+    def _retrieve_selected_deployment_config(self, config_name: str) -> Optional[Dict[str, Any]]:
+        """Retrieve the deployment config to apply to the model.
+
+        Args:
+            config_name (str): The name of the deployment config to retrieve.
+        Returns:
+            Optional[Dict[str, Any]]: The retrieved deployment config.
+        """
+        if config_name is None:
+            return None
+
+        for deployment_config in self._deployment_configs:
+            if deployment_config.get("DeploymentConfigName") == config_name:
+                return deployment_config
+        return None
 
     def _convert_to_deployment_config_metadata(
         self, config_name: str, metadata_config: JumpStartMetadataConfig
