@@ -1040,23 +1040,39 @@ def extract_metrics_from_deployment_configs(
         config_name (str): The name of the deployment config use by the model.
     """
 
-    data = {"Config Name": [], "Instance Type": [], "Selected": []}
+    data = {"Config Name": [], "Instance Type": [], "Selected": [], "Accelerated": []}
 
     for index, deployment_config in enumerate(deployment_configs):
-        if deployment_config.get("DeploymentConfig") is None:
+        if deployment_config.get("DeploymentArgs") is None:
             continue
 
         benchmark_metrics = deployment_config.get("BenchmarkMetrics")
         if benchmark_metrics is not None:
-            data["Config Name"].append(deployment_config.get("ConfigName"))
+            data["Config Name"].append(deployment_config.get("DeploymentConfigName"))
             data["Instance Type"].append(
-                deployment_config.get("DeploymentConfig").get("InstanceType")
+                deployment_config.get("DeploymentArgs").get("InstanceType")
             )
             data["Selected"].append(
                 "Yes"
-                if (config_name is not None and config_name == deployment_config.get("ConfigName"))
+                if (
+                    config_name is not None
+                    and config_name == deployment_config.get("DeploymentConfigName")
+                )
                 else "No"
             )
+
+            accelerated_configs = deployment_config.get("AccelerationConfigs")
+            if accelerated_configs is None:
+                data["Accelerated"].append("No")
+            else:
+                data["Accelerated"].append(
+                    "Yes"
+                    if (
+                        len(accelerated_configs) > 0
+                        and accelerated_configs[0].get("Enabled", False)
+                    )
+                    else "No"
+                )
 
             if index == 0:
                 for benchmark_metric in benchmark_metrics:
@@ -1068,4 +1084,6 @@ def extract_metrics_from_deployment_configs(
                 if column_name in data.keys():
                     data[column_name].append(benchmark_metric.get("value"))
 
+    if "Yes" not in data["Accelerated"]:
+        del data["Accelerated"]
     return data
