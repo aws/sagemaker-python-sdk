@@ -561,7 +561,9 @@ def _add_config_name_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
         specs.inference_configs
         and specs.inference_configs.get_top_config_from_ranking().config_name
     ):
-        kwargs.config_name = specs.inference_configs.get_top_config_from_ranking().config_name
+        kwargs.config_name = (
+            kwargs.config_name or specs.inference_configs.get_top_config_from_ranking().config_name
+        )
 
     return kwargs
 
