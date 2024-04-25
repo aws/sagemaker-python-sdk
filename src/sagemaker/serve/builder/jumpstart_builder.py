@@ -448,7 +448,7 @@ class JumpStart(ABC):
         """Gets the deployment config to apply to the model.
 
         Returns:
-            Union[Dict[str, Any], None]: Deployment config to apply to this model.
+            Optional[Dict[str, Any]]: Deployment config to apply to this model.
         """
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
             self.pysdk_model = self._create_pre_trained_js_model()
