@@ -905,20 +905,29 @@ class JumpStartModel(Model):
             "default_inference_instance_type"
         )
 
-        instance_rate = get_instance_rate_per_hour(
-            instance_type=default_inference_instance_type, region=self.region
-        )
-
         benchmark_metrics = (
             metadata_config.benchmark_metrics.get(default_inference_instance_type)
             if metadata_config.benchmark_metrics is not None
             else None
         )
-        if instance_rate is not None:
-            if benchmark_metrics is not None:
-                benchmark_metrics.append(JumpStartBenchmarkStat(instance_rate))
-            else:
-                benchmark_metrics = [JumpStartBenchmarkStat(instance_rate)]
+
+        instance_rate_metric = None
+        if benchmark_metrics is not None:
+            for benchmark_metric in benchmark_metrics:
+                if benchmark_metric.name == "Instance Rate":
+                    instance_rate_metric = benchmark_metric
+                    break
+
+        if instance_rate_metric is None:
+            instance_rate = get_instance_rate_per_hour(
+                instance_type=default_inference_instance_type, region=self.region
+            )
+            instance_rate_metric = JumpStartBenchmarkStat(instance_rate)
+
+        if benchmark_metrics is not None:
+            benchmark_metrics.append(instance_rate_metric)
+        else:
+            benchmark_metrics = [instance_rate_metric]
 
         init_kwargs = get_init_kwargs(
             model_id=self.model_id,
