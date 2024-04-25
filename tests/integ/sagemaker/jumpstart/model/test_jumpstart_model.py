@@ -309,9 +309,8 @@ def test_jumpstart_model_with_deployment_configs(setup):
     configs = model.list_deployment_configs()
     assert len(configs) > 0
 
-    model.set_deployment_config(configs[0]["ConfigName"])
-    assert model.config_name == configs[0]["ConfigName"]
-    assert model.deployment_config == configs[0]
+    model.set_deployment_config(configs[0]["DeploymentConfigName"])
+    assert model.config_name == configs[0]["DeploymentConfigName"]
 
     predictor = model.deploy(
         accept_eula=True,

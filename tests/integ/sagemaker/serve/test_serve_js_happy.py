@@ -132,16 +132,18 @@ def test_js_model_with_deployment_configs(
     sys.stdout = sys.__stdout__
     assert captured_output.getvalue() is not None
 
-    model_builder.set_deployment_config(configs[0]["ConfigName"])
+    model_builder.set_deployment_config(configs[0]["DeploymentConfigName"])
     model = model_builder.build(
         role_arn=role_arn,
         sagemaker_session=sagemaker_session
     )
+    assert model.config_name == configs[0]["DeploymentConfigName"]
+    assert model_builder.get_deployment_config() is not None
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            predictor = model.deploy()
+            predictor = model.deploy(accept_eula=True)
             logger.info("Endpoint successfully deployed.")
 
             updated_sample_input = happy_model_builder.schema_builder.sample_input
