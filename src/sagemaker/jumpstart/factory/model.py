@@ -496,7 +496,7 @@ def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
 
     if kwargs.sagemaker_session.settings.include_jumpstart_tags:
         kwargs.tags = add_jumpstart_model_id_version_tags(
-            kwargs.tags, kwargs.model_id, full_model_version, kwargs.model_type
+            kwargs.tags, kwargs.model_id, full_model_version, kwargs.model_type, kwargs.config_name
         )
 
     return kwargs

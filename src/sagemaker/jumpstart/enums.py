@@ -92,6 +92,7 @@ class JumpStartTag(str, Enum):
     MODEL_ID = "sagemaker-sdk:jumpstart-model-id"
     MODEL_VERSION = "sagemaker-sdk:jumpstart-model-version"
     MODEL_TYPE = "sagemaker-sdk:jumpstart-model-type"
+    MODEL_CONFIG_NAME = "sagemaker-sdk:jumpstart-model-config-name"
 
 
 class SerializerType(str, Enum):
