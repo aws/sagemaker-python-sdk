@@ -37,6 +37,7 @@ from importlib import import_module
 
 import boto3
 import botocore
+from botocore.exceptions import ClientError
 from botocore.utils import merge_dicts
 from six.moves.urllib import parse
 import pandas as pd
@@ -1664,7 +1665,7 @@ def deep_override_dict(
 def get_instance_rate_per_hour(
     instance_type: str,
     region: str,
-) -> Union[Dict[str, str], None]:
+) -> Dict[str, str]:
     """Gets instance rate per hour for the given instance type.
 
     Args:
@@ -1698,19 +1699,23 @@ def get_instance_rate_per_hour(
             if isinstance(price_data, str):
                 price_data = json.loads(price_data)
 
-            return extract_instance_rate_per_hour(price_data)
-    except Exception as e:  # pylint: disable=W0703
-        logging.exception("Error getting instance rate: %s", e)
-    return None
+            rate = extract_instance_rate_per_hour(price_data)
+            if rate is None:
+                return {}
+            return rate
+    except ClientError as e:
+        return e.response["Error"]
+    except Exception:  # pylint: disable=W0703
+        return {"Message": "Something went wrong while getting instance rate."}
 
 
-def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Union[Dict[str, str], None]:
+def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[str, str]]:
     """Extract instance rate per hour for the given Price JSON data.
 
     Args:
         price_data (Dict[str, Any]): The Price JSON data.
     Returns:
-        Union[Dict[str, str], None]: Instance rate per hour.
+        Optional[Dict[str, str], None]: Instance rate per hour.
     """
 
     if price_data is not None:

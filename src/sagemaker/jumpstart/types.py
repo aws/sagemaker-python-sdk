@@ -2264,19 +2264,24 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
         "model_data",
         "environment",
         "instance_type",
+        "supported_instance_types",
         "compute_resource_requirements",
         "model_data_download_timeout",
         "container_startup_health_check_timeout",
     ]
 
     def __init__(
-        self, init_kwargs: JumpStartModelInitKwargs, deploy_kwargs: JumpStartModelDeployKwargs
+        self,
+        init_kwargs: JumpStartModelInitKwargs,
+        deploy_kwargs: JumpStartModelDeployKwargs,
+        supported_instance_types: List[str],
     ):
         """Instantiates DeploymentConfig object."""
         if init_kwargs is not None:
             self.image_uri = init_kwargs.image_uri
             self.model_data = init_kwargs.model_data
             self.instance_type = init_kwargs.instance_type
+            self.supported_instance_types = supported_instance_types
             self.environment = init_kwargs.env
             if init_kwargs.resources is not None:
                 self.compute_resource_requirements = (
@@ -2302,12 +2307,16 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
     def __init__(
         self,
         config_name: str,
-        benchmark_metrics: List[JumpStartBenchmarkStat],
+        benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]],
         init_kwargs: JumpStartModelInitKwargs,
         deploy_kwargs: JumpStartModelDeployKwargs,
     ):
         """Instantiates DeploymentConfigMetadata object."""
         self.deployment_config_name = config_name
-        self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs)
+        self.deployment_args = DeploymentArgs(
+            init_kwargs,
+            deploy_kwargs,
+            [instance_type for instance_type in benchmark_metrics],
+        )
         self.acceleration_configs = None
         self.benchmark_metrics = benchmark_metrics

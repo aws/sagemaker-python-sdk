@@ -1031,59 +1031,45 @@ def get_jumpstart_configs(
 
 
 def get_metrics_from_deployment_configs(
-    deployment_configs: List[Dict[str, Any]], config_name: str
+    deployment_configs: List[Dict[str, Any]]
 ) -> Dict[str, List[str]]:
     """Extracts metrics from deployment configs.
 
     Args:
         deployment_configs (list[dict[str, Any]]): List of deployment configs.
-        config_name (str): The name of the deployment config use by the model.
     """
 
-    data = {"Config Name": [], "Instance Type": [], "Selected": [], "Accelerated": []}
+    data = {"Config Name": [], "Instance Type": []}
 
     for index, deployment_config in enumerate(deployment_configs):
         if deployment_config.get("DeploymentArgs") is None:
             continue
 
         benchmark_metrics = deployment_config.get("BenchmarkMetrics")
-        if benchmark_metrics is not None:
-            data["Config Name"].append(deployment_config.get("DeploymentConfigName"))
-            data["Instance Type"].append(
-                deployment_config.get("DeploymentArgs").get("InstanceType")
-            )
-            data["Selected"].append(
-                "Yes"
-                if (
-                    config_name is not None
-                    and config_name == deployment_config.get("DeploymentConfigName")
-                )
-                else "No"
-            )
+        for current_instance_type, current_instance_type_metrics in benchmark_metrics.items():
 
-            accelerated_configs = deployment_config.get("AccelerationConfigs")
-            if accelerated_configs is None:
-                data["Accelerated"].append("No")
-            else:
-                data["Accelerated"].append(
-                    "Yes"
-                    if (
-                        len(accelerated_configs) > 0
-                        and accelerated_configs[0].get("Enabled", False)
-                    )
-                    else "No"
-                )
+            data["Config Name"].append(deployment_config.get("DeploymentConfigName"))
+            instance_type_to_display = (
+                f"{current_instance_type} (Default)"
+                if current_instance_type
+                == deployment_config.get("DeploymentArgs").get("InstanceType")
+                else current_instance_type
+            )
+            data["Instance Type"].append(instance_type_to_display)
 
             if index == 0:
-                for benchmark_metric in benchmark_metrics:
-                    column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
-                    data[column_name] = []
+                temp_data = {}
+                for metric in current_instance_type_metrics:
+                    column_name = f"{metric.get('name')} ({metric.get('unit')})"
+                    if metric.get("name").lower() == "instance rate":
+                        data[column_name] = []
+                    else:
+                        temp_data[column_name] = []
+                data = {**data, **temp_data}
 
-            for benchmark_metric in benchmark_metrics:
-                column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
-                if column_name in data.keys():
-                    data[column_name].append(benchmark_metric.get("value"))
+            for metric in current_instance_type_metrics:
+                column_name = f"{metric.get('name')} ({metric.get('unit')})"
+                if column_name in data:
+                    data[column_name].append(metric.get("value"))
 
-    if "Yes" not in data["Accelerated"]:
-        del data["Accelerated"]
     return data
