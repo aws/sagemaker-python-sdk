@@ -1658,7 +1658,7 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_model_set_deployment_config_incompatible_instance_type(
+    def test_model_set_deployment_config_incompatible_instance_type_or_name(
         self,
         mock_model_deploy: mock.Mock,
         mock_get_model_specs: mock.Mock,
@@ -1700,6 +1700,15 @@ class ModelTest(unittest.TestCase):
             model.set_deployment_config("neuron-inference", "ml.inf2.32xlarge")
         assert (
             "Instance type ml.inf2.32xlarge is not supported for config neuron-inference."
+            in str(error)
+        )
+
+        with pytest.raises(ValueError) as error:
+            model.set_deployment_config("neuron-inference-unknown-name", "ml.inf2.32xlarge")
+        assert (
+            "Cannot find Jumpstart config name neuron-inference-unknown-name. "
+            "List of config names that is supported by the model: "
+            "['neuron-inference', 'neuron-inference-budget', 'gpu-inference-budget', 'gpu-inference']"
             in str(error)
         )
 
