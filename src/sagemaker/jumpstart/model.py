@@ -48,7 +48,7 @@ from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
     get_jumpstart_configs,
-    extract_metrics_from_deployment_configs,
+    get_metrics_from_deployment_configs,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -868,7 +868,7 @@ class JumpStartModel(Model):
         Returns:
             Dict[str, List[str]]: Deployment config benchmark data.
         """
-        return extract_metrics_from_deployment_configs(
+        return get_metrics_from_deployment_configs(
             self._deployment_configs,
             config_name,
         )
@@ -905,20 +905,29 @@ class JumpStartModel(Model):
             "default_inference_instance_type"
         )
 
-        instance_rate = get_instance_rate_per_hour(
-            instance_type=default_inference_instance_type, region=self.region
-        )
-
         benchmark_metrics = (
             metadata_config.benchmark_metrics.get(default_inference_instance_type)
             if metadata_config.benchmark_metrics is not None
             else None
         )
-        if instance_rate is not None:
-            if benchmark_metrics is not None:
-                benchmark_metrics.append(JumpStartBenchmarkStat(instance_rate))
+
+        should_fetch_instance_rate_metric = True
+        if benchmark_metrics is not None:
+            for benchmark_metric in benchmark_metrics:
+                if benchmark_metric.name.lower() == "instance rate":
+                    should_fetch_instance_rate_metric = False
+                    break
+
+        if should_fetch_instance_rate_metric:
+            instance_rate = get_instance_rate_per_hour(
+                instance_type=default_inference_instance_type, region=self.region
+            )
+            instance_rate_metric = JumpStartBenchmarkStat(instance_rate)
+
+            if benchmark_metrics is None:
+                benchmark_metrics = [instance_rate_metric]
             else:
-                benchmark_metrics = [JumpStartBenchmarkStat(instance_rate)]
+                benchmark_metrics.append(instance_rate_metric)
 
         init_kwargs = get_init_kwargs(
             model_id=self.model_id,
