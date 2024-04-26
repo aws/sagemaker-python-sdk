@@ -742,8 +742,8 @@ class JumpStartEstimator(Estimator):
         additional_kwargs = {
             "model_id": model_id,
             "model_version": model_version,
-            "tolerate_vulnerable_model": True,  # model is already trained, so tolerate if deprecated
-            "tolerate_deprecated_model": True,  # model is already trained, so tolerate if deprecated
+            "tolerate_vulnerable_model": True,  # model is already trained
+            "tolerate_deprecated_model": True,  # model is already trained
         }
 
         model_specs = verify_model_region_and_return_specs(
