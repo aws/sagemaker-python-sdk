@@ -287,7 +287,7 @@ def test_proprietary_jumpstart_model(setup):
 def test_jumpstart_model_with_deployment_configs(setup):
     # TODO: Update to prod buckets when GA
     env_variable_name = "AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE"
-    original_value = os.environ.get(env_variable_name, None)
+    original_value = os.environ.get(env_variable_name)
     updated_value = "jumpstart-cache-alpha-us-west-2"
     os.environ[env_variable_name] = updated_value
 

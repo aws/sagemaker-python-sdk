@@ -107,7 +107,7 @@ def test_js_model_with_deployment_configs(
     role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
     # TODO: Update to prod buckets when GA
     env_variable_name = "AWS_JUMPSTART_CONTENT_BUCKET_OVERRIDE"
-    original_value = os.environ.get(env_variable_name, None)
+    original_value = os.environ.get(env_variable_name)
     updated_value = "jumpstart-cache-alpha-us-west-2"
     os.environ[env_variable_name] = updated_value
 
