@@ -928,12 +928,13 @@ class JumpStartModel(Model):
             instance_rate = get_instance_rate_per_hour(
                 instance_type=default_inference_instance_type, region=self.region
             )
-            instance_rate_metric = JumpStartBenchmarkStat(instance_rate)
+            if instance_rate is not None:
+                instance_rate_metric = JumpStartBenchmarkStat(instance_rate)
 
-            if benchmark_metrics is None:
-                benchmark_metrics = [instance_rate_metric]
-            else:
-                benchmark_metrics.append(instance_rate_metric)
+                if benchmark_metrics is None:
+                    benchmark_metrics = [instance_rate_metric]
+                else:
+                    benchmark_metrics.append(instance_rate_metric)
 
         init_kwargs = get_init_kwargs(
             model_id=self.model_id,
