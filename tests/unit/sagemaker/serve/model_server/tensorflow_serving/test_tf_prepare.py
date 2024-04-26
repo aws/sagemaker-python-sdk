@@ -89,16 +89,16 @@ class PrepareForTensorflowServingTests(TestCase):
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.shutil")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.Path")
     def test_prepare_saved_model_not_found(
-            self,
-            mock_path,
-            mock_shutil,
-            mock_capture_dependencies,
-            mock_generate_secret_key,
-            mock_compute_hash,
-            mock_metadata,
-            mock_get_saved_model_path,
-            mock_move_contents,
-            mock_open,
+        self,
+        mock_path,
+        mock_shutil,
+        mock_capture_dependencies,
+        mock_generate_secret_key,
+        mock_compute_hash,
+        mock_metadata,
+        mock_get_saved_model_path,
+        mock_move_contents,
+        mock_open,
     ):
 
         mock_path_instance = mock_path.return_value
@@ -106,8 +106,9 @@ class PrepareForTensorflowServingTests(TestCase):
         mock_path_instance.joinpath.return_value = Mock()
         mock_get_saved_model_path.return_value = None
 
-        with pytest.raises(ValueError,
-                           match="SavedModel is not found for Tensorflow or Keras flavor."):
+        with pytest.raises(
+            ValueError, match="SavedModel is not found for Tensorflow or Keras flavor."
+        ):
             prepare_for_tf_serving(
                 model_path=MODEL_PATH,
                 shared_libs=SHARED_LIBS,

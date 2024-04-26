@@ -1,4 +1,5 @@
 """This module is for SageMaker inference.py."""
+
 from __future__ import absolute_import
 import os
 import io

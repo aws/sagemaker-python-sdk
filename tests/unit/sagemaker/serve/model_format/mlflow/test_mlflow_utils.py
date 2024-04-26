@@ -419,10 +419,15 @@ def test_select_container_for_mlflow_model_no_dlc_detected(
 
 
 def test_validate_input_for_mlflow():
-    _validate_input_for_mlflow(ModelServer.TORCHSERVE)
+    _validate_input_for_mlflow(ModelServer.TORCHSERVE, "pytorch")
 
     with pytest.raises(ValueError):
-        _validate_input_for_mlflow(ModelServer.DJL_SERVING)
+        _validate_input_for_mlflow(ModelServer.DJL_SERVING, "pytorch")
+
+
+def test_validate_input_for_mlflow_non_supported_flavor_with_tf_serving():
+    with pytest.raises(ValueError):
+        _validate_input_for_mlflow(ModelServer.TENSORFLOW_SERVING, "pytorch")
 
 
 @patch("sagemaker.serve.model_format.mlflow.utils.shutil.copy2")
