@@ -53,14 +53,8 @@ def happy_model_builder(sagemaker_session):
 def meta_textgeneration_llama_2_7b_f_schema():
     prompt = "Hello, I'm a language model,"
     response = "Hello, I'm a language model, and I'm here to help you with your English."
-    sample_input = {
-        "inputs": prompt,
-    }
-    sample_output = [
-        {
-            "generated_text": response
-        }
-    ]
+    sample_input = {"inputs": prompt}
+    sample_output = [{"generated_text": response}]
 
     return SchemaBuilder(
         sample_input=sample_input,
@@ -105,8 +99,8 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
 )
 @pytest.mark.slow_test
 def test_js_model_with_deployment_configs(
-        meta_textgeneration_llama_2_7b_f_schema,
-        sagemaker_session
+    meta_textgeneration_llama_2_7b_f_schema,
+    sagemaker_session,
 ):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
@@ -133,10 +127,7 @@ def test_js_model_with_deployment_configs(
     assert captured_output.getvalue() is not None
 
     model_builder.set_deployment_config(configs[0]["DeploymentConfigName"])
-    model = model_builder.build(
-        role_arn=role_arn,
-        sagemaker_session=sagemaker_session
-    )
+    model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
     assert model.config_name == configs[0]["DeploymentConfigName"]
     assert model_builder.get_deployment_config() is not None
 
