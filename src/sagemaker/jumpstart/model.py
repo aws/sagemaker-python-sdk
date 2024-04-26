@@ -434,8 +434,8 @@ class JumpStartModel(Model):
 
         Args:
             config_name (str):
-                The name of the deployment config. Set to None to unset
-                any existing config that is applied to the model.
+                The name of the deployment config to apply to the model.
+                Call list_deployment_configs to see the list of config names.
             instance_type (str):
                 The instance_type that the model will use after setting
                 the config.
