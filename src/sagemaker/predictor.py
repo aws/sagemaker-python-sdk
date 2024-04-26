@@ -43,6 +43,7 @@ def retrieve_default(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> Predictor:
     """Retrieves the default predictor for the model matching the given arguments.
 
@@ -65,6 +66,8 @@ def retrieve_default(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
+        config_name (Optional[str]): The name of the configuration to use for the
+            predictor. (Default: None)
     Returns:
         Predictor: The default predictor to use for the model.
 
@@ -91,10 +94,9 @@ def retrieve_default(
         model_id = inferred_model_id
         model_version = model_version or inferred_model_version or "*"
         inference_component_name = inference_component_name or inferred_inference_component_name
-        config_name = inferred_config_name or None
+        config_name = config_name or inferred_config_name or None
     else:
         model_version = model_version or "*"
-        config_name = None
 
     predictor = Predictor(
         endpoint_name=endpoint_name,
