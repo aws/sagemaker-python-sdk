@@ -1076,10 +1076,12 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         "benchmark_metrics",
         "config_components",
         "resolved_metadata_config",
+        "config_name",
     ]
 
     def __init__(
         self,
+        config_name: str,
         base_fields: Dict[str, Any],
         config_components: Dict[str, JumpStartConfigComponent],
         benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]],
@@ -1098,6 +1100,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         self.config_components: Dict[str, JumpStartConfigComponent] = config_components
         self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = benchmark_metrics
         self.resolved_metadata_config: Optional[Dict[str, Any]] = None
+        self.config_name: Optional[str] = config_name
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartMetadataConfig object."""
@@ -1251,6 +1254,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
         inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
             {
                 alias: JumpStartMetadataConfig(
+                    alias,
                     json_obj,
                     (
                         {
@@ -1303,6 +1307,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             training_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
                 {
                     alias: JumpStartMetadataConfig(
+                        alias,
                         json_obj,
                         (
                             {

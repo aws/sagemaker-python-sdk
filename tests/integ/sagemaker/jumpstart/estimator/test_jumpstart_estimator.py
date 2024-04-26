@@ -150,7 +150,7 @@ def test_gated_model_training_v2(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
-        tolerate_vulnerable_model=True,  # tolerate old version of model
+        tolerate_vulnerable_model=True,  # TODO: remove once vulnerbility is patched
     )
 
     # uses ml.g5.12xlarge instance
