@@ -19,7 +19,6 @@ from copy import deepcopy
 
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve.model_format.mlflow.constants import FLAVORS_DEFAULT_WITH_TF_SERVING
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.types import ModelServer
@@ -53,6 +52,7 @@ supported_model_server = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
+    ModelServer.TENSORFLOW_SERVING,
 }
 
 mock_session = MagicMock()
@@ -1818,7 +1818,7 @@ class TestModelBuilder(unittest.TestCase):
             model_metadata={"MLFLOW_MODEL_PATH": MODEL_PATH},
             model_server=ModelServer.TENSORFLOW_SERVING,
         )
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             builder.build(
                 Mode.SAGEMAKER_ENDPOINT,
                 mock_role_arn,
@@ -1979,7 +1979,7 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.tf_serving_builder.prepare_for_tf_serving")
     @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
-    @patch("sagemaker.serve.builder.model_builder.save_pkl")
+    @patch("sagemaker.serve.builder.tf_serving_builder.save_pkl")
     @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
     @patch("sagemaker.serve.builder.model_builder._generate_mlflow_artifact_path")
     @patch("sagemaker.serve.builder.model_builder._get_all_flavor_metadata")
