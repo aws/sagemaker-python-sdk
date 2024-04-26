@@ -1614,7 +1614,25 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs.reset_mock()
         mock_model_deploy.reset_mock()
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
-        model.set_deployment_config("neuron-inference")
+        model.set_deployment_config("neuron-inference", "ml.inf2.2xlarge")
+
+        assert model.config_name == "neuron-inference"
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.inf2.2xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "neuron-inference"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+        mock_model_deploy.reset_mock()
+        model.set_deployment_config("neuron-inference", "ml.inf2.xlarge")
 
         assert model.config_name == "neuron-inference"
 
@@ -1640,7 +1658,7 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_model_unset_deployment_config(
+    def test_model_set_deployment_config_incompatible_instance_type_or_name(
         self,
         mock_model_deploy: mock.Mock,
         mock_get_model_specs: mock.Mock,
@@ -1648,7 +1666,7 @@ class ModelTest(unittest.TestCase):
         mock_get_manifest: mock.Mock,
         mock_get_jumpstart_configs: mock.Mock,
     ):
-        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_model_specs.side_effect = get_prototype_model_spec
         mock_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
@@ -1658,28 +1676,9 @@ class ModelTest(unittest.TestCase):
 
         mock_session.return_value = sagemaker_session
 
-        model = JumpStartModel(model_id=model_id, config_name="neuron-inference")
+        model = JumpStartModel(model_id=model_id)
 
-        assert model.config_name == "neuron-inference"
-
-        model.deploy()
-
-        mock_model_deploy.assert_called_once_with(
-            initial_instance_count=1,
-            instance_type="ml.inf2.xlarge",
-            tags=[
-                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
-                {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "neuron-inference"},
-            ],
-            wait=True,
-            endpoint_logging=False,
-        )
-
-        mock_get_model_specs.reset_mock()
-        mock_model_deploy.reset_mock()
-        mock_get_model_specs.side_effect = get_prototype_model_spec
-        model.set_deployment_config(None)
+        assert model.config_name is None
 
         model.deploy()
 
@@ -1692,6 +1691,25 @@ class ModelTest(unittest.TestCase):
             ],
             wait=True,
             endpoint_logging=False,
+        )
+
+        mock_get_model_specs.reset_mock()
+        mock_model_deploy.reset_mock()
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        with pytest.raises(ValueError) as error:
+            model.set_deployment_config("neuron-inference", "ml.inf2.32xlarge")
+        assert (
+            "Instance type ml.inf2.32xlarge is not supported for config neuron-inference."
+            in str(error)
+        )
+
+        with pytest.raises(ValueError) as error:
+            model.set_deployment_config("neuron-inference-unknown-name", "ml.inf2.32xlarge")
+        assert (
+            "Cannot find Jumpstart config name neuron-inference-unknown-name. "
+            "List of config names that is supported by the model: "
+            "['neuron-inference', 'neuron-inference-budget', 'gpu-inference-budget', 'gpu-inference']"
+            in str(error)
         )
 
     @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
@@ -1813,6 +1831,7 @@ class ModelTest(unittest.TestCase):
 
         expected = get_base_deployment_configs()[0]
         config_name = expected.get("DeploymentConfigName")
+        instance_type = expected.get("InstanceType")
         mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(
             model_id, config_name
         )
@@ -1821,16 +1840,12 @@ class ModelTest(unittest.TestCase):
 
         model = JumpStartModel(model_id=model_id)
 
-        model.set_deployment_config(config_name)
+        model.set_deployment_config(config_name, instance_type)
 
         self.assertEqual(model.deployment_config, expected)
 
         mock_get_init_kwargs.reset_mock()
         mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
-
-        # Unset
-        model.set_deployment_config(None)
-        self.assertIsNone(model.deployment_config)
 
     @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
