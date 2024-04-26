@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import boto3
 
 from sagemaker.compute_resource_requirements import ResourceRequirements
@@ -315,7 +315,9 @@ def get_base_deployment_configs_with_acceleration_configs() -> List[Dict[str, An
     return configs
 
 
-def get_mock_init_kwargs(model_id) -> JumpStartModelInitKwargs:
+def get_mock_init_kwargs(
+    model_id: str, config_name: Optional[str] = None
+) -> JumpStartModelInitKwargs:
     return JumpStartModelInitKwargs(
         model_id=model_id,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
@@ -324,4 +326,5 @@ def get_mock_init_kwargs(model_id) -> JumpStartModelInitKwargs:
         instance_type=INIT_KWARGS.get("instance_type"),
         env=INIT_KWARGS.get("env"),
         resources=ResourceRequirements(),
+        config_name=config_name,
     )

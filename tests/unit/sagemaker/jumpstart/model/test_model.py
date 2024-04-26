@@ -1796,7 +1796,6 @@ class ModelTest(unittest.TestCase):
     ):
         model_id, _ = "pytorch-eqa-bert-base-cased", "*"
 
-        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
         mock_verify_model_region_and_return_specs.side_effect = (
             lambda *args, **kwargs: get_base_spec_with_prototype_configs()
         )
@@ -1811,14 +1810,22 @@ class ModelTest(unittest.TestCase):
         )
         mock_model_deploy.return_value = default_predictor
 
+        expected = get_base_deployment_configs()[0]
+        config_name = expected.get("DeploymentConfigName")
+        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(
+            model_id, config_name
+        )
+
         mock_session.return_value = sagemaker_session
 
         model = JumpStartModel(model_id=model_id)
 
-        expected = get_base_deployment_configs()[0]
-        model.set_deployment_config(expected.get("DeploymentConfigName"))
+        model.set_deployment_config(config_name)
 
         self.assertEqual(model.deployment_config, expected)
+
+        mock_get_init_kwargs.reset_mock()
+        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
 
         # Unset
         model.set_deployment_config(None)
