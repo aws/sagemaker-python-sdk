@@ -429,16 +429,22 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
         )
 
-    def set_deployment_config(self, config_name: Optional[str]) -> None:
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
         """Sets the deployment config to apply to the model.
 
         Args:
-            config_name (Optional[str]):
-                The name of the deployment config. Set to None to unset
-                any existing config that is applied to the model.
+            config_name (str):
+                The name of the deployment config to apply to the model.
+                Call list_deployment_configs to see the list of config names.
+            instance_type (str):
+                The instance_type that the model will use after setting
+                the config.
         """
         self.__init__(
-            model_id=self.model_id, model_version=self.model_version, config_name=config_name
+            model_id=self.model_id,
+            model_version=self.model_version,
+            instance_type=instance_type,
+            config_name=config_name,
         )
 
     @property
