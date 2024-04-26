@@ -544,7 +544,11 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
 
 
 def _add_config_name_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
-    """Sets default config name to the kwargs. Returns full kwargs."""
+    """Sets default config name to the kwargs. Returns full kwargs.
+
+    Raises:
+        ValueError: If the instance_type is not supported with the current config.
+    """
 
     specs = verify_model_region_and_return_specs(
         model_id=kwargs.model_id,
@@ -564,6 +568,22 @@ def _add_config_name_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
         kwargs.config_name = (
             kwargs.config_name or specs.inference_configs.get_top_config_from_ranking().config_name
         )
+
+        if not kwargs.config_name:
+            return kwargs
+
+        if kwargs.config_name not in set(specs.inference_configs.configs.keys()):
+            raise ValueError(
+                f"Config {kwargs.config_name} is not supported for model {kwargs.model_id}."
+            )
+
+        resolved_config = specs.inference_configs.configs[kwargs.config_name].resolved_config
+        supported_instance_types = resolved_config.get("supported_inference_instance_types", [])
+        if kwargs.instance_type not in supported_instance_types:
+            raise ValueError(
+                f"Instance type {kwargs.instance_type} "
+                f"is not supported for config {kwargs.config_name}."
+            )
 
     return kwargs
 
