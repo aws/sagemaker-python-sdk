@@ -1011,6 +1011,8 @@ class EstimatorTest(unittest.TestCase):
             additional_kwargs={
                 "model_id": "gemma-model",
                 "model_version": "*",
+                "tolerate_vulnerable_model": True,
+                "tolerate_deprecated_model": True,
                 "environment": {"accept_eula": "true"},
             },
         )
@@ -1056,6 +1058,8 @@ class EstimatorTest(unittest.TestCase):
             additional_kwargs={
                 "model_id": "js-trainable-model-prepacked",
                 "model_version": "1.0.0",
+                "tolerate_vulnerable_model": True,
+                "tolerate_deprecated_model": True,
             },
         )
 
