@@ -361,17 +361,14 @@ class JumpStartModel(Model):
         self.model_package_arn = model_init_kwargs.model_package_arn
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
 
-        metadata_configs = get_jumpstart_configs(
+        self.metadata_configs = get_jumpstart_configs(
             region=self.region,
             model_id=self.model_id,
             model_version=self.model_version,
             sagemaker_session=self.sagemaker_session,
             model_type=self.model_type,
         )
-        self._deployment_configs = [
-            self._convert_to_deployment_config_metadata(config_name, config)
-            for config_name, config in metadata_configs.items()
-        ]
+        self._deployment_configs = None
 
     def log_subscription_warning(self) -> None:
         """Log message prompting the customer to subscribe to the proprietary model."""
@@ -461,7 +458,7 @@ class JumpStartModel(Model):
 
     def display_benchmark_metrics(self) -> None:
         """Display Benchmark Metrics for deployment configs."""
-        print(self.benchmark_metrics.to_markdown())
+        print(self.benchmark_metrics.to_markdown(index=False, tablefmt="grid"))
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model.
@@ -469,6 +466,7 @@ class JumpStartModel(Model):
         Returns:
             List[Dict[str, Any]]: A list of deployment configs.
         """
+        self._init_deployment_configs()
         return self._deployment_configs
 
     def _create_sagemaker_model(
@@ -868,6 +866,7 @@ class JumpStartModel(Model):
         Returns:
             Dict[str, List[str]]: Deployment config benchmark data.
         """
+        self._init_deployment_configs()
         return get_metrics_from_deployment_configs(
             self._deployment_configs,
             config_name,
@@ -885,10 +884,19 @@ class JumpStartModel(Model):
         if config_name is None:
             return None
 
+        self._init_deployment_configs()
         for deployment_config in self._deployment_configs:
             if deployment_config.get("DeploymentConfigName") == config_name:
                 return deployment_config
         return None
+
+    def _init_deployment_configs(self) -> None:
+        """Initialize the deployment configs."""
+        if self._deployment_configs is None:
+            self._deployment_configs = [
+                self._convert_to_deployment_config_metadata(config_name, config)
+                for config_name, config in self.metadata_configs.items()
+            ]
 
     def _convert_to_deployment_config_metadata(
         self, config_name: str, metadata_config: JumpStartMetadataConfig
