@@ -237,7 +237,7 @@ def get_base_spec_with_prototype_configs_with_missing_benchmarks(
     copy_inference_configs = copy.deepcopy(INFERENCE_CONFIGS)
     copy_inference_configs["inference_configs"]["neuron-inference"]["benchmark_metrics"] = None
 
-    inference_configs = {**INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    inference_configs = {**copy_inference_configs, **INFERENCE_CONFIG_RANKINGS}
     training_configs = {**TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
 
     spec.update(inference_configs)
