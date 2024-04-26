@@ -582,7 +582,7 @@ def _add_config_name_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
         if kwargs.instance_type not in supported_instance_types:
             raise ValueError(
                 f"Instance type {kwargs.instance_type} "
-                "is not supported for config {kwargs.config_name}."
+                f"is not supported for config {kwargs.config_name}."
             )
 
     return kwargs
