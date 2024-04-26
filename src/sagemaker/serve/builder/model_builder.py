@@ -730,7 +730,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing)
                 " for production at this moment."
             )
             self._initialize_for_mlflow()
-            _validate_input_for_mlflow(self.model_server)
+            _validate_input_for_mlflow(self.model_server, self.env_vars.get("MLFLOW_MODEL_FLAVOR"))
 
         if isinstance(self.model, str):
             model_task = None

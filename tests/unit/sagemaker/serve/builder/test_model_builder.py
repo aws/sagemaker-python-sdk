@@ -19,6 +19,7 @@ from copy import deepcopy
 
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.model_format.mlflow.constants import FLAVORS_DEFAULT_WITH_TF_SERVING
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.types import ModelServer
@@ -1751,6 +1752,80 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
 
     @patch("os.makedirs", Mock())
+    @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
+    @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
+    @patch("sagemaker.serve.builder.model_builder.save_pkl")
+    @patch("sagemaker.serve.builder.model_builder._copy_directory_contents")
+    @patch("sagemaker.serve.builder.model_builder._generate_mlflow_artifact_path")
+    @patch("sagemaker.serve.builder.model_builder._get_all_flavor_metadata")
+    @patch("sagemaker.serve.builder.model_builder._select_container_for_mlflow_model")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.SageMakerEndpointMode")
+    @patch("sagemaker.serve.builder.model_builder.Model")
+    @patch("builtins.open", new_callable=mock_open, read_data="data")
+    @patch("os.path.isfile", return_value=True)
+    @patch("os.path.exists")
+    def test_build_mlflow_model_local_input_happy_flavor_server_mismatch(
+        self,
+        mock_path_exists,
+        mock_is_file,
+        mock_open,
+        mock_sdk_model,
+        mock_sageMakerEndpointMode,
+        mock_serveSettings,
+        mock_detect_container,
+        mock_get_all_flavor_metadata,
+        mock_generate_mlflow_artifact_path,
+        mock_copy_directory_contents,
+        mock_save_pkl,
+        mock_prepare_for_torchserve,
+        mock_detect_fw_version,
+    ):
+        # setup mocks
+
+        mock_detect_container.return_value = mock_image_uri
+        mock_get_all_flavor_metadata.return_value = {"sklearn": "some_data"}
+        mock_generate_mlflow_artifact_path.return_value = "some_path"
+
+        mock_prepare_for_torchserve.return_value = mock_secret_key
+
+        # Mock _ServeSettings
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
+
+        mock_mode = Mock()
+        mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
+            mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
+        )
+        mock_mode.prepare.return_value = (
+            model_data,
+            ENV_VAR_PAIR,
+        )
+
+        updated_env_var = deepcopy(ENV_VARS)
+        updated_env_var.update({"MLFLOW_MODEL_FLAVOR": "sklearn"})
+        mock_model_obj = Mock()
+        mock_sdk_model.return_value = mock_model_obj
+
+        mock_session.sagemaker_client._user_agent_creator.to_string = lambda: "sample agent"
+
+        # run
+        builder = ModelBuilder(
+            schema_builder=schema_builder,
+            model_metadata={"MLFLOW_MODEL_PATH": MODEL_PATH},
+            model_server=ModelServer.TENSORFLOW_SERVING,
+        )
+        with self.assertRaises(ValueError) as context:
+            builder.build(
+                Mode.SAGEMAKER_ENDPOINT,
+                mock_role_arn,
+                mock_session,
+            )
+
+    @patch("os.makedirs", Mock())
     @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
@@ -1990,20 +2065,20 @@ class TestModelBuilder(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data="data")
     @patch("os.path.exists")
     def test_build_tensorflow_serving_non_mlflow_case(
-            self,
-            mock_path_exists,
-            mock_open,
-            mock_sdk_model,
-            mock_sageMakerEndpointMode,
-            mock_serveSettings,
-            mock_detect_container,
-            mock_get_all_flavor_metadata,
-            mock_generate_mlflow_artifact_path,
-            mock_download_s3_artifacts,
-            mock_save_pkl,
-            mock_detect_fw_version,
-            mock_s3_downloader,
-            mock_prepare_for_tf_serving,
+        self,
+        mock_path_exists,
+        mock_open,
+        mock_sdk_model,
+        mock_sageMakerEndpointMode,
+        mock_serveSettings,
+        mock_detect_container,
+        mock_get_all_flavor_metadata,
+        mock_generate_mlflow_artifact_path,
+        mock_download_s3_artifacts,
+        mock_save_pkl,
+        mock_detect_fw_version,
+        mock_s3_downloader,
+        mock_prepare_for_tf_serving,
     ):
         mock_s3_downloader.return_value = []
         mock_detect_container.return_value = mock_image_uri
@@ -2022,7 +2097,8 @@ class TestModelBuilder(unittest.TestCase):
         mock_mode = Mock()
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode
-            if inference_spec is None and model_server == ModelServer.TENSORFLOW_SERVING else None
+            if inference_spec is None and model_server == ModelServer.TENSORFLOW_SERVING
+            else None
         )
         mock_mode.prepare.return_value = (
             model_data,

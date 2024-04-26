@@ -397,11 +397,12 @@ def _select_container_for_mlflow_model(
     )
 
 
-def _validate_input_for_mlflow(model_server: ModelServer) -> None:
+def _validate_input_for_mlflow(model_server: ModelServer, deployment_flavor: str) -> None:
     """Validates arguments provided with mlflow models.
 
     Args:
         - model_server (ModelServer): Model server used for orchestrating mlflow model.
+        - deployment_flavor (str): The flavor mlflow model will be deployed with.
 
     Raises:
     - ValueError: If model server is not torchserve.
@@ -410,6 +411,14 @@ def _validate_input_for_mlflow(model_server: ModelServer) -> None:
         raise ValueError(
             f"{model_server} is currently not supported for MLflow Model. "
             f"Please choose another model server."
+        )
+    if (
+        model_server == ModelServer.TENSORFLOW_SERVING
+        and deployment_flavor not in FLAVORS_DEFAULT_WITH_TF_SERVING
+    ):
+        raise ValueError(
+            "Tensorflow Serving is currently only supported for the following "
+            "deployment flavors: {}".format(FLAVORS_DEFAULT_WITH_TF_SERVING)
         )
 
 

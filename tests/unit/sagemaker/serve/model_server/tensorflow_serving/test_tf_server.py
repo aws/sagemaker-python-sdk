@@ -57,18 +57,18 @@ class TensorflowservingServerTests(TestCase):
 
         mock_docker_client.containers.run.assert_called_once_with(
             CPU_TF_IMAGE,
-            'serve',
+            "serve",
             detach=True,
             auto_remove=True,
-            network_mode='host',
-            volumes={PosixPath('model_path'): {'bind': '/opt/ml/model', 'mode': 'rw'}},
+            network_mode="host",
+            volumes={PosixPath("model_path"): {"bind": "/opt/ml/model", "mode": "rw"}},
             environment={
-                'SAGEMAKER_SUBMIT_DIRECTORY': '/opt/ml/model/code',
-                'SAGEMAKER_PROGRAM': 'inference.py',
-                'SAGEMAKER_SERVE_SECRET_KEY': 'secret_key',
-                'LOCAL_PYTHON': '3.10.12',
-                'KEY': 'VALUE'
-            }
+                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
+                "LOCAL_PYTHON": "3.10.12",
+                "KEY": "VALUE",
+            },
         )
 
     @patch("sagemaker.serve.model_server.tensorflow_serving.server.platform")

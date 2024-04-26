@@ -91,7 +91,7 @@ class TensorflowServing(ABC):
 
     def _validate_for_tensorflow_serving(self):
         """Validate for tensorflow serving"""
-        if not getattr(self, '_is_mlflow_model', False):
+        if not getattr(self, "_is_mlflow_model", False):
             raise ValueError("Tensorflow Serving is currently only supported for mlflow models.")
 
     def _create_tensorflow_model(self):
