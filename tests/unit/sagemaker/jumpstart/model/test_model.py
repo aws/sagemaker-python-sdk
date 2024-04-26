@@ -51,6 +51,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_base_spec_with_prototype_configs,
     get_mock_init_kwargs,
     get_base_deployment_configs,
+    get_base_spec_with_prototype_configs_with_missing_benchmarks,
 )
 import boto3
 
@@ -1797,7 +1798,7 @@ class ModelTest(unittest.TestCase):
         model_id, _ = "pytorch-eqa-bert-base-cased", "*"
 
         mock_verify_model_region_and_return_specs.side_effect = (
-            lambda *args, **kwargs: get_base_spec_with_prototype_configs()
+            lambda *args, **kwargs: get_base_spec_with_prototype_configs_with_missing_benchmarks()
         )
         mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
             "name": "Instance Rate",
@@ -1853,7 +1854,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
         mock_verify_model_region_and_return_specs.side_effect = (
-            lambda *args, **kwargs: get_base_spec_with_prototype_configs()
+            lambda *args, **kwargs: get_base_spec_with_prototype_configs_with_missing_benchmarks()
         )
         mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
             "name": "Instance Rate",
