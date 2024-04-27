@@ -1063,7 +1063,7 @@ def get_metrics_from_deployment_configs(
             if outer_index == 0 and inner_index == 0:
                 temp_data = {}
                 for metric in current_instance_type_metrics:
-                    column_name = f"{metric.name} ({metric.unit})"
+                    column_name = f"{metric.name.replace('_', ' ').title()} ({metric.unit})"
                     if metric.name.lower() == "instance rate":
                         data[column_name] = []
                     else:
@@ -1071,7 +1071,7 @@ def get_metrics_from_deployment_configs(
                 data = {**data, **temp_data}
 
             for metric in current_instance_type_metrics:
-                column_name = f"{metric.name} ({metric.unit})"
+                column_name = f"{metric.name.replace('_', ' ').title()} ({metric.unit})"
                 if column_name in data:
                     data[column_name].append(metric.value)
     return data

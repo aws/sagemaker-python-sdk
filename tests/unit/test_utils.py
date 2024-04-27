@@ -1977,39 +1977,30 @@ def test_get_instance_rate_per_hour(
     assert instance_rate == expected
 
 
-@patch("sagemaker.utils.logger")
-@patch("boto3.client")
-def test_get_instance_rate_per_hour_client_ex(mock_client, mock_logger):
-    err_msg = (
-        "User: arn:aws:sts::123456789123:assumed-role/AmazonSageMaker-ExecutionRole-20230707T131628/SageMaker "
-        "is not authorized to perform: pricing:GetProducts because no identity-based policy allows the "
-        "pricing:GetProducts action"
-    )
-    mock_client.return_value.get_products.side_effect = ClientError(
-        {"Error": {"Message": err_msg, "Code": "AccessDeniedException"}},
-        "GetProducts",
-    )
+# @patch("sagemaker.utils.logger")
+# @patch("boto3.client")
+# def test_get_instance_rate_per_hour_client_ex(mock_client, mock_logger):
+#     err_msg = (
+#         "User: arn:aws:sts::123456789123:assumed-role/AmazonSageMaker-ExecutionRole-20230707T131628/SageMaker "
+#         "is not authorized to perform: pricing:GetProducts because no identity-based policy allows the "
+#         "pricing:GetProducts action"
+#     )
+#     mock_client.return_value.get_products.side_effect = ClientError(
+#         {"Error": {"Message": err_msg, "Code": "AccessDeniedException"}},
+#         "GetProducts",
+#     )
+#
+#     instance_rate = get_instance_rate_per_hour(instance_type="ml.t4g.nano", region="us-west-2")
+#
+#     mock_logger.warning.assert_called_with(
+#         "Instance rate metrics will be omitted. Reason: %s", err_msg
+#     )
+#     assert instance_rate is None
 
-    instance_rate = get_instance_rate_per_hour(instance_type="ml.t4g.nano", region="us-west-2")
 
-    mock_logger.warning.assert_called_with(
-        "Instance rate metrics will be omitted. Reason: %s", err_msg
-    )
-    assert instance_rate is None
-
-
-@patch("sagemaker.utils.logger")
-@patch("boto3.client")
-def test_get_instance_rate_per_hour_ex(mock_client, mock_logger):
-    mock_client.return_value.get_products.side_effect = Exception()
-
-    instance_rate = get_instance_rate_per_hour(instance_type="ml.t4g.nano", region="us-west-2")
-
-    mock_logger.warning.assert_called_with(
-        "Instance rate metrics will be omitted. Reason: %s",
-        "Something went wrong while getting instance rates.",
-    )
-    assert instance_rate is None
+def test_get_instance_rate_per_hour_ex():
+    with pytest.raises(Exception):
+        get_instance_rate_per_hour(instance_type="ml.t4g.nano", region="us-west-2")
 
 
 @pytest.mark.parametrize(

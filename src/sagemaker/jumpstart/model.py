@@ -461,9 +461,12 @@ class JumpStartModel(Model):
         Returns:
             Benchmark Metrics: Pandas DataFrame object.
         """
-        return pd.DataFrame(
-            self._get_deployment_configs_benchmarks_data(self.config_name, self.instance_type)
+        benchmark_metrics_data = self._get_deployment_configs_benchmarks_data(
+            self.config_name, self.instance_type
         )
+        keys = list(benchmark_metrics_data.keys())
+        df = pd.DataFrame(benchmark_metrics_data).sort_values(by=[keys[0], keys[1]])
+        return df
 
     def display_benchmark_metrics(self) -> None:
         """Display deployment configs benchmark metrics."""
@@ -917,32 +920,44 @@ class JumpStartModel(Model):
             selected_instance_type (str): The selected instance type.
         """
         deployment_configs = []
+        if self._metadata_configs is None:
+            return deployment_configs
 
         should_fetch_instance_rate_metric_stat = True
+        err_message = None
+
         for config_name, metadata_config in self._metadata_configs.items():
-            final_benchmark_metrics = {}
-            for instance_type, benchmark_metrics in metadata_config.benchmark_metrics.items():
-                if not instance_type.startswith("ml."):
-                    instance_type = f"ml.{instance_type}"
+            final_benchmark_metrics = None
 
-                for benchmark_metric_stat in benchmark_metrics:
-                    if benchmark_metric_stat.name.lower() == "instance rate":
-                        should_fetch_instance_rate_metric_stat = False
-                        break
+            if metadata_config.benchmark_metrics is not None:
+                final_benchmark_metrics = {}
+                for instance_type, benchmark_metrics in metadata_config.benchmark_metrics.items():
+                    if not instance_type.startswith("ml."):
+                        instance_type = f"ml.{instance_type}"
 
-                if should_fetch_instance_rate_metric_stat:
-                    instance_type_rate = get_instance_rate_per_hour(
-                        instance_type=instance_type, region=self.region
-                    )
-
-                    if instance_type_rate is None:
-                        should_fetch_instance_rate_metric_stat = False
-                        final_benchmark_metrics[instance_type] = benchmark_metrics
+                    if benchmark_metrics is None:
+                        should_fetch_instance_rate_metric_stat = True
                     else:
-                        benchmark_metrics.append(JumpStartBenchmarkStat(instance_type_rate))
+                        for benchmark_metric_stat in benchmark_metrics:
+                            if benchmark_metric_stat.name.lower() == "instance rate":
+                                should_fetch_instance_rate_metric_stat = False
+                                break
+
+                    if should_fetch_instance_rate_metric_stat:
+                        try:
+                            instance_type_rate = get_instance_rate_per_hour(
+                                instance_type=instance_type, region=self.region
+                            )
+
+                            benchmark_metrics.append(JumpStartBenchmarkStat(instance_type_rate))
+                            final_benchmark_metrics[instance_type] = benchmark_metrics
+                        except ClientError as e:
+                            err_message = e.response["Error"]["Message"]
+                            should_fetch_instance_rate_metric_stat = False
+                        except Exception:  # pylint: disable=W0703
+                            should_fetch_instance_rate_metric_stat = True
+                    else:
                         final_benchmark_metrics[instance_type] = benchmark_metrics
-                else:
-                    final_benchmark_metrics[instance_type] = benchmark_metrics
 
             resolved_config = metadata_config.resolved_config
             if selected_config_name == config_name:
@@ -968,6 +983,10 @@ class JumpStartModel(Model):
                 deploy_kwargs,
             )
             deployment_configs.append(deployment_config_metadata)
+
+        if err_message is not None:
+            error_message = "Instance rate metrics will be omitted. Reason: %s"
+            JUMPSTART_LOGGER.warning(error_message, err_message)
 
         return deployment_configs
 

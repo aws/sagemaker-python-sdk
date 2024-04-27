@@ -1673,9 +1673,11 @@ def get_instance_rate_per_hour(
     Returns:
         Optional[Dict[str, str]]: Instance rate per hour.
         Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.125'}.
+    Raises:
+        Exception: An exception is raised if
+            the IAM role is not authorized to perform pricing:GetProducts.
+            or unexpected event happened.
     """
-    error_message = "Instance rate metrics will be omitted. Reason: %s"
-
     region_name = "us-east-1"
     if region.startswith("eu") or region.startswith("af"):
         region_name = "eu-central-1"
@@ -1683,30 +1685,23 @@ def get_instance_rate_per_hour(
         region_name = "ap-south-1"
 
     pricing_client: boto3.client = boto3.client("pricing", region_name=region_name)
-    try:
-        res = pricing_client.get_products(
-            ServiceCode="AmazonSageMaker",
-            Filters=[
-                {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
-                {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
-                {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
-            ],
-        )
+    res = pricing_client.get_products(
+        ServiceCode="AmazonSageMaker",
+        Filters=[
+            {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
+            {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
+            {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
+        ],
+    )
 
-        price_list = res.get("PriceList", [])
-        if len(price_list) > 0:
-            price_data = price_list[0]
-            if isinstance(price_data, str):
-                price_data = json.loads(price_data)
+    price_list = res.get("PriceList", [])
+    if len(price_list) > 0:
+        price_data = price_list[0]
+        if isinstance(price_data, str):
+            price_data = json.loads(price_data)
+        return extract_instance_rate_per_hour(price_data)
 
-            return extract_instance_rate_per_hour(price_data)
-        return None
-    except botocore.exceptions.ClientError as e:
-        logger.warning(error_message, e.response["Error"]["Message"])
-        return None
-    except Exception:  # pylint: disable=W0703
-        logger.warning(error_message, "Something went wrong while getting instance rates.")
-        return None
+    raise Exception(f"Unable to get instance rate per hour for instance type: {instance_type}.")
 
 
 def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[str, str]]:

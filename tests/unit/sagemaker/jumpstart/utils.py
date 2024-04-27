@@ -326,10 +326,6 @@ def overwrite_dictionary(
     return base_dictionary
 
 
-def get_base_deployment_configs() -> List[Dict[str, Any]]:
-    return DEPLOYMENT_CONFIGS
-
-
 def get_base_deployment_configs_with_acceleration_configs() -> List[Dict[str, Any]]:
     configs = copy.deepcopy(DEPLOYMENT_CONFIGS)
     configs[0]["AccelerationConfigs"] = [
@@ -353,19 +349,25 @@ def get_mock_init_kwargs(
     )
 
 
-def get_base_deployment_configs_metadata() -> List[DeploymentConfigMetadata]:
+def get_base_deployment_configs_metadata(
+    omit_benchmark_metrics: bool = False,
+) -> List[DeploymentConfigMetadata]:
+    specs = (
+        get_base_spec_with_prototype_configs_with_missing_benchmarks()
+        if omit_benchmark_metrics
+        else get_base_spec_with_prototype_configs()
+    )
     configs = []
-    for (
-        config_name,
-        jumpstart_config,
-    ) in get_base_spec_with_prototype_configs().inference_configs.configs.items():
+    for config_name, jumpstart_config in specs.inference_configs.configs.items():
         benchmark_metrics = jumpstart_config.benchmark_metrics
-        for instance_type in benchmark_metrics:
-            benchmark_metrics[instance_type].append(
-                JumpStartBenchmarkStat(
-                    {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"}
+
+        if benchmark_metrics:
+            for instance_type in benchmark_metrics:
+                benchmark_metrics[instance_type].append(
+                    JumpStartBenchmarkStat(
+                        {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"}
+                    )
                 )
-            )
 
         configs.append(
             DeploymentConfigMetadata(
@@ -381,3 +383,11 @@ def get_base_deployment_configs_metadata() -> List[DeploymentConfigMetadata]:
             )
         )
     return configs
+
+
+def get_base_deployment_configs(
+    omit_benchmark_metrics: bool = False,
+) -> List[Dict[str, Any]]:
+    return [
+        config.to_json() for config in get_base_deployment_configs_metadata(omit_benchmark_metrics)
+    ]

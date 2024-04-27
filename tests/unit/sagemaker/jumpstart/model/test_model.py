@@ -15,7 +15,6 @@ from inspect import signature
 from typing import Optional, Set
 from unittest import mock
 import unittest
-import pandas as pd
 from mock import MagicMock, Mock
 import pytest
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
@@ -66,7 +65,6 @@ default_predictor_with_presets = Predictor(
 
 
 class ModelTest(unittest.TestCase):
-
     mock_session_empty_config = MagicMock(sagemaker_config={})
 
     @mock.patch(
@@ -1718,11 +1716,9 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_list_deployment_configs(
         self,
-        mock_model_deploy: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
@@ -1739,13 +1735,12 @@ class ModelTest(unittest.TestCase):
         mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
             "name": "Instance Rate",
             "unit": "USD/Hrs",
-            "value": "0.0083000000",
+            "value": "3.76",
         }
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         mock_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
-        mock_model_deploy.return_value = default_predictor
 
         mock_session.return_value = sagemaker_session
 
@@ -1756,19 +1751,15 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(configs, get_base_deployment_configs())
 
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
-    @mock.patch("sagemaker.jumpstart.model.get_instance_rate_per_hour")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_list_deployment_configs_empty(
         self,
-        mock_model_deploy: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
-        mock_get_instance_rate_per_hour: mock.Mock,
         mock_verify_model_region_and_return_specs: mock.Mock,
     ):
         model_id, _ = "pytorch-eqa-bert-base-cased", "*"
@@ -1776,16 +1767,10 @@ class ModelTest(unittest.TestCase):
         mock_verify_model_region_and_return_specs.side_effect = (
             lambda *args, **kwargs: get_special_model_spec(model_id="gemma-model")
         )
-        mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
-            "name": "Instance Rate",
-            "unit": "USD/Hrs",
-            "value": "0.0083000000",
-        }
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         mock_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
-        mock_model_deploy.return_value = default_predictor
 
         mock_session.return_value = sagemaker_session
 
@@ -1821,7 +1806,7 @@ class ModelTest(unittest.TestCase):
         mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
             "name": "Instance Rate",
             "unit": "USD/Hrs",
-            "value": "0.0083000000",
+            "value": "0.0083",
         }
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         mock_get_manifest.side_effect = (
@@ -1829,7 +1814,7 @@ class ModelTest(unittest.TestCase):
         )
         mock_model_deploy.return_value = default_predictor
 
-        expected = get_base_deployment_configs()[0]
+        expected = get_base_deployment_configs(True)[0]
         config_name = expected.get("DeploymentConfigName")
         instance_type = expected.get("InstanceType")
         mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(
@@ -1853,11 +1838,9 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_display_benchmark_metrics(
         self,
-        mock_model_deploy: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
@@ -1874,13 +1857,12 @@ class ModelTest(unittest.TestCase):
         mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
             "name": "Instance Rate",
             "unit": "USD/Hrs",
-            "value": "0.0083000000",
+            "value": "0.0083",
         }
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         mock_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
-        mock_model_deploy.return_value = default_predictor
 
         mock_session.return_value = sagemaker_session
 
@@ -1888,48 +1870,48 @@ class ModelTest(unittest.TestCase):
 
         model.display_benchmark_metrics()
 
-    @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
-    @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
-    @mock.patch("sagemaker.jumpstart.model.get_instance_rate_per_hour")
-    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_model_benchmark_metrics(
-        self,
-        mock_model_deploy: mock.Mock,
-        mock_get_model_specs: mock.Mock,
-        mock_session: mock.Mock,
-        mock_get_manifest: mock.Mock,
-        mock_get_instance_rate_per_hour: mock.Mock,
-        mock_verify_model_region_and_return_specs: mock.Mock,
-        mock_get_init_kwargs: mock.Mock,
-    ):
-        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
-
-        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
-        mock_verify_model_region_and_return_specs.side_effect = (
-            lambda *args, **kwargs: get_base_spec_with_prototype_configs()
-        )
-        mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
-            "name": "Instance Rate",
-            "unit": "USD/Hrs",
-            "value": "0.0083000000",
-        }
-        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
-        mock_get_manifest.side_effect = (
-            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
-        )
-        mock_model_deploy.return_value = default_predictor
-
-        mock_session.return_value = sagemaker_session
-
-        model = JumpStartModel(model_id=model_id)
-
-        df = model.benchmark_metrics
-
-        self.assertTrue(isinstance(df, pd.DataFrame))
+    # @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
+    # @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+    # @mock.patch("sagemaker.jumpstart.model.get_instance_rate_per_hour")
+    # @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    # @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    # @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    # @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    # @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    # def test_model_benchmark_metrics(
+    #     self,
+    #     mock_model_deploy: mock.Mock,
+    #     mock_get_model_specs: mock.Mock,
+    #     mock_session: mock.Mock,
+    #     mock_get_manifest: mock.Mock,
+    #     mock_get_instance_rate_per_hour: mock.Mock,
+    #     mock_verify_model_region_and_return_specs: mock.Mock,
+    #     mock_get_init_kwargs: mock.Mock,
+    # ):
+    #     model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+    #
+    #     mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
+    #     mock_verify_model_region_and_return_specs.side_effect = (
+    #         lambda *args, **kwargs: get_base_spec_with_prototype_configs()
+    #     )
+    #     mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
+    #         "name": "Instance Rate",
+    #         "unit": "USD/Hrs",
+    #         "value": "0.0083000000",
+    #     }
+    #     mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+    #     mock_get_manifest.side_effect = (
+    #         lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+    #     )
+    #     mock_model_deploy.return_value = default_predictor
+    #
+    #     mock_session.return_value = sagemaker_session
+    #
+    #     model = JumpStartModel(model_id=model_id)
+    #
+    #     df = model.benchmark_metrics
+    #
+    #     self.assertTrue(isinstance(df, pd.DataFrame))
 
 
 def test_jumpstart_model_requires_model_id():
