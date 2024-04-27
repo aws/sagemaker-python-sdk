@@ -908,10 +908,10 @@ class JumpStartModel(Model):
                 if not instance_type.startswith("ml."):
                     instance_type = f"ml.{instance_type}"
 
-                    for metric in benchmark_metric:
-                        if metric.name.lower() == "instance rate":
-                            should_fetch_instance_rate_metric = False
-                            break
+                for metric in benchmark_metric:
+                    if metric.name.lower() == "instance rate":
+                        should_fetch_instance_rate_metric = False
+                        break
 
                 if should_fetch_instance_rate_metric:
                     instance_type_rate = get_instance_rate_per_hour(
