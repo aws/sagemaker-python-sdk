@@ -1074,6 +1074,12 @@ def get_metrics_from_deployment_configs(
                         data[column_name].append(" - ")
                     data[column_name].append(metric.value)
 
+    # Todo: Temp
+    _len = len(data['Config Name'])
+    for key in data:
+        if len(data[key]) < _len:
+            for _ in range(len(data[key]), _len):
+                data[key].append(" - ")
     print("**********************")
     print(data)
     return data
