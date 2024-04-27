@@ -1049,29 +1049,31 @@ def add_instance_rate_stats_to_benchmark_metrics(
     if benchmark_metrics is None:
         return None
 
+    final_benchmark_metrics = {}
+
     err_message = None
     for instance_type, benchmark_metric_stats in benchmark_metrics.items():
-        ml_instance_type = (
-            instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
-        )
+        instance_type = instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
 
         if not has_instance_rate_stat(benchmark_metric_stats):
             try:
                 instance_type_rate = get_instance_rate_per_hour(
-                    instance_type=ml_instance_type, region=region
+                    instance_type=instance_type, region=region
                 )
 
                 benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
-                benchmark_metrics[instance_type] = benchmark_metric_stats
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
 
             except ClientError as e:
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
                 err_message = e.response["Error"]["Message"]
             except Exception:  # pylint: disable=W0703
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
                 err_message = (
                     f"Unable to get instance rate per hour for instance type: {instance_type}."
                 )
 
-    return err_message, benchmark_metrics
+    return err_message, final_benchmark_metrics
 
 
 def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchmarkStat]]) -> bool:
