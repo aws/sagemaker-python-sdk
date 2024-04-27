@@ -905,6 +905,9 @@ class JumpStartModel(Model):
         for config_name, metadata_config in self._metadata_configs.items():
             benchmark_metrics = {}
             for instance_type, benchmark_metric in metadata_config.benchmark_metrics.items():
+                if len(instance_type.split(".")) < 3:
+                    instance_type = f"ml.{instance_type}"
+
                 if should_fetch_instance_rate_metric:
                     instance_type_rate = get_instance_rate_per_hour(
                         instance_type=instance_type, region=self.region
