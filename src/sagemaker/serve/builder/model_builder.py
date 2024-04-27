@@ -59,6 +59,7 @@ from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadat
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
+from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
@@ -493,6 +494,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self.pysdk_model.model_package_arn = new_model_package.model_package_arn
         new_model_package.deploy = self._model_builder_deploy_model_package_wrapper
         self.model_package = new_model_package
+        if getattr(self, "_is_mlflow_model", False):
+            _maintain_lineage_tracking_for_mlflow_model(
+                mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
+                s3_upload_path=self.s3_upload_path,
+                sagemaker_session=self.sagemaker_session,
+            )
         return new_model_package
 
     def _model_builder_deploy_model_package_wrapper(self, *args, **kwargs):
@@ -551,12 +558,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        return self._original_deploy(
+        predictor = self._original_deploy(
             *args,
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
             **kwargs,
         )
+        if getattr(self, "_is_mlflow_model", False):
+            _maintain_lineage_tracking_for_mlflow_model(
+                mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
+                s3_upload_path=self.s3_upload_path,
+                sagemaker_session=self.sagemaker_session,
+            )
+        return predictor
 
     def _overwrite_mode_in_deploy(self, overwrite_mode: str):
         """Mode overwritten by customer during model.deploy()"""
