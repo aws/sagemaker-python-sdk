@@ -907,6 +907,8 @@ class JumpStartModel(Model):
                     else:
                         benchmark_metric.append(JumpStartBenchmarkStat(instance_type_rate))
                         benchmark_metrics[instance_type] = benchmark_metric
+                else:
+                    benchmark_metrics[instance_type] = benchmark_metric
 
             init_kwargs = get_init_kwargs(
                 model_id=self.model_id,
