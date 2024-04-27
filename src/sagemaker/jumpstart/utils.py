@@ -17,6 +17,7 @@ import os
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
+from botocore.exceptions import ClientError
 from packaging.version import Version
 import sagemaker
 from sagemaker.config.config_schema import (
@@ -1029,6 +1030,66 @@ def get_jumpstart_configs(
         if metadata_configs
         else {}
     )
+
+
+def add_instance_rate_stats_to_benchmark_metrics(
+    region: str,
+    benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]],
+) -> Optional[Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]]:
+    """Adds instance types metric stats to the given benchmark_metrics dict.
+
+    Args:
+        region (str): AWS region.
+        benchmark_metrics (Dict[str, List[JumpStartBenchmarkStat]]):
+    Returns:
+        Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]:
+        Contains Error message and metrics dict.
+    """
+
+    if benchmark_metrics is None:
+        return None
+
+    err_message = None
+    for instance_type, benchmark_metric_stats in benchmark_metrics.items():
+        if not instance_type.startswith("ml."):
+            instance_type = f"ml.{instance_type}"
+
+        if not has_instance_rate_stat(benchmark_metric_stats):
+            try:
+                instance_type_rate = get_instance_rate_per_hour(
+                    instance_type=instance_type, region=region
+                )
+
+                benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
+                benchmark_metrics[instance_type] = benchmark_metric_stats
+
+            except ClientError as e:
+                err_message = e.response["Error"]["Message"]
+            except Exception:  # pylint: disable=W0703
+                err_message = (
+                    f"Unable to get instance rate per hour for instance type: {instance_type}."
+                )
+
+    return err_message, benchmark_metrics
+
+
+def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchmarkStat]]) -> bool:
+    """Determines whether a benchmark metric stats contains instance rate metric stat.
+
+    Args:
+        benchmark_metric_stats (Optional[List[JumpStartBenchmarkStat]]):
+        List of benchmark metric stats.
+    Returns:
+        bool: Whether the benchmark metric stats contains instance rate metric stat.
+    """
+    if benchmark_metric_stats is None:
+        return False
+
+    for benchmark_metric_stat in benchmark_metric_stats:
+        if benchmark_metric_stat.name.lower() == "instance rate":
+            return True
+
+    return False
 
 
 def get_metrics_from_deployment_configs(

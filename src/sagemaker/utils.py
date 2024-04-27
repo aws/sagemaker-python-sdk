@@ -1673,6 +1673,7 @@ def get_instance_rate_per_hour(
     Returns:
         Optional[Dict[str, str]]: Instance rate per hour.
         Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.125'}.
+
     Raises:
         Exception: An exception is raised if
             the IAM role is not authorized to perform pricing:GetProducts.
@@ -1699,8 +1700,10 @@ def get_instance_rate_per_hour(
         price_data = price_list[0]
         if isinstance(price_data, str):
             price_data = json.loads(price_data)
-        return extract_instance_rate_per_hour(price_data)
 
+        instance_rate_per_hour = extract_instance_rate_per_hour(price_data)
+        if instance_rate_per_hour is not None:
+            return instance_rate_per_hour
     raise Exception(f"Unable to get instance rate per hour for instance type: {instance_type}.")
 
 

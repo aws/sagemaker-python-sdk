@@ -391,3 +391,16 @@ def get_base_deployment_configs(
     return [
         config.to_json() for config in get_base_deployment_configs_metadata(omit_benchmark_metrics)
     ]
+
+
+def append_instance_stat_metrics(
+    metrics: Dict[str, List[JumpStartBenchmarkStat]]
+) -> Dict[str, List[JumpStartBenchmarkStat]]:
+    if metrics is not None:
+        for key in metrics:
+            metrics[key].append(
+                JumpStartBenchmarkStat(
+                    {"name": "Instance Rate", "value": "3.76", "unit": "USD/Hrs"}
+                )
+            )
+    return metrics

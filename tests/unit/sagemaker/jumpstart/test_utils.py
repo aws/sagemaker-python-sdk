@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 import os
 from unittest import TestCase
+
+from botocore.exceptions import ClientError
 from mock.mock import Mock, patch
 import pytest
 import boto3
@@ -1771,3 +1773,94 @@ def test_extract_metrics_from_deployment_configs():
 
     for key in data:
         assert len(data[key]) == (len(configs) - 2)
+
+
+@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+def test_add_instance_rate_stats_to_benchmark_metrics(
+    mock_get_instance_rate_per_hour,
+):
+    mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
+        "name": "Instance Rate",
+        "unit": "USD/Hrs",
+        "value": "3.76",
+    }
+
+    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+        "us-west-2",
+        {
+            "ml.p2.xlarge": [
+                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            ],
+            "ml.gd4.xlarge": [
+                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            ],
+        },
+    )
+
+    assert err is None
+    for key in out:
+        assert len(out[key]) == 2
+        for metric in out[key]:
+            if metric.name == "Instance Rate":
+                assert metric.to_json() == {
+                    "name": "Instance Rate",
+                    "unit": "USD/Hrs",
+                    "value": "3.76",
+                }
+
+
+@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
+    mock_get_instance_rate_per_hour,
+):
+    mock_get_instance_rate_per_hour.side_effect = ClientError(
+        {"Error": {"Message": "is not authorized to perform: pricing:GetProducts"}}, "GetProducts"
+    )
+
+    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+        "us-west-2",
+        {
+            "ml.p2.xlarge": [
+                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            ],
+        },
+    )
+
+    assert err == "is not authorized to perform: pricing:GetProducts"
+    for key in out:
+        assert len(out[key]) == 1
+
+
+@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+def test_add_instance_rate_stats_to_benchmark_metrics_ex(
+    mock_get_instance_rate_per_hour,
+):
+    mock_get_instance_rate_per_hour.side_effect = Exception()
+
+    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+        "us-west-2",
+        {
+            "ml.p2.xlarge": [
+                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            ],
+        },
+    )
+
+    assert err == "Unable to get instance rate per hour for instance type: ml.p2.xlarge."
+    for key in out:
+        assert len(out[key]) == 1
+
+
+@pytest.mark.parametrize(
+    "stats, expected",
+    [
+        (None, False),
+        (
+            [JumpStartBenchmarkStat({"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"})],
+            True,
+        ),
+        ([JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})], False),
+    ],
+)
+def test_has_instance_rate_stat(stats, expected):
+    assert utils.has_instance_rate_stat(stats) is expected

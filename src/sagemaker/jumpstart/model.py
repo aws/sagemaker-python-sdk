@@ -41,17 +41,17 @@ from sagemaker.jumpstart.factory.model import (
 from sagemaker.jumpstart.types import (
     JumpStartSerializablePayload,
     DeploymentConfigMetadata,
-    JumpStartBenchmarkStat,
 )
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
     get_jumpstart_configs,
     get_metrics_from_deployment_configs,
+    add_instance_rate_stats_to_benchmark_metrics,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
-from sagemaker.utils import stringify_object, format_tags, Tags, get_instance_rate_per_hour
+from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
     ModelPackage,
@@ -923,41 +923,14 @@ class JumpStartModel(Model):
         if self._metadata_configs is None:
             return deployment_configs
 
-        should_fetch_instance_rate_metric_stat = True
-        err_message = None
-
+        err = None
         for config_name, metadata_config in self._metadata_configs.items():
-            final_benchmark_metrics = None
-
-            if metadata_config.benchmark_metrics is not None:
-                final_benchmark_metrics = {}
-                for instance_type, benchmark_metrics in metadata_config.benchmark_metrics.items():
-                    if not instance_type.startswith("ml."):
-                        instance_type = f"ml.{instance_type}"
-
-                    if benchmark_metrics is None:
-                        should_fetch_instance_rate_metric_stat = True
-                    else:
-                        for benchmark_metric_stat in benchmark_metrics:
-                            if benchmark_metric_stat.name.lower() == "instance rate":
-                                should_fetch_instance_rate_metric_stat = False
-                                break
-
-                    if should_fetch_instance_rate_metric_stat:
-                        try:
-                            instance_type_rate = get_instance_rate_per_hour(
-                                instance_type=instance_type, region=self.region
-                            )
-
-                            benchmark_metrics.append(JumpStartBenchmarkStat(instance_type_rate))
-                            final_benchmark_metrics[instance_type] = benchmark_metrics
-                        except ClientError as e:
-                            err_message = e.response["Error"]["Message"]
-                            should_fetch_instance_rate_metric_stat = False
-                        except Exception:  # pylint: disable=W0703
-                            should_fetch_instance_rate_metric_stat = True
-                    else:
-                        final_benchmark_metrics[instance_type] = benchmark_metrics
+            if err is None or "is not authorized to perform: pricing:GetProducts" not in err:
+                err, metadata_config.benchmark_metrics = (
+                    add_instance_rate_stats_to_benchmark_metrics(
+                        self.region, metadata_config.benchmark_metrics
+                    )
+                )
 
             resolved_config = metadata_config.resolved_config
             if selected_config_name == config_name:
@@ -977,16 +950,16 @@ class JumpStartModel(Model):
             )
             deployment_config_metadata = DeploymentConfigMetadata(
                 config_name,
-                final_benchmark_metrics,
+                metadata_config.benchmark_metrics,
                 resolved_config,
                 init_kwargs,
                 deploy_kwargs,
             )
             deployment_configs.append(deployment_config_metadata)
 
-        if err_message is not None:
+        if err is not None and "is not authorized to perform: pricing:GetProducts" in err:
             error_message = "Instance rate metrics will be omitted. Reason: %s"
-            JUMPSTART_LOGGER.warning(error_message, err_message)
+            JUMPSTART_LOGGER.warning(error_message, err)
 
         return deployment_configs
 
