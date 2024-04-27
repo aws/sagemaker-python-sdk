@@ -1051,13 +1051,14 @@ def add_instance_rate_stats_to_benchmark_metrics(
 
     err_message = None
     for instance_type, benchmark_metric_stats in benchmark_metrics.items():
-        if not instance_type.startswith("ml."):
-            instance_type = f"ml.{instance_type}"
+        ml_instance_type = (
+            instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
+        )
 
         if not has_instance_rate_stat(benchmark_metric_stats):
             try:
                 instance_type_rate = get_instance_rate_per_hour(
-                    instance_type=instance_type, region=region
+                    instance_type=ml_instance_type, region=region
                 )
 
                 benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
