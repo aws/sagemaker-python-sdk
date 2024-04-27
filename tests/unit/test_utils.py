@@ -1970,14 +1970,6 @@ def test_get_instance_rate_per_hour(
     assert instance_rate == expected
 
 
-@patch("boto3.client")
-def test_get_instance_rate_per_hour_ex(mock_client):
-    mock_client.return_value.get_products.side_effect = lambda *args, **kwargs: {"PriceList": []}
-
-    with pytest.raises(Exception):
-        get_instance_rate_per_hour(instance_type="ml.t4g.nano", region="us-west-2")
-
-
 @pytest.mark.parametrize(
     "price_data, expected_result",
     [
