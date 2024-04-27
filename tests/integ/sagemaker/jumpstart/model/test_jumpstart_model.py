@@ -309,7 +309,10 @@ def test_jumpstart_model_with_deployment_configs(setup):
     configs = model.list_deployment_configs()
     assert len(configs) > 0
 
-    model.set_deployment_config(configs[0]["DeploymentConfigName"])
+    model.set_deployment_config(
+        configs[0]["DeploymentConfigName"],
+        configs[0]["DeploymentArgs"]["InstanceType"],
+    )
     assert model.config_name == configs[0]["DeploymentConfigName"]
 
     predictor = model.deploy(
