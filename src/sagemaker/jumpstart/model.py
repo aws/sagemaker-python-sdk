@@ -444,10 +444,10 @@ class JumpStartModel(Model):
 
     @property
     def deployment_config(self) -> Optional[Dict[str, Any]]:
-        """The deployment config that will be applied to the model.
+        """The deployment config that will be applied to ``This`` model.
 
         Returns:
-            Optional[Dict[str, Any]]: Deployment config that will be applied to the model.
+            Optional[Dict[str, Any]]: Deployment config.
         """
         deployment_config = self._retrieve_selected_deployment_config(
             self.config_name, self.instance_type
@@ -456,16 +456,18 @@ class JumpStartModel(Model):
 
     @property
     def benchmark_metrics(self) -> pd.DataFrame:
-        """Benchmark Metrics for deployment configs
+        """Benchmark Metrics for deployment configs.
 
         Returns:
-            Metrics: Pandas DataFrame object.
+            Benchmark Metrics: Pandas DataFrame object.
         """
-        return pd.DataFrame(self._get_benchmarks_data())
+        return pd.DataFrame(
+            self._get_deployment_configs_benchmarks_data(self.config_name, self.instance_type)
+        )
 
     def display_benchmark_metrics(self) -> None:
-        """Display Benchmark Metrics for deployment configs."""
-        print(self.benchmark_metrics.to_markdown(index=False, tablefmt="grid"))
+        """Display deployment configs benchmark metrics."""
+        print(self.benchmark_metrics.to_markdown(index=False))
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model.
@@ -473,10 +475,11 @@ class JumpStartModel(Model):
         Returns:
             List[Dict[str, Any]]: A list of deployment configs.
         """
-        # Temp
         return [
             deployment_config.to_json()
-            for deployment_config in self._get_deployment_configs(self.instance_type)
+            for deployment_config in self._get_deployment_configs(
+                self.config_name, self.instance_type
+            )
         ]
 
     def _create_sagemaker_model(
@@ -867,80 +870,100 @@ class JumpStartModel(Model):
 
         return model_package
 
-    def _get_benchmarks_data(self) -> Dict[str, Any]:
+    @lru_cache
+    def _get_deployment_configs_benchmarks_data(
+        self, config_name: str, instance_type: str
+    ) -> Dict[str, Any]:
         """Deployment configs benchmark metrics.
 
+        Args:
+            config_name (str): Name of selected deployment config.
+            instance_type (str): The selected Instance type.
         Returns:
             Dict[str, List[str]]: Deployment config benchmark data.
         """
-        return get_metrics_from_deployment_configs(self._get_deployment_configs(self.instance_type))
+        return get_metrics_from_deployment_configs(
+            self._get_deployment_configs(config_name, instance_type)
+        )
 
     @lru_cache
     def _retrieve_selected_deployment_config(
         self, config_name: str, instance_type: str
     ) -> Optional[DeploymentConfigMetadata]:
-        """Retrieve the deployment config to apply to the model.
+        """Retrieve the deployment config to apply to `This` model.
 
         Args:
             config_name (str): The name of the deployment config to retrieve.
+            instance_type (str): The instance type of the deployment config to retrieve.
         Returns:
             Optional[Dict[str, Any]]: The retrieved deployment config.
         """
         if config_name is None:
             return None
 
-        for deployment_config in self._get_deployment_configs(instance_type):
+        for deployment_config in self._get_deployment_configs(config_name, instance_type):
             if deployment_config.deployment_config_name == config_name:
                 return deployment_config
         return None
 
     @lru_cache
     def _get_deployment_configs(
-        self, selected_instance_type: str
+        self, selected_config_name: str, selected_instance_type: str
     ) -> List[DeploymentConfigMetadata]:
-        """Retrieve the deployment configs to apply to the model."""
+        """Retrieve deployment configs metadata.
+
+        Args:
+            selected_config_name (str): The name of the selected deployment config.
+            selected_instance_type (str): The selected instance type.
+        """
         deployment_configs = []
 
-        should_fetch_instance_rate_metric = True
+        should_fetch_instance_rate_metric_stat = True
         for config_name, metadata_config in self._metadata_configs.items():
-            benchmark_metrics = {}
-            for instance_type, benchmark_metric in metadata_config.benchmark_metrics.items():
+            final_benchmark_metrics = {}
+            for instance_type, benchmark_metrics in metadata_config.benchmark_metrics.items():
                 if not instance_type.startswith("ml."):
                     instance_type = f"ml.{instance_type}"
 
-                for metric in benchmark_metric:
-                    if metric.name.lower() == "instance rate":
-                        should_fetch_instance_rate_metric = False
+                for benchmark_metric_stat in benchmark_metrics:
+                    if benchmark_metric_stat.name.lower() == "instance rate":
+                        should_fetch_instance_rate_metric_stat = False
                         break
 
-                if should_fetch_instance_rate_metric:
+                if should_fetch_instance_rate_metric_stat:
                     instance_type_rate = get_instance_rate_per_hour(
                         instance_type=instance_type, region=self.region
                     )
 
                     if instance_type_rate is None:
-                        should_fetch_instance_rate_metric = False
-                        benchmark_metrics[instance_type] = benchmark_metric
+                        should_fetch_instance_rate_metric_stat = False
+                        final_benchmark_metrics[instance_type] = benchmark_metrics
                     else:
-                        benchmark_metric.append(JumpStartBenchmarkStat(instance_type_rate))
-                        benchmark_metrics[instance_type] = benchmark_metric
+                        benchmark_metrics.append(JumpStartBenchmarkStat(instance_type_rate))
+                        final_benchmark_metrics[instance_type] = benchmark_metrics
                 else:
-                    benchmark_metrics[instance_type] = benchmark_metric
+                    final_benchmark_metrics[instance_type] = benchmark_metrics
+
+            resolved_config = metadata_config.resolved_config
+            if selected_config_name == config_name:
+                instance_type_to_use = selected_instance_type
+            else:
+                instance_type_to_use = resolved_config.get("default_inference_instance_type")
 
             init_kwargs = get_init_kwargs(
                 model_id=self.model_id,
-                instance_type=selected_instance_type,
+                instance_type=instance_type_to_use,
                 sagemaker_session=self.sagemaker_session,
             )
             deploy_kwargs = get_deploy_kwargs(
                 model_id=self.model_id,
-                instance_type=selected_instance_type,
+                instance_type=instance_type_to_use,
                 sagemaker_session=self.sagemaker_session,
             )
             deployment_config_metadata = DeploymentConfigMetadata(
                 config_name,
-                benchmark_metrics,
-                metadata_config.resolved_config,
+                final_benchmark_metrics,
+                resolved_config,
                 init_kwargs,
                 deploy_kwargs,
             )

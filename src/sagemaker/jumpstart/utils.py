@@ -1034,20 +1034,23 @@ def get_jumpstart_configs(
 def get_metrics_from_deployment_configs(
     deployment_configs: List[DeploymentConfigMetadata],
 ) -> Dict[str, List[str]]:
-    """Extracts metrics from deployment configs.
+    """Extracts benchmark metrics from deployment configs metadata.
 
     Args:
-        deployment_configs (list[dict[str, Any]]): List of deployment configs.
+        deployment_configs (List[DeploymentConfigMetadata]): List of deployment configs metadata.
     """
-
     data = {"Config Name": [], "Instance Type": []}
 
-    for index, deployment_config in enumerate(deployment_configs):
+    for outer_index, deployment_config in enumerate(deployment_configs):
         if deployment_config.deployment_args is None:
             continue
 
         benchmark_metrics = deployment_config.benchmark_metrics
-        for current_instance_type, current_instance_type_metrics in benchmark_metrics.items():
+        if benchmark_metrics is None:
+            continue
+
+        for inner_index, current_instance_type in enumerate(benchmark_metrics):
+            current_instance_type_metrics = benchmark_metrics[current_instance_type]
 
             data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
@@ -1057,7 +1060,7 @@ def get_metrics_from_deployment_configs(
             )
             data["Instance Type"].append(instance_type_to_display)
 
-            if index == 0:
+            if outer_index == 0 and inner_index == 0:
                 temp_data = {}
                 for metric in current_instance_type_metrics:
                     column_name = f"{metric.name} ({metric.unit})"
@@ -1070,16 +1073,5 @@ def get_metrics_from_deployment_configs(
             for metric in current_instance_type_metrics:
                 column_name = f"{metric.name} ({metric.unit})"
                 if column_name in data:
-                    for _ in range(len(data[column_name]), index):
-                        data[column_name].append(" - ")
                     data[column_name].append(metric.value)
-
-    # Todo: Temp
-    _len = len(data['Config Name'])
-    for key in data:
-        if len(data[key]) < _len:
-            for _ in range(len(data[key]), _len):
-                data[key].append(" - ")
-    print("*********Testing*************")
-    print(data)
     return data

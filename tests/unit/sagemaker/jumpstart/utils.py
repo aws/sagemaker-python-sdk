@@ -29,6 +29,9 @@ from sagemaker.jumpstart.types import (
     JumpStartS3FileType,
     JumpStartModelHeader,
     JumpStartModelInitKwargs,
+    DeploymentConfigMetadata,
+    JumpStartModelDeployKwargs,
+    JumpStartBenchmarkStat,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import get_formatted_manifest
@@ -348,3 +351,33 @@ def get_mock_init_kwargs(
         resources=ResourceRequirements(),
         config_name=config_name,
     )
+
+
+def get_base_deployment_configs_metadata() -> List[DeploymentConfigMetadata]:
+    configs = []
+    for (
+        config_name,
+        jumpstart_config,
+    ) in get_base_spec_with_prototype_configs().inference_configs.configs.items():
+        benchmark_metrics = jumpstart_config.benchmark_metrics
+        for instance_type in benchmark_metrics:
+            benchmark_metrics[instance_type].append(
+                JumpStartBenchmarkStat(
+                    {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"}
+                )
+            )
+
+        configs.append(
+            DeploymentConfigMetadata(
+                config_name=config_name,
+                benchmark_metrics=jumpstart_config.benchmark_metrics,
+                resolved_config=jumpstart_config.resolved_config,
+                init_kwargs=get_mock_init_kwargs(
+                    get_base_spec_with_prototype_configs().model_id, config_name
+                ),
+                deploy_kwargs=JumpStartModelDeployKwargs(
+                    model_id=get_base_spec_with_prototype_configs().model_id,
+                ),
+            )
+        )
+    return configs

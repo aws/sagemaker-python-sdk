@@ -37,7 +37,6 @@ from importlib import import_module
 
 import boto3
 import botocore
-from botocore.exceptions import ClientError
 from botocore.utils import merge_dicts
 from six.moves.urllib import parse
 import pandas as pd
@@ -1673,7 +1672,7 @@ def get_instance_rate_per_hour(
         region (str): The region.
     Returns:
         Optional[Dict[str, str]]: Instance rate per hour.
-        Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.1250000000'}}.
+        Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.125'}.
     """
     error_message = "Instance rate metrics will be omitted. Reason: %s"
 
@@ -1702,8 +1701,8 @@ def get_instance_rate_per_hour(
 
             return extract_instance_rate_per_hour(price_data)
         return None
-    except ClientError as e:
-        logger.warning(error_message, e.response["Error"])
+    except botocore.exceptions.ClientError as e:
+        logger.warning(error_message, e.response["Error"]["Message"])
         return None
     except Exception:  # pylint: disable=W0703
         logger.warning(error_message, "Something went wrong while getting instance rates.")
@@ -1724,9 +1723,12 @@ def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[
         for dimension in price_dimensions:
             for price in dimension.get("priceDimensions", {}).values():
                 for currency in price.get("pricePerUnit", {}).keys():
+                    value = price.get("pricePerUnit", {}).get(currency)
+                    if value is not None:
+                        value = str(round(float(value), 3))
                     return {
                         "unit": f"{currency}/{price.get('unit', 'Hrs')}",
-                        "value": price.get("pricePerUnit", {}).get(currency),
+                        "value": value,
                         "name": "Instance Rate",
                     }
     return None

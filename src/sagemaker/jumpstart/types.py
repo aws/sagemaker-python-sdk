@@ -2239,7 +2239,13 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
         return json_obj
 
     def _val_to_json(self, val: Any) -> Any:
-        """Converts ``Any`` to JSON."""
+        """Converts the given value to JSON.
+
+        Args:
+            val (Any): The value to convert.
+        Returns:
+            Any: The converted json value.
+        """
         if issubclass(type(val), JumpStartDataHolderType):
             return val.to_json()
         if isinstance(val, list):
@@ -2259,7 +2265,7 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
 
 
 class DeploymentArgs(BaseDeploymentConfigDataHolder):
-    """Dataclass representing a Deployment Config."""
+    """Dataclass representing a Deployment Args."""
 
     __slots__ = [
         "image_uri",
@@ -2273,19 +2279,15 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
 
     def __init__(
         self,
-        init_kwargs: JumpStartModelInitKwargs,
-        deploy_kwargs: JumpStartModelDeployKwargs,
-        resolved_config: Dict[str, Any],
+        init_kwargs: Optional[JumpStartModelInitKwargs] = None,
+        deploy_kwargs: Optional[JumpStartModelDeployKwargs] = None,
+        resolved_config: Optional[Dict[str, Any]] = None,
     ):
-        """Instantiates DeploymentConfig object."""
+        """Instantiates DeploymentArgs object."""
         if init_kwargs is not None:
             self.image_uri = init_kwargs.image_uri
             self.model_data = init_kwargs.model_data
             self.instance_type = init_kwargs.instance_type
-            self.default_instance_type = resolved_config.get("default_inference_instance_type")
-            self.supported_instance_types = resolved_config.get(
-                "supported_inference_instance_types"
-            )
             self.environment = init_kwargs.env
             if init_kwargs.resources is not None:
                 self.compute_resource_requirements = (
@@ -2295,6 +2297,11 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
             self.model_data_download_timeout = deploy_kwargs.model_data_download_timeout
             self.container_startup_health_check_timeout = (
                 deploy_kwargs.container_startup_health_check_timeout
+            )
+        if resolved_config is not None:
+            self.default_instance_type = resolved_config.get("default_inference_instance_type")
+            self.supported_instance_types = resolved_config.get(
+                "supported_inference_instance_types"
             )
 
 
@@ -2310,14 +2317,15 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
 
     def __init__(
         self,
-        config_name: str,
-        benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]],
-        resolved_config: Dict[str, Any],
-        init_kwargs: JumpStartModelInitKwargs,
-        deploy_kwargs: JumpStartModelDeployKwargs,
+        config_name: Optional[str] = None,
+        benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]] = None,
+        resolved_config: Optional[Dict[str, Any]] = None,
+        init_kwargs: Optional[JumpStartModelInitKwargs] = None,
+        deploy_kwargs: Optional[JumpStartModelDeployKwargs] = None,
     ):
         """Instantiates DeploymentConfigMetadata object."""
         self.deployment_config_name = config_name
         self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs, resolved_config)
-        self.acceleration_configs = resolved_config.get("acceleration_configs")
         self.benchmark_metrics = benchmark_metrics
+        if resolved_config is not None:
+            self.acceleration_configs = resolved_config.get("acceleration_configs")

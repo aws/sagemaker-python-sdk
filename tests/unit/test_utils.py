@@ -27,6 +27,7 @@ from unittest import TestCase
 from boto3 import exceptions
 import botocore
 import pytest
+from botocore.exceptions import ClientError
 from mock import call, patch, Mock, MagicMock, PropertyMock
 
 import sagemaker
@@ -1871,42 +1872,143 @@ class TestDeepMergeDict(TestCase):
 
 
 @pytest.mark.parametrize(
-    "instance, region",
+    "instance, region, amazon_sagemaker_price_result, expected",
     [
-        ("t4g.nano", "us-west-2"),
-        ("t4g.nano", "eu-central-1"),
-        ("t4g.nano", "af-south-1"),
-        ("t4g.nano", "ap-northeast-2"),
-        ("t4g.nano", "cn-north-1"),
+        (
+            "ml.t4g.nano",
+            "us-west-2",
+            {
+                "PriceList": [
+                    {
+                        "terms": {
+                            "OnDemand": {
+                                "3WK7G7WSYVS3K492.JRTCKXETXF": {
+                                    "priceDimensions": {
+                                        "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7": {
+                                            "unit": "Hrs",
+                                            "endRange": "Inf",
+                                            "description": "$0.9 per Unused Reservation Linux p2.xlarge Instance Hour",
+                                            "appliesTo": [],
+                                            "rateCode": "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7",
+                                            "beginRange": "0",
+                                            "pricePerUnit": {"USD": "0.9000000000"},
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    }
+                ]
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.9"},
+        ),
+        (
+            "ml.t4g.nano",
+            "eu-central-1",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "af-south-1",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "ap-northeast-2",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "cn-north-1",
+            {"PriceList": []},
+            None,
+        ),
     ],
 )
 @patch("boto3.client")
-def test_get_instance_rate_per_hour(mock_client, instance, region):
-    amazon_sagemaker_price_result = {
-        "PriceList": [
-            '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
-            '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": "$0.0083 per '
-            "On"
-            'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
-            '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": "0.0083000000"}}}, '
-            '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF", '
-            '"termAttributes": {}}}}}'
-        ]
-    }
+def test_get_instance_rate_per_hour(
+    mock_client, instance, region, amazon_sagemaker_price_result, expected
+):
 
     mock_client.return_value.get_products.side_effect = (
         lambda *args, **kwargs: amazon_sagemaker_price_result
     )
     instance_rate = get_instance_rate_per_hour(instance_type=instance, region=region)
 
-    assert instance_rate == {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.0083000000"}
+    assert instance_rate == expected
 
 
+@patch("sagemaker.utils.logger")
 @patch("boto3.client")
-def test_get_instance_rate_per_hour_ex(mock_client):
-    mock_client.return_value.get_products.side_effect = lambda *args, **kwargs: Exception()
+def test_get_instance_rate_per_hour_client_ex(mock_client, mock_logger):
+    err_msg = (
+        "User: arn:aws:sts::123456789123:assumed-role/AmazonSageMaker-ExecutionRole-20230707T131628/SageMaker "
+        "is not authorized to perform: pricing:GetProducts because no identity-based policy allows the "
+        "pricing:GetProducts action"
+    )
+    mock_client.return_value.get_products.side_effect = ClientError(
+        {"Error": {"Message": err_msg, "Code": "AccessDeniedException"}},
+        "GetProducts",
+    )
+
     instance_rate = get_instance_rate_per_hour(instance_type="ml.t4g.nano", region="us-west-2")
 
+    mock_logger.warning.assert_called_with(
+        "Instance rate metrics will be omitted. Reason: %s", err_msg
+    )
+    assert instance_rate is None
+
+
+@patch("sagemaker.utils.logger")
+@patch("boto3.client")
+def test_get_instance_rate_per_hour_ex(mock_client, mock_logger):
+    mock_client.return_value.get_products.side_effect = Exception()
+
+    instance_rate = get_instance_rate_per_hour(instance_type="ml.t4g.nano", region="us-west-2")
+
+    mock_logger.warning.assert_called_with(
+        "Instance rate metrics will be omitted. Reason: %s",
+        "Something went wrong while getting instance rates.",
+    )
     assert instance_rate is None
 
 
@@ -1934,7 +2036,7 @@ def test_get_instance_rate_per_hour_ex(mock_client):
                     }
                 }
             },
-            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.9000000000"},
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.9"},
         ),
     ],
 )

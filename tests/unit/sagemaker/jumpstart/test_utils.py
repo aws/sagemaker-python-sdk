@@ -49,8 +49,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_spec_from_base_spec,
     get_special_model_spec,
     get_prototype_manifest,
-    get_base_deployment_configs,
-    get_base_deployment_configs_with_acceleration_configs,
+    get_base_deployment_configs_metadata,
 )
 from mock import MagicMock
 
@@ -1763,53 +1762,12 @@ class TestBenchmarkStats:
         }
 
 
-@pytest.mark.parametrize(
-    "config_name, configs, expected",
-    [
-        (
-            None,
-            get_base_deployment_configs(),
-            {
-                "Config Name": [
-                    "neuron-inference",
-                    "neuron-inference-budget",
-                    "gpu-inference-budget",
-                    "gpu-inference",
-                ],
-                "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
-                "Selected": ["No", "No", "No", "No"],
-                "Instance Rate (USD/Hrs)": [
-                    "0.0083000000",
-                    "0.0083000000",
-                    "0.0083000000",
-                    "0.0083000000",
-                ],
-            },
-        ),
-        (
-            "neuron-inference",
-            get_base_deployment_configs_with_acceleration_configs(),
-            {
-                "Config Name": [
-                    "neuron-inference",
-                    "neuron-inference-budget",
-                    "gpu-inference-budget",
-                    "gpu-inference",
-                ],
-                "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
-                "Selected": ["Yes", "No", "No", "No"],
-                "Accelerated": ["Yes", "No", "No", "No"],
-                "Instance Rate (USD/Hrs)": [
-                    "0.0083000000",
-                    "0.0083000000",
-                    "0.0083000000",
-                    "0.0083000000",
-                ],
-            },
-        ),
-    ],
-)
-def test_extract_metrics_from_deployment_configs(config_name, configs, expected):
-    data = utils.get_metrics_from_deployment_configs(configs, config_name)
+def test_extract_metrics_from_deployment_configs():
+    configs = get_base_deployment_configs_metadata()
+    configs[0].benchmark_metrics = None
+    configs[2].deployment_args = None
 
-    assert data == expected
+    data = utils.get_metrics_from_deployment_configs(configs)
+
+    for key in data:
+        assert len(data[key]) == (len(configs) - 2)
