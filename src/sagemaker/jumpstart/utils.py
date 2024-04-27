@@ -45,7 +45,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config, TagsDict
+from sagemaker.utils import resolve_value_from_config, TagsDict, get_instance_rate_per_hour
 from sagemaker.workflow import is_pipeline_variable
 
 
