@@ -2308,6 +2308,7 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
         self,
         config_name: str,
         benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]],
+        supported_instance_types: List[str],
         init_kwargs: JumpStartModelInitKwargs,
         deploy_kwargs: JumpStartModelDeployKwargs,
     ):
@@ -2316,7 +2317,7 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
         self.deployment_args = DeploymentArgs(
             init_kwargs,
             deploy_kwargs,
-            [instance_type for instance_type in benchmark_metrics],
+            supported_instance_types
         )
         self.acceleration_configs = None
         self.benchmark_metrics = benchmark_metrics

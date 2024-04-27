@@ -922,7 +922,8 @@ class JumpStartModel(Model):
                             benchmark_metric.append(JumpStartBenchmarkStat(instance_type_rate))
                             benchmark_metrics[instance_type] = benchmark_metric
 
-                default_inference_instance_type = metadata_config.resolved_config.get(
+                resolved_config = metadata_config.resolved_config
+                default_inference_instance_type = resolved_config.get(
                     "default_inference_instance_type"
                 )
                 init_kwargs = get_init_kwargs(
@@ -937,7 +938,10 @@ class JumpStartModel(Model):
                 )
 
                 deployment_config_metadata = DeploymentConfigMetadata(
-                    config_name, benchmark_metrics, init_kwargs, deploy_kwargs
+                    config_name,
+                    benchmark_metrics,
+                    resolved_config.get("supported_inference_instance_types"),
+                    init_kwargs, deploy_kwargs
                 )
                 deployment_configs.append(deployment_config_metadata.to_json())
 
