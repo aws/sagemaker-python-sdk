@@ -1070,8 +1070,10 @@ def get_metrics_from_deployment_configs(
             for metric in current_instance_type_metrics:
                 column_name = f"{metric.name} ({metric.unit})"
                 if column_name in data:
-                    for i in range(len(data[column_name]), index):
+                    for _ in range(len(data[column_name]), index):
                         data[column_name].append(" - ")
                     data[column_name].append(metric.value)
 
+    print("**********************")
+    print(data)
     return data
