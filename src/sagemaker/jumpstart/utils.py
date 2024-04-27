@@ -1052,7 +1052,7 @@ def get_metrics_from_deployment_configs(
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
                 if current_instance_type
-                == deployment_config.get("DeploymentArgs").get("InstanceType")
+                == deployment_config.get("DeploymentArgs").get("DefaultInstanceType")
                 else current_instance_type
             )
             data["Instance Type"].append(instance_type_to_display)

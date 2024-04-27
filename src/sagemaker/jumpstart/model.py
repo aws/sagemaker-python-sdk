@@ -367,7 +367,6 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
             model_type=self.model_type,
         )
-        self._deployment_configs = None
 
     def log_subscription_warning(self) -> None:
         """Log message prompting the customer to subscribe to the proprietary model."""
@@ -450,7 +449,7 @@ class JumpStartModel(Model):
         Returns:
             Optional[Dict[str, Any]]: Deployment config that will be applied to the model.
         """
-        return self._retrieve_selected_deployment_config(self.config_name)
+        return self._retrieve_selected_deployment_config(self.config_name, self.instance_type)
 
     @property
     def benchmark_metrics(self) -> pd.DataFrame:
@@ -459,18 +458,11 @@ class JumpStartModel(Model):
         Returns:
             Metrics: Pandas DataFrame object.
         """
-        return pd.DataFrame(self._get_benchmarks_data().get("Data"))
+        return pd.DataFrame(self._get_benchmarks_data())
 
     def display_benchmark_metrics(self) -> None:
         """Display Benchmark Metrics for deployment configs."""
-        data = self._get_benchmarks_data().get("Data")
-        error_message = self._get_benchmarks_data().get("ErrorMessage")
-
-        if error_message is not None:
-            JUMPSTART_LOGGER.warning(error_message)
-
-        df = pd.DataFrame(data)
-        print(df.to_markdown(index=False, tablefmt="grid"))
+        print(self.benchmark_metrics.to_markdown(index=False, tablefmt="grid"))
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model.
@@ -478,8 +470,7 @@ class JumpStartModel(Model):
         Returns:
             List[Dict[str, Any]]: A list of deployment configs.
         """
-        self._init_deployment_configs()
-        return self._deployment_configs
+        return self._get_deployment_configs(self.instance_type)
 
     def _create_sagemaker_model(
         self,
@@ -869,21 +860,18 @@ class JumpStartModel(Model):
 
         return model_package
 
-    # @lru_cache
     def _get_benchmarks_data(self) -> Dict[str, Any]:
         """Deployment configs benchmark metrics.
 
         Returns:
             Dict[str, List[str]]: Deployment config benchmark data.
         """
-        error_message = self._init_deployment_configs()
-        return {
-            "ErrorMessage": error_message,
-            "Data": get_metrics_from_deployment_configs(self._deployment_configs),
-        }
+        return get_metrics_from_deployment_configs(self._get_deployment_configs(self.instance_type))
 
     @lru_cache
-    def _retrieve_selected_deployment_config(self, config_name: str) -> Optional[Dict[str, Any]]:
+    def _retrieve_selected_deployment_config(
+        self, config_name: str, instance_type: str
+    ) -> Optional[Dict[str, Any]]:
         """Retrieve the deployment config to apply to the model.
 
         Args:
@@ -894,60 +882,52 @@ class JumpStartModel(Model):
         if config_name is None:
             return None
 
-        self._init_deployment_configs()
-        for deployment_config in self._deployment_configs:
+        for deployment_config in self._get_deployment_configs(instance_type):
             if deployment_config.get("DeploymentConfigName") == config_name:
                 return deployment_config
         return None
 
-    def _init_deployment_configs(self) -> Optional[str]:
-        """Initialize the deployment configs."""
+    @lru_cache
+    def _get_deployment_configs(self, selected_instance_type: str) -> List[Dict[str, Any]]:
+        """Retrieve the deployment configs to apply to the model."""
         deployment_configs = []
-        error_message = None
-        if self._deployment_configs is None:
-            should_fetch_instance_rate_metric = True
-            for config_name, metadata_config in self._metadata_configs.items():
-                benchmark_metrics = {}
-                for instance_type, benchmark_metric in metadata_config.benchmark_metrics.items():
-                    if should_fetch_instance_rate_metric:
-                        instance_type_rate = get_instance_rate_per_hour(
-                            instance_type=instance_type, region=self.region
-                        )
 
-                        if "Message" in instance_type_rate:
-                            error_message = instance_type_rate["Message"]
-                            should_fetch_instance_rate_metric = False
-                            benchmark_metrics[instance_type] = benchmark_metric
-                        else:
-                            benchmark_metric.append(JumpStartBenchmarkStat(instance_type_rate))
-                            benchmark_metrics[instance_type] = benchmark_metric
+        should_fetch_instance_rate_metric = True
+        for config_name, metadata_config in self._metadata_configs.items():
+            benchmark_metrics = {}
+            for instance_type, benchmark_metric in metadata_config.benchmark_metrics.items():
+                if should_fetch_instance_rate_metric:
+                    instance_type_rate = get_instance_rate_per_hour(
+                        instance_type=instance_type, region=self.region
+                    )
 
-                resolved_config = metadata_config.resolved_config
-                default_inference_instance_type = resolved_config.get(
-                    "default_inference_instance_type"
-                )
-                init_kwargs = get_init_kwargs(
-                    model_id=self.model_id,
-                    instance_type=default_inference_instance_type,
-                    sagemaker_session=self.sagemaker_session,
-                )
-                deploy_kwargs = get_deploy_kwargs(
-                    model_id=self.model_id,
-                    instance_type=default_inference_instance_type,
-                    sagemaker_session=self.sagemaker_session,
-                )
+                    if instance_type_rate is None:
+                        should_fetch_instance_rate_metric = False
+                        benchmark_metrics[instance_type] = benchmark_metric
+                    else:
+                        benchmark_metric.append(JumpStartBenchmarkStat(instance_type_rate))
+                        benchmark_metrics[instance_type] = benchmark_metric
 
-                deployment_config_metadata = DeploymentConfigMetadata(
-                    config_name,
-                    benchmark_metrics,
-                    resolved_config.get("supported_inference_instance_types"),
-                    init_kwargs, deploy_kwargs
-                )
-                deployment_configs.append(deployment_config_metadata.to_json())
+            init_kwargs = get_init_kwargs(
+                model_id=self.model_id,
+                instance_type=selected_instance_type,
+                sagemaker_session=self.sagemaker_session,
+            )
+            deploy_kwargs = get_deploy_kwargs(
+                model_id=self.model_id,
+                instance_type=selected_instance_type,
+                sagemaker_session=self.sagemaker_session,
+            )
+            deployment_config_metadata = DeploymentConfigMetadata(
+                config_name,
+                benchmark_metrics,
+                metadata_config.resolved_config,
+                init_kwargs,
+                deploy_kwargs,
+            )
+            deployment_configs.append(deployment_config_metadata.to_json())
 
-        if len(deployment_configs) > 0:
-            self._deployment_configs = deployment_configs
-        return error_message
+        return deployment_configs
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

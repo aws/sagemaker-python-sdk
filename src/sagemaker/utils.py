@@ -1665,16 +1665,17 @@ def deep_override_dict(
 def get_instance_rate_per_hour(
     instance_type: str,
     region: str,
-) -> Dict[str, str]:
+) -> Optional[Dict[str, str]]:
     """Gets instance rate per hour for the given instance type.
 
     Args:
         instance_type (str): The instance type.
         region (str): The region.
     Returns:
-        Union[Dict[str, str], None]: Instance rate per hour.
-         Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.1250000000'}}.
+        Optional[Dict[str, str]]: Instance rate per hour.
+        Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.1250000000'}}.
     """
+    error_message = "Instance rate metrics will be omitted. Reason: %s"
 
     region_name = "us-east-1"
     if region.startswith("eu") or region.startswith("af"):
@@ -1699,14 +1700,14 @@ def get_instance_rate_per_hour(
             if isinstance(price_data, str):
                 price_data = json.loads(price_data)
 
-            rate = extract_instance_rate_per_hour(price_data)
-            if rate is None:
-                return {}
-            return rate
+            return extract_instance_rate_per_hour(price_data)
+        return None
     except ClientError as e:
-        return e.response["Error"]
+        logger.warning(error_message, e.response["Error"])
+        return None
     except Exception:  # pylint: disable=W0703
-        return {"Message": "Something went wrong while getting instance rate."}
+        logger.warning(error_message, "Something went wrong while getting instance rates.")
+        return None
 
 
 def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[str, str]]:
