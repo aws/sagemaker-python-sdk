@@ -449,7 +449,10 @@ class JumpStartModel(Model):
         Returns:
             Optional[Dict[str, Any]]: Deployment config that will be applied to the model.
         """
-        return self._retrieve_selected_deployment_config(self.config_name, self.instance_type)
+        deployment_config = self._retrieve_selected_deployment_config(
+            self.config_name, self.instance_type
+        )
+        return deployment_config.to_json() if deployment_config is not None else None
 
     @property
     def benchmark_metrics(self) -> pd.DataFrame:
@@ -470,7 +473,11 @@ class JumpStartModel(Model):
         Returns:
             List[Dict[str, Any]]: A list of deployment configs.
         """
-        return self._get_deployment_configs(self.instance_type)
+        # Temp
+        return [
+            deployment_config.to_json()
+            for deployment_config in self._get_deployment_configs(self.instance_type)
+        ]
 
     def _create_sagemaker_model(
         self,
@@ -871,7 +878,7 @@ class JumpStartModel(Model):
     @lru_cache
     def _retrieve_selected_deployment_config(
         self, config_name: str, instance_type: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[DeploymentConfigMetadata]:
         """Retrieve the deployment config to apply to the model.
 
         Args:
@@ -883,12 +890,14 @@ class JumpStartModel(Model):
             return None
 
         for deployment_config in self._get_deployment_configs(instance_type):
-            if deployment_config.get("DeploymentConfigName") == config_name:
+            if deployment_config.deployment_config_name == config_name:
                 return deployment_config
         return None
 
     @lru_cache
-    def _get_deployment_configs(self, selected_instance_type: str) -> List[Dict[str, Any]]:
+    def _get_deployment_configs(
+        self, selected_instance_type: str
+    ) -> List[DeploymentConfigMetadata]:
         """Retrieve the deployment configs to apply to the model."""
         deployment_configs = []
 
@@ -927,7 +936,7 @@ class JumpStartModel(Model):
                 init_kwargs,
                 deploy_kwargs,
             )
-            deployment_configs.append(deployment_config_metadata.to_json())
+            deployment_configs.append(deployment_config_metadata)
 
         return deployment_configs
 

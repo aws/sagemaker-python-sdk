@@ -2265,9 +2265,7 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
         "image_uri",
         "model_data",
         "environment",
-        "selected_instance_type",
-        "default_instance_type",
-        "supported_instance_types",
+        "instance_type",
         "compute_resource_requirements",
         "model_data_download_timeout",
         "container_startup_health_check_timeout",
@@ -2283,7 +2281,7 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
         if init_kwargs is not None:
             self.image_uri = init_kwargs.image_uri
             self.model_data = init_kwargs.model_data
-            self.selected_instance_type = init_kwargs.instance_type
+            self.instance_type = init_kwargs.instance_type
             self.default_instance_type = resolved_config.get("default_inference_instance_type")
             self.supported_instance_types = resolved_config.get(
                 "supported_inference_instance_types"

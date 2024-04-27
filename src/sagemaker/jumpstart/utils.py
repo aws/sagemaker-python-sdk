@@ -41,6 +41,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
+    DeploymentConfigMetadata,
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
@@ -1031,7 +1032,7 @@ def get_jumpstart_configs(
 
 
 def get_metrics_from_deployment_configs(
-    deployment_configs: List[Dict[str, Any]]
+    deployment_configs: List[DeploymentConfigMetadata],
 ) -> Dict[str, List[str]]:
     """Extracts metrics from deployment configs.
 
@@ -1042,17 +1043,16 @@ def get_metrics_from_deployment_configs(
     data = {"Config Name": [], "Instance Type": []}
 
     for index, deployment_config in enumerate(deployment_configs):
-        if deployment_config.get("DeploymentArgs") is None:
+        if deployment_config.deployment_args is None:
             continue
 
-        benchmark_metrics = deployment_config.get("BenchmarkMetrics")
+        benchmark_metrics = deployment_config.benchmark_metrics
         for current_instance_type, current_instance_type_metrics in benchmark_metrics.items():
 
-            data["Config Name"].append(deployment_config.get("DeploymentConfigName"))
+            data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
-                if current_instance_type
-                == deployment_config.get("DeploymentArgs").get("DefaultInstanceType")
+                if current_instance_type == deployment_config.deployment_args.default_instance_type
                 else current_instance_type
             )
             data["Instance Type"].append(instance_type_to_display)
@@ -1060,16 +1060,18 @@ def get_metrics_from_deployment_configs(
             if index == 0:
                 temp_data = {}
                 for metric in current_instance_type_metrics:
-                    column_name = f"{metric.get('name')} ({metric.get('unit')})"
-                    if metric.get("name").lower() == "instance rate":
+                    column_name = f"{metric.name} ({metric.unit})"
+                    if metric.name.lower() == "instance rate":
                         data[column_name] = []
                     else:
                         temp_data[column_name] = []
                 data = {**data, **temp_data}
 
             for metric in current_instance_type_metrics:
-                column_name = f"{metric.get('name')} ({metric.get('unit')})"
+                column_name = f"{metric.name} ({metric.unit})"
                 if column_name in data:
-                    data[column_name].append(metric.get('value'))
+                    for _ in range(index):
+                        data[column_name].append(" - ")
+                    data[column_name].append(metric.value)
 
     return data
