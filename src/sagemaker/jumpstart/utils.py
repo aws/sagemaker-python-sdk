@@ -1080,6 +1080,6 @@ def get_metrics_from_deployment_configs(
         if len(data[key]) < _len:
             for _ in range(len(data[key]), _len):
                 data[key].append(" - ")
-    print("**********************")
+    print("*********Testing*************")
     print(data)
     return data
