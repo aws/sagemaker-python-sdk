@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
+from functools import lru_cache, wraps
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
@@ -1061,7 +1062,10 @@ def add_instance_rate_stats_to_benchmark_metrics(
                     instance_type=instance_type, region=region
                 )
 
-                benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
+                if benchmark_metric_stats is None:
+                    benchmark_metric_stats = [JumpStartBenchmarkStat(instance_type_rate)]
+                else:
+                    benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
 
             except ClientError as e:
@@ -1139,3 +1143,57 @@ def get_metrics_from_deployment_configs(
                 if column_name in data:
                     data[column_name].append(metric.value)
     return data
+
+
+def deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool = False):
+    """Decorator that caches LRU cache for deployment configs."""
+
+    def wrapper_cache(f):
+        f = lru_cache(maxsize=maxsize, typed=typed)(f)
+
+        @wraps(f)
+        def wrapped_f(*args, **kwargs):
+            res = None
+            has_instance_rate_metric_stat = False
+            retry_count = 1
+
+            while retry_count <= 2:
+                res = f(*args, **kwargs)
+
+                if isinstance(res, DeploymentConfigMetadata):
+                    for instance_type, benchmark_metric_stats in res.benchmark_metrics.items():
+                        if has_instance_rate_stat(benchmark_metric_stats):
+                            has_instance_rate_metric_stat = True
+                            break
+
+                elif isinstance(res, list):
+                    for item in res:
+                        if has_instance_rate_metric_stat:
+                            break
+
+                        if isinstance(item, DeploymentConfigMetadata):
+                            for (
+                                instance_type,
+                                benchmark_metric_stats,
+                            ) in item.benchmark_metrics.items():
+                                if has_instance_rate_stat(benchmark_metric_stats):
+                                    has_instance_rate_metric_stat = True
+                                    break
+                else:
+                    has_instance_rate_metric_stat = False
+
+                if not has_instance_rate_metric_stat and retry_count == 1:
+                    f.cache_clear()
+
+                retry_count += 1
+            return res
+
+        wrapped_f.cache_info = f.cache_info
+        wrapped_f.cache_clear = f.cache_clear
+        return wrapped_f
+
+    # To allow decorator to be used without arguments
+    if _func is None:
+        return wrapper_cache
+    else:
+        return wrapper_cache(_func)
