@@ -1145,8 +1145,15 @@ def get_metrics_from_deployment_configs(
     return data
 
 
-def deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool = False):
+def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool = False):
     """Decorator that caches LRU cache for deployment configs."""
+
+    def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
+        """Determines whether a benchmark metric stats contains instance rate metric stat."""
+        for _, benchmark_metric_stats in config.benchmark_metrics.items():
+            if has_instance_rate_stat(benchmark_metric_stats):
+                return True
+        return False
 
     def wrapper_cache(f):
         f = lru_cache(maxsize=maxsize, typed=typed)(f)
@@ -1156,36 +1163,28 @@ def deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool =
             res = None
             has_instance_rate_metric_stat = False
             retry_count = 1
+            first_call = f.cache_info().misses == 0
 
             while retry_count <= 2:
                 res = f(*args, **kwargs)
 
                 if isinstance(res, DeploymentConfigMetadata):
-                    for instance_type, benchmark_metric_stats in res.benchmark_metrics.items():
-                        if has_instance_rate_stat(benchmark_metric_stats):
-                            has_instance_rate_metric_stat = True
-                            break
+                    has_instance_rate_metric_stat = has_instance_rate_metric(res)
 
                 elif isinstance(res, list):
                     for item in res:
                         if has_instance_rate_metric_stat:
                             break
-
                         if isinstance(item, DeploymentConfigMetadata):
-                            for (
-                                instance_type,
-                                benchmark_metric_stats,
-                            ) in item.benchmark_metrics.items():
-                                if has_instance_rate_stat(benchmark_metric_stats):
-                                    has_instance_rate_metric_stat = True
-                                    break
+                            if has_instance_rate_metric(item):
+                                has_instance_rate_metric_stat = True
+                                break
                 else:
-                    has_instance_rate_metric_stat = False
+                    has_instance_rate_metric_stat = True
 
-                if not has_instance_rate_metric_stat and retry_count == 1:
+                if not has_instance_rate_metric_stat:
                     f.cache_clear()
-
-                retry_count += 1
+                retry_count = retry_count + 1 if first_call else 3
             return res
 
         wrapped_f.cache_info = f.cache_info
@@ -1195,5 +1194,4 @@ def deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool =
     # To allow decorator to be used without arguments
     if _func is None:
         return wrapper_cache
-    else:
-        return wrapper_cache(_func)
+    return wrapper_cache(_func)

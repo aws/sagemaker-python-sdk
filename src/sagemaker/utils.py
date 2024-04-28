@@ -25,7 +25,6 @@ import shutil
 import tarfile
 import tempfile
 import time
-from functools import lru_cache
 from typing import Union, Any, List, Optional, Dict
 import json
 import abc
@@ -1660,7 +1659,7 @@ def deep_override_dict(
     return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
 
 
-@lru_cache
+# @lru_cache
 def get_instance_rate_per_hour(
     instance_type: str,
     region: str,
