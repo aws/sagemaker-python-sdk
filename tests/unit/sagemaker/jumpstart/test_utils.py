@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 import os
 from unittest import TestCase
+
+from botocore.exceptions import ClientError
 from mock.mock import Mock, patch
 import pytest
 import boto3
@@ -49,8 +51,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_spec_from_base_spec,
     get_special_model_spec,
     get_prototype_manifest,
-    get_base_deployment_configs,
-    get_base_deployment_configs_with_acceleration_configs,
+    get_base_deployment_configs_metadata,
 )
 from mock import MagicMock
 
@@ -1763,53 +1764,103 @@ class TestBenchmarkStats:
         }
 
 
+def test_extract_metrics_from_deployment_configs():
+    configs = get_base_deployment_configs_metadata()
+    configs[0].benchmark_metrics = None
+    configs[2].deployment_args = None
+
+    data = utils.get_metrics_from_deployment_configs(configs)
+
+    for key in data:
+        assert len(data[key]) == (len(configs) - 2)
+
+
+@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+def test_add_instance_rate_stats_to_benchmark_metrics(
+    mock_get_instance_rate_per_hour,
+):
+    mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
+        "name": "Instance Rate",
+        "unit": "USD/Hrs",
+        "value": "3.76",
+    }
+
+    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+        "us-west-2",
+        {
+            "ml.p2.xlarge": [
+                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            ],
+            "ml.gd4.xlarge": [
+                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            ],
+        },
+    )
+
+    assert err is None
+    for key in out:
+        assert len(out[key]) == 2
+        for metric in out[key]:
+            if metric.name == "Instance Rate":
+                assert metric.to_json() == {
+                    "name": "Instance Rate",
+                    "unit": "USD/Hrs",
+                    "value": "3.76",
+                }
+
+
+@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
+    mock_get_instance_rate_per_hour,
+):
+    mock_get_instance_rate_per_hour.side_effect = ClientError(
+        {"Error": {"Message": "is not authorized to perform: pricing:GetProducts"}}, "GetProducts"
+    )
+
+    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+        "us-west-2",
+        {
+            "ml.p2.xlarge": [
+                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            ],
+        },
+    )
+
+    assert err == "is not authorized to perform: pricing:GetProducts"
+    for key in out:
+        assert len(out[key]) == 1
+
+
+@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+def test_add_instance_rate_stats_to_benchmark_metrics_ex(
+    mock_get_instance_rate_per_hour,
+):
+    mock_get_instance_rate_per_hour.side_effect = Exception()
+
+    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+        "us-west-2",
+        {
+            "ml.p2.xlarge": [
+                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            ],
+        },
+    )
+
+    assert err == "Unable to get instance rate per hour for instance type: ml.p2.xlarge."
+    for key in out:
+        assert len(out[key]) == 1
+
+
 @pytest.mark.parametrize(
-    "config_name, configs, expected",
+    "stats, expected",
     [
+        (None, False),
         (
-            None,
-            get_base_deployment_configs(),
-            {
-                "Config Name": [
-                    "neuron-inference",
-                    "neuron-inference-budget",
-                    "gpu-inference-budget",
-                    "gpu-inference",
-                ],
-                "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
-                "Selected": ["No", "No", "No", "No"],
-                "Instance Rate (USD/Hrs)": [
-                    "0.0083000000",
-                    "0.0083000000",
-                    "0.0083000000",
-                    "0.0083000000",
-                ],
-            },
+            [JumpStartBenchmarkStat({"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"})],
+            True,
         ),
-        (
-            "neuron-inference",
-            get_base_deployment_configs_with_acceleration_configs(),
-            {
-                "Config Name": [
-                    "neuron-inference",
-                    "neuron-inference-budget",
-                    "gpu-inference-budget",
-                    "gpu-inference",
-                ],
-                "Instance Type": ["ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge", "ml.p2.xlarge"],
-                "Selected": ["Yes", "No", "No", "No"],
-                "Accelerated": ["Yes", "No", "No", "No"],
-                "Instance Rate (USD/Hrs)": [
-                    "0.0083000000",
-                    "0.0083000000",
-                    "0.0083000000",
-                    "0.0083000000",
-                ],
-            },
-        ),
+        ([JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})], False),
     ],
 )
-def test_extract_metrics_from_deployment_configs(config_name, configs, expected):
-    data = utils.get_metrics_from_deployment_configs(configs, config_name)
-
-    assert data == expected
+def test_has_instance_rate_stat(stats, expected):
+    assert utils.has_instance_rate_stat(stats) is expected

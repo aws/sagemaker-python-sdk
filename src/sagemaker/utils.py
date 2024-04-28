@@ -1664,17 +1664,21 @@ def deep_override_dict(
 def get_instance_rate_per_hour(
     instance_type: str,
     region: str,
-) -> Union[Dict[str, str], None]:
+) -> Optional[Dict[str, str]]:
     """Gets instance rate per hour for the given instance type.
 
     Args:
         instance_type (str): The instance type.
         region (str): The region.
     Returns:
-        Union[Dict[str, str], None]: Instance rate per hour.
-         Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.1250000000'}}.
-    """
+        Optional[Dict[str, str]]: Instance rate per hour.
+        Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.125'}.
 
+    Raises:
+        Exception: An exception is raised if
+            the IAM role is not authorized to perform pricing:GetProducts.
+            or unexpected event happened.
+    """
     region_name = "us-east-1"
     if region.startswith("eu") or region.startswith("af"):
         region_name = "eu-central-1"
@@ -1682,35 +1686,34 @@ def get_instance_rate_per_hour(
         region_name = "ap-south-1"
 
     pricing_client: boto3.client = boto3.client("pricing", region_name=region_name)
-    try:
-        res = pricing_client.get_products(
-            ServiceCode="AmazonSageMaker",
-            Filters=[
-                {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
-                {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
-                {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
-            ],
-        )
+    res = pricing_client.get_products(
+        ServiceCode="AmazonSageMaker",
+        Filters=[
+            {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
+            {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
+            {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
+        ],
+    )
 
-        price_list = res.get("PriceList", [])
-        if len(price_list) > 0:
-            price_data = price_list[0]
-            if isinstance(price_data, str):
-                price_data = json.loads(price_data)
+    price_list = res.get("PriceList", [])
+    if len(price_list) > 0:
+        price_data = price_list[0]
+        if isinstance(price_data, str):
+            price_data = json.loads(price_data)
 
-            return extract_instance_rate_per_hour(price_data)
-    except Exception as e:  # pylint: disable=W0703
-        logging.exception("Error getting instance rate: %s", e)
-    return None
+        instance_rate_per_hour = extract_instance_rate_per_hour(price_data)
+        if instance_rate_per_hour is not None:
+            return instance_rate_per_hour
+    raise Exception(f"Unable to get instance rate per hour for instance type: {instance_type}.")
 
 
-def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Union[Dict[str, str], None]:
+def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[str, str]]:
     """Extract instance rate per hour for the given Price JSON data.
 
     Args:
         price_data (Dict[str, Any]): The Price JSON data.
     Returns:
-        Union[Dict[str, str], None]: Instance rate per hour.
+        Optional[Dict[str, str], None]: Instance rate per hour.
     """
 
     if price_data is not None:
@@ -1718,9 +1721,12 @@ def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Union[Dict[str
         for dimension in price_dimensions:
             for price in dimension.get("priceDimensions", {}).values():
                 for currency in price.get("pricePerUnit", {}).keys():
+                    value = price.get("pricePerUnit", {}).get(currency)
+                    if value is not None:
+                        value = str(round(float(value), 3))
                     return {
                         "unit": f"{currency}/{price.get('unit', 'Hrs')}",
-                        "value": price.get("pricePerUnit", {}).get(currency),
+                        "value": value,
                         "name": "Instance Rate",
                     }
     return None

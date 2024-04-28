@@ -22,6 +22,8 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartModelHeader,
     JumpStartConfigComponent,
+    DeploymentConfigMetadata,
+    JumpStartModelInitKwargs,
 )
 from tests.unit.sagemaker.jumpstart.constants import (
     BASE_SPEC,
@@ -29,6 +31,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
     INFERENCE_CONFIGS,
     TRAINING_CONFIG_RANKINGS,
     TRAINING_CONFIGS,
+    INIT_KWARGS,
 )
 
 INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
@@ -1256,3 +1259,39 @@ def test_set_training_config():
 
     with pytest.raises(ValueError) as error:
         specs1.set_config("invalid_name", scope="unknown scope")
+
+
+def test_deployment_config_metadata():
+    spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    specs = JumpStartModelSpecs(spec)
+    jumpstart_config = specs.inference_configs.get_top_config_from_ranking()
+
+    deployment_config_metadata = DeploymentConfigMetadata(
+        jumpstart_config.config_name,
+        jumpstart_config.benchmark_metrics,
+        jumpstart_config.resolved_config,
+        JumpStartModelInitKwargs(
+            model_id=specs.model_id,
+            model_data=INIT_KWARGS.get("model_data"),
+            image_uri=INIT_KWARGS.get("image_uri"),
+            instance_type=INIT_KWARGS.get("instance_type"),
+            env=INIT_KWARGS.get("env"),
+            config_name=jumpstart_config.config_name,
+        ),
+    )
+
+    json_obj = deployment_config_metadata.to_json()
+
+    assert isinstance(json_obj, dict)
+    assert json_obj["DeploymentConfigName"] == jumpstart_config.config_name
+    for key in json_obj["BenchmarkMetrics"]:
+        assert len(json_obj["BenchmarkMetrics"][key]) == len(
+            jumpstart_config.benchmark_metrics.get(key)
+        )
+    assert json_obj["AccelerationConfigs"] == jumpstart_config.resolved_config.get(
+        "acceleration_configs"
+    )
+    assert json_obj["DeploymentArgs"]["ImageUri"] == INIT_KWARGS.get("image_uri")
+    assert json_obj["DeploymentArgs"]["ModelData"] == INIT_KWARGS.get("model_data")
+    assert json_obj["DeploymentArgs"]["Environment"] == INIT_KWARGS.get("env")
+    assert json_obj["DeploymentArgs"]["InstanceType"] == INIT_KWARGS.get("instance_type")
