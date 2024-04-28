@@ -2235,29 +2235,37 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
             if hasattr(self, att):
                 cur_val = getattr(self, att)
                 att = self._convert_to_pascal_case(att)
-                if issubclass(type(cur_val), JumpStartDataHolderType):
-                    json_obj[att] = cur_val.to_json()
-                elif isinstance(cur_val, list):
-                    json_obj[att] = []
-                    for obj in cur_val:
-                        if issubclass(type(obj), JumpStartDataHolderType):
-                            json_obj[att].append(obj.to_json())
-                        else:
-                            json_obj[att].append(obj)
-                elif isinstance(cur_val, dict):
-                    json_obj[att] = {}
-                    for key, val in cur_val.items():
-                        if issubclass(type(val), JumpStartDataHolderType):
-                            json_obj[att][self._convert_to_pascal_case(key)] = val.to_json()
-                        else:
-                            json_obj[att][key] = val
-                else:
-                    json_obj[att] = cur_val
+                json_obj[att] = self._val_to_json(cur_val)
         return json_obj
+
+    def _val_to_json(self, val: Any) -> Any:
+        """Converts the given value to JSON.
+
+        Args:
+            val (Any): The value to convert.
+        Returns:
+            Any: The converted json value.
+        """
+        if issubclass(type(val), JumpStartDataHolderType):
+            return val.to_json()
+        if isinstance(val, list):
+            list_obj = []
+            for obj in val:
+                list_obj.append(self._val_to_json(obj))
+            return list_obj
+        if isinstance(val, dict):
+            dict_obj = {}
+            for k, v in val.items():
+                if isinstance(v, JumpStartDataHolderType):
+                    dict_obj[self._convert_to_pascal_case(k)] = self._val_to_json(v)
+                else:
+                    dict_obj[k] = self._val_to_json(v)
+            return dict_obj
+        return val
 
 
 class DeploymentArgs(BaseDeploymentConfigDataHolder):
-    """Dataclass representing a Deployment Config."""
+    """Dataclass representing a Deployment Args."""
 
     __slots__ = [
         "image_uri",
@@ -2270,9 +2278,12 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
     ]
 
     def __init__(
-        self, init_kwargs: JumpStartModelInitKwargs, deploy_kwargs: JumpStartModelDeployKwargs
+        self,
+        init_kwargs: Optional[JumpStartModelInitKwargs] = None,
+        deploy_kwargs: Optional[JumpStartModelDeployKwargs] = None,
+        resolved_config: Optional[Dict[str, Any]] = None,
     ):
-        """Instantiates DeploymentConfig object."""
+        """Instantiates DeploymentArgs object."""
         if init_kwargs is not None:
             self.image_uri = init_kwargs.image_uri
             self.model_data = init_kwargs.model_data
@@ -2286,6 +2297,11 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
             self.model_data_download_timeout = deploy_kwargs.model_data_download_timeout
             self.container_startup_health_check_timeout = (
                 deploy_kwargs.container_startup_health_check_timeout
+            )
+        if resolved_config is not None:
+            self.default_instance_type = resolved_config.get("default_inference_instance_type")
+            self.supported_instance_types = resolved_config.get(
+                "supported_inference_instance_types"
             )
 
 
@@ -2301,13 +2317,15 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
 
     def __init__(
         self,
-        config_name: str,
-        benchmark_metrics: List[JumpStartBenchmarkStat],
-        init_kwargs: JumpStartModelInitKwargs,
-        deploy_kwargs: JumpStartModelDeployKwargs,
+        config_name: Optional[str] = None,
+        benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]] = None,
+        resolved_config: Optional[Dict[str, Any]] = None,
+        init_kwargs: Optional[JumpStartModelInitKwargs] = None,
+        deploy_kwargs: Optional[JumpStartModelDeployKwargs] = None,
     ):
         """Instantiates DeploymentConfigMetadata object."""
         self.deployment_config_name = config_name
-        self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs)
-        self.acceleration_configs = None
+        self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs, resolved_config)
         self.benchmark_metrics = benchmark_metrics
+        if resolved_config is not None:
+            self.acceleration_configs = resolved_config.get("acceleration_configs")

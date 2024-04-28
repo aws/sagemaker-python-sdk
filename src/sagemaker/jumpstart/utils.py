@@ -17,6 +17,7 @@ import os
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
+from botocore.exceptions import ClientError
 from packaging.version import Version
 import sagemaker
 from sagemaker.config.config_schema import (
@@ -41,10 +42,11 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
+    DeploymentConfigMetadata,
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config, TagsDict
+from sagemaker.utils import resolve_value_from_config, TagsDict, get_instance_rate_per_hour
 from sagemaker.workflow import is_pipeline_variable
 
 
@@ -1030,60 +1032,110 @@ def get_jumpstart_configs(
     )
 
 
-def get_metrics_from_deployment_configs(
-    deployment_configs: List[Dict[str, Any]], config_name: str
-) -> Dict[str, List[str]]:
-    """Extracts metrics from deployment configs.
+def add_instance_rate_stats_to_benchmark_metrics(
+    region: str,
+    benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]],
+) -> Optional[Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]]:
+    """Adds instance types metric stats to the given benchmark_metrics dict.
 
     Args:
-        deployment_configs (list[dict[str, Any]]): List of deployment configs.
-        config_name (str): The name of the deployment config use by the model.
+        region (str): AWS region.
+        benchmark_metrics (Dict[str, List[JumpStartBenchmarkStat]]):
+    Returns:
+        Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]:
+        Contains Error message and metrics dict.
     """
 
-    data = {"Config Name": [], "Instance Type": [], "Selected": [], "Accelerated": []}
+    if benchmark_metrics is None:
+        return None
 
-    for index, deployment_config in enumerate(deployment_configs):
-        if deployment_config.get("DeploymentArgs") is None:
+    final_benchmark_metrics = {}
+
+    err_message = None
+    for instance_type, benchmark_metric_stats in benchmark_metrics.items():
+        instance_type = instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
+
+        if not has_instance_rate_stat(benchmark_metric_stats):
+            try:
+                instance_type_rate = get_instance_rate_per_hour(
+                    instance_type=instance_type, region=region
+                )
+
+                benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
+
+            except ClientError as e:
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
+                err_message = e.response["Error"]["Message"]
+            except Exception:  # pylint: disable=W0703
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
+                err_message = (
+                    f"Unable to get instance rate per hour for instance type: {instance_type}."
+                )
+
+    return err_message, final_benchmark_metrics
+
+
+def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchmarkStat]]) -> bool:
+    """Determines whether a benchmark metric stats contains instance rate metric stat.
+
+    Args:
+        benchmark_metric_stats (Optional[List[JumpStartBenchmarkStat]]):
+        List of benchmark metric stats.
+    Returns:
+        bool: Whether the benchmark metric stats contains instance rate metric stat.
+    """
+    if benchmark_metric_stats is None:
+        return False
+
+    for benchmark_metric_stat in benchmark_metric_stats:
+        if benchmark_metric_stat.name.lower() == "instance rate":
+            return True
+
+    return False
+
+
+def get_metrics_from_deployment_configs(
+    deployment_configs: List[DeploymentConfigMetadata],
+) -> Dict[str, List[str]]:
+    """Extracts benchmark metrics from deployment configs metadata.
+
+    Args:
+        deployment_configs (List[DeploymentConfigMetadata]): List of deployment configs metadata.
+    """
+    data = {"Config Name": [], "Instance Type": []}
+
+    for outer_index, deployment_config in enumerate(deployment_configs):
+        if deployment_config.deployment_args is None:
             continue
 
-        benchmark_metrics = deployment_config.get("BenchmarkMetrics")
-        if benchmark_metrics is not None:
-            data["Config Name"].append(deployment_config.get("DeploymentConfigName"))
-            data["Instance Type"].append(
-                deployment_config.get("DeploymentArgs").get("InstanceType")
+        benchmark_metrics = deployment_config.benchmark_metrics
+        if benchmark_metrics is None:
+            continue
+
+        for inner_index, current_instance_type in enumerate(benchmark_metrics):
+            current_instance_type_metrics = benchmark_metrics[current_instance_type]
+
+            data["Config Name"].append(deployment_config.deployment_config_name)
+            instance_type_to_display = (
+                f"{current_instance_type} (Default)"
+                if current_instance_type == deployment_config.deployment_args.default_instance_type
+                else current_instance_type
             )
-            data["Selected"].append(
-                "Yes"
-                if (
-                    config_name is not None
-                    and config_name == deployment_config.get("DeploymentConfigName")
-                )
-                else "No"
-            )
+            data["Instance Type"].append(instance_type_to_display)
 
-            accelerated_configs = deployment_config.get("AccelerationConfigs")
-            if accelerated_configs is None:
-                data["Accelerated"].append("No")
-            else:
-                data["Accelerated"].append(
-                    "Yes"
-                    if (
-                        len(accelerated_configs) > 0
-                        and accelerated_configs[0].get("Enabled", False)
-                    )
-                    else "No"
-                )
+            if outer_index == 0 and inner_index == 0:
+                temp_data = {}
+                for metric in current_instance_type_metrics:
+                    column_name = f"{metric.name.replace('_', ' ').title()} ({metric.unit})"
+                    if metric.name.lower() == "instance rate":
+                        data[column_name] = []
+                    else:
+                        temp_data[column_name] = []
+                data = {**data, **temp_data}
 
-            if index == 0:
-                for benchmark_metric in benchmark_metrics:
-                    column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
-                    data[column_name] = []
-
-            for benchmark_metric in benchmark_metrics:
-                column_name = f"{benchmark_metric.get('name')} ({benchmark_metric.get('unit')})"
-                if column_name in data.keys():
-                    data[column_name].append(benchmark_metric.get("value"))
-
-    if "Yes" not in data["Accelerated"]:
-        del data["Accelerated"]
+            for metric in current_instance_type_metrics:
+                column_name = f"{metric.name.replace('_', ' ').title()} ({metric.unit})"
+                if column_name in data:
+                    data[column_name].append(metric.value)
     return data

@@ -431,18 +431,21 @@ class JumpStart(ABC):
             sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
         )
 
-    def set_deployment_config(self, config_name: Optional[str]) -> None:
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
         """Sets the deployment config to apply to the model.
 
         Args:
-            config_name (Optional[str]):
-                The name of the deployment config. Set to None to unset
-                any existing config that is applied to the model.
+            config_name (str):
+                The name of the deployment config to apply to the model.
+                Call list_deployment_configs to see the list of config names.
+            instance_type (str):
+                The instance_type that the model will use after setting
+                the config.
         """
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
             raise Exception("Cannot set deployment config to an uninitialized model.")
 
-        self.pysdk_model.set_deployment_config(config_name)
+        self.pysdk_model.set_deployment_config(config_name, instance_type)
 
     def get_deployment_config(self) -> Optional[Dict[str, Any]]:
         """Gets the deployment config to apply to the model.

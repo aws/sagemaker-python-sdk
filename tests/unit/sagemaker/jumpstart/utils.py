@@ -29,6 +29,9 @@ from sagemaker.jumpstart.types import (
     JumpStartS3FileType,
     JumpStartModelHeader,
     JumpStartModelInitKwargs,
+    DeploymentConfigMetadata,
+    JumpStartModelDeployKwargs,
+    JumpStartBenchmarkStat,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import get_formatted_manifest
@@ -323,10 +326,6 @@ def overwrite_dictionary(
     return base_dictionary
 
 
-def get_base_deployment_configs() -> List[Dict[str, Any]]:
-    return DEPLOYMENT_CONFIGS
-
-
 def get_base_deployment_configs_with_acceleration_configs() -> List[Dict[str, Any]]:
     configs = copy.deepcopy(DEPLOYMENT_CONFIGS)
     configs[0]["AccelerationConfigs"] = [
@@ -348,3 +347,60 @@ def get_mock_init_kwargs(
         resources=ResourceRequirements(),
         config_name=config_name,
     )
+
+
+def get_base_deployment_configs_metadata(
+    omit_benchmark_metrics: bool = False,
+) -> List[DeploymentConfigMetadata]:
+    specs = (
+        get_base_spec_with_prototype_configs_with_missing_benchmarks()
+        if omit_benchmark_metrics
+        else get_base_spec_with_prototype_configs()
+    )
+    configs = []
+    for config_name, jumpstart_config in specs.inference_configs.configs.items():
+        benchmark_metrics = jumpstart_config.benchmark_metrics
+
+        if benchmark_metrics:
+            for instance_type in benchmark_metrics:
+                benchmark_metrics[instance_type].append(
+                    JumpStartBenchmarkStat(
+                        {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"}
+                    )
+                )
+
+        configs.append(
+            DeploymentConfigMetadata(
+                config_name=config_name,
+                benchmark_metrics=jumpstart_config.benchmark_metrics,
+                resolved_config=jumpstart_config.resolved_config,
+                init_kwargs=get_mock_init_kwargs(
+                    get_base_spec_with_prototype_configs().model_id, config_name
+                ),
+                deploy_kwargs=JumpStartModelDeployKwargs(
+                    model_id=get_base_spec_with_prototype_configs().model_id,
+                ),
+            )
+        )
+    return configs
+
+
+def get_base_deployment_configs(
+    omit_benchmark_metrics: bool = False,
+) -> List[Dict[str, Any]]:
+    return [
+        config.to_json() for config in get_base_deployment_configs_metadata(omit_benchmark_metrics)
+    ]
+
+
+def append_instance_stat_metrics(
+    metrics: Dict[str, List[JumpStartBenchmarkStat]]
+) -> Dict[str, List[JumpStartBenchmarkStat]]:
+    if metrics is not None:
+        for key in metrics:
+            metrics[key].append(
+                JumpStartBenchmarkStat(
+                    {"name": "Instance Rate", "value": "3.76", "unit": "USD/Hrs"}
+                )
+            )
+    return metrics
