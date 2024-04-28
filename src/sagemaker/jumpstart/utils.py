@@ -1160,31 +1160,25 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
 
         @wraps(f)
         def wrapped_f(*args, **kwargs):
-            res = None
+            res = f(*args, **kwargs)
+
             has_instance_rate_metric_stat = False
-            retry_count = 1
-            first_call = f.cache_info().misses == 0
+            if isinstance(res, DeploymentConfigMetadata):
+                has_instance_rate_metric_stat = has_instance_rate_metric(res)
 
-            while retry_count <= 2:
-                res = f(*args, **kwargs)
-
-                if isinstance(res, DeploymentConfigMetadata):
-                    has_instance_rate_metric_stat = has_instance_rate_metric(res)
-
-                elif isinstance(res, list):
-                    for item in res:
-                        if has_instance_rate_metric_stat:
+            elif isinstance(res, list):
+                for item in res:
+                    if has_instance_rate_metric_stat:
+                        break
+                    if isinstance(item, DeploymentConfigMetadata):
+                        if has_instance_rate_metric(item):
+                            has_instance_rate_metric_stat = True
                             break
-                        if isinstance(item, DeploymentConfigMetadata):
-                            if has_instance_rate_metric(item):
-                                has_instance_rate_metric_stat = True
-                                break
-                else:
-                    has_instance_rate_metric_stat = True
+            else:
+                has_instance_rate_metric_stat = True # Todo
 
-                if not has_instance_rate_metric_stat:
-                    f.cache_clear()
-                retry_count = retry_count + 1 if first_call else 3
+            if not has_instance_rate_metric_stat:
+                f.cache_clear()
             return res
 
         wrapped_f.cache_info = f.cache_info
