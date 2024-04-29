@@ -1151,11 +1151,10 @@ def get_metrics_from_deployment_configs(
                     else:
                         instance_rate_data[metric.name] = [metric.value]
                 else:
+                    if column_name not in data:
+                        data[column_name] = []
                     for _ in range(inner_index):
-                        if column_name in data:
-                            data[column_name].append(" - ")
-                        else:
-                            data[column_name] = [" - "]
+                        data[column_name].append(" - ")
                     data[column_name].append(metric.value)
 
     data = {**data, **instance_rate_data}
