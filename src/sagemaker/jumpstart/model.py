@@ -360,6 +360,7 @@ class JumpStartModel(Model):
         self.model_package_arn = model_init_kwargs.model_package_arn
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
 
+        self._deployment_config = None
         self._metadata_configs = get_jumpstart_configs(
             region=self.region,
             model_id=self.model_id,
@@ -449,10 +450,17 @@ class JumpStartModel(Model):
         Returns:
             Optional[Dict[str, Any]]: Deployment config.
         """
-        deployment_config = self._retrieve_selected_deployment_config(
-            self.config_name, self.instance_type
-        )
-        return deployment_config.to_json() if deployment_config is not None else None
+        if self.config_name is None:
+            self._deployment_config = None
+        elif self._deployment_config and self.config_name != self._deployment_config.get(
+            "DeploymentConfigName"
+        ):
+            for config in self.list_deployment_configs():
+                if config.get("DeploymentConfigName") == self.config_name:
+                    self._deployment_config = config
+                    break
+
+        return self._deployment_config
 
     @property
     def benchmark_metrics(self) -> pd.DataFrame:
@@ -896,26 +904,6 @@ class JumpStartModel(Model):
         return get_metrics_from_deployment_configs(
             self._get_deployment_configs(config_name, instance_type)
         )
-
-    @lru_cache
-    def _retrieve_selected_deployment_config(
-        self, config_name: str, instance_type: str
-    ) -> Optional[DeploymentConfigMetadata]:
-        """Retrieve the deployment config to apply to `This` model.
-
-        Args:
-            config_name (str): The name of the deployment config to retrieve.
-            instance_type (str): The instance type of the deployment config to retrieve.
-        Returns:
-            Optional[Dict[str, Any]]: The retrieved deployment config.
-        """
-        if config_name is None:
-            return None
-
-        for deployment_config in self._get_deployment_configs(config_name, instance_type):
-            if deployment_config.deployment_config_name == config_name:
-                return deployment_config
-        return None
 
     @lru_cache
     def _get_deployment_configs(
