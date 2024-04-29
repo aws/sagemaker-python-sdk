@@ -1033,11 +1033,11 @@ def get_jumpstart_configs(
     )
 
 
-def add_instance_rate_stats_to_benchmark_metrics(
+def try_add_instance_rate_stats_to_benchmark_metrics(
     region: str,
     benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]],
 ) -> Optional[Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]]:
-    """Adds instance types metric stats to the given benchmark_metrics dict.
+    """Tries to add instance types metric stats to the given benchmark_metrics dict.
 
     Args:
         region (str): AWS region.
@@ -1056,7 +1056,7 @@ def add_instance_rate_stats_to_benchmark_metrics(
     for instance_type, benchmark_metric_stats in benchmark_metrics.items():
         instance_type = instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
 
-        if not has_instance_rate_stat(benchmark_metric_stats):
+        if not has_instance_rate_stat(benchmark_metric_stats) and err_message is None:
             try:
                 instance_type_rate = get_instance_rate_per_hour(
                     instance_type=instance_type, region=region
@@ -1073,9 +1073,8 @@ def add_instance_rate_stats_to_benchmark_metrics(
                 err_message = e.response["Error"]["Message"]
             except Exception:  # pylint: disable=W0703
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
-                err_message = (
-                    f"Unable to get instance rate per hour for instance type: {instance_type}."
-                )
+        else:
+            final_benchmark_metrics[instance_type] = benchmark_metric_stats
 
     return err_message, final_benchmark_metrics
 
@@ -1146,7 +1145,7 @@ def get_metrics_from_deployment_configs(
 
 
 def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool = False):
-    """Decorator that caches LRU cache for deployment configs."""
+    """LRU cache for deployment configs."""
 
     def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
         """Determines whether a benchmark metric stats contains instance rate metric stat."""
@@ -1162,23 +1161,18 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
         def wrapped_f(*args, **kwargs):
             res = f(*args, **kwargs)
 
-            has_instance_rate_metric_stat = False
-            if isinstance(res, DeploymentConfigMetadata):
-                has_instance_rate_metric_stat = has_instance_rate_metric(res)
-
+            if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
+                f.cache_clear()
             elif isinstance(res, list):
                 for item in res:
-                    if has_instance_rate_metric_stat:
+                    if isinstance(item, DeploymentConfigMetadata) and not has_instance_rate_metric(
+                        item
+                    ):
+                        f.cache_clear()
                         break
-                    if isinstance(item, DeploymentConfigMetadata):
-                        if has_instance_rate_metric(item):
-                            has_instance_rate_metric_stat = True
-                            break
-            else:
-                has_instance_rate_metric_stat = True # Todo
-
-            if not has_instance_rate_metric_stat:
-                f.cache_clear()
+            elif isinstance(res, dict):
+                if "Instance Rate" not in res or len(res["Instance Rate"]) < 1:
+                    f.cache_clear()
             return res
 
         wrapped_f.cache_info = f.cache_info

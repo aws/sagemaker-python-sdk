@@ -1785,7 +1785,7 @@ def test_add_instance_rate_stats_to_benchmark_metrics(
         "value": "3.76",
     }
 
-    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+    err, out = utils.try_add_instance_rate_stats_to_benchmark_metrics(
         "us-west-2",
         {
             "ml.p2.xlarge": [
@@ -1817,7 +1817,7 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
         {"Error": {"Message": "is not authorized to perform: pricing:GetProducts"}}, "GetProducts"
     )
 
-    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+    err, out = utils.try_add_instance_rate_stats_to_benchmark_metrics(
         "us-west-2",
         {
             "ml.p2.xlarge": [
@@ -1837,7 +1837,7 @@ def test_add_instance_rate_stats_to_benchmark_metrics_ex(
 ):
     mock_get_instance_rate_per_hour.side_effect = Exception()
 
-    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+    err, out = utils.try_add_instance_rate_stats_to_benchmark_metrics(
         "us-west-2",
         {
             "ml.p2.xlarge": [

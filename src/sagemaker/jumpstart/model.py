@@ -46,7 +46,7 @@ from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
     get_jumpstart_configs,
     get_metrics_from_deployment_configs,
-    add_instance_rate_stats_to_benchmark_metrics,
+    try_add_instance_rate_stats_to_benchmark_metrics,
     _deployment_config_lru_cache,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
@@ -925,12 +925,11 @@ class JumpStartModel(Model):
 
         err = None
         for config_name, metadata_config in self._metadata_configs.items():
-            if err is None or "is not authorized to perform: pricing:GetProducts" not in err:
-                err, metadata_config.benchmark_metrics = (
-                    add_instance_rate_stats_to_benchmark_metrics(
-                        self.region, metadata_config.benchmark_metrics
-                    )
+            err, metadata_config.benchmark_metrics = (
+                try_add_instance_rate_stats_to_benchmark_metrics(
+                    self.region, metadata_config.benchmark_metrics
                 )
+            )
 
             resolved_config = metadata_config.resolved_config
             if selected_config_name == config_name:
