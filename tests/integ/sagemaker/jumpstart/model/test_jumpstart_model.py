@@ -295,7 +295,7 @@ def test_jumpstart_model_with_deployment_configs(setup):
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="4.1.0",
+        model_version="*",
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
