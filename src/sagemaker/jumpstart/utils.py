@@ -1066,8 +1066,8 @@ def try_add_instance_rate_stats_to_benchmark_metrics(
                     benchmark_metric_stats = [JumpStartBenchmarkStat(instance_type_rate)]
                 else:
                     benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
-                final_benchmark_metrics[instance_type] = benchmark_metric_stats
 
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
             except ClientError as e:
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
                 err_message = e.response["Error"]["Message"]
@@ -1158,9 +1158,25 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
         f = lru_cache(maxsize=maxsize, typed=typed)(f)
         from_cache = f.cache_info().misses > 0
 
+        print("******** wrapper_cache ***********")
+        print(f.cache_info())
+        print("*******************")
+
         @wraps(f)
         def wrapped_f(*args, **kwargs):
+            print("******** wrapped_f Before: res = f(*args, **kwargs) ***********")
+            print(f.cache_info())
+            print("*******************")
+
             res = f(*args, **kwargs)
+
+            print("******** wrapped_f After: res = f(*args, **kwargs) ***********")
+            print(f.cache_info())
+            print("*******************")
+
+            print("******** from_cache ***********")
+            print(from_cache)
+            print("*******************")
 
             if not from_cache:
                 print("******** Not from Cache ************")
@@ -1182,6 +1198,10 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
 
         wrapped_f.cache_info = f.cache_info
         wrapped_f.cache_clear = f.cache_clear
+
+        print("******** wrapped_f.cache_info ***********")
+        print(wrapped_f.cache_info())
+        print("*******************")
         return wrapped_f
 
     # To allow decorator to be used without arguments
