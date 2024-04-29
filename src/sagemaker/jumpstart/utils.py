@@ -1129,7 +1129,7 @@ def get_metrics_from_deployment_configs(
             if outer_index == 0 and inner_index == 0:
                 temp_data = {}
                 for metric in current_instance_type_metrics:
-                    column_name = f"{metric.name.replace('_', ' ').title()} ({metric.unit})"
+                    column_name = f"{metric.name} ({metric.unit})"
                     if metric.name.lower() == "instance rate":
                         data[column_name] = []
                     else:
@@ -1137,7 +1137,35 @@ def get_metrics_from_deployment_configs(
                 data = {**data, **temp_data}
 
             for metric in current_instance_type_metrics:
-                column_name = f"{metric.name.replace('_', ' ').title()} ({metric.unit})"
+                column_name = f"{metric.name} ({metric.unit})"
                 if column_name in data:
                     data[column_name].append(metric.value)
     return data
+
+
+def deployment_config_response_data(
+    deployment_configs: List[DeploymentConfigMetadata],
+) -> List[Dict[str, Any]]:
+    """Deployment config api response data.
+
+    Args:
+        deployment_configs (List[DeploymentConfigMetadata]): List of deployment configs metadata.
+    Returns:
+        List[Dict[str, Any]]: List of deployment config api response data.
+    """
+    configs = []
+    if deployment_configs is None:
+        return configs
+
+    for deployment_config in deployment_configs:
+        deployment_config_json = deployment_config.to_json()
+
+        deployment_config_json["BenchmarkMetrics"] = {
+            deployment_config.deployment_args.instance_type: deployment_config_json.get(
+                "BenchmarkMetrics"
+            ).get(deployment_config.deployment_args.instance_type)
+        }
+
+        configs.append(deployment_config_json)
+
+    return configs

@@ -48,6 +48,7 @@ from sagemaker.jumpstart.utils import (
     get_jumpstart_configs,
     get_metrics_from_deployment_configs,
     add_instance_rate_stats_to_benchmark_metrics,
+    deployment_config_response_data,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -360,7 +361,6 @@ class JumpStartModel(Model):
         self.model_package_arn = model_init_kwargs.model_package_arn
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
 
-        self._deployment_config = None
         self._metadata_configs = get_jumpstart_configs(
             region=self.region,
             model_id=self.model_id,
@@ -451,19 +451,10 @@ class JumpStartModel(Model):
             Optional[Dict[str, Any]]: Deployment config.
         """
         if self.config_name is None:
-            self._deployment_config = None
             return None
-
-        if self._deployment_config and self.config_name == self._deployment_config.get(
-            "DeploymentConfigName"
-        ):
-            return self._deployment_config
-
         for config in self.list_deployment_configs():
             if config.get("DeploymentConfigName") == self.config_name:
-                self._deployment_config = config
-                return self._deployment_config
-
+                return config
         return None
 
     @property
@@ -491,19 +482,9 @@ class JumpStartModel(Model):
         Returns:
             List[Dict[str, Any]]: A list of deployment configs.
         """
-        configs = []
-        for deployment_config in self._get_deployment_configs(self.config_name, self.instance_type):
-            deployment_config_json = deployment_config.to_json()
-
-            deployment_config_json["BenchmarkMetrics"] = {
-                deployment_config.deployment_args.instance_type: deployment_config_json.get(
-                    "BenchmarkMetrics"
-                ).get(deployment_config.deployment_args.instance_type)
-            }
-
-            configs.append(deployment_config_json)
-
-        return configs
+        return deployment_config_response_data(
+            self._get_deployment_configs(self.config_name, self.instance_type)
+        )
 
     def _create_sagemaker_model(
         self,
