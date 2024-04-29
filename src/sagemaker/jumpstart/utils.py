@@ -1144,12 +1144,13 @@ def get_metrics_from_deployment_configs(
 
 
 def deployment_config_response_data(
-    deployment_configs: List[DeploymentConfigMetadata],
+    deployment_configs: Optional[List[DeploymentConfigMetadata]],
 ) -> List[Dict[str, Any]]:
     """Deployment config api response data.
 
     Args:
-        deployment_configs (List[DeploymentConfigMetadata]): List of deployment configs metadata.
+        deployment_configs (Optional[List[DeploymentConfigMetadata]]):
+        List of deployment configs metadata.
     Returns:
         List[Dict[str, Any]]: List of deployment config api response data.
     """
@@ -1160,11 +1161,13 @@ def deployment_config_response_data(
     for deployment_config in deployment_configs:
         deployment_config_json = deployment_config.to_json()
 
-        deployment_config_json["BenchmarkMetrics"] = {
-            deployment_config.deployment_args.instance_type: deployment_config_json.get(
-                "BenchmarkMetrics"
-            ).get(deployment_config.deployment_args.instance_type)
-        }
+        benchmark_metrics = deployment_config_json.get("BenchmarkMetrics")
+        if benchmark_metrics:
+            deployment_config_json["BenchmarkMetrics"] = {
+                deployment_config.deployment_args.instance_type: benchmark_metrics.get(
+                    deployment_config.deployment_args.instance_type
+                )
+            }
 
         configs.append(deployment_config_json)
 

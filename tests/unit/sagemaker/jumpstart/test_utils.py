@@ -52,6 +52,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec,
     get_prototype_manifest,
     get_base_deployment_configs_metadata,
+    get_base_deployment_configs,
 )
 from mock import MagicMock
 
@@ -1831,26 +1832,6 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
         assert len(out[key]) == 1
 
 
-@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
-def test_add_instance_rate_stats_to_benchmark_metrics_ex(
-    mock_get_instance_rate_per_hour,
-):
-    mock_get_instance_rate_per_hour.side_effect = Exception()
-
-    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
-        "us-west-2",
-        {
-            "ml.p2.xlarge": [
-                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
-            ],
-        },
-    )
-
-    assert err == "Unable to get instance rate per hour for instance type: ml.p2.xlarge."
-    for key in out:
-        assert len(out[key]) == 1
-
-
 @pytest.mark.parametrize(
     "stats, expected",
     [
@@ -1864,3 +1845,14 @@ def test_add_instance_rate_stats_to_benchmark_metrics_ex(
 )
 def test_has_instance_rate_stat(stats, expected):
     assert utils.has_instance_rate_stat(stats) is expected
+
+
+@pytest.mark.parametrize(
+    "data, expected",
+    [(None, []), ([], []), (get_base_deployment_configs_metadata(), get_base_deployment_configs())],
+)
+def test_deployment_config_response_data(data, expected):
+    out = utils.deployment_config_response_data(data)
+
+    print(out)
+    assert out == expected

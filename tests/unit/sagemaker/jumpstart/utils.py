@@ -388,9 +388,17 @@ def get_base_deployment_configs_metadata(
 def get_base_deployment_configs(
     omit_benchmark_metrics: bool = False,
 ) -> List[Dict[str, Any]]:
-    return [
-        config.to_json() for config in get_base_deployment_configs_metadata(omit_benchmark_metrics)
-    ]
+    configs = []
+    for config in get_base_deployment_configs_metadata(omit_benchmark_metrics):
+        config_json = config.to_json()
+        if config_json["BenchmarkMetrics"]:
+            config_json["BenchmarkMetrics"] = {
+                config.deployment_args.instance_type: config_json["BenchmarkMetrics"].get(
+                    config.deployment_args.instance_type
+                )
+            }
+        configs.append(config_json)
+    return configs
 
 
 def append_instance_stat_metrics(
