@@ -1163,6 +1163,7 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
 
             if f.cache_info().hits == 1:
                 print("******** Not from Cache ************")
+                print(f.cache_info())
                 if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
                     f.cache_clear()
                 elif isinstance(res, list):
@@ -1173,10 +1174,12 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
                             f.cache_clear()
                             break
                 elif isinstance(res, dict):
-                    if "Instance Rate" not in res or len(res["Instance Rate"]) < 1:
+                    instance_rate_metrics_key = list(res.keys())[2]
+                    if "Instance Rate" not in instance_rate_metrics_key or len(res[instance_rate_metrics_key]):
                         f.cache_clear()
             else:
                 print("******** From Cache ************")
+                print(f.cache_info())
             return res
 
         wrapped_f.cache_info = f.cache_info
