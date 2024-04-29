@@ -912,11 +912,11 @@ class JumpStartModel(Model):
             else:
                 instance_type_to_use = resolved_config.get("default_inference_instance_type")
 
-                err, metadata_config.benchmark_metrics = (
-                    add_instance_rate_stats_to_benchmark_metrics(
-                        self.region, instance_type_to_use, metadata_config.benchmark_metrics
-                    )
+            err, metadata_config.benchmark_metrics = (
+                add_instance_rate_stats_to_benchmark_metrics(
+                    self.region, instance_type_to_use, metadata_config.benchmark_metrics
                 )
+            )
 
             init_kwargs = get_init_kwargs(
                 model_id=self.model_id,

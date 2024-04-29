@@ -1042,7 +1042,7 @@ def add_instance_rate_stats_to_benchmark_metrics(
     Args:
         region (str): AWS region.
         default_instance_type (str): Instance type.
-        benchmark_metrics (Dict[str, List[JumpStartBenchmarkStat]]):
+        benchmark_metrics (Optional[Dict[str, List[JumpStartBenchmarkStat]]]):
     Returns:
         Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]:
         Contains Error message and metrics dict.
