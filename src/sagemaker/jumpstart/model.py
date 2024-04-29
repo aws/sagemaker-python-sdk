@@ -465,6 +465,7 @@ class JumpStartModel(Model):
             self.config_name, self.instance_type
         )
         keys = list(benchmark_metrics_data.keys())
+        # Sort by Config Name and Instance Type column values
         df = pd.DataFrame(benchmark_metrics_data).sort_values(by=[keys[0], keys[1]])
         return df
 
@@ -478,12 +479,19 @@ class JumpStartModel(Model):
         Returns:
             List[Dict[str, Any]]: A list of deployment configs.
         """
-        return [
-            deployment_config.to_json()
-            for deployment_config in self._get_deployment_configs(
-                self.config_name, self.instance_type
-            )
-        ]
+        configs = []
+        for deployment_config in self._get_deployment_configs(self.config_name, self.instance_type):
+            deployment_config_json = deployment_config.to_json()
+
+            deployment_config_json["BenchmarkMetrics"] = {
+                deployment_config.deployment_args.instance_type: deployment_config_json.get(
+                    "BenchmarkMetrics"
+                ).get(deployment_config.deployment_args.instance_type)
+            }
+
+            configs.append(deployment_config_json)
+
+        return configs
 
     def _create_sagemaker_model(
         self,
@@ -925,7 +933,7 @@ class JumpStartModel(Model):
 
         err = None
         for config_name, metadata_config in self._metadata_configs.items():
-            if err is None or "is not authorized to perform: pricing:GetProducts" not in err:
+            if metadata_config.benchmark_metrics:
                 err, metadata_config.benchmark_metrics = (
                     add_instance_rate_stats_to_benchmark_metrics(
                         self.region, metadata_config.benchmark_metrics
