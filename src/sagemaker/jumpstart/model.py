@@ -452,15 +452,19 @@ class JumpStartModel(Model):
         """
         if self.config_name is None:
             self._deployment_config = None
-        elif self._deployment_config and self.config_name != self._deployment_config.get(
+            return None
+
+        if self._deployment_config and self.config_name == self._deployment_config.get(
             "DeploymentConfigName"
         ):
-            for config in self.list_deployment_configs():
-                if config.get("DeploymentConfigName") == self.config_name:
-                    self._deployment_config = config
-                    break
+            return self._deployment_config
 
-        return self._deployment_config
+        for config in self.list_deployment_configs():
+            if config.get("DeploymentConfigName") == self.config_name:
+                self._deployment_config = config
+                return self._deployment_config
+
+        return None
 
     @property
     def benchmark_metrics(self) -> pd.DataFrame:
