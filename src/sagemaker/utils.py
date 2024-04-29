@@ -1605,7 +1605,7 @@ def can_model_package_source_uri_autopopulate(source_uri: str):
     )
 
 
-def flatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
+def flatten_dict(source_dict: Dict[str, Any], sep: str = "^") -> Dict[str, Any]:
     """Flatten a nested dictionary.
 
     Args:
@@ -1620,7 +1620,7 @@ def flatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
     return {}
 
 
-def unflatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
+def unflatten_dict(source_dict: Dict[str, Any], sep: str = "^") -> Dict[str, Any]:
     """Unflatten a flattened dictionary back into a nested dictionary.
 
     Args:
