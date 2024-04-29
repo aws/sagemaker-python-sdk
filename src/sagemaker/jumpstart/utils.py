@@ -1150,29 +1150,34 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
     def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
         """Determines whether a benchmark metric stats contains instance rate metric stat."""
         for _, benchmark_metric_stats in config.benchmark_metrics.items():
-            if has_instance_rate_stat(benchmark_metric_stats):
-                return True
-        return False
+            if not has_instance_rate_stat(benchmark_metric_stats):
+                return False
+        return True
 
     def wrapper_cache(f):
         f = lru_cache(maxsize=maxsize, typed=typed)(f)
+        from_cache = f.cache_info().misses > 0
 
         @wraps(f)
         def wrapped_f(*args, **kwargs):
             res = f(*args, **kwargs)
 
-            if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
-                f.cache_clear()
-            elif isinstance(res, list):
-                for item in res:
-                    if isinstance(item, DeploymentConfigMetadata) and not has_instance_rate_metric(
-                        item
-                    ):
-                        f.cache_clear()
-                        break
-            elif isinstance(res, dict):
-                if "Instance Rate" not in res or len(res["Instance Rate"]) < 1:
+            if not from_cache:
+                print("******** Not from Cache ************")
+                if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
                     f.cache_clear()
+                elif isinstance(res, list):
+                    for item in res:
+                        if isinstance(
+                            item, DeploymentConfigMetadata
+                        ) and not has_instance_rate_metric(item):
+                            f.cache_clear()
+                            break
+                elif isinstance(res, dict):
+                    if "Instance Rate" not in res or len(res["Instance Rate"]) < 1:
+                        f.cache_clear()
+            else:
+                print("******** From Cache ************")
             return res
 
         wrapped_f.cache_info = f.cache_info
