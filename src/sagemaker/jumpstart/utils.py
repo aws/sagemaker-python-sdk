@@ -1174,30 +1174,26 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
             print(from_cache)
             print("*******************")
 
-            if not from_cache:
-                print("******** Not from Cache ************")
-                if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
-                    f.cache_clear()
-                elif isinstance(res, list):
-                    for item in res:
-                        if isinstance(
-                            item, DeploymentConfigMetadata
-                        ) and not has_instance_rate_metric(item):
-                            f.cache_clear()
-                            break
-                elif isinstance(res, dict):
-                    if "Instance Rate" not in res or len(res["Instance Rate"]) < 1:
-                        f.cache_clear()
-            else:
-                print("******** From Cache ************")
+            # if not from_cache:
+            #     print("******** Not from Cache ************")
+            #     if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
+            #         f.cache_clear()
+            #     elif isinstance(res, list):
+            #         for item in res:
+            #             if isinstance(
+            #                 item, DeploymentConfigMetadata
+            #             ) and not has_instance_rate_metric(item):
+            #                 f.cache_clear()
+            #                 break
+            #     elif isinstance(res, dict):
+            #         if "Instance Rate" not in res or len(res["Instance Rate"]) < 1:
+            #             f.cache_clear()
+            # else:
+            #     print("******** From Cache ************")
             return res
 
         wrapped_f.cache_info = f.cache_info
         wrapped_f.cache_clear = f.cache_clear
-
-        print("******** wrapped_f.cache_info ***********")
-        print(wrapped_f.cache_info())
-        print("*******************")
         return wrapped_f
 
     # To allow decorator to be used without arguments
