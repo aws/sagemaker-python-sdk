@@ -1159,37 +1159,25 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
 
         @wraps(f)
         def wrapped_f(*args, **kwargs):
-            from_cache = f.cache_info().misses > 0
-            print("******** wrapped_f Before: res = f(*args, **kwargs) ***********")
-            print(f.cache_info())
-            print("*******************")
-
+            first_hit = f.cache_info().misses == 0
             res = f(*args, **kwargs)
 
-            print("******** wrapped_f After: res = f(*args, **kwargs) ***********")
-            print(f.cache_info())
-            print("*******************")
-
-            print("******** from_cache ***********")
-            print(from_cache)
-            print("*******************")
-
-            # if not from_cache:
-            #     print("******** Not from Cache ************")
-            #     if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
-            #         f.cache_clear()
-            #     elif isinstance(res, list):
-            #         for item in res:
-            #             if isinstance(
-            #                 item, DeploymentConfigMetadata
-            #             ) and not has_instance_rate_metric(item):
-            #                 f.cache_clear()
-            #                 break
-            #     elif isinstance(res, dict):
-            #         if "Instance Rate" not in res or len(res["Instance Rate"]) < 1:
-            #             f.cache_clear()
-            # else:
-            #     print("******** From Cache ************")
+            if first_hit:
+                print("******** Not from Cache ************")
+                if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
+                    f.cache_clear()
+                elif isinstance(res, list):
+                    for item in res:
+                        if isinstance(
+                            item, DeploymentConfigMetadata
+                        ) and not has_instance_rate_metric(item):
+                            f.cache_clear()
+                            break
+                elif isinstance(res, dict):
+                    if "Instance Rate" not in res or len(res["Instance Rate"]) < 1:
+                        f.cache_clear()
+            else:
+                print("******** From Cache ************")
             return res
 
         wrapped_f.cache_info = f.cache_info
