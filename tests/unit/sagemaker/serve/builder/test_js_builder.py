@@ -752,9 +752,11 @@ class TestJumpStartBuilder(unittest.TestCase):
         mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
 
         builder.build()
-        builder.set_deployment_config("config-1")
+        builder.set_deployment_config("config-1", "ml.g5.24xlarge")
 
-        mock_pre_trained_model.return_value.set_deployment_config.assert_called_with("config-1")
+        mock_pre_trained_model.return_value.set_deployment_config.assert_called_with(
+            "config-1", "ml.g5.24xlarge"
+        )
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch(
@@ -789,7 +791,7 @@ class TestJumpStartBuilder(unittest.TestCase):
             "Cannot set deployment config to an uninitialized model.",
             lambda: ModelBuilder(
                 model="facebook/galactica-mock-model-id", schema_builder=mock_schema_builder
-            ).set_deployment_config("config-2"),
+            ).set_deployment_config("config-2", "ml.g5.24xlarge"),
         )
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
