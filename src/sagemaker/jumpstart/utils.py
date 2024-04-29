@@ -1149,7 +1149,7 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
 
     def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
         """Determines whether a benchmark metric stats contains instance rate metric stat."""
-        for _, benchmark_metric_stats in config.benchmark_metrics.items():
+        for benchmark_metric_stats in config.benchmark_metrics.values():
             if not has_instance_rate_stat(benchmark_metric_stats):
                 return False
         return True
@@ -1159,10 +1159,9 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
 
         @wraps(f)
         def wrapped_f(*args, **kwargs):
-            first_hit = f.cache_info().misses == 0
             res = f(*args, **kwargs)
 
-            if first_hit:
+            if f.cache_info().hits == 1:
                 print("******** Not from Cache ************")
                 if isinstance(res, DeploymentConfigMetadata) and not has_instance_rate_metric(res):
                     f.cache_clear()
