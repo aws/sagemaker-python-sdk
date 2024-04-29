@@ -483,7 +483,7 @@ class JumpStartModel(Model):
             List[Dict[str, Any]]: A list of deployment configs.
         """
         return deployment_config_response_data(
-            self.config_name, self._get_deployment_configs(self.config_name, self.instance_type)
+            self._get_deployment_configs(self.config_name, self.instance_type)
         )
 
     def _create_sagemaker_model(
@@ -906,18 +906,17 @@ class JumpStartModel(Model):
 
         err = None
         for config_name, metadata_config in self._metadata_configs.items():
-            if metadata_config.benchmark_metrics:
-                err, metadata_config.benchmark_metrics = (
-                    add_instance_rate_stats_to_benchmark_metrics(
-                        self.region, metadata_config.benchmark_metrics
-                    )
-                )
-
             resolved_config = metadata_config.resolved_config
             if selected_config_name == config_name:
                 instance_type_to_use = selected_instance_type
             else:
                 instance_type_to_use = resolved_config.get("default_inference_instance_type")
+
+                err, metadata_config.benchmark_metrics = (
+                    add_instance_rate_stats_to_benchmark_metrics(
+                        self.region, instance_type_to_use, metadata_config.benchmark_metrics
+                    )
+                )
 
             init_kwargs = get_init_kwargs(
                 model_id=self.model_id,
