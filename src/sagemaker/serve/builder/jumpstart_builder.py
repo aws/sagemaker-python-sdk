@@ -485,8 +485,7 @@ class JumpStart(ABC):
         self.secret_key = None
         self.jumpstart = True
 
-        # if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-        #     self.pysdk_model = self._create_pre_trained_js_model()
+        self.pysdk_model = self._create_pre_trained_js_model()
 
         logger.info(
             "JumpStart ID %s is packaged with Image URI: %s", self.model, self.pysdk_model.image_uri
