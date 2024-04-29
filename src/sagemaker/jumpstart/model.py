@@ -483,7 +483,7 @@ class JumpStartModel(Model):
             List[Dict[str, Any]]: A list of deployment configs.
         """
         return deployment_config_response_data(
-            self._get_deployment_configs(self.config_name, self.instance_type)
+            self.config_name, self._get_deployment_configs(self.config_name, self.instance_type)
         )
 
     def _create_sagemaker_model(
