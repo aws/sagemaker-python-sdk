@@ -127,7 +127,7 @@ def test_js_model_with_deployment_configs(
 
     model_builder.set_deployment_config(
         configs[0]["DeploymentConfigName"],
-        configs[0]["DeploymentArgs"]["InstanceType"],
+        "ml.g5.2xlarge",
     )
     model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
     assert model.config_name == configs[0]["DeploymentConfigName"]

@@ -311,7 +311,7 @@ def test_jumpstart_model_with_deployment_configs(setup):
 
     model.set_deployment_config(
         configs[0]["DeploymentConfigName"],
-        configs[0]["DeploymentArgs"]["InstanceType"],
+        "ml.g5.2xlarge",
     )
     assert model.config_name == configs[0]["DeploymentConfigName"]
 
