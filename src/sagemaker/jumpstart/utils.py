@@ -1050,8 +1050,8 @@ def add_instance_rate_stats_to_benchmark_metrics(
     if benchmark_metrics is None:
         benchmark_metrics = {default_instance_type: None}
 
-    final_benchmark_metrics = {}
     err_message = None
+    final_benchmark_metrics = {}
     for instance_type, benchmark_metric_stats in benchmark_metrics.items():
         instance_type = instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
 
@@ -1144,7 +1144,6 @@ def get_metrics_from_deployment_configs(
 
             for metric in current_instance_type_metrics:
                 column_name = f"{metric.name} ({metric.unit})"
-
                 if metric.name.lower() == "instance rate":
                     if column_name in instance_rate_data:
                         instance_rate_data[metric.name].append(metric.value)
@@ -1158,6 +1157,8 @@ def get_metrics_from_deployment_configs(
                     data[column_name].append(metric.value)
 
     data = {**data, **instance_rate_data}
+    print("******************************")
+    print(data)
     return data
 
 
