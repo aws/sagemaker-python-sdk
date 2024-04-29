@@ -1156,14 +1156,10 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
 
     def wrapper_cache(f):
         f = lru_cache(maxsize=maxsize, typed=typed)(f)
-        from_cache = f.cache_info().misses > 0
-
-        print("******** wrapper_cache ***********")
-        print(f.cache_info())
-        print("*******************")
 
         @wraps(f)
         def wrapped_f(*args, **kwargs):
+            from_cache = f.cache_info().misses > 0
             print("******** wrapped_f Before: res = f(*args, **kwargs) ***********")
             print(f.cache_info())
             print("*******************")
