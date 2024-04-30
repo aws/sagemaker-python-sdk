@@ -210,16 +210,16 @@ def test_is_jumpstart_model_uri():
     assert utils.is_jumpstart_model_uri(random_jumpstart_s3_uri("random_key"))
 
 
-def test_add_jumpstart_model_id_version_tags():
+def test_add_jumpstart_model_info_tags():
     tags = None
     model_id = "model_id"
     version = "version"
+    inference_config_name = "inference_config_name"
+    training_config_name = "training_config_name"
     assert [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
         {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
-    )
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
 
     tags = [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
@@ -231,9 +231,7 @@ def test_add_jumpstart_model_id_version_tags():
     assert [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
         {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version_2"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
-    )
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
 
     tags = [
         {"Key": "random key", "Value": "random_value"},
@@ -244,9 +242,7 @@ def test_add_jumpstart_model_id_version_tags():
         {"Key": "random key", "Value": "random_value"},
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
         {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
-    )
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
 
     tags = [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
@@ -257,9 +253,7 @@ def test_add_jumpstart_model_id_version_tags():
     assert [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
         {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
-    )
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
 
     tags = [
         {"Key": "random key", "Value": "random_value"},
@@ -268,8 +262,58 @@ def test_add_jumpstart_model_id_version_tags():
     version = None
     assert [
         {"Key": "random key", "Value": "random_value"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+        {"Key": "sagemaker-sdk:jumpstart-inference-config-name", "Value": "inference_config_name"},
+    ] == utils.add_jumpstart_model_info_tags(
+        tags=tags,
+        model_id=model_id,
+        model_version=version,
+        config_name=inference_config_name,
+        scope=JumpStartScriptScope.INFERENCE,
+    )
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+        {"Key": "sagemaker-sdk:jumpstart-training-config-name", "Value": "training_config_name"},
+    ] == utils.add_jumpstart_model_info_tags(
+        tags=tags,
+        model_id=model_id,
+        model_version=version,
+        config_name=training_config_name,
+        scope=JumpStartScriptScope.TRAINING,
+    )
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+    ] == utils.add_jumpstart_model_info_tags(
+        tags=tags,
+        model_id=model_id,
+        model_version=version,
+        config_name=training_config_name,
     )
 
 
@@ -1322,10 +1366,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, None, None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1339,10 +1381,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            ("model_id", None, None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            ("model_id", None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1356,10 +1396,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, "model_version", None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, "model_version", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1370,27 +1408,54 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, None, None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
-    def test_config_name_found(self):
+    def test_inference_config_name_found(self):
         mock_list_tags = Mock()
         mock_sagemaker_session = Mock()
         mock_sagemaker_session.list_tags = mock_list_tags
         mock_list_tags.return_value = [
             {"Key": "blah", "Value": "blah1"},
-            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name"},
+            {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name"},
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, None, "config_name"),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, "config_name", None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_training_config_name_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "config_name"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, "config_name"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_both_config_name_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "inference_config_name"},
+            {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "training_config_name"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, "inference_config_name", "training_config_name"),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1405,10 +1470,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            ("model_id", "model_version", None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            ("model_id", "model_version", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1425,10 +1488,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, None, None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1445,10 +1506,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            ("model_id_1", "model_version_1", None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            ("model_id_1", "model_version_1", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1465,10 +1524,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, None, None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1480,15 +1537,13 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": "blah", "Value": "blah1"},
             {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
             {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
-            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name_1"},
-            {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "config_name_2"},
+            {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name_1"},
+            {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name_2"},
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            ("model_id_1", "model_version_1", None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            ("model_id_1", "model_version_1", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 

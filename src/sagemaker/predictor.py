@@ -82,6 +82,7 @@ def retrieve_default(
             inferred_model_version,
             inferred_inference_component_name,
             inferred_config_name,
+            _,
         ) = get_model_info_from_endpoint(endpoint_name, inference_component_name, sagemaker_session)
 
         if not inferred_model_id:

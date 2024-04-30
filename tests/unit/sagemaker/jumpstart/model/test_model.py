@@ -1563,7 +1563,7 @@ class ModelTest(unittest.TestCase):
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
-                {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "neuron-inference"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "neuron-inference"},
             ],
             wait=True,
             endpoint_logging=False,
@@ -1627,7 +1627,7 @@ class ModelTest(unittest.TestCase):
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
-                {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "neuron-inference"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "neuron-inference"},
             ],
             wait=True,
             endpoint_logging=False,
@@ -1645,7 +1645,7 @@ class ModelTest(unittest.TestCase):
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
-                {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "neuron-inference"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "neuron-inference"},
             ],
             wait=True,
             endpoint_logging=False,

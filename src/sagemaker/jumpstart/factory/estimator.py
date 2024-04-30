@@ -61,7 +61,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelInitKwargs,
 )
 from sagemaker.jumpstart.utils import (
-    add_jumpstart_model_id_version_tags,
+    add_jumpstart_model_info_tags,
     get_eula_message,
     update_dict_if_key_not_present,
     resolve_estimator_sagemaker_config_field,
@@ -479,11 +479,12 @@ def _add_tags_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstima
     ).version
 
     if kwargs.sagemaker_session.settings.include_jumpstart_tags:
-        kwargs.tags = add_jumpstart_model_id_version_tags(
+        kwargs.tags = add_jumpstart_model_info_tags(
             kwargs.tags,
             kwargs.model_id,
             full_model_version,
             config_name=kwargs.config_name,
+            scope=JumpStartScriptScope.TRAINING,
         )
     return kwargs
 
