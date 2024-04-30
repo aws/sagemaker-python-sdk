@@ -1143,25 +1143,17 @@ def get_metrics_from_deployment_configs(
             #         data[column_name].append(metric.value)
 
             for metric in current_instance_type_metrics:
-                print(deployment_config.deployment_config_name)
-                print(current_instance_type)
-
                 column_name = f"{metric.name} ({metric.unit})"
-                print(f"column_name: {column_name}")
 
                 if metric.name.lower() == "instance rate":
-                    print("Instance rate metric")
                     if column_name in instance_rate_data:
-                        print("append instance_rate_data[column_name]")
                         instance_rate_data[column_name].append(metric.value)
                     else:
-                        print("instance_rate_data[column_name] = [metric.value]")
                         instance_rate_data[column_name] = [metric.value]
                 else:
                     if column_name not in data:
-                        print(f"Column {column_name} not found in data")
                         data[column_name] = []
-                    for _ in range(inner_index):
+                    for _ in range(len(data[column_name]), inner_index):
                         data[column_name].append(" - ")
                     data[column_name].append(metric.value)
 
