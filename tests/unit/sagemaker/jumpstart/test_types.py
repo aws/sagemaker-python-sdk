@@ -1056,7 +1056,7 @@ def test_inference_configs_parsing():
         **BASE_SPEC,
         **INFERENCE_CONFIGS,
         **INFERENCE_CONFIG_RANKINGS,
-        "unrecognized-field": "blah",  # New fields in base metadata fields should not break
+        "unrecognized-field": "blah",  # New fields in base metadata fields should be ignored
     }
     specs1 = JumpStartModelSpecs(spec)
 
