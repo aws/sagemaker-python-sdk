@@ -1096,11 +1096,15 @@ def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchm
 
 
 def get_metrics_from_deployment_configs(
+    default_config_name: str,
+    default_instance_type: str,
     deployment_configs: List[DeploymentConfigMetadata],
 ) -> Dict[str, List[str]]:
     """Extracts benchmark metrics from deployment configs metadata.
 
     Args:
+        default_config_name (str): The name of the default deployment config.
+        default_instance_type (str): The name of the default instance type.
         deployment_configs (List[DeploymentConfigMetadata]): List of deployment configs metadata.
     """
     data = {"Instance Type": [], "Config Name": []}
@@ -1117,7 +1121,8 @@ def get_metrics_from_deployment_configs(
             data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
-                if current_instance_type == deployment_config.deployment_args.default_instance_type
+                if current_instance_type == default_instance_type
+                and default_config_name == deployment_config.deployment_config_name
                 else current_instance_type
             )
             data["Instance Type"].append(instance_type_to_display)

@@ -887,7 +887,9 @@ class JumpStartModel(Model):
             Dict[str, List[str]]: Deployment config benchmark data.
         """
         return get_metrics_from_deployment_configs(
-            self._get_deployment_configs(config_name, instance_type)
+            config_name,
+            instance_type,
+            self._get_deployment_configs(config_name, instance_type),
         )
 
     @lru_cache
