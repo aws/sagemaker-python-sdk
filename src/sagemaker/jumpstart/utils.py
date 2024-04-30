@@ -1153,7 +1153,9 @@ def get_metrics_from_deployment_configs(
                 else:
                     if column_name not in data:
                         data[column_name] = []
-                    for _ in range(len(data[column_name]), inner_index):
+                    for _ in range(len(data[column_name]), inner_index + 1):
+                        print(f"len(data[column_name]): {len(data[column_name])}")
+                        print(f"inner_index: {inner_index}")
                         data[column_name].append(" - ")
                     data[column_name].append(metric.value)
 
