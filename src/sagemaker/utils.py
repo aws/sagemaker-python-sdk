@@ -1611,9 +1611,9 @@ def flatten_dict(
 ) -> Dict[str, Any]:
     """Flatten a dictionary object.
 
-    d : dict-like object
+    d (Dict[str, Any]):
         The dict that will be flattened.
-    max_flatten_depth : Optional[int]
+    max_flatten_depth (Optional[int]):
         Maximum depth to merge.
     """
 
@@ -1669,7 +1669,7 @@ def nested_set_dict(d: Dict[str, Any], keys: List[str], value: Any) -> None:
 def unflatten_dict(d: Dict[str, Any]) -> Dict[str, Any]:
     """Unflatten dict-like object.
 
-    d : dict-like object
+    d (Dict[str, Any]) :
         The dict that will be unflattened.
     """
 
