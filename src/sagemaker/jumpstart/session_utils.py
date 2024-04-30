@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from typing import Optional, Tuple
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
-from sagemaker.jumpstart.utils import get_jumpstart_model_id_version_from_resource_arn
+from sagemaker.jumpstart.utils import get_jumpstart_model_info_from_resource_arn
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
 
@@ -26,7 +26,7 @@ def get_model_info_from_endpoint(
     endpoint_name: str,
     inference_component_name: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[str, str, Optional[str], Optional[str]]:
+) -> Tuple[str, str, Optional[str], Optional[str], Optional[str]]:
     """Optionally inference component names, return the model ID, version and config name.
 
     Infers the model ID and version based on the resource tags. Returns a tuple of the model ID
@@ -46,7 +46,8 @@ def get_model_info_from_endpoint(
             (
                 model_id,
                 model_version,
-                config_name,
+                inference_config_name,
+                training_config_name,
             ) = _get_model_info_from_inference_component_endpoint_with_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 inference_component_name, sagemaker_session
             )
@@ -55,17 +56,29 @@ def get_model_info_from_endpoint(
             (
                 model_id,
                 model_version,
-                config_name,
+                inference_config_name,
+                training_config_name,
                 inference_component_name,
             ) = _get_model_info_from_inference_component_endpoint_without_inference_component_name(  # noqa E501  # pylint: disable=c0301
                 endpoint_name, sagemaker_session
             )
 
     else:
-        model_id, model_version, config_name = _get_model_info_from_model_based_endpoint(
+        (
+            model_id,
+            model_version,
+            inference_config_name,
+            training_config_name,
+        ) = _get_model_info_from_model_based_endpoint(
             endpoint_name, inference_component_name, sagemaker_session
         )
-    return model_id, model_version, inference_component_name, config_name
+    return (
+        model_id,
+        model_version,
+        inference_component_name,
+        inference_config_name,
+        training_config_name,
+    )
 
 
 def _get_model_info_from_inference_component_endpoint_without_inference_component_name(
@@ -125,9 +138,12 @@ def _get_model_info_from_inference_component_endpoint_with_inference_component_n
         f"inference-component/{inference_component_name}"
     )
 
-    model_id, model_version, config_name = get_jumpstart_model_id_version_from_resource_arn(
-        inference_component_arn, sagemaker_session
-    )
+    (
+        model_id,
+        model_version,
+        inference_config_name,
+        training_config_name,
+    ) = get_jumpstart_model_info_from_resource_arn(inference_component_arn, sagemaker_session)
 
     if not model_id:
         raise ValueError(
@@ -136,14 +152,14 @@ def _get_model_info_from_inference_component_endpoint_with_inference_component_n
             "when retrieving default predictor for this inference component."
         )
 
-    return model_id, model_version, config_name
+    return model_id, model_version, inference_config_name, training_config_name
 
 
 def _get_model_info_from_model_based_endpoint(
     endpoint_name: str,
     inference_component_name: Optional[str],
     sagemaker_session: Session,
-) -> Tuple[str, str, Optional[str]]:
+) -> Tuple[str, str, Optional[str], Optional[str]]:
     """Returns the model ID, version and config name inferred from a model-based endpoint.
 
     Raises:
@@ -163,9 +179,12 @@ def _get_model_info_from_model_based_endpoint(
 
     endpoint_arn = f"arn:{partition}:sagemaker:{region}:{account_id}:endpoint/{endpoint_name}"
 
-    model_id, model_version, config_name = get_jumpstart_model_id_version_from_resource_arn(
-        endpoint_arn, sagemaker_session
-    )
+    (
+        model_id,
+        model_version,
+        inference_config_name,
+        training_config_name,
+    ) = get_jumpstart_model_info_from_resource_arn(endpoint_arn, sagemaker_session)
 
     if not model_id:
         raise ValueError(
@@ -174,13 +193,13 @@ def _get_model_info_from_model_based_endpoint(
             "predictor for this endpoint."
         )
 
-    return model_id, model_version, config_name
+    return model_id, model_version, inference_config_name, training_config_name
 
 
 def get_model_info_from_training_job(
     training_job_name: str,
     sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[str, str, Optional[str]]:
+) -> Tuple[str, str, Optional[str], Optional[str]]:
     """Returns the model ID and version and config name inferred from a training job.
 
     Raises:
@@ -199,8 +218,9 @@ def get_model_info_from_training_job(
     (
         model_id,
         inferred_model_version,
-        config_name,
-    ) = get_jumpstart_model_id_version_from_resource_arn(training_job_arn, sagemaker_session)
+        inference_config_name,
+        trainig_config_name,
+    ) = get_jumpstart_model_info_from_resource_arn(training_job_arn, sagemaker_session)
 
     model_version = inferred_model_version or None
 
@@ -211,4 +231,4 @@ def get_model_info_from_training_job(
             "for this training job."
         )
 
-    return model_id, model_version, config_name
+    return model_id, model_version, inference_config_name, trainig_config_name
