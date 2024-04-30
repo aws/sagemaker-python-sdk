@@ -1034,21 +1034,19 @@ def get_jumpstart_configs(
 
 def add_instance_rate_stats_to_benchmark_metrics(
     region: str,
-    default_instance_type: str,
     benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]],
 ) -> Optional[Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]]:
     """Adds instance types metric stats to the given benchmark_metrics dict.
 
     Args:
         region (str): AWS region.
-        default_instance_type (str): Instance type.
         benchmark_metrics (Optional[Dict[str, List[JumpStartBenchmarkStat]]]):
     Returns:
         Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]:
         Contains Error message and metrics dict.
     """
     if benchmark_metrics is None:
-        benchmark_metrics = {default_instance_type: None}
+        return None
 
     err_message = None
     final_benchmark_metrics = {}
@@ -1152,7 +1150,6 @@ def deployment_config_response_data(
     """Deployment config api response data.
 
     Args:
-        config_name (str): Name of deployment config.
         deployment_configs (Optional[List[DeploymentConfigMetadata]]):
         List of deployment configs metadata.
     Returns:
