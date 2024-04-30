@@ -320,7 +320,8 @@ def add_single_jumpstart_tag(
                     tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_TYPE, curr_tags)
-                    or tag_key_in_array(enums.JumpStartTag.MODEL_CONFIG_NAME, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.INFERENCE_CONFIG_NAME, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.TRAINING_CONFIG_NAME, curr_tags)
                 )
                 if is_uri
                 else False
@@ -351,12 +352,13 @@ def get_jumpstart_base_name_if_jumpstart_model(
     return None
 
 
-def add_jumpstart_model_id_version_tags(
+def add_jumpstart_model_info_tags(
     tags: Optional[List[TagsDict]],
     model_id: str,
     model_version: str,
     model_type: Optional[enums.JumpStartModelType] = None,
     config_name: Optional[str] = None,
+    scope: enums.JumpStartScriptScope = None,
 ) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
@@ -380,10 +382,17 @@ def add_jumpstart_model_id_version_tags(
             tags,
             is_uri=False,
         )
-    if config_name:
+    if config_name and scope == enums.JumpStartScriptScope.INFERENCE:
         tags = add_single_jumpstart_tag(
             config_name,
-            enums.JumpStartTag.MODEL_CONFIG_NAME,
+            enums.JumpStartTag.INFERENCE_CONFIG_NAME,
+            tags,
+            is_uri=False,
+        )
+    if config_name and scope == enums.JumpStartScriptScope.TRAINING:
+        tags = add_single_jumpstart_tag(
+            config_name,
+            enums.JumpStartTag.TRAINING_CONFIG_NAME,
             tags,
             is_uri=False,
         )
@@ -840,10 +849,10 @@ def _extract_value_from_list_of_tags(
     return resolved_value
 
 
-def get_jumpstart_model_id_version_from_resource_arn(
+def get_jumpstart_model_info_from_resource_arn(
     resource_arn: str,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     """Returns the JumpStart model ID, version and config name if in resource tags.
 
     Returns 'None' if model ID or version or config name cannot be inferred from tags.
@@ -853,7 +862,8 @@ def get_jumpstart_model_id_version_from_resource_arn(
 
     model_id_keys = [enums.JumpStartTag.MODEL_ID, *constants.EXTRA_MODEL_ID_TAGS]
     model_version_keys = [enums.JumpStartTag.MODEL_VERSION, *constants.EXTRA_MODEL_VERSION_TAGS]
-    model_config_name_keys = [enums.JumpStartTag.MODEL_CONFIG_NAME]
+    inference_config_name_keys = [enums.JumpStartTag.INFERENCE_CONFIG_NAME]
+    training_config_name_keys = [enums.JumpStartTag.TRAINING_CONFIG_NAME]
 
     model_id: Optional[str] = _extract_value_from_list_of_tags(
         tag_keys=model_id_keys,
@@ -869,14 +879,21 @@ def get_jumpstart_model_id_version_from_resource_arn(
         resource_arn=resource_arn,
     )
 
-    config_name: Optional[str] = _extract_value_from_list_of_tags(
-        tag_keys=model_config_name_keys,
+    inference_config_name: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=inference_config_name_keys,
         list_tags_result=list_tags_result,
-        resource_name="model config name",
+        resource_name="inference config name",
         resource_arn=resource_arn,
     )
 
-    return model_id, model_version, config_name
+    training_config_name: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=training_config_name_keys,
+        list_tags_result=list_tags_result,
+        resource_name="training config name",
+        resource_arn=resource_arn,
+    )
+
+    return model_id, model_version, inference_config_name, training_config_name
 
 
 def get_region_fallback(

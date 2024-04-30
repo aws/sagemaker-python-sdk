@@ -733,7 +733,7 @@ class JumpStartEstimator(Estimator):
         config_name = None
         if model_id is None:
 
-            model_id, model_version, config_name = get_model_info_from_training_job(
+            model_id, model_version, _, config_name = get_model_info_from_training_job(
                 training_job_name=training_job_name, sagemaker_session=sagemaker_session
             )
 
@@ -1139,7 +1139,9 @@ class JumpStartEstimator(Estimator):
         Args:
             config_name (str): The name of the config.
         """
-        self.__init__(**self.init_kwargs, config_name=config_name)
+        self.__init__(
+            model_id=self.model_id, model_version=self.model_version, config_name=config_name
+        )
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

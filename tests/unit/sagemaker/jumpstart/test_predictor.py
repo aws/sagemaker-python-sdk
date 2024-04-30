@@ -97,7 +97,7 @@ def test_proprietary_predictor_support(
 def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
     patched_get_model_specs,
     patched_verify_model_region_and_return_specs,
-    patched_get_jumpstart_model_id_version_from_endpoint,
+    patched_get_model_info_from_endpoint,
     patched_get_default_predictor,
     patched_predictor,
 ):
@@ -105,9 +105,10 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
     patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_special_model_spec
 
-    patched_get_jumpstart_model_id_version_from_endpoint.return_value = (
+    patched_get_model_info_from_endpoint.return_value = (
         "predictor-specs-model",
         "1.2.3",
+        None,
         None,
         None,
     )
@@ -116,9 +117,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
 
     predictor.retrieve_default(endpoint_name="blah", sagemaker_session=mock_session)
 
-    patched_get_jumpstart_model_id_version_from_endpoint.assert_called_once_with(
-        "blah", None, mock_session
-    )
+    patched_get_model_info_from_endpoint.assert_called_once_with("blah", None, mock_session)
 
     patched_get_default_predictor.assert_called_once_with(
         predictor=patched_predictor.return_value,
