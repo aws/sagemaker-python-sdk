@@ -1107,11 +1107,8 @@ def get_metrics_from_deployment_configs(
     instance_rate_data = {}
 
     for deployment_config in deployment_configs:
-        if deployment_config.deployment_args is None:
-            continue
-
         benchmark_metrics = deployment_config.benchmark_metrics
-        if benchmark_metrics is None:
+        if deployment_config.deployment_args is None or benchmark_metrics is None:
             continue
 
         for inner_index, current_instance_type in enumerate(benchmark_metrics):
@@ -1136,7 +1133,7 @@ def get_metrics_from_deployment_configs(
                 else:
                     if column_name not in data:
                         data[column_name] = []
-                    for _ in range(len(data[column_name]), inner_index + 1):
+                    for _ in range(len(data[column_name]), inner_index):
                         data[column_name].append(" - ")
                     data[column_name].append(metric.value)
 
