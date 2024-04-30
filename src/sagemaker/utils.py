@@ -26,7 +26,7 @@ import tarfile
 import tempfile
 import time
 from functools import lru_cache
-from typing import Mapping, Union, Any, List, Optional, Dict
+from typing import Union, Any, List, Optional, Dict
 import json
 import abc
 import uuid
@@ -1636,7 +1636,7 @@ def flatten_dict(
         for key, value in key_value_iterable:
             has_item = True
             flat_key = reducer(parent, key)
-            if isinstance(value, Mapping) and (
+            if isinstance(value, dict) and (
                 max_flatten_depth is None or depth < max_flatten_depth
             ):
                 # recursively build the result
