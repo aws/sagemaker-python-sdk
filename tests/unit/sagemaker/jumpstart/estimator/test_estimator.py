@@ -1036,6 +1036,7 @@ class EstimatorTest(unittest.TestCase):
             "js-trainable-model-prepacked",
             "1.0.0",
             None,
+            None,
         )
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -1900,7 +1901,59 @@ class EstimatorTest(unittest.TestCase):
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
                 {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
-                {"Key": JumpStartTag.MODEL_CONFIG_NAME, "Value": "neuron-training"},
+                {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "neuron-training"},
+            ],
+            enable_network_isolation=False,
+        )
+
+        estimator.fit()
+
+        mock_estimator_fit.assert_called_once_with(wait=True)
+
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_estimator_set_config_name(
+        self,
+        mock_estimator_init: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_estimator_fit.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(model_id=model_id)
+
+        estimator.set_training_config(config_name="neuron-training")
+
+        mock_estimator_init.assert_called_with(
+            instance_type="ml.p2.xlarge",
+            instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/meta-textgeneration-llama-2-7b/"
+            "neuron-training/model/",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
+            "transfer_learning/eqa/v1.0.0/sourcedir.tar.gz",
+            entry_point="transfer_learning.py",
+            hyperparameters={"epochs": "3", "adam-learning-rate": "2e-05", "batch-size": "4"},
+            role="fake role! do not use!",
+            sagemaker_session=sagemaker_session,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "neuron-training"},
             ],
             enable_network_isolation=False,
         )
