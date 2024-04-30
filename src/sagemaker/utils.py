@@ -1636,14 +1636,9 @@ def flatten_dict(
         for key, value in key_value_iterable:
             has_item = True
             flat_key = reducer(parent, key)
-            if isinstance(value, dict) and (
-                max_flatten_depth is None or depth < max_flatten_depth
-            ):
-                # recursively build the result
+            if isinstance(value, dict) and (max_flatten_depth is None or depth < max_flatten_depth):
                 has_child = _flatten(value, depth=depth + 1, parent=flat_key)
                 if has_child:
-                    # ignore the key in this level because it already has child key
-                    # or its value is empty
                     continue
 
             if flat_key in flat_dict:
