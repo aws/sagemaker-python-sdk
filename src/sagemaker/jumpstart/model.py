@@ -469,7 +469,7 @@ class JumpStartModel(Model):
         )
         keys = list(benchmark_metrics_data.keys())
         # Sort by Config Name and Instance Type column values
-        df = pd.DataFrame(benchmark_metrics_data).sort_values(by=[keys[0], keys[1]])
+        df = pd.DataFrame(benchmark_metrics_data).sort_values(by=[keys[1], keys[0]])
         return df
 
     def display_benchmark_metrics(self) -> None:
