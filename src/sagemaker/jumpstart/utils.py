@@ -80,9 +80,9 @@ def get_jumpstart_gated_content_bucket(
             unavailable in that region.
     """
 
-    old_gated_content_bucket: Optional[
-        str
-    ] = accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
+    old_gated_content_bucket: Optional[str] = (
+        accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
+    )
 
     info_logs: List[str] = []
 
@@ -131,9 +131,9 @@ def get_jumpstart_content_bucket(
         ValueError: If JumpStart is not launched in ``region``.
     """
 
-    old_content_bucket: Optional[
-        str
-    ] = accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket()
+    old_content_bucket: Optional[str] = (
+        accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket()
+    )
 
     info_logs: List[str] = []
 
@@ -177,9 +177,9 @@ def get_formatted_manifest(
     manifest_dict = {}
     for header in manifest:
         header_obj = JumpStartModelHeader(header)
-        manifest_dict[
-            JumpStartVersionedModelId(header_obj.model_id, header_obj.version)
-        ] = header_obj
+        manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
+            header_obj
+        )
     return manifest_dict
 
 

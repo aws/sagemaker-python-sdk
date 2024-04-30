@@ -40,7 +40,6 @@ import botocore
 from botocore.utils import merge_dicts
 from six.moves.urllib import parse
 from six import viewitems
-import pandas as pd
 
 from sagemaker import deprecations
 from sagemaker.config import validate_sagemaker_config
@@ -1621,10 +1620,7 @@ def flatten_dict(
     def tuple_reducer(k1, k2):
         if k1 is None:
             return (k2,)
-        else:
-            return k1 + (k2,)
-
-    flattenable_types = (Mapping,)
+        return k1 + (k2,)
 
     # check max_flatten_depth
     if max_flatten_depth is not None and max_flatten_depth < 1:
@@ -1640,7 +1636,7 @@ def flatten_dict(
         for key, value in key_value_iterable:
             has_item = True
             flat_key = reducer(parent, key)
-            if isinstance(value, flattenable_types) and (
+            if isinstance(value, Mapping) and (
                 max_flatten_depth is None or depth < max_flatten_depth
             ):
                 # recursively build the result

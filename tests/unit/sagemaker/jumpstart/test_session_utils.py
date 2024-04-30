@@ -48,7 +48,7 @@ def test_get_model_info_from_training_job_config_name(
         "model_id",
         "model_version",
         None,
-        "training_config_name"
+        "training_config_name",
     )
 
     retval = get_model_info_from_training_job("bLaH", sagemaker_session=mock_sm_session)
