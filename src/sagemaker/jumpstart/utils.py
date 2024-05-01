@@ -1200,7 +1200,7 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
                 print("******* Not From Cache ***********")
                 print(res)
                 print()
-                print(f.cache_info().misses)
+                print(f.cache_info())
                 print()
                 if isinstance(res, list):
                     for item in res:
