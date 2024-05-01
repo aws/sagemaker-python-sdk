@@ -111,7 +111,8 @@ class JumpStartEstimator(Estimator):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
-        config_name: Optional[str] = None,
+        training_config_name: Optional[str] = None,
+        inference_config_name: Optional[str] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -503,8 +504,11 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
-            config_name (Optional[str]):
-                Name of the JumpStart Model config to apply. (Default: None).
+            training_config_name (Optional[str]):
+                Name of the training configuration to apply to the Estimator. (Default: None).
+            inference_config_name (Optional[str]):
+                Name of the inference configuraion to apply to the Estimator,
+                to be used when deploying the fine-tuned mode. (Default: None).
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -583,7 +587,8 @@ class JumpStartEstimator(Estimator):
             disable_output_compression=disable_output_compression,
             enable_infra_check=enable_infra_check,
             enable_remote_debug=enable_remote_debug,
-            config_name=config_name,
+            training_config_name=training_config_name,
+            inference_config_name=inference_config_name,
         )
 
         self.model_id = estimator_init_kwargs.model_id
@@ -597,7 +602,8 @@ class JumpStartEstimator(Estimator):
         self.role = estimator_init_kwargs.role
         self.sagemaker_session = estimator_init_kwargs.sagemaker_session
         self._enable_network_isolation = estimator_init_kwargs.enable_network_isolation
-        self.config_name = estimator_init_kwargs.config_name
+        self.training_config_name = estimator_init_kwargs.training_config_name
+        self.inference_config_name = estimator_init_kwargs.inference_config_name
         self.init_kwargs = estimator_init_kwargs.to_kwargs_dict(False)
 
         super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
@@ -673,7 +679,7 @@ class JumpStartEstimator(Estimator):
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             sagemaker_session=self.sagemaker_session,
-            config_name=self.config_name,
+            config_name=self.training_config_name,
         )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
@@ -1091,7 +1097,7 @@ class JumpStartEstimator(Estimator):
             git_config=git_config,
             use_compiled_model=use_compiled_model,
             training_instance_type=self.instance_type,
-            config_name=self.config_name,
+            config_name=self.inference_config_name,
         )
 
         predictor = super(JumpStartEstimator, self).deploy(
@@ -1108,7 +1114,7 @@ class JumpStartEstimator(Estimator):
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
-                config_name=self.config_name,
+                config_name=self.inference_config_name,
             )
 
         # If a predictor class was passed, do not mutate predictor
@@ -1140,7 +1146,9 @@ class JumpStartEstimator(Estimator):
             config_name (str): The name of the config.
         """
         self.__init__(
-            model_id=self.model_id, model_version=self.model_version, config_name=config_name
+            model_id=self.model_id,
+            model_version=self.model_version,
+            training_config_name=config_name,
         )
 
     def __str__(self) -> str:
