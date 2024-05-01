@@ -1211,7 +1211,10 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
                             break
                 elif isinstance(res, dict):
                     keys = list(res.keys())
-                    if len(keys) > 3 and "Instance Rate" not in keys[2]:
+                    if "Instance Rate" not in keys[-1]:
+                        f.cache_clear()
+                    elif len(res[keys[1]]) > len(res[keys[-1]]):
+                        del res[keys[-1]]
                         f.cache_clear()
             else:
                 print("******* From Cache ***********")
