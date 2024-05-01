@@ -1215,6 +1215,9 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
                         f.cache_clear()
             else:
                 print("******* From Cache ***********")
+                print(res)
+                print()
+                print(f.cache_info())
 
             return res
 
