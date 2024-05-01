@@ -2034,6 +2034,67 @@ class EstimatorTest(unittest.TestCase):
         assert estimator.inference_config_name == "gpu-inference-budget"
         assert estimator.training_config_name == "gpu-training-budget"
 
+    @mock.patch("sagemaker.jumpstart.factory.estimator.get_model_info_from_training_job")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_estimator_deploy_with_config(
+        self,
+        mock_estimator_init: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_model_info_from_training_job: mock.Mock,
+    ):
+        mock_estimator_deploy.return_value = default_predictor
+        mock_get_model_info_from_training_job.return_value = (
+            "js-trainable-model-prepacked",
+            "1.0.0",
+            None,
+            "gpu-training-budget",
+        )
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_estimator_fit.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(model_id=model_id, base_job_name="base_job")
+
+        assert estimator.inference_config_name == "gpu-inference-budget"
+        assert estimator.training_config_name == "gpu-training-budget"
+
+        estimator.deploy()
+
+        mock_estimator_deploy.assert_called_once_with(
+            instance_type="ml.p2.xlarge",
+            initial_instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.5.0-gpu-py3",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/inference/eqa/v1.0.0/sourcedir.tar.gz",
+            entry_point="inference.py",
+            predictor_cls=Predictor,
+            wait=True,
+            role="fake role! do not use!",
+            use_compiled_model=False,
+            enable_network_isolation=False,
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "gpu-inference-budget"},
+            ],
+        )
+
 
 def test_jumpstart_estimator_requires_model_id():
     with pytest.raises(ValueError):
