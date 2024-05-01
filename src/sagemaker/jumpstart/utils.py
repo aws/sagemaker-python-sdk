@@ -1196,7 +1196,7 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
         def wrapped_f(*args, **kwargs):
             res = f(*args, **kwargs)
 
-            if f.cache_info().hits == 1:
+            if f.cache_info().hits == 0 and f.cache_info().misses == 1:
                 print("******* Not From Cache ***********")
                 print(res)
                 print()
