@@ -14,6 +14,7 @@
 
 from __future__ import absolute_import
 
+import copy
 from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
@@ -361,6 +362,8 @@ class JumpStartModel(Model):
         self.model_package_arn = model_init_kwargs.model_package_arn
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
 
+        self._default_config_name = copy.deepcopy(self.config_name)
+        self._default_instance_type = copy.deepcopy(self.instance_type)
         self._metadata_configs = get_jumpstart_configs(
             region=self.region,
             model_id=self.model_id,
@@ -464,13 +467,12 @@ class JumpStartModel(Model):
         Returns:
             Benchmark Metrics: Pandas DataFrame object.
         """
-        benchmark_metrics_data = self._get_deployment_configs_benchmarks_data(
-            self.config_name, self.instance_type
-        )
-        keys = list(benchmark_metrics_data.keys())
+        benchmark_metrics_data = self._get_deployment_configs_benchmarks_data()
         # Sort by Config Name and Instance Type column values
-        df = pd.DataFrame(benchmark_metrics_data).sort_values(by=[keys[1], keys[0]])
-        return df
+        df = pd.DataFrame(benchmark_metrics_data)
+        default_mask = df.apply(lambda raw: any("Default" in str(val) for val in raw), axis=1)
+        sorted_df = pd.concat([df[default_mask], df[~default_mask]])
+        return sorted_df
 
     def display_benchmark_metrics(self, *args, **kwargs) -> None:
         """Display deployment configs benchmark metrics."""
@@ -875,21 +877,16 @@ class JumpStartModel(Model):
         return model_package
 
     @_deployment_config_lru_cache
-    def _get_deployment_configs_benchmarks_data(
-        self, config_name: str, instance_type: str
-    ) -> Dict[str, Any]:
+    def _get_deployment_configs_benchmarks_data(self) -> Dict[str, Any]:
         """Deployment configs benchmark metrics.
 
-        Args:
-            config_name (str): Name of selected deployment config.
-            instance_type (str): The selected Instance type.
         Returns:
             Dict[str, List[str]]: Deployment config benchmark data.
         """
         return get_metrics_from_deployment_configs(
-            config_name,
-            instance_type,
-            self._get_deployment_configs(config_name, instance_type),
+            self._default_config_name,
+            self._default_instance_type,
+            self._get_deployment_configs(self._default_config_name, self._default_instance_type),
         )
 
     @_deployment_config_lru_cache
@@ -940,9 +937,9 @@ class JumpStartModel(Model):
             )
             deployment_configs.append(deployment_config_metadata)
 
-        if err and "is not authorized to perform: pricing:GetProducts" in err:
+        if err and err["Code"] == "AccessDeniedException":
             error_message = "Instance rate metrics will be omitted. Reason: %s"
-            JUMPSTART_LOGGER.warning(error_message, err)
+            JUMPSTART_LOGGER.warning(error_message, err["Message"])
 
         return deployment_configs
 

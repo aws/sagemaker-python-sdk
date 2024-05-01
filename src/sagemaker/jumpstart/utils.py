@@ -1036,15 +1036,15 @@ def get_jumpstart_configs(
 def add_instance_rate_stats_to_benchmark_metrics(
     region: str,
     benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]],
-) -> Optional[Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]]:
+) -> Optional[Tuple[Dict[str, str], Dict[str, List[JumpStartBenchmarkStat]]]]:
     """Adds instance types metric stats to the given benchmark_metrics dict.
 
     Args:
         region (str): AWS region.
         benchmark_metrics (Optional[Dict[str, List[JumpStartBenchmarkStat]]]):
     Returns:
-        Optional[Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]]:
-        Contains Error message and metrics dict.
+        Optional[Tuple[Dict[str, str], Dict[str, List[JumpStartBenchmarkStat]]]]:
+        Contains Error and metrics.
     """
     if not benchmark_metrics:
         return None
@@ -1067,7 +1067,7 @@ def add_instance_rate_stats_to_benchmark_metrics(
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
             except ClientError as e:
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
-                err_message = e.response["Error"]["Message"]
+                err_message = e.response["Error"]
             except Exception:  # pylint: disable=W0703
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
         else:
