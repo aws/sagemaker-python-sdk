@@ -825,7 +825,7 @@ def _add_config_name_to_kwargs(
             or specs.training_configs.configs.get(
                 base_training_config_name
             ).default_incremental_trainig_config
-            or specs.training_configs.get_top_config_from_ranking().default_incremental_trainig_config  # pylint: disable=c0301
+            or specs.training_configs.get_top_config_from_ranking().default_incremental_trainig_config  # noqa E501  # pylint: disable=c0301
         )
 
     if specs.training_configs and specs.training_configs.get_top_config_from_ranking().config_name:
