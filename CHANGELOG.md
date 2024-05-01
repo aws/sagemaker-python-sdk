@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.218.0 (2024-05-01)
+
+### Features
+
+ * set default allow_pickle param to False
+
+### Bug Fixes and Other Changes
+
+ * properly close files in lineage queries and tests
+
 ## v2.217.0 (2024-04-24)
 
 ### Features
