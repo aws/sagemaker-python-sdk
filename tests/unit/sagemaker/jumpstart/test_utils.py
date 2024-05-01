@@ -1835,7 +1835,7 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
 @pytest.mark.parametrize(
     "stats, expected",
     [
-        (None, False),
+        (None, True),
         (
             [JumpStartBenchmarkStat({"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"})],
             True,

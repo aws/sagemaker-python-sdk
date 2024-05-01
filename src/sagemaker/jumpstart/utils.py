@@ -1181,7 +1181,13 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
     """LRU cache for deployment configs."""
 
     def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
-        """Determines whether a benchmark metric stats contains instance rate metric stat."""
+        """Determines whether metadata config contains instance rate metric stat.
+
+        Args:
+            config (DeploymentConfigMetadata): Metadata config metadata.
+        Returns:
+            bool: Whether the metadata config contains instance rate metric stat.
+        """
         if config.benchmark_metrics is None:
             return True
         for benchmark_metric_stats in config.benchmark_metrics.values():
@@ -1196,6 +1202,9 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
         def wrapped_f(*args, **kwargs):
             res = f(*args, **kwargs)
 
+            # Clear cache on first call if
+            #   - The output does not contain Instant rate metrics
+            #   as this is caused by missing policy.
             if f.cache_info().hits == 0 and f.cache_info().misses == 1:
                 if isinstance(res, list):
                     for item in res:
@@ -1211,7 +1220,6 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
                     elif len(res[keys[1]]) > len(res[keys[-1]]):
                         del res[keys[-1]]
                         f.cache_clear()
-
             return res
 
         wrapped_f.cache_info = f.cache_info
