@@ -590,7 +590,7 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
     )
     if (
         specs.inference_configs
-        and specs.inference_configs.get_top_config_from_ranking().config_name
+        and specs.inference_configs.get_top_config_from_ranking()
     ):
         kwargs.config_name = (
             kwargs.config_name or specs.inference_configs.get_top_config_from_ranking().config_name
@@ -613,6 +613,7 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
             )
 
     return kwargs
+
 
 def _add_config_name_to_deploy_kwargs(
     kwargs: JumpStartModelDeployKwargs, training_config_name: Optional[str] = None
@@ -645,7 +646,7 @@ def _add_config_name_to_deploy_kwargs(
 
     if (
         specs.inference_configs
-        and specs.inference_configs.get_top_config_from_ranking().config_name
+        and specs.inference_configs.get_top_config_from_ranking()
     ):
         kwargs.config_name = (
             kwargs.config_name or specs.inference_configs.get_top_config_from_ranking().config_name

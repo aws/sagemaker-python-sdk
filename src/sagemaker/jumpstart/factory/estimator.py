@@ -29,7 +29,6 @@ from sagemaker.jumpstart.artifacts import (
     _retrieve_model_package_model_artifact_s3_uri,
 )
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
-from sagemaker.jumpstart.session_utils import get_model_info_from_training_job
 from sagemaker.session import Session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -815,7 +814,7 @@ def _add_config_name_to_kwargs(
         config_name=kwargs.config_name,
     )
 
-    if specs.training_configs and specs.training_configs.get_top_config_from_ranking().config_name:
+    if specs.training_configs and specs.training_configs.get_top_config_from_ranking():
         kwargs.config_name = (
             kwargs.config_name or specs.training_configs.get_top_config_from_ranking().config_name
         )
