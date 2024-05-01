@@ -1770,7 +1770,7 @@ def test_extract_metrics_from_deployment_configs():
     configs[0].benchmark_metrics = None
     configs[2].deployment_args = None
 
-    data = utils.get_metrics_from_deployment_configs(configs)
+    data = utils.get_metrics_from_deployment_configs("neuron-inference", "ml.g5.xlarge", configs)
 
     for key in data:
         assert len(data[key]) == (len(configs) - 2)

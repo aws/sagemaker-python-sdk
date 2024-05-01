@@ -472,9 +472,9 @@ class JumpStartModel(Model):
         df = pd.DataFrame(benchmark_metrics_data).sort_values(by=[keys[1], keys[0]])
         return df
 
-    def display_benchmark_metrics(self) -> None:
+    def display_benchmark_metrics(self, *args, **kwargs) -> None:
         """Display deployment configs benchmark metrics."""
-        print(self.benchmark_metrics.to_markdown(index=False))
+        print(self.benchmark_metrics.to_markdown(index=False), *args, **kwargs)
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model.
@@ -903,7 +903,7 @@ class JumpStartModel(Model):
             selected_instance_type (str): The selected instance type.
         """
         deployment_configs = []
-        if self._metadata_configs is None:
+        if not self._metadata_configs:
             return deployment_configs
 
         err = None
@@ -940,7 +940,7 @@ class JumpStartModel(Model):
             )
             deployment_configs.append(deployment_config_metadata)
 
-        if err is not None and "is not authorized to perform: pricing:GetProducts" in err:
+        if err and "is not authorized to perform: pricing:GetProducts" in err:
             error_message = "Instance rate metrics will be omitted. Reason: %s"
             JUMPSTART_LOGGER.warning(error_message, err)
 
