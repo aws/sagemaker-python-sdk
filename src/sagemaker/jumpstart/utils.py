@@ -1086,7 +1086,7 @@ def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchm
         bool: Whether the benchmark metric stats contains instance rate metric stat.
     """
     if benchmark_metric_stats is None:
-        return False
+        return True
     for benchmark_metric_stat in benchmark_metric_stats:
         if benchmark_metric_stat.name.lower() == "instance rate":
             return True
@@ -1183,7 +1183,7 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
     def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
         """Determines whether a benchmark metric stats contains instance rate metric stat."""
         if config.benchmark_metrics is None:
-            return False
+            return True
         for benchmark_metric_stats in config.benchmark_metrics.values():
             if not has_instance_rate_stat(benchmark_metric_stats):
                 return False
