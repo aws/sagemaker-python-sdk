@@ -1774,8 +1774,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "disable_output_compression",
         "enable_infra_check",
         "enable_remote_debug",
-        "training_config_name",
-        "inference_config_name",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1785,8 +1784,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "model_type",
-        "training_config_name",
-        "inference_config_name",
+        "config_name",
     }
 
     def __init__(
@@ -1845,8 +1843,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         disable_output_compression: Optional[bool] = None,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
-        training_config_name: Optional[str] = None,
-        inference_config_name: Optional[str] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1906,8 +1903,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.disable_output_compression = disable_output_compression
         self.enable_infra_check = enable_infra_check
         self.enable_remote_debug = enable_remote_debug
-        self.training_config_name = training_config_name
-        self.inference_config_name = inference_config_name
+        self.config_name = config_name
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):

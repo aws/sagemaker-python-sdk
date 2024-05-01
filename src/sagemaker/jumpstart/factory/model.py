@@ -42,6 +42,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelDeployKwargs,
     JumpStartModelInitKwargs,
     JumpStartModelRegisterKwargs,
+    JumpStartModelSpecs,
 )
 from sagemaker.jumpstart.utils import (
     add_jumpstart_model_info_tags,
@@ -548,7 +549,28 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
     return kwargs
 
 
-def _add_config_name_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+def _select_inference_config_from_training_config(
+    specs: JumpStartModelSpecs, training_config_name: str
+) -> Optional[str]:
+    """Selects the inference config from the training config.
+
+    Args:
+        specs (JumpStartModelSpecs): The specs for the model.
+        training_config_name (str): The name of the training config.
+
+    Returns:
+        str: The name of the inference config.
+    """
+    if (
+        specs.training_configs
+        and specs.training_configs.configs.get(training_config_name).default_inference_config
+    ):
+        return specs.training_configs.configs.get(training_config_name).default_inference_config
+
+    return None
+
+
+def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets default config name to the kwargs. Returns full kwargs.
 
     Raises:
@@ -592,6 +614,45 @@ def _add_config_name_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
 
     return kwargs
 
+def _add_config_name_to_deploy_kwargs(
+    kwargs: JumpStartModelDeployKwargs, training_config_name: Optional[str] = None
+) -> JumpStartModelInitKwargs:
+    """Sets default config name to the kwargs. Returns full kwargs.
+
+    If a training_config_name is passed, then choose the inference config
+    based on the supported inference configs in that training config.
+
+    Raises:
+        ValueError: If the instance_type is not supported with the current config.
+    """
+
+    specs = verify_model_region_and_return_specs(
+        model_id=kwargs.model_id,
+        version=kwargs.model_version,
+        scope=JumpStartScriptScope.INFERENCE,
+        region=kwargs.region,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        model_type=kwargs.model_type,
+        config_name=kwargs.config_name,
+    )
+
+    if training_config_name:
+        kwargs.config_name = _select_inference_config_from_training_config(
+            specs=specs, training_config_name=training_config_name
+        )
+
+    if (
+        specs.inference_configs
+        and specs.inference_configs.get_top_config_from_ranking().config_name
+    ):
+        kwargs.config_name = (
+            kwargs.config_name or specs.inference_configs.get_top_config_from_ranking().config_name
+        )
+
+    return kwargs
+
 
 def get_deploy_kwargs(
     model_id: str,
@@ -623,6 +684,7 @@ def get_deploy_kwargs(
     resources: Optional[ResourceRequirements] = None,
     managed_instance_scaling: Optional[str] = None,
     endpoint_type: Optional[EndpointType] = None,
+    training_config_name: Optional[str] = None,
     config_name: Optional[str] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
@@ -663,6 +725,10 @@ def get_deploy_kwargs(
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
 
     deploy_kwargs = _add_endpoint_name_to_kwargs(kwargs=deploy_kwargs)
+
+    deploy_kwargs = _add_config_name_to_deploy_kwargs(
+        kwargs=deploy_kwargs, training_config_name=training_config_name
+    )
 
     deploy_kwargs = _add_instance_type_to_kwargs(kwargs=deploy_kwargs)
 
@@ -858,6 +924,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_model_package_arn_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_resources_to_kwargs(kwargs=model_init_kwargs)
-    model_init_kwargs = _add_config_name_to_kwargs(kwargs=model_init_kwargs)
+
+    model_init_kwargs = _add_config_name_to_init_kwargs(kwargs=model_init_kwargs)
 
     return model_init_kwargs
