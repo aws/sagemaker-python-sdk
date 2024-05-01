@@ -906,6 +906,11 @@ class JumpStartModel(Model):
         err = None
         for config_name, metadata_config in self._metadata_configs.items():
             resolved_config = metadata_config.resolved_config
+
+            print("*************************")
+            print(resolved_config)
+            print("*************************\n")
+
             if selected_config_name == config_name:
                 instance_type_to_use = selected_instance_type
             else:
