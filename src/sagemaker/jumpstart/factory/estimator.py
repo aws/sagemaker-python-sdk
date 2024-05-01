@@ -812,7 +812,6 @@ def _add_config_name_to_kwargs(
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
         config_name=kwargs.training_config_name,
     )
 
@@ -826,7 +825,7 @@ def _add_config_name_to_kwargs(
             or specs.training_configs.configs.get(
                 base_training_config_name
             ).default_incremental_trainig_config
-            or specs.training_configs.get_top_config_from_ranking().default_incremental_trainig_config
+            or specs.training_configs.get_top_config_from_ranking().default_incremental_trainig_config  # pylint: disable=c0301
         )
 
     if specs.training_configs and specs.training_configs.get_top_config_from_ranking().config_name:
@@ -850,7 +849,8 @@ def _add_config_name_to_kwargs(
             ).supported_inference_configs
         ):
             raise ValueError(
-                f"Inference config {kwargs.inference_config_name} is not supported for model {kwargs.model_id}."
+                f"Inference config {kwargs.inference_config_name}"
+                f"is not supported for model {kwargs.model_id}."
             )
 
         if not kwargs.training_config_name:

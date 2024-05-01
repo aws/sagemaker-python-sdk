@@ -1116,7 +1116,7 @@ class EstimatorTest(unittest.TestCase):
             "region",
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
-            "training_config_name",
+            "config_name",
             "inference_config_name",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
@@ -1886,7 +1886,7 @@ class EstimatorTest(unittest.TestCase):
 
         estimator = JumpStartEstimator(
             model_id=model_id,
-            training_config_name="gpu-training",
+            config_name="gpu-training",
         )
 
         mock_estimator_init.assert_called_once_with(
@@ -1937,7 +1937,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_session.return_value = sagemaker_session
 
-        estimator = JumpStartEstimator(model_id=model_id, training_config_name="gpu-training")
+        estimator = JumpStartEstimator(model_id=model_id, config_name="gpu-training")
 
         estimator.set_training_config(config_name="gpu-training-budget")
 
@@ -1969,11 +1969,9 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
-    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_estimator_default_inference_config(
         self,
-        mock_estimator_init: mock.Mock,
         mock_estimator_fit: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -1989,12 +1987,49 @@ class EstimatorTest(unittest.TestCase):
 
         mock_session.return_value = sagemaker_session
 
-        estimator = JumpStartEstimator(model_id=model_id, training_config_name="gpu-training")
+        estimator = JumpStartEstimator(model_id=model_id, config_name="gpu-training")
 
         assert estimator.inference_config_name == "gpu-inference"
         assert estimator.training_config_name == "gpu-training"
 
         estimator.set_training_config("gpu-training-budget")
+
+        assert estimator.inference_config_name == "gpu-inference-budget"
+        assert estimator.training_config_name == "gpu-training-budget"
+
+    @mock.patch("sagemaker.jumpstart.factory.estimator.get_model_info_from_training_job")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_estimator_incremental_training_config(
+        self,
+        mock_estimator_init: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_model_info_from_training_job: mock.Mock,
+    ):
+        mock_get_model_info_from_training_job.return_value = (
+            "js-trainable-model-prepacked",
+            "1.0.0",
+            None,
+            "gpu-training-budget",
+        )
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_estimator_fit.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(model_id=model_id, base_job_name="base_job")
 
         assert estimator.inference_config_name == "gpu-inference-budget"
         assert estimator.training_config_name == "gpu-training-budget"

@@ -111,7 +111,7 @@ class JumpStartEstimator(Estimator):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
-        training_config_name: Optional[str] = None,
+        config_name: Optional[str] = None,
         inference_config_name: Optional[str] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
@@ -504,7 +504,7 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
-            training_config_name (Optional[str]):
+            config_name (Optional[str]):
                 Name of the training configuration to apply to the Estimator. (Default: None).
             inference_config_name (Optional[str]):
                 Name of the inference configuraion to apply to the Estimator,
@@ -587,7 +587,7 @@ class JumpStartEstimator(Estimator):
             disable_output_compression=disable_output_compression,
             enable_infra_check=enable_infra_check,
             enable_remote_debug=enable_remote_debug,
-            training_config_name=training_config_name,
+            training_config_name=config_name,
             inference_config_name=inference_config_name,
         )
 
@@ -1148,7 +1148,7 @@ class JumpStartEstimator(Estimator):
         self.__init__(
             model_id=self.model_id,
             model_version=self.model_version,
-            training_config_name=config_name,
+            config_name=config_name,
         )
 
     def __str__(self) -> str:

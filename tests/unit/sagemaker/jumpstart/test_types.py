@@ -1200,7 +1200,7 @@ def test_training_configs_parsing():
                 "framework": "huggingface",
                 "framework_version": "2.0.0",
                 "py_version": "py310",
-                "huggingface_transformers_version": "4.28.1"
+                "huggingface_transformers_version": "4.28.1",
             },
             "training_instance_type_variants": {
                 "regional_aliases": {
