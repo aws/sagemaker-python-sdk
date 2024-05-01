@@ -1197,11 +1197,6 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
             res = f(*args, **kwargs)
 
             if f.cache_info().hits == 0 and f.cache_info().misses == 1:
-                print("******* Not From Cache ***********")
-                print(res)
-                print()
-                print(f.cache_info())
-                print()
                 if isinstance(res, list):
                     for item in res:
                         if isinstance(
@@ -1213,14 +1208,9 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
                     keys = list(res.keys())
                     if "Instance Rate" not in keys[-1]:
                         f.cache_clear()
-                    # elif len(res[keys[1]]) > len(res[keys[-1]]):
-                    #     del res[keys[-1]]
-                    #     f.cache_clear()
-            else:
-                print("******* From Cache ***********")
-                print(res)
-                print()
-                print(f.cache_info())
+                    elif len(res[keys[1]]) > len(res[keys[-1]]):
+                        del res[keys[-1]]
+                        f.cache_clear()
 
             return res
 
