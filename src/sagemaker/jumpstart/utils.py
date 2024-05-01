@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 import logging
 import os
+from functools import lru_cache, wraps
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
@@ -1174,3 +1175,49 @@ def deployment_config_response_data(
 
         configs.append(deployment_config_json)
     return configs
+
+
+def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool = False):
+    """LRU cache for deployment configs."""
+
+    def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
+        """Determines whether a benchmark metric stats contains instance rate metric stat."""
+        if config.benchmark_metrics is None:
+            return False
+        for benchmark_metric_stats in config.benchmark_metrics.values():
+            if not has_instance_rate_stat(benchmark_metric_stats):
+                return False
+        return True
+
+    def wrapper_cache(f):
+        f = lru_cache(maxsize=maxsize, typed=typed)(f)
+
+        @wraps(f)
+        def wrapped_f(*args, **kwargs):
+            res = f(*args, **kwargs)
+
+            if f.cache_info().hits == 1:
+                print("******* Not From Cache ***********")
+                if isinstance(res, list):
+                    for item in res:
+                        if isinstance(
+                            item, DeploymentConfigMetadata
+                        ) and not has_instance_rate_metric(item):
+                            f.cache_clear()
+                            break
+                elif isinstance(res, dict):
+                    keys = list(res.keys())
+                    if len(keys) > 3 and "Instance Rate" not in keys[2]:
+                        f.cache_clear()
+            else:
+                print("******* From Cache ***********")
+
+            return res
+
+        wrapped_f.cache_info = f.cache_info
+        wrapped_f.cache_clear = f.cache_clear
+        return wrapped_f
+
+    if _func is None:
+        return wrapper_cache
+    return wrapper_cache(_func)

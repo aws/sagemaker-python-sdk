@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import
 
-from functools import lru_cache
 from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
@@ -49,6 +48,7 @@ from sagemaker.jumpstart.utils import (
     get_metrics_from_deployment_configs,
     add_instance_rate_stats_to_benchmark_metrics,
     deployment_config_response_data,
+    _deployment_config_lru_cache,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -874,7 +874,7 @@ class JumpStartModel(Model):
 
         return model_package
 
-    @lru_cache
+    @_deployment_config_lru_cache
     def _get_deployment_configs_benchmarks_data(
         self, config_name: str, instance_type: str
     ) -> Dict[str, Any]:
@@ -892,7 +892,7 @@ class JumpStartModel(Model):
             self._get_deployment_configs(config_name, instance_type),
         )
 
-    @lru_cache
+    @_deployment_config_lru_cache
     def _get_deployment_configs(
         self, selected_config_name: str, selected_instance_type: str
     ) -> List[DeploymentConfigMetadata]:
