@@ -23,7 +23,7 @@ from sagemaker.jumpstart.artifacts.payloads import _retrieve_example_payloads
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
-from sagemaker.jumpstart.enums import MIMEType
+from sagemaker.jumpstart.enums import JumpStartModelType, MIMEType
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
@@ -61,6 +61,7 @@ def _construct_payload(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Optional[JumpStartSerializablePayload]:
     """Returns example payload from prompt.
 
@@ -83,6 +84,8 @@ def _construct_payload(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        model_type (JumpStartModelType): The type of the model, can be open weights model or
+            proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         Optional[JumpStartSerializablePayload]: serializable payload with prompt, or None if
             this feature is unavailable for the specified model.
@@ -94,6 +97,7 @@ def _construct_payload(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
     if payloads is None or len(payloads) == 0:
         return None
