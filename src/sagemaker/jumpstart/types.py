@@ -1064,9 +1064,8 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
                 Dictionary representation of the config component.
         """
         for field in json_obj.keys():
-            if field not in self.__slots__:
-                raise ValueError(f"Invalid component field: {field}")
-            setattr(self, field, json_obj[field])
+            if field in self.__slots__:
+                setattr(self, field, json_obj[field])
 
 
 class JumpStartMetadataConfig(JumpStartDataHolderType):
