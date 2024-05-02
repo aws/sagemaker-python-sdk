@@ -1125,7 +1125,7 @@ def get_metrics_from_deployment_configs(
             ranking_benchmark_metrics = benchmark_metrics
 
         for inner_index, current_instance_type in enumerate(ranking_benchmark_metrics):
-            current_instance_type_metrics = benchmark_metrics[current_instance_type]
+            current_instance_type_metrics = ranking_benchmark_metrics[current_instance_type]
 
             data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
