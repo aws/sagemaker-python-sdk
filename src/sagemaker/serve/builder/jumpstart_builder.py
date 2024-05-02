@@ -454,14 +454,14 @@ class JumpStart(ABC):
             Optional[Dict[str, Any]]: Deployment config to apply to this model.
         """
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-            self.pysdk_model = self._create_pre_trained_js_model()
+            self._build_for_jumpstart()
 
         return self.pysdk_model.deployment_config
 
     def display_benchmark_metrics(self):
         """Display Markdown Benchmark Metrics for deployment configs."""
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-            self.pysdk_model = self._create_pre_trained_js_model()
+            self._build_for_jumpstart()
 
         self.pysdk_model.display_benchmark_metrics()
 
@@ -472,18 +472,20 @@ class JumpStart(ABC):
             List[Dict[str, Any]]: A list of deployment configs.
         """
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-            self.pysdk_model = self._create_pre_trained_js_model()
+            self._build_for_jumpstart()
 
         return self.pysdk_model.list_deployment_configs()
 
     def _build_for_jumpstart(self):
         """Placeholder docstring"""
+        if hasattr(self, "pysdk_model") and self.pysdk_model is not None:
+            return self.pysdk_model
+
         # we do not pickle for jumpstart. set to none
         self.secret_key = None
         self.jumpstart = True
 
-        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
-            self.pysdk_model = self._create_pre_trained_js_model()
+        self.pysdk_model = self._create_pre_trained_js_model()
 
         logger.info(
             "JumpStart ID %s is packaged with Image URI: %s", self.model, self.pysdk_model.image_uri

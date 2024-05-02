@@ -2258,6 +2258,8 @@ class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
             Any: The converted json value.
         """
         if issubclass(type(val), JumpStartDataHolderType):
+            if isinstance(val, JumpStartBenchmarkStat):
+                val.name = val.name.replace("_", " ").title()
             return val.to_json()
         if isinstance(val, list):
             list_obj = []
