@@ -39,7 +39,7 @@ import boto3
 import botocore
 from botocore.utils import merge_dicts
 from six.moves.urllib import parse
-import pandas as pd
+from six import viewitems
 
 from sagemaker import deprecations
 from sagemaker.config import validate_sagemaker_config
@@ -1605,44 +1605,80 @@ def can_model_package_source_uri_autopopulate(source_uri: str):
     )
 
 
-def flatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
-    """Flatten a nested dictionary.
+def flatten_dict(
+    d: Dict[str, Any],
+    max_flatten_depth=None,
+) -> Dict[str, Any]:
+    """Flatten a dictionary object.
 
-    Args:
-        source_dict (dict): The dictionary to be flattened.
-        sep (str): The separator to be used in the flattened dictionary.
-    Returns:
-        transformed_dict: The flattened dictionary.
+    d (Dict[str, Any]):
+        The dict that will be flattened.
+    max_flatten_depth (Optional[int]):
+        Maximum depth to merge.
     """
-    flat_dict_list = pd.json_normalize(source_dict, sep=sep).to_dict(orient="records")
-    if flat_dict_list:
-        return flat_dict_list[0]
-    return {}
+
+    def tuple_reducer(k1, k2):
+        if k1 is None:
+            return (k2,)
+        return k1 + (k2,)
+
+    # check max_flatten_depth
+    if max_flatten_depth is not None and max_flatten_depth < 1:
+        raise ValueError("max_flatten_depth should not be less than 1.")
+
+    reducer = tuple_reducer
+
+    flat_dict = {}
+
+    def _flatten(_d, depth, parent=None):
+        key_value_iterable = viewitems(_d)
+        has_item = False
+        for key, value in key_value_iterable:
+            has_item = True
+            flat_key = reducer(parent, key)
+            if isinstance(value, dict) and (max_flatten_depth is None or depth < max_flatten_depth):
+                has_child = _flatten(value, depth=depth + 1, parent=flat_key)
+                if has_child:
+                    continue
+
+            if flat_key in flat_dict:
+                raise ValueError("duplicated key '{}'".format(flat_key))
+            flat_dict[flat_key] = value
+
+        return has_item
+
+    _flatten(d, depth=1)
+    return flat_dict
 
 
-def unflatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
-    """Unflatten a flattened dictionary back into a nested dictionary.
+def nested_set_dict(d: Dict[str, Any], keys: List[str], value: Any) -> None:
+    """Set a value to a sequence of nested keys."""
 
-    Args:
-        source_dict (dict): The input flattened dictionary.
-        sep (str): The separator used in the flattened keys.
+    key = keys[0]
 
-    Returns:
-        transformed_dict: The reconstructed nested dictionary.
+    if len(keys) == 1:
+        d[key] = value
+        return
+    if not d:
+        return
+
+    d = d.setdefault(key, {})
+    nested_set_dict(d, keys[1:], value)
+
+
+def unflatten_dict(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Unflatten dict-like object.
+
+    d (Dict[str, Any]) :
+        The dict that will be unflattened.
     """
-    if not source_dict:
-        return {}
 
-    result = {}
-    for key, value in source_dict.items():
-        keys = key.split(sep)
-        current = result
-        for k in keys[:-1]:
-            if k not in current:
-                current[k] = {}
-            current = current[k] if current[k] is not None else current
-        current[keys[-1]] = value
-    return result
+    unflattened_dict = {}
+    for flat_key, value in viewitems(d):
+        key_tuple = flat_key
+        nested_set_dict(unflattened_dict, key_tuple, value)
+
+    return unflattened_dict
 
 
 def deep_override_dict(

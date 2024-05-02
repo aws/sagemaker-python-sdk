@@ -866,6 +866,12 @@ class TestJumpStartBuilder(unittest.TestCase):
             model="facebook/galactica-mock-model-id",
             schema_builder=mock_schema_builder,
         )
+
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+        mock_pre_trained_model.return_value.list_deployment_configs.side_effect = (
+            lambda: DEPLOYMENT_CONFIGS
+        )
+
         builder.display_benchmark_metrics()
 
         mock_pre_trained_model.return_value.display_benchmark_metrics.assert_called_once()

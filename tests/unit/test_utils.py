@@ -1819,7 +1819,13 @@ def test_can_model_package_source_uri_autopopulate():
 class TestDeepMergeDict(TestCase):
     def test_flatten_dict_basic(self):
         nested_dict = {"a": 1, "b": {"x": 2, "y": {"p": 3, "q": 4}}, "c": 5}
-        flattened_dict = {"a": 1, "b.x": 2, "b.y.p": 3, "b.y.q": 4, "c": 5}
+        flattened_dict = {
+            ("a",): 1,
+            ("b", "x"): 2,
+            ("b", "y", "p"): 3,
+            ("b", "y", "q"): 4,
+            ("c",): 5,
+        }
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
@@ -1831,13 +1837,19 @@ class TestDeepMergeDict(TestCase):
 
     def test_flatten_dict_no_nested(self):
         nested_dict = {"a": 1, "b": 2, "c": 3}
-        flattened_dict = {"a": 1, "b": 2, "c": 3}
+        flattened_dict = {("a",): 1, ("b",): 2, ("c",): 3}
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
     def test_flatten_dict_with_various_types(self):
         nested_dict = {"a": [1, 2, 3], "b": {"x": None, "y": {"p": [], "q": ""}}, "c": 9}
-        flattened_dict = {"a": [1, 2, 3], "b.x": None, "b.y.p": [], "b.y.q": "", "c": 9}
+        flattened_dict = {
+            ("a",): [1, 2, 3],
+            ("b", "x"): None,
+            ("b", "y", "p"): [],
+            ("b", "y", "q"): "",
+            ("c",): 9,
+        }
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
