@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+
+import copy
 import logging
 import os
 from functools import lru_cache, wraps
@@ -1116,16 +1118,19 @@ def get_metrics_from_deployment_configs(
         if not deployment_config.deployment_args or not benchmark_metrics:
             continue
 
-        ranking_benchmark_metrics = {}
+        copy_benchmark_metrics = copy.deepcopy(benchmark_metrics)
+        benchmark_metrics = {}
         if index == 0:
-            ranking_benchmark_metrics[deployment_config.deployment_args.default_instance_type] = benchmark_metrics.get(deployment_config.deployment_args.default_instance_type)
-            del benchmark_metrics[deployment_config.deployment_args.default_instance_type]
-            ranking_benchmark_metrics = {**ranking_benchmark_metrics, **benchmark_metrics}
+            benchmark_metrics[deployment_config.deployment_args.default_instance_type] = (
+                copy_benchmark_metrics.get(deployment_config.deployment_args.default_instance_type)
+            )
+            del copy_benchmark_metrics[deployment_config.deployment_args.default_instance_type]
+            benchmark_metrics = {**benchmark_metrics, **copy_benchmark_metrics}
         else:
-            ranking_benchmark_metrics = benchmark_metrics
+            benchmark_metrics = copy_benchmark_metrics
 
-        for inner_index, current_instance_type in enumerate(ranking_benchmark_metrics):
-            current_instance_type_metrics = ranking_benchmark_metrics[current_instance_type]
+        for inner_index, current_instance_type in enumerate(benchmark_metrics):
+            current_instance_type_metrics = benchmark_metrics[current_instance_type]
 
             data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
