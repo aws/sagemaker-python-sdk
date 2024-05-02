@@ -155,6 +155,7 @@ class LocalContainerMode(
                 secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
+            self._ping_container = self._tensorflow_serving_deep_ping
 
         # allow some time for container to be ready
         time.sleep(10)
