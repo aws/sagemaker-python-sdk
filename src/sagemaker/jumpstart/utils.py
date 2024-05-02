@@ -1024,7 +1024,9 @@ def get_jumpstart_configs(
         raise ValueError(f"Unknown script scope: {scope}.")
 
     if not config_names:
-        config_names = metadata_configs.config_rankings.get("overall").rankings if metadata_configs else []
+        config_names = (
+            metadata_configs.config_rankings.get("overall").rankings if metadata_configs else []
+        )
 
     return (
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
@@ -1094,15 +1096,11 @@ def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchm
 
 
 def get_metrics_from_deployment_configs(
-    default_config_name: Optional[str],
-    default_instance_type: Optional[str],
     deployment_configs: Optional[List[DeploymentConfigMetadata]],
 ) -> Dict[str, List[str]]:
     """Extracts benchmark metrics from deployment configs metadata.
 
     Args:
-        default_config_name (Optional[str]): The name of the default deployment config.
-        default_instance_type (Optional[str]): The name of the default instance type.
         deployment_configs (Optional[List[DeploymentConfigMetadata]]):
         List of deployment configs metadata.
     Returns:
@@ -1124,7 +1122,8 @@ def get_metrics_from_deployment_configs(
             data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
-                if index == 0 and current_instance_type == deployment_config.deployment_args.default_instance_type
+                if index == 0
+                and current_instance_type == deployment_config.deployment_args.default_instance_type
                 else current_instance_type
             )
             data["Instance Type"].append(instance_type_to_display)

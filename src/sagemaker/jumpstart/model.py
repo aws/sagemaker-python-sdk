@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import
 
-import copy
 from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
@@ -362,8 +361,6 @@ class JumpStartModel(Model):
         self.model_package_arn = model_init_kwargs.model_package_arn
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
 
-        self._default_config_name = copy.deepcopy(self.config_name)
-        self._default_instance_type = copy.deepcopy(self.instance_type)
         self._metadata_configs = get_jumpstart_configs(
             region=self.region,
             model_id=self.model_id,
@@ -467,12 +464,7 @@ class JumpStartModel(Model):
         Returns:
             Benchmark Metrics: Pandas DataFrame object.
         """
-        benchmark_metrics_data = self._get_deployment_configs_benchmarks_data()
-        # Sort by Config Name and Instance Type column values
-        df = pd.DataFrame(benchmark_metrics_data)
-        default_mask = df.apply(lambda raw: any("Default" in str(val) for val in raw), axis=1)
-        sorted_df = pd.concat([df[default_mask], df[~default_mask]])
-        return sorted_df
+        return pd.DataFrame(self._get_deployment_configs_benchmarks_data())
 
     def display_benchmark_metrics(self, *args, **kwargs) -> None:
         """Display deployment configs benchmark metrics."""
@@ -884,20 +876,18 @@ class JumpStartModel(Model):
             Dict[str, List[str]]: Deployment config benchmark data.
         """
         return get_metrics_from_deployment_configs(
-            self._default_config_name,
-            self._default_instance_type,
-            self._get_deployment_configs(self._default_config_name, self._default_instance_type),
+            self._get_deployment_configs(None, None),
         )
 
     @_deployment_config_lru_cache
     def _get_deployment_configs(
-        self, selected_config_name: str, selected_instance_type: str
+        self, selected_config_name: Optional[str], selected_instance_type: Optional[str]
     ) -> List[DeploymentConfigMetadata]:
         """Retrieve deployment configs metadata.
 
         Args:
-            selected_config_name (str): The name of the selected deployment config.
-            selected_instance_type (str): The selected instance type.
+            selected_config_name (Optional[str]): The name of the selected deployment config.
+            selected_instance_type (Optional[str]): The selected instance type.
         """
         deployment_configs = []
         if not self._metadata_configs:
