@@ -1023,6 +1023,10 @@ def get_jumpstart_configs(
     else:
         raise ValueError(f"Unknown script scope: {scope}.")
 
+    print("******************************")
+    print(metadata_configs.config_rankings)
+    print("******************************")
+
     if not config_names:
         config_names = metadata_configs.config_rankings.get("rankings", []) if metadata_configs else []
 
