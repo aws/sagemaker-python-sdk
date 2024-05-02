@@ -1733,7 +1733,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
         mock_verify_model_region_and_return_specs.side_effect = (
-            lambda *args, **kwargs: get_base_spec_with_prototype_configs()
+            lambda *args, **kwargs: get_base_spec_with_prototype_configs_with_missing_benchmarks()
         )
         mock_add_instance_rate_stats_to_benchmark_metrics.side_effect = lambda region, metrics: (
             None,
@@ -1750,7 +1750,7 @@ class ModelTest(unittest.TestCase):
 
         configs = model.list_deployment_configs()
 
-        self.assertEqual(configs, get_base_deployment_configs())
+        self.assertEqual(configs, get_base_deployment_configs(True))
 
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -1803,7 +1803,7 @@ class ModelTest(unittest.TestCase):
         model_id, _ = "pytorch-eqa-bert-base-cased", "*"
 
         mock_verify_model_region_and_return_specs.side_effect = (
-            lambda *args, **kwargs: get_base_spec_with_prototype_configs_with_missing_benchmarks()
+            lambda *args, **kwargs: get_base_spec_with_prototype_configs()
         )
         mock_add_instance_rate_stats_to_benchmark_metrics.side_effect = lambda region, metrics: (
             None,
@@ -1815,7 +1815,7 @@ class ModelTest(unittest.TestCase):
         )
         mock_model_deploy.return_value = default_predictor
 
-        expected = get_base_deployment_configs(True)[0]
+        expected = get_base_deployment_configs()[0]
         config_name = expected.get("DeploymentConfigName")
         instance_type = expected.get("InstanceType")
         mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(
