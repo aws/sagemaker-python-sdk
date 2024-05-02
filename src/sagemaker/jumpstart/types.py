@@ -1077,30 +1077,52 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         "config_components",
         "resolved_metadata_config",
         "config_name",
+        "default_inference_config",
+        "default_incremental_trainig_config",
+        "supported_inference_configs",
+        "supported_incremental_training_configs",
     ]
 
     def __init__(
         self,
         config_name: str,
+        config: Dict[str, Any],
         base_fields: Dict[str, Any],
         config_components: Dict[str, JumpStartConfigComponent],
-        benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]],
     ):
         """Initializes a JumpStartMetadataConfig object from its json representation.
 
         Args:
+            config_name (str): Name of the config,
+            config (Dict[str, Any]):
+                Dictionary representation of the config.
             base_fields (Dict[str, Any]):
                 The default base fields that are used to construct the final resolved config.
             config_components (Dict[str, JumpStartConfigComponent]):
                 The list of components that are used to construct the resolved config.
-            benchmark_metrics (Dict[str, List[JumpStartBenchmarkStat]]):
-                The dictionary of benchmark metrics with name being the key.
         """
         self.base_fields = base_fields
         self.config_components: Dict[str, JumpStartConfigComponent] = config_components
-        self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = benchmark_metrics
+        self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = (
+            {
+                stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
+                for stat_name, stats in config.get("benchmark_metrics").items()
+            }
+            if config and config.get("benchmark_metrics")
+            else None
+        )
         self.resolved_metadata_config: Optional[Dict[str, Any]] = None
         self.config_name: Optional[str] = config_name
+        self.default_inference_config: Optional[str] = config.get("default_inference_config")
+        self.default_incremental_trainig_config: Optional[str] = config.get(
+            "default_incremental_training_config"
+        )
+        self.supported_inference_configs: Optional[List[str]] = config.get(
+            "supported_inference_configs"
+        )
+        self.supported_incremental_training_configs: Optional[List[str]] = config.get(
+            "supported_incremental_training_configs"
+        )
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartMetadataConfig object."""
@@ -1255,6 +1277,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             {
                 alias: JumpStartMetadataConfig(
                     alias,
+                    config,
                     json_obj,
                     (
                         {
@@ -1262,14 +1285,6 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                             for component_name in config.get("component_names")
                         }
                         if config and config.get("component_names")
-                        else None
-                    ),
-                    (
-                        {
-                            stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
-                            for stat_name, stats in config.get("benchmark_metrics").items()
-                        }
-                        if config and config.get("benchmark_metrics")
                         else None
                     ),
                 )
@@ -1308,6 +1323,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                 {
                     alias: JumpStartMetadataConfig(
                         alias,
+                        config,
                         json_obj,
                         (
                             {
@@ -1315,14 +1331,6 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                                 for component_name in config.get("component_names")
                             }
                             if config and config.get("component_names")
-                            else None
-                        ),
-                        (
-                            {
-                                stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
-                                for stat_name, stats in config.get("benchmark_metrics").items()
-                            }
-                            if config and config.get("benchmark_metrics")
                             else None
                         ),
                     )

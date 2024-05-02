@@ -1201,8 +1201,15 @@ def test_training_configs_parsing():
     assert config.config_components["neuron-training"] == JumpStartConfigComponent(
         "neuron-training",
         {
+            "default_training_instance_type": "ml.trn1.2xlarge",
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training/model/",
+            "training_ecr_specs": {
+                "framework": "huggingface",
+                "framework_version": "2.0.0",
+                "py_version": "py310",
+                "huggingface_transformers_version": "4.28.1",
+            },
             "training_instance_type_variants": {
                 "regional_aliases": {
                     "us-west-2": {
