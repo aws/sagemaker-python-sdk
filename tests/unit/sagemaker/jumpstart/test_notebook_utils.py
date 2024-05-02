@@ -227,10 +227,6 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest.assert_called()
         patched_get_model_specs.assert_not_called()
 
-    @pytest.mark.skipif(
-        datetime.datetime.now() < datetime.datetime(year=2024, month=7, day=1),
-        reason="Contact JumpStart team to fix flaky test.",
-    )
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
     def test_list_jumpstart_models_script_filter(
@@ -240,7 +236,7 @@ class ListJumpStartModels(TestCase):
             get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
         )
         patched_get_manifest.side_effect = (
-            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region)
         )
 
         manifest_length = len(get_prototype_manifest())
@@ -248,15 +244,15 @@ class ListJumpStartModels(TestCase):
         for val in vals:
             kwargs = {"filter": f"training_supported == {val}"}
             list_jumpstart_models(**kwargs)
-            assert patched_read_s3_file.call_count == manifest_length
-            patched_get_manifest.assert_called_once()
+            assert patched_read_s3_file.call_count == 2 * manifest_length
+            assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
             patched_read_s3_file.reset_mock()
 
             kwargs = {"filter": f"training_supported != {val}"}
             list_jumpstart_models(**kwargs)
-            assert patched_read_s3_file.call_count == manifest_length
+            assert patched_read_s3_file.call_count == 2 * manifest_length
             assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
@@ -273,7 +269,7 @@ class ListJumpStartModels(TestCase):
             ("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
         ]
-        assert patched_read_s3_file.call_count == manifest_length
+        assert patched_read_s3_file.call_count == 2 * manifest_length
         assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
@@ -282,7 +278,7 @@ class ListJumpStartModels(TestCase):
         kwargs = {"filter": f"training_supported not in {vals}"}
         models = list_jumpstart_models(**kwargs)
         assert [] == models
-        assert patched_read_s3_file.call_count == manifest_length
+        assert patched_read_s3_file.call_count == 2 * manifest_length
         assert patched_get_manifest.call_count == 2
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")

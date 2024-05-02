@@ -7752,6 +7752,10 @@ TRAINING_CONFIGS = {
                 "ml.tr1n1.4xlarge": [{"name": "Latency", "value": "50", "unit": "Tokens/S"}],
             },
             "component_names": ["neuron-training"],
+            "default_inference_config": "neuron-inference",
+            "default_incremental_training_config": "neuron-training",
+            "supported_inference_configs": ["neuron-inference", "neuron-inference-budget"],
+            "supported_incremental_training_configs": ["neuron-training", "neuron-training-budget"],
         },
         "neuron-training-budget": {
             "benchmark_metrics": {
@@ -7759,24 +7763,43 @@ TRAINING_CONFIGS = {
                 "ml.tr1n1.4xlarge": [{"name": "Latency", "value": "50", "unit": "Tokens/S"}],
             },
             "component_names": ["neuron-training-budget"],
+            "default_inference_config": "neuron-inference-budget",
+            "default_incremental_training_config": "neuron-training-budget",
+            "supported_inference_configs": ["neuron-inference", "neuron-inference-budget"],
+            "supported_incremental_training_configs": ["neuron-training", "neuron-training-budget"],
         },
         "gpu-training": {
             "benchmark_metrics": {
                 "ml.p3.2xlarge": [{"name": "Latency", "value": "200", "unit": "Tokens/S"}],
             },
             "component_names": ["gpu-training"],
+            "default_inference_config": "gpu-inference",
+            "default_incremental_training_config": "gpu-training",
+            "supported_inference_configs": ["gpu-inference", "gpu-inference-budget"],
+            "supported_incremental_training_configs": ["gpu-training", "gpu-training-budget"],
         },
         "gpu-training-budget": {
             "benchmark_metrics": {
                 "ml.p3.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
             },
             "component_names": ["gpu-training-budget"],
+            "default_inference_config": "gpu-inference-budget",
+            "default_incremental_training_config": "gpu-training-budget",
+            "supported_inference_configs": ["gpu-inference", "gpu-inference-budget"],
+            "supported_incremental_training_configs": ["gpu-training", "gpu-training-budget"],
         },
     },
     "training_config_components": {
         "neuron-training": {
+            "default_training_instance_type": "ml.trn1.2xlarge",
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training/model/",
+            "training_ecr_specs": {
+                "framework": "huggingface",
+                "framework_version": "2.0.0",
+                "py_version": "py310",
+                "huggingface_transformers_version": "4.28.1",
+            },
             "training_instance_type_variants": {
                 "regional_aliases": {
                     "us-west-2": {
@@ -7788,6 +7811,7 @@ TRAINING_CONFIGS = {
             },
         },
         "gpu-training": {
+            "default_training_instance_type": "ml.p2.xlarge",
             "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-training/model/",
             "training_instance_type_variants": {
@@ -7804,6 +7828,7 @@ TRAINING_CONFIGS = {
             },
         },
         "neuron-training-budget": {
+            "default_training_instance_type": "ml.trn1.2xlarge",
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training-budget/model/",
             "training_instance_type_variants": {
@@ -7817,6 +7842,7 @@ TRAINING_CONFIGS = {
             },
         },
         "gpu-training-budget": {
+            "default_training_instance_type": "ml.p2.xlarge",
             "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-training-budget/model/",
             "training_instance_type_variants": {

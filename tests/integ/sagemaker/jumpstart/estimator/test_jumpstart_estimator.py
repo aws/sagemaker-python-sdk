@@ -140,7 +140,7 @@ def test_gated_model_training_v1(setup):
 def test_gated_model_training_v2(setup):
 
     model_id = "meta-textgeneration-llama-2-7b"
-    model_version = "3.*"  # model artifacts retrieved from jumpstart-private-cache-* buckets
+    model_version = "4.*"  # model artifacts retrieved from jumpstart-private-cache-* buckets
 
     estimator = JumpStartEstimator(
         model_id=model_id,
