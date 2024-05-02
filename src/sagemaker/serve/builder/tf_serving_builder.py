@@ -48,17 +48,9 @@ class TensorflowServing(ABC):
         self._original_deploy = None
         self.secret_key = None
         self.engine = None
-        self.hf_model_config = None
-        self._default_tensor_parallel_degree = None
-        self._default_data_type = None
-        self._default_max_tokens = None
-        self._default_max_new_tokens = None
         self.pysdk_model = None
-        self.overwrite_props_from_file = None
         self.schema_builder = None
         self.env_vars = None
-        self.nb_instance_type = None
-        self.ram_usage_model_load = None
 
     @abstractmethod
     def _prepare_for_mode(self):
