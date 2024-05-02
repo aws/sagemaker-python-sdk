@@ -84,7 +84,7 @@ def _construct_payload(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
-        model_type (JumpStartModelType): The type of the model, can be open weights model or
+        model_type (JumpStartModelType): The type of the JumpStart model, can be open weights model or
             proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         Optional[JumpStartSerializablePayload]: serializable payload with prompt, or None if
