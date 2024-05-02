@@ -36,6 +36,8 @@ from sagemaker.jumpstart.exceptions import (
     get_old_model_version_msg,
 )
 from sagemaker.jumpstart.types import (
+    JumpStartBenchmarkStat,
+    JumpStartMetadataConfig,
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
@@ -76,9 +78,9 @@ def get_jumpstart_gated_content_bucket(
             unavailable in that region.
     """
 
-    old_gated_content_bucket: Optional[
-        str
-    ] = accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
+    old_gated_content_bucket: Optional[str] = (
+        accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
+    )
 
     info_logs: List[str] = []
 
@@ -127,9 +129,9 @@ def get_jumpstart_content_bucket(
         ValueError: If JumpStart is not launched in ``region``.
     """
 
-    old_content_bucket: Optional[
-        str
-    ] = accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket()
+    old_content_bucket: Optional[str] = (
+        accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket()
+    )
 
     info_logs: List[str] = []
 
@@ -173,9 +175,9 @@ def get_formatted_manifest(
     manifest_dict = {}
     for header in manifest:
         header_obj = JumpStartModelHeader(header)
-        manifest_dict[
-            JumpStartVersionedModelId(header_obj.model_id, header_obj.version)
-        ] = header_obj
+        manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
+            header_obj
+        )
     return manifest_dict
 
 
@@ -765,20 +767,6 @@ def validate_model_id_and_get_type(
         ValueError: If the script is not supported by JumpStart.
     """
 
-    def _get_model_type(
-        model_id: str,
-        open_weights_model_ids: Set[str],
-        proprietary_model_ids: Set[str],
-        script: enums.JumpStartScriptScope,
-    ) -> Optional[enums.JumpStartModelType]:
-        if model_id in open_weights_model_ids:
-            return enums.JumpStartModelType.OPEN_WEIGHTS
-        if model_id in proprietary_model_ids:
-            if script == enums.JumpStartScriptScope.INFERENCE:
-                return enums.JumpStartModelType.PROPRIETARY
-            raise ValueError(f"Unsupported script for Marketplace models: {script}")
-        return None
-
     if model_id in {None, ""}:
         return None
     if not isinstance(model_id, str):
@@ -792,12 +780,19 @@ def validate_model_id_and_get_type(
     )
     open_weight_model_id_set = {model.model_id for model in models_manifest_list}
 
+    if model_id in open_weight_model_id_set:
+        return enums.JumpStartModelType.OPEN_WEIGHTS
+
     proprietary_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(
         region=region, s3_client=s3_client, model_type=enums.JumpStartModelType.PROPRIETARY
     )
 
     proprietary_model_id_set = {model.model_id for model in proprietary_manifest_list}
-    return _get_model_type(model_id, open_weight_model_id_set, proprietary_model_id_set, script)
+    if model_id in proprietary_model_id_set:
+        if script == enums.JumpStartScriptScope.INFERENCE:
+            return enums.JumpStartModelType.PROPRIETARY
+        raise ValueError(f"Unsupported script for Proprietary models: {script}")
+    return None
 
 
 def get_jumpstart_model_id_version_from_resource_arn(
@@ -885,3 +880,105 @@ def get_region_fallback(
         return constants.JUMPSTART_DEFAULT_REGION_NAME
 
     return list(combined_regions)[0]
+
+
+def get_config_names(
+    region: str,
+    model_id: str,
+    model_version: str,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> List[str]:
+    """Returns a list of config names for the given model ID and region."""
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        metadata_configs = model_specs.inference_configs
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
+
+    return list(metadata_configs.configs.keys()) if metadata_configs else []
+
+
+def get_benchmark_stats(
+    region: str,
+    model_id: str,
+    model_version: str,
+    config_names: Optional[List[str]] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> Dict[str, List[JumpStartBenchmarkStat]]:
+    """Returns benchmark stats for the given model ID and region."""
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        metadata_configs = model_specs.inference_configs
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
+
+    if not config_names:
+        config_names = metadata_configs.configs.keys() if metadata_configs else []
+
+    benchmark_stats = {}
+    for config_name in config_names:
+        if config_name not in metadata_configs.configs:
+            raise ValueError(f"Unknown config name: '{config_name}'")
+        benchmark_stats[config_name] = metadata_configs.configs.get(config_name).benchmark_metrics
+
+    return benchmark_stats
+
+
+def get_jumpstart_configs(
+    region: str,
+    model_id: str,
+    model_version: str,
+    config_names: Optional[List[str]] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+) -> Dict[str, List[JumpStartMetadataConfig]]:
+    """Returns metadata configs for the given model ID and region."""
+    model_specs = verify_model_region_and_return_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        sagemaker_session=sagemaker_session,
+        scope=scope,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        metadata_configs = model_specs.inference_configs
+    elif scope == enums.JumpStartScriptScope.TRAINING:
+        metadata_configs = model_specs.training_configs
+    else:
+        raise ValueError(f"Unknown script scope {scope}.")
+
+    if not config_names:
+        config_names = metadata_configs.configs.keys() if metadata_configs else []
+
+    return (
+        {config_name: metadata_configs.configs[config_name] for config_name in config_names}
+        if metadata_configs
+        else {}
+    )

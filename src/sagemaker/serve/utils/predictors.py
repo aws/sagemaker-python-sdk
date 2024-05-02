@@ -1,4 +1,5 @@
 """Defines the predictors used in local container mode"""
+
 from __future__ import absolute_import
 import io
 from typing import Type

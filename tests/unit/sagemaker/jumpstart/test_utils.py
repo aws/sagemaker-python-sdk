@@ -39,8 +39,17 @@ from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
 )
-from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+from sagemaker.jumpstart.types import (
+    JumpStartBenchmarkStat,
+    JumpStartModelHeader,
+    JumpStartVersionedModelId,
+)
+from tests.unit.sagemaker.jumpstart.utils import (
+    get_base_spec_with_prototype_configs,
+    get_spec_from_base_spec,
+    get_special_model_spec,
+    get_prototype_manifest,
+)
 from mock import MagicMock
 
 
@@ -1178,7 +1187,7 @@ def test_mime_type_enum_from_str():
 class TestIsValidModelId(TestCase):
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_validate_model_id_and_get_type_true(
+    def test_validate_model_id_and_get_type_open_weights(
         self,
         mock_get_model_specs: Mock,
         mock_get_manifest: Mock,
@@ -1197,11 +1206,11 @@ class TestIsValidModelId(TestCase):
         )
 
         with patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type", patched):
-            self.assertTrue(utils.validate_model_id_and_get_type("bee"))
+            assert utils.validate_model_id_and_get_type("bee") == JumpStartModelType.OPEN_WEIGHTS
             mock_get_manifest.assert_called_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME,
                 s3_client=mock_s3_client_value,
-                model_type=JumpStartModelType.PROPRIETARY,
+                model_type=JumpStartModelType.OPEN_WEIGHTS,
             )
             mock_get_model_specs.assert_not_called()
 
@@ -1215,25 +1224,30 @@ class TestIsValidModelId(TestCase):
             ]
 
             mock_get_model_specs.return_value = Mock(training_supported=True)
-            self.assertTrue(
-                utils.validate_model_id_and_get_type("bee", script=JumpStartScriptScope.TRAINING)
+            self.assertIsNone(
+                utils.validate_model_id_and_get_type(
+                    "invalid", script=JumpStartScriptScope.TRAINING
+                )
             )
+            assert (
+                utils.validate_model_id_and_get_type("bee", script=JumpStartScriptScope.TRAINING)
+                == JumpStartModelType.OPEN_WEIGHTS
+            )
+
             mock_get_manifest.assert_called_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME,
                 s3_client=mock_s3_client_value,
-                model_type=JumpStartModelType.PROPRIETARY,
+                model_type=JumpStartModelType.OPEN_WEIGHTS,
             )
 
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
-    def test_validate_model_id_and_get_type_false(
+    def test_validate_model_id_and_get_type_invalid(
         self, mock_get_model_specs: Mock, mock_get_manifest: Mock
     ):
-        mock_get_manifest.return_value = [
-            Mock(model_id="ay"),
-            Mock(model_id="bee"),
-            Mock(model_id="see"),
-        ]
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
 
         mock_session_value = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
         mock_s3_client_value = mock_session_value.s3_client
@@ -1244,10 +1258,10 @@ class TestIsValidModelId(TestCase):
 
         with patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type", patched):
 
-            self.assertFalse(utils.validate_model_id_and_get_type("dee"))
-            self.assertFalse(utils.validate_model_id_and_get_type(""))
-            self.assertFalse(utils.validate_model_id_and_get_type(None))
-            self.assertFalse(utils.validate_model_id_and_get_type(set()))
+            self.assertIsNone(utils.validate_model_id_and_get_type("dee"))
+            self.assertIsNone(utils.validate_model_id_and_get_type(""))
+            self.assertIsNone(utils.validate_model_id_and_get_type(None))
+            self.assertIsNone(utils.validate_model_id_and_get_type(set()))
 
             mock_get_manifest.assert_called()
 
@@ -1256,53 +1270,44 @@ class TestIsValidModelId(TestCase):
             mock_get_manifest.reset_mock()
             mock_get_model_specs.reset_mock()
 
-            mock_get_manifest.return_value = [
-                Mock(model_id="ay"),
-                Mock(model_id="bee"),
-                Mock(model_id="see"),
-            ]
-            self.assertFalse(
-                utils.validate_model_id_and_get_type("dee", script=JumpStartScriptScope.TRAINING)
+            assert (
+                utils.validate_model_id_and_get_type("ai21-summarization")
+                == JumpStartModelType.PROPRIETARY
             )
+            self.assertIsNone(utils.validate_model_id_and_get_type("ai21-summarization-2"))
+
             mock_get_manifest.assert_called_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME,
                 s3_client=mock_s3_client_value,
                 model_type=JumpStartModelType.PROPRIETARY,
             )
 
-            mock_get_manifest.reset_mock()
-
-            self.assertFalse(
+            self.assertIsNone(
                 utils.validate_model_id_and_get_type("dee", script=JumpStartScriptScope.TRAINING)
             )
-            self.assertFalse(
+            self.assertIsNone(
                 utils.validate_model_id_and_get_type("", script=JumpStartScriptScope.TRAINING)
             )
-            self.assertFalse(
+            self.assertIsNone(
                 utils.validate_model_id_and_get_type(None, script=JumpStartScriptScope.TRAINING)
             )
-            self.assertFalse(
+            self.assertIsNone(
                 utils.validate_model_id_and_get_type(set(), script=JumpStartScriptScope.TRAINING)
             )
 
-            mock_get_model_specs.assert_not_called()
-            mock_get_manifest.assert_called_with(
-                region=JUMPSTART_DEFAULT_REGION_NAME,
-                s3_client=mock_s3_client_value,
-                model_type=JumpStartModelType.PROPRIETARY,
-            )
-
-            mock_get_manifest.reset_mock()
-            mock_get_model_specs.reset_mock()
-
-            mock_get_model_specs.return_value = Mock(training_supported=False)
-            self.assertTrue(
-                utils.validate_model_id_and_get_type("ay", script=JumpStartScriptScope.TRAINING)
+            assert (
+                utils.validate_model_id_and_get_type("pytorch-eqa-bert-base-cased")
+                == JumpStartModelType.OPEN_WEIGHTS
             )
             mock_get_manifest.assert_called_with(
                 region=JUMPSTART_DEFAULT_REGION_NAME,
                 s3_client=mock_s3_client_value,
-                model_type=JumpStartModelType.PROPRIETARY,
+                model_type=JumpStartModelType.OPEN_WEIGHTS,
+            )
+
+        with pytest.raises(ValueError):
+            utils.validate_model_id_and_get_type(
+                "ai21-summarization", script=JumpStartScriptScope.TRAINING
             )
 
 
@@ -1499,3 +1504,207 @@ def test_get_region_fallback_success(s3_bucket_name, s3_client, sagemaker_sessio
 def test_get_region_fallback_failure(s3_bucket_name, s3_client, sagemaker_session):
     with pytest.raises(ValueError):
         utils.get_region_fallback(s3_bucket_name, s3_client, sagemaker_session)
+
+
+class TestConfigs:
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_config_names_empty(
+        self,
+        patched_get_model_specs,
+    ):
+
+        patched_get_model_specs.side_effect = get_special_model_spec
+
+        assert utils.get_config_names("mock-region", "gemma-model", "mock-model-version") == []
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_config_names_success(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
+
+        assert utils.get_config_names("mock-region", "mock-model", "mock-model-version") == [
+            "neuron-inference",
+            "neuron-inference-budget",
+            "gpu-inference-budget",
+            "gpu-inference",
+        ]
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_config_names_training(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
+
+        assert utils.get_config_names(
+            "mock-region", "mock-model", "mock-model-version", scope=JumpStartScriptScope.TRAINING
+        ) == ["neuron-training", "neuron-training-budget", "gpu-training", "gpu-training-budget"]
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_empty(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_special_model_spec
+
+        assert (
+            utils.get_jumpstart_configs(
+                "mock-region", "gemma-model", "mock-model-version", config_names=["gpu-inference"]
+            )
+            == {}
+        )
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_success(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
+
+        configs = utils.get_jumpstart_configs(
+            "mock-region", "mock-model", "mock-model-version", config_names=["gpu-inference"]
+        )
+        assert configs.keys() == {"gpu-inference"}
+
+        config = configs["gpu-inference"]
+        assert config.base_fields["model_id"] == "pytorch-ic-mobilenet-v2"
+        assert config.resolved_config["supported_inference_instance_types"] == [
+            "ml.p2.xlarge",
+            "ml.p3.2xlarge",
+        ]
+
+
+class TestBenchmarkStats:
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_benchmark_stats_empty(
+        self,
+        patched_get_model_specs,
+    ):
+
+        patched_get_model_specs.side_effect = get_special_model_spec
+
+        assert utils.get_benchmark_stats("mock-region", "gemma-model", "mock-model-version") == {}
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_benchmark_stats_full_list(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
+
+        assert utils.get_benchmark_stats(
+            "mock-region", "mock-model", "mock-model-version", config_names=None
+        ) == {
+            "neuron-inference": {
+                "ml.inf2.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
+            },
+            "neuron-inference-budget": {
+                "ml.inf2.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
+            },
+            "gpu-inference-budget": {
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
+            },
+            "gpu-inference": {
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
+            },
+        }
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_benchmark_stats_partial_list(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
+
+        assert utils.get_benchmark_stats(
+            "mock-region",
+            "mock-model",
+            "mock-model-version",
+            config_names=["neuron-inference-budget", "gpu-inference-budget"],
+        ) == {
+            "neuron-inference-budget": {
+                "ml.inf2.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
+            },
+            "gpu-inference-budget": {
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
+            },
+        }
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_benchmark_stats_single_stat(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
+
+        assert utils.get_benchmark_stats(
+            "mock-region",
+            "mock-model",
+            "mock-model-version",
+            config_names=["neuron-inference-budget"],
+        ) == {
+            "neuron-inference-budget": {
+                "ml.inf2.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
+            }
+        }
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_benchmark_stats_invalid_names(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
+
+        with pytest.raises(ValueError) as e:
+            utils.get_benchmark_stats(
+                "mock-region",
+                "mock-model",
+                "mock-model-version",
+                config_names=["invalid-conig-name"],
+            )
+            assert "Unknown config name: 'invalid-conig-name'" in str(e.value)
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_benchmark_stats_training(
+        self,
+        patched_get_model_specs,
+    ):
+        patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
+
+        assert utils.get_benchmark_stats(
+            "mock-region",
+            "mock-model",
+            "mock-model-version",
+            scope=JumpStartScriptScope.TRAINING,
+            config_names=["neuron-training", "gpu-training-budget"],
+        ) == {
+            "neuron-training": {
+                "ml.tr1n1.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ],
+                "ml.tr1n1.4xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "50", "unit": "Tokens/S"})
+                ],
+            },
+            "gpu-training-budget": {
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                ]
+            },
+        }

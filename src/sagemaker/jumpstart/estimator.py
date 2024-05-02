@@ -37,6 +37,7 @@ from sagemaker.jumpstart.session_utils import get_model_id_version_from_training
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
+    verify_model_region_and_return_specs,
 )
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -108,6 +109,7 @@ class JumpStartEstimator(Estimator):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
+        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -499,6 +501,8 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
+            enable_session_tag_chaining (bool or PipelineVariable): Optional.
+                Specifies whether SessionTagChaining is enabled for the training job
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -577,6 +581,7 @@ class JumpStartEstimator(Estimator):
             disable_output_compression=disable_output_compression,
             enable_infra_check=enable_infra_check,
             enable_remote_debug=enable_remote_debug,
+            enable_session_tag_chaining=enable_session_tag_chaining,
         )
 
         self.model_id = estimator_init_kwargs.model_id
@@ -729,11 +734,32 @@ class JumpStartEstimator(Estimator):
 
         model_version = model_version or "*"
 
+        additional_kwargs = {
+            "model_id": model_id,
+            "model_version": model_version,
+            "tolerate_vulnerable_model": True,  # model is already trained
+            "tolerate_deprecated_model": True,  # model is already trained
+        }
+
+        model_specs = verify_model_region_and_return_specs(
+            model_id=model_id,
+            version=model_version,
+            region=sagemaker_session.boto_region_name,
+            scope=JumpStartScriptScope.TRAINING,
+            tolerate_deprecated_model=True,  # model is already trained, so tolerate if deprecated
+            tolerate_vulnerable_model=True,  # model is already trained, so tolerate if vulnerable
+            sagemaker_session=sagemaker_session,
+        )
+
+        # eula was already accepted if the model was successfully trained
+        if model_specs.is_gated_model():
+            additional_kwargs.update({"environment": {"accept_eula": "true"}})
+
         return cls._attach(
             training_job_name=training_job_name,
             sagemaker_session=sagemaker_session,
             model_channel_name=model_channel_name,
-            additional_kwargs={"model_id": model_id, "model_version": model_version},
+            additional_kwargs=additional_kwargs,
         )
 
     def deploy(

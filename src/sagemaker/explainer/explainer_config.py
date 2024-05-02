@@ -37,8 +37,8 @@ class ExplainerConfig(object):
         request_dict = {}
 
         if self.clarify_explainer_config:
-            request_dict[
-                "ClarifyExplainerConfig"
-            ] = self.clarify_explainer_config._to_request_dict()
+            request_dict["ClarifyExplainerConfig"] = (
+                self.clarify_explainer_config._to_request_dict()
+            )
 
         return request_dict

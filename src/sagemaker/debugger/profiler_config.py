@@ -162,19 +162,19 @@ class ProfilerConfig(object):
         profiler_config_request["DisableProfiler"] = self.disable_profiler
 
         if self.system_monitor_interval_millis is not None:
-            profiler_config_request[
-                "ProfilingIntervalInMilliseconds"
-            ] = self.system_monitor_interval_millis
+            profiler_config_request["ProfilingIntervalInMilliseconds"] = (
+                self.system_monitor_interval_millis
+            )
 
         if self.framework_profile_params is not None:
-            profiler_config_request[
-                "ProfilingParameters"
-            ] = self.framework_profile_params.profiling_parameters
+            profiler_config_request["ProfilingParameters"] = (
+                self.framework_profile_params.profiling_parameters
+            )
 
         if self.profile_params is not None:
-            profiler_config_request[
-                "ProfilingParameters"
-            ] = self.profile_params.profiling_parameters
+            profiler_config_request["ProfilingParameters"] = (
+                self.profile_params.profiling_parameters
+            )
 
         return profiler_config_request
 

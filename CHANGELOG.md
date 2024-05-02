@@ -1,5 +1,108 @@
 # Changelog
 
+## v2.218.0 (2024-05-01)
+
+### Features
+
+ * set default allow_pickle param to False
+
+### Bug Fixes and Other Changes
+
+ * properly close files in lineage queries and tests
+
+## v2.217.0 (2024-04-24)
+
+### Features
+
+ * support session tag chaining for training job
+
+### Bug Fixes and Other Changes
+
+ * Add Triton v24.03 URI
+ * mainline alt config parsing
+ * Fix tox installs
+ * Add PT 2.2 Graviton Inference DLC
+
+## v2.216.1 (2024-04-22)
+
+### Bug Fixes and Other Changes
+
+ * add DXB and CGK to Jumpstart regions
+ * chore(deps): bump apache-airflow from 2.8.4 to 2.9.0 in /requirements/extras
+ * bump djl-inference 0.27.0 neuronx sdk to 2.18.1
+ * chore: release TGI 2.0.0
+
+## v2.216.0 (2024-04-17)
+
+### Features
+
+ * optimum 0.0.21
+ * Add TF 2.14 Graviton Inference support
+ * JumpStart alternative config parsing
+ * TGI 1.4.5
+
+### Bug Fixes and Other Changes
+
+ * chore(deps): bump black from 22.3.0 to 24.3.0 in /requirements/extras
+ * Add back serialization for automatic speech recognition
+ * bump apache-airflow version to 2.8.4
+ * remove trailing slash when uploading to S3 with dataset_builder.to_csv_file
+ * Update Collaborator Check workflow to check for users which are part of collaborator team
+ * forward network_isolation parameter to Estimators when False
+ * Flaky slow test
+ * Revert "Test SM PySDK Variations"
+
+### Documentation Changes
+
+ * Add supported task types to schema builder omission
+
+## v2.215.0 (2024-04-12)
+
+### Features
+
+ * JumpStart Gated Model Support in ModelBuilder Local Modes
+ * Changes to support remote schema retrieval for task types (question-answering, fill-mask) and added e2e tests for both local and remote hf schema logic.
+ * Upgrade smp to version 2.3.0
+
+### Bug Fixes and Other Changes
+
+ * disable modelbuilder mlflow local integ tests
+ * add integ-tests to codebuild-ci.yml
+ * [Feat] Support MLflow Model Format Through ModelBuilder
+ * Test SM PySDK Variations
+ * typo in jumpstart manifest and refine tests
+ * add kix to launched regions
+ * Remove space specific business logic from Python SDK function to fetch execution role
+ * Remove notebook tests from CI health check and the script
+
+## v2.214.3 (2024-04-04)
+
+### Bug Fixes and Other Changes
+
+ * [Fix] Switch to subprocess in ModelBuilder when capturing dependencies
+ * chore: skip flaky test
+
+## v2.214.2 (2024-04-01)
+
+### Bug Fixes and Other Changes
+
+ * Skip JS Tune integration test
+ * bump apache-airflow version to 2.8.3
+ * bump onnx version to >=1.15.0
+ * Updates for DJL 0.27.0 release
+ * Tune (local mode) support for Jumpstart Models
+ * attach jumpstart estimator for gated model
+
+## v2.214.1 (2024-03-27)
+
+### Bug Fixes and Other Changes
+
+ * Update schema dependency version
+ * remove failing deprecated tests from suite
+ * update readme, trigger p311 tests
+ * JumpStart list models flaky tests
+ * fix badge in README
+
 ## v2.214.0 (2024-03-22)
 
 ### Features

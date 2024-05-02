@@ -980,6 +980,42 @@ class EstimatorTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
+    @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_jumpstart_estimator_attach_eula_model(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
+        mock_attach: mock.Mock,
+    ):
+
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session = mock.MagicMock(sagemaker_config={}, boto_region_name="us-west-2")
+
+        JumpStartEstimator.attach(
+            training_job_name="some-training-job-name",
+            model_id="gemma-model",
+            sagemaker_session=mock_session,
+        )
+
+        mock_attach.assert_called_once_with(
+            training_job_name="some-training-job-name",
+            sagemaker_session=mock_session,
+            model_channel_name="model",
+            additional_kwargs={
+                "model_id": "gemma-model",
+                "model_version": "*",
+                "environment": {"accept_eula": "true"},
+                "tolerate_vulnerable_model": True,
+                "tolerate_deprecated_model": True,
+            },
+        )
+
+    @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
     @mock.patch("sagemaker.jumpstart.estimator.get_model_id_version_from_training_job")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1019,6 +1055,8 @@ class EstimatorTest(unittest.TestCase):
             additional_kwargs={
                 "model_id": "js-trainable-model-prepacked",
                 "model_version": "1.0.0",
+                "tolerate_vulnerable_model": True,
+                "tolerate_deprecated_model": True,
             },
         )
 
@@ -1056,7 +1094,6 @@ class EstimatorTest(unittest.TestCase):
         mock_attach.assert_not_called()
 
     def test_jumpstart_estimator_kwargs_match_parent_class(self):
-
         """If you add arguments to <Estimator constructor>, this test will fail.
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""

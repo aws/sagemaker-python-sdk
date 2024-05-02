@@ -115,7 +115,7 @@ def test_invalid_retry_policy():
         (5, 2.0, 10, 30),
     ]
 
-    for (interval_sec, backoff_rate, max_attempts, expire_after) in retry_policies:
+    for interval_sec, backoff_rate, max_attempts, expire_after in retry_policies:
         try:
             RetryPolicy(
                 interval_seconds=interval_sec,

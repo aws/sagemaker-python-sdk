@@ -153,19 +153,6 @@ def test_predict(tfs_predictor):
     assert expected_result == result
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
-    reason="EI is not supported in region {}".format(tests.integ.test_region()),
-)
-@pytest.mark.release
-def test_predict_with_accelerator(tfs_predictor_with_accelerator):
-    input_data = {"instances": [1.0, 2.0, 5.0]}
-    expected_result = {"predictions": [3.5, 4.0, 5.5]}
-
-    result = tfs_predictor_with_accelerator.predict(input_data)
-    assert expected_result == result
-
-
 @pytest.mark.local_mode
 def test_predict_with_entry_point(tfs_predictor_with_model_and_entry_point_same_tar):
     input_data = {"instances": [1.0, 2.0, 5.0]}

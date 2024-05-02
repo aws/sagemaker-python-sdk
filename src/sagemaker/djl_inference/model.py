@@ -213,9 +213,7 @@ def _create_estimator(
     vpc_config: Optional[
         Dict[
             str,
-            List[
-                str,
-            ],
+            List[str],
         ]
     ] = None,
     volume_kms_key=None,
@@ -820,9 +818,9 @@ class DJLModel(FrameworkModel):
             logger.warning("Ignoring invalid container log level: %s", self.container_log_level)
             return self.env
 
-        self.env[
-            "SERVING_OPTS"
-        ] = f'"-Dai.djl.logging.level={_LOG_LEVEL_MAP[self.container_log_level]}"'
+        self.env["SERVING_OPTS"] = (
+            f'"-Dai.djl.logging.level={_LOG_LEVEL_MAP[self.container_log_level]}"'
+        )
         return self.env
 
 

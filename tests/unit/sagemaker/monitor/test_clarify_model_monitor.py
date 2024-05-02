@@ -1104,9 +1104,9 @@ def _test_model_bias_monitor_update_schedule(model_bias_monitor, sagemaker_sessi
     assert model_bias_monitor.max_runtime_in_seconds == MAX_RUNTIME_IN_SECONDS
     assert model_bias_monitor.env == ENVIRONMENT
     assert model_bias_monitor.network_config == NETWORK_CONFIG
-    expected_arguments[
-        "RoleArn"
-    ] = NEW_ROLE_ARN  # all but role arn are from existing job definition
+    expected_arguments["RoleArn"] = (
+        NEW_ROLE_ARN  # all but role arn are from existing job definition
+    )
     sagemaker_session.sagemaker_client.create_model_bias_job_definition.assert_called_once_with(
         **expected_arguments
     )
@@ -1627,9 +1627,9 @@ def _test_model_explainability_monitor_update_schedule(
     assert model_explainability_monitor.max_runtime_in_seconds == MAX_RUNTIME_IN_SECONDS
     assert model_explainability_monitor.env == ENVIRONMENT
     assert model_explainability_monitor.network_config == NETWORK_CONFIG
-    expected_arguments[
-        "RoleArn"
-    ] = NEW_ROLE_ARN  # all but role arn are from existing job definition
+    expected_arguments["RoleArn"] = (
+        NEW_ROLE_ARN  # all but role arn are from existing job definition
+    )
     sagemaker_session.sagemaker_client.create_model_explainability_job_definition.assert_called_once_with(
         **expected_arguments
     )

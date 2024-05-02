@@ -155,6 +155,7 @@ def _create_train_job(version, instance_count=1, instance_type="ml.c4.4xlarge"):
         "vpc_config": None,
         "environment": None,
         "experiment_config": None,
+        "enable_network_isolation": False,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),

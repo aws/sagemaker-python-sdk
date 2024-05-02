@@ -144,9 +144,11 @@ class JsonGet(PipelineVariable):
         if self.s3_uri:
             return {
                 "Std:JsonGet": {
-                    "S3Uri": self.s3_uri.expr
-                    if isinstance(self.s3_uri, PipelineVariable)
-                    else self.s3_uri,
+                    "S3Uri": (
+                        self.s3_uri.expr
+                        if isinstance(self.s3_uri, PipelineVariable)
+                        else self.s3_uri
+                    ),
                     "Path": self.json_path,
                 }
             }

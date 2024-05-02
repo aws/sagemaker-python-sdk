@@ -1,4 +1,5 @@
 """Validate if image_uri is compatible with instance_type"""
+
 from __future__ import absolute_import
 import logging
 

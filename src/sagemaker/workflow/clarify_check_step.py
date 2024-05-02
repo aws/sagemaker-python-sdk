@@ -306,9 +306,9 @@ class ClarifyCheckStep(Step):
         if isinstance(
             self.clarify_check_config, (ModelBiasCheckConfig, ModelExplainabilityCheckConfig)
         ):
-            request_dict[
-                "ModelName"
-            ] = self.clarify_check_config.model_config.get_predictor_config()["model_name"]
+            request_dict["ModelName"] = (
+                self.clarify_check_config.model_config.get_predictor_config()["model_name"]
+            )
         return request_dict
 
     def _generate_processing_job_analysis_config(self) -> dict:
@@ -348,9 +348,9 @@ class ClarifyCheckStep(Step):
                 predictor_config.update(predicted_label_config)
             else:
                 _set(model_scores, "label", predictor_config)
-            analysis_config[
-                "methods"
-            ] = self.clarify_check_config.explainability_config.get_explainability_config()
+            analysis_config["methods"] = (
+                self.clarify_check_config.explainability_config.get_explainability_config()
+            )
             analysis_config["predictor"] = predictor_config
         return analysis_config
 

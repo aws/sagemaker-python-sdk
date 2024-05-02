@@ -149,6 +149,7 @@ def _create_train_job(framework_version, instance_type, training_compiler_config
         "environment": None,
         "retry_strategy": None,
         "experiment_config": EXPERIMENT_CONFIG,
+        "enable_network_isolation": False,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
@@ -298,9 +299,9 @@ class TestTrainingCompilerConfig:
         )
         expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
         expected_train_args["enable_sagemaker_metrics"] = False
-        expected_train_args["hyperparameters"][
-            TrainingCompilerConfig.HP_ENABLE_COMPILER
-        ] = json.dumps(True)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = (
+            json.dumps(True)
+        )
         expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
             False
         )
@@ -357,9 +358,9 @@ class TestTrainingCompilerConfig:
         )
         expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
         expected_train_args["enable_sagemaker_metrics"] = False
-        expected_train_args["hyperparameters"][
-            TrainingCompilerConfig.HP_ENABLE_COMPILER
-        ] = json.dumps(True)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = (
+            json.dumps(True)
+        )
         expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
             False
         )
@@ -408,9 +409,9 @@ class TestTrainingCompilerConfig:
         )
         expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
         expected_train_args["enable_sagemaker_metrics"] = False
-        expected_train_args["hyperparameters"][
-            TrainingCompilerConfig.HP_ENABLE_COMPILER
-        ] = json.dumps(True)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = (
+            json.dumps(True)
+        )
         expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
             True
         )
@@ -459,9 +460,9 @@ class TestTrainingCompilerConfig:
         )
         expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
         expected_train_args["enable_sagemaker_metrics"] = False
-        expected_train_args["hyperparameters"][
-            TrainingCompilerConfig.HP_ENABLE_COMPILER
-        ] = json.dumps(False)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = (
+            json.dumps(False)
+        )
         expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
             False
         )
