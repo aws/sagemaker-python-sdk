@@ -181,6 +181,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: bool = False,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
+        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -544,7 +545,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             enable_infra_check (bool or PipelineVariable): Optional.
                 Specifies whether it is running Sagemaker built-in infra check jobs.
             enable_remote_debug (bool or PipelineVariable): Optional.
-                Specifies whether RemoteDebug is enabled for the training job
+                Specifies whether RemoteDebug is enabled for the training job.
+            enable_session_tag_chaining (bool or PipelineVariable): Optional.
+                Specifies whether SessionTagChaining is enabled for the training job.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -784,6 +787,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.tensorboard_app = TensorBoardApp(region=self.sagemaker_session.boto_region_name)
 
         self._enable_remote_debug = enable_remote_debug
+
+        self._enable_session_tag_chaining = enable_session_tag_chaining
 
     @abstractmethod
     def training_image_uri(self):
@@ -2318,6 +2323,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             else {"EnableRemoteDebug": self._enable_remote_debug}
         )
 
+    def get_session_chaining_config(self):
+        """dict: Return the configuration of SessionChaining"""
+        return (
+            None
+            if self._enable_session_tag_chaining is None
+            else {"EnableSessionTagChaining": self._enable_session_tag_chaining}
+        )
+
     def enable_remote_debug(self):
         """Enable remote debug for a training job."""
         self._update_remote_debug(True)
@@ -2574,6 +2587,9 @@ class _TrainingJob(_Job):
         if estimator.get_remote_debug_config() is not None:
             train_args["remote_debug_config"] = estimator.get_remote_debug_config()
 
+        if estimator.get_session_chaining_config() is not None:
+            train_args["session_chaining_config"] = estimator.get_session_chaining_config()
+
         return train_args
 
     @classmethod
@@ -2766,6 +2782,7 @@ class Estimator(EstimatorBase):
         disable_output_compression: bool = False,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
+        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -3129,6 +3146,8 @@ class Estimator(EstimatorBase):
                 Specifies whether it is running Sagemaker built-in infra check jobs.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
+            enable_session_tag_chaining (bool or PipelineVariable): Optional.
+                 Specifies whether SessionTagChaining is enabled for the training job
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -3181,6 +3200,7 @@ class Estimator(EstimatorBase):
             container_arguments=container_arguments,
             disable_output_compression=disable_output_compression,
             enable_remote_debug=enable_remote_debug,
+            enable_session_tag_chaining=enable_session_tag_chaining,
             **kwargs,
         )
 

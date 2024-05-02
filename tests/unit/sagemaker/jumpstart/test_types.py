@@ -1052,6 +1052,14 @@ def test_inference_configs_parsing():
     )
     assert list(config.config_components.keys()) == ["neuron-inference"]
 
+    spec = {
+        **BASE_SPEC,
+        **INFERENCE_CONFIGS,
+        **INFERENCE_CONFIG_RANKINGS,
+        "unrecognized-field": "blah",  # New fields in base metadata fields should be ignored
+    }
+    specs1 = JumpStartModelSpecs(spec)
+
 
 def test_set_inference_configs():
     spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}

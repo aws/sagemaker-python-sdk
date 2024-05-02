@@ -48,6 +48,7 @@ TRAINING_DATASET_MODEL_DICT = {
     ("meta-textgeneration-llama-2-7b", "*"): ("training-datasets/sec_amazon/"),
     ("meta-textgeneration-llama-2-7b", "2.*"): ("training-datasets/sec_amazon/"),
     ("meta-textgeneration-llama-2-7b", "3.*"): ("training-datasets/sec_amazon/"),
+    ("meta-textgeneration-llama-2-7b", "4.*"): ("training-datasets/sec_amazon/"),
     ("meta-textgenerationneuron-llama-2-7b", "*"): ("training-datasets/sec_amazon/"),
 }
 

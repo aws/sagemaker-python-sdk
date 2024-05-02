@@ -1064,9 +1064,8 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
                 Dictionary representation of the config component.
         """
         for field in json_obj.keys():
-            if field not in self.__slots__:
-                raise ValueError(f"Invalid component field: {field}")
-            setattr(self, field, json_obj[field])
+            if field in self.__slots__:
+                setattr(self, field, json_obj[field])
 
 
 class JumpStartMetadataConfig(JumpStartDataHolderType):
@@ -1751,6 +1750,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "disable_output_compression",
         "enable_infra_check",
         "enable_remote_debug",
+        "enable_session_tag_chaining",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1818,6 +1818,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         disable_output_compression: Optional[bool] = None,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
+        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1877,6 +1878,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.disable_output_compression = disable_output_compression
         self.enable_infra_check = enable_infra_check
         self.enable_remote_debug = enable_remote_debug
+        self.enable_session_tag_chaining = enable_session_tag_chaining
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
