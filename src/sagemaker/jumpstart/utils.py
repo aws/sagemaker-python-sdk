@@ -1024,7 +1024,7 @@ def get_jumpstart_configs(
         raise ValueError(f"Unknown script scope: {scope}.")
 
     if not config_names:
-        config_names = metadata_configs.configs.keys() if metadata_configs else []
+        config_names = metadata_configs.config_rankings.get("rankings", []) if metadata_configs else []
 
     return (
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
@@ -1113,7 +1113,7 @@ def get_metrics_from_deployment_configs(
 
     data = {"Instance Type": [], "Config Name": []}
     instance_rate_data = {}
-    for deployment_config in deployment_configs:
+    for index, deployment_config in enumerate(deployment_configs):
         benchmark_metrics = deployment_config.benchmark_metrics
         if not deployment_config.deployment_args or not benchmark_metrics:
             continue
@@ -1124,8 +1124,7 @@ def get_metrics_from_deployment_configs(
             data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
-                if current_instance_type == default_instance_type
-                and deployment_config.deployment_config_name == default_config_name
+                if index == 0
                 else current_instance_type
             )
             data["Instance Type"].append(instance_type_to_display)
