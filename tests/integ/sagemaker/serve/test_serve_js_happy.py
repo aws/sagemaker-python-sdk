@@ -123,15 +123,19 @@ def test_js_model_with_deployment_configs(
     sys.stdout = captured_output
     model_builder.display_benchmark_metrics()
     sys.stdout = sys.__stdout__
+
     assert captured_output.getvalue() is not None
+    assert "Instance Type" in captured_output.getvalue()
 
     model_builder.set_deployment_config(
-        configs[0]["DeploymentConfigName"],
-        "ml.g5.2xlarge",
+        configs[-1]["DeploymentConfigName"],
+        configs[-1]["DeploymentArgs"]["InstanceType"],
     )
     model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
-    assert model.config_name == configs[0]["DeploymentConfigName"]
+
     assert model_builder.get_deployment_config() is not None
+    assert model.config_name == configs[-1]["DeploymentConfigName"]
+    assert model.instance_type == configs[-1]["DeploymentArgs"]["InstanceType"]
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
@@ -139,7 +143,7 @@ def test_js_model_with_deployment_configs(
             predictor = model.deploy(accept_eula=True)
             logger.info("Endpoint successfully deployed.")
 
-            updated_sample_input = happy_model_builder.schema_builder.sample_input
+            updated_sample_input = model_builder.schema_builder.sample_input
 
             predictor.predict(updated_sample_input)
         except Exception as e:

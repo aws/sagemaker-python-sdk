@@ -304,16 +304,21 @@ def test_jumpstart_model_with_deployment_configs(setup):
     sys.stdout = captured_output
     model.display_benchmark_metrics()
     sys.stdout = sys.__stdout__
+
     assert captured_output.getvalue() is not None
+    assert "Instance Type" in captured_output.getvalue()
+
+    assert model.deployment_config["DeploymentConfigName"] == model.config_name
 
     configs = model.list_deployment_configs()
     assert len(configs) > 0
 
     model.set_deployment_config(
-        configs[0]["DeploymentConfigName"],
-        "ml.g5.2xlarge",
+        configs[-1]["DeploymentConfigName"],
+        configs[-1]["DeploymentArgs"]["InstanceType"],
     )
-    assert model.config_name == configs[0]["DeploymentConfigName"]
+    assert model.config_name == configs[-1]["DeploymentConfigName"]
+    assert model.instance_type == configs[-1]["DeploymentArgs"]["InstanceType"]
 
     predictor = model.deploy(
         accept_eula=True,
