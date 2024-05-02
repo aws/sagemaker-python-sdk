@@ -1118,16 +1118,11 @@ def get_metrics_from_deployment_configs(
         if not deployment_config.deployment_args or not benchmark_metrics:
             continue
 
-        copy_benchmark_metrics = copy.deepcopy(benchmark_metrics)
-        benchmark_metrics = {}
-        if index == 0:
-            benchmark_metrics[deployment_config.deployment_args.default_instance_type] = (
-                copy_benchmark_metrics.get(deployment_config.deployment_args.default_instance_type)
-            )
-            del copy_benchmark_metrics[deployment_config.deployment_args.default_instance_type]
-            benchmark_metrics = {**benchmark_metrics, **copy_benchmark_metrics}
-        else:
-            benchmark_metrics = copy_benchmark_metrics
+        default_instance_type = deployment_config.deployment_args.default_instance_type
+        benchmark_metrics = {
+            default_instance_type: benchmark_metrics.pop(default_instance_type),
+            **benchmark_metrics,
+        }
 
         for inner_index, current_instance_type in enumerate(benchmark_metrics):
             current_instance_type_metrics = benchmark_metrics[current_instance_type]
