@@ -3,7 +3,6 @@ import json
 
 from unittest import TestCase
 from unittest.mock import Mock, patch
-import datetime
 
 import pytest
 from sagemaker.jumpstart.constants import (
@@ -17,7 +16,6 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_prototype_manifest,
     get_prototype_model_spec,
 )
-from tests.unit.sagemaker.jumpstart.constants import BASE_PROPRIETARY_MANIFEST
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.notebook_utils import (
     _generate_jumpstart_model_versions,
