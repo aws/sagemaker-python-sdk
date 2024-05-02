@@ -1024,7 +1024,7 @@ def get_jumpstart_configs(
         raise ValueError(f"Unknown script scope: {scope}.")
 
     print("******************************")
-    print(metadata_configs.config_rankings)
+    print(metadata_configs.config_rankings.get("overall").rankings)
     print("******************************")
 
     if not config_names:
