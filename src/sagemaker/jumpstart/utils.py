@@ -12,8 +12,10 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+
 import logging
 import os
+from functools import lru_cache, wraps
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
@@ -1040,7 +1042,9 @@ def get_jumpstart_configs(
         raise ValueError(f"Unknown script scope: {scope}.")
 
     if not config_names:
-        config_names = metadata_configs.configs.keys() if metadata_configs else []
+        config_names = (
+            metadata_configs.config_rankings.get("overall").rankings if metadata_configs else []
+        )
 
     return (
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
@@ -1052,17 +1056,17 @@ def get_jumpstart_configs(
 def add_instance_rate_stats_to_benchmark_metrics(
     region: str,
     benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]],
-) -> Optional[Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]]:
+) -> Optional[Tuple[Dict[str, str], Dict[str, List[JumpStartBenchmarkStat]]]]:
     """Adds instance types metric stats to the given benchmark_metrics dict.
 
     Args:
         region (str): AWS region.
         benchmark_metrics (Optional[Dict[str, List[JumpStartBenchmarkStat]]]):
     Returns:
-        Tuple[str, Dict[str, List[JumpStartBenchmarkStat]]]:
-        Contains Error message and metrics dict.
+        Optional[Tuple[Dict[str, str], Dict[str, List[JumpStartBenchmarkStat]]]]:
+        Contains Error and metrics.
     """
-    if benchmark_metrics is None:
+    if not benchmark_metrics:
         return None
 
     err_message = None
@@ -1070,21 +1074,20 @@ def add_instance_rate_stats_to_benchmark_metrics(
     for instance_type, benchmark_metric_stats in benchmark_metrics.items():
         instance_type = instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
 
-        if not has_instance_rate_stat(benchmark_metric_stats) and err_message is None:
+        if not has_instance_rate_stat(benchmark_metric_stats) and not err_message:
             try:
                 instance_type_rate = get_instance_rate_per_hour(
                     instance_type=instance_type, region=region
                 )
 
-                if benchmark_metric_stats:
-                    benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
-                else:
-                    benchmark_metric_stats = [JumpStartBenchmarkStat(instance_type_rate)]
+                if not benchmark_metric_stats:
+                    benchmark_metric_stats = []
+                benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
 
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
             except ClientError as e:
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
-                err_message = e.response["Error"]["Message"]
+                err_message = e.response["Error"]
             except Exception:  # pylint: disable=W0703
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
         else:
@@ -1103,33 +1106,32 @@ def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchm
         bool: Whether the benchmark metric stats contains instance rate metric stat.
     """
     if benchmark_metric_stats is None:
-        return False
-
+        return True
     for benchmark_metric_stat in benchmark_metric_stats:
         if benchmark_metric_stat.name.lower() == "instance rate":
             return True
-
     return False
 
 
 def get_metrics_from_deployment_configs(
-    default_config_name: str,
-    default_instance_type: str,
-    deployment_configs: List[DeploymentConfigMetadata],
+    deployment_configs: Optional[List[DeploymentConfigMetadata]],
 ) -> Dict[str, List[str]]:
     """Extracts benchmark metrics from deployment configs metadata.
 
     Args:
-        default_config_name (str): The name of the default deployment config.
-        default_instance_type (str): The name of the default instance type.
-        deployment_configs (List[DeploymentConfigMetadata]): List of deployment configs metadata.
+        deployment_configs (Optional[List[DeploymentConfigMetadata]]):
+        List of deployment configs metadata.
+    Returns:
+        Dict[str, List[str]]: Deployment configs bench metrics dict.
     """
+    if not deployment_configs:
+        return {}
+
     data = {"Instance Type": [], "Config Name": []}
     instance_rate_data = {}
-
-    for deployment_config in deployment_configs:
+    for index, deployment_config in enumerate(deployment_configs):
         benchmark_metrics = deployment_config.benchmark_metrics
-        if deployment_config.deployment_args is None or benchmark_metrics is None:
+        if not deployment_config.deployment_args or not benchmark_metrics:
             continue
 
         for inner_index, current_instance_type in enumerate(benchmark_metrics):
@@ -1138,8 +1140,8 @@ def get_metrics_from_deployment_configs(
             data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
-                if current_instance_type == default_instance_type
-                and default_config_name == deployment_config.deployment_config_name
+                if index == 0
+                and current_instance_type == deployment_config.deployment_args.default_instance_type
                 else current_instance_type
             )
             data["Instance Type"].append(instance_type_to_display)
@@ -1148,10 +1150,9 @@ def get_metrics_from_deployment_configs(
                 column_name = f"{metric.name} ({metric.unit})"
 
                 if metric.name.lower() == "instance rate":
-                    if column_name in instance_rate_data:
-                        instance_rate_data[column_name].append(metric.value)
-                    else:
-                        instance_rate_data[column_name] = [metric.value]
+                    if column_name not in instance_rate_data:
+                        instance_rate_data[column_name] = []
+                    instance_rate_data[column_name].append(metric.value)
                 else:
                     if column_name not in data:
                         data[column_name] = []
@@ -1175,13 +1176,13 @@ def deployment_config_response_data(
         List[Dict[str, Any]]: List of deployment config api response data.
     """
     configs = []
-    if deployment_configs is None:
+    if not deployment_configs:
         return configs
 
     for deployment_config in deployment_configs:
         deployment_config_json = deployment_config.to_json()
         benchmark_metrics = deployment_config_json.get("BenchmarkMetrics")
-        if benchmark_metrics:
+        if benchmark_metrics and deployment_config.deployment_args:
             deployment_config_json["BenchmarkMetrics"] = {
                 deployment_config.deployment_args.instance_type: benchmark_metrics.get(
                     deployment_config.deployment_args.instance_type
@@ -1189,5 +1190,58 @@ def deployment_config_response_data(
             }
 
         configs.append(deployment_config_json)
-
     return configs
+
+
+def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool = False):
+    """LRU cache for deployment configs."""
+
+    def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
+        """Determines whether metadata config contains instance rate metric stat.
+
+        Args:
+            config (DeploymentConfigMetadata): Metadata config metadata.
+        Returns:
+            bool: Whether the metadata config contains instance rate metric stat.
+        """
+        if config.benchmark_metrics is None:
+            return True
+        for benchmark_metric_stats in config.benchmark_metrics.values():
+            if not has_instance_rate_stat(benchmark_metric_stats):
+                return False
+        return True
+
+    def wrapper_cache(f):
+        f = lru_cache(maxsize=maxsize, typed=typed)(f)
+
+        @wraps(f)
+        def wrapped_f(*args, **kwargs):
+            res = f(*args, **kwargs)
+
+            # Clear cache on first call if
+            #   - The output does not contain Instant rate metrics
+            #   as this is caused by missing policy.
+            if f.cache_info().hits == 0 and f.cache_info().misses == 1:
+                if isinstance(res, list):
+                    for item in res:
+                        if isinstance(
+                            item, DeploymentConfigMetadata
+                        ) and not has_instance_rate_metric(item):
+                            f.cache_clear()
+                            break
+                elif isinstance(res, dict):
+                    keys = list(res.keys())
+                    if "Instance Rate" not in keys[-1]:
+                        f.cache_clear()
+                    elif len(res[keys[1]]) > len(res[keys[-1]]):
+                        del res[keys[-1]]
+                        f.cache_clear()
+            return res
+
+        wrapped_f.cache_info = f.cache_info
+        wrapped_f.cache_clear = f.cache_clear
+        return wrapped_f
+
+    if _func is None:
+        return wrapper_cache
+    return wrapper_cache(_func)

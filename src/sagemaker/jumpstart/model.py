@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import
 
-from functools import lru_cache
 from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
@@ -49,6 +48,7 @@ from sagemaker.jumpstart.utils import (
     get_metrics_from_deployment_configs,
     add_instance_rate_stats_to_benchmark_metrics,
     deployment_config_response_data,
+    _deployment_config_lru_cache,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -464,17 +464,14 @@ class JumpStartModel(Model):
         Returns:
             Benchmark Metrics: Pandas DataFrame object.
         """
-        benchmark_metrics_data = self._get_deployment_configs_benchmarks_data(
-            self.config_name, self.instance_type
-        )
-        keys = list(benchmark_metrics_data.keys())
-        # Sort by Config Name and Instance Type column values
-        df = pd.DataFrame(benchmark_metrics_data).sort_values(by=[keys[1], keys[0]])
-        return df
+        df = pd.DataFrame(self._get_deployment_configs_benchmarks_data())
+        default_mask = df.apply(lambda row: any("Default" in str(val) for val in row), axis=1)
+        sorted_df = pd.concat([df[default_mask], df[~default_mask]])
+        return sorted_df
 
-    def display_benchmark_metrics(self) -> None:
+    def display_benchmark_metrics(self, *args, **kwargs) -> None:
         """Display deployment configs benchmark metrics."""
-        print(self.benchmark_metrics.to_markdown(index=False))
+        print(self.benchmark_metrics.to_markdown(index=False), *args, **kwargs)
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model.
@@ -874,36 +871,29 @@ class JumpStartModel(Model):
 
         return model_package
 
-    @lru_cache
-    def _get_deployment_configs_benchmarks_data(
-        self, config_name: str, instance_type: str
-    ) -> Dict[str, Any]:
+    @_deployment_config_lru_cache
+    def _get_deployment_configs_benchmarks_data(self) -> Dict[str, Any]:
         """Deployment configs benchmark metrics.
 
-        Args:
-            config_name (str): Name of selected deployment config.
-            instance_type (str): The selected Instance type.
         Returns:
             Dict[str, List[str]]: Deployment config benchmark data.
         """
         return get_metrics_from_deployment_configs(
-            config_name,
-            instance_type,
-            self._get_deployment_configs(config_name, instance_type),
+            self._get_deployment_configs(None, None),
         )
 
-    @lru_cache
+    @_deployment_config_lru_cache
     def _get_deployment_configs(
-        self, selected_config_name: str, selected_instance_type: str
+        self, selected_config_name: Optional[str], selected_instance_type: Optional[str]
     ) -> List[DeploymentConfigMetadata]:
         """Retrieve deployment configs metadata.
 
         Args:
-            selected_config_name (str): The name of the selected deployment config.
-            selected_instance_type (str): The selected instance type.
+            selected_config_name (Optional[str]): The name of the selected deployment config.
+            selected_instance_type (Optional[str]): The selected instance type.
         """
         deployment_configs = []
-        if self._metadata_configs is None:
+        if not self._metadata_configs:
             return deployment_configs
 
         err = None
@@ -940,9 +930,9 @@ class JumpStartModel(Model):
             )
             deployment_configs.append(deployment_config_metadata)
 
-        if err is not None and "is not authorized to perform: pricing:GetProducts" in err:
+        if err and err["Code"] == "AccessDeniedException":
             error_message = "Instance rate metrics will be omitted. Reason: %s"
-            JUMPSTART_LOGGER.warning(error_message, err)
+            JUMPSTART_LOGGER.warning(error_message, err["Message"])
 
         return deployment_configs
 

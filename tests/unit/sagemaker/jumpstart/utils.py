@@ -358,7 +358,8 @@ def get_base_deployment_configs_metadata(
         else get_base_spec_with_prototype_configs()
     )
     configs = []
-    for config_name, jumpstart_config in specs.inference_configs.configs.items():
+    for config_name in specs.inference_configs.config_rankings.get("overall").rankings:
+        jumpstart_config = specs.inference_configs.configs.get(config_name)
         benchmark_metrics = jumpstart_config.benchmark_metrics
 
         if benchmark_metrics:

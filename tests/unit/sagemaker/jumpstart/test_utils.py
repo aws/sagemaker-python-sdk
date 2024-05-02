@@ -1870,7 +1870,13 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
     mock_get_instance_rate_per_hour,
 ):
     mock_get_instance_rate_per_hour.side_effect = ClientError(
-        {"Error": {"Message": "is not authorized to perform: pricing:GetProducts"}}, "GetProducts"
+        {
+            "Error": {
+                "Message": "is not authorized to perform: pricing:GetProducts",
+                "Code": "AccessDenied",
+            },
+        },
+        "GetProducts",
     )
 
     err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
@@ -1882,7 +1888,8 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
         },
     )
 
-    assert err == "is not authorized to perform: pricing:GetProducts"
+    assert err["Message"] == "is not authorized to perform: pricing:GetProducts"
+    assert err["Code"] == "AccessDenied"
     for key in out:
         assert len(out[key]) == 1
 
@@ -1890,7 +1897,7 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
 @pytest.mark.parametrize(
     "stats, expected",
     [
-        (None, False),
+        (None, True),
         (
             [JumpStartBenchmarkStat({"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"})],
             True,
