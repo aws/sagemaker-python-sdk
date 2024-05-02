@@ -1116,14 +1116,22 @@ def get_metrics_from_deployment_configs(
         if not deployment_config.deployment_args or not benchmark_metrics:
             continue
 
-        for inner_index, current_instance_type in enumerate(benchmark_metrics):
+        ranking_benchmark_metrics = {}
+        if index == 0:
+            ranking_benchmark_metrics[deployment_config.deployment_args.default_instance_type] = benchmark_metrics.get(deployment_config.deployment_args.default_instance_type)
+            del benchmark_metrics[deployment_config.deployment_args.default_instance_type]
+            ranking_benchmark_metrics = {**ranking_benchmark_metrics, **benchmark_metrics}
+        else:
+            ranking_benchmark_metrics = benchmark_metrics
+
+        for inner_index, current_instance_type in enumerate(ranking_benchmark_metrics):
             current_instance_type_metrics = benchmark_metrics[current_instance_type]
 
             data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
                 if index == 0
-                and current_instance_type == deployment_config.deployment_args.default_instance_type
+                # and current_instance_type == deployment_config.deployment_args.default_instance_type
                 else current_instance_type
             )
             data["Instance Type"].append(instance_type_to_display)
