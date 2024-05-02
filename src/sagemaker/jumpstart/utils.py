@@ -13,7 +13,6 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 
-import copy
 import logging
 import os
 from functools import lru_cache, wraps

@@ -465,7 +465,7 @@ class JumpStartModel(Model):
             Benchmark Metrics: Pandas DataFrame object.
         """
         df = pd.DataFrame(self._get_deployment_configs_benchmarks_data())
-        default_mask = df.apply(lambda raw: any('Default' in str(val) for val in raw), axis=1)
+        default_mask = df.apply(lambda row: any("Default" in str(val) for val in row), axis=1)
         sorted_df = pd.concat([df[default_mask], df[~default_mask]])
         return sorted_df
 
