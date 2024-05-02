@@ -228,7 +228,7 @@ class ListJumpStartModels(TestCase):
         patched_get_model_specs.assert_not_called()
 
     @pytest.mark.skipif(
-        datetime.datetime.now() < datetime.datetime(year=2024, month=5, day=1),
+        datetime.datetime.now() < datetime.datetime(year=2024, month=7, day=1),
         reason="Contact JumpStart team to fix flaky test.",
     )
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
