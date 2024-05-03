@@ -34,8 +34,12 @@ MLFLOW_FLAVOR_TO_PYTHON_PACKAGE_MAP = {
     "spark": "pyspark",
     "onnx": "onnxruntime",
 }
-FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT = [  # will extend to keras and tf
-    "sklearn",
-    "pytorch",
-    "xgboost",
-]
+TENSORFLOW_SAVED_MODEL_NAME = "saved_model.pb"
+FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT = {
+    "sklearn": "sklearn",
+    "pytorch": "pytorch",
+    "xgboost": "xgboost",
+    "tensorflow": "tensorflow",
+    "keras": "tensorflow",
+}
+FLAVORS_DEFAULT_WITH_TF_SERVING = ["keras", "tensorflow"]

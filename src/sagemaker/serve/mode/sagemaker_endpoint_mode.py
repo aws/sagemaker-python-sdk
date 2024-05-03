@@ -6,6 +6,7 @@ from pathlib import Path
 import logging
 from typing import Type
 
+from sagemaker.serve.model_server.tensorflow_serving.server import SageMakerTensorflowServing
 from sagemaker.session import Session
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -24,6 +25,7 @@ class SageMakerEndpointMode(
     SageMakerDjlServing,
     SageMakerTgiServing,
     SageMakerMultiModelServer,
+    SageMakerTensorflowServing,
 ):
     """Holds the required method to deploy a model to a SageMaker Endpoint"""
 
@@ -103,6 +105,15 @@ class SageMakerEndpointMode(
             return self._upload_server_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
+                s3_model_data_url=s3_model_data_url,
+                image=image,
+            )
+
+        if self.model_server == ModelServer.TENSORFLOW_SERVING:
+            return self._upload_tensorflow_serving_artifacts(
+                model_path=model_path,
+                sagemaker_session=sagemaker_session,
+                secret_key=secret_key,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
             )
