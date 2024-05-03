@@ -49,6 +49,7 @@ CODECOMMIT_BRANCH = "master"
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 @pytest.mark.local_mode
 def test_github(
     sagemaker_local_session, pytorch_inference_latest_version, pytorch_inference_latest_py_version

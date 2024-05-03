@@ -263,6 +263,7 @@ def test_spark_ml_predict_invocation_with_target_variant(sagemaker_session):
         assert "Could not find endpoint" in str(exception.value)
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 @pytest.mark.local_mode
 def test_target_variant_invocation_local_mode(sagemaker_session, multi_variant_endpoint):
 

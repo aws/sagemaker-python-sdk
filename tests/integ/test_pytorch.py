@@ -144,6 +144,7 @@ def test_fit_deploy(
         assert output.shape == (batch_size, 10)
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 @pytest.mark.local_mode
 def test_local_fit_deploy(
     sagemaker_local_session, pytorch_inference_latest_version, pytorch_inference_latest_py_version

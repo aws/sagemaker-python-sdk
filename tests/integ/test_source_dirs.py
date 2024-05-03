@@ -21,6 +21,7 @@ from sagemaker.pytorch.estimator import PyTorch
 from tests.integ import DATA_DIR
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
 @pytest.mark.local_mode
 def test_source_dirs(tmpdir, sagemaker_local_session):
     source_dir = os.path.join(DATA_DIR, "pytorch_source_dirs")

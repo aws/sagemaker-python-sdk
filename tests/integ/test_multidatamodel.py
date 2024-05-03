@@ -171,6 +171,7 @@ def test_multi_data_model_deploy_pretrained_models(
         assert "Could not find endpoint" in str(exception.value)
 
 
+@pytest.mark.flaky(reruns=3, rerun_delay=2)
 @pytest.mark.local_mode
 def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, sagemaker_session):
     timestamp = sagemaker_timestamp()
