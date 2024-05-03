@@ -129,7 +129,7 @@ def test_js_model_with_deployment_configs(
 
     model_builder.set_deployment_config(
         configs[-1]["DeploymentConfigName"],
-        configs[-1]["DeploymentArgs"]["InstanceType"],
+        "ml.g5.2xlarge",
     )
     model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
 
