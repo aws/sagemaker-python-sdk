@@ -1013,6 +1013,8 @@ class EstimatorTest(unittest.TestCase):
                 "tolerate_vulnerable_model": True,
                 "tolerate_deprecated_model": True,
                 "environment": {"accept_eula": "true"},
+                "tolerate_vulnerable_model": True,
+                "tolerate_deprecated_model": True,
             },
         )
 

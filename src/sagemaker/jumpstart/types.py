@@ -1775,6 +1775,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "enable_infra_check",
         "enable_remote_debug",
         "config_name",
+        "enable_session_tag_chaining",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1844,6 +1845,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         config_name: Optional[str] = None,
+        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1904,6 +1906,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_infra_check = enable_infra_check
         self.enable_remote_debug = enable_remote_debug
         self.config_name = config_name
+        self.enable_session_tag_chaining = enable_session_tag_chaining
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):

@@ -142,7 +142,8 @@ def test_numpy_deserializer_from_npy(numpy_deserializer):
     assert np.array_equal(array, result)
 
 
-def test_numpy_deserializer_from_npy_object_array(numpy_deserializer):
+def test_numpy_deserializer_from_npy_object_array():
+    numpy_deserializer = NumpyDeserializer(allow_pickle=True)
     array = np.array([{"a": "", "b": ""}, {"c": "", "d": ""}])
     stream = io.BytesIO()
     np.save(stream, array)
