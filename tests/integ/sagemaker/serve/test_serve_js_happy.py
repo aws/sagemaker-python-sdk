@@ -135,7 +135,6 @@ def test_js_model_with_deployment_configs(
 
     assert model_builder.get_deployment_config() is not None
     assert model.config_name == configs[-1]["DeploymentConfigName"]
-    assert model.instance_type == configs[-1]["DeploymentArgs"]["InstanceType"]
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:

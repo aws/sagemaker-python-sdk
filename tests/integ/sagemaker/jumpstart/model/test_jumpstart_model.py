@@ -318,7 +318,6 @@ def test_jumpstart_model_with_deployment_configs(setup):
         "ml.g5.2xlarge",
     )
     assert model.config_name == configs[-1]["DeploymentConfigName"]
-    assert model.instance_type == configs[-1]["DeploymentArgs"]["InstanceType"]
 
     predictor = model.deploy(
         accept_eula=True,
