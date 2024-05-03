@@ -1078,7 +1078,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         "resolved_metadata_config",
         "config_name",
         "default_inference_config",
-        "default_incremental_trainig_config",
+        "default_incremental_training_config",
         "supported_inference_configs",
         "supported_incremental_training_configs",
     ]
@@ -1114,7 +1114,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         self.resolved_metadata_config: Optional[Dict[str, Any]] = None
         self.config_name: Optional[str] = config_name
         self.default_inference_config: Optional[str] = config.get("default_inference_config")
-        self.default_incremental_trainig_config: Optional[str] = config.get(
+        self.default_incremental_training_config: Optional[str] = config.get(
             "default_incremental_training_config"
         )
         self.supported_inference_configs: Optional[List[str]] = config.get(
