@@ -13,20 +13,17 @@
 from __future__ import absolute_import
 
 import json
-from mock import MagicMock, patch, mock_open
+from mock import patch, mock_open
 
 
 from sagemaker.user_agent import (
     SDK_PREFIX,
     SDK_VERSION,
-    PYTHON_VERSION,
-    OS_NAME_VERSION,
     NOTEBOOK_PREFIX,
     STUDIO_PREFIX,
     process_notebook_metadata_file,
     process_studio_metadata_file,
-    determine_prefix,
-    prepend_user_agent,
+    get_user_agent_extra_suffix,
 )
 
 
@@ -60,45 +57,18 @@ def test_process_studio_metadata_file_not_exists(tmp_path):
         assert process_studio_metadata_file() is None
 
 
-# Test determine_prefix function
-def test_determine_prefix_notebook_instance_type(monkeypatch):
-    monkeypatch.setattr(
-        "sagemaker.user_agent.process_notebook_metadata_file", lambda: "instance_type"
-    )
-    assert (
-        determine_prefix()
-        == f"{SDK_PREFIX}/{SDK_VERSION} {PYTHON_VERSION} {OS_NAME_VERSION} {NOTEBOOK_PREFIX}/instance_type"
-    )
+# Test get_user_agent_extra_suffix function
+def test_get_user_agent_extra_suffix():
+    assert get_user_agent_extra_suffix() == f"lib/{SDK_PREFIX}#{SDK_VERSION}"
 
+    with patch("sagemaker.user_agent.process_notebook_metadata_file", return_value="instance_type"):
+        assert (
+            get_user_agent_extra_suffix()
+            == f"lib/{SDK_PREFIX}#{SDK_VERSION} md/{NOTEBOOK_PREFIX}#instance_type"
+        )
 
-def test_determine_prefix_studio_app_type(monkeypatch):
-    monkeypatch.setattr(
-        "sagemaker.user_agent.process_studio_metadata_file", lambda: "studio_app_type"
-    )
-    assert (
-        determine_prefix()
-        == f"{SDK_PREFIX}/{SDK_VERSION} {PYTHON_VERSION} {OS_NAME_VERSION} {STUDIO_PREFIX}/studio_app_type"
-    )
-
-
-def test_determine_prefix_no_metadata(monkeypatch):
-    monkeypatch.setattr("sagemaker.user_agent.process_notebook_metadata_file", lambda: None)
-    monkeypatch.setattr("sagemaker.user_agent.process_studio_metadata_file", lambda: None)
-    assert determine_prefix() == f"{SDK_PREFIX}/{SDK_VERSION} {PYTHON_VERSION} {OS_NAME_VERSION}"
-
-
-# Test prepend_user_agent function
-def test_prepend_user_agent_existing_user_agent(monkeypatch):
-    client = MagicMock()
-    client._client_config.user_agent = "existing_user_agent"
-    monkeypatch.setattr("sagemaker.user_agent.determine_prefix", lambda _: "prefix")
-    prepend_user_agent(client)
-    assert client._client_config.user_agent == "prefix existing_user_agent"
-
-
-def test_prepend_user_agent_no_user_agent(monkeypatch):
-    client = MagicMock()
-    client._client_config.user_agent = None
-    monkeypatch.setattr("sagemaker.user_agent.determine_prefix", lambda _: "prefix")
-    prepend_user_agent(client)
-    assert client._client_config.user_agent == "prefix"
+    with patch("sagemaker.user_agent.process_studio_metadata_file", return_value="studio_type"):
+        assert (
+            get_user_agent_extra_suffix()
+            == f"lib/{SDK_PREFIX}#{SDK_VERSION} md/{STUDIO_PREFIX}#studio_type"
+        )

@@ -121,7 +121,7 @@ from sagemaker.config.config_utils import _log_sagemaker_config_merge
 from sagemaker.deprecations import deprecated_class
 from sagemaker.enums import EndpointType
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
-from sagemaker.user_agent import prepend_user_agent
+from sagemaker.user_agent import get_user_agent_extra_suffix
 from sagemaker.utils import (
     name_from_image,
     secondary_training_status_changed,
@@ -285,6 +285,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
         Sets the region_name.
         """
+
         self.boto_session = boto_session or boto3.DEFAULT_SESSION or boto3.Session()
 
         self._region_name = self.boto_session.region_name
@@ -293,18 +294,29 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Must setup local AWS configuration with a region supported by SageMaker."
             )
 
-        self.sagemaker_client = sagemaker_client or self.boto_session.client("sagemaker")
-        prepend_user_agent(self.sagemaker_client)
+        # Make use of user_agent_extra field of the botocore_config object
+        # to append SageMaker Python SDK specific user_agent suffix
+        # to the current User-Agent header value from boto3
+        # This config will also make sure that user_agent never fails to log the User-Agent string
+        # even if boto User-Agent header format is updated in the future
+        # Ref: https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
+        botocore_config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
+
+        # Create sagemaker_client with the botocore_config object
+        # This config is customized to append SageMaker Python SDK specific user_agent suffix
+        self.sagemaker_client = sagemaker_client or self.boto_session.client(
+            "sagemaker", config=botocore_config
+        )
 
         if sagemaker_runtime_client is not None:
             self.sagemaker_runtime_client = sagemaker_runtime_client
         else:
-            config = botocore.config.Config(read_timeout=80)
+            config = botocore.config.Config(
+                read_timeout=80, user_agent_extra=get_user_agent_extra_suffix()
+            )
             self.sagemaker_runtime_client = self.boto_session.client(
                 "runtime.sagemaker", config=config
             )
-
-        prepend_user_agent(self.sagemaker_runtime_client)
 
         if sagemaker_featurestore_runtime_client:
             self.sagemaker_featurestore_runtime_client = sagemaker_featurestore_runtime_client
@@ -316,8 +328,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if sagemaker_metrics_client:
             self.sagemaker_metrics_client = sagemaker_metrics_client
         else:
-            self.sagemaker_metrics_client = self.boto_session.client("sagemaker-metrics")
-        prepend_user_agent(self.sagemaker_metrics_client)
+            self.sagemaker_metrics_client = self.boto_session.client(
+                "sagemaker-metrics", config=botocore_config
+            )
 
         self.s3_client = self.boto_session.client("s3", region_name=self.boto_region_name)
         self.s3_resource = self.boto_session.resource("s3", region_name=self.boto_region_name)
