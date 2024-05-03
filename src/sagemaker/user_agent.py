@@ -13,8 +13,6 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-import platform
-import sys
 import json
 import os
 
@@ -28,12 +26,6 @@ NOTEBOOK_METADATA_FILE = "/etc/opt/ml/sagemaker-notebook-instance-version.txt"
 STUDIO_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
 
 SDK_VERSION = importlib_metadata.version("sagemaker")
-OS_NAME = platform.system() or "UnresolvedOS"
-OS_VERSION = platform.release() or "UnresolvedOSVersion"
-OS_NAME_VERSION = "{}/{}".format(OS_NAME, OS_VERSION)
-PYTHON_VERSION = "Python/{}.{}.{}".format(
-    sys.version_info.major, sys.version_info.minor, sys.version_info.micro
-)
 
 
 def process_notebook_metadata_file():
@@ -63,45 +55,24 @@ def process_studio_metadata_file():
     return None
 
 
-def determine_prefix(user_agent=""):
-    """Determines the prefix for the user agent string.
+def get_user_agent_extra_suffix():
+    """Get the user agent extra suffix string specific to SageMaker Python SDK
 
-    Args:
-        user_agent (str): The user agent string to prepend the prefix to.
+    Adhers to new boto recommended User-Agent 2.0 header format
 
     Returns:
-        str: The user agent string with the prefix prepended.
+        str: The user agent extra suffix string to be appended
     """
-    prefix = "{}/{}".format(SDK_PREFIX, SDK_VERSION)
-
-    if PYTHON_VERSION not in user_agent:
-        prefix = "{} {}".format(prefix, PYTHON_VERSION)
-
-    if OS_NAME_VERSION not in user_agent:
-        prefix = "{} {}".format(prefix, OS_NAME_VERSION)
+    suffix = "lib/{}#{}".format(SDK_PREFIX, SDK_VERSION)
 
     # Get the notebook instance type and prepend it to the user agent string if exists
     notebook_instance_type = process_notebook_metadata_file()
     if notebook_instance_type:
-        prefix = "{} {}/{}".format(prefix, NOTEBOOK_PREFIX, notebook_instance_type)
+        suffix = "{} md/{}#{}".format(suffix, NOTEBOOK_PREFIX, notebook_instance_type)
 
     # Get the studio app type and prepend it to the user agent string if exists
     studio_app_type = process_studio_metadata_file()
     if studio_app_type:
-        prefix = "{} {}/{}".format(prefix, STUDIO_PREFIX, studio_app_type)
+        suffix = "{} md/{}#{}".format(suffix, STUDIO_PREFIX, studio_app_type)
 
-    return prefix
-
-
-def prepend_user_agent(client):
-    """Prepends the user agent string with the SageMaker Python SDK version.
-
-    Args:
-        client (botocore.client.BaseClient): The client to prepend the user agent string for.
-    """
-    prefix = determine_prefix(client._client_config.user_agent)
-
-    if client._client_config.user_agent is None:
-        client._client_config.user_agent = prefix
-    else:
-        client._client_config.user_agent = "{} {}".format(prefix, client._client_config.user_agent)
+    return suffix
