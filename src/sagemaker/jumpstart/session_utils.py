@@ -219,7 +219,7 @@ def get_model_info_from_training_job(
         model_id,
         inferred_model_version,
         inference_config_name,
-        trainig_config_name,
+        training_config_name,
     ) = get_jumpstart_model_info_from_resource_arn(training_job_arn, sagemaker_session)
 
     model_version = inferred_model_version or None
@@ -231,4 +231,4 @@ def get_model_info_from_training_job(
             "for this training job."
         )
 
-    return model_id, model_version, inference_config_name, trainig_config_name
+    return model_id, model_version, inference_config_name, training_config_name
