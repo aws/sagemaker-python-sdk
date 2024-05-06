@@ -758,6 +758,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         environment: Optional[Dict[str, str]] = None,
         retry_strategy=None,
         remote_debug_config=None,
+        session_chaining_config=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -877,6 +878,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     remote_debug_config = {
                         "EnableRemoteDebug": True,
                     }
+            session_chaining_config(dict): Configuration for SessionChaining. (default: ``None``)
+                The dict can contain 'EnableSessionTagChaining'(bool).
+                For example,
+
+                .. code:: python
+
+                    session_chaining_config = {
+                        "EnableSessionTagChaining": True,
+                    }
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
@@ -970,6 +980,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=inferred_profiler_config,
             remote_debug_config=remote_debug_config,
+            session_chaining_config=session_chaining_config,
             environment=environment,
             retry_strategy=retry_strategy,
         )
@@ -1013,6 +1024,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_rule_configs=None,
         profiler_config=None,
         remote_debug_config=None,
+        session_chaining_config=None,
         environment=None,
         retry_strategy=None,
     ):
@@ -1133,6 +1145,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     remote_debug_config = {
                         "EnableRemoteDebug": True,
                     }
+            session_chaining_config(dict): Configuration for SessionChaining. (default: ``None``)
+                The dict can contain 'EnableSessionTagChaining'(bool).
+                For example,
+
+                .. code:: python
+
+                    session_chaining_config = {
+                        "EnableSessionTagChaining": True,
+                    }
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
@@ -1238,6 +1259,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if remote_debug_config is not None:
             train_request["RemoteDebugConfig"] = remote_debug_config
+
+        if session_chaining_config is not None:
+            train_request["SessionChainingConfig"] = session_chaining_config
 
         if retry_strategy is not None:
             train_request["RetryStrategy"] = retry_strategy
