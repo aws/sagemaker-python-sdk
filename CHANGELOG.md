@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.218.1 (2024-05-03)
+
+### Bug Fixes and Other Changes
+
+ * Fix UserAgent logging in Python SDK
+ * chore: release tgi 2.0.1
+ * chore: update skipped flaky tests
+
 ## v2.218.0 (2024-05-01)
 
 ### Features
