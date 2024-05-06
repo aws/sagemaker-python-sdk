@@ -132,6 +132,7 @@ def get_init_kwargs(
     enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
     enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     config_name: Optional[str] = None,
+    enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
 ) -> JumpStartEstimatorInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Estimator` object."""
 
@@ -192,6 +193,7 @@ def get_init_kwargs(
         enable_remote_debug=enable_remote_debug,
         enable_session_tag_chaining=enable_session_tag_chaining,
         config_name=config_name,
+        enable_session_tag_chaining=enable_session_tag_chaining,
     )
 
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)

@@ -1078,7 +1078,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         "resolved_metadata_config",
         "config_name",
         "default_inference_config",
-        "default_incremental_trainig_config",
+        "default_incremental_training_config",
         "supported_inference_configs",
         "supported_incremental_training_configs",
     ]
@@ -1114,7 +1114,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         self.resolved_metadata_config: Optional[Dict[str, Any]] = None
         self.config_name: Optional[str] = config_name
         self.default_inference_config: Optional[str] = config.get("default_inference_config")
-        self.default_incremental_trainig_config: Optional[str] = config.get(
+        self.default_incremental_training_config: Optional[str] = config.get(
             "default_incremental_training_config"
         )
         self.supported_inference_configs: Optional[List[str]] = config.get(
@@ -1776,6 +1776,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "enable_remote_debug",
         "enable_session_tag_chaining",
         "config_name",
+        "enable_session_tag_chaining",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1846,6 +1847,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         config_name: Optional[str] = None,
+        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1907,6 +1909,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_remote_debug = enable_remote_debug
         self.enable_session_tag_chaining = enable_session_tag_chaining
         self.config_name = config_name
+        self.enable_session_tag_chaining = enable_session_tag_chaining
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
