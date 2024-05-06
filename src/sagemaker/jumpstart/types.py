@@ -1097,7 +1097,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
             config (Dict[str, Any]):
                 Dictionary representation of the config.
             base_fields (Dict[str, Any]):
-                The default base fields that are used to construct the resolved config.
+                The default base fields that are used to construct the final resolved config.
             config_components (Dict[str, JumpStartConfigComponent]):
                 The list of components that are used to construct the resolved config.
         """
