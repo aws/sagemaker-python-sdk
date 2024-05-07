@@ -21,6 +21,7 @@ from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
+from sagemaker.serve.utils.predictors import TensorflowServingLocalPredictor
 from sagemaker.serve.utils.types import ModelServer
 from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
@@ -1678,6 +1679,7 @@ class TestModelBuilder(unittest.TestCase):
             model_builder.build(sagemaker_session=mock_session)
 
     @patch("os.makedirs", Mock())
+    @patch("sagemaker.serve.builder.model_builder._maintain_lineage_tracking_for_mlflow_model")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1706,6 +1708,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_lineage_tracking,
     ):
         # setup mocks
 
@@ -1750,6 +1753,11 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.modes, {str(Mode.SAGEMAKER_ENDPOINT): mock_mode})
         self.assertEqual(build_result.serve_settings, mock_setting_object)
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "sklearn")
+
+        build_result.deploy(
+            initial_instance_count=1, instance_type=mock_instance_type, mode=Mode.SAGEMAKER_ENDPOINT
+        )
+        mock_lineage_tracking.assert_called_once()
 
     @patch("os.makedirs", Mock())
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
@@ -1976,6 +1984,7 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     @patch("os.makedirs", Mock())
+    @patch("sagemaker.serve.builder.model_builder._maintain_lineage_tracking_for_mlflow_model")
     @patch("sagemaker.serve.builder.tf_serving_builder.prepare_for_tf_serving")
     @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
@@ -2004,6 +2013,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version,
         mock_s3_downloader,
         mock_prepare_for_tf_serving,
+        mock_lineage_tracking,
     ):
         # setup mocks
         mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
@@ -2049,6 +2059,88 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.modes, {str(Mode.SAGEMAKER_ENDPOINT): mock_mode})
         self.assertEqual(build_result.serve_settings, mock_setting_object)
         self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "tensorflow")
+
+        build_result.deploy(
+            initial_instance_count=1, instance_type=mock_instance_type, mode=Mode.SAGEMAKER_ENDPOINT
+        )
+        mock_lineage_tracking.assert_called_once()
+
+    @patch("os.makedirs", Mock())
+    @patch("sagemaker.serve.builder.tf_serving_builder.prepare_for_tf_serving")
+    @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
+    @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
+    @patch("sagemaker.serve.builder.tf_serving_builder.save_pkl")
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._generate_mlflow_artifact_path")
+    @patch("sagemaker.serve.builder.model_builder._get_all_flavor_metadata")
+    @patch("sagemaker.serve.builder.model_builder._select_container_for_mlflow_model")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.LocalContainerMode")
+    @patch("sagemaker.serve.builder.tf_serving_builder.TensorFlowModel")
+    @patch("builtins.open", new_callable=mock_open, read_data="data")
+    @patch("os.path.exists")
+    def test_build_mlflow_model_s3_input_tensorflow_serving_local_mode_happy(
+        self,
+        mock_path_exists,
+        mock_open,
+        mock_sdk_model,
+        mock_local_container_mode,
+        mock_serveSettings,
+        mock_detect_container,
+        mock_get_all_flavor_metadata,
+        mock_generate_mlflow_artifact_path,
+        mock_download_s3_artifacts,
+        mock_save_pkl,
+        mock_detect_fw_version,
+        mock_s3_downloader,
+        mock_prepare_for_tf_serving,
+    ):
+        # setup mocks
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        mock_detect_container.return_value = mock_image_uri
+        mock_get_all_flavor_metadata.return_value = {"tensorflow": "some_data"}
+        mock_generate_mlflow_artifact_path.return_value = "some_path"
+
+        mock_prepare_for_tf_serving.return_value = mock_secret_key
+
+        # Mock _ServeSettings
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        mock_path_exists.side_effect = lambda path: True if path == "test_path" else False
+
+        mock_mode = Mock()
+        mock_mode.prepare.side_effect = lambda: None
+        mock_local_container_mode.return_value = mock_mode
+        mock_mode.prepare.return_value = (
+            model_data,
+            ENV_VAR_PAIR,
+        )
+
+        updated_env_var = deepcopy(ENV_VARS)
+        updated_env_var.update({"MLFLOW_MODEL_FLAVOR": "tensorflow"})
+        mock_model_obj = Mock()
+        mock_sdk_model.return_value = mock_model_obj
+
+        mock_session.sagemaker_client._user_agent_creator.to_string = lambda: "sample agent"
+
+        # run
+        builder = ModelBuilder(
+            mode=Mode.LOCAL_CONTAINER,
+            schema_builder=schema_builder,
+            model_metadata={"MLFLOW_MODEL_PATH": "s3://test_path/"},
+        )
+        build_result = builder.build(sagemaker_session=mock_session)
+        self.assertEqual(mock_model_obj, build_result)
+        self.assertEqual(build_result.mode, Mode.LOCAL_CONTAINER)
+        self.assertEqual(build_result.modes, {str(Mode.LOCAL_CONTAINER): mock_mode})
+        self.assertEqual(build_result.serve_settings, mock_setting_object)
+        self.assertEqual(builder.env_vars["MLFLOW_MODEL_FLAVOR"], "tensorflow")
+
+        predictor = build_result.deploy()
+        assert isinstance(predictor, TensorflowServingLocalPredictor)
 
     @patch("os.makedirs", Mock())
     @patch("sagemaker.serve.builder.tf_serving_builder.prepare_for_tf_serving")

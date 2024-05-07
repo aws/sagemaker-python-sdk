@@ -22,7 +22,6 @@ from sagemaker.lineage.artifact import ArtifactSummary, Artifact
 from sagemaker.lineage.query import LineageSourceEnum
 
 from sagemaker.serve.utils.lineage_constants import (
-    LINEAGE_POLLER_INTERVAL_SECS,
     MLFLOW_RUN_ID,
     MLFLOW_MODEL_PACKAGE_PATH,
     MLFLOW_S3_PATH,
