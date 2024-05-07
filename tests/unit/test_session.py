@@ -43,8 +43,6 @@ from sagemaker.config import MODEL_CONTAINERS_PATH
 from sagemaker.utils import update_list_of_dicts_with_values_from_config
 from sagemaker.user_agent import (
     SDK_PREFIX,
-    STUDIO_PREFIX,
-    NOTEBOOK_PREFIX,
 )
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from tests.unit import (
@@ -87,15 +85,20 @@ RESOURCES = ResourceRequirements(
     limits={},
 )
 
+SDK_DEFAULT_SUFFIX = f"lib/{SDK_PREFIX}#2.218.0"
+NOTEBOOK_SUFFIX = f"{SDK_DEFAULT_SUFFIX} md/AWS-SageMaker-Notebook-Instance#instance_type"
+STUDIO_SUFFIX = f"{SDK_DEFAULT_SUFFIX} md/AWS-SageMaker-Studio#app_type"
 
-@pytest.fixture()
-def boto_session():
+
+@pytest.fixture
+def boto_session(request):
+    boto_user_agent = "Boto3/1.33.9 md/Botocore#1.33.9 ua/2.0 os/linux#linux-ver md/arch#x86_64 lang/python#3.10.6"
+    user_agent_suffix = getattr(request, "param", "")
     boto_mock = Mock(name="boto_session", region_name=REGION)
-
     client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource"
-    )
+    user_agent = f"{boto_user_agent} {SDK_DEFAULT_SUFFIX} {user_agent_suffix}"
+    with patch("sagemaker.user_agent.get_user_agent_extra_suffix", return_value=user_agent_suffix):
+        client_mock._client_config.user_agent = user_agent
     boto_mock.client.return_value = client_mock
     return boto_mock
 
@@ -887,65 +890,42 @@ def test_delete_model(boto_session):
     boto_session.client().delete_model.assert_called_with(ModelName=model_name)
 
 
+@pytest.mark.parametrize("boto_session", [""], indirect=True)
 def test_user_agent_injected(boto_session):
-    assert SDK_PREFIX not in boto_session.client("sagemaker")._client_config.user_agent
-
     sess = Session(boto_session)
-
+    expected_user_agent_suffix = "lib/AWS-SageMaker-Python-SDK#2.218.0"
     for client in [
         sess.sagemaker_client,
         sess.sagemaker_runtime_client,
         sess.sagemaker_metrics_client,
     ]:
-        assert SDK_PREFIX in client._client_config.user_agent
-        assert NOTEBOOK_PREFIX not in client._client_config.user_agent
-        assert STUDIO_PREFIX not in client._client_config.user_agent
+        assert expected_user_agent_suffix in client._client_config.user_agent
 
 
-@patch("sagemaker.user_agent.process_notebook_metadata_file", return_value="ml.t3.medium")
-def test_user_agent_injected_with_nbi(
-    mock_process_notebook_metadata_file,
-    boto_session,
-):
-    assert SDK_PREFIX not in boto_session.client("sagemaker")._client_config.user_agent
-
-    sess = Session(
-        boto_session=boto_session,
+@pytest.mark.parametrize("boto_session", [f"{NOTEBOOK_SUFFIX}"], indirect=True)
+def test_user_agent_with_notebook_instance_type(boto_session):
+    sess = Session(boto_session)
+    expected_user_agent_suffix = (
+        "lib/AWS-SageMaker-Python-SDK#2.218.0 md/AWS-SageMaker-Notebook-Instance#instance_type"
     )
-
     for client in [
         sess.sagemaker_client,
         sess.sagemaker_runtime_client,
         sess.sagemaker_metrics_client,
     ]:
-        mock_process_notebook_metadata_file.assert_called()
-
-        assert SDK_PREFIX in client._client_config.user_agent
-        assert NOTEBOOK_PREFIX in client._client_config.user_agent
-        assert STUDIO_PREFIX not in client._client_config.user_agent
+        assert expected_user_agent_suffix in client._client_config.user_agent
 
 
-@patch("sagemaker.user_agent.process_studio_metadata_file", return_value="dymmy-app-type")
-def test_user_agent_injected_with_studio_app_type(
-    mock_process_studio_metadata_file,
-    boto_session,
-):
-    assert SDK_PREFIX not in boto_session.client("sagemaker")._client_config.user_agent
-
-    sess = Session(
-        boto_session=boto_session,
-    )
-
+@pytest.mark.parametrize("boto_session", [f"{STUDIO_SUFFIX}"], indirect=True)
+def test_user_agent_with_studio_app_type(boto_session):
+    sess = Session(boto_session)
+    expected_user_agent = "lib/AWS-SageMaker-Python-SDK#2.218.0 md/AWS-SageMaker-Studio#app_type"
     for client in [
         sess.sagemaker_client,
         sess.sagemaker_runtime_client,
         sess.sagemaker_metrics_client,
     ]:
-        mock_process_studio_metadata_file.assert_called()
-
-        assert SDK_PREFIX in client._client_config.user_agent
-        assert NOTEBOOK_PREFIX not in client._client_config.user_agent
-        assert STUDIO_PREFIX in client._client_config.user_agent
+        assert expected_user_agent in client._client_config.user_agent
 
 
 def test_training_input_all_defaults():
