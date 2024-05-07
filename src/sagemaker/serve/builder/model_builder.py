@@ -496,7 +496,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing)
         self.pysdk_model.model_package_arn = new_model_package.model_package_arn
         new_model_package.deploy = self._model_builder_deploy_model_package_wrapper
         self.model_package = new_model_package
-        if getattr(self, "_is_mlflow_model", False):
+        if getattr(self, "_is_mlflow_model", False) and self.mode == Mode.SAGEMAKER_ENDPOINT:
             _maintain_lineage_tracking_for_mlflow_model(
                 mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
                 s3_upload_path=self.s3_upload_path,
@@ -566,7 +566,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing)
             initial_instance_count=initial_instance_count,
             **kwargs,
         )
-        if getattr(self, "_is_mlflow_model", False):
+        if getattr(self, "_is_mlflow_model", False) and self.mode == Mode.SAGEMAKER_ENDPOINT:
             _maintain_lineage_tracking_for_mlflow_model(
                 mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
                 s3_upload_path=self.s3_upload_path,
