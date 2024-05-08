@@ -139,7 +139,7 @@ def test_js_model_with_deployment_configs(
             predictor = model.deploy(accept_eula=True)
             logger.info("Endpoint successfully deployed.")
 
-            updated_sample_input = happy_model_builder.schema_builder.sample_input
+            updated_sample_input = model_builder.schema_builder.sample_input
 
             predictor.predict(updated_sample_input)
         except Exception as e:
