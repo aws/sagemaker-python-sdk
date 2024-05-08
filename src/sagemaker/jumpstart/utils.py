@@ -1127,8 +1127,10 @@ def get_metrics_from_deployment_configs(
     if not deployment_configs:
         return {}
 
-    data = {"Instance Type": [], "Config Name": []}
+    data = {"Instance Type": [], "Concurrent Users": [], "Config Name": []}
     instance_rate_data = {}
+    default_instance_type = None
+    default_index = 0
     for index, deployment_config in enumerate(deployment_configs):
         benchmark_metrics = deployment_config.benchmark_metrics
         if not deployment_config.deployment_args or not benchmark_metrics:
@@ -1136,29 +1138,46 @@ def get_metrics_from_deployment_configs(
 
         for inner_index, current_instance_type in enumerate(benchmark_metrics):
             current_instance_type_metrics = benchmark_metrics[current_instance_type]
+            if index == 0 and current_instance_type == deployment_config.deployment_args.default_instance_type:
+                default_instance_type = current_instance_type
 
-            data["Config Name"].append(deployment_config.deployment_config_name)
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
-                if index == 0
-                and current_instance_type == deployment_config.deployment_args.default_instance_type
+                if default_instance_type
                 else current_instance_type
             )
-            data["Instance Type"].append(instance_type_to_display)
+
+            if current_instance_type == default_instance_type:
+                data["Config Name"].insert(default_index, deployment_config.deployment_config_name)
+                data["Instance Type"].insert(default_index, instance_type_to_display)
+            else:
+                data["Config Name"].append(deployment_config.deployment_config_name)
+                data["Instance Type"].append(instance_type_to_display)
 
             for metric in current_instance_type_metrics:
-                column_name = f"{metric.name} ({metric.unit})"
+                column_name = "Concurrent Users" if "concurrency" in metric.name.lower() else f"{metric.name} ({metric.unit})"
 
                 if metric.name.lower() == "instance rate":
                     if column_name not in instance_rate_data:
                         instance_rate_data[column_name] = []
-                    instance_rate_data[column_name].append(metric.value)
+
+                    if current_instance_type == default_instance_type:
+                        instance_rate_data[column_name].insert(default_index, metric.value)
+                    else:
+                        instance_rate_data[column_name].append(metric.value)
                 else:
                     if column_name not in data:
                         data[column_name] = []
                     for _ in range(len(data[column_name]), inner_index):
                         data[column_name].append(" - ")
-                    data[column_name].append(metric.value)
+
+                    if current_instance_type == default_instance_type:
+                        data[column_name].insert(default_index, metric.value)
+                    else:
+                        data[column_name].append(metric.value)
+
+            if current_instance_type == default_instance_type:
+                default_index += 1
 
     data = {**data, **instance_rate_data}
     return data
