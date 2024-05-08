@@ -1089,6 +1089,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         config: Dict[str, Any],
         base_fields: Dict[str, Any],
         config_components: Dict[str, JumpStartConfigComponent],
+        benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]],
     ):
         """Initializes a JumpStartMetadataConfig object from its json representation.
 
@@ -1100,17 +1101,12 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
                 The default base fields that are used to construct the resolved config.
             config_components (Dict[str, JumpStartConfigComponent]):
                 The list of components that are used to construct the resolved config.
+            benchmark_metrics (Dict[str, List[JumpStartBenchmarkStat]]):
+                The dictionary of benchmark metrics with name being the key.
         """
         self.base_fields = base_fields
         self.config_components: Dict[str, JumpStartConfigComponent] = config_components
-        self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = (
-            {
-                stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
-                for stat_name, stats in config.get("benchmark_metrics").items()
-            }
-            if config and config.get("benchmark_metrics")
-            else None
-        )
+        self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = benchmark_metrics
         self.resolved_metadata_config: Optional[Dict[str, Any]] = None
         self.config_name: Optional[str] = config_name
         self.default_inference_config: Optional[str] = config.get("default_inference_config")
@@ -1188,8 +1184,6 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
     ) -> Optional[JumpStartMetadataConfig]:
         """Gets the best the config based on config ranking.
 
-        Fallback to use the ordering in config names if
-        ranking is not available.
         Args:
             ranking_name (str):
                 The ranking name that config priority is based on.
@@ -1197,8 +1191,13 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
                 The instance type which the config selection is based on.
 
         Raises:
+            ValueError: If the config exists but missing config ranking.
             NotImplementedError: If the scope is unrecognized.
         """
+        if self.configs and (
+            not self.config_rankings or not self.config_rankings.get(ranking_name)
+        ):
+            raise ValueError(f"Config exists but missing config ranking {ranking_name}.")
 
         if self.scope == JumpStartScriptScope.INFERENCE:
             instance_type_attribute = "supported_inference_instance_types"
@@ -1287,6 +1286,14 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                         if config and config.get("component_names")
                         else None
                     ),
+                    (
+                        {
+                            stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
+                            for stat_name, stats in config.get("benchmark_metrics").items()
+                        }
+                        if config and config.get("benchmark_metrics")
+                        else None
+                    ),
                 )
                 for alias, config in json_obj["inference_configs"].items()
             }
@@ -1331,6 +1338,14 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                                 for component_name in config.get("component_names")
                             }
                             if config and config.get("component_names")
+                            else None
+                        ),
+                        (
+                            {
+                                stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
+                                for stat_name, stats in config.get("benchmark_metrics").items()
+                            }
+                            if config and config.get("benchmark_metrics")
                             else None
                         ),
                     )
@@ -1774,7 +1789,6 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "disable_output_compression",
         "enable_infra_check",
         "enable_remote_debug",
-        "config_name",
         "enable_session_tag_chaining",
     ]
 
@@ -1844,7 +1858,6 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         disable_output_compression: Optional[bool] = None,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
-        config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
@@ -1905,7 +1918,6 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.disable_output_compression = disable_output_compression
         self.enable_infra_check = enable_infra_check
         self.enable_remote_debug = enable_remote_debug
-        self.config_name = config_name
         self.enable_session_tag_chaining = enable_session_tag_chaining
 
 

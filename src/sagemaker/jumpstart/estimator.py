@@ -111,7 +111,6 @@ class JumpStartEstimator(Estimator):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
-        config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
@@ -504,8 +503,6 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
-            config_name (Optional[str]):
-                Name of the training configuration to apply to the Estimator. (Default: None).
             enable_session_tag_chaining (bool or PipelineVariable): Optional.
                 Specifies whether SessionTagChaining is enabled for the training job
 
@@ -586,7 +583,6 @@ class JumpStartEstimator(Estimator):
             disable_output_compression=disable_output_compression,
             enable_infra_check=enable_infra_check,
             enable_remote_debug=enable_remote_debug,
-            config_name=config_name,
             enable_session_tag_chaining=enable_session_tag_chaining,
         )
 
@@ -751,9 +747,6 @@ class JumpStartEstimator(Estimator):
             "tolerate_vulnerable_model": True,  # model is already trained
             "tolerate_deprecated_model": True,  # model is already trained
         }
-
-        if config_name:
-            additional_kwargs.update({"config_name": config_name})
 
         model_specs = verify_model_region_and_return_specs(
             model_id=model_id,
