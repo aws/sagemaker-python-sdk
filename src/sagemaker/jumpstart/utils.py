@@ -1143,7 +1143,7 @@ def get_metrics_from_deployment_configs(
 
             instance_type_to_display = (
                 f"{current_instance_type} (Default)"
-                if default_instance_type
+                if index == 0 and current_instance_type == deployment_config.deployment_args.default_instance_type
                 else current_instance_type
             )
 
