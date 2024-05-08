@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import json
+import datetime
 
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -514,6 +515,10 @@ class ListJumpStartModels(TestCase):
             list_old_models=False, list_versions=True
         ) == list_jumpstart_models(list_versions=True)
 
+    @pytest.mark.skipif(
+        datetime.datetime.now() < datetime.datetime(year=2024, month=8, day=1),
+        reason="Contact JumpStart team to fix flaky test.",
+    )
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
     def test_list_jumpstart_models_vulnerable_models(
