@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 from pathlib import PosixPath
+import platform
 from unittest import TestCase
 from unittest.mock import Mock, patch, ANY
 
@@ -66,7 +67,7 @@ class TensorflowservingServerTests(TestCase):
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
-                "LOCAL_PYTHON": "3.10.12",
+                "LOCAL_PYTHON": platform.python_version(),
                 "KEY": "VALUE",
             },
         )

@@ -95,8 +95,7 @@ def _poll_lineage_artifact(
 
 
 def _get_mlflow_model_path_type(mlflow_model_path: str) -> str:
-    """Identify whether the input string is an MLflow run ID, a SageMaker model package ARN,
-    a local path, or an S3 path.
+    """Identify mlflow model path type.
 
     Args:
         mlflow_model_path (str): The string to be identified.
