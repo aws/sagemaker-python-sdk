@@ -154,7 +154,10 @@ def test_happy_tensorflow_sagemaker_endpoint_with_tensorflow_serving(
                 source_uri=model_builder.s3_upload_path, sagemaker_session=sagemaker_session
             ):
                 model_data_artifact = artifact
-            for association in Association.list(destination_arn=model_data_artifact.artifact_arn):
+            for association in Association.list(
+                destination_arn=model_data_artifact.artifact_arn,
+                sagemaker_session=sagemaker_session,
+            ):
                 assert (
                     association.source_type == MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE
                 )
