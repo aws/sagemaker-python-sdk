@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.218.1 (2024-05-03)
+
+### Bug Fixes and Other Changes
+
+ * Fix UserAgent logging in Python SDK
+ * chore: release tgi 2.0.1
+ * chore: update skipped flaky tests
+
+## v2.218.0 (2024-05-01)
+
+### Features
+
+ * set default allow_pickle param to False
+
+### Bug Fixes and Other Changes
+
+ * properly close files in lineage queries and tests
+
+## v2.217.0 (2024-04-24)
+
+### Features
+
+ * support session tag chaining for training job
+
+### Bug Fixes and Other Changes
+
+ * Add Triton v24.03 URI
+ * mainline alt config parsing
+ * Fix tox installs
+ * Add PT 2.2 Graviton Inference DLC
+
 ## v2.216.1 (2024-04-22)
 
 ### Bug Fixes and Other Changes
