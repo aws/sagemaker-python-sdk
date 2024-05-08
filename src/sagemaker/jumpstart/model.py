@@ -465,7 +465,7 @@ class JumpStartModel(Model):
             Benchmark Metrics: Pandas DataFrame object.
         """
         df = pd.DataFrame(self._get_deployment_configs_benchmarks_data())
-        df = df.sort_values(by=['Instance Type', 'Concurrent users'], ascending=False)
+        df = df.sort_values(by=['Instance Type', 'Concurrent Users'], ascending=False)
         return df
 
     def display_benchmark_metrics(self, *args, **kwargs) -> None:
