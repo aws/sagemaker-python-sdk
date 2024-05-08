@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.219.0 (2024-05-08)
+
+### Features
+
+ * allow choosing js payload by alias in private method
+
+### Bug Fixes and Other Changes
+
+ * chore(deps): bump jinja2 from 3.1.3 to 3.1.4 in /requirements/extras
+ * chore(deps): bump tqdm from 4.66.2 to 4.66.3 in /tests/data/serve_resources/mlflow/pytorch
+ * chore(deps): bump jinja2 from 3.1.3 to 3.1.4 in /doc
+ * Updates for SMP v2.3.1
+
+## v2.218.1 (2024-05-03)
+
+### Bug Fixes and Other Changes
+
+ * Fix UserAgent logging in Python SDK
+ * chore: release tgi 2.0.1
+ * chore: update skipped flaky tests
+
+## v2.218.0 (2024-05-01)
+
+### Features
+
+ * set default allow_pickle param to False
+
+### Bug Fixes and Other Changes
+
+ * properly close files in lineage queries and tests
+
 ## v2.217.0 (2024-04-24)
 
 ### Features

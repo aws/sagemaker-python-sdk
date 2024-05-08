@@ -329,9 +329,12 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
         return sorted(list(model_id_version_dict.keys()))
 
     if not list_old_models:
-        model_id_version_dict = {
-            model_id: set([max(versions)]) for model_id, versions in model_id_version_dict.items()
-        }
+        for model_id, versions in model_id_version_dict.items():
+            try:
+                model_id_version_dict.update({model_id: set([max(versions)])})
+            except TypeError:
+                versions = [str(v) for v in versions]
+                model_id_version_dict.update({model_id: set([max(versions)])})
 
     model_id_version_set: Set[Tuple[str, str]] = set()
     for model_id in model_id_version_dict:
