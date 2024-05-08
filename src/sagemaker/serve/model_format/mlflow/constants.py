@@ -22,7 +22,7 @@ DEFAULT_PYTORCH_VERSION = {
 MODEL_PACAKGE_ARN_REGEX = (
     r"^arn:aws:sagemaker:[a-z0-9\-]+:[0-9]{12}:model-package\/[" r"a-zA-Z0-9\-_\/\.]+$"
 )
-MLFLOW_RUN_ID_REGEX = r"^runs:/[a-fA-F0-9]+(/[a-zA-Z0-9_\-\.]+)*$"
+MLFLOW_RUN_ID_REGEX = r"^runs:/[a-zA-Z0-9]+(/[a-zA-Z0-9_-.]+)*$"
 S3_PATH_REGEX = r"^s3:\/\/[a-zA-Z0-9\-_\.]+\/[a-zA-Z0-9\-_\/\.]*$"
 MLFLOW_MODEL_PATH = "MLFLOW_MODEL_PATH"
 MLFLOW_METADATA_FILE = "MLmodel"
