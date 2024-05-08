@@ -67,10 +67,8 @@ def output_handler(data, context):
 
     response_content_type = context.accept_header
     prediction = data.content
-    logger.info(f"Handling prediction in output_handler {data}")
     try:
         prediction_dict = json.loads(prediction.decode("utf-8"))
-        logger.info(f"Handling prediction_dict in output_handler {prediction_dict}")
         if hasattr(schema_builder, "custom_output_translator"):
             return (
                 schema_builder.custom_output_translator.serialize(

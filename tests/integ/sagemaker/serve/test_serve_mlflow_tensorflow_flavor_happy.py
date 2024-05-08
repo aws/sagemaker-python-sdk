@@ -16,6 +16,8 @@ import pytest
 import io
 import numpy as np
 
+from sagemaker.lineage.artifact import Artifact
+from sagemaker.lineage.association import Association
 from sagemaker.s3 import S3Uploader
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
 from sagemaker.serve.builder.schema_builder import SchemaBuilder, CustomPayloadTranslator
@@ -31,6 +33,10 @@ from tests.integ.sagemaker.serve.constants import (
 from tests.integ.timeout import timeout
 from tests.integ.utils import cleanup_model_resources
 import logging
+
+from sagemaker.serve.utils.lineage_constants import (
+    MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +149,17 @@ def test_happy_tensorflow_sagemaker_endpoint_with_tensorflow_serving(
             predictor = model.deploy(instance_type=cpu_instance_type, initial_instance_count=1)
             logger.info("Endpoint successfully deployed.")
             predictor.predict(test_x)
+            model_data_artifact = None
+            for artifact in Artifact.list(
+                source_uri=model_builder.s3_upload_path, sagemaker_session=sagemaker_session
+            ):
+                model_data_artifact = artifact
+            for association in Association.list(destination_arn=model_data_artifact.artifact_arn):
+                assert (
+                    association.source_type == MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE
+                )
+                break
+
         except Exception as e:
             caught_ex = e
         finally:
