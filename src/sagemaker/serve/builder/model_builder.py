@@ -29,6 +29,7 @@ from sagemaker.djl_inference import defaults
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
+from sagemaker.serve.builder.tf_serving_builder import TensorflowServing
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
 from sagemaker.serve.mode.local_container_mode import LocalContainerMode
@@ -59,6 +60,7 @@ from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadat
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
+from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
@@ -89,12 +91,13 @@ supported_model_server = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
+    ModelServer.TENSORFLOW_SERVING,
 }
 
 
-# pylint: disable=attribute-defined-outside-init, disable=E1101
+# pylint: disable=attribute-defined-outside-init, disable=E1101, disable=R0901
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
+class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing):
     """Class that builds a deployable model.
 
     Args:
@@ -493,6 +496,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self.pysdk_model.model_package_arn = new_model_package.model_package_arn
         new_model_package.deploy = self._model_builder_deploy_model_package_wrapper
         self.model_package = new_model_package
+        if getattr(self, "_is_mlflow_model", False) and self.mode == Mode.SAGEMAKER_ENDPOINT:
+            _maintain_lineage_tracking_for_mlflow_model(
+                mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
+                s3_upload_path=self.s3_upload_path,
+                sagemaker_session=self.sagemaker_session,
+            )
         return new_model_package
 
     def _model_builder_deploy_model_package_wrapper(self, *args, **kwargs):
@@ -551,12 +560,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        return self._original_deploy(
+        predictor = self._original_deploy(
             *args,
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
             **kwargs,
         )
+        if getattr(self, "_is_mlflow_model", False) and self.mode == Mode.SAGEMAKER_ENDPOINT:
+            _maintain_lineage_tracking_for_mlflow_model(
+                mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
+                s3_upload_path=self.s3_upload_path,
+                sagemaker_session=self.sagemaker_session,
+            )
+        return predictor
 
     def _overwrite_mode_in_deploy(self, overwrite_mode: str):
         """Mode overwritten by customer during model.deploy()"""
@@ -728,7 +744,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 " for production at this moment."
             )
             self._initialize_for_mlflow()
-            _validate_input_for_mlflow(self.model_server)
+            _validate_input_for_mlflow(self.model_server, self.env_vars.get("MLFLOW_MODEL_FLAVOR"))
 
         if isinstance(self.model, str):
             model_task = None
@@ -766,6 +782,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         if self.model_server == ModelServer.TRITON:
             return self._build_for_triton()
+
+        if self.model_server == ModelServer.TENSORFLOW_SERVING:
+            return self._build_for_tensorflow_serving()
 
         raise ValueError("%s model server is not supported" % self.model_server)
 
