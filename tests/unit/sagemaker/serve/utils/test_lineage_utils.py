@@ -29,6 +29,7 @@ from sagemaker.serve.utils.lineage_constants import (
     LINEAGE_POLLER_MAX_TIMEOUT_SECS,
     MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
     CONTRIBUTED_TO,
+    MLFLOW_REGISTRY_PATH,
 )
 from sagemaker.serve.utils.lineage_utils import (
     _load_artifact_by_source_uri,
@@ -129,7 +130,8 @@ def test_poll_lineage_artifact_not_found(mock_load_artifact):
 @pytest.mark.parametrize(
     "mlflow_model_path, expected_output",
     [
-        ("runs:/abc123/my_model", MLFLOW_RUN_ID),
+        ("runs:/abc123", MLFLOW_RUN_ID),
+        ("models:/my-model/1", MLFLOW_REGISTRY_PATH),
         (
             "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model-package",
             MLFLOW_MODEL_PACKAGE_PATH,
@@ -161,7 +163,7 @@ def test_get_mlflow_model_path_type_invalid():
 def test_create_mlflow_model_path_lineage_artifact_success(
     mock_artifact_create, mock_get_mlflow_path_type
 ):
-    mlflow_model_path = "runs:/Ab12Cd34/my_experiment/model_version_1.2.3"
+    mlflow_model_path = "runs:/Ab12Cd34"
     sagemaker_session = Mock(spec=Session)
     mock_artifact = Mock(spec=Artifact)
     mock_get_mlflow_path_type.return_value = "mlflow_run_id"
@@ -185,7 +187,7 @@ def test_create_mlflow_model_path_lineage_artifact_success(
 def test_create_mlflow_model_path_lineage_artifact_validation_exception(
     mock_artifact_create, mock_get_mlflow_path_type
 ):
-    mlflow_model_path = "runs:/Ab12Cd34/my_experiment/model_version_1.2.3"
+    mlflow_model_path = "runs:/Ab12Cd34"
     sagemaker_session = Mock(spec=Session)
     mock_get_mlflow_path_type.return_value = "mlflow_run_id"
     mock_artifact_create.side_effect = ClientError(
@@ -202,7 +204,7 @@ def test_create_mlflow_model_path_lineage_artifact_validation_exception(
 def test_create_mlflow_model_path_lineage_artifact_other_exception(
     mock_artifact_create, mock_get_mlflow_path_type
 ):
-    mlflow_model_path = "runs:/Ab12Cd34/my_experiment/model_version_1.2.3"
+    mlflow_model_path = "runs:/Ab12Cd34"
     sagemaker_session = Mock(spec=Session)
     mock_get_mlflow_path_type.return_value = "mlflow_run_id"
     mock_artifact_create.side_effect = ClientError(
@@ -218,7 +220,7 @@ def test_create_mlflow_model_path_lineage_artifact_other_exception(
 def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_existing(
     mock_load_artifact, mock_create_artifact
 ):
-    mlflow_model_path = "runs:/Ab12Cd34/my_experiment/model_version_1.2.3"
+    mlflow_model_path = "runs:/Ab12Cd34"
     sagemaker_session = Mock(spec=Session)
     mock_artifact_summary = Mock(spec=ArtifactSummary)
     mock_load_artifact.return_value = mock_artifact_summary
@@ -239,7 +241,7 @@ def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_exi
 def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_create(
     mock_load_artifact, mock_create_artifact
 ):
-    mlflow_model_path = "runs:/Ab12Cd34/my_experiment/model_version_1.2.3"
+    mlflow_model_path = "runs:/Ab12Cd34"
     sagemaker_session = Mock(spec=Session)
     mock_artifact = Mock(spec=Artifact)
     mock_load_artifact.return_value = None
@@ -318,7 +320,7 @@ def test_add_association_between_artifacts_other_exception(mock_association_crea
 def test_maintain_lineage_tracking_for_mlflow_model_success(
     mock_add_association, mock_retrieve_create_artifact, mock_poll_artifact
 ):
-    mlflow_model_path = "runs:/Ab12Cd34/my_experiment/model_version_1.2.3"
+    mlflow_model_path = "runs:/Ab12Cd34"
     s3_upload_path = "s3://mybucket/path/to/model"
     sagemaker_session = Mock(spec=Session)
     mock_model_data_artifact = Mock(spec=ArtifactSummary)
@@ -353,7 +355,7 @@ def test_maintain_lineage_tracking_for_mlflow_model_success(
 def test_maintain_lineage_tracking_for_mlflow_model_no_model_data_artifact(
     mock_add_association, mock_retrieve_create_artifact, mock_poll_artifact
 ):
-    mlflow_model_path = "runs:/Ab12Cd34/my_experiment/model_version_1.2.3"
+    mlflow_model_path = "runs:/Ab12Cd34"
     s3_upload_path = "s3://mybucket/path/to/model"
     sagemaker_session = Mock(spec=Session)
     mock_poll_artifact.return_value = None

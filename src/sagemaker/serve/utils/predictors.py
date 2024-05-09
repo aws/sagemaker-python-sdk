@@ -210,7 +210,7 @@ class TransformersLocalModePredictor(PredictorBase):
 
 
 class TensorflowServingLocalPredictor(PredictorBase):
-    """Lightweight predictor for local deployment in IN_PROCESS and LOCAL_CONTAINER modes"""
+    """Lightweight predictor for local deployment in LOCAL_CONTAINER modes"""
 
     # TODO: change mode_obj to union of IN_PROCESS and LOCAL_CONTAINER objs
     def __init__(

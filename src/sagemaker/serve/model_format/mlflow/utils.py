@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from pathlib import Path
-from typing import Optional, Dict, Any, NoReturn, Union
+from typing import Optional, Dict, Any, Union
 import yaml
 import logging
 import shutil
@@ -438,15 +438,13 @@ def _get_saved_model_path_for_tensorflow_and_keras_flavor(model_path: str) -> Op
     return None
 
 
-def _move_contents(src_dir: Union[str, Path], dest_dir: Union[str, Path]) -> NoReturn:
+def _move_contents(src_dir: Union[str, Path], dest_dir: Union[str, Path]) -> None:
     """Moves all contents of a source directory to a specified destination directory.
 
     Args:
         src_dir (Union[str, Path]): The path to the source directory.
         dest_dir (Union[str, Path]): The path to the destination directory.
 
-    Returns:
-        NoReturn: This function does not return anything.
     """
     _src_dir = Path(os.path.normpath(src_dir))
     _dest_dir = Path(os.path.normpath(dest_dir))

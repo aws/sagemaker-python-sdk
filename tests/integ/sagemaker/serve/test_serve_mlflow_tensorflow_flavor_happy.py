@@ -172,9 +172,4 @@ def test_happy_tensorflow_sagemaker_endpoint_with_tensorflow_serving(
                 endpoint_name=model.endpoint_name,
             )
             if caught_ex:
-                logger.exception(caught_ex)
-                ignore_if_worker_dies = "Worker died." in str(caught_ex)
-                # https://github.com/pytorch/serve/issues/3032
-                assert (
-                    ignore_if_worker_dies
-                ), f"{caught_ex} was thrown when running pytorch squeezenet sagemaker endpoint test"
+                raise caught_ex

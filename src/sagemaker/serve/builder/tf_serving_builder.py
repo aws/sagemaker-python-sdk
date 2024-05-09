@@ -54,11 +54,11 @@ class TensorflowServing(ABC):
 
     @abstractmethod
     def _prepare_for_mode(self):
-        """Placeholder docstring"""
+        """Prepare model artifacts based on mode."""
 
     @abstractmethod
     def _get_client_translators(self):
-        """Placeholder docstring"""
+        """Set up client marshaller based on schema builder."""
 
     def _save_schema_builder(self):
         """Save schema builder for tensorflow serving."""
@@ -71,7 +71,7 @@ class TensorflowServing(ABC):
     def _get_tensorflow_predictor(
         self, endpoint_name: str, sagemaker_session: Session
     ) -> TensorFlowPredictor:
-        """Placeholder docstring"""
+        """Creates a TensorFlowPredictor object"""
         serializer, deserializer = self._get_client_translators()
 
         return TensorFlowPredictor(
@@ -87,8 +87,7 @@ class TensorflowServing(ABC):
             raise ValueError("Tensorflow Serving is currently only supported for mlflow models.")
 
     def _create_tensorflow_model(self):
-        """Placeholder docstring"""
-        # TODO: we should create model as per the framework
+        """Creates a TensorFlow model object"""
         self.pysdk_model = TensorFlowModel(
             image_uri=self.image_uri,
             image_config=self.image_config,
@@ -100,14 +99,10 @@ class TensorflowServing(ABC):
             predictor_cls=self._get_tensorflow_predictor,
         )
 
-        # store the modes in the model so that we may
-        # reference the configurations for local deploy() & predict()
         self.pysdk_model.mode = self.mode
         self.pysdk_model.modes = self.modes
         self.pysdk_model.serve_settings = self.serve_settings
 
-        # dynamically generate a method to direct model.deploy() logic based on mode
-        # unique method to models created via ModelBuilder()
         self._original_deploy = self.pysdk_model.deploy
         self.pysdk_model.deploy = self._model_builder_deploy_wrapper
         self._original_register = self.pysdk_model.register

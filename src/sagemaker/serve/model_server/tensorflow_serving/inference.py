@@ -89,7 +89,6 @@ def _run_preflight_diagnostics():
 
 
 def _py_vs_parity_check():
-    logger.info("Setting up py_vs_parity_check....")
     container_py_vs = platform.python_version()
     local_py_vs = os.getenv("LOCAL_PYTHON")
 
@@ -101,7 +100,6 @@ def _py_vs_parity_check():
 
 
 def _pickle_file_integrity_check():
-    logger.info("Setting up pickle_file_integrity_check....")
     with open(SERVE_PATH, "rb") as f:
         buffer = f.read()
 
@@ -111,7 +109,6 @@ def _pickle_file_integrity_check():
 def _set_up_schema_builder():
     """Sets up the schema_builder object."""
     global schema_builder
-    logger.info("Setting up schema builder....")
     with open(SERVE_PATH, "rb") as f:
         schema_builder = cloudpickle.load(f)
 
