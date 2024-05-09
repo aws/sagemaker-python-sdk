@@ -19,6 +19,12 @@ DEFAULT_PYTORCH_VERSION = {
     "py39": "1.13.1",
     "py310": "2.2.0",
 }
+MODEL_PACAKGE_ARN_REGEX = (
+    r"^arn:aws:sagemaker:[a-z0-9\-]+:[0-9]{12}:model-package\/[" r"a-zA-Z0-9\-_\/\.]+$"
+)
+MLFLOW_RUN_ID_REGEX = r"^runs:/[a-zA-Z0-9]+(/[a-zA-Z0-9]+)*$"
+MLFLOW_REGISTRY_PATH_REGEX = r"^models:/[a-zA-Z0-9\-_\.]+(/[0-9]+)*$"
+S3_PATH_REGEX = r"^s3:\/\/[a-zA-Z0-9\-_\.]+\/[a-zA-Z0-9\-_\/\.]*$"
 MLFLOW_MODEL_PATH = "MLFLOW_MODEL_PATH"
 MLFLOW_METADATA_FILE = "MLmodel"
 MLFLOW_PIP_DEPENDENCY_FILE = "requirements.txt"
@@ -34,8 +40,12 @@ MLFLOW_FLAVOR_TO_PYTHON_PACKAGE_MAP = {
     "spark": "pyspark",
     "onnx": "onnxruntime",
 }
-FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT = [  # will extend to keras and tf
-    "sklearn",
-    "pytorch",
-    "xgboost",
-]
+TENSORFLOW_SAVED_MODEL_NAME = "saved_model.pb"
+FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT = {
+    "sklearn": "sklearn",
+    "pytorch": "pytorch",
+    "xgboost": "xgboost",
+    "tensorflow": "tensorflow",
+    "keras": "tensorflow",
+}
+FLAVORS_DEFAULT_WITH_TF_SERVING = ["keras", "tensorflow"]

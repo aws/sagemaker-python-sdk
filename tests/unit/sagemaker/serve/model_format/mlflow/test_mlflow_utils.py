@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
 import pytest
@@ -21,6 +22,7 @@ import yaml
 from sagemaker.serve import ModelServer
 from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_PYFUNC,
+    TENSORFLOW_SAVED_MODEL_NAME,
 )
 from sagemaker.serve.model_format.mlflow.utils import (
     _get_default_model_server_for_mlflow,
@@ -35,6 +37,8 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _select_container_for_mlflow_model,
     _validate_input_for_mlflow,
     _copy_directory_contents,
+    _move_contents,
+    _get_saved_model_path_for_tensorflow_and_keras_flavor,
 )
 
 
@@ -415,10 +419,15 @@ def test_select_container_for_mlflow_model_no_dlc_detected(
 
 
 def test_validate_input_for_mlflow():
-    _validate_input_for_mlflow(ModelServer.TORCHSERVE)
+    _validate_input_for_mlflow(ModelServer.TORCHSERVE, "pytorch")
 
     with pytest.raises(ValueError):
-        _validate_input_for_mlflow(ModelServer.DJL_SERVING)
+        _validate_input_for_mlflow(ModelServer.DJL_SERVING, "pytorch")
+
+
+def test_validate_input_for_mlflow_non_supported_flavor_with_tf_serving():
+    with pytest.raises(ValueError):
+        _validate_input_for_mlflow(ModelServer.TENSORFLOW_SERVING, "pytorch")
 
 
 @patch("sagemaker.serve.model_format.mlflow.utils.shutil.copy2")
@@ -472,3 +481,68 @@ def test_copy_directory_contents_handles_same_src_dst(
     mock_os_walk.assert_not_called()
     mock_os_makedirs.assert_not_called()
     mock_shutil_copy2.assert_not_called()
+
+
+@patch("os.path.abspath")
+@patch("os.walk")
+def test_get_saved_model_path_found(mock_os_walk, mock_os_abspath):
+    mock_os_walk.return_value = [
+        ("/root/folder1", ("subfolder",), ()),
+        ("/root/folder1/subfolder", (), (TENSORFLOW_SAVED_MODEL_NAME,)),
+    ]
+    expected_path = "/root/folder1/subfolder"
+    mock_os_abspath.return_value = expected_path
+
+    # Call the function
+    result = _get_saved_model_path_for_tensorflow_and_keras_flavor("/root/folder1")
+
+    # Assertions
+    mock_os_walk.assert_called_once_with("/root/folder1")
+    mock_os_abspath.assert_called_once_with("/root/folder1/subfolder")
+    assert result == expected_path
+
+
+@patch("os.path.abspath")
+@patch("os.walk")
+def test_get_saved_model_path_not_found(mock_os_walk, mock_os_abspath):
+    mock_os_walk.return_value = [
+        ("/root/folder2", ("subfolder",), ()),
+        ("/root/folder2/subfolder", (), ("not_saved_model.pb",)),
+    ]
+
+    result = _get_saved_model_path_for_tensorflow_and_keras_flavor("/root/folder2")
+
+    mock_os_walk.assert_called_once_with("/root/folder2")
+    mock_os_abspath.assert_not_called()
+    assert result is None
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.move")
+@patch("sagemaker.serve.model_format.mlflow.utils.Path.iterdir")
+@patch("sagemaker.serve.model_format.mlflow.utils.Path.mkdir")
+def test_move_contents_handles_same_src_dst(mock_mkdir, mock_iterdir, mock_shutil_move):
+    src_dir = "/fake/source/dir"
+    dest_dir = "/fake/source/./dir"
+
+    mock_iterdir.return_value = []
+
+    _move_contents(src_dir, dest_dir)
+
+    mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+    mock_shutil_move.assert_not_called()
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.move")
+@patch("sagemaker.serve.model_format.mlflow.utils.Path.iterdir")
+@patch("sagemaker.serve.model_format.mlflow.utils.Path.mkdir")
+def test_move_contents_with_actual_files(mock_mkdir, mock_iterdir, mock_shutil_move):
+    src_dir = Path("/fake/source/dir")
+    dest_dir = Path("/fake/destination/dir")
+
+    file_path = src_dir / "testfile.txt"
+    mock_iterdir.return_value = [file_path]
+
+    _move_contents(src_dir, dest_dir)
+
+    mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+    mock_shutil_move.assert_called_once_with(str(file_path), str(dest_dir / "testfile.txt"))
