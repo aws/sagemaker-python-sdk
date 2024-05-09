@@ -13,7 +13,8 @@
 """Holds the util functions used for MLflow model format"""
 from __future__ import absolute_import
 
-from typing import Optional, Dict, Any
+from pathlib import Path
+from typing import Optional, Dict, Any, Union
 import yaml
 import logging
 import shutil
@@ -30,6 +31,8 @@ from sagemaker.serve.model_format.mlflow.constants import (
     DEFAULT_PYTORCH_VERSION,
     MLFLOW_METADATA_FILE,
     MLFLOW_PIP_DEPENDENCY_FILE,
+    FLAVORS_DEFAULT_WITH_TF_SERVING,
+    TENSORFLOW_SAVED_MODEL_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,7 +47,8 @@ def _get_default_model_server_for_mlflow(deployment_flavor: str) -> ModelServer:
     Returns:
         str: The model server chosen for given model flavor.
     """
-    # TODO: implement real logic here based on mlflow flavor
+    if deployment_flavor in FLAVORS_DEFAULT_WITH_TF_SERVING:
+        return ModelServer.TENSORFLOW_SERVING
     return ModelServer.TORCHSERVE
 
 
@@ -344,15 +348,16 @@ def _select_container_for_mlflow_model(
             f"specific DLC support. Defaulting to generic image..."
         )
         return _get_default_image_for_mlflow(python_version, region, instance_type)
-    framework_version = _get_framework_version_from_requirements(
-        deployment_flavor, requirement_path
-    )
+
+    framework_to_use = FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT.get(deployment_flavor)
+    framework_version = _get_framework_version_from_requirements(framework_to_use, requirement_path)
 
     logger.info("Auto-detected deployment flavor is %s", deployment_flavor)
+    logger.info("Auto-detected framework to use is %s", framework_to_use)
     logger.info("Auto-detected framework version is %s", framework_version)
 
     casted_versions = (
-        _cast_to_compatible_version(deployment_flavor, framework_version)
+        _cast_to_compatible_version(framework_to_use, framework_version)
         if framework_version
         else (None,)
     )
@@ -361,7 +366,7 @@ def _select_container_for_mlflow_model(
     for casted_version in casted_versions:
         try:
             image_uri = image_uris.retrieve(
-                framework=deployment_flavor,
+                framework=framework_to_use,
                 region=region,
                 version=casted_version,
                 image_scope="inference",
@@ -392,17 +397,60 @@ def _select_container_for_mlflow_model(
     )
 
 
-def _validate_input_for_mlflow(model_server: ModelServer) -> None:
+def _validate_input_for_mlflow(model_server: ModelServer, deployment_flavor: str) -> None:
     """Validates arguments provided with mlflow models.
 
     Args:
         - model_server (ModelServer): Model server used for orchestrating mlflow model.
+        - deployment_flavor (str): The flavor mlflow model will be deployed with.
 
     Raises:
     - ValueError: If model server is not torchserve.
     """
-    if model_server != ModelServer.TORCHSERVE:
+    if model_server != ModelServer.TORCHSERVE and model_server != ModelServer.TENSORFLOW_SERVING:
         raise ValueError(
             f"{model_server} is currently not supported for MLflow Model. "
             f"Please choose another model server."
         )
+    if (
+        model_server == ModelServer.TENSORFLOW_SERVING
+        and deployment_flavor not in FLAVORS_DEFAULT_WITH_TF_SERVING
+    ):
+        raise ValueError(
+            "Tensorflow Serving is currently only supported for the following "
+            "deployment flavors: {}".format(FLAVORS_DEFAULT_WITH_TF_SERVING)
+        )
+
+
+def _get_saved_model_path_for_tensorflow_and_keras_flavor(model_path: str) -> Optional[str]:
+    """Recursively searches for tensorflow saved model.
+
+    Args:
+        model_path (str): The root directory to start the search from.
+
+    Returns:
+        Optional[str]: The absolute path to the directory containing 'saved_model.pb'.
+    """
+    for dirpath, dirnames, filenames in os.walk(model_path):
+        if TENSORFLOW_SAVED_MODEL_NAME in filenames:
+            return os.path.abspath(dirpath)
+
+    return None
+
+
+def _move_contents(src_dir: Union[str, Path], dest_dir: Union[str, Path]) -> None:
+    """Moves all contents of a source directory to a specified destination directory.
+
+    Args:
+        src_dir (Union[str, Path]): The path to the source directory.
+        dest_dir (Union[str, Path]): The path to the destination directory.
+
+    """
+    _src_dir = Path(os.path.normpath(src_dir))
+    _dest_dir = Path(os.path.normpath(dest_dir))
+
+    _dest_dir.mkdir(parents=True, exist_ok=True)
+
+    for item in _src_dir.iterdir():
+        _dest_path = _dest_dir / item.name
+        shutil.move(str(item), str(_dest_path))
