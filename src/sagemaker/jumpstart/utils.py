@@ -1155,26 +1155,28 @@ def get_metrics_from_deployment_configs(
                 data["Instance Type"].append(instance_type_to_display)
 
             for metric in current_instance_type_metrics:
-                column_name = "Concurrent Users" if "concurrency" in metric.name.lower() else f"{metric.name} ({metric.unit})"
+                column_name = f"{metric.name} ({metric.unit})"
 
                 if metric.name.lower() == "instance rate":
-                    if column_name not in instance_rate_data:
-                        instance_rate_data[column_name] = []
+                    instance_rate_data[column_name] = instance_rate_data.get(column_name, [])
 
                     if current_instance_type == default_instance_type:
                         instance_rate_data[column_name].insert(default_index, metric.value)
+                        instance_rate_data["Concurrent Users"].insert(default_index, metric.concurrency)
                     else:
                         instance_rate_data[column_name].append(metric.value)
+                        instance_rate_data["Concurrent Users"].append(metric.concurrency)
                 else:
-                    if column_name not in data:
-                        data[column_name] = []
+                    data[column_name] = data.get(column_name, [])
                     for _ in range(len(data[column_name]), inner_index):
                         data[column_name].append(" - ")
 
                     if current_instance_type == default_instance_type:
                         data[column_name].insert(default_index, metric.value)
+                        instance_rate_data["Concurrent Users"].insert(default_index, metric.concurrency)
                     else:
                         data[column_name].append(metric.value)
+                        instance_rate_data["Concurrent Users"].append(metric.concurrency)
 
             if current_instance_type == default_instance_type:
                 default_index += 1

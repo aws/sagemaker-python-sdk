@@ -746,7 +746,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 class JumpStartBenchmarkStat(JumpStartDataHolderType):
     """Data class JumpStart benchmark stat."""
 
-    __slots__ = ["name", "value", "unit"]
+    __slots__ = ["name", "value", "unit", "concurrency"]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartBenchmarkStat object.
@@ -765,6 +765,7 @@ class JumpStartBenchmarkStat(JumpStartDataHolderType):
         self.name: str = json_obj["name"]
         self.value: str = json_obj["value"]
         self.unit: Union[int, str] = json_obj["unit"]
+        self.concurrency: Union[int, str] = json_obj["concurrency"]
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartBenchmarkStat object."""
