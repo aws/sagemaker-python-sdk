@@ -36,7 +36,7 @@ def test_model_builder_happy_path_with_only_model_id_text_generation(sagemaker_s
     model_builder = ModelBuilder(model="HuggingFaceH4/zephyr-7b-beta")
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
-    sagemaker_session.settings.local_download_dir = None
+    sagemaker_session.settings._local_download_dir = None
 
     assert model is not None
     assert model_builder.schema_builder is not None
@@ -90,7 +90,7 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
     )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
-    sagemaker_session.settings.local_download_dir = None
+    sagemaker_session.settings._local_download_dir = None
 
     assert model is not None
     assert model_builder.schema_builder is not None
@@ -166,7 +166,7 @@ def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
         instance_type=instance_type_provided,
     )
     model = model_builder.build(sagemaker_session=sagemaker_session)
-    sagemaker_session.settings.local_download_dir = None
+    sagemaker_session.settings._local_download_dir = None
 
     assert model is not None
     assert model_builder.schema_builder is not None
@@ -222,7 +222,7 @@ def test_model_builder_with_task_provided_remote_schema_mode_asr(
         instance_type=instance_type_provided,
     )
     model = model_builder.build(sagemaker_session=sagemaker_session)
-    sagemaker_session.settings.local_download_dir = None
+    sagemaker_session.settings._local_download_dir = None
 
     assert model is not None
     assert model_builder.schema_builder is not None

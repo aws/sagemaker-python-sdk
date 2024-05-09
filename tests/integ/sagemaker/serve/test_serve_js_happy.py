@@ -55,7 +55,7 @@ def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
     model = happy_model_builder.build()
-    happy_model_builder.sagemaker_session.settings.local_download_dir = None
+    happy_model_builder.sagemaker_session.settings._local_download_dir = None
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:

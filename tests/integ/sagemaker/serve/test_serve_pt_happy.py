@@ -205,7 +205,7 @@ def test_happy_pytorch_sagemaker_endpoint(
     model = model_builder.build(
         mode=Mode.SAGEMAKER_ENDPOINT, role_arn=role_arn, sagemaker_session=sagemaker_session
     )
-    sagemaker_session.settings.local_download_dir = None
+    sagemaker_session.settings._local_download_dir = None
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
