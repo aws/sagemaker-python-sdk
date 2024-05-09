@@ -96,6 +96,8 @@ def test_non_text_generation_model_single_GPU(
     iam_client = sagemaker_session.boto_session.client("iam")
     role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
     model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
+    sagemaker_session.settings.local_download_dir = None
+
     caught_ex = None
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
@@ -148,6 +150,8 @@ def test_non_text_generation_model_multi_GPU(
     role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
     caught_ex = None
     model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
+    sagemaker_session.settings.local_download_dir = None
+
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Running in SAGEMAKER_ENDPOINT mode")

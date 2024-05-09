@@ -180,6 +180,7 @@ def test_happy_xgboost_sagemaker_endpoint_with_torch_serve(
     )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
+    sagemaker_session.settings.local_download_dir = None
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
