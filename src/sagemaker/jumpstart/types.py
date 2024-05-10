@@ -762,6 +762,9 @@ class JumpStartBenchmarkStat(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of benchmark stats.
         """
+        print("***********JumpStartBenchmarkStat***************")
+        print(json_obj)
+        print("*****************************************")
         self.name: str = json_obj["name"]
         self.value: str = json_obj["value"]
         self.unit: Union[int, str] = json_obj["unit"]
