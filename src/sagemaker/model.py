@@ -14,13 +14,14 @@
 # pylint: skip-file
 from __future__ import absolute_import
 
+import attr
 import abc
 import json
 import logging
 import os
 import re
 import copy
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 
 import sagemaker
 from sagemaker import (
@@ -2370,3 +2371,41 @@ class ModelPackage(Model):
         )
 
         sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
+
+
+@attr.s
+class ModelPackageGroup:
+    """ModelPackageGroup definition.
+
+    This class instantiates a ModelPackageGroup object.
+
+    Attributes:
+        name (str): name of the ModelPackageGroup instance.
+        description (str): name of the ModelPackageGroup instance.
+        sagemaker_session (Session): session instance to perform boto calls.
+            If None, a new Session will be created.
+    """
+
+    name: str = attr.ib()
+    sagemaker_session: Session = attr.ib(factory=Session)
+    description: Optional[str] = attr.ib(default=None)
+
+    def create(self, tags: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
+        """Create a ModelPackageGroup"""
+        kwargs = {"ModelPackageGroupName": self.name}
+        if self.description:
+            kwargs["ModelPackageGroupDescription"] = self.description
+        if tags:
+            kwargs["Tags"] = tags
+
+        return self.sagemaker_session.sagemaker_client.create_model_package_group(**kwargs)
+
+    def describe(self) -> Dict[str, Any]:
+        """Describe a ModelPackageGroup."""
+        return self.sagemaker_session.sagemaker_client.describe_model_package_group(
+            model_package_group_name=self.name,
+        )
+
+    def delete(self):
+        """Delete a ModelPackageGroup."""
+        self.sagemaker_session.sagemaker_client.delete_model_package_group(ModelPackageGroupName=self.name)
