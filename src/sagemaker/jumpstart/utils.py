@@ -1160,12 +1160,12 @@ def get_metrics_from_deployment_configs(
                 )
 
                 instance_rate_column_name = f"{instance_type_rate.name} ({instance_type_rate.unit})"
-                data[instance_rate_column_name] = data.get(instance_rate_column_name, [])
+                instance_rate_data[instance_rate_column_name] = data.get(instance_rate_column_name, [])
 
                 data["Config Name"].append(deployment_config.deployment_config_name)
                 data["Instance Type"].append(instance_type_to_display)
                 data["Concurrent Users"].append(concurrent_user)
-                data[instance_rate_column_name].append(instance_type_rate.value)
+                instance_rate_data[instance_rate_column_name].append(instance_type_rate.value)
 
                 # if current_instance_type == default_instance_type:
                 #     data["Config Name"].insert(default_index, deployment_config.deployment_config_name)
