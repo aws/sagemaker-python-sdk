@@ -1731,9 +1731,6 @@ def get_instance_rate_per_hour(
         ],
     )
 
-    print("*****************")
-    print(res)
-
     price_list = res.get("PriceList", [])
     if len(price_list) > 0:
         price_data = price_list[0]

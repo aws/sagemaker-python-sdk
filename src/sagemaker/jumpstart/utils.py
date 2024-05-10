@@ -1084,19 +1084,14 @@ def add_instance_rate_stats_to_benchmark_metrics(
 
                 if not benchmark_metric_stats:
                     benchmark_metric_stats = []
-                benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
+                benchmark_metric_stats.append(JumpStartBenchmarkStat({'concurrency': None, **instance_type_rate}))
 
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
-
-                print("Instance type rate")
-                print(instance_type_rate)
             except ClientError as e:
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
                 err_message = e.response["Error"]
-            except Exception as e:  # pylint: disable=W0703
-                print("Error")
+            except Exception:  # pylint: disable=W0703
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
-                raise e
         else:
             final_benchmark_metrics[instance_type] = benchmark_metric_stats
 
