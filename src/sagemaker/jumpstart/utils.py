@@ -1137,15 +1137,17 @@ def get_metrics_from_deployment_configs(
         for inner_index, current_instance_type in enumerate(benchmark_metrics):
             current_instance_type_metrics = benchmark_metrics[current_instance_type]
 
-            instance_type_rate = None
-            concurrent_users = dict()
-            for current_instance_type_metric in current_instance_type_metrics:
-                if current_instance_type_metric.name.lower() == "instance rate":
-                    instance_type_rate = current_instance_type_metric
-                elif current_instance_type_metric.concurrency not in concurrent_users:
-                    concurrent_users[current_instance_type_metric.concurrency] = [current_instance_type_metric]
-                else:
-                    concurrent_users[current_instance_type_metric.concurrency].append(current_instance_type_metric)
+            # instance_type_rate = None
+            # concurrent_users = dict()
+            # for current_instance_type_metric in current_instance_type_metrics:
+            #     if current_instance_type_metric.name.lower() == "instance rate":
+            #         instance_type_rate = current_instance_type_metric
+            #     elif current_instance_type_metric.concurrency not in concurrent_users:
+            #         concurrent_users[current_instance_type_metric.concurrency] = [current_instance_type_metric]
+            #     else:
+            #         concurrent_users[current_instance_type_metric.concurrency].append(current_instance_type_metric)
+
+            instance_type_rate, concurrent_users = _normalize_benchmark_metrics(current_instance_type_metrics)
 
             for concurrent_user, metrics in concurrent_users.items():
                 instance_type_to_display = (
@@ -1173,6 +1175,23 @@ def get_metrics_from_deployment_configs(
     print(data)
     print("****************")
     return data
+
+
+def _normalize_benchmark_metrics(
+        benchmark_metric_stats: List[JumpStartBenchmarkStat]
+) -> Tuple[JumpStartBenchmarkStat, Dict[str, List[JumpStartBenchmarkStat]]]:
+
+    instance_type_rate = None
+    concurrent_users = {}
+    for current_instance_type_metric in benchmark_metric_stats:
+        if current_instance_type_metric.name.lower() == "instance rate":
+            instance_type_rate = current_instance_type_metric
+        elif current_instance_type_metric.concurrency not in concurrent_users:
+            concurrent_users[current_instance_type_metric.concurrency] = [current_instance_type_metric]
+        else:
+            concurrent_users[current_instance_type_metric.concurrency].append(current_instance_type_metric)
+
+    return instance_type_rate, concurrent_users
 
 
 def deployment_config_response_data(
