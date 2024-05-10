@@ -1077,6 +1077,7 @@ def add_instance_rate_stats_to_benchmark_metrics(
         if not has_instance_rate_stat(benchmark_metric_stats) and not err_message:
             print("Here")
             try:
+                print(instance_type)
                 instance_type_rate = get_instance_rate_per_hour(
                     instance_type=instance_type, region=region
                 )
@@ -1092,7 +1093,9 @@ def add_instance_rate_stats_to_benchmark_metrics(
             except ClientError as e:
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
                 err_message = e.response["Error"]
-            except Exception:  # pylint: disable=W0703
+            except Exception as e:  # pylint: disable=W0703
+                print("Error")
+                print(e)
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
         else:
             final_benchmark_metrics[instance_type] = benchmark_metric_stats
