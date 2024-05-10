@@ -724,8 +724,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing)
             self.role_arn = role_arn
         self.sagemaker_session = sagemaker_session or Session()
 
-        self.sagemaker_session.settings._local_download_dir = self.model_path
-
         # https://github.com/boto/botocore/blob/develop/botocore/useragent.py#L258
         # decorate to_string() due to
         # https://github.com/boto/botocore/blob/develop/botocore/client.py#L1014-L1015
