@@ -1129,8 +1129,6 @@ def get_metrics_from_deployment_configs(
 
     data = {"Instance Type": [], "Concurrent Users": [], "Config Name": []}
     instance_rate_data = {}
-    default_instance_type = None
-    default_index = 0
     for index, deployment_config in enumerate(deployment_configs):
         benchmark_metrics = deployment_config.benchmark_metrics
         if not deployment_config.deployment_args or not benchmark_metrics:
@@ -1150,9 +1148,6 @@ def get_metrics_from_deployment_configs(
                     concurrent_users[current_instance_type_metric.concurrency].append(current_instance_type_metric)
 
             for concurrent_user, metrics in concurrent_users.items():
-                if index == 0 and current_instance_type == deployment_config.deployment_args.default_instance_type:
-                    default_instance_type = current_instance_type
-
                 instance_type_to_display = (
                     f"{current_instance_type} (Default)"
                     if index == 0 and int(concurrent_user) == 1 and current_instance_type == deployment_config.deployment_args.default_instance_type
@@ -1167,29 +1162,10 @@ def get_metrics_from_deployment_configs(
                 data["Concurrent Users"].append(concurrent_user)
                 instance_rate_data[instance_rate_column_name].append(instance_type_rate.value)
 
-                # if current_instance_type == default_instance_type:
-                #     data["Config Name"].insert(default_index, deployment_config.deployment_config_name)
-                #     data["Instance Type"].insert(default_index, instance_type_to_display)
-                #     data["Concurrent Users"].insert(default_index, concurrent_user)
-                #     data[instance_rate_column_name].insert(default_index, instance_type_rate.value)
-                # else:
-                #     data["Config Name"].append(deployment_config.deployment_config_name)
-                #     data["Instance Type"].append(instance_type_to_display)
-                #     data["Concurrent Users"].append(concurrent_user)
-                #     data[instance_rate_column_name].append(instance_type_rate.value)
-
                 for metric in metrics:
                     column_name = f"{metric.name} ({metric.unit})"
                     data[column_name] = data.get(column_name, [])
                     data[column_name].append(metric.value)
-
-                    # if current_instance_type == default_instance_type:
-                    #     data[column_name].insert(default_index, metric.value)
-                    # else:
-                    #     data[column_name].append(metric.value)
-
-                if current_instance_type == default_instance_type:
-                    default_index += 1
 
     data = {**data, **instance_rate_data}
 
@@ -1197,80 +1173,6 @@ def get_metrics_from_deployment_configs(
     print(data)
     print("****************")
     return data
-
-
-# def get_metrics_from_deployment_configs(
-#     deployment_configs: Optional[List[DeploymentConfigMetadata]],
-# ) -> Dict[str, List[str]]:
-#     """Extracts benchmark metrics from deployment configs metadata.
-#
-#     Args:
-#         deployment_configs (Optional[List[DeploymentConfigMetadata]]):
-#         List of deployment configs metadata.
-#     Returns:
-#         Dict[str, List[str]]: Deployment configs bench metrics dict.
-#     """
-#     if not deployment_configs:
-#         return {}
-#
-#     data = {"Instance Type": [], "Concurrent Users": [], "Config Name": []}
-#     instance_rate_data = {}
-#     default_instance_type = None
-#     default_index = 0
-#     for index, deployment_config in enumerate(deployment_configs):
-#         benchmark_metrics = deployment_config.benchmark_metrics
-#         if not deployment_config.deployment_args or not benchmark_metrics:
-#             continue
-#
-#         for inner_index, current_instance_type in enumerate(benchmark_metrics):
-#             current_instance_type_metrics = benchmark_metrics[current_instance_type]
-#             if index == 0 and current_instance_type == deployment_config.deployment_args.default_instance_type:
-#                 default_instance_type = current_instance_type
-#
-#             instance_type_to_display = (
-#                 f"{current_instance_type} (Default)"
-#                 if index == 0 and current_instance_type == deployment_config.deployment_args.default_instance_type
-#                 else current_instance_type
-#             )
-#
-#             if current_instance_type == default_instance_type:
-#                 data["Config Name"].insert(default_index, deployment_config.deployment_config_name)
-#                 data["Instance Type"].insert(default_index, instance_type_to_display)
-#             else:
-#                 data["Config Name"].append(deployment_config.deployment_config_name)
-#                 data["Instance Type"].append(instance_type_to_display)
-#
-#             for metric in current_instance_type_metrics:
-#                 column_name = f"{metric.name} ({metric.unit})"
-#
-#                 if metric.name.lower() == "instance rate":
-#                     instance_rate_data[column_name] = instance_rate_data.get(column_name, [])
-#
-#                     if current_instance_type == default_instance_type:
-#                         instance_rate_data[column_name].insert(default_index, metric.value)
-#                     else:
-#                         instance_rate_data[column_name].append(metric.value)
-#                 else:
-#                     data[column_name] = data.get(column_name, [])
-#                     for _ in range(len(data[column_name]), inner_index):
-#                         data[column_name].append(" - ")
-#
-#                     if current_instance_type == default_instance_type:
-#                         data[column_name].insert(default_index, metric.value)
-#                         data["Concurrent Users"].insert(default_index, metric.concurrency)
-#                     else:
-#                         data[column_name].append(metric.value)
-#                         data["Concurrent Users"].append(metric.concurrency)
-#
-#             if current_instance_type == default_instance_type:
-#                 default_index += 1
-#
-#     data = {**data, **instance_rate_data}
-#
-#     print("*****************")
-#     print(data)
-#     print("****************")
-#     return data
 
 
 def deployment_config_response_data(
