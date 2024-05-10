@@ -366,7 +366,12 @@ def get_base_deployment_configs_metadata(
             for instance_type in benchmark_metrics:
                 benchmark_metrics[instance_type].append(
                     JumpStartBenchmarkStat(
-                        {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"}
+                        {
+                            "name": "Instance Rate",
+                            "unit": "USD/Hrs",
+                            "value": "3.76",
+                            "concurrency": None,
+                        }
                     )
                 )
 
@@ -409,7 +414,12 @@ def append_instance_stat_metrics(
         for key in metrics:
             metrics[key].append(
                 JumpStartBenchmarkStat(
-                    {"name": "Instance Rate", "value": "3.76", "unit": "USD/Hrs"}
+                    {
+                        "name": "Instance Rate",
+                        "value": "3.76",
+                        "unit": "USD/Hrs",
+                        "concurrency": None,
+                    }
                 )
             )
     return metrics
