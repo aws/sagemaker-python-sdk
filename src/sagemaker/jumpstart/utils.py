@@ -1136,17 +1136,6 @@ def get_metrics_from_deployment_configs(
 
         for inner_index, current_instance_type in enumerate(benchmark_metrics):
             current_instance_type_metrics = benchmark_metrics[current_instance_type]
-
-            # instance_type_rate = None
-            # concurrent_users = dict()
-            # for current_instance_type_metric in current_instance_type_metrics:
-            #     if current_instance_type_metric.name.lower() == "instance rate":
-            #         instance_type_rate = current_instance_type_metric
-            #     elif current_instance_type_metric.concurrency not in concurrent_users:
-            #         concurrent_users[current_instance_type_metric.concurrency] = [current_instance_type_metric]
-            #     else:
-            #         concurrent_users[current_instance_type_metric.concurrency].append(current_instance_type_metric)
-
             instance_type_rate, concurrent_users = _normalize_benchmark_metrics(current_instance_type_metrics)
 
             for concurrent_user, metrics in concurrent_users.items():
@@ -1165,7 +1154,7 @@ def get_metrics_from_deployment_configs(
                 instance_rate_data[instance_rate_column_name].append(instance_type_rate.value)
 
                 for metric in metrics:
-                    column_name = f"{metric.name} ({metric.unit})"
+                    column_name = _normalize_benchmark_metric_column_name(metric.name)
                     data[column_name] = data.get(column_name, [])
                     data[column_name].append(metric.value)
 
@@ -1175,6 +1164,14 @@ def get_metrics_from_deployment_configs(
     print(data)
     print("****************")
     return data
+
+
+def _normalize_benchmark_metric_column_name(name: str) -> str:
+    if "latency" in name.lower():
+        return "Latency for each user (TTFT in ms)"
+    elif "throughput" in name.lower():
+        return "Throughput per user (token/seconds)"
+    return name
 
 
 def _normalize_benchmark_metrics(
