@@ -1076,7 +1076,6 @@ def add_instance_rate_stats_to_benchmark_metrics(
 
         if not has_instance_rate_stat(benchmark_metric_stats) and not err_message:
             try:
-                print(instance_type)
                 instance_type_rate = get_instance_rate_per_hour(
                     instance_type=instance_type, region=region
                 )
@@ -1156,7 +1155,7 @@ def get_metrics_from_deployment_configs(
 
                 instance_type_to_display = (
                     f"{current_instance_type} (Default)"
-                    if index == 0 and concurrent_user == 1 and current_instance_type == deployment_config.deployment_args.default_instance_type
+                    if index == 0 and int(concurrent_user) == 1 and current_instance_type == deployment_config.deployment_args.default_instance_type
                     else current_instance_type
                 )
 
