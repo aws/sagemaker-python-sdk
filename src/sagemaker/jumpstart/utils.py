@@ -1075,6 +1075,7 @@ def add_instance_rate_stats_to_benchmark_metrics(
         instance_type = instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
 
         if not has_instance_rate_stat(benchmark_metric_stats) and not err_message:
+            print("Here")
             try:
                 instance_type_rate = get_instance_rate_per_hour(
                     instance_type=instance_type, region=region
@@ -1105,12 +1106,14 @@ def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchm
     Returns:
         bool: Whether the benchmark metric stats contains instance rate metric stat.
     """
-    print(benchmark_metric_stats)
     if benchmark_metric_stats is None:
+        print("True")
         return True
     for benchmark_metric_stat in benchmark_metric_stats:
         if benchmark_metric_stat.name.lower() == "instance rate":
+            print("True")
             return True
+    print("False")
     return False
 
 
