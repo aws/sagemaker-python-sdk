@@ -1171,10 +1171,10 @@ def get_metrics_from_deployment_configs(
 
                     if current_instance_type == default_instance_type:
                         data[column_name].insert(default_index, metric.value)
-                        instance_rate_data["Concurrent Users"].insert(default_index, metric.concurrency)
+                        data["Concurrent Users"].insert(default_index, metric.concurrency)
                     else:
                         data[column_name].append(metric.value)
-                        instance_rate_data["Concurrent Users"].append(metric.concurrency)
+                        data["Concurrent Users"].append(metric.concurrency)
 
             if current_instance_type == default_instance_type:
                 default_index += 1
