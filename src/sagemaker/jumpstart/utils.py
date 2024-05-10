@@ -1082,7 +1082,9 @@ def add_instance_rate_stats_to_benchmark_metrics(
 
                 if not benchmark_metric_stats:
                     benchmark_metric_stats = []
-                benchmark_metric_stats.append(JumpStartBenchmarkStat({'concurrency': None, **instance_type_rate}))
+                benchmark_metric_stats.append(
+                    JumpStartBenchmarkStat({"concurrency": None, **instance_type_rate})
+                )
 
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
             except ClientError as e:
@@ -1134,19 +1136,25 @@ def get_metrics_from_deployment_configs(
         if not deployment_config.deployment_args or not benchmark_metrics:
             continue
 
-        for inner_index, current_instance_type in enumerate(benchmark_metrics):
-            current_instance_type_metrics = benchmark_metrics[current_instance_type]
-            instance_type_rate, concurrent_users = _normalize_benchmark_metrics(current_instance_type_metrics)
+        for current_instance_type, current_instance_type_metrics in benchmark_metrics.items():
+            instance_type_rate, concurrent_users = _normalize_benchmark_metrics(
+                current_instance_type_metrics
+            )
 
             for concurrent_user, metrics in concurrent_users.items():
                 instance_type_to_display = (
                     f"{current_instance_type} (Default)"
-                    if index == 0 and int(concurrent_user) == 1 and current_instance_type == deployment_config.deployment_args.default_instance_type
+                    if index == 0
+                    and int(concurrent_user) == 1
+                    and current_instance_type
+                    == deployment_config.deployment_args.default_instance_type
                     else current_instance_type
                 )
 
                 instance_rate_column_name = f"{instance_type_rate.name} ({instance_type_rate.unit})"
-                instance_rate_data[instance_rate_column_name] = instance_rate_data.get(instance_rate_column_name, [])
+                instance_rate_data[instance_rate_column_name] = instance_rate_data.get(
+                    instance_rate_column_name, []
+                )
 
                 data["Config Name"].append(deployment_config.deployment_config_name)
                 data["Instance Type"].append(instance_type_to_display)
@@ -1159,34 +1167,49 @@ def get_metrics_from_deployment_configs(
                     data[column_name].append(metric.value)
 
     data = {**data, **instance_rate_data}
-
-    print("*****************")
-    print(data)
-    print("****************")
     return data
 
 
 def _normalize_benchmark_metric_column_name(name: str) -> str:
+    """Normalizes benchmark metric column name.
+
+    Args:
+        name (str): Name of the metric.
+    Returns:
+        str: Normalized metric column name.
+    """
     if "latency" in name.lower():
-        return "Latency for each user (TTFT in ms)"
+        name = "Latency for each user (TTFT in ms)"
     elif "throughput" in name.lower():
-        return "Throughput per user (token/seconds)"
+        name = "Throughput per user (token/seconds)"
     return name
 
 
 def _normalize_benchmark_metrics(
-        benchmark_metric_stats: List[JumpStartBenchmarkStat]
+    benchmark_metric_stats: List[JumpStartBenchmarkStat],
 ) -> Tuple[JumpStartBenchmarkStat, Dict[str, List[JumpStartBenchmarkStat]]]:
+    """Normalizes benchmark metrics dict.
 
+    Args:
+        benchmark_metric_stats (List[JumpStartBenchmarkStat]):
+        List of benchmark metrics stats.
+    Returns:
+        Tuple[JumpStartBenchmarkStat, Dict[str, List[JumpStartBenchmarkStat]]]:
+        Normalized benchmark metrics dict.
+    """
     instance_type_rate = None
     concurrent_users = {}
     for current_instance_type_metric in benchmark_metric_stats:
         if current_instance_type_metric.name.lower() == "instance rate":
             instance_type_rate = current_instance_type_metric
         elif current_instance_type_metric.concurrency not in concurrent_users:
-            concurrent_users[current_instance_type_metric.concurrency] = [current_instance_type_metric]
+            concurrent_users[current_instance_type_metric.concurrency] = [
+                current_instance_type_metric
+            ]
         else:
-            concurrent_users[current_instance_type_metric.concurrency].append(current_instance_type_metric)
+            concurrent_users[current_instance_type_metric.concurrency].append(
+                current_instance_type_metric
+            )
 
     return instance_type_rate, concurrent_users
 
