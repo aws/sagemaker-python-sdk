@@ -464,11 +464,7 @@ class JumpStartModel(Model):
         Returns:
             Benchmark Metrics: Pandas DataFrame object.
         """
-        df = pd.DataFrame(self._get_deployment_configs_benchmarks_data())
-        df = df.sort_values(by=['Instance Type'])
-        default_mask = df.apply(lambda raw: any('Default' in str(val) for val in raw), axis=1)
-        sorted_df = pd.concat([df[default_mask], df[~default_mask]])
-        return sorted_df
+        return pd.DataFrame(self._get_deployment_configs_benchmarks_data())
 
     def display_benchmark_metrics(self, *args, **kwargs) -> None:
         """Display deployment configs benchmark metrics."""
