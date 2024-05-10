@@ -1075,7 +1075,6 @@ def add_instance_rate_stats_to_benchmark_metrics(
         instance_type = instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
 
         if not has_instance_rate_stat(benchmark_metric_stats) and not err_message:
-            print("Here")
             try:
                 print(instance_type)
                 instance_type_rate = get_instance_rate_per_hour(
@@ -1157,31 +1156,38 @@ def get_metrics_from_deployment_configs(
 
                 instance_type_to_display = (
                     f"{current_instance_type} (Default)"
-                    if index == 0 and current_instance_type == deployment_config.deployment_args.default_instance_type
+                    if index == 0 and concurrent_user == 1 and current_instance_type == deployment_config.deployment_args.default_instance_type
                     else current_instance_type
                 )
 
                 instance_rate_column_name = f"{instance_type_rate.name} ({instance_type_rate.unit})"
                 data[instance_rate_column_name] = data.get(instance_rate_column_name, [])
-                if current_instance_type == default_instance_type:
-                    data["Config Name"].insert(default_index, deployment_config.deployment_config_name)
-                    data["Instance Type"].insert(default_index, instance_type_to_display)
-                    data["Concurrent Users"].insert(default_index, concurrent_user)
-                    data[instance_rate_column_name].insert(default_index, instance_type_rate.value)
-                else:
-                    data["Config Name"].append(deployment_config.deployment_config_name)
-                    data["Instance Type"].append(instance_type_to_display)
-                    data["Concurrent Users"].append(concurrent_user)
-                    data[instance_rate_column_name].append(instance_type_rate.value)
+
+                data["Config Name"].append(deployment_config.deployment_config_name)
+                data["Instance Type"].append(instance_type_to_display)
+                data["Concurrent Users"].append(concurrent_user)
+                data[instance_rate_column_name].append(instance_type_rate.value)
+
+                # if current_instance_type == default_instance_type:
+                #     data["Config Name"].insert(default_index, deployment_config.deployment_config_name)
+                #     data["Instance Type"].insert(default_index, instance_type_to_display)
+                #     data["Concurrent Users"].insert(default_index, concurrent_user)
+                #     data[instance_rate_column_name].insert(default_index, instance_type_rate.value)
+                # else:
+                #     data["Config Name"].append(deployment_config.deployment_config_name)
+                #     data["Instance Type"].append(instance_type_to_display)
+                #     data["Concurrent Users"].append(concurrent_user)
+                #     data[instance_rate_column_name].append(instance_type_rate.value)
 
                 for metric in metrics:
                     column_name = f"{metric.name} ({metric.unit})"
                     data[column_name] = data.get(column_name, [])
+                    data[column_name].append(metric.value)
 
-                    if current_instance_type == default_instance_type:
-                        data[column_name].insert(default_index, metric.value)
-                    else:
-                        data[column_name].append(metric.value)
+                    # if current_instance_type == default_instance_type:
+                    #     data[column_name].insert(default_index, metric.value)
+                    # else:
+                    #     data[column_name].append(metric.value)
 
                 if current_instance_type == default_instance_type:
                     default_index += 1
