@@ -1160,7 +1160,7 @@ def get_metrics_from_deployment_configs(
                 )
 
                 instance_rate_column_name = f"{instance_type_rate.name} ({instance_type_rate.unit})"
-                instance_rate_data[instance_rate_column_name] = data.get(instance_rate_column_name, [])
+                instance_rate_data[instance_rate_column_name] = instance_rate_data.get(instance_rate_column_name, [])
 
                 data["Config Name"].append(deployment_config.deployment_config_name)
                 data["Instance Type"].append(instance_type_to_display)
