@@ -1182,6 +1182,10 @@ def get_metrics_from_deployment_configs(
                 default_index += 1
 
     data = {**data, **instance_rate_data}
+
+    print("*****************")
+    print(data)
+    print("****************")
     return data
 
 
