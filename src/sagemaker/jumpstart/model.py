@@ -904,6 +904,9 @@ class JumpStartModel(Model):
                 instance_type_to_use = resolved_config.get("default_inference_instance_type")
 
             if metadata_config.benchmark_metrics:
+                print("********************")
+                print("Benchmark Metrics")
+                print("********************")
                 err, metadata_config.benchmark_metrics = (
                     add_instance_rate_stats_to_benchmark_metrics(
                         self.region, metadata_config.benchmark_metrics

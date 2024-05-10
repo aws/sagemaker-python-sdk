@@ -1105,6 +1105,7 @@ def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchm
     Returns:
         bool: Whether the benchmark metric stats contains instance rate metric stat.
     """
+    print(benchmark_metric_stats)
     if benchmark_metric_stats is None:
         return True
     for benchmark_metric_stat in benchmark_metric_stats:
