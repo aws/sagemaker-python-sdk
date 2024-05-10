@@ -451,7 +451,12 @@ def test_select_container_for_mlflow_model_no_framework_version_detected(
     mock_get_python_version_from_parsed_mlflow_model_file.return_value = mock_python_version
     mock_get_framework_version_from_requirements.return_value = None
 
-    with pytest.raises(ValueError, match="Unable to auto detect a DLC for framework"):
+    with pytest.raises(
+        ValueError,
+        match="Unable to auto detect framework version. Please provide framework "
+        "pytorch as part of the requirements.txt file for deployment flavor "
+        "pytorch",
+    ):
         _select_container_for_mlflow_model(
             mlflow_model_src_path, deployment_flavor, region, instance_type
         )
