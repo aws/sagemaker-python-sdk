@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
@@ -93,9 +95,12 @@ def model_builder(request):
 def test_non_text_generation_model_single_GPU(
     sagemaker_session, model_builder, model_input, **kwargs
 ):
+    local_download_dir = copy.deepcopy(sagemaker_session.settings._local_download_dir)
     iam_client = sagemaker_session.boto_session.client("iam")
     role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
     model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
+    sagemaker_session.settings._local_download_dir = local_download_dir
+
     caught_ex = None
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
@@ -144,10 +149,13 @@ def test_non_text_generation_model_single_GPU(
 def test_non_text_generation_model_multi_GPU(
     sagemaker_session, model_builder, model_input, **kwargs
 ):
+    local_download_dir = copy.deepcopy(sagemaker_session.settings._local_download_dir)
     iam_client = sagemaker_session.boto_session.client("iam")
     role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
     caught_ex = None
     model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
+    sagemaker_session.settings._local_download_dir = local_download_dir
+
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Running in SAGEMAKER_ENDPOINT mode")

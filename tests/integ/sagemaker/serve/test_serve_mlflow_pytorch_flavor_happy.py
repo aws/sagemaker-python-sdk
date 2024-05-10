@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 import torch
 from PIL import Image
@@ -179,6 +181,7 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
 
+    local_download_dir = copy.deepcopy(sagemaker_session.settings._local_download_dir)
     iam_client = sagemaker_session.boto_session.client("iam")
     role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
 
@@ -204,6 +207,7 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
+    sagemaker_session.settings._local_download_dir = local_download_dir
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:

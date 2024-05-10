@@ -13,6 +13,8 @@
 # flake8: noqa: F631
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 import torch
 from PIL import Image
@@ -196,6 +198,8 @@ def test_happy_pytorch_sagemaker_endpoint(
     cpu_instance_type,
     test_image,
 ):
+    local_download_dir = copy.deepcopy(sagemaker_session.settings._local_download_dir)
+
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
 
@@ -205,6 +209,7 @@ def test_happy_pytorch_sagemaker_endpoint(
     model = model_builder.build(
         mode=Mode.SAGEMAKER_ENDPOINT, role_arn=role_arn, sagemaker_session=sagemaker_session
     )
+    sagemaker_session.settings._local_download_dir = local_download_dir
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:

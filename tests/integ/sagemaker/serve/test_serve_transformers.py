@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
@@ -96,6 +98,8 @@ def model_builder(request):
 def test_pytorch_transformers_sagemaker_endpoint(
     sagemaker_session, model_builder, model_input, **kwargs
 ):
+    local_download_dir = copy.deepcopy(sagemaker_session.settings._local_download_dir)
+
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
 
@@ -105,6 +109,7 @@ def test_pytorch_transformers_sagemaker_endpoint(
     model = model_builder.build(
         mode=Mode.SAGEMAKER_ENDPOINT, role_arn=role_arn, sagemaker_session=sagemaker_session
     )
+    sagemaker_session.settings._local_download_dir = local_download_dir
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:

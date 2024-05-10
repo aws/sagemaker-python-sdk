@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.utils import task
 
@@ -82,6 +84,8 @@ def test_model_builder_negative_path(sagemaker_session):
 def test_model_builder_happy_path_with_task_provided_local_schema_mode(
     model_id, task_provided, sagemaker_session, instance_type_provided, container_startup_timeout
 ):
+    local_download_dir = copy.deepcopy(sagemaker_session.settings._local_download_dir)
+
     model_builder = ModelBuilder(
         model=model_id,
         model_metadata={"HF_TASK": task_provided},
@@ -89,6 +93,7 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
     )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
+    sagemaker_session.settings._local_download_dir = local_download_dir
 
     assert model is not None
     assert model_builder.schema_builder is not None
@@ -158,12 +163,15 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
 def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
     model_id, task_provided, sagemaker_session, instance_type_provided
 ):
+    local_download_dir = copy.deepcopy(sagemaker_session.settings._local_download_dir)
+
     model_builder = ModelBuilder(
         model=model_id,
         model_metadata={"HF_TASK": task_provided},
         instance_type=instance_type_provided,
     )
     model = model_builder.build(sagemaker_session=sagemaker_session)
+    sagemaker_session.settings._local_download_dir = local_download_dir
 
     assert model is not None
     assert model_builder.schema_builder is not None
@@ -213,12 +221,15 @@ def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
 def test_model_builder_with_task_provided_remote_schema_mode_asr(
     model_id, task_provided, sagemaker_session, instance_type_provided
 ):
+    local_download_dir = copy.deepcopy(sagemaker_session.settings._local_download_dir)
+
     model_builder = ModelBuilder(
         model=model_id,
         model_metadata={"HF_TASK": task_provided},
         instance_type=instance_type_provided,
     )
     model = model_builder.build(sagemaker_session=sagemaker_session)
+    sagemaker_session.settings._local_download_dir = local_download_dir
 
     assert model is not None
     assert model_builder.schema_builder is not None

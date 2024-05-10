@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 
 from sagemaker.serve.builder.model_builder import ModelBuilder
@@ -52,9 +54,14 @@ def happy_model_builder(sagemaker_session):
 )
 @pytest.mark.slow_test
 def test_happy_tgi_sagemaker_endpoint(happy_model_builder, gpu_instance_type):
+    local_download_dir = copy.deepcopy(
+        happy_model_builder.sagemaker_session.settings._local_download_dir
+    )
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
+
     model = happy_model_builder.build()
+    happy_model_builder.sagemaker_session.settings._local_download_dir = local_download_dir
 
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
