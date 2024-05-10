@@ -1202,9 +1202,6 @@ def deployment_config_response_data(
 
     for deployment_config in deployment_configs:
         deployment_config_json = deployment_config.to_json()
-        print("************deployment_config_response_data*****************")
-        print(deployment_config_json)
-        print("************deployment_config_response_data***************")
         benchmark_metrics = deployment_config_json.get("BenchmarkMetrics")
         if benchmark_metrics and deployment_config.deployment_args:
             deployment_config_json["BenchmarkMetrics"] = {
