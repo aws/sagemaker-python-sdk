@@ -358,9 +358,11 @@ def _select_container_for_mlflow_model(
 
     if framework_version is None:
         raise ValueError(
-            ("Unable to auto detect framework version. Please provide framework %s as part of the "
-             "requirements.txt file for deployment flavor %s") % (framework_to_use,
-                                                                  deployment_flavor)
+            (
+                "Unable to auto detect framework version. Please provide framework %s as part of the "
+                "requirements.txt file for deployment flavor %s"
+            )
+            % (framework_to_use, deployment_flavor)
         )
 
     casted_versions = (

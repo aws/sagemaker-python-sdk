@@ -33,14 +33,13 @@ MOCK_TGI_CONTAINER = (
     "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
     "huggingface-pytorch-inference:2.0.0-transformers4.28.1-cpu-py310-ubuntu20.04"
 )
-MOCK_PYTORCH_CONTAINER = \
+MOCK_PYTORCH_CONTAINER = (
     "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:2.0.1-cpu-py310"
+)
 MOCK_HUGGINGFACE_ID = "meta-llama/Llama-2-7b-hf"
 MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
 MOCK_ENDPOINT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test"
-MOCK_MODEL_METADATA_FOR_MLFLOW = {
-    MLFLOW_MODEL_PATH: "s3://some_path"
-}
+MOCK_MODEL_METADATA_FOR_MLFLOW = {MLFLOW_MODEL_PATH: "s3://some_path"}
 
 
 class ModelBuilderMock:
@@ -246,7 +245,6 @@ class TestTelemetryLogger(unittest.TestCase):
         )
         self.assertEquals(ret_url, expected_base_url)
 
-
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
     def test_capture_telemetry_decorator_mlflow_success(self, mock_send_telemetry):
         mock_model_builder = ModelBuilderMock()
@@ -266,7 +264,7 @@ class TestTelemetryLogger(unittest.TestCase):
         expected_extra_str = (
             f"{MOCK_FUNC_NAME}"
             "&x-modelServer=1"
-            "&x-imageTag=763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:2.0.1-cpu-py310"
+            "&x-imageTag=pytorch-inference:2.0.1-cpu-py310"
             f"&x-sdkVersion={SDK_VERSION}"
             f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
@@ -275,5 +273,5 @@ class TestTelemetryLogger(unittest.TestCase):
         )
 
         mock_send_telemetry.assert_called_once_with(
-            "1", 2, MOCK_SESSION, None, None, expected_extra_str
+            "1", 3, MOCK_SESSION, None, None, expected_extra_str
         )

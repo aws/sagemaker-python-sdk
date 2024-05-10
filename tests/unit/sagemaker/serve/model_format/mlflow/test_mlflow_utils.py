@@ -427,12 +427,12 @@ def test_select_container_for_mlflow_model_no_dlc_detected(
 @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
 @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
 def test_select_container_for_mlflow_model_no_framework_version_detected(
-        mock_generate_mlflow_artifact_path,
-        mock_get_all_flavor_metadata,
-        mock_get_python_version_from_parsed_mlflow_model_file,
-        mock_get_framework_version_from_requirements,
-        mock_cast_to_compatible_version,
-        mock_image_uris_retrieve,
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_framework_version_from_requirements,
+    mock_cast_to_compatible_version,
+    mock_image_uris_retrieve,
 ):
     mlflow_model_src_path = "/path/to/mlflow_model"
     deployment_flavor = "pytorch"

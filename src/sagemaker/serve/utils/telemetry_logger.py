@@ -21,8 +21,13 @@ from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH
 from sagemaker.serve.utils.exceptions import ModelBuilderException
-from sagemaker.serve.utils.lineage_constants import MLFLOW_LOCAL_PATH, MLFLOW_S3_PATH, \
-    MLFLOW_MODEL_PACKAGE_PATH, MLFLOW_RUN_ID, MLFLOW_REGISTRY_PATH
+from sagemaker.serve.utils.lineage_constants import (
+    MLFLOW_LOCAL_PATH,
+    MLFLOW_S3_PATH,
+    MLFLOW_MODEL_PACKAGE_PATH,
+    MLFLOW_RUN_ID,
+    MLFLOW_REGISTRY_PATH,
+)
 from sagemaker.serve.utils.lineage_utils import _get_mlflow_model_path_type
 from sagemaker.serve.utils.types import ModelServer, ImageUriOption
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
