@@ -384,8 +384,7 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
     """
-    boto_session = sagemaker_session.boto_session
-    s3 = boto_session.resource("s3", region_name=boto_session.region_name)
+    s3 = sagemaker_session.s3_resource
 
     prefix = prefix.lstrip("/")
 
@@ -657,9 +656,8 @@ def download_file(bucket_name, path, target, sagemaker_session):
             interact with S3.
     """
     path = path.lstrip("/")
-    boto_session = sagemaker_session.boto_session
 
-    s3 = boto_session.resource("s3", region_name=sagemaker_session.boto_region_name)
+    s3 = sagemaker_session.s3_resource
     bucket = s3.Bucket(bucket_name)
     bucket.download_file(path, target)
 

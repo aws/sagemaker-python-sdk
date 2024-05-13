@@ -1032,10 +1032,10 @@ class FakeS3(object):
         self.current_bucket = None
         self.object_mock = MagicMock()
 
-        self.sagemaker_session.boto_session.resource().Bucket().download_file.side_effect = (
+        self.sagemaker_session.s3_resource.Bucket().download_file.side_effect = (
             self.download_file
         )
-        self.sagemaker_session.boto_session.resource().Bucket.side_effect = self.bucket
+        self.sagemaker_session.s3_resource.Bucket.side_effect = self.bucket
         self.fake_upload_path = self.mock_s3_upload()
 
     def bucket(self, name):
