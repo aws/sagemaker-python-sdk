@@ -14,6 +14,7 @@ from __future__ import absolute_import
 import unittest
 from unittest.mock import Mock, patch
 from sagemaker.serve import Mode, ModelServer
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH
 from sagemaker.serve.utils.telemetry_logger import (
     _send_telemetry,
     _capture_telemetry,
@@ -32,9 +33,13 @@ MOCK_TGI_CONTAINER = (
     "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
     "huggingface-pytorch-inference:2.0.0-transformers4.28.1-cpu-py310-ubuntu20.04"
 )
+MOCK_PYTORCH_CONTAINER = (
+    "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:2.0.1-cpu-py310"
+)
 MOCK_HUGGINGFACE_ID = "meta-llama/Llama-2-7b-hf"
 MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
 MOCK_ENDPOINT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test"
+MOCK_MODEL_METADATA_FOR_MLFLOW = {MLFLOW_MODEL_PATH: "s3://some_path"}
 
 
 class ModelBuilderMock:
@@ -239,3 +244,34 @@ class TestTelemetryLogger(unittest.TestCase):
             f"&x-extra={mock_extra_info}"
         )
         self.assertEquals(ret_url, expected_base_url)
+
+    @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
+    def test_capture_telemetry_decorator_mlflow_success(self, mock_send_telemetry):
+        mock_model_builder = ModelBuilderMock()
+        mock_model_builder.serve_settings.telemetry_opt_out = False
+        mock_model_builder.image_uri = MOCK_PYTORCH_CONTAINER
+        mock_model_builder._is_mlflow_model = True
+        mock_model_builder.model_metadata = MOCK_MODEL_METADATA_FOR_MLFLOW
+        mock_model_builder._is_custom_image_uri = False
+        mock_model_builder.mode = Mode.SAGEMAKER_ENDPOINT
+        mock_model_builder.model_server = ModelServer.TORCHSERVE
+        mock_model_builder.sagemaker_session.endpoint_arn = MOCK_ENDPOINT_ARN
+
+        mock_model_builder.mock_deploy()
+
+        args = mock_send_telemetry.call_args.args
+        latency = str(args[5]).split("latency=")[1]
+        expected_extra_str = (
+            f"{MOCK_FUNC_NAME}"
+            "&x-modelServer=1"
+            "&x-imageTag=pytorch-inference:2.0.1-cpu-py310"
+            f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
+            f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
+            f"&x-mlflowModelPathType=2"
+            f"&x-latency={latency}"
+        )
+
+        mock_send_telemetry.assert_called_once_with(
+            "1", 3, MOCK_SESSION, None, None, expected_extra_str
+        )
