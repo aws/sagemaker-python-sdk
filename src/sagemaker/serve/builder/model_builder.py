@@ -669,6 +669,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing)
         mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
         if not _mlflow_input_is_local_path(mlflow_path):
             # TODO: extend to package arn, run id and etc.
+            logger.info(
+                "Start downloading model artifacts from %s to %s", mlflow_path, self.model_path
+            )
             _download_s3_artifacts(mlflow_path, self.model_path, self.sagemaker_session)
         else:
             _copy_directory_contents(mlflow_path, self.model_path)
