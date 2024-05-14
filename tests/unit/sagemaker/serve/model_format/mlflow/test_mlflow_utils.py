@@ -418,6 +418,61 @@ def test_select_container_for_mlflow_model_no_dlc_detected(
         )
 
 
+@patch("sagemaker.image_uris.retrieve")
+@patch("sagemaker.serve.model_format.mlflow.utils._cast_to_compatible_version")
+@patch("sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements")
+@patch(
+    "sagemaker.serve.model_format.mlflow.utils._get_python_version_from_parsed_mlflow_model_file"
+)
+@patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
+@patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
+def test_select_container_for_mlflow_model_no_framework_version_detected(
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_framework_version_from_requirements,
+    mock_cast_to_compatible_version,
+    mock_image_uris_retrieve,
+):
+    mlflow_model_src_path = "/path/to/mlflow_model"
+    deployment_flavor = "pytorch"
+    region = "us-west-2"
+    instance_type = "ml.m5.xlarge"
+
+    mock_requirements_path = "/path/to/requirements.txt"
+    mock_metadata_path = "/path/to/mlmodel"
+    mock_flavor_metadata = {"pytorch": {"some_key": "some_value"}}
+    mock_python_version = "3.8.6"
+
+    mock_generate_mlflow_artifact_path.side_effect = lambda path, artifact: (
+        mock_requirements_path if artifact == "requirements.txt" else mock_metadata_path
+    )
+    mock_get_all_flavor_metadata.return_value = mock_flavor_metadata
+    mock_get_python_version_from_parsed_mlflow_model_file.return_value = mock_python_version
+    mock_get_framework_version_from_requirements.return_value = None
+
+    with pytest.raises(
+        ValueError,
+        match="Unable to auto detect framework version. Please provide framework "
+        "pytorch as part of the requirements.txt file for deployment flavor "
+        "pytorch",
+    ):
+        _select_container_for_mlflow_model(
+            mlflow_model_src_path, deployment_flavor, region, instance_type
+        )
+
+        mock_generate_mlflow_artifact_path.assert_any_call(
+            mlflow_model_src_path, "requirements.txt"
+        )
+        mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "MLmodel")
+        mock_get_all_flavor_metadata.assert_called_once_with(mock_metadata_path)
+        mock_get_framework_version_from_requirements.assert_called_once_with(
+            deployment_flavor, mock_requirements_path
+        )
+        mock_cast_to_compatible_version.assert_not_called()
+        mock_image_uris_retrieve.assert_not_called()
+
+
 def test_validate_input_for_mlflow():
     _validate_input_for_mlflow(ModelServer.TORCHSERVE, "pytorch")
 

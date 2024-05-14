@@ -28,7 +28,7 @@ from sagemaker.lineage.association import Association
 from sagemaker.lineage.query import LineageSourceEnum
 from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_RUN_ID_REGEX,
-    MODEL_PACAKGE_ARN_REGEX,
+    MODEL_PACKAGE_ARN_REGEX,
     S3_PATH_REGEX,
     MLFLOW_REGISTRY_PATH_REGEX,
 )
@@ -107,7 +107,7 @@ def _get_mlflow_model_path_type(mlflow_model_path: str) -> str:
     """
     mlflow_rub_id_pattern = MLFLOW_RUN_ID_REGEX
     mlflow_registry_id_pattern = MLFLOW_REGISTRY_PATH_REGEX
-    sagemaker_arn_pattern = MODEL_PACAKGE_ARN_REGEX
+    sagemaker_arn_pattern = MODEL_PACKAGE_ARN_REGEX
     s3_pattern = S3_PATH_REGEX
 
     if re.match(mlflow_rub_id_pattern, mlflow_model_path):

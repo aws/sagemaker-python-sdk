@@ -278,7 +278,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
                 os.makedirs(local_file_dir, exist_ok=True)
 
                 # Download the file
-                print(f"Downloading {key} to {local_file_path}")
+                logger.info(f"Downloading {key} to {local_file_path}")
                 s3.download_file(s3_bucket, key, local_file_path)
 
 
@@ -355,6 +355,15 @@ def _select_container_for_mlflow_model(
     logger.info("Auto-detected deployment flavor is %s", deployment_flavor)
     logger.info("Auto-detected framework to use is %s", framework_to_use)
     logger.info("Auto-detected framework version is %s", framework_version)
+
+    if framework_version is None:
+        raise ValueError(
+            (
+                "Unable to auto detect framework version. Please provide framework %s as part of the "
+                "requirements.txt file for deployment flavor %s"
+            )
+            % (framework_to_use, deployment_flavor)
+        )
 
     casted_versions = (
         _cast_to_compatible_version(framework_to_use, framework_version)
