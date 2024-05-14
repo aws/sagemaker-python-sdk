@@ -67,6 +67,7 @@ def test_huggingface_uris(load_config):
             )
             assert expected == uri
 
+
 @pytest.mark.parametrize("load_config", ["huggingface-tei.json"], indirect=True)
 def test_huggingface_uris(load_config):
     VERSIONS = load_config["inference"]["versions"]
