@@ -19,7 +19,16 @@ import requests
 
 from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH
 from sagemaker.serve.utils.exceptions import ModelBuilderException
+from sagemaker.serve.utils.lineage_constants import (
+    MLFLOW_LOCAL_PATH,
+    MLFLOW_S3_PATH,
+    MLFLOW_MODEL_PACKAGE_PATH,
+    MLFLOW_RUN_ID,
+    MLFLOW_REGISTRY_PATH,
+)
+from sagemaker.serve.utils.lineage_utils import _get_mlflow_model_path_type
 from sagemaker.serve.utils.types import ModelServer, ImageUriOption
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.user_agent import SDK_VERSION
@@ -51,6 +60,14 @@ MODEL_SERVER_TO_CODE = {
     str(ModelServer.TGI): 6,
 }
 
+MLFLOW_MODEL_PATH_CODE = {
+    MLFLOW_LOCAL_PATH: 1,
+    MLFLOW_S3_PATH: 2,
+    MLFLOW_MODEL_PACKAGE_PATH: 3,
+    MLFLOW_RUN_ID: 4,
+    MLFLOW_REGISTRY_PATH: 5,
+}
+
 
 def _capture_telemetry(func_name: str):
     """Placeholder docstring"""
@@ -77,6 +94,11 @@ def _capture_telemetry(func_name: str):
 
             if self.sagemaker_session and self.sagemaker_session.endpoint_arn:
                 extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
+
+            if getattr(self, "_is_mlflow_model", False):
+                mlflow_model_path = self.model_metadata[MLFLOW_MODEL_PATH]
+                mlflow_model_path_type = _get_mlflow_model_path_type(mlflow_model_path)
+                extra += f"&x-mlflowModelPathType={MLFLOW_MODEL_PATH_CODE[mlflow_model_path_type]}"
 
             start_timer = perf_counter()
             try:
