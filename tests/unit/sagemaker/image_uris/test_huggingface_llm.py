@@ -69,7 +69,7 @@ def test_huggingface_uris(load_config):
 
 
 @pytest.mark.parametrize("load_config", ["huggingface-tei.json"], indirect=True)
-def test_huggingface_uris(load_config):
+def test_huggingface_tei_uris(load_config):
     VERSIONS = load_config["inference"]["versions"]
     device = load_config["inference"]["processors"][0]
     backend = "huggingface-tei"
