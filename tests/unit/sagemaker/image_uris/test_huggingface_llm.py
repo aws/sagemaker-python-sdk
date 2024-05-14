@@ -67,6 +67,24 @@ def test_huggingface_uris(load_config):
             )
             assert expected == uri
 
+@pytest.mark.parametrize("load_config", ["huggingface-tei.json"], indirect=True)
+def test_huggingface_uris(load_config):
+    VERSIONS = load_config["inference"]["versions"]
+    device = load_config["inference"]["processors"][0]
+    backend = "huggingface-tei"
+    for version in VERSIONS:
+        ACCOUNTS = load_config["inference"]["versions"][version]["registries"]
+        for region in ACCOUNTS.keys():
+            uri = get_huggingface_llm_image_uri(backend, region=region, version=version)
+            expected = expected_uris.huggingface_llm_framework_uri(
+                "tei",
+                ACCOUNTS[region],
+                version,
+                HF_VERSIONS_MAPPING[device][version],
+                region=region,
+            )
+            assert expected == uri
+
 
 @pytest.mark.parametrize("load_config", ["huggingface-llm.json"], indirect=True)
 def test_lmi_uris(load_config):
