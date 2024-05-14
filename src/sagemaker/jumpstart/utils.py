@@ -123,7 +123,7 @@ def get_jumpstart_gated_content_bucket(
 def get_jumpstart_content_bucket(
     region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
 ) -> str:
-    """Returns regionalized content bucket name for JumpStart.
+    """Returns the regionalized content bucket name for JumpStart.
 
     Raises:
         ValueError: If JumpStart is not launched in ``region``.
