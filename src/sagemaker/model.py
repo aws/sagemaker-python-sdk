@@ -1530,7 +1530,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             else:
                 # no endpoint name given, create endpoint_name
                 if self.name:
-                    self.endpoint_name = self.endpoint_name or utils.name_from_base(self.name)
+                    self.endpoint_name = utils.name_from_base(self.name)
             # [TODO]: Refactor to a module
             managed_instance_scaling_config = {}
             if managed_instance_scaling:
@@ -1648,7 +1648,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 if self._is_compiled_model and not is_serverless:
                     if not base_endpoint_name.endswith(compiled_model_suffix):
                         base_endpoint_name = "-".join((base_endpoint_name, compiled_model_suffix))
-                self.endpoint_name = self.endpoint_name or utils.name_from_base(base_endpoint_name)
+                self.endpoint_name = utils.name_from_base(base_endpoint_name)
 
             data_capture_config_dict = None
             if data_capture_config is not None:
