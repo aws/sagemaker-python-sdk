@@ -278,13 +278,14 @@ def _generate_sagemaker_sdk_tar(destination_folder):
     """
     Run setup.py sdist to generate the PySDK tar file
     """
-    command = f"python3 setup.py egg_info --egg-base {destination_folder} sdist -d {destination_folder} -k"
+    command = f"python3 setup.py egg_info --egg-base {destination_folder} sdist -d {destination_folder} -k --verbose"
     print(f"Running command: {command}")
     result = subprocess.run(command, shell=True, check=True, capture_output=True)
     if result.returncode != 0:
         print(f"Command failed with return code: {result.returncode}")
-        print(f"Standard output: {result.stdout.decode()}")
-        print(f"Standard error: {result.stderr.decode()}")
+
+    print(f"Standard output: {result.stdout.decode()}")
+    print(f"Standard error: {result.stderr.decode()}")
     destination_folder_contents = os.listdir(destination_folder)
     source_archive = [file for file in destination_folder_contents if file.endswith("tar.gz")][0]
 
