@@ -23,7 +23,7 @@ from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
 )
 from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
-from sagemaker.huggingface import HuggingFaceModel
+from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
 from sagemaker.serve.model_server.multi_model_server.prepare import (
     _create_dir_structure,
 )
@@ -47,6 +47,7 @@ class Transformers(ABC):
     """Transformers build logic with ModelBuilder()"""
 
     def __init__(self):
+        self.model_metadata = None
         self.model = None
         self.serve_settings = None
         self.sagemaker_session = None
@@ -99,7 +100,26 @@ class Transformers(ABC):
         if hf_model_md is None:
             raise ValueError("Could not fetch HF metadata")
 
-        if "pytorch" in hf_model_md.get("tags"):
+        model_task = None
+        if self.model_metadata:
+            model_task = self.model_metadata.get("HF_TASK")
+        else:
+            model_task = hf_model_md.get("pipeline_tag")
+
+        if model_task == "sentence-similarity" and not self.image_uri:
+            self.image_uri = \
+                get_huggingface_llm_image_uri("huggingface-tei", session=self.sagemaker_session)
+
+            logger.info("Auto detected %s. Proceeding with the the deployment.", self.image_uri)
+
+            pysdk_model = HuggingFaceModel(
+                env=self.env_vars,
+                role=self.role_arn,
+                sagemaker_session=self.sagemaker_session,
+                image_uri=self.image_uri,
+                vpc_config=self.vpc_config,
+            )
+        elif "pytorch" in hf_model_md.get("tags"):
             self.pytorch_version = self._get_supported_version(
                 hf_config, base_hf_version, "pytorch"
             )
