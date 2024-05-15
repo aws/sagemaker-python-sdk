@@ -908,16 +908,34 @@ class JumpStartModel(Model):
                     )
                 )
 
+            config_components = metadata_config.config_components.get(config_name)
+            image_uri = (
+                (
+                    config_components.hosting_instance_type_variants.get("regional_aliases", {})
+                    .get(self.region, {})
+                    .get("alias_ecr_uri_1")
+                )
+                if config_components
+                else self.image_uri
+            )
+
             init_kwargs = get_init_kwargs(
+                config_name=config_name,
                 model_id=self.model_id,
                 instance_type=instance_type_to_use,
                 sagemaker_session=self.sagemaker_session,
+                image_uri=image_uri,
+                region=self.region,
+                model_version=self.model_version,
             )
             deploy_kwargs = get_deploy_kwargs(
                 model_id=self.model_id,
                 instance_type=instance_type_to_use,
                 sagemaker_session=self.sagemaker_session,
+                region=self.region,
+                model_version=self.model_version,
             )
+
             deployment_config_metadata = DeploymentConfigMetadata(
                 config_name,
                 metadata_config.benchmark_metrics,

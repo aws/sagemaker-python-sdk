@@ -1129,7 +1129,7 @@ def get_metrics_from_deployment_configs(
     if not deployment_configs:
         return {}
 
-    data = {"Instance Type": [], "Concurrent Users": [], "Config Name": []}
+    data = {"Instance Type": [], "Config Name": [], "Concurrent Users": []}
     instance_rate_data = {}
     for index, deployment_config in enumerate(deployment_configs):
         benchmark_metrics = deployment_config.benchmark_metrics
