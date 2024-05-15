@@ -132,16 +132,19 @@ class Transformers(ABC):
                 vpc_config=self.vpc_config,
             )
 
-        if self.mode == Mode.LOCAL_CONTAINER:
+        if not self.image_uri and self.mode == Mode.LOCAL_CONTAINER:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, "local"
             )
-        else:
+        elif not self.image_uri:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, self.instance_type
             )
 
         logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)
+
+        if not pysdk_model.image_uri:
+            pysdk_model.image_uri = self.image_uri
 
         self._original_deploy = pysdk_model.deploy
         pysdk_model.deploy = self._transformers_model_builder_deploy_wrapper
@@ -251,13 +254,14 @@ class Transformers(ABC):
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
             if self.nb_instance_type and "instance_type" not in kwargs:
                 kwargs.update({"instance_type": self.nb_instance_type})
+                logger.info("Setting instance type to %s", self.nb_instance_type)
             elif self.instance_type and "instance_type" not in kwargs:
                 kwargs.update({"instance_type": self.instance_type})
+                logger.info("Setting instance type to %s", self.instance_type)
             else:
                 raise ValueError(
                     "Instance type must be provided when deploying to SageMaker Endpoint mode."
                 )
-            logger.info("Setting instance type to %s", self.instance_type)
 
     def _get_supported_version(self, hf_config, hugging_face_version, base_fw):
         """Uses the hugging face json config to pick supported versions"""
