@@ -509,7 +509,7 @@ class JumpStart(ABC):
             else:
                 raise ValueError(
                     "JumpStart Model ID was not packaged "
-                    "with djl-inference or tgi-inference container."
+                    "with djl-inference, tgi-inference, or mms-inference container."
                 )
 
         return self.pysdk_model
