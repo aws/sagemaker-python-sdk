@@ -101,16 +101,15 @@ class TestTransformersBuilder(unittest.TestCase):
         with self.assertRaises(ValueError) as _:
             model.deploy(mode=Mode.IN_PROCESS)
 
-
     @patch(
         "sagemaker.serve.builder.transformers_builder._get_nb_instance",
         return_value="ml.g5.24xlarge",
     )
     @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
     def test_image_uri(
-            self,
-            mock_get_nb_instance,
-            mock_telemetry,
+        self,
+        mock_get_nb_instance,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
             model=mock_model_id,
