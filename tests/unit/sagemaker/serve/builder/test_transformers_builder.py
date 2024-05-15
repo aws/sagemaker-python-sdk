@@ -153,9 +153,7 @@ class TestTransformersBuilder(unittest.TestCase):
         "sagemaker.huggingface.llm_utils.get_huggingface_model_metadata",
         return_value="sentence-similarity",
     )
-    @patch(
-        "sagemaker.huggingface.get_huggingface_llm_image_uri", return_value=MOCK_IMAGE_CONFIG
-    )
+    @patch("sagemaker.huggingface.get_huggingface_llm_image_uri", return_value=MOCK_IMAGE_CONFIG)
     @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
     def test_sentence_similarity_support(
         self,
