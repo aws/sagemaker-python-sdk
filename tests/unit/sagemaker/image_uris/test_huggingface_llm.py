@@ -18,6 +18,11 @@ from sagemaker.huggingface import get_huggingface_llm_image_uri
 from tests.unit.sagemaker.image_uris import expected_uris, conftest
 
 LMI_VERSIONS = ["0.24.0"]
+TEI_VERSIONS_MAPPING = {
+    "gpu": {
+        "1.2.3": "2.0.1-tei1.2.3-gpu-py310-cu122-ubuntu22.04",
+    },
+}
 HF_VERSIONS_MAPPING = {
     "gpu": {
         "0.6.0": "2.0.0-tgi0.6.0-gpu-py39-cu118-ubuntu20.04",
@@ -81,7 +86,7 @@ def test_huggingface_tei_uris(load_config):
                 "tei",
                 ACCOUNTS[region],
                 version,
-                HF_VERSIONS_MAPPING[device][version],
+                TEI_VERSIONS_MAPPING[device][version],
                 region=region,
             )
             assert expected == uri
