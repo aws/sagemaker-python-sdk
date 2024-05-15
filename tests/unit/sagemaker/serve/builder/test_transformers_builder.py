@@ -58,9 +58,10 @@ mock_sample_output = [
 mock_schema_builder = MagicMock()
 mock_schema_builder.sample_input = mock_sample_input
 mock_schema_builder.sample_output = mock_sample_output
-MOCK_IMAGE_CONFIG = \
-    "763104351884.dkr.ecr.us-west-2.amazonaws.com/" \
+MOCK_IMAGE_CONFIG = (
+    "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
     "huggingface-pytorch-inference:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04-v1.0"
+)
 
 
 class TestTransformersBuilder(unittest.TestCase):
