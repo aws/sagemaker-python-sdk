@@ -499,7 +499,7 @@ class JumpStart(ABC):
                 self.pysdk_model.tune = self.tune_for_tgi_jumpstart
             elif "huggingface-pytorch-inference:" in self.pysdk_model.image_uri:
                 logger.info("Building for MMS JumpStart Model ID...")
-                self.model_server = ModelServer.TGI
+                self.model_server = ModelServer.MMS
                 self.image_uri = self.pysdk_model.image_uri
 
                 self._build_for_mms_jumpstart()
