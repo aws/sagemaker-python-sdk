@@ -154,16 +154,15 @@ class TestTransformersBuilder(unittest.TestCase):
         return_value="sentence-similarity",
     )
     @patch(
-        "from sagemaker.huggingface.get_huggingface_llm_image_uri",
-        return_value=MOCK_IMAGE_CONFIG
+        "sagemaker.huggingface.get_huggingface_llm_image_uri", return_value=MOCK_IMAGE_CONFIG
     )
     @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
     def test_sentence_similarity_support(
-            self,
-            mock_get_nb_instance,
-            mock_task,
-            mock_image,
-            mock_telemetry,
+        self,
+        mock_get_nb_instance,
+        mock_task,
+        mock_image,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
             model=mock_model_id,

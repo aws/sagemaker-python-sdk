@@ -107,8 +107,9 @@ class Transformers(ABC):
             model_task = hf_model_md.get("pipeline_tag")
 
         if model_task == "sentence-similarity" and not self.image_uri:
-            self.image_uri = \
-                get_huggingface_llm_image_uri("huggingface-tei", session=self.sagemaker_session)
+            self.image_uri = get_huggingface_llm_image_uri(
+                "huggingface-tei", session=self.sagemaker_session
+            )
 
             logger.info("Auto detected %s. Proceeding with the the deployment.", self.image_uri)
 
