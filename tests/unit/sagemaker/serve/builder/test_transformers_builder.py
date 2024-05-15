@@ -137,5 +137,10 @@ class TestTransformersBuilder(unittest.TestCase):
 
         assert builder.nb_instance_type == "ml.g5.24xlarge"
 
+        builder._original_deploy = MagicMock()
+        builder._prepare_for_mode.return_value = (None, {})
+        predictor = model.deploy(mode=Mode.SAGEMAKER_ENDPOINT, role="mock_role_arn")
+        assert "HF_MODEL_ID" in model.env
+
         with self.assertRaises(ValueError) as _:
             model.deploy(mode=Mode.IN_PROCESS)
