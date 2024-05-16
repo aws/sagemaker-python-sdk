@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
-import tests.integ
+
 from tests.integ.sagemaker.serve.constants import (
     HF_DIR,
     PYTHON_VERSION_IS_NOT_310,
@@ -23,7 +23,7 @@ from tests.integ.sagemaker.serve.constants import (
 )
 
 from tests.integ.timeout import timeout
-from tests.integ.utils import cleanup_model_resources, gpu_list, retry_with_instance_list
+from tests.integ.utils import cleanup_model_resources
 import logging
 
 logger = logging.getLogger(__name__)
@@ -89,14 +89,10 @@ def model_builder(request):
 
 
 @pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,
-    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
-    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
-    reason="no ml.p2 or ml.p3 instances in this region",
+    PYTHON_VERSION_IS_NOT_310
 )
-@retry_with_instance_list(gpu_list(tests.integ.test_region()))
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
-def test_tei_sagemaker_endpoint(sagemaker_session, model_builder, model_input, **kwargs):
+def test_tei_sagemaker_endpoint(sagemaker_session, model_builder, model_input):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
 
@@ -111,7 +107,7 @@ def test_tei_sagemaker_endpoint(sagemaker_session, model_builder, model_input, *
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             predictor = model.deploy(
-                instance_type=kwargs["instance_type"], initial_instance_count=2
+                instance_type="ml.g5.12xlarge", initial_instance_count=2
             )
             logger.info("Endpoint successfully deployed.")
             predictor.predict(model_input)
