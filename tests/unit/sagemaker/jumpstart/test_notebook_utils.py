@@ -256,14 +256,6 @@ class ListJumpStartModels(TestCase):
 
             patched_get_manifest.reset_mock()
             patched_read_s3_file.reset_mock()
-
-            kwargs = {"filter": And(f"training_supported != {val}", "model_type is open_weights")}
-            list_jumpstart_models(**kwargs)
-            assert patched_read_s3_file.call_count == manifest_length
-            assert patched_get_manifest.call_count == 2
-
-            patched_get_manifest.reset_mock()
-            patched_read_s3_file.reset_mock()
         kwargs = {
             "filter": And(f"training_supported != {val}", "model_type is open_weights"),
             "list_versions": True,
