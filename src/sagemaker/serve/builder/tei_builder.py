@@ -19,9 +19,6 @@ from abc import ABC, abstractmethod
 from sagemaker.model import Model
 from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
 
-from sagemaker.serve.model_server.tgi.utils import (
-    _get_default_tgi_configurations,
-)
 from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
 from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
@@ -38,7 +35,6 @@ logger = logging.getLogger(__name__)
 _CODE_FOLDER = "code"
 
 
-# pylint: disable=W0612
 class TEI(ABC):
     """TEI build logic for ModelBuilder()"""
 
@@ -194,14 +190,6 @@ class TEI(ABC):
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
             )
-
-            default_tgi_configurations, _default_max_new_tokens = _get_default_tgi_configurations(
-                self.model, self.hf_model_config, self.schema_builder
-            )
-
-            self.schema_builder.sample_input["parameters"][
-                "max_new_tokens"
-            ] = _default_max_new_tokens
 
         self.pysdk_model = self._create_tei_model()
 
