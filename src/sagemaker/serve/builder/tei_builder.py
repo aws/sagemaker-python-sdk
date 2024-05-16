@@ -18,10 +18,10 @@ from abc import ABC, abstractmethod
 
 from sagemaker.model import Model
 from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
-from sagemaker.serve.model_server.djl_serving.utils import (
-    _get_default_max_tokens,
-)
 
+from sagemaker.serve.model_server.tgi.utils import (
+    _get_default_tgi_configurations,
+)
 from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
 from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
@@ -93,7 +93,6 @@ class TEI(ABC):
             self.image_uri = get_huggingface_llm_image_uri(
                 "huggingface-tei", session=self.sagemaker_session
             )
-            logger.info("Auto detected %s. Proceeding with the the deployment.", self.image_uri)
 
         pysdk_model = HuggingFaceModel(
             image_uri=self.image_uri,
@@ -103,6 +102,8 @@ class TEI(ABC):
             role=self.role_arn,
             sagemaker_session=self.sagemaker_session,
         )
+
+        logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)
 
         self._original_deploy = pysdk_model.deploy
         pysdk_model.deploy = self._tei_model_builder_deploy_wrapper
@@ -192,6 +193,14 @@ class TEI(ABC):
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
             )
+
+            default_tgi_configurations, _default_max_new_tokens = _get_default_tgi_configurations(
+                self.model, self.hf_model_config, self.schema_builder
+            )
+
+            self.schema_builder.sample_input["parameters"][
+                "max_new_tokens"
+            ] = _default_max_new_tokens
 
         self.pysdk_model = self._create_tei_model()
 
