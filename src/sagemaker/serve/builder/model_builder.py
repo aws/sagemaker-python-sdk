@@ -764,8 +764,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing)
                     model_task = hf_model_md.get("pipeline_tag")
                 if self.schema_builder is None and model_task is not None:
                     self._hf_schema_builder_init(model_task)
-                if model_task == "text-generation" or\
-                        model_task == "sentence-similarity":  # pylint: disable=R1705
+                if (
+                    model_task == "text-generation" or model_task == "sentence-similarity"
+                ):  # pylint: disable=R1705
                     return self._build_for_tgi()
                 elif self._can_fit_on_single_gpu():
                     return self._build_for_transformers()
