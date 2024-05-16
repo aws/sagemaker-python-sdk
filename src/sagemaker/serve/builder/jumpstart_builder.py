@@ -23,6 +23,7 @@ from sagemaker.model import Model
 from sagemaker import model_uris
 from sagemaker.serve.model_server.djl_serving.prepare import prepare_djl_js_resources
 from sagemaker.serve.model_server.djl_serving.utils import _get_admissible_tensor_parallel_degrees
+from sagemaker.serve.model_server.multi_model_server.prepare import prepare_mms_js_resources
 from sagemaker.serve.model_server.tgi.prepare import prepare_tgi_js_resources, _create_dir_structure
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import (
@@ -35,6 +36,7 @@ from sagemaker.serve.utils.exceptions import (
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
     TgiLocalModePredictor,
+    TransformersLocalModePredictor,
 )
 from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
@@ -90,6 +92,7 @@ class JumpStart(ABC):
         self.existing_properties = None
         self.prepared_for_tgi = None
         self.prepared_for_djl = None
+        self.prepared_for_mms = None
         self.schema_builder = None
         self.nb_instance_type = None
         self.ram_usage_model_load = None
@@ -137,7 +140,11 @@ class JumpStart(ABC):
 
             if overwrite_mode == Mode.SAGEMAKER_ENDPOINT:
                 self.mode = self.pysdk_model.mode = Mode.SAGEMAKER_ENDPOINT
-                if not hasattr(self, "prepared_for_djl") or not hasattr(self, "prepared_for_tgi"):
+                if (
+                    not hasattr(self, "prepared_for_djl")
+                    or not hasattr(self, "prepared_for_tgi")
+                    or not hasattr(self, "prepared_for_mms")
+                ):
                     self.pysdk_model.model_data, env = self._prepare_for_mode()
             elif overwrite_mode == Mode.LOCAL_CONTAINER:
                 self.mode = self.pysdk_model.mode = Mode.LOCAL_CONTAINER
@@ -160,6 +167,13 @@ class JumpStart(ABC):
                         dependencies=self.dependencies,
                         model_data=self.pysdk_model.model_data,
                     )
+                elif not hasattr(self, "prepared_for_mms"):
+                    self.js_model_config, self.prepared_for_mms = prepare_mms_js_resources(
+                        model_path=self.model_path,
+                        js_id=self.model,
+                        dependencies=self.dependencies,
+                        model_data=self.pysdk_model.model_data,
+                    )
 
                 self._prepare_for_mode()
                 env = {}
@@ -177,6 +191,10 @@ class JumpStart(ABC):
                 )
             elif self.model_server == ModelServer.TGI:
                 predictor = TgiLocalModePredictor(
+                    self.modes[str(Mode.LOCAL_CONTAINER)], serializer, deserializer
+                )
+            elif self.model_server == ModelServer.MMS:
+                predictor = TransformersLocalModePredictor(
                     self.modes[str(Mode.LOCAL_CONTAINER)], serializer, deserializer
                 )
 
@@ -254,6 +272,24 @@ class JumpStart(ABC):
 
         self.pysdk_model.env.update(env)
 
+    def _build_for_mms_jumpstart(self):
+        """Placeholder docstring"""
+
+        env = {}
+        if self.mode == Mode.LOCAL_CONTAINER:
+            if not hasattr(self, "prepared_for_mms"):
+                self.js_model_config, self.prepared_for_mms = prepare_mms_js_resources(
+                    model_path=self.model_path,
+                    js_id=self.model,
+                    dependencies=self.dependencies,
+                    model_data=self.pysdk_model.model_data,
+                )
+            self._prepare_for_mode()
+        elif self.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(self, "prepared_for_mms"):
+            self.pysdk_model.model_data, env = self._prepare_for_mode()
+
+        self.pysdk_model.env.update(env)
+
     def _tune_for_js(self, sharded_supported: bool, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models in Local Mode.
 
@@ -264,11 +300,6 @@ class JumpStart(ABC):
         returns:
             Tuned Model.
         """
-        if self.mode != Mode.LOCAL_CONTAINER:
-            logger.warning(
-                "Tuning is only a %s capability. Returning original model.", Mode.LOCAL_CONTAINER
-            )
-            return self.pysdk_model
 
         num_shard_env_var_name = "SM_NUM_GPUS"
         if "OPTION_TENSOR_PARALLEL_DEGREE" in self.pysdk_model.env.keys():
@@ -437,42 +468,58 @@ class JumpStart(ABC):
         self.secret_key = None
         self.jumpstart = True
 
-        pysdk_model = self._create_pre_trained_js_model()
+        self.pysdk_model = self._create_pre_trained_js_model()
+        self.pysdk_model.tune = lambda *args, **kwargs: self._default_tune()
 
-        image_uri = pysdk_model.image_uri
+        logger.info(
+            "JumpStart ID %s is packaged with Image URI: %s", self.model, self.pysdk_model.image_uri
+        )
 
-        logger.info("JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri)
+        if self.mode != Mode.SAGEMAKER_ENDPOINT:
+            if self._is_gated_model(self.pysdk_model):
+                raise ValueError(
+                    "JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode."
+                )
 
-        if self._is_gated_model(pysdk_model) and self.mode != Mode.SAGEMAKER_ENDPOINT:
-            raise ValueError(
-                "JumpStart Gated Models are only supported in SAGEMAKER_ENDPOINT mode."
-            )
+            if "djl-inference" in self.pysdk_model.image_uri:
+                logger.info("Building for DJL JumpStart Model ID...")
+                self.model_server = ModelServer.DJL_SERVING
+                self.image_uri = self.pysdk_model.image_uri
 
-        if "djl-inference" in image_uri:
-            logger.info("Building for DJL JumpStart Model ID...")
-            self.model_server = ModelServer.DJL_SERVING
+                self._build_for_djl_jumpstart()
 
-            self.pysdk_model = pysdk_model
-            self.image_uri = self.pysdk_model.image_uri
+                self.pysdk_model.tune = self.tune_for_djl_jumpstart
+            elif "tgi-inference" in self.pysdk_model.image_uri:
+                logger.info("Building for TGI JumpStart Model ID...")
+                self.model_server = ModelServer.TGI
+                self.image_uri = self.pysdk_model.image_uri
 
-            self._build_for_djl_jumpstart()
+                self._build_for_tgi_jumpstart()
 
-            self.pysdk_model.tune = self.tune_for_djl_jumpstart
-        elif "tgi-inference" in image_uri:
-            logger.info("Building for TGI JumpStart Model ID...")
-            self.model_server = ModelServer.TGI
+                self.pysdk_model.tune = self.tune_for_tgi_jumpstart
+            elif "huggingface-pytorch-inference:" in self.pysdk_model.image_uri:
+                logger.info("Building for MMS JumpStart Model ID...")
+                self.model_server = ModelServer.MMS
+                self.image_uri = self.pysdk_model.image_uri
 
-            self.pysdk_model = pysdk_model
-            self.image_uri = self.pysdk_model.image_uri
+                self._build_for_mms_jumpstart()
+            else:
+                raise ValueError(
+                    "JumpStart Model ID was not packaged "
+                    "with djl-inference, tgi-inference, or mms-inference container."
+                )
 
-            self._build_for_tgi_jumpstart()
+        return self.pysdk_model
 
-            self.pysdk_model.tune = self.tune_for_tgi_jumpstart
-        else:
-            raise ValueError(
-                "JumpStart Model ID was not packaged with djl-inference or tgi-inference container."
-            )
+    def _default_tune(self):
+        """Logs a warning message if tune is invoked on endpoint mode.
 
+        Returns:
+            Jumpstart Model: ``This`` model
+        """
+        logger.warning(
+            "Tuning is only a %s capability. Returning original model.", Mode.LOCAL_CONTAINER
+        )
         return self.pysdk_model
 
     def _is_gated_model(self, model) -> bool:

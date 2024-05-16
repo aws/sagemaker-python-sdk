@@ -63,6 +63,10 @@ mock_tgi_image_uri = (
     "123456789712.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi"
     "-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
 )
+mock_invalid_image_uri = (
+    "123456789712.dkr.ecr.us-west-2.amazonaws.com/invalid"
+    "-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
+)
 mock_djl_image_uri = (
     "123456789712.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.24.0-neuronx-sdk2.14.1"
 )
@@ -82,6 +86,88 @@ mock_model_data_str = (
 
 
 class TestJumpStartBuilder(unittest.TestCase):
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
+    def test__build_for_jumpstart_value_error(
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="facebook/invalid",
+            schema_builder=mock_schema_builder,
+            mode=Mode.LOCAL_CONTAINER,
+        )
+
+        mock_pre_trained_model.return_value.image_uri = mock_invalid_image_uri
+
+        self.assertRaises(
+            ValueError,
+            lambda: builder.build(),
+        )
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_mms_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder._get_ram_usage_mb", return_value=1024)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._get_nb_instance", return_value="ml.g5.24xlarge"
+    )
+    def test__build_for_mms_jumpstart(
+        self,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_prepare_for_mms,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model="facebook/galactica-mock-model-id",
+            schema_builder=mock_schema_builder,
+            mode=Mode.LOCAL_CONTAINER,
+        )
+
+        mock_pre_trained_model.return_value.image_uri = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface"
+            "-pytorch-inference:2.1.0-transformers4.37.0-gpu-py310-cu118"
+            "-ubuntu20.04"
+        )
+
+        builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+
+        mock_prepare_for_mms.assert_called()
+
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
