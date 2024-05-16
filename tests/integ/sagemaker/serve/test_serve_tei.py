@@ -79,7 +79,7 @@ def model_builder_model_schema_builder():
         schema_builder=SchemaBuilder(sample_input, loaded_response),
         model_metadata={
             "HF_TASK": "sentence-similarity",
-        }
+        },
     )
 
 
