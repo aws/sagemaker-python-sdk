@@ -77,9 +77,9 @@ def model_builder_model_schema_builder():
         model_path=HF_DIR,
         model="bert-base-uncased",
         schema_builder=SchemaBuilder(sample_input, loaded_response),
-        env_vars={
+        model_metadata={
             "HF_TASK": "sentence-similarity",
-        },
+        }
     )
 
 

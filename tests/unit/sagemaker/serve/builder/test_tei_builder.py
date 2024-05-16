@@ -80,7 +80,7 @@ class TestTEIBuilder(unittest.TestCase):
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
             vpc_config=MOCK_VPC_CONFIG,
-            env_vars={
+            model_metadata={
                 "HF_TASK": "sentence-similarity",
             },
         )
@@ -109,7 +109,7 @@ class TestTEIBuilder(unittest.TestCase):
             model.deploy(mode=Mode.IN_PROCESS)
 
     @patch(
-        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        "sagemaker.serve.builder.tei_builder._get_nb_instance",
         return_value="ml.g5.24xlarge",
     )
     @patch("sagemaker.serve.builder.tei_builder._capture_telemetry", side_effect=None)
@@ -123,7 +123,7 @@ class TestTEIBuilder(unittest.TestCase):
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
             image_uri=MOCK_IMAGE_CONFIG,
-            env_vars={
+            model_metadata={
                 "HF_TASK": "sentence-similarity",
             },
         )
