@@ -78,7 +78,7 @@ def model_builder_model_schema_builder():
         model="bert-base-uncased",
         schema_builder=SchemaBuilder(sample_input, loaded_response),
         env_vars={
-            'HF_TASK': 'sentence-similarity',
+            "HF_TASK": "sentence-similarity",
         },
     )
 
@@ -93,12 +93,10 @@ def model_builder(request):
     tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
     and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
-    )
+)
 @retry_with_instance_list(gpu_list(tests.integ.test_region()))
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
-def test_tei_sagemaker_endpoint(
-        sagemaker_session, model_builder, model_input, **kwargs
-):
+def test_tei_sagemaker_endpoint(sagemaker_session, model_builder, model_input, **kwargs):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
 
@@ -128,6 +126,4 @@ def test_tei_sagemaker_endpoint(
             )
             if caught_ex:
                 logger.exception(caught_ex)
-                assert (
-                    False
-                ), f"{caught_ex} was thrown when running tei sagemaker endpoint test"
+                assert False, f"{caught_ex} was thrown when running tei sagemaker endpoint test"
