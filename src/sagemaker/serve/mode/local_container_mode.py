@@ -220,8 +220,8 @@ class LocalContainerMode(
         for img in images:
             for tag in img.tags:
                 if tag == image:
-                    print(tag)
-                    break
+                    print(f"Matched {tag}")
+                print(tag)
             print()
         print("*" * 80)
         try:
