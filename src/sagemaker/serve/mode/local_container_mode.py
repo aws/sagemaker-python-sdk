@@ -217,10 +217,11 @@ class LocalContainerMode(
         self.client = docker.from_env()
         print("*" * 80)
         images = self.client.images.list()
-        for image in images:
-            print(image.id)
-            print(image.tags)
-            print(image.short_id)
+        for img in images:
+            for tag in img.tags:
+                if tag == image:
+                    print(tag)
+                    break
             print()
         print("*" * 80)
         try:
