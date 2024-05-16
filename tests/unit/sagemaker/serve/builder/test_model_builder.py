@@ -1509,7 +1509,7 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_image_uris_retrieve.return_value = "https://some-image-uri"
 
-        model_builder = ModelBuilder(model="bloom-560m")
+        model_builder = ModelBuilder(model="bloom-560m", schema_builder=schema_builder)
         model_builder.build(sagemaker_session=mock_session)
 
         mock_build_for_tgi.assert_called_once()
