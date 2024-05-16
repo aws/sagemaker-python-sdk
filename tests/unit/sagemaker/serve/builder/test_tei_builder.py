@@ -71,9 +71,9 @@ class TestTEIBuilder(unittest.TestCase):
     )
     @patch("sagemaker.serve.builder.tei_builder._capture_telemetry", side_effect=None)
     def test_build_deploy_for_tei_local_container_and_remote_container(
-            self,
-            mock_get_nb_instance,
-            mock_telemetry,
+        self,
+        mock_get_nb_instance,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
             model=mock_model_id,
@@ -81,7 +81,7 @@ class TestTEIBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             vpc_config=MOCK_VPC_CONFIG,
             env_vars={
-                'HF_TASK': 'sentence-similarity',
+                "HF_TASK": "sentence-similarity",
             },
         )
 
@@ -114,9 +114,9 @@ class TestTEIBuilder(unittest.TestCase):
     )
     @patch("sagemaker.serve.builder.tei_builder._capture_telemetry", side_effect=None)
     def test_image_uri_override(
-            self,
-            mock_get_nb_instance,
-            mock_telemetry,
+        self,
+        mock_get_nb_instance,
+        mock_telemetry,
     ):
         builder = ModelBuilder(
             model=mock_model_id,
@@ -124,7 +124,7 @@ class TestTEIBuilder(unittest.TestCase):
             mode=Mode.LOCAL_CONTAINER,
             image_uri=MOCK_IMAGE_CONFIG,
             env_vars={
-                'HF_TASK': 'sentence-similarity',
+                "HF_TASK": "sentence-similarity",
             },
         )
 

@@ -163,7 +163,6 @@ class TEI(ABC):
         self.env_vars.update(env_vars)
         self.pysdk_model.env.update(self.env_vars)
 
-
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
 
