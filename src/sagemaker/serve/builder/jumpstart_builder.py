@@ -470,9 +470,10 @@ class JumpStart(ABC):
 
         self.pysdk_model = self._create_pre_trained_js_model()
         self.pysdk_model.tune = lambda *args, **kwargs: self._default_tune()
+        self.image_uri = self.pysdk_model.image_uri
 
         logger.info(
-            "JumpStart ID %s is packaged with Image URI: %s", self.model, self.pysdk_model.image_uri
+            "JumpStart ID %s is packaged with Image URI: %s", self.model, self.image_uri
         )
 
         if self.mode != Mode.SAGEMAKER_ENDPOINT:
@@ -484,7 +485,6 @@ class JumpStart(ABC):
             if "djl-inference" in self.pysdk_model.image_uri:
                 logger.info("Building for DJL JumpStart Model ID...")
                 self.model_server = ModelServer.DJL_SERVING
-                self.image_uri = self.pysdk_model.image_uri
 
                 self._build_for_djl_jumpstart()
 
@@ -492,7 +492,6 @@ class JumpStart(ABC):
             elif "tgi-inference" in self.pysdk_model.image_uri:
                 logger.info("Building for TGI JumpStart Model ID...")
                 self.model_server = ModelServer.TGI
-                self.image_uri = self.pysdk_model.image_uri
 
                 self._build_for_tgi_jumpstart()
 
@@ -500,7 +499,6 @@ class JumpStart(ABC):
             elif "huggingface-pytorch-inference:" in self.pysdk_model.image_uri:
                 logger.info("Building for MMS JumpStart Model ID...")
                 self.model_server = ModelServer.MMS
-                self.image_uri = self.pysdk_model.image_uri
 
                 self._build_for_mms_jumpstart()
             else:
