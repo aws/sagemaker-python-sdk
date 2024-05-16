@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.220.0 (2024-05-15)
+
+### Features
+
+ * AutoGluon 1.1.0 image_uris update
+ * add new images for HF TGI release
+ * Add telemetry support for mlflow models
+
+### Bug Fixes and Other Changes
+
+ * add debug logs to workflow container dist creation
+ * model builder race condition on sagemaker session
+ * Add tensorflow_serving support for mlflow models and enable lineage tracking for mlflow models
+ * update image_uri_configs  05-09-2024 07:17:41 PST
+ * skip flakey tests pending investigation
+
+## v2.219.0 (2024-05-08)
+
+### Features
+
+ * allow choosing js payload by alias in private method
+
+### Bug Fixes and Other Changes
+
+ * chore(deps): bump jinja2 from 3.1.3 to 3.1.4 in /requirements/extras
+ * chore(deps): bump tqdm from 4.66.2 to 4.66.3 in /tests/data/serve_resources/mlflow/pytorch
+ * chore(deps): bump jinja2 from 3.1.3 to 3.1.4 in /doc
+ * Updates for SMP v2.3.1
+
 ## v2.218.1 (2024-05-03)
 
 ### Bug Fixes and Other Changes
