@@ -101,7 +101,7 @@ class Transformers(ABC):
             raise ValueError("Could not fetch HF metadata")
 
         model_task = hf_model_md.get("pipeline_tag")
-        if self.model_metadata.get("HF_TASK") is not None:
+        if self.model_metadata is not None and self.model_metadata.get("HF_TASK") is not None:
             model_task = self.model_metadata.get("HF_TASK")
 
         if model_task == "sentence-similarity" and not self.image_uri:
