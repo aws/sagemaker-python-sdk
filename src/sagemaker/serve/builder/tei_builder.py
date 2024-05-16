@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 _CODE_FOLDER = "code"
 
 
+# pylint: disable=W0612
 class TEI(ABC):
     """TEI build logic for ModelBuilder()"""
 
