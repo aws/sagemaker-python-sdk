@@ -88,9 +88,7 @@ def model_builder(request):
     return request.getfixturevalue(request.param)
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310
-)
+@pytest.mark.skipif(PYTHON_VERSION_IS_NOT_310)
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
 def test_tei_sagemaker_endpoint(sagemaker_session, model_builder, model_input):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
@@ -106,9 +104,7 @@ def test_tei_sagemaker_endpoint(sagemaker_session, model_builder, model_input):
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            predictor = model.deploy(
-                instance_type="ml.g5.12xlarge", initial_instance_count=2
-            )
+            predictor = model.deploy(instance_type="ml.g5.12xlarge", initial_instance_count=2)
             logger.info("Endpoint successfully deployed.")
             predictor.predict(model_input)
             assert predictor is not None
