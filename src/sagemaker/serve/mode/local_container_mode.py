@@ -217,7 +217,11 @@ class LocalContainerMode(
         self.client = docker.from_env()
         print("*" * 80)
         images = self.client.images.list()
-        print(images)
+        for image in images:
+            print(image.id)
+            print(image.tags)
+            print(image.short_id)
+            print()
         print("*" * 80)
         try:
             logger.info("Pulling image %s from repository...", image)
