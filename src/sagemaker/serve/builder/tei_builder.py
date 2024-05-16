@@ -193,13 +193,6 @@ class TEI(ABC):
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
             )
 
-            _default_max_new_tokens = _get_default_max_tokens(
-                self.schema_builder.sample_input, self.schema_builder.sample_output
-            )
-
-            self.schema_builder.sample_input["parameters"][
-                "max_new_tokens"
-            ] = _default_max_new_tokens
         self.pysdk_model = self._create_tei_model()
 
         if self.mode == Mode.LOCAL_CONTAINER:
