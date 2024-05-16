@@ -516,17 +516,6 @@ class JumpStart(ABC):
 
         return self.pysdk_model
 
-    def _default_tune(self):
-        """Logs a warning message if tune is invoked on endpoint mode.
-
-        Returns:
-            Jumpstart Model: ``This`` model
-        """
-        logger.warning(
-            "Tuning is only a %s capability. Returning original model.", Mode.LOCAL_CONTAINER
-        )
-        return self.pysdk_model
-
     def _is_gated_model(self, model) -> bool:
         """Determine if ``this`` Model is Gated
 
