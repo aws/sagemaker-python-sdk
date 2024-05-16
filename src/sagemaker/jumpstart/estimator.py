@@ -111,7 +111,6 @@ class JumpStartEstimator(Estimator):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
-        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ):
@@ -505,8 +504,6 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
-            enable_session_tag_chaining (bool or PipelineVariable): Optional.
-                Specifies whether SessionTagChaining is enabled for the training job
             config_name (Optional[str]):
                 Name of the training configuration to apply to the Estimator. (Default: None).
             enable_session_tag_chaining (bool or PipelineVariable): Optional.

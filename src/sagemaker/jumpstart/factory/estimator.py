@@ -130,7 +130,6 @@ def get_init_kwargs(
     disable_output_compression: Optional[bool] = None,
     enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
     enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
-    enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     config_name: Optional[str] = None,
     enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
 ) -> JumpStartEstimatorInitKwargs:
