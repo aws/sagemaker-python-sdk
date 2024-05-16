@@ -586,7 +586,6 @@ class JumpStartEstimator(Estimator):
             disable_output_compression=disable_output_compression,
             enable_infra_check=enable_infra_check,
             enable_remote_debug=enable_remote_debug,
-            enable_session_tag_chaining=enable_session_tag_chaining,
             config_name=config_name,
             enable_session_tag_chaining=enable_session_tag_chaining,
         )
