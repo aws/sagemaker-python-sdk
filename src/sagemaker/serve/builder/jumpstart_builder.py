@@ -476,9 +476,7 @@ class JumpStart(ABC):
         pysdk_model = self._create_pre_trained_js_model()
         image_uri = pysdk_model.image_uri
 
-        logger.info(
-            "JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri
-        )
+        logger.info("JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri)
 
         if self._is_gated_model(pysdk_model) and self.mode != Mode.SAGEMAKER_ENDPOINT:
             raise ValueError(
