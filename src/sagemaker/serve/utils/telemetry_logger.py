@@ -52,8 +52,13 @@ MODE_TO_CODE = {
 }
 
 MODEL_SERVER_TO_CODE = {
-    str(model_server): model_server.value
-    for model_server in ModelServer
+    str(ModelServer.TORCHSERVE): 1,
+    str(ModelServer.MMS): 2,
+    str(ModelServer.TENSORFLOW_SERVING): 3,
+    str(ModelServer.DJL_SERVING): 4,
+    str(ModelServer.TRITON): 5,
+    str(ModelServer.TGI): 6,
+    str(ModelServer.TEI): 7,
 }
 
 MLFLOW_MODEL_PATH_CODE = {
