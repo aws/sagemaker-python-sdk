@@ -88,7 +88,10 @@ def model_builder(request):
     return request.getfixturevalue(request.param)
 
 
-@pytest.mark.skipif(PYTHON_VERSION_IS_NOT_310)
+@pytest.mark.skipif(
+    PYTHON_VERSION_IS_NOT_310,
+    reason="Testing feature needs latest metadata",
+)
 @pytest.mark.parametrize("model_builder", ["model_builder_model_schema_builder"], indirect=True)
 def test_tei_sagemaker_endpoint(sagemaker_session, model_builder, model_input):
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
