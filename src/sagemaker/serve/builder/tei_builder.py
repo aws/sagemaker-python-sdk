@@ -16,10 +16,11 @@ import logging
 from typing import Type
 from abc import ABC, abstractmethod
 
+from sagemaker import image_uris
 from sagemaker.model import Model
 from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
 
-from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
+from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
 )
@@ -84,11 +85,16 @@ class TEI(ABC):
             logger.warning(messaging)
             self.model_server = ModelServer.TGI
 
-    def _create_tei_model(self) -> Type[Model]:
+    def _create_tei_model(self,  **kwargs) -> Type[Model]:
         """Placeholder docstring"""
+        if self.nb_instance_type and "instance_type" not in kwargs:
+            kwargs.update({"instance_type": self.nb_instance_type})
+
         if not self.image_uri:
-            self.image_uri = get_huggingface_llm_image_uri(
-                "huggingface-tei", session=self.sagemaker_session
+            self.image_uri = image_uris.retrieve(
+                "huggingface-tei",
+                image_scope="inference",
+                instance_type=kwargs.get("instance_type")
             )
 
         pysdk_model = HuggingFaceModel(
@@ -164,9 +170,7 @@ class TEI(ABC):
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
 
-        if self.nb_instance_type and "instance_type" not in kwargs:
-            kwargs.update({"instance_type": self.nb_instance_type})
-        elif not self.nb_instance_type and "instance_type" not in kwargs:
+        if not self.nb_instance_type and "instance_type" not in kwargs:
             raise ValueError(
                 "Instance type must be provided when deploying " "to SageMaker Endpoint mode."
             )
