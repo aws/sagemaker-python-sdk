@@ -75,7 +75,7 @@ def model_input():
 def model_builder_model_schema_builder():
     return ModelBuilder(
         model_path=HF_DIR,
-        model="bert-base-uncased",
+        model="BAAI/bge-m3",
         schema_builder=SchemaBuilder(sample_input, loaded_response),
         model_metadata={
             "HF_TASK": "sentence-similarity",
