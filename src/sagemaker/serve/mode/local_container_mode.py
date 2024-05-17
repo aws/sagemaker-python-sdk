@@ -226,6 +226,7 @@ class LocalContainerMode(
             logger.warning("Unable to login to ecr: %s", e)
 
         self.client = docker.from_env()
+        print(self.client.images.list())
         try:
             logger.info("Pulling image %s from repository...", image)
             self.client.images.pull(image)
