@@ -21,6 +21,7 @@ from sagemaker.serve.model_server.torchserve.server import LocalTorchServe
 from sagemaker.serve.model_server.djl_serving.server import LocalDJLServing
 from sagemaker.serve.model_server.triton.server import LocalTritonServer
 from sagemaker.serve.model_server.tgi.server import LocalTgiServing
+from sagemaker.serve.model_server.tei.server import LocalTeiServing
 from sagemaker.serve.model_server.multi_model_server.server import LocalMultiModelServer
 from sagemaker.session import Session
 
@@ -41,6 +42,7 @@ class LocalContainerMode(
     LocalTgiServing,
     LocalMultiModelServer,
     LocalTensorflowServing,
+    LocalTeiServing,
 ):
     """A class that holds methods to deploy model to a container in local environment"""
 

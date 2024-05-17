@@ -74,16 +74,16 @@ class TEI(ABC):
     def _get_client_translators(self):
         """Placeholder docstring"""
 
-    def _set_to_tgi(self):
+    def _set_to_tei(self):
         """Placeholder docstring"""
-        if self.model_server != ModelServer.TGI:
+        if self.model_server != ModelServer.TEI:
             messaging = (
                 "HuggingFace Model ID support on model server: "
                 f"{self.model_server} is not currently supported. "
-                f"Defaulting to {ModelServer.TGI}"
+                f"Defaulting to {ModelServer.TEI}"
             )
             logger.warning(messaging)
-            self.model_server = ModelServer.TGI
+            self.model_server = ModelServer.TEI
 
     def _create_tei_model(self, **kwargs) -> Type[Model]:
         """Placeholder docstring"""
