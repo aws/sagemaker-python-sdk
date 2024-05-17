@@ -85,7 +85,7 @@ class TEI(ABC):
             logger.warning(messaging)
             self.model_server = ModelServer.TGI
 
-    def _create_tei_model(self,  **kwargs) -> Type[Model]:
+    def _create_tei_model(self, **kwargs) -> Type[Model]:
         """Placeholder docstring"""
         if self.nb_instance_type and "instance_type" not in kwargs:
             kwargs.update({"instance_type": self.nb_instance_type})
@@ -95,7 +95,7 @@ class TEI(ABC):
                 "huggingface-tei",
                 image_scope="inference",
                 instance_type=kwargs.get("instance_type"),
-                region=self.sagemaker_session.boto_region_name
+                region=self.sagemaker_session.boto_region_name,
             )
 
         pysdk_model = HuggingFaceModel(
