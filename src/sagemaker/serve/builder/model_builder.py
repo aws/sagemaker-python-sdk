@@ -36,6 +36,7 @@ from sagemaker.serve.mode.local_container_mode import LocalContainerMode
 from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.builder.serve_settings import _ServeSettings
 from sagemaker.serve.builder.djl_builder import DJL
+from sagemaker.serve.builder.tei_builder import TEI
 from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.transformers_builder import Transformers
@@ -95,9 +96,9 @@ supported_model_server = {
 }
 
 
-# pylint: disable=attribute-defined-outside-init, disable=E1101, disable=R0901
+# pylint: disable=attribute-defined-outside-init, disable=E1101, disable=R0901, disable=R1705
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing):
+class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing, TEI):
     """Class that builds a deployable model.
 
     Args:
@@ -753,7 +754,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing)
                 model_task = self.model_metadata.get("HF_TASK")
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
-            if self._is_djl():  # pylint: disable=R1705
+            if self._is_djl():
                 return self._build_for_djl()
             else:
                 hf_model_md = get_huggingface_model_metadata(
@@ -764,8 +765,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing)
                     model_task = hf_model_md.get("pipeline_tag")
                 if self.schema_builder is None and model_task is not None:
                     self._hf_schema_builder_init(model_task)
-                if model_task == "text-generation":  # pylint: disable=R1705
+                if model_task == "text-generation":
                     return self._build_for_tgi()
+                if model_task == "sentence-similarity":
+                    return self._build_for_tei()
                 elif self._can_fit_on_single_gpu():
                     return self._build_for_transformers()
                 elif (

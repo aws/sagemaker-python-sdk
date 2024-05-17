@@ -1476,6 +1476,44 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_build_for_tgi.assert_called_once()
 
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tei")
+    @patch("sagemaker.image_uris.retrieve")
+    @patch("sagemaker.djl_inference.model.urllib")
+    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.huggingface.llm_utils.urllib")
+    @patch("sagemaker.huggingface.llm_utils.json")
+    @patch("sagemaker.model_uris.retrieve")
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_sentence_similarity(
+        self,
+        mock_serveSettings,
+        mock_model_uris_retrieve,
+        mock_llm_utils_json,
+        mock_llm_utils_urllib,
+        mock_model_json,
+        mock_model_urllib,
+        mock_image_uris_retrieve,
+        mock_build_for_tei,
+    ):
+        mock_setting_object = mock_serveSettings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        mock_model_uris_retrieve.side_effect = KeyError
+        mock_llm_utils_json.load.return_value = {"pipeline_tag": "sentence-similarity"}
+        mock_llm_utils_urllib.request.Request.side_effect = Mock()
+
+        mock_model_json.load.return_value = {"some": "config"}
+        mock_model_urllib.request.Request.side_effect = Mock()
+        mock_build_for_tei.side_effect = Mock()
+
+        mock_image_uris_retrieve.return_value = "https://some-image-uri"
+
+        model_builder = ModelBuilder(model="bloom-560m", schema_builder=schema_builder)
+        model_builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_tei.assert_called_once()
+
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._try_fetch_gpu_info")
     @patch("sagemaker.image_uris.retrieve")
