@@ -94,7 +94,8 @@ class TEI(ABC):
             self.image_uri = image_uris.retrieve(
                 "huggingface-tei",
                 image_scope="inference",
-                instance_type=kwargs.get("instance_type")
+                instance_type=kwargs.get("instance_type"),
+                region=self.sagemaker_session.boto_region_name
             )
 
         pysdk_model = HuggingFaceModel(
