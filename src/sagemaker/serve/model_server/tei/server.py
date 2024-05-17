@@ -40,7 +40,7 @@ class LocalTeiServing:
             env_vars: Environment variables to set
         """
         if env_vars and secret_key:
-            env_vars['SAGEMAKER_SERVE_SECRET_KEY'] = secret_key
+            env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = secret_key
 
         self.container = client.containers.run(
             image,
