@@ -168,6 +168,15 @@ class TEI(ABC):
         self.env_vars.update(env_vars)
         self.pysdk_model.env.update(self.env_vars)
 
+        # if the weights have been cached via local container mode -> set to offline
+        if str(Mode.LOCAL_CONTAINER) in self.modes:
+            self.pysdk_model.env.update({"TRANSFORMERS_OFFLINE": "1"})
+        else:
+            # if has not been built for local container we must use cache
+            # that hosting has write access to.
+            self.pysdk_model.env["TRANSFORMERS_CACHE"] = "/tmp"
+            self.pysdk_model.env["HUGGINGFACE_HUB_CACHE"] = "/tmp"
+
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
 
