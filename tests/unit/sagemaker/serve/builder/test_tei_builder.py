@@ -18,7 +18,7 @@ from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from tests.unit.sagemaker.serve.constants import MOCK_VPC_CONFIG
 
-from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
+from sagemaker.serve.utils.predictors import TgiLocalModePredictor
 
 mock_model_id = "bert-base-uncased"
 mock_prompt = "The man worked as a [MASK]."
@@ -64,13 +64,13 @@ MOCK_IMAGE_CONFIG = (
 )
 
 
-class TestTransformersBuilder(unittest.TestCase):
+class TestTEIBuilder(unittest.TestCase):
     @patch(
-        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        "sagemaker.serve.builder.tei_builder._get_nb_instance",
         return_value="ml.g5.24xlarge",
     )
-    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
-    def test_build_deploy_for_transformers_local_container_and_remote_container(
+    @patch("sagemaker.serve.builder.tei_builder._capture_telemetry", side_effect=None)
+    def test_build_deploy_for_tei_local_container_and_remote_container(
         self,
         mock_get_nb_instance,
         mock_telemetry,
@@ -80,6 +80,9 @@ class TestTransformersBuilder(unittest.TestCase):
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
             vpc_config=MOCK_VPC_CONFIG,
+            model_metadata={
+                "HF_TASK": "sentence-similarity",
+            },
         )
 
         builder._prepare_for_mode = MagicMock()
@@ -93,7 +96,7 @@ class TestTransformersBuilder(unittest.TestCase):
 
         assert model.vpc_config == MOCK_VPC_CONFIG
         assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
-        assert isinstance(predictor, TransformersLocalModePredictor)
+        assert isinstance(predictor, TgiLocalModePredictor)
 
         assert builder.nb_instance_type == "ml.g5.24xlarge"
 
@@ -106,10 +109,10 @@ class TestTransformersBuilder(unittest.TestCase):
             model.deploy(mode=Mode.IN_PROCESS)
 
     @patch(
-        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        "sagemaker.serve.builder.tei_builder._get_nb_instance",
         return_value="ml.g5.24xlarge",
     )
-    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
+    @patch("sagemaker.serve.builder.tei_builder._capture_telemetry", side_effect=None)
     def test_image_uri_override(
         self,
         mock_get_nb_instance,
@@ -120,6 +123,9 @@ class TestTransformersBuilder(unittest.TestCase):
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
             image_uri=MOCK_IMAGE_CONFIG,
+            model_metadata={
+                "HF_TASK": "sentence-similarity",
+            },
         )
 
         builder._prepare_for_mode = MagicMock()
@@ -133,7 +139,7 @@ class TestTransformersBuilder(unittest.TestCase):
 
         assert builder.image_uri == MOCK_IMAGE_CONFIG
         assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
-        assert isinstance(predictor, TransformersLocalModePredictor)
+        assert isinstance(predictor, TgiLocalModePredictor)
 
         assert builder.nb_instance_type == "ml.g5.24xlarge"
 
