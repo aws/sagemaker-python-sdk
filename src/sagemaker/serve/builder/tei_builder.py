@@ -25,7 +25,7 @@ from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
 )
 from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
-from sagemaker.serve.utils.predictors import TgiLocalModePredictor
+from sagemaker.serve.utils.predictors import TeiLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
@@ -142,7 +142,7 @@ class TEI(ABC):
         if self.mode == Mode.LOCAL_CONTAINER:
             timeout = kwargs.get("model_data_download_timeout")
 
-            predictor = TgiLocalModePredictor(
+            predictor = TeiLocalModePredictor(
                 self.modes[str(Mode.LOCAL_CONTAINER)], serializer, deserializer
             )
 
