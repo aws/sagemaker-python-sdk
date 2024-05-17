@@ -107,8 +107,7 @@ def test_tei_sagemaker_endpoint(sagemaker_session, model_builder, model_input):
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            predictor = model.deploy(instance_type="ml.g5.12xlarge", initial_instance_count=2)
-            logger.info("Endpoint successfully deployed.")
+            predictor = model.deploy(instance_type="ml.g5.2xlarge", initial_instance_count=1)
             predictor.predict(model_input)
             assert predictor is not None
         except Exception as e:
