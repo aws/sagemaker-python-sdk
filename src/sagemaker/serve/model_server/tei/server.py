@@ -131,7 +131,7 @@ class SageMakerTeiServing:
 
         s3_location = s3_path_join("s3://", bucket, code_key_prefix, "code")
 
-        logger.debug("Uploading TGI Model Resources uncompressed to: %s", s3_location)
+        logger.debug("Uploading TEI Model Resources uncompressed to: %s", s3_location)
 
         model_data_url = S3Uploader.upload(
             str(code_dir),
