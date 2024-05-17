@@ -180,7 +180,9 @@ class TEI(ABC):
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
 
-        if not self.nb_instance_type and "instance_type" not in kwargs:
+        if self.nb_instance_type and "instance_type" not in kwargs:
+            kwargs.update({"instance_type": self.nb_instance_type})
+        elif not self.nb_instance_type and "instance_type" not in kwargs:
             raise ValueError(
                 "Instance type must be provided when deploying " "to SageMaker Endpoint mode."
             )
