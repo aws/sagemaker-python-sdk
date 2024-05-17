@@ -216,7 +216,7 @@ class TEI(ABC):
         """Placeholder docstring"""
         self.secret_key = None
 
-        self._set_to_tgi()
+        self._set_to_tei()
 
         self.pysdk_model = self._build_for_hf_tei()
         return self.pysdk_model
