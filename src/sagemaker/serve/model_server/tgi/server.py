@@ -74,7 +74,7 @@ class LocalTgiServing:
         """Placeholder docstring"""
         try:
             response = requests.post(
-                f"http://{get_docker_host()}:8080/invocations",
+                f"http://{get_docker_host()}:8080/generate",
                 data=request,
                 headers={"Content-Type": content_type, "Accept": accept},
                 timeout=600,
