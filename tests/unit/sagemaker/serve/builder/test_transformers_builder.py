@@ -155,8 +155,9 @@ class TestTransformersBuilder(unittest.TestCase):
         "sagemaker.huggingface.llm_utils.get_huggingface_model_metadata",
         return_value=None,
     )
-    def test_failure_hf_md(self, mock_model_md, mock_get_nb_instance, mock_telemetry,
-                           mock_build_for_transformers):
+    def test_failure_hf_md(
+        self, mock_model_md, mock_get_nb_instance, mock_telemetry, mock_build_for_transformers
+    ):
         builder = ModelBuilder(
             model=mock_model_id,
             schema_builder=mock_schema_builder,
