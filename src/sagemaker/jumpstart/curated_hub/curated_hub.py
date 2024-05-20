@@ -198,7 +198,18 @@ class CuratedHub:
     def delete(self) -> None:
         """Deletes this Curated Hub"""
         return self._sagemaker_session.delete_hub(self.hub_name)
-    
+
+    def create_model_reference(
+        self, model_arn: str, model_name: Optional[str], min_version: Optional[str] = None
+    ):
+        """Adds model reference to this Curated Hub"""
+        return self._sagemaker_session.create_hub_content_reference(
+            hub_name=self.hub_name,
+            source_hub_content_arn=model_arn,
+            hub_content_name=model_name,
+            min_version=min_version,
+        )
+
     def delete_model_reference(self, model_name: str) -> None:
         """Deletes model reference from this Curated Hub"""
         return self._sagemaker_session.delete_hub_content_reference(

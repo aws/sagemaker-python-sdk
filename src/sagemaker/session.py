@@ -6936,9 +6936,33 @@ class Session(object):  # pylint: disable=too-many-public-methods
         }
 
         return self.sagemaker_client.delete_hub_content(**request)
-    
+
+    def create_hub_content_reference(
+        self, hub_name: str, source_hub_content_arn: str, hub_content_name: str, min_version: str
+    ) -> Dict[str, str]:
+        """Creates a given HubContent reference in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub that you want to delete content in.
+            source_hub_content_arn (str): Hub content arn in the public/source Hub.
+            hub_content_name (str): The name of the reference that you want to add to the Hub.
+            min_version (str): A minimum version of the hub content to add to the Hub.
+
+        Returns:
+            (dict): Return value for ``CreateHubContentReference`` API
+        """
+
+        request = {
+            "HubName": hub_name,
+            "SourceHubContentArn": source_hub_content_arn,
+            "HubContentName": hub_content_name,
+            "MinVersion": min_version,
+        }
+
+        return self.sagemaker_client.createHubContentReference(**request)
+
     def delete_hub_content_reference(
-            self, hub_name:str, hub_content_type: str, hub_content_name: str
+        self, hub_name: str, hub_content_type: str, hub_content_name: str
     ) -> None:
         """Deletes a given HubContent reference in a SageMaker Hub
 

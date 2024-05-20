@@ -260,6 +260,38 @@ def test_delete_model_with_wildcard_version(mock_get_latest_model_version, sagem
         hub_content_type="Model",
     )
 
+
+def test_create_hub_content_reference(sagemaker_session):
+    hub = CuratedHub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
+    model_name = "mock-model-one-huggingface"
+    min_version = "1.1.1"
+    public_model_arn = (
+        f"arn:aws:sagemaker:us-east-1:123456789123:hub-content/JumpStartHub/model/{model_name}"
+    )
+    create_hub_content_reference = {
+        "HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{HUB_NAME}",
+        "HubContentReferenceArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub-content/{HUB_NAME}/ModelRef/{model_name}",
+    }
+    sagemaker_session.create_hub = Mock(return_value=create_hub_content_reference)
+
+    request = {
+        "hub_name": HUB_NAME,
+        "source_hub_content_arn": public_model_arn,
+        "hub_content_name": model_name,
+        "min_version": min_version,
+    }
+
+    response = hub.create_model_reference(
+        model_arn=public_model_arn, model_name=model_name, min_version=min_version
+    )
+    sagemaker_session.create_hub_content_reference.assert_called_with(**request)
+
+    assert response == {
+        "HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{HUB_NAME}",
+        "HubContentReferenceArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub-content/{HUB_NAME}/ModelRef/{model_name}",
+    }
+
+
 def test_delete_hub_content_reference(sagemaker_session):
     hub = CuratedHub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
     model_name = "mock-model-one-huggingface"
@@ -268,5 +300,5 @@ def test_delete_hub_content_reference(sagemaker_session):
     sagemaker_session.delete_hub_content_reference.assert_called_with(
         hub_name=HUB_NAME,
         hub_content_type="ModelReference",
-        hub_content_name="mock-model-one-huggingface"
+        hub_content_name="mock-model-one-huggingface",
     )
