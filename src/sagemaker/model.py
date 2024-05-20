@@ -1303,7 +1303,6 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
-        inference_component_name=None,
         tags=None,
         kms_key=None,
         wait=True,
@@ -1320,6 +1319,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         managed_instance_scaling: Optional[str] = None,
+        inference_component_name=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
