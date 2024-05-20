@@ -795,7 +795,6 @@ def _validate_smdataparallel_args(
 
     Raises:
         ValueError: if
-            (`instance_type` is not in SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES or
             `py_version` is not python3 or
             `framework_version` is not in SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSION
     """
@@ -805,18 +804,6 @@ def _validate_smdataparallel_args(
 
     if not smdataparallel_enabled:
         return
-
-    is_instance_type_supported = instance_type in SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES
-
-    err_msg = ""
-
-    if not is_instance_type_supported:
-        # instance_type is required
-        err_msg += (
-            f"Provided instance_type {instance_type} is not supported by smdataparallel.\n"
-            "Please specify one of the supported instance types:"
-            f"{SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES}\n"
-        )
 
     if not image_uri:
         # ignore framework_version & py_version if image_uri is set
