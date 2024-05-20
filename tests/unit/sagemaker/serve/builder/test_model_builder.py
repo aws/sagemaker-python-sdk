@@ -19,6 +19,7 @@ from copy import deepcopy
 
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_TRACKING_ARN
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.predictors import TensorflowServingLocalPredictor
@@ -2256,4 +2257,188 @@ class TestModelBuilder(unittest.TestCase):
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
             mock_session,
+        )
+
+    def test_handle_mlflow_input_without_mlflow_model_path(self):
+        builder = ModelBuilder(model_metadata={})
+        assert not builder._has_mlflow_arguments()
+
+    @patch("importlib.util.find_spec")
+    @patch("mlflow.set_tracking_uri")
+    @patch("mlflow.get_run")
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_run_id(
+        self,
+        mock_validate,
+        mock_s3_downloader,
+        mock_initialize,
+        mock_check_mlflow_model,
+        mock_get_run,
+        mock_set_tracking_uri,
+        mock_find_spec,
+    ):
+        mock_find_spec.return_value = True
+        mock_run_info = Mock()
+        mock_run_info.info.artifact_uri = "s3://bucket/path"
+        mock_get_run.return_value = mock_run_info
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "runs:/runid/mlflow-path",
+                "MLFLOW_TRACKING_ARN": "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+            }
+        )
+        builder._handle_mlflow_input()
+        mock_initialize.assert_called_once_with(builder, "s3://bucket/path/mlflow-path")
+
+    @patch("importlib.util.find_spec")
+    @patch("mlflow.set_tracking_uri")
+    @patch("mlflow.MlflowClient.get_model_version")
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_registry_path_with_model_version(
+        self,
+        mock_validate,
+        mock_s3_downloader,
+        mock_initialize,
+        mock_check_mlflow_model,
+        mock_get_model_version,
+        mock_set_tracking_uri,
+        mock_find_spec,
+    ):
+        mock_find_spec.return_value = True
+        mock_registry_path = Mock()
+        mock_registry_path.source = "s3://bucket/path/"
+        mock_get_model_version.return_value = mock_registry_path
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "models:/model-name/1",
+                "MLFLOW_TRACKING_ARN": "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+            }
+        )
+        builder._handle_mlflow_input()
+        mock_initialize.assert_called_once_with(builder, "s3://bucket/path/")
+
+    @patch("importlib.util.find_spec")
+    @patch("mlflow.set_tracking_uri")
+    @patch("mlflow.MlflowClient.get_model_version_by_alias")
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_registry_path_with_model_alias(
+        self,
+        mock_validate,
+        mock_s3_downloader,
+        mock_initialize,
+        mock_check_mlflow_model,
+        mock_get_model_version_by_alias,
+        mock_set_tracking_uri,
+        mock_find_spec,
+    ):
+        mock_find_spec.return_value = True
+        mock_registry_path = Mock()
+        mock_registry_path.source = "s3://bucket/path"
+        mock_get_model_version_by_alias.return_value = mock_registry_path
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "models:/model-name@production",
+                "MLFLOW_TRACKING_ARN": "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+            }
+        )
+        builder._handle_mlflow_input()
+        mock_initialize.assert_called_once_with(builder, "s3://bucket/path/")
+
+    @patch("mlflow.MlflowClient.get_model_version")
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_registry_path_missing_tracking_server_arn(
+        self,
+        mock_validate,
+        mock_s3_downloader,
+        mock_initialize,
+        mock_check_mlflow_model,
+        mock_get_model_version,
+    ):
+        mock_registry_path = Mock()
+        mock_registry_path.source = "s3://bucket/path"
+        mock_get_model_version.return_value = mock_registry_path
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "models:/model-name/1",
+            }
+        )
+        self.assertRaisesRegex(
+            Exception,
+            "%s is not provided in ModelMetadata or through set_tracking_arn "
+            "but MLflow model path was provided." % MLFLOW_TRACKING_ARN,
+            builder._handle_mlflow_input,
+        )
+
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_model_package_arn(
+        self, mock_validate, mock_s3_downloader, mock_initialize, mock_check_mlflow_model
+    ):
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+        mock_model_package = {"SourceUri": "s3://bucket/path"}
+        mock_session.sagemaker_client.describe_model_package.return_value = mock_model_package
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "arn:aws:sagemaker:us-west-2:000000000000:model-package/test",
+                "MLFLOW_TRACKING_ARN": "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+            },
+            sagemaker_session=mock_session,
+        )
+        builder._handle_mlflow_input()
+        mock_initialize.assert_called_once_with(builder, "s3://bucket/path")
+
+    @patch("importlib.util.find_spec", Mock(return_value=True))
+    @patch("mlflow.set_tracking_uri")
+    def test_set_tracking_arn_success(self, mock_set_tracking_uri):
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "arn:aws:sagemaker:us-west-2:000000000000:model-package/test",
+            }
+        )
+        tracking_arn = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
+        builder.set_tracking_arn(tracking_arn)
+        mock_set_tracking_uri.assert_called_once_with(tracking_arn)
+        assert builder.model_metadata[MLFLOW_TRACKING_ARN] == tracking_arn
+
+    @patch("importlib.util.find_spec", Mock(return_value=False))
+    def test_set_tracking_arn_mlflow_not_installed(self):
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "arn:aws:sagemaker:us-west-2:000000000000:model-package/test",
+            }
+        )
+        tracking_arn = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
+        self.assertRaisesRegex(
+            ImportError,
+            "Unable to import awsmlflow, check if awsmlflow is installed",
+            builder.set_tracking_arn,
+            tracking_arn,
         )

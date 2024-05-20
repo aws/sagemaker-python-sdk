@@ -12,11 +12,14 @@
 # language governing permissions and limitations under the License.
 """Holds the ModelBuilder class and the ModelServer enum."""
 from __future__ import absolute_import
+
+import importlib.util
 import uuid
 from typing import Any, Type, List, Dict, Optional, Union
 from dataclasses import dataclass, field
 import logging
 import os
+import re
 
 from pathlib import Path
 
@@ -43,12 +46,15 @@ from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
 from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_MODEL_PATH,
+    MLFLOW_TRACKING_ARN,
+    MLFLOW_RUN_ID_REGEX,
+    MLFLOW_REGISTRY_PATH_REGEX,
+    MODEL_PACKAGE_ARN_REGEX,
     MLFLOW_METADATA_FILE,
     MLFLOW_PIP_DEPENDENCY_FILE,
 )
 from sagemaker.serve.model_format.mlflow.utils import (
     _get_default_model_server_for_mlflow,
-    _mlflow_input_is_local_path,
     _download_s3_artifacts,
     _select_container_for_mlflow_model,
     _generate_mlflow_artifact_path,
@@ -276,8 +282,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         default=None,
         metadata={
             "help": "Define the model metadata to override, currently supports `HF_TASK`, "
-            "`MLFLOW_MODEL_PATH`. HF_TASK should be set for new models without task metadata in "
-            "the Hub, Adding unsupported task types will throw an exception"
+            "`MLFLOW_MODEL_PATH`, and `MLFLOW_TRACKING_ARN`. HF_TASK should be set for new "
+            "models without task metadata in the Hub, Adding unsupported task types will "
+            "throw an exception"
         },
     )
 
@@ -501,6 +508,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             _maintain_lineage_tracking_for_mlflow_model(
                 mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
                 s3_upload_path=self.s3_upload_path,
+                tracking_server_arn=self.model_metadata.get(MLFLOW_TRACKING_ARN),
                 sagemaker_session=self.sagemaker_session,
             )
         return new_model_package
@@ -571,6 +579,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             _maintain_lineage_tracking_for_mlflow_model(
                 mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
                 s3_upload_path=self.s3_upload_path,
+                tracking_server_arn=self.model_metadata.get(MLFLOW_TRACKING_ARN),
                 sagemaker_session=self.sagemaker_session,
             )
         return predictor
@@ -625,11 +634,30 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         return wrapper
 
-    def _check_if_input_is_mlflow_model(self) -> bool:
-        """Checks whether an MLmodel file exists in the given directory.
+    def _handle_mlflow_input(self):
+        """Check whether an MLflow model is present and handle accordingly"""
+        self._is_mlflow_model = self._has_mlflow_arguments()
+        if not self._is_mlflow_model:
+            return
+
+        mlflow_model_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
+        artifact_path = self._get_artifact_path(mlflow_model_path)
+        if not self._mlflow_metadata_exists(artifact_path):
+            logger.info(
+                "MLflow model metadata not detected in %s. ModelBuilder is not "
+                "handling MLflow model input",
+                mlflow_model_path,
+            )
+            return
+
+        self._initialize_for_mlflow(artifact_path)
+        _validate_input_for_mlflow(self.model_server, self.env_vars.get("MLFLOW_MODEL_FLAVOR"))
+
+    def _has_mlflow_arguments(self) -> bool:
+        """Check whether MLflow model arguments are present
 
         Returns:
-            bool: True if the MLmodel file exists, False otherwise.
+            bool: True if MLflow arguments are present, False otherwise.
         """
         if self.inference_spec or self.model:
             logger.info(
@@ -644,8 +672,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
             return False
 
-        path = self.model_metadata.get(MLFLOW_MODEL_PATH)
-        if not path:
+        mlflow_model_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
+        if not mlflow_model_path:
             logger.info(
                 "%s is not provided in ModelMetadata. ModelBuilder is not handling MLflow model "
                 "input",
@@ -653,7 +681,71 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
             return False
 
-        # Check for S3 path
+        return True
+
+    def _get_artifact_path(self, mlflow_model_path: str) -> str:
+        """Retrieves the model artifact location given the Mlflow model input.
+
+        Args:
+            mlflow_model_path (str): The MLflow model path input.
+
+        Returns:
+            str: The path to the model artifact.
+        """
+        if (is_run_id_type := re.match(MLFLOW_RUN_ID_REGEX, mlflow_model_path)) or re.match(
+            MLFLOW_REGISTRY_PATH_REGEX, mlflow_model_path
+        ):
+            mlflow_tracking_arn = self.model_metadata.get(MLFLOW_TRACKING_ARN)
+            if not mlflow_tracking_arn:
+                raise ValueError(
+                    "%s is not provided in ModelMetadata or through set_tracking_arn "
+                    "but MLflow model path was provided." % MLFLOW_TRACKING_ARN,
+                )
+
+            if not importlib.util.find_spec("awsmlflow"):
+                raise ImportError("Unable to import awsmlflow, check if awsmlflow is installed")
+
+            import mlflow
+
+            mlflow.set_tracking_uri(mlflow_tracking_arn)
+            if is_run_id_type:
+                _, run_id, model_path = mlflow_model_path.split("/", 2)
+                artifact_uri = mlflow.get_run(run_id).info.artifact_uri
+                if not artifact_uri.endswith("/"):
+                    artifact_uri += "/"
+                return artifact_uri + model_path
+
+            mlflow_client = mlflow.MlflowClient()
+            if not mlflow_model_path.endswith("/"):
+                mlflow_model_path += "/"
+
+            if "@" in mlflow_model_path:
+                _, model_name_and_alias, artifact_uri = mlflow_model_path.split("/", 2)
+                model_name, model_alias = model_name_and_alias.split("@")
+                model_metadata = mlflow_client.get_model_version_by_alias(model_name, model_alias)
+            else:
+                _, model_name, model_version, artifact_uri = mlflow_model_path.split("/", 3)
+                model_metadata = mlflow_client.get_model_version(model_name, model_version)
+
+            source = model_metadata.source
+            if not source.endswith("/"):
+                source += "/"
+            return source + artifact_uri
+
+        if re.match(MODEL_PACKAGE_ARN_REGEX, mlflow_model_path):
+            model_package = self.sagemaker_session.sagemaker_client.describe_model_package(
+                ModelPackageName=mlflow_model_path
+            )
+            return model_package["SourceUri"]
+
+        return mlflow_model_path
+
+    def _mlflow_metadata_exists(self, path: str) -> bool:
+        """Checks whether an MLmodel file exists in the given directory.
+
+        Returns:
+            bool: True if the MLmodel file exists, False otherwise.
+        """
         if path.startswith("s3://"):
             s3_downloader = S3Downloader()
             if not path.endswith("/"):
@@ -665,17 +757,18 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         file_path = os.path.join(path, MLFLOW_METADATA_FILE)
         return os.path.isfile(file_path)
 
-    def _initialize_for_mlflow(self) -> None:
-        """Initialize mlflow model artifacts, image uri and model server."""
-        mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
-        if not _mlflow_input_is_local_path(mlflow_path):
-            # TODO: extend to package arn, run id and etc.
-            logger.info(
-                "Start downloading model artifacts from %s to %s", mlflow_path, self.model_path
-            )
-            _download_s3_artifacts(mlflow_path, self.model_path, self.sagemaker_session)
+    def _initialize_for_mlflow(self, artifact_path: str) -> None:
+        """Initialize mlflow model artifacts, image uri and model server.
+
+        Args:
+            artifact_path (str): The path to the artifact store.
+        """
+        if artifact_path.startswith("s3://"):
+            _download_s3_artifacts(artifact_path, self.model_path, self.sagemaker_session)
+        elif os.path.exists(artifact_path):
+            _copy_directory_contents(artifact_path, self.model_path)
         else:
-            _copy_directory_contents(mlflow_path, self.model_path)
+            raise ValueError("Invalid path: %s" % artifact_path)
         mlflow_model_metadata_path = _generate_mlflow_artifact_path(
             self.model_path, MLFLOW_METADATA_FILE
         )
@@ -728,6 +821,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             self.role_arn = role_arn
         self.sagemaker_session = sagemaker_session or Session()
 
+        self.sagemaker_session.settings._local_download_dir = self.model_path
+
         # https://github.com/boto/botocore/blob/develop/botocore/useragent.py#L258
         # decorate to_string() due to
         # https://github.com/boto/botocore/blob/develop/botocore/client.py#L1014-L1015
@@ -739,14 +834,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.serve_settings = self._get_serve_setting()
 
         self._is_custom_image_uri = self.image_uri is not None
-        self._is_mlflow_model = self._check_if_input_is_mlflow_model()
-        if self._is_mlflow_model:
-            logger.warning(
-                "Support of MLflow format models is experimental and is not intended"
-                " for production at this moment."
-            )
-            self._initialize_for_mlflow()
-            _validate_input_for_mlflow(self.model_server, self.env_vars.get("MLFLOW_MODEL_FLAVOR"))
+
+        self._handle_mlflow_input()
 
         if isinstance(self.model, str):
             model_task = None
@@ -835,6 +924,17 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """
 
         return get_metadata(model_dir)
+
+    def set_tracking_arn(self, arn: str):
+        """Set tracking server ARN"""
+        # TODO: support native MLflow URIs
+        if importlib.util.find_spec("awsmlflow"):
+            import mlflow
+
+            mlflow.set_tracking_uri(arn)
+            self.model_metadata[MLFLOW_TRACKING_ARN] = arn
+        else:
+            raise ImportError("Unable to import awsmlflow, check if awsmlflow is installed")
 
     def _hf_schema_builder_init(self, model_task: str):
         """Initialize the schema builder for the given HF_TASK
