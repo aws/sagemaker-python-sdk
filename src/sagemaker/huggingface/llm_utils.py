@@ -74,7 +74,7 @@ def get_huggingface_llm_image_uri(
         )
     if backend == "huggingface-tei-cpu":
         return image_uris.retrieve(
-            "huggingface-tei",
+            "huggingface-tei-cpu",
             region=region,
             version=version,
             image_scope="inference",
