@@ -414,7 +414,8 @@ class JumpStartModel(Model):
     ) -> "JumpStartModel":
         """Attaches a JumpStartModel object to an existing SageMaker Endpoint.
 
-        The model id, version (and inference component name) can be inferred from the tags."""
+        The model id, version (and inference component name) can be inferred from the tags.
+        """
 
         inferred_model_id, inferred_model_version, inferred_inference_component_name = (
             get_model_id_version_from_endpoint(
