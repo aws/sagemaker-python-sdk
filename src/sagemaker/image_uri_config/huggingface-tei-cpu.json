@@ -51,7 +51,7 @@
                 "tag_prefix": "2.0.1-tei1.2.3",
                 "repository": "tei-cpu",
                 "container_version": {
-                    "gpu": "ubuntu22.04"
+                    "cpu": "ubuntu22.04"
                 }
             }
         }
