@@ -18,7 +18,7 @@ from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from tests.unit.sagemaker.serve.constants import MOCK_VPC_CONFIG
 
-from sagemaker.serve.utils.predictors import TgiLocalModePredictor
+from sagemaker.serve.utils.predictors import TeiLocalModePredictor
 
 mock_model_id = "bert-base-uncased"
 mock_prompt = "The man worked as a [MASK]."
@@ -96,7 +96,7 @@ class TestTEIBuilder(unittest.TestCase):
 
         assert model.vpc_config == MOCK_VPC_CONFIG
         assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
-        assert isinstance(predictor, TgiLocalModePredictor)
+        assert isinstance(predictor, TeiLocalModePredictor)
 
         assert builder.nb_instance_type == "ml.g5.24xlarge"
 
@@ -139,7 +139,7 @@ class TestTEIBuilder(unittest.TestCase):
 
         assert builder.image_uri == MOCK_IMAGE_CONFIG
         assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
-        assert isinstance(predictor, TgiLocalModePredictor)
+        assert isinstance(predictor, TeiLocalModePredictor)
 
         assert builder.nb_instance_type == "ml.g5.24xlarge"
 
