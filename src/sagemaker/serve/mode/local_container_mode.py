@@ -42,7 +42,6 @@ class LocalContainerMode(
     LocalTgiServing,
     LocalMultiModelServer,
     LocalTensorflowServing,
-    LocalTeiServing,
 ):
     """A class that holds methods to deploy model to a container in local environment"""
 
@@ -71,6 +70,8 @@ class LocalContainerMode(
         self.container = None
         self.secret_key = None
         self._ping_container = None
+
+        self._tei_serving = LocalTeiServing()
 
     def load(self, model_path: str = None):
         """Placeholder docstring"""
@@ -159,14 +160,14 @@ class LocalContainerMode(
             )
             self._ping_container = self._tensorflow_serving_deep_ping
         elif self.model_server == ModelServer.TEI:
-            self._start_tei_serving(
+            self._tei_serving._start_tei_serving(
                 client=self.client,
                 image=image,
                 model_path=model_path if model_path else self.model_path,
                 secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
-            self._ping_container = self._tei_deep_ping
+            self._ping_container = self._tei_serving._tei_deep_ping
 
         # allow some time for container to be ready
         time.sleep(10)

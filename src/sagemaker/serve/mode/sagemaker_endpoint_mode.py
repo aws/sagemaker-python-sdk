@@ -27,7 +27,6 @@ class SageMakerEndpointMode(
     SageMakerTgiServing,
     SageMakerMultiModelServer,
     SageMakerTensorflowServing,
-    SageMakerTeiServing,
 ):
     """Holds the required method to deploy a model to a SageMaker Endpoint"""
 
@@ -38,6 +37,8 @@ class SageMakerEndpointMode(
 
         self.inference_spec = inference_spec
         self.model_server = model_server
+
+        self._tei_serving = SageMakerTeiServing()
 
     def load(self, model_path: str):
         """Placeholder docstring"""
@@ -122,7 +123,7 @@ class SageMakerEndpointMode(
             )
 
         if self.model_server == ModelServer.TEI:
-            upload_artifacts = self._upload_tei_artifacts(
+            upload_artifacts = self._tei_serving._upload_tei_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
