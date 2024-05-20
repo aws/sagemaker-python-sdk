@@ -144,3 +144,29 @@ class TestTransformersBuilder(unittest.TestCase):
 
         with self.assertRaises(ValueError) as _:
             model.deploy(mode=Mode.IN_PROCESS)
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers")
+    @patch(
+        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
+    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.huggingface.llm_utils.get_huggingface_model_metadata",
+        return_value=None,
+    )
+    def test_failure_hf_md(
+        self, mock_model_md, mock_get_nb_instance, mock_telemetry, mock_build_for_transformers
+    ):
+        builder = ModelBuilder(
+            model=mock_model_id,
+            schema_builder=mock_schema_builder,
+            mode=Mode.LOCAL_CONTAINER,
+        )
+
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.side_effect = None
+
+        builder.build()
+
+        mock_build_for_transformers.assert_called_once()
