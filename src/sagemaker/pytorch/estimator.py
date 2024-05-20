@@ -276,6 +276,16 @@ class PyTorch(Framework):
             kwargs["entry_point"] = entry_point
 
         if distribution is not None:
+            # rewrite pytorchddp to smdistributed
+            if "pytorchddp" in distribution:
+                if "smdistributed" in distribution:
+                    raise ValueError(
+                        "Cannot use both pytorchddp and smdistributed "
+                        "distribution options together.",
+                        distribution
+                    )
+                distribution = {"smdistributed": {"dataparallel": distribution["pytorchddp"]}}
+
             distribution = validate_distribution(
                 distribution,
                 self.instance_groups,
