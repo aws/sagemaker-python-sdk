@@ -15,7 +15,9 @@
 from __future__ import absolute_import
 import logging
 from pathlib import Path
+from typing import List
 
+from sagemaker.serve.model_server.tgi.prepare import _copy_jumpstart_artifacts
 from sagemaker.serve.utils.local_hardware import _check_disk_space, _check_docker_disk_usage
 
 logger = logging.getLogger(__name__)
@@ -36,3 +38,28 @@ def _create_dir_structure(model_path: str) -> tuple:
     _check_docker_disk_usage()
 
     return model_path, code_dir
+
+
+def prepare_mms_js_resources(
+    model_path: str,
+    js_id: str,
+    shared_libs: List[str] = None,
+    dependencies: str = None,
+    model_data: str = None,
+) -> tuple:
+    """Prepare serving when a JumpStart model id is given
+
+    Args:
+        model_path (str) : Argument
+        js_id (str): Argument
+        shared_libs (List[]) : Argument
+        dependencies (str) : Argument
+        model_data (str) : Argument
+
+    Returns:
+        ( str ) :
+
+    """
+    model_path, code_dir = _create_dir_structure(model_path)
+
+    return _copy_jumpstart_artifacts(model_data, js_id, code_dir)

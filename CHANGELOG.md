@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.221.0 (2024-05-20)
+
+### Features
+
+ * onboard tei image config to pysdk
+
+### Bug Fixes and Other Changes
+
+ * JS Model with non-TGI/non-DJL deployment failure
+ * cover tei with image_uris.retrieve API
+ * Add more debuging
+ * model builder limited container support for endpoint mode.
+ * Image URI should take precedence for HF models
+
+## v2.220.0 (2024-05-15)
+
+### Features
+
+ * AutoGluon 1.1.0 image_uris update
+ * add new images for HF TGI release
+ * Add telemetry support for mlflow models
+
+### Bug Fixes and Other Changes
+
+ * add debug logs to workflow container dist creation
+ * model builder race condition on sagemaker session
+ * Add tensorflow_serving support for mlflow models and enable lineage tracking for mlflow models
+ * update image_uri_configs  05-09-2024 07:17:41 PST
+ * skip flakey tests pending investigation
+
 ## v2.219.0 (2024-05-08)
 
 ### Features
