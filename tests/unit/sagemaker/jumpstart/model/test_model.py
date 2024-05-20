@@ -1292,6 +1292,28 @@ class ModelTest(unittest.TestCase):
             enable_network_isolation=True,
         )
 
+    @mock.patch("sagemaker.jumpstart.model.get_model_id_version_from_endpoint")
+    @mock.patch("sagemaker.jumpstart.model.JumpStartModel.__init__")
+    def test_attach(
+        self,
+        mock_js_model_init,
+        mock_get_model_id_version_from_endpoint,
+    ):
+        mock_js_model_init.return_value = None
+        mock_get_model_id_version_from_endpoint.return_value = "model-id", "model-version", None
+        val = JumpStartModel.attach("some-endpoint")
+        mock_get_model_id_version_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+        mock_js_model_init.assert_called_once_with(
+            model_id="model-id",
+            model_version="model-version",
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+        assert isinstance(val, JumpStartModel)
+
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

@@ -408,6 +408,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         inference_component_name: Optional[str] = None,
         sagemaker_session=None,
     ) -> "Model":
+        """Attaches a Model object to an existing SageMaker Endpoint."""
         raise NotImplementedError
 
     @runnable_by_pipeline
