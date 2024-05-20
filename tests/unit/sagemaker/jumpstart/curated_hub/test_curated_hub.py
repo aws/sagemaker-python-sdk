@@ -259,3 +259,14 @@ def test_delete_model_with_wildcard_version(mock_get_latest_model_version, sagem
         hub_content_version="1.1.1",
         hub_content_type="Model",
     )
+
+def test_delete_hub_content_reference(sagemaker_session):
+    hub = CuratedHub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
+    model_name = "mock-model-one-huggingface"
+
+    hub.delete_model_reference(model_name)
+    sagemaker_session.delete_hub_content_reference.assert_called_with(
+        hub_name=HUB_NAME,
+        hub_content_type="ModelReference",
+        hub_content_name="mock-model-one-huggingface"
+    )

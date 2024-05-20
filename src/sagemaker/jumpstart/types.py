@@ -146,6 +146,7 @@ class HubContentType(str, Enum):
 
     MODEL = "Model"
     NOTEBOOK = "Notebook"
+    MODEL_REFERENCE = "ModelReference"
 
 
 JumpStartContentDataType = Union[JumpStartS3FileType, HubType, HubContentType]

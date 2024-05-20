@@ -6936,6 +6936,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
         }
 
         return self.sagemaker_client.delete_hub_content(**request)
+    
+    def delete_hub_content_reference(
+            self, hub_name:str, hub_content_type: str, hub_content_name: str
+    ) -> None:
+        """Deletes a given HubContent reference in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub that you want to delete content in.
+            hub_content_type (str): The type of the content that you want to delete from a Hub.
+            hub_content_name (str): The name of the content that you want to delete from a Hub.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentType": hub_content_type,
+            "HubContentName": hub_content_name,
+        }
+
+        return self.sagemaker_client.deleteHubContentReference(**request)
 
 
 def get_model_package_args(

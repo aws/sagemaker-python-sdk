@@ -26,14 +26,10 @@ from sagemaker.utils import TagsDict
 from sagemaker.session import Session
 from sagemaker.s3 import s3_path_join
 from sagemaker.jumpstart import utils
-from sagemaker.jumpstart.curated_hub.accessors import file_generator
-from sagemaker.jumpstart.curated_hub.accessors.multipartcopy import MultiPartCopyHandler
 from sagemaker.jumpstart.curated_hub.constants import (
     JUMPSTART_CURATED_HUB_MODEL_TAG,
     LATEST_VERSION_WILDCARD,
 )
-from sagemaker.jumpstart.curated_hub.sync.comparator import SizeAndLastUpdatedComparator
-from sagemaker.jumpstart.curated_hub.sync.request import HubSyncRequestFactory
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -202,6 +198,14 @@ class CuratedHub:
     def delete(self) -> None:
         """Deletes this Curated Hub"""
         return self._sagemaker_session.delete_hub(self.hub_name)
+    
+    def delete_model_reference(self, model_name: str) -> None:
+        """Deletes model reference from this Curated Hub"""
+        return self._sagemaker_session.delete_hub_content_reference(
+            hub_name=self.hub_name,
+            hub_content_type=HubContentType.MODEL_REFERENCE.value,
+            hub_content_name=model_name,
+        )
 
     def _is_invalid_model_list_input(self, model_list: List[Dict[str, str]]) -> bool:
         """Determines if input args to ``sync`` is correct.
