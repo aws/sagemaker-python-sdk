@@ -78,6 +78,25 @@ class Transformers(ABC):
         """Abstract method"""
 
     def _create_transformers_model(self) -> Type[Model]:
+        """Initializes HF model with or without image_uri"""
+        if self.image_uri is None:
+            pysdk_model = self._get_hf_metadata_create_model()
+        else:
+            pysdk_model = HuggingFaceModel(
+                image_uri=self.image_uri,
+                vpc_config=self.vpc_config,
+                env=self.env_vars,
+                role=self.role_arn,
+                sagemaker_session=self.sagemaker_session,
+            )
+
+        logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)
+
+        self._original_deploy = pysdk_model.deploy
+        pysdk_model.deploy = self._transformers_model_builder_deploy_wrapper
+        return pysdk_model
+
+    def _get_hf_metadata_create_model(self) -> Type[Model]:
         """Initializes the model after fetching image
 
         1. Get the metadata for deciding framework
@@ -132,22 +151,21 @@ class Transformers(ABC):
                 vpc_config=self.vpc_config,
             )
 
-        if not self.image_uri and self.mode == Mode.LOCAL_CONTAINER:
+        if self.mode == Mode.LOCAL_CONTAINER:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, "local"
             )
-        elif not self.image_uri:
+        else:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, self.instance_type
             )
 
-        logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)
+        if pysdk_model is None or self.image_uri is None:
+            raise ValueError("PySDK model unable to be created, try overriding image_uri")
 
         if not pysdk_model.image_uri:
             pysdk_model.image_uri = self.image_uri
 
-        self._original_deploy = pysdk_model.deploy
-        pysdk_model.deploy = self._transformers_model_builder_deploy_wrapper
         return pysdk_model
 
     @_capture_telemetry("transformers.deploy")

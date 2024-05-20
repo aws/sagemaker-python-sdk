@@ -127,4 +127,4 @@ def test_pytorch_transformers_sagemaker_endpoint(
                 logger.exception(caught_ex)
                 assert (
                     False
-                ), f"{caught_ex} was thrown when running pytorch transformers sagemaker endpoint test"
+                ), f"{caught_ex} thrown when running pytorch transformers sagemaker endpoint test"
