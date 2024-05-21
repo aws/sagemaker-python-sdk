@@ -222,7 +222,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
     model = JumpStartModel.attach(predictor.endpoint_name, sagemaker_session=get_sm_session())
     assert model.model_id == model_id
     assert model.endpoint_name == predictor.endpoint_name
-    assert model.inference_component_name == predictor.inference_component_name
+    assert model.inference_component_name == predictor.component_name
 
 
 @mock.patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning")
