@@ -789,6 +789,8 @@ def _validate_smdataparallel_args(
     if not smdataparallel_enabled:
         return
 
+    err_msg = ""
+
     if not image_uri:
         # ignore framework_version & py_version if image_uri is set
         # in case image_uri is not set, then both are mandatory
