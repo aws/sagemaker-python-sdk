@@ -25,7 +25,7 @@ from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
 )
 from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
-from sagemaker.serve.utils.predictors import TgiLocalModePredictor
+from sagemaker.serve.utils.predictors import TeiLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
@@ -74,16 +74,16 @@ class TEI(ABC):
     def _get_client_translators(self):
         """Placeholder docstring"""
 
-    def _set_to_tgi(self):
+    def _set_to_tei(self):
         """Placeholder docstring"""
-        if self.model_server != ModelServer.TGI:
+        if self.model_server != ModelServer.TEI:
             messaging = (
                 "HuggingFace Model ID support on model server: "
                 f"{self.model_server} is not currently supported. "
-                f"Defaulting to {ModelServer.TGI}"
+                f"Defaulting to {ModelServer.TEI}"
             )
             logger.warning(messaging)
-            self.model_server = ModelServer.TGI
+            self.model_server = ModelServer.TEI
 
     def _create_tei_model(self, **kwargs) -> Type[Model]:
         """Placeholder docstring"""
@@ -142,7 +142,7 @@ class TEI(ABC):
         if self.mode == Mode.LOCAL_CONTAINER:
             timeout = kwargs.get("model_data_download_timeout")
 
-            predictor = TgiLocalModePredictor(
+            predictor = TeiLocalModePredictor(
                 self.modes[str(Mode.LOCAL_CONTAINER)], serializer, deserializer
             )
 
@@ -180,7 +180,9 @@ class TEI(ABC):
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
 
-        if not self.nb_instance_type and "instance_type" not in kwargs:
+        if self.nb_instance_type and "instance_type" not in kwargs:
+            kwargs.update({"instance_type": self.nb_instance_type})
+        elif not self.nb_instance_type and "instance_type" not in kwargs:
             raise ValueError(
                 "Instance type must be provided when deploying " "to SageMaker Endpoint mode."
             )
@@ -216,7 +218,7 @@ class TEI(ABC):
         """Placeholder docstring"""
         self.secret_key = None
 
-        self._set_to_tgi()
+        self._set_to_tei()
 
         self.pysdk_model = self._build_for_hf_tei()
         return self.pysdk_model

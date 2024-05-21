@@ -169,7 +169,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             in order for model builder to build the artifacts correctly (according
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
-            ``TRITON``, and``TGI``.
+            ``TRITON``,``TGI``, and ``TEI``.
         model_metadata (Optional[Dict[str, Any]): Dictionary used to override model metadata.
             Currently, ``HF_TASK`` is overridable for HuggingFace model. HF_TASK should be set for
             new models without task metadata in the Hub, adding unsupported task types will throw
