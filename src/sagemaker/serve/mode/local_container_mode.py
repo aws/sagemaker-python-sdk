@@ -168,6 +168,7 @@ class LocalContainerMode(
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             tei_serving.schema_builder = self.schema_builder
+            self.container = tei_serving.container
             self._ping_container = tei_serving._tei_deep_ping
             self._invoke_serving = tei_serving._invoke_tei_serving
 
