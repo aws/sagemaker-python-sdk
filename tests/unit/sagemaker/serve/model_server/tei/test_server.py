@@ -81,6 +81,30 @@ class TeiServerTests(TestCase):
 
         self.assertEqual(res, INFER_RESPONSE)
 
+    def test_tei_deep_ping(self):
+        mock_predictor = Mock()
+        mock_response = Mock()
+        mock_schema_builder = Mock()
+
+        mock_predictor.predict.side_effect = lambda *args, **kwargs: mock_response
+        mock_schema_builder.sample_input = PAYLOAD
+
+        local_tei_server = LocalTeiServing()
+        local_tei_server.schema_builder = mock_schema_builder
+        res = local_tei_server._tei_deep_ping(mock_predictor)
+
+        self.assertEqual(res, (True, mock_response))
+
+    def test_tei_deep_ping_ex(self):
+        mock_predictor = Mock()
+
+        mock_predictor.predict.side_effect = lambda *args, **kwargs: Exception()
+
+        local_tei_server = LocalTeiServing()
+        res = local_tei_server._tei_deep_ping(mock_predictor)
+
+        self.assertEqual(res, (False, None))
+
     @patch("sagemaker.serve.model_server.tei.server.S3Uploader")
     def test_upload_artifacts_sagemaker_tei_server(self, mock_uploader):
         mock_session = Mock()
