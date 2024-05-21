@@ -145,22 +145,6 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
     ],
 }
 
-PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
-    "1.10",
-    "1.10.0",
-    "1.10.2",
-    "1.11",
-    "1.11.0",
-    "1.12",
-    "1.12.0",
-    "1.12.1",
-    "1.13.1",
-    "2.0.0",
-    "2.0.1",
-    "2.1.0",
-    "2.2.0",
-]
-
 TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.13.1",
     "2.0.0",
@@ -915,13 +899,6 @@ def validate_distribution(
             )
             if framework_name and framework_name == "pytorch":
                 # We need to validate only for PyTorch framework
-                validate_pytorch_distribution(
-                    distribution=validated_distribution,
-                    framework_name=framework_name,
-                    framework_version=framework_version,
-                    py_version=py_version,
-                    image_uri=image_uri,
-                )
                 validate_torch_distributed_distribution(
                     instance_type=instance_type,
                     distribution=validated_distribution,
@@ -955,13 +932,6 @@ def validate_distribution(
         )
         if framework_name and framework_name == "pytorch":
             # We need to validate only for PyTorch framework
-            validate_pytorch_distribution(
-                distribution=validated_distribution,
-                framework_name=framework_name,
-                framework_version=framework_version,
-                py_version=py_version,
-                image_uri=image_uri,
-            )
             validate_torch_distributed_distribution(
                 instance_type=instance_type,
                 distribution=validated_distribution,
@@ -1006,63 +976,6 @@ def validate_distribution_for_instance_type(instance_type, distribution):
                     f" {TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES} "
                 )
 
-    if err_msg:
-        raise ValueError(err_msg)
-
-
-def validate_pytorch_distribution(
-    distribution, framework_name, framework_version, py_version, image_uri
-):
-    """Check if pytorch distribution strategy is correctly invoked by the user.
-
-    Args:
-        distribution (dict): A dictionary with information to enable distributed training.
-            (Defaults to None if distributed training is not enabled.) For example:
-
-            .. code:: python
-
-                {
-                    "pytorchddp": {
-                        "enabled": True
-                    }
-                }
-        framework_name (str): A string representing the name of framework selected.
-        framework_version (str): A string representing the framework version selected.
-        py_version (str): A string representing the python version selected.
-        image_uri (str): A string representing a Docker image URI.
-
-    Raises:
-        ValueError: if
-            `py_version` is not python3 or
-            `framework_version` is not in PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS
-    """
-    if framework_name and framework_name != "pytorch":
-        # We need to validate only for PyTorch framework
-        return
-
-    pytorch_ddp_enabled = False
-    if "pytorchddp" in distribution:
-        pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
-    if not pytorch_ddp_enabled:
-        # Distribution strategy other than pytorchddp is selected
-        return
-
-    err_msg = ""
-    if not image_uri:
-        # ignore framework_version and py_version if image_uri is set
-        # in case image_uri is not set, then both are mandatory
-        if framework_version not in PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS:
-            err_msg += (
-                f"Provided framework_version {framework_version} is not supported by"
-                " pytorchddp.\n"
-                "Please specify one of the supported framework versions:"
-                f" {PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS} \n"
-            )
-        if "py3" not in py_version:
-            err_msg += (
-                f"Provided py_version {py_version} is not supported by pytorchddp.\n"
-                "Please specify py_version>=py3"
-            )
     if err_msg:
         raise ValueError(err_msg)
 
