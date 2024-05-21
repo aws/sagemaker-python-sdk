@@ -227,7 +227,7 @@ class TeiLocalModePredictor(PredictorBase):
         return [
             self.deserializer.deserialize(
                 io.BytesIO(
-                    self._mode_obj._invoke_tei_serving(
+                    self._mode_obj._invoke_serving(
                         self.serializer.serialize(data),
                         self.content_type,
                         self.deserializer.ACCEPT[0],

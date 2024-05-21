@@ -70,8 +70,7 @@ class LocalContainerMode(
         self.container = None
         self.secret_key = None
         self._ping_container = None
-
-        self._tei_serving = LocalTeiServing()
+        self._invoke_serving = None
 
     def load(self, model_path: str = None):
         """Placeholder docstring"""
@@ -160,15 +159,17 @@ class LocalContainerMode(
             )
             self._ping_container = self._tensorflow_serving_deep_ping
         elif self.model_server == ModelServer.TEI:
-            self._tei_serving._start_tei_serving(
+            tei_serving = LocalTeiServing()
+            tei_serving._start_tei_serving(
                 client=self.client,
                 image=image,
                 model_path=model_path if model_path else self.model_path,
                 secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
-            self.container = self._tei_serving.container
-            self._ping_container = self._tei_serving._tei_deep_ping
+            tei_serving.schema_builder = self.schema_builder
+            self._ping_container = tei_serving._tei_deep_ping
+            self._invoke_serving = tei_serving._invoke_tei_serving
 
         # allow some time for container to be ready
         time.sleep(10)

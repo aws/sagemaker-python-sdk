@@ -18,6 +18,7 @@ from unittest.mock import Mock, patch
 
 from docker.types import DeviceRequest
 from sagemaker.serve.model_server.tei.server import LocalTeiServing, SageMakerTeiServing
+from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 
 TEI_IMAGE = (
     "246618743249.dkr.ecr.us-west-2.amazonaws.com/tei:2.0.1-tei1.2.3-gpu-py310-cu122-ubuntu22.04"
@@ -94,6 +95,22 @@ class TeiServerTests(TestCase):
         res = local_tei_server._tei_deep_ping(mock_predictor)
 
         self.assertEqual(res, (True, mock_response))
+
+    def test_tei_deep_ping_invoke_ex(self):
+        mock_predictor = Mock()
+        mock_schema_builder = Mock()
+
+        mock_predictor.predict.side_effect = lambda *args, **kwargs: exec(
+            'raise(ValueError("422 Client Error: Unprocessable Entity for url:"))'
+        )
+        mock_schema_builder.sample_input = PAYLOAD
+
+        local_tei_server = LocalTeiServing()
+        local_tei_server.schema_builder = mock_schema_builder
+
+        self.assertRaises(
+            LocalModelInvocationException, lambda: local_tei_server._tei_deep_ping(mock_predictor)
+        )
 
     def test_tei_deep_ping_ex(self):
         mock_predictor = Mock()

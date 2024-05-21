@@ -28,27 +28,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-sample_input = {
-    "inputs": {
-        "sourceSentence": "How cute your dog is!",
-        "sentences": ["The mitochondria is the powerhouse of the cell.", "Your dog is so cute."],
-    }
-}
+sample_input = {"inputs": "What is Deep Learning?"}
 
 loaded_response = []
 
 
 @pytest.fixture
 def model_input():
-    return {
-        "inputs": {
-            "sourceSentence": "How cute your dog is!",
-            "sentences": [
-                "The mitochondria is the powerhouse of the cell.",
-                "Your dog is so cute.",
-            ],
-        }
-    }
+    return {"inputs": "What is Deep Learning?"}
 
 
 @pytest.fixture
