@@ -67,8 +67,12 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_LOGGER")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
@@ -193,8 +197,12 @@ class EstimatorTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -293,8 +301,12 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -411,8 +423,12 @@ class EstimatorTest(unittest.TestCase):
     )
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -559,8 +575,12 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -751,8 +771,12 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.environment_variables.retrieve_default")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -1160,8 +1184,12 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -1219,8 +1247,12 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -1269,8 +1301,12 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -1321,8 +1357,12 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.estimator._model_supports_incremental_training")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_LOGGER.warning")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -1375,8 +1415,12 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.estimator._model_supports_incremental_training")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_LOGGER.warning")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -1425,8 +1469,12 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -1486,8 +1534,12 @@ class EstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
@@ -1564,10 +1616,11 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch(
-        "sagemaker.jumpstart.factory.model.DEFAULT_JUMPSTART_SAGEMAKER_SESSION", sagemaker_session
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix",
+        sagemaker_session,
     )
     @mock.patch(
-        "sagemaker.jumpstart.factory.estimator.DEFAULT_JUMPSTART_SAGEMAKER_SESSION",
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix",
         sagemaker_session,
     )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1645,7 +1698,9 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.JumpStartModelsAccessor.reset_cache")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -1725,7 +1780,9 @@ class EstimatorTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)

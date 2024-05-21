@@ -1736,7 +1736,7 @@ class TestUserAgent:
     @patch("sagemaker.jumpstart.utils.boto3.Session")
     @patch("sagemaker.jumpstart.utils.boto3.client")
     @patch("sagemaker.jumpstart.utils.Session")
-    def test_get_jumpstart_user_agent_extra_suffix(
+    def test_get_default_jumpstart_session_with_user_agent_suffix(
         self,
         mock_sm_session,
         mock_boto3_client,
@@ -1745,9 +1745,7 @@ class TestUserAgent:
         mock_botocore_config,
         mock_boto3_session,
     ):
-        session = utils.get_default_jumpstart_session_with_user_agent_suffix(
-            "model_id", "model_version"
-        )
+        utils.get_default_jumpstart_session_with_user_agent_suffix("model_id", "model_version")
         mock_boto3_session.get_session.assert_called_once_with()
         mock_get_jumpstart_user_agent_extra_suffix.assert_called_once_with(
             "model_id", "model_version"
@@ -1774,5 +1772,3 @@ class TestUserAgent:
             ],
             any_order=True,
         )
-        assert mock_sm_session.call_count == 1
-        assert session == mock_sm_session.return_value

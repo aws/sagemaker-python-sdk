@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+from copy import copy
 import logging
 import os
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
@@ -1006,16 +1007,17 @@ def get_default_jumpstart_session_with_user_agent_suffix(
         user_agent_extra=get_jumpstart_user_agent_extra_suffix(model_id, model_version),
     )
     botocore_session.set_default_client_config(botocore_config)
-    return Session(
-        boto_session=boto3.Session(
-            region_name=constants.JUMPSTART_DEFAULT_REGION_NAME, botocore_session=botocore_session
-        ),
-        sagemaker_client=boto3.client(
-            "sagemaker", region_name=constants.JUMPSTART_DEFAULT_REGION_NAME, config=botocore_config
-        ),
-        sagemaker_runtime_client=boto3.client(
-            "sagemaker-runtime",
-            region_name=constants.JUMPSTART_DEFAULT_REGION_NAME,
-            config=botocore_config,
-        ),
+    # shallow copy to not affect default session constant
+    session = copy(constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION)
+    session.boto_session = boto3.Session(
+        region_name=constants.JUMPSTART_DEFAULT_REGION_NAME, botocore_session=botocore_session
     )
+    session.sagemaker_client = boto3.client(
+        "sagemaker", region_name=constants.JUMPSTART_DEFAULT_REGION_NAME, config=botocore_config
+    )
+    session.sagemaker_runtime_client = boto3.client(
+        "sagemaker-runtime",
+        region_name=constants.JUMPSTART_DEFAULT_REGION_NAME,
+        config=botocore_config,
+    )
+    return session
