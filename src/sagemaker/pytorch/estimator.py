@@ -284,7 +284,11 @@ class PyTorch(Framework):
                         "distribution options together.",
                         distribution
                     )
-                distribution = {"smdistributed": {"dataparallel": distribution["pytorchddp"]}}
+
+                # convert pytorchddp distribution into smdistributed distribution
+                distribution = distribution.copy()
+                distribution["smdistributed"] = {"dataparallel" : distribution["pytorchddp"]}
+                del distribution["pytorchddp"]
 
             distribution = validate_distribution(
                 distribution,
