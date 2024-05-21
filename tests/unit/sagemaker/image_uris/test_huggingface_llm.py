@@ -22,6 +22,9 @@ TEI_VERSIONS_MAPPING = {
     "gpu": {
         "1.2.3": "2.0.1-tei1.2.3-gpu-py310-cu122-ubuntu22.04",
     },
+    "cpu": {
+        "1.2.3": "2.0.1-tei1.2.3-cpu-py310-ubuntu22.04",
+    },
 }
 HF_VERSIONS_MAPPING = {
     "gpu": {
@@ -73,17 +76,20 @@ def test_huggingface_uris(load_config):
             assert expected == uri
 
 
-@pytest.mark.parametrize("load_config", ["huggingface-tei.json"], indirect=True)
+@pytest.mark.parametrize(
+    "load_config", ["huggingface-tei.json", "huggingface-tei-cpu.json"], indirect=True
+)
 def test_huggingface_tei_uris(load_config):
     VERSIONS = load_config["inference"]["versions"]
     device = load_config["inference"]["processors"][0]
-    backend = "huggingface-tei"
+    backend = "huggingface-tei" if device == "gpu" else "huggingface-tei-cpu"
+    repo = "tei" if device == "gpu" else "tei-cpu"
     for version in VERSIONS:
         ACCOUNTS = load_config["inference"]["versions"][version]["registries"]
         for region in ACCOUNTS.keys():
             uri = get_huggingface_llm_image_uri(backend, region=region, version=version)
             expected = expected_uris.huggingface_llm_framework_uri(
-                "tei",
+                repo,
                 ACCOUNTS[region],
                 version,
                 TEI_VERSIONS_MAPPING[device][version],
