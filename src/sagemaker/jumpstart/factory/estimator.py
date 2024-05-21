@@ -44,7 +44,6 @@ from sagemaker.jumpstart.artifacts import (
     _model_supports_training_model_uri,
 )
 from sagemaker.jumpstart.constants import (
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
@@ -63,6 +62,7 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.utils import (
     add_jumpstart_model_id_version_tags,
     get_eula_message,
+    get_default_jumpstart_session_with_user_agent_suffix,
     update_dict_if_key_not_present,
     resolve_estimator_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -403,7 +403,12 @@ def _add_region_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
 
 def _add_sagemaker_session_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
-    kwargs.sagemaker_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    kwargs.sagemaker_session = (
+        kwargs.sagemaker_session
+        or get_default_jumpstart_session_with_user_agent_suffix(
+            kwargs.model_id, kwargs.model_version
+        )
+    )
     return kwargs
 
 

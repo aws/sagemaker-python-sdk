@@ -46,6 +46,8 @@ from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
 from sagemaker.utils import resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.user_agent import get_user_agent_extra_suffix
+import botocore
 
 
 def get_jumpstart_launched_regions_message() -> str:
@@ -981,4 +983,39 @@ def get_jumpstart_configs(
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
         if metadata_configs
         else {}
+    )
+
+
+def get_jumpstart_user_agent_extra_suffix(model_id: str, model_version: str) -> str:
+    """Returns the model-specific user agent string to be added to requests."""
+    sagemaker_python_sdk_headers = get_user_agent_extra_suffix()
+    jumpstart_specific_suffix = f"js_model_id/{model_id} js_model_version/{model_version}"
+    return (
+        sagemaker_python_sdk_headers
+        if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY)
+        else f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix}"
+    )
+
+
+def get_default_jumpstart_session_with_user_agent_suffix(
+    model_id: str, model_version: str
+) -> Session:
+    """Returns default JumpStart SageMaker Session with model-specific user agent suffix."""
+    botocore_session = botocore.session.get_session()
+    botocore_config = botocore.config.Config(
+        user_agent_extra=get_jumpstart_user_agent_extra_suffix(model_id, model_version),
+    )
+    botocore_session.set_default_client_config(botocore_config)
+    return Session(
+        boto_session=boto3.Session(
+            region_name=constants.JUMPSTART_DEFAULT_REGION_NAME, botocore_session=botocore_session
+        ),
+        sagemaker_client=boto3.client(
+            "sagemaker", region_name=constants.JUMPSTART_DEFAULT_REGION_NAME, config=botocore_config
+        ),
+        sagemaker_runtime_client=boto3.client(
+            "sagemaker-runtime",
+            region_name=constants.JUMPSTART_DEFAULT_REGION_NAME,
+            config=botocore_config,
+        ),
     )
