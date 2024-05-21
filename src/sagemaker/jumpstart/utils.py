@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version
+import botocore
 import sagemaker
 from sagemaker.config.config_schema import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
@@ -48,7 +49,6 @@ from sagemaker.config import load_sagemaker_config
 from sagemaker.utils import resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.user_agent import get_user_agent_extra_suffix
-import botocore
 
 
 def get_jumpstart_launched_regions_message() -> str:
@@ -993,7 +993,7 @@ def get_jumpstart_user_agent_extra_suffix(model_id: str, model_version: str) -> 
     jumpstart_specific_suffix = f"js_model_id/{model_id} js_model_version/{model_version}"
     return (
         sagemaker_python_sdk_headers
-        if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, False)
+        if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, None)
         else f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix}"
     )
 
