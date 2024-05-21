@@ -57,7 +57,7 @@ def test_load_artifact_by_source_uri(mock_artifact_list):
     mock_artifact_list.return_value = mock_artifacts
 
     result = _load_artifact_by_source_uri(
-        source_uri, LineageSourceEnum.MODEL_DATA.value, sagemaker_session
+        source_uri, sagemaker_session, artifact_type=LineageSourceEnum.MODEL_DATA.value
     )
 
     mock_artifact_list.assert_called_once_with(
@@ -79,7 +79,7 @@ def test_load_artifact_by_source_uri_no_match(mock_artifact_list):
     mock_artifact_list.return_value = mock_artifacts
 
     result = _load_artifact_by_source_uri(
-        source_uri, LineageSourceEnum.MODEL_DATA.value, sagemaker_session
+        source_uri, sagemaker_session, artifact_type=LineageSourceEnum.MODEL_DATA.value
     )
 
     mock_artifact_list.assert_called_once_with(
@@ -106,7 +106,7 @@ def test_poll_lineage_artifact_found(mock_load_artifact):
     assert result == mock_artifact
     mock_load_artifact.assert_has_calls(
         [
-            call(s3_uri, LineageSourceEnum.MODEL_DATA.value, sagemaker_session),
+            call(s3_uri, sagemaker_session, artifact_type=LineageSourceEnum.MODEL_DATA.value),
         ]
     )
 
@@ -166,6 +166,7 @@ def test_create_mlflow_model_path_lineage_artifact_success(
     mock_artifact_create, mock_get_mlflow_path_type
 ):
     mlflow_model_path = "runs:/Ab12Cd34/my-model"
+    mock_source_types = [dict(SourceIdType="Custom", Value="ModelBuilderInputModelData")]
     sagemaker_session = Mock(spec=Session)
     mock_artifact = Mock(spec=Artifact)
     mock_get_mlflow_path_type.return_value = "mlflow_run_id"
@@ -177,6 +178,7 @@ def test_create_mlflow_model_path_lineage_artifact_success(
     mock_get_mlflow_path_type.assert_called_once_with(mlflow_model_path)
     mock_artifact_create.assert_called_once_with(
         source_uri=mlflow_model_path,
+        source_types=mock_source_types,
         artifact_type=MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
         artifact_name="mlflow_run_id",
         properties={"model_builder_input_model_data_type": "mlflow_run_id"},
@@ -233,6 +235,7 @@ def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_exi
     mock_sagemaker_client.describe_mlflow_tracking_server.return_value = mock_describe_response
     sagemaker_session.sagemaker_client = mock_sagemaker_client
     mock_source_types_to_match = [
+        "ModelBuilderInputModelData",
         mock_tracking_server_arn,
         mock_creation_time.strftime(TRACKING_SERVER_CREATION_TIME_FORMAT),
     ]
@@ -240,13 +243,12 @@ def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_exi
     mock_load_artifact.return_value = mock_artifact_summary
 
     result = _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
-        mlflow_model_path, mock_tracking_server_arn, sagemaker_session
+        mlflow_model_path, sagemaker_session, mock_tracking_server_arn
     )
 
     assert result == mock_artifact_summary
     mock_load_artifact.assert_called_once_with(
         mlflow_model_path,
-        MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
         sagemaker_session,
         mock_source_types_to_match,
     )
@@ -269,6 +271,7 @@ def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_cre
     mock_sagemaker_client.describe_mlflow_tracking_server.return_value = mock_describe_response
     sagemaker_session.sagemaker_client = mock_sagemaker_client
     mock_source_types_to_match = [
+        "ModelBuilderInputModelData",
         mock_tracking_server_arn,
         mock_creation_time.strftime(TRACKING_SERVER_CREATION_TIME_FORMAT),
     ]
@@ -277,17 +280,18 @@ def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_cre
     mock_create_artifact.return_value = mock_artifact
 
     result = _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
-        mlflow_model_path, mock_tracking_server_arn, sagemaker_session
+        mlflow_model_path, sagemaker_session, mock_tracking_server_arn
     )
 
     assert result == mock_artifact
     mock_load_artifact.assert_called_once_with(
         mlflow_model_path,
-        MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
         sagemaker_session,
         mock_source_types_to_match,
     )
-    mock_create_artifact.assert_called_once_with(mlflow_model_path, sagemaker_session)
+    mock_create_artifact.assert_called_once_with(
+        mlflow_model_path, sagemaker_session, mock_source_types_to_match
+    )
 
 
 @patch("sagemaker.lineage.association.Association.create")
@@ -364,7 +368,7 @@ def test_maintain_lineage_tracking_for_mlflow_model_success(
     mock_retrieve_create_artifact.return_value = mock_mlflow_model_artifact
 
     _maintain_lineage_tracking_for_mlflow_model(
-        mlflow_model_path, s3_upload_path, mock_tracking_server_arn, sagemaker_session
+        mlflow_model_path, s3_upload_path, sagemaker_session, mock_tracking_server_arn
     )
 
     mock_poll_artifact.assert_called_once_with(
@@ -402,7 +406,7 @@ def test_maintain_lineage_tracking_for_mlflow_model_no_model_data_artifact(
     mock_retrieve_create_artifact.return_value = None
 
     _maintain_lineage_tracking_for_mlflow_model(
-        mlflow_model_path, s3_upload_path, mock_tracking_server_arn, sagemaker_session
+        mlflow_model_path, s3_upload_path, sagemaker_session, mock_tracking_server_arn
     )
 
     mock_poll_artifact.assert_called_once_with(

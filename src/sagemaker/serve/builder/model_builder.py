@@ -508,8 +508,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             _maintain_lineage_tracking_for_mlflow_model(
                 mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
                 s3_upload_path=self.s3_upload_path,
-                tracking_server_arn=self.model_metadata.get(MLFLOW_TRACKING_ARN),
                 sagemaker_session=self.sagemaker_session,
+                tracking_server_arn=self.model_metadata.get(MLFLOW_TRACKING_ARN),
             )
         return new_model_package
 
@@ -579,8 +579,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             _maintain_lineage_tracking_for_mlflow_model(
                 mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
                 s3_upload_path=self.s3_upload_path,
-                tracking_server_arn=self.model_metadata.get(MLFLOW_TRACKING_ARN),
                 sagemaker_session=self.sagemaker_session,
+                tracking_server_arn=self.model_metadata.get(MLFLOW_TRACKING_ARN),
             )
         return predictor
 
