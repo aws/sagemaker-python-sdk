@@ -167,6 +167,7 @@ class LocalContainerMode(
                 secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
+            self.container = self._tei_serving.container
             self._ping_container = self._tei_serving._tei_deep_ping
 
         # allow some time for container to be ready

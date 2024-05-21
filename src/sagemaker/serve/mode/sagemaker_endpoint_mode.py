@@ -130,7 +130,7 @@ class SageMakerEndpointMode(
                 image=image,
             )
 
-        if isinstance(self.model_server, ModelServer) and upload_artifacts:
+        if upload_artifacts:
             return upload_artifacts
 
         raise ValueError("%s model server is not supported" % self.model_server)
