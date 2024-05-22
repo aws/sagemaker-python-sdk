@@ -791,6 +791,9 @@ def _validate_smdataparallel_args(
 
     err_msg = ""
 
+    if not instance_type:
+        err_msg += "Please specify an instance_type for smdataparallel.\n"
+
     if not image_uri:
         # ignore framework_version & py_version if image_uri is set
         # in case image_uri is not set, then both are mandatory

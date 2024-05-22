@@ -853,12 +853,15 @@ def test_validate_smdataparallel_args_raises():
     smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
 
     # Cases {PT|TF2}
-    # 1. incorrect python version
-    # 2. incorrect framework version
+    # 1. None instance type
+    # 2. incorrect python version
+    # 3. incorrect framework version
 
     bad_args = [
+        (None, "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
         ("ml.p3dn.24xlarge", "tensorflow", "2.3.1", "py2", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "1.3.1", "py3", smdataparallel_enabled),
+        (None, "pytorch", "1.6.0", "py3", smdataparallel_enabled),
         ("ml.p3dn.24xlarge", "pytorch", "1.6.0", "py2", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.5.0", "py3", smdataparallel_enabled),
     ]
