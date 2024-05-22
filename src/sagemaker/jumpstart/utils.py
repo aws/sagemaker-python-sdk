@@ -990,7 +990,7 @@ def get_jumpstart_configs(
 def get_jumpstart_user_agent_extra_suffix(model_id: str, model_version: str) -> str:
     """Returns the model-specific user agent string to be added to requests."""
     sagemaker_python_sdk_headers = get_user_agent_extra_suffix()
-    jumpstart_specific_suffix = f"js_model_id/{model_id} js_model_version/{model_version}"
+    jumpstart_specific_suffix = f"md/js_model_id#{model_id} md/js_model_ver#{model_version}"
     return (
         sagemaker_python_sdk_headers
         if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, None)

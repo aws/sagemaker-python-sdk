@@ -1715,19 +1715,19 @@ class TestUserAgent:
     def test_get_jumpstart_user_agent_extra_suffix(self, mock_getenv):
         mock_getenv.return_value = False
         assert utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "js_model_id/some-id js_model_version/some-version"
+            "md/js_model_id#some-id md/js_model_ver#some-version"
         )
         mock_getenv.return_value = None
         assert utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "js_model_id/some-id js_model_version/some-version"
+            "md/js_model_id#some-id md/js_model_ver#some-version"
         )
         mock_getenv.return_value = "True"
         assert not utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "js_model_id/some-id js_model_version/some-version"
+            "md/js_model_id#some-id md/js_model_ver#some-version"
         )
         mock_getenv.return_value = True
         assert not utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "js_model_id/some-id js_model_version/some-version"
+            "md/js_model_id#some-id md/js_model_ver#some-version"
         )
 
     @patch("sagemaker.jumpstart.utils.botocore.session")
