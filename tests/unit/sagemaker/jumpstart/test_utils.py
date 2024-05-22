@@ -1772,3 +1772,21 @@ class TestUserAgent:
             ],
             any_order=True,
         )
+
+    @patch("botocore.client.BaseClient._make_request")
+    def test_get_default_jumpstart_session_with_user_agent_suffix_http_header(
+        self,
+        mock_make_request,
+    ):
+        session = utils.get_default_jumpstart_session_with_user_agent_suffix(
+            "model_id", "model_version"
+        )
+        try:
+            session.sagemaker_client.list_endpoints()
+        except:
+            pass
+
+        assert (
+            "md/js_model_id#model_id md/js_model_ver#model_version"
+            in mock_make_request.call_args[0][1]["headers"]["User-Agent"]
+        )
