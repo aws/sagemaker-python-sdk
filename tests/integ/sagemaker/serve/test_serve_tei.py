@@ -28,47 +28,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-sample_input = {
-    "inputs": "The man worked as a [MASK].",
-}
+sample_input = {"inputs": "What is Deep Learning?"}
 
-loaded_response = [
-    {
-        "score": 0.0974755585193634,
-        "token": 10533,
-        "token_str": "carpenter",
-        "sequence": "the man worked as a carpenter.",
-    },
-    {
-        "score": 0.052383411675691605,
-        "token": 15610,
-        "token_str": "waiter",
-        "sequence": "the man worked as a waiter.",
-    },
-    {
-        "score": 0.04962712526321411,
-        "token": 13362,
-        "token_str": "barber",
-        "sequence": "the man worked as a barber.",
-    },
-    {
-        "score": 0.0378861166536808,
-        "token": 15893,
-        "token_str": "mechanic",
-        "sequence": "the man worked as a mechanic.",
-    },
-    {
-        "score": 0.037680838257074356,
-        "token": 18968,
-        "token_str": "salesman",
-        "sequence": "the man worked as a salesman.",
-    },
-]
+loaded_response = []
 
 
 @pytest.fixture
 def model_input():
-    return {"inputs": "The man worked as a [MASK]."}
+    return {"inputs": "What is Deep Learning?"}
 
 
 @pytest.fixture
@@ -77,9 +44,6 @@ def model_builder_model_schema_builder():
         model_path=HF_DIR,
         model="BAAI/bge-m3",
         schema_builder=SchemaBuilder(sample_input, loaded_response),
-        model_metadata={
-            "HF_TASK": "sentence-similarity",
-        },
     )
 
 

@@ -209,6 +209,49 @@ class TransformersLocalModePredictor(PredictorBase):
         self._mode_obj.destroy_server()
 
 
+class TeiLocalModePredictor(PredictorBase):
+    """Lightweight Tei predictor for local deployment in IN_PROCESS and LOCAL_CONTAINER modes"""
+
+    def __init__(
+        self,
+        mode_obj: Type[LocalContainerMode],
+        serializer=JSONSerializer(),
+        deserializer=JSONDeserializer(),
+    ):
+        self._mode_obj = mode_obj
+        self.serializer = serializer
+        self.deserializer = deserializer
+
+    def predict(self, data):
+        """Placeholder docstring"""
+        return [
+            self.deserializer.deserialize(
+                io.BytesIO(
+                    self._mode_obj._invoke_serving(
+                        self.serializer.serialize(data),
+                        self.content_type,
+                        self.deserializer.ACCEPT[0],
+                    )
+                ),
+                self.content_type,
+            )
+        ]
+
+    @property
+    def content_type(self):
+        """The MIME type of the data sent to the inference endpoint."""
+        return self.serializer.CONTENT_TYPE
+
+    @property
+    def accept(self):
+        """The content type(s) that are expected from the inference endpoint."""
+        return self.deserializer.ACCEPT
+
+    def delete_predictor(self):
+        """Shut down and remove the container that you created in LOCAL_CONTAINER mode"""
+        self._mode_obj.destroy_server()
+
+
 class TensorflowServingLocalPredictor(PredictorBase):
     """Lightweight predictor for local deployment in LOCAL_CONTAINER modes"""
 
