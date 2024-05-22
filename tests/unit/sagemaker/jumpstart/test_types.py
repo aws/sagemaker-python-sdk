@@ -1027,7 +1027,9 @@ def test_inference_configs_parsing():
 
     assert config.benchmark_metrics == {
         "ml.inf2.2xlarge": [
-            JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
         ]
     }
     assert len(config.config_components) == 1
@@ -1191,10 +1193,14 @@ def test_training_configs_parsing():
 
     assert config.benchmark_metrics == {
         "ml.tr1n1.2xlarge": [
-            JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
         ],
         "ml.tr1n1.4xlarge": [
-            JumpStartBenchmarkStat({"name": "Latency", "value": "50", "unit": "Tokens/S"})
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "50", "unit": "Tokens/S", "concurrency": 1}
+            ),
         ],
     }
     assert len(config.config_components) == 1

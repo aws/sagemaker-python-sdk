@@ -1082,7 +1082,9 @@ def add_instance_rate_stats_to_benchmark_metrics(
 
                 if not benchmark_metric_stats:
                     benchmark_metric_stats = []
-                benchmark_metric_stats.append(JumpStartBenchmarkStat(instance_type_rate))
+                benchmark_metric_stats.append(
+                    JumpStartBenchmarkStat({"concurrency": None, **instance_type_rate})
+                )
 
                 final_benchmark_metrics[instance_type] = benchmark_metric_stats
             except ClientError as e:
@@ -1127,41 +1129,92 @@ def get_metrics_from_deployment_configs(
     if not deployment_configs:
         return {}
 
-    data = {"Instance Type": [], "Config Name": []}
+    data = {"Instance Type": [], "Config Name": [], "Concurrent Users": []}
     instance_rate_data = {}
     for index, deployment_config in enumerate(deployment_configs):
         benchmark_metrics = deployment_config.benchmark_metrics
         if not deployment_config.deployment_args or not benchmark_metrics:
             continue
 
-        for inner_index, current_instance_type in enumerate(benchmark_metrics):
-            current_instance_type_metrics = benchmark_metrics[current_instance_type]
-
-            data["Config Name"].append(deployment_config.deployment_config_name)
-            instance_type_to_display = (
-                f"{current_instance_type} (Default)"
-                if index == 0
-                and current_instance_type == deployment_config.deployment_args.default_instance_type
-                else current_instance_type
+        for current_instance_type, current_instance_type_metrics in benchmark_metrics.items():
+            instance_type_rate, concurrent_users = _normalize_benchmark_metrics(
+                current_instance_type_metrics
             )
-            data["Instance Type"].append(instance_type_to_display)
 
-            for metric in current_instance_type_metrics:
-                column_name = f"{metric.name} ({metric.unit})"
+            for concurrent_user, metrics in concurrent_users.items():
+                instance_type_to_display = (
+                    f"{current_instance_type} (Default)"
+                    if index == 0
+                    and int(concurrent_user) == 1
+                    and current_instance_type
+                    == deployment_config.deployment_args.default_instance_type
+                    else current_instance_type
+                )
 
-                if metric.name.lower() == "instance rate":
-                    if column_name not in instance_rate_data:
-                        instance_rate_data[column_name] = []
-                    instance_rate_data[column_name].append(metric.value)
-                else:
-                    if column_name not in data:
-                        data[column_name] = []
-                    for _ in range(len(data[column_name]), inner_index):
-                        data[column_name].append(" - ")
+                data["Config Name"].append(deployment_config.deployment_config_name)
+                data["Instance Type"].append(instance_type_to_display)
+                data["Concurrent Users"].append(concurrent_user)
+
+                if instance_type_rate:
+                    instance_rate_column_name = (
+                        f"{instance_type_rate.name} ({instance_type_rate.unit})"
+                    )
+                    instance_rate_data[instance_rate_column_name] = instance_rate_data.get(
+                        instance_rate_column_name, []
+                    )
+                    instance_rate_data[instance_rate_column_name].append(instance_type_rate.value)
+
+                for metric in metrics:
+                    column_name = _normalize_benchmark_metric_column_name(metric.name)
+                    data[column_name] = data.get(column_name, [])
                     data[column_name].append(metric.value)
 
     data = {**data, **instance_rate_data}
     return data
+
+
+def _normalize_benchmark_metric_column_name(name: str) -> str:
+    """Normalizes benchmark metric column name.
+
+    Args:
+        name (str): Name of the metric.
+    Returns:
+        str: Normalized metric column name.
+    """
+    if "latency" in name.lower():
+        name = "Latency for each user (TTFT in ms)"
+    elif "throughput" in name.lower():
+        name = "Throughput per user (token/seconds)"
+    return name
+
+
+def _normalize_benchmark_metrics(
+    benchmark_metric_stats: List[JumpStartBenchmarkStat],
+) -> Tuple[JumpStartBenchmarkStat, Dict[str, List[JumpStartBenchmarkStat]]]:
+    """Normalizes benchmark metrics dict.
+
+    Args:
+        benchmark_metric_stats (List[JumpStartBenchmarkStat]):
+        List of benchmark metrics stats.
+    Returns:
+        Tuple[JumpStartBenchmarkStat, Dict[str, List[JumpStartBenchmarkStat]]]:
+        Normalized benchmark metrics dict.
+    """
+    instance_type_rate = None
+    concurrent_users = {}
+    for current_instance_type_metric in benchmark_metric_stats:
+        if current_instance_type_metric.name.lower() == "instance rate":
+            instance_type_rate = current_instance_type_metric
+        elif current_instance_type_metric.concurrency not in concurrent_users:
+            concurrent_users[current_instance_type_metric.concurrency] = [
+                current_instance_type_metric
+            ]
+        else:
+            concurrent_users[current_instance_type_metric.concurrency].append(
+                current_instance_type_metric
+            )
+
+    return instance_type_rate, concurrent_users
 
 
 def deployment_config_response_data(

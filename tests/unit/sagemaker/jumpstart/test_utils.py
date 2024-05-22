@@ -1709,22 +1709,30 @@ class TestBenchmarkStats:
         ) == {
             "neuron-inference": {
                 "ml.inf2.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
             "neuron-inference-budget": {
                 "ml.inf2.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
             "gpu-inference-budget": {
                 "ml.p3.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
             "gpu-inference": {
                 "ml.p3.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
         }
@@ -1744,12 +1752,16 @@ class TestBenchmarkStats:
         ) == {
             "neuron-inference-budget": {
                 "ml.inf2.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
             "gpu-inference-budget": {
                 "ml.p3.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
         }
@@ -1769,7 +1781,9 @@ class TestBenchmarkStats:
         ) == {
             "neuron-inference-budget": {
                 "ml.inf2.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             }
         }
@@ -1797,6 +1811,16 @@ class TestBenchmarkStats:
     ):
         patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
 
+        print(
+            utils.get_benchmark_stats(
+                "mock-region",
+                "mock-model",
+                "mock-model-version",
+                scope=JumpStartScriptScope.TRAINING,
+                config_names=["neuron-training", "gpu-training-budget"],
+            )
+        )
+
         assert utils.get_benchmark_stats(
             "mock-region",
             "mock-model",
@@ -1806,15 +1830,21 @@ class TestBenchmarkStats:
         ) == {
             "neuron-training": {
                 "ml.tr1n1.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ],
                 "ml.tr1n1.4xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "50", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "50", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ],
             },
             "gpu-training-budget": {
                 "ml.p3.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": "1"}
+                    )
                 ]
             },
         }
@@ -1845,10 +1875,14 @@ def test_add_instance_rate_stats_to_benchmark_metrics(
         "us-west-2",
         {
             "ml.p2.xlarge": [
-                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                JumpStartBenchmarkStat(
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                )
             ],
             "ml.gd4.xlarge": [
-                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                JumpStartBenchmarkStat(
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                )
             ],
         },
     )
@@ -1862,7 +1896,65 @@ def test_add_instance_rate_stats_to_benchmark_metrics(
                     "name": "Instance Rate",
                     "unit": "USD/Hrs",
                     "value": "3.76",
+                    "concurrency": None,
                 }
+
+
+def test__normalize_benchmark_metrics():
+    rate, metrics = utils._normalize_benchmark_metrics(
+        [
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Throughput", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 2}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Throughput", "value": "100", "unit": "Tokens/S", "concurrency": 2}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76", "concurrency": None}
+            ),
+        ]
+    )
+
+    assert rate == JumpStartBenchmarkStat(
+        {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76", "concurrency": None}
+    )
+    assert metrics == {
+        1: [
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Throughput", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+        ],
+        2: [
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 2}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Throughput", "value": "100", "unit": "Tokens/S", "concurrency": 2}
+            ),
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("latency", "Latency for each user (TTFT in ms)"),
+        ("throughput", "Throughput per user (token/seconds)"),
+    ],
+)
+def test__normalize_benchmark_metric_column_name(name, expected):
+    out = utils._normalize_benchmark_metric_column_name(name)
+
+    assert out == expected
 
 
 @patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
@@ -1883,7 +1975,9 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
         "us-west-2",
         {
             "ml.p2.xlarge": [
-                JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                JumpStartBenchmarkStat(
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                )
             ],
         },
     )
@@ -1899,10 +1993,26 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
     [
         (None, True),
         (
-            [JumpStartBenchmarkStat({"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76"})],
+            [
+                JumpStartBenchmarkStat(
+                    {
+                        "name": "Instance Rate",
+                        "unit": "USD/Hrs",
+                        "value": "3.76",
+                        "concurrency": None,
+                    }
+                )
+            ],
             True,
         ),
-        ([JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})], False),
+        (
+            [
+                JumpStartBenchmarkStat(
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": None}
+                )
+            ],
+            False,
+        ),
     ],
 )
 def test_has_instance_rate_stat(stats, expected):
