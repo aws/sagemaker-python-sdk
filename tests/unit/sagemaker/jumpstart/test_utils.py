@@ -1783,7 +1783,7 @@ class TestUserAgent:
         )
         try:
             session.sagemaker_client.list_endpoints()
-        except:
+        except Exception:
             pass
 
         assert (
