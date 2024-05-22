@@ -417,13 +417,16 @@ class JumpStartModel(Model):
         The model id, version (and inference component name) can be inferred from the tags.
         """
 
-        inferred_model_id, inferred_model_version, inferred_inference_component_name = (
-            get_model_id_version_from_endpoint(
-                endpoint_name=endpoint_name,
-                inference_component_name=inference_component_name,
-                sagemaker_session=sagemaker_session,
+        inferred_model_id = inferred_model_version = inferred_inference_component_name = None
+
+        if inference_component_name is None or model_id is None or model_version is None:
+            inferred_model_id, inferred_model_version, inferred_inference_component_name = (
+                get_model_id_version_from_endpoint(
+                    endpoint_name=endpoint_name,
+                    inference_component_name=inference_component_name,
+                    sagemaker_session=sagemaker_session,
+                )
             )
-        )
 
         model_id = model_id or inferred_model_id
         model_version = model_version or inferred_model_version or "*"

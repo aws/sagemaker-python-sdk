@@ -1314,6 +1314,32 @@ class ModelTest(unittest.TestCase):
         )
         assert isinstance(val, JumpStartModel)
 
+        mock_get_model_id_version_from_endpoint.reset_mock()
+        JumpStartModel.attach("some-endpoint", model_id="some-id")
+        mock_get_model_id_version_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+
+        mock_get_model_id_version_from_endpoint.reset_mock()
+        JumpStartModel.attach("some-endpoint", model_id="some-id", model_version="some-version")
+        mock_get_model_id_version_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+
+        # providing model id, version, and ic name should bypass check with endpoint tags
+        mock_get_model_id_version_from_endpoint.reset_mock()
+        JumpStartModel.attach(
+            "some-endpoint",
+            model_id="some-id",
+            model_version="some-version",
+            inference_component_name="some-ic-name",
+        )
+        mock_get_model_id_version_from_endpoint.assert_not_called()
+
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
