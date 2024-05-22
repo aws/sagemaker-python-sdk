@@ -523,6 +523,7 @@ class HuggingFaceModel(FrameworkModel):
             deploy_image,
             self.repacked_model_data or self.model_data,
             deploy_env,
+            image_config=self.image_config,
             accept_eula=accept_eula,
         )
 
