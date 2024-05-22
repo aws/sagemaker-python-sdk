@@ -282,12 +282,12 @@ class PyTorch(Framework):
                     raise ValueError(
                         "Cannot use both pytorchddp and smdistributed "
                         "distribution options together.",
-                        distribution
+                        distribution,
                     )
 
                 # convert pytorchddp distribution into smdistributed distribution
                 distribution = distribution.copy()
-                distribution["smdistributed"] = {"dataparallel" : distribution["pytorchddp"]}
+                distribution["smdistributed"] = {"dataparallel": distribution["pytorchddp"]}
                 del distribution["pytorchddp"]
 
             distribution = validate_distribution(
