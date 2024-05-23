@@ -30,6 +30,7 @@ import pytest
 from mock import call, patch, Mock, MagicMock, PropertyMock
 
 import sagemaker
+from sagemaker.enums import RoutingStrategy
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
@@ -50,6 +51,7 @@ from sagemaker.utils import (
     _is_bad_link,
     custom_extractall_tarfile,
     can_model_package_source_uri_autopopulate,
+    _resolve_routing_config,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -1866,3 +1868,30 @@ class TestDeepMergeDict(TestCase):
         expected_result = {"a": 1, "b": {"x": 20, "y": 3, "z": 30}, "c": [4, 5]}
 
         self.assertEqual(deep_override_dict(dict1, dict2, skip_keys=["c", "d"]), expected_result)
+
+
+@pytest.mark.parametrize(
+    "routing_config, expected",
+    [
+        ({"RoutingStrategy": RoutingStrategy.RANDOM}, {"RoutingStrategy": "RANDOM"}),
+        ({"RoutingStrategy": "RANDOM"}, {"RoutingStrategy": "RANDOM"}),
+        (
+            {"RoutingStrategy": RoutingStrategy.LEAST_OUTSTANDING_REQUESTS},
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+        ),
+        (
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+        ),
+        ({"RoutingStrategy": None}, None),
+        (None, None),
+    ],
+)
+def test_resolve_routing_config(routing_config, expected):
+    res = _resolve_routing_config(routing_config)
+
+    assert res == expected
+
+
+def test_resolve_routing_config_ex():
+    pytest.raises(ValueError, lambda: _resolve_routing_config({"RoutingStrategy": "Invalid"}))

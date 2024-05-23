@@ -699,7 +699,7 @@ class ModelTest(unittest.TestCase):
         and reach out to JumpStart team."""
 
         init_args_to_skip: Set[str] = set([])
-        deploy_args_to_skip: Set[str] = set(["kwargs"])
+        deploy_args_to_skip: Set[str] = set(["routing_config"])
 
         parent_class_init = Model.__init__
         parent_class_init_args = set(signature(parent_class_init).parameters.keys())
