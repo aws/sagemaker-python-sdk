@@ -28,3 +28,10 @@ class EndpointType(Enum):
     INFERENCE_COMPONENT_BASED = (
         "InferenceComponentBased"  # Amazon SageMaker Inference Component Based Endpoint
     )
+
+
+class RoutingStrategy(Enum):
+    """Strategy for routing https traffics."""
+
+    RANDOM = "RANDOM"
+    LEAST_OUTSTANDING_REQUESTS = "LEAST_OUTSTANDING_REQUESTS"

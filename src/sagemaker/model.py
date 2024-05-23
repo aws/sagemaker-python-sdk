@@ -20,7 +20,7 @@ import logging
 import os
 import re
 import copy
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 
 import sagemaker
 from sagemaker import (
@@ -1309,6 +1309,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         managed_instance_scaling: Optional[str] = None,
+        routing_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1406,6 +1407,15 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 Endpoint. (Default: None).
             endpoint_type (Optional[EndpointType]): The type of an endpoint used to deploy models.
                 (Default: EndpointType.MODEL_BASED).
+            routing_config (Optional[Dict[str, Any]): Settings the control how the endpoint routes incoming
+                traffic to the instances that the endpoint hosts.
+                Currently, support dictionary key ``RoutingStrategy``.
+
+                .. code:: python
+
+                {
+                    "RoutingStrategy":  sagemaker.enums.RoutingStrategy.RANDOM
+                }
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1543,6 +1553,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     model_data_download_timeout=model_data_download_timeout,
                     container_startup_health_check_timeout=container_startup_health_check_timeout,
                     managed_instance_scaling=managed_instance_scaling_config,
+                    routing_config=routing_config,
                 )
 
                 self.sagemaker_session.endpoint_from_production_variants(
@@ -1625,6 +1636,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 volume_size=volume_size,
                 model_data_download_timeout=model_data_download_timeout,
                 container_startup_health_check_timeout=container_startup_health_check_timeout,
+                routing_config=routing_config,
             )
             if endpoint_name:
                 self.endpoint_name = endpoint_name
