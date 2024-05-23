@@ -1680,7 +1680,7 @@ def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optiona
                 routing_strategy.upper() == RoutingStrategy.RANDOM.name
                 or routing_strategy.upper() == RoutingStrategy.LEAST_OUTSTANDING_REQUESTS.name
             ):
-                return {"RoutingStrategy": routing_strategy}
+                return {"RoutingStrategy": routing_strategy.upper()}
             raise ValueError(
                 "RoutingStrategy must be either RoutingStrategy.RANDOM "
                 "or RoutingStrategy.LEAST_OUTSTANDING_REQUESTS"
