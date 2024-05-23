@@ -66,6 +66,7 @@ from sagemaker.utils import (
     resolve_nested_dict_value_from_config,
     format_tags,
     Tags,
+    _resolve_routing_config,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -1467,6 +1468,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
+
+        routing_config = _resolve_routing_config(routing_config)
 
         if (
             inference_recommendation_id is not None
