@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from botocore.exceptions import ClientError
 
 from sagemaker import payloads
@@ -496,7 +496,7 @@ class JumpStartModel(Model):
         resources: Optional[ResourceRequirements] = None,
         managed_instance_scaling: Optional[str] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
-        **kwargs,
+        routing_config: Optional[Dict[str, Any]] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -591,6 +591,8 @@ class JumpStartModel(Model):
                 endpoint.
             endpoint_type (EndpointType): The type of endpoint used to deploy models.
                 (Default: EndpointType.MODEL_BASED).
+            routing_config (Optional[Dict]): Settings the control how the endpoint routes
+                incoming traffic to the instances that the endpoint hosts.
 
         Raises:
             MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.
@@ -626,7 +628,7 @@ class JumpStartModel(Model):
             managed_instance_scaling=managed_instance_scaling,
             endpoint_type=endpoint_type,
             model_type=self.model_type,
-            **kwargs,
+            routing_config=routing_config,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY

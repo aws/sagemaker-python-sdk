@@ -1414,9 +1414,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
                 .. code:: python
 
-                {
-                    "RoutingStrategy":  sagemaker.enums.RoutingStrategy.RANDOM
-                }
+                    {
+                        "RoutingStrategy":  sagemaker.enums.RoutingStrategy.RANDOM
+                    }
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or

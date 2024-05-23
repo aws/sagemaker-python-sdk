@@ -1677,9 +1677,8 @@ def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optiona
             if isinstance(routing_strategy, RoutingStrategy):
                 return {"RoutingStrategy": routing_strategy.name}
             if isinstance(routing_strategy, str) and (
-                routing_strategy.lower() == RoutingStrategy.RANDOM.name.lower()
-                or routing_strategy.lower()
-                == RoutingStrategy.LEAST_OUTSTANDING_REQUESTS.name.lower()
+                routing_strategy.upper() == RoutingStrategy.RANDOM.name
+                or routing_strategy.upper() == RoutingStrategy.LEAST_OUTSTANDING_REQUESTS.name
             ):
                 return {"RoutingStrategy": routing_strategy}
             raise ValueError(
