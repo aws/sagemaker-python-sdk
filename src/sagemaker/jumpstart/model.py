@@ -496,6 +496,7 @@ class JumpStartModel(Model):
         resources: Optional[ResourceRequirements] = None,
         managed_instance_scaling: Optional[str] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
+        **kwargs,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -625,6 +626,7 @@ class JumpStartModel(Model):
             managed_instance_scaling=managed_instance_scaling,
             endpoint_type=endpoint_type,
             model_type=self.model_type,
+            **kwargs,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY

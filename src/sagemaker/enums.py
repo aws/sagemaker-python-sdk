@@ -34,4 +34,9 @@ class RoutingStrategy(Enum):
     """Strategy for routing https traffics."""
 
     RANDOM = "RANDOM"
+    """The endpoint routes each request to a randomly chosen instance.
+    """
     LEAST_OUTSTANDING_REQUESTS = "LEAST_OUTSTANDING_REQUESTS"
+    """The endpoint routes requests to the specific instances that have
+    more capacity to process them.
+    """

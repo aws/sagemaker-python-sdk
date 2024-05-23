@@ -555,6 +555,7 @@ def get_deploy_kwargs(
     resources: Optional[ResourceRequirements] = None,
     managed_instance_scaling: Optional[str] = None,
     endpoint_type: Optional[EndpointType] = None,
+    **kwargs,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
@@ -586,6 +587,7 @@ def get_deploy_kwargs(
         accept_eula=accept_eula,
         endpoint_logging=endpoint_logging,
         resources=resources,
+        **kwargs,
     )
 
     deploy_kwargs = _add_sagemaker_session_to_kwargs(kwargs=deploy_kwargs)

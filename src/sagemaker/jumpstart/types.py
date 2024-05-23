@@ -1614,6 +1614,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "endpoint_logging",
         "resources",
         "endpoint_type",
+        "routing_config",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1658,6 +1659,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_logging: Optional[bool] = None,
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: Optional[EndpointType] = None,
+        **kwargs,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1690,6 +1692,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_logging = endpoint_logging
         self.resources = resources
         self.endpoint_type = endpoint_type
+        self.routing_config = kwargs.get("routing_config")
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
