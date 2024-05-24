@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.221.1 (2024-05-22)
+
+### Bug Fixes and Other Changes
+
+ * Convert pytorchddp distribution to smdistributed distribution
+ * Add tei cpu image
+
 ## v2.221.0 (2024-05-20)
 
 ### Features
