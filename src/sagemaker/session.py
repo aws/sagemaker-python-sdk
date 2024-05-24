@@ -630,74 +630,84 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 = self.s3_resource
 
         bucket = s3.Bucket(name=bucket_name)
-        if bucket.creation_date is None:
-            try:
-                # trying head bucket call
-                s3.meta.client.head_bucket(Bucket=bucket.name)
-            except ClientError as e:
-                # bucket does not exist or forbidden to access
-                error_code = e.response["Error"]["Code"]
-                message = e.response["Error"]["Message"]
+        if bucket.creation_date is None:        
+            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, True)
 
-                if error_code == "404" and message == "Not Found":
-                    # bucket does not exist, create one
-                    try:
-                        if region == "us-east-1":
-                            # 'us-east-1' cannot be specified because it is the default region:
-                            # https://github.com/boto/boto3/issues/125
-                            s3.create_bucket(Bucket=bucket_name)
-                        else:
-                            s3.create_bucket(
-                                Bucket=bucket_name,
-                                CreateBucketConfiguration={"LocationConstraint": region},
-                            )
+        elif self._default_bucket_set_by_sdk:
+            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, False)
 
-                        logger.info("Created S3 bucket: %s", bucket_name)
-                    except ClientError as e:
-                        error_code = e.response["Error"]["Code"]
-                        message = e.response["Error"]["Message"]
-
-                        if (
-                            error_code == "OperationAborted"
-                            and "conflicting conditional operation" in message
-                        ):
-                            # If this bucket is already being concurrently created,
-                            # we don't need to create it again.
-                            pass
-                        else:
-                            raise
-                elif error_code == "403" and message == "Forbidden":
-                    logger.error(
-                        "Bucket %s exists, but access is forbidden. Please try again after "
-                        "adding appropriate access.",
-                        bucket.name,
-                    )
-                    raise
-                else:
-                    raise
-
-        if self._default_bucket_set_by_sdk:
-            # make sure the s3 bucket is configured in users account.
             expected_bucket_owner_id = self.account_id()
-            try:
-                s3.meta.client.head_bucket(
-                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
-                )
-            except ClientError as e:
-                error_code = e.response["Error"]["Code"]
-                message = e.response["Error"]["Message"]
-                if error_code == "403" and message == "Forbidden":
-                    LOGGER.error(
-                        "Since default_bucket param was not set, SageMaker Python SDK tried to use "
-                        "%s bucket. "
-                        "This bucket cannot be configured to use as it is not owned by Account %s. "
-                        "To unblock it's recommended to use custom default_bucket "
-                        "parameter in sagemaker.Session",
-                        bucket_name,
-                        expected_bucket_owner_id,
-                    )
-                    raise
+            self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
 
+    def expected_bucket_owner_id_bucket_check(self, bucket_name, s3, expected_bucket_owner_id):
+        try:
+            s3.meta.client.head_bucket(
+                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+            )
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
+            if error_code == "403" and message == "Forbidden":
+                LOGGER.error(
+                    "Since default_bucket param was not set, SageMaker Python SDK tried to use "
+                    "%s bucket. "
+                    "This bucket cannot be configured to use as it is not owned by Account %s. "
+                    "To unblock it's recommended to use custom default_bucket "
+                    "parameter in sagemaker.Session",
+                    bucket_name,
+                    expected_bucket_owner_id,
+                )
+                raise
+
+    def general_bucket_check_if_user_has_permission(self, bucket_name, s3, bucket, region, bucket_creation_date_none):
+        try:
+            s3.meta.client.head_bucket(Bucket=bucket_name)
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
+            # bucket does not exist or forbidden to access
+            if bucket_creation_date_none:
+                if error_code == "404" and message == "Not Found":
+                    self.create_bucket_for_not_exist_error(bucket_name, region, s3)
+
+            if error_code == "403" and message == "Forbidden":
+                LOGGER.error(
+                    "Bucket %s exists, but access is forbidden. Please try again after "
+                    "adding appropriate access.",
+                    bucket.name,
+                )
+                raise
+            else: 
+                raise
+
+    def create_bucket_for_not_exist_error(self, bucket_name, region, s3):
+        # bucket does not exist, create one
+        try:
+            if region == "us-east-1":
+                # 'us-east-1' cannot be specified because it is the default region:
+                # https://github.com/boto/boto3/issues/125
+                s3.create_bucket(Bucket=bucket_name)
+            else:
+                s3.create_bucket(
+                    Bucket=bucket_name,
+                    CreateBucketConfiguration={"LocationConstraint": region},
+                )
+
+            logger.info("Created S3 bucket: %s", bucket_name)
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
+
+            if (
+                error_code == "OperationAborted"
+                and "conflicting conditional operation" in message
+            ):
+                # If this bucket is already being concurrently created,
+                # we don't need to create it again.
+                pass
+            else:
+                raise
+        
     def _append_sagemaker_config_tags(self, tags: List[TagsDict], config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
 
