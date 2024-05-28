@@ -951,8 +951,9 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
 
         self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
 
-        self.hosting_model_package_arns: Optional[Dict] = json_obj.get(
-            "hosting_model_package_arns", {}
+        model_package_arns = json_obj.get("hosting_model_package_arns")
+        self.hosting_model_package_arns: Optional[Dict] = (
+            model_package_arns if model_package_arns is not None else {}
         )
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
@@ -1149,6 +1150,12 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
                 deepcopy(component.to_json()),
                 component.OVERRIDING_DENY_LIST,
             )
+
+        # Remove environment variables from resolved config if using model packages
+        hosting_model_pacakge_arns = resolved_config.get("hosting_model_package_arns")
+        if hosting_model_pacakge_arns is not None and hosting_model_pacakge_arns != {}:
+            resolved_config["inference_environment_variables"] = []
+
         self.resolved_metadata_config = resolved_config
 
         return resolved_config

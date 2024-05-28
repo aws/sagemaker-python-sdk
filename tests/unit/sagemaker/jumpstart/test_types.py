@@ -17,6 +17,7 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
     JumpStartBenchmarkStat,
     JumpStartECRSpecs,
+    JumpStartEnvironmentVariable,
     JumpStartHyperparameter,
     JumpStartInstanceTypeVariants,
     JumpStartModelSpecs,
@@ -927,6 +928,7 @@ def test_inference_configs_parsing():
         "neuron-inference",
         "neuron-budget",
         "gpu-inference",
+        "gpu-inference-model-package",
         "gpu-inference-budget",
     ]
 
@@ -1019,6 +1021,80 @@ def test_inference_configs_parsing():
             }
         ),
     ]
+    assert specs1.inference_environment_variables == [
+        JumpStartEnvironmentVariable(
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            }
+        ),
+        JumpStartEnvironmentVariable(
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            }
+        ),
+        JumpStartEnvironmentVariable(
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            }
+        ),
+        JumpStartEnvironmentVariable(
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            }
+        ),
+        JumpStartEnvironmentVariable(
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            }
+        ),
+        JumpStartEnvironmentVariable(
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            }
+        ),
+        JumpStartEnvironmentVariable(
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            }
+        ),
+        JumpStartEnvironmentVariable(
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            }
+        ),
+    ]
 
     # Overrided fields in top config
     assert specs1.supported_inference_instance_types == ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
@@ -1057,6 +1133,20 @@ def test_inference_configs_parsing():
     )
     assert list(config.config_components.keys()) == ["neuron-inference"]
 
+    config = specs1.inference_configs.configs["gpu-inference-model-package"]
+    assert config.config_components["gpu-inference-model-package"] == JumpStartConfigComponent(
+        "gpu-inference-model-package",
+        {
+            "default_inference_instance_type": "ml.p2.xlarge",
+            "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
+            "hosting_model_package_arns": {
+                "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/"
+                "llama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
+            },
+        },
+    )
+    assert config.resolved_config.get("inference_environment_variables") == []
+
     spec = {
         **BASE_SPEC,
         **INFERENCE_CONFIGS,
@@ -1075,6 +1165,7 @@ def test_set_inference_configs():
         "neuron-inference",
         "neuron-budget",
         "gpu-inference",
+        "gpu-inference-model-package",
         "gpu-inference-budget",
     ]
 
@@ -1083,7 +1174,7 @@ def test_set_inference_configs():
     assert "Cannot find Jumpstart config name invalid_name."
     "List of config names that is supported by the model: "
     "['neuron-inference', 'neuron-inference-budget', "
-    "'gpu-inference-budget', 'gpu-inference']" in str(error.value)
+    "'gpu-inference-budget', 'gpu-inference', 'gpu-inference-model-package']" in str(error.value)
 
     assert specs1.supported_inference_instance_types == ["ml.inf2.xlarge", "ml.inf2.2xlarge"]
     specs1.set_config("gpu-inference")

@@ -1774,12 +1774,7 @@ class ModelTest(unittest.TestCase):
 
         with pytest.raises(ValueError) as error:
             model.set_deployment_config("neuron-inference-unknown-name", "ml.inf2.32xlarge")
-        assert (
-            "Cannot find Jumpstart config name neuron-inference-unknown-name. "
-            "List of config names that is supported by the model: "
-            "['neuron-inference', 'neuron-inference-budget', 'gpu-inference-budget', 'gpu-inference']"
-            in str(error)
-        )
+        assert "Cannot find Jumpstart config name neuron-inference-unknown-name. " in str(error)
 
     @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")

@@ -7748,7 +7748,6 @@ INFERENCE_CONFIGS = {
                 "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/ll"
                 "ama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
             },
-            "inference_environment_variables": [],
         },
         "gpu-inference-budget": {
             "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
