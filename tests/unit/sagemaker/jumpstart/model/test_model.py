@@ -1697,7 +1697,9 @@ class ModelTest(unittest.TestCase):
 
         mock_model_deploy.reset_mock()
 
-        model.set_deployment_config(config_name="gpu-inference-model-package", instance_type="ml.p2.xlarge")
+        model.set_deployment_config(
+            config_name="gpu-inference-model-package", instance_type="ml.p2.xlarge"
+        )
 
         assert (
             model.model_package_arn
