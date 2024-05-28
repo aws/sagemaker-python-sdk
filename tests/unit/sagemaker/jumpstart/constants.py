@@ -7357,7 +7357,7 @@ BASE_SPEC = {
     "training_model_package_artifact_uris": None,
     "deprecate_warn_message": None,
     "deprecated_message": None,
-    "hosting_model_package_arns": None,
+    "hosting_model_package_arns": {},
     "hosting_eula_key": None,
     "model_subscription_link": None,
     "hyperparameters": [
