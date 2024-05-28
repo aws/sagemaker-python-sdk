@@ -951,7 +951,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
 
         self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
 
-        self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns")
+        self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns", {})
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (

@@ -96,7 +96,10 @@ def _retrieve_model_package_arn(
         if instance_specific_arn is not None:
             return instance_specific_arn
 
-        if model_specs.hosting_model_package_arns is None:
+        if (
+            model_specs.hosting_model_package_arns is None
+            or model_specs.hosting_model_package_arns == {}
+        ):
             return None
 
         regional_arn = model_specs.hosting_model_package_arns.get(region)
