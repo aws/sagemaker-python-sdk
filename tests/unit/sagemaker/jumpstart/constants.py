@@ -7357,7 +7357,7 @@ BASE_SPEC = {
     "training_model_package_artifact_uris": None,
     "deprecate_warn_message": None,
     "deprecated_message": None,
-    "hosting_model_package_arns": None,
+    "hosting_model_package_arns": {},
     "hosting_eula_key": None,
     "model_subscription_link": None,
     "hyperparameters": [
@@ -7692,6 +7692,14 @@ INFERENCE_CONFIGS = {
             },
             "component_names": ["gpu-inference"],
         },
+        "gpu-inference-model-package": {
+            "benchmark_metrics": {
+                "ml.p3.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ]
+            },
+            "component_names": ["gpu-inference-model-package"],
+        },
     },
     "inference_config_components": {
         "neuron-base": {
@@ -7731,6 +7739,14 @@ INFERENCE_CONFIGS = {
                     "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
                     "p2": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
                 },
+            },
+        },
+        "gpu-inference-model-package": {
+            "default_inference_instance_type": "ml.p2.xlarge",
+            "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
+            "hosting_model_package_arns": {
+                "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/ll"
+                "ama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
             },
         },
         "gpu-inference-budget": {
