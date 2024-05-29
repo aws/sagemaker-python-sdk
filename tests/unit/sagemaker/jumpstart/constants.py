@@ -547,6 +547,7 @@ SPECIAL_MODEL_SPECS_DICT = {
         },
         "fit_kwargs": {},
         "predictor_specs": {
+            "_is_hub_content": False,
             "supported_content_types": ["application/json"],
             "supported_accept_types": ["application/json"],
             "default_content_type": "application/json",
@@ -7364,6 +7365,7 @@ BASE_SPEC = {
         {
             "name": "epochs",
             "type": "int",
+            "_is_hub_content": False,
             "default": 3,
             "min": 1,
             "max": 1000,
@@ -7372,6 +7374,7 @@ BASE_SPEC = {
         {
             "name": "adam-learning-rate",
             "type": "float",
+            "_is_hub_content": False,
             "default": 0.05,
             "min": 1e-08,
             "max": 1,
@@ -7380,6 +7383,7 @@ BASE_SPEC = {
         {
             "name": "batch-size",
             "type": "int",
+            "_is_hub_content": False,
             "default": 4,
             "min": 1,
             "max": 1024,
@@ -7388,18 +7392,21 @@ BASE_SPEC = {
         {
             "name": "sagemaker_submit_directory",
             "type": "text",
+            "_is_hub_content": False,
             "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
             "scope": "container",
         },
         {
             "name": "sagemaker_program",
             "type": "text",
+            "_is_hub_content": False,
             "default": "transfer_learning.py",
             "scope": "container",
         },
         {
             "name": "sagemaker_container_log_level",
             "type": "text",
+            "_is_hub_content": False,
             "default": "20",
             "scope": "container",
         },
@@ -7408,6 +7415,7 @@ BASE_SPEC = {
         {
             "name": "SAGEMAKER_PROGRAM",
             "type": "text",
+            "_is_hub_content": False,
             "default": "inference.py",
             "scope": "container",
             "required_for_model_class": True,
@@ -7415,6 +7423,7 @@ BASE_SPEC = {
         {
             "name": "SAGEMAKER_SUBMIT_DIRECTORY",
             "type": "text",
+            "_is_hub_content": False,
             "default": "/opt/ml/model/code",
             "scope": "container",
             "required_for_model_class": False,
@@ -7422,6 +7431,7 @@ BASE_SPEC = {
         {
             "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
             "type": "text",
+            "_is_hub_content": False,
             "default": "20",
             "scope": "container",
             "required_for_model_class": False,
@@ -7429,6 +7439,7 @@ BASE_SPEC = {
         {
             "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
             "type": "text",
+            "_is_hub_content": False,
             "default": "3600",
             "scope": "container",
             "required_for_model_class": False,
@@ -7436,6 +7447,7 @@ BASE_SPEC = {
         {
             "name": "ENDPOINT_SERVER_TIMEOUT",
             "type": "int",
+            "_is_hub_content": False,
             "default": 3600,
             "scope": "container",
             "required_for_model_class": True,
@@ -7443,6 +7455,7 @@ BASE_SPEC = {
         {
             "name": "MODEL_CACHE_ROOT",
             "type": "text",
+            "_is_hub_content": False,
             "default": "/opt/ml/model",
             "scope": "container",
             "required_for_model_class": True,
@@ -7450,6 +7463,7 @@ BASE_SPEC = {
         {
             "name": "SAGEMAKER_ENV",
             "type": "text",
+            "_is_hub_content": False,
             "default": "1",
             "scope": "container",
             "required_for_model_class": True,
@@ -7457,6 +7471,7 @@ BASE_SPEC = {
         {
             "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
             "type": "int",
+            "_is_hub_content": False,
             "default": 1,
             "scope": "container",
             "required_for_model_class": True,
@@ -7470,6 +7485,7 @@ BASE_SPEC = {
     "training_vulnerabilities": [],
     "deprecated": False,
     "default_inference_instance_type": "ml.p2.xlarge",
+    "_is_hub_content": False,
     "supported_inference_instance_types": [
         "ml.p2.xlarge",
         "ml.p3.2xlarge",
@@ -7497,6 +7513,7 @@ BASE_SPEC = {
     },
     "fit_kwargs": {"some-estimator-fit-key": "some-estimator-fit-value"},
     "predictor_specs": {
+        "_is_hub_content": False,
         "supported_content_types": ["application/x-image"],
         "supported_accept_types": ["application/json;verbose", "application/json"],
         "default_content_type": "application/x-image",
