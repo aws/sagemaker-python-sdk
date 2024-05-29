@@ -1075,6 +1075,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
     __slots__ = [
         "base_fields",
         "benchmark_metrics",
+        "acceleration_configs",
         "config_components",
         "resolved_metadata_config",
         "config_name",
@@ -1112,6 +1113,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
             if config and config.get("benchmark_metrics")
             else None
         )
+        self.acceleration_configs = config.get("acceleration_configs")
         self.resolved_metadata_config: Optional[Dict[str, Any]] = None
         self.config_name: Optional[str] = config_name
         self.default_inference_config: Optional[str] = config.get("default_inference_config")
@@ -2334,14 +2336,12 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
     def __init__(
         self,
         config_name: Optional[str] = None,
-        benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]] = None,
-        resolved_config: Optional[Dict[str, Any]] = None,
+        metadata_config: Optional[JumpStartMetadataConfig] = None,
         init_kwargs: Optional[JumpStartModelInitKwargs] = None,
         deploy_kwargs: Optional[JumpStartModelDeployKwargs] = None,
     ):
         """Instantiates DeploymentConfigMetadata object."""
         self.deployment_config_name = config_name
-        self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs, resolved_config)
-        self.benchmark_metrics = benchmark_metrics
-        if resolved_config is not None:
-            self.acceleration_configs = resolved_config.get("acceleration_configs")
+        self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs, metadata_config.resolved_config)
+        self.benchmark_metrics = metadata_config.benchmark_metrics
+        self.acceleration_configs = metadata_config.acceleration_configs
