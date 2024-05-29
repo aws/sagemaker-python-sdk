@@ -2351,6 +2351,8 @@ class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
     ):
         """Instantiates DeploymentConfigMetadata object."""
         self.deployment_config_name = config_name
-        self.deployment_args = DeploymentArgs(init_kwargs, deploy_kwargs, metadata_config.resolved_config)
+        self.deployment_args = DeploymentArgs(
+            init_kwargs, deploy_kwargs, metadata_config.resolved_config
+        )
         self.benchmark_metrics = metadata_config.benchmark_metrics
         self.acceleration_configs = metadata_config.acceleration_configs

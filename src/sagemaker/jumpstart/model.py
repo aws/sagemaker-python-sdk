@@ -901,7 +901,9 @@ class JumpStartModel(Model):
             if selected_config_name == config_name:
                 instance_type_to_use = selected_instance_type
             else:
-                instance_type_to_use = metadata_config.resolved_config.get("default_inference_instance_type")
+                instance_type_to_use = metadata_config.resolved_config.get(
+                    "default_inference_instance_type"
+                )
 
             if metadata_config.benchmark_metrics:
                 err, metadata_config.benchmark_metrics = (
