@@ -2284,6 +2284,7 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
     __slots__ = [
         "image_uri",
         "model_data",
+        "model_package_arn",
         "environment",
         "instance_type",
         "compute_resource_requirements",
@@ -2301,6 +2302,7 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
         if init_kwargs is not None:
             self.image_uri = init_kwargs.image_uri
             self.model_data = init_kwargs.model_data
+            self.model_package_arn = init_kwargs.model_package_arn
             self.instance_type = init_kwargs.instance_type
             self.environment = init_kwargs.env
             if init_kwargs.resources is not None:
