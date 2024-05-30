@@ -1933,6 +1933,8 @@ class ModelTest(unittest.TestCase):
 
         model.display_benchmark_metrics()
 
+        model.display_benchmark_metrics(instance_type="g5.12xlarge")
+
     @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
     @mock.patch("sagemaker.jumpstart.model.add_instance_rate_stats_to_benchmark_metrics")
