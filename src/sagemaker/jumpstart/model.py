@@ -469,9 +469,15 @@ class JumpStartModel(Model):
         df.index = blank_index
         return df
 
-    def display_benchmark_metrics(self, *args, **kwargs) -> None:
+    def display_benchmark_metrics(self, **kwargs) -> None:
         """Display deployment configs benchmark metrics."""
-        print(self.benchmark_metrics.to_markdown(index=False, floatfmt=".2f"), *args, **kwargs)
+        df = self.benchmark_metrics
+
+        instance_type = kwargs.get("instance_type")
+        if instance_type:
+            df = df[df["Instance Type"].str.contains(instance_type)]
+
+        print(df.to_markdown(index=False, floatfmt=".2f"))
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model.
