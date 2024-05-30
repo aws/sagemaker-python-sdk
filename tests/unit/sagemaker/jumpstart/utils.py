@@ -378,8 +378,7 @@ def get_base_deployment_configs_metadata(
         configs.append(
             DeploymentConfigMetadata(
                 config_name=config_name,
-                benchmark_metrics=jumpstart_config.benchmark_metrics,
-                resolved_config=jumpstart_config.resolved_config,
+                metadata_config=jumpstart_config,
                 init_kwargs=get_mock_init_kwargs(
                     get_base_spec_with_prototype_configs().model_id, config_name
                 ),

@@ -1372,8 +1372,7 @@ def test_deployment_config_metadata():
 
     deployment_config_metadata = DeploymentConfigMetadata(
         jumpstart_config.config_name,
-        jumpstart_config.benchmark_metrics,
-        jumpstart_config.resolved_config,
+        jumpstart_config,
         JumpStartModelInitKwargs(
             model_id=specs.model_id,
             model_data=INIT_KWARGS.get("model_data"),
