@@ -1932,7 +1932,7 @@ class ModelTest(unittest.TestCase):
         model = JumpStartModel(model_id=model_id)
 
         model.display_benchmark_metrics()
-        model.display_benchmark_metrics("g5.12xlarge")
+        model.display_benchmark_metrics(instance_type="g5.12xlarge")
 
     @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
