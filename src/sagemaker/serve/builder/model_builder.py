@@ -702,8 +702,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                     "but MLflow model path was provided." % MLFLOW_TRACKING_ARN,
                 )
 
-            if not importlib.util.find_spec("awsmlflow"):
-                raise ImportError("Unable to import awsmlflow, check if awsmlflow is installed")
+            if not importlib.util.find_spec("mlflow_sagemaker"):
+                raise ImportError(
+                    "Unable to import mlflow_sagemaker, check if mlflow_sagemaker is installed"
+                )
 
             import mlflow
 
@@ -928,13 +930,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     def set_tracking_arn(self, arn: str):
         """Set tracking server ARN"""
         # TODO: support native MLflow URIs
-        if importlib.util.find_spec("awsmlflow"):
+        if importlib.util.find_spec("mlflow_sagemaker"):
             import mlflow
 
             mlflow.set_tracking_uri(arn)
             self.model_metadata[MLFLOW_TRACKING_ARN] = arn
         else:
-            raise ImportError("Unable to import awsmlflow, check if awsmlflow is installed")
+            raise ImportError(
+                "Unable to import mlflow_sagemaker, check if mlflow_sagemaker is installed"
+            )
 
     def _hf_schema_builder_init(self, model_task: str):
         """Initialize the schema builder for the given HF_TASK
