@@ -469,9 +469,15 @@ class JumpStartModel(Model):
         df.index = blank_index
         return df
 
-    def display_benchmark_metrics(self, *args, **kwargs) -> None:
+    def display_benchmark_metrics(self, **kwargs) -> None:
         """Display deployment configs benchmark metrics."""
-        print(self.benchmark_metrics.to_markdown(index=False, floatfmt=".2f"), *args, **kwargs)
+        df = self.benchmark_metrics
+
+        instance_type = kwargs.get("instance_type")
+        if instance_type:
+            df = df[df["Instance Type"].str.contains(instance_type)]
+
+        print(df.to_markdown(index=False, floatfmt=".2f"))
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model.
@@ -898,11 +904,12 @@ class JumpStartModel(Model):
 
         err = None
         for config_name, metadata_config in self._metadata_configs.items():
-            resolved_config = metadata_config.resolved_config
             if selected_config_name == config_name:
                 instance_type_to_use = selected_instance_type
             else:
-                instance_type_to_use = resolved_config.get("default_inference_instance_type")
+                instance_type_to_use = metadata_config.resolved_config.get(
+                    "default_inference_instance_type"
+                )
 
             if metadata_config.benchmark_metrics:
                 err, metadata_config.benchmark_metrics = (
@@ -941,8 +948,7 @@ class JumpStartModel(Model):
 
             deployment_config_metadata = DeploymentConfigMetadata(
                 config_name,
-                metadata_config.benchmark_metrics,
-                resolved_config,
+                metadata_config,
                 init_kwargs,
                 deploy_kwargs,
             )
