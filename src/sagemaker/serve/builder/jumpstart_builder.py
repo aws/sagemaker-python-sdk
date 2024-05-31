@@ -458,12 +458,12 @@ class JumpStart(ABC):
 
         return self.pysdk_model.deployment_config
 
-    def display_benchmark_metrics(self):
+    def display_benchmark_metrics(self, **kwargs):
         """Display Markdown Benchmark Metrics for deployment configs."""
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
             self._build_for_jumpstart()
 
-        self.pysdk_model.display_benchmark_metrics()
+        self.pysdk_model.display_benchmark_metrics(**kwargs)
 
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for ``This`` model in the current region.
