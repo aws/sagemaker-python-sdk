@@ -1560,7 +1560,7 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
         "region",
         "account_id",
         "hub_name",
-        "hub_content_type",
+        "hub_content_type"
         "hub_content_name",
         "hub_content_version",
     ]
@@ -1581,8 +1581,8 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
         self.region = region
         self.account_id = account_id
         self.hub_name = hub_name
-        self.hub_content_type = hub_content_type
         self.hub_content_name = hub_content_name
+        self.hub_content_type = hub_content_type
         self.hub_content_version = hub_content_version
 
     @staticmethod
@@ -1657,6 +1657,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "instance_type",
         "tolerate_vulnerable_model",
@@ -1688,6 +1689,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "instance_type",
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
@@ -1700,6 +1702,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
@@ -1730,6 +1733,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.model_type = model_type
         self.instance_type = instance_type
         self.region = region
@@ -1763,6 +1767,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "initial_instance_count",
         "instance_type",
@@ -1796,6 +1801,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "model_type",
+        "hub_arn",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1807,6 +1813,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         initial_instance_count: Optional[int] = None,
@@ -1839,6 +1846,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.model_type = model_type
         self.initial_instance_count = initial_instance_count
         self.instance_type = instance_type
@@ -1874,6 +1882,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "instance_type",
         "instance_count",
@@ -1935,6 +1944,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
     }
 
@@ -1942,6 +1952,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
@@ -2000,6 +2011,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.model_type = (model_type,)
         self.instance_type = instance_type
         self.instance_count = instance_count
@@ -2063,6 +2075,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "region",
         "inputs",
@@ -2078,6 +2091,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
     SERIALIZATION_EXCLUSION_SET = {
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "region",
         "tolerate_deprecated_model",
@@ -2089,6 +2103,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         inputs: Optional[Union[str, Dict, Any, Any]] = None,
@@ -2104,6 +2119,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.model_type = model_type
         self.region = region
         self.inputs = inputs
@@ -2122,6 +2138,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "instance_type",
         "initial_instance_count",
         "region",
@@ -2167,6 +2184,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
     }
 
@@ -2174,6 +2192,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         initial_instance_count: Optional[int] = None,
         instance_type: Optional[str] = None,
@@ -2216,6 +2235,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.instance_type = instance_type
         self.initial_instance_count = initial_instance_count
         self.region = region
@@ -2264,6 +2284,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
         "content_types",
         "response_types",
@@ -2295,6 +2316,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
     }
 
@@ -2302,6 +2324,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
@@ -2333,6 +2356,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.region = region
         self.image_uri = image_uri
         self.sagemaker_session = sagemaker_session

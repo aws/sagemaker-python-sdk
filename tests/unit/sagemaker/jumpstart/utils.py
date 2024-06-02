@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from typing import List
+from typing import List, Optional
 import boto3
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
@@ -108,6 +108,7 @@ def get_prototype_model_spec(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
@@ -124,6 +125,7 @@ def get_special_model_spec(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
@@ -140,6 +142,7 @@ def get_special_model_spec_for_inference_component_based_endpoint(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
@@ -163,6 +166,7 @@ def get_spec_from_base_spec(
     model_id: str = None,
     version_str: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:
@@ -209,6 +213,7 @@ def get_base_spec_with_prototype_configs(
     region: str = None,
     model_id: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> JumpStartModelSpecs:

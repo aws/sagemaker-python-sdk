@@ -620,7 +620,7 @@ class JumpStartModelsCache:
         ))
         return details.formatted_content
 
-    def get_hub_model_reference(self, hub_model_arn: str) -> JumpStartModelSpecs:
+    def get_hub_model_reference(self, hub_model_reference_arn: str) -> JumpStartModelSpecs:
         """Return JumpStart-compatible specs for a given Hub model reference
 
         Args:
@@ -629,7 +629,7 @@ class JumpStartModelsCache:
 
         details, _ = self._content_cache.get(JumpStartCachedContentKey(
             HubContentType.MODEL_REFERENCE,
-            hub_model_arn,
+            hub_model_reference_arn,
         ))
         return details.formatted_content
 

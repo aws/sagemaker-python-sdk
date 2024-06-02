@@ -44,6 +44,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelRegisterKwargs,
 )
 from sagemaker.jumpstart.utils import (
+    add_hub_arn_tags,
     add_jumpstart_model_id_version_tags,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
@@ -67,6 +68,7 @@ def get_default_predictor(
     predictor: Predictor,
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str],
     region: str,
     tolerate_vulnerable_model: bool,
     tolerate_deprecated_model: bool,
@@ -89,6 +91,7 @@ def get_default_predictor(
     predictor.serializer = serializers.retrieve_default(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -98,6 +101,7 @@ def get_default_predictor(
     predictor.deserializer = deserializers.retrieve_default(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -107,6 +111,7 @@ def get_default_predictor(
     predictor.accept = accept_types.retrieve_default(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -116,6 +121,7 @@ def get_default_predictor(
     predictor.content_type = content_types.retrieve_default(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -189,6 +195,7 @@ def _add_instance_type_to_kwargs(
         region=kwargs.region,
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -222,6 +229,7 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
         image_scope=JumpStartScriptScope.INFERENCE,
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         instance_type=kwargs.instance_type,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -242,6 +250,7 @@ def _add_model_data_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
         model_scope=JumpStartScriptScope.INFERENCE,
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -283,6 +292,7 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
     if _model_supports_inference_script_uri(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -292,6 +302,7 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
             script_scope=JumpStartScriptScope.INFERENCE,
             model_id=kwargs.model_id,
             model_version=kwargs.model_version,
+            hub_arn=kwargs.hub_arn,
             region=kwargs.region,
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -315,6 +326,7 @@ def _add_entry_point_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
     if _model_supports_inference_script_uri(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -343,6 +355,7 @@ def _add_env_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKw
     extra_env_vars = environment_variables.retrieve_default(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         region=kwargs.region,
         include_aws_sdk_env_vars=False,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
@@ -373,6 +386,7 @@ def _add_model_package_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSt
     model_package_arn = kwargs.model_package_arn or _retrieve_model_package_arn(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         instance_type=kwargs.instance_type,
         scope=JumpStartScriptScope.INFERENCE,
         region=kwargs.region,
@@ -392,6 +406,7 @@ def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelI
     model_kwargs_to_add = _retrieve_model_init_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -428,6 +443,7 @@ def _add_endpoint_name_to_kwargs(
     default_endpoint_name = _retrieve_resource_name_base(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -450,6 +466,7 @@ def _add_model_name_to_kwargs(
     default_model_name = _retrieve_resource_name_base(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -470,6 +487,7 @@ def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
     full_model_version = verify_model_region_and_return_specs(
         model_id=kwargs.model_id,
         version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         region=kwargs.region,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -483,6 +501,9 @@ def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
             kwargs.tags, kwargs.model_id, full_model_version, kwargs.model_type
         )
 
+    if kwargs.hub_arn:
+        kwargs.tags = add_hub_arn_tags(kwargs.tags, kwargs.hub_arn)
+
     return kwargs
 
 
@@ -492,6 +513,7 @@ def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]
     deploy_kwargs_to_add = _retrieve_model_deploy_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         instance_type=kwargs.instance_type,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
@@ -514,6 +536,7 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
         region=kwargs.region,
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
@@ -528,6 +551,7 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
 def get_deploy_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     region: Optional[str] = None,
     initial_instance_count: Optional[int] = None,
@@ -561,6 +585,7 @@ def get_deploy_kwargs(
     deploy_kwargs: JumpStartModelDeployKwargs = JumpStartModelDeployKwargs(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         model_type=model_type,
         region=region,
         initial_instance_count=initial_instance_count,
@@ -613,6 +638,7 @@ def get_deploy_kwargs(
 def get_register_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     tolerate_vulnerable_model: Optional[bool] = None,
@@ -645,6 +671,7 @@ def get_register_kwargs(
     register_kwargs = JumpStartModelRegisterKwargs(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -676,6 +703,7 @@ def get_register_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         region=region,
         scope=JumpStartScriptScope.INFERENCE,
         sagemaker_session=sagemaker_session,
@@ -697,6 +725,7 @@ def get_init_kwargs(
     model_id: str,
     model_from_estimator: bool = False,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
@@ -729,6 +758,7 @@ def get_init_kwargs(
     model_init_kwargs: JumpStartModelInitKwargs = JumpStartModelInitKwargs(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         model_type=model_type,
         instance_type=instance_type,
         region=region,

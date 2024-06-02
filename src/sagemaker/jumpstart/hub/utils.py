@@ -83,6 +83,17 @@ def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: 
 
     return arn
 
+def construct_hub_model_reference_arn_from_inputs(hub_arn: str, model_name: str, version: str) -> str:
+    """Constructs a HubContent model arn from the Hub name, model name, and model version."""
+
+    info = get_info_from_hub_resource_arn(hub_arn)
+    arn = (
+        f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/"
+        f"{info.hub_name}/{HubContentType.MODEL_REFERENCE}/{model_name}/{version}"
+    )
+
+    return arn
+
 def generate_hub_arn_for_init_kwargs(
     hub_name: str, region: Optional[str] = None, session: Optional[Session] = None
 ):
