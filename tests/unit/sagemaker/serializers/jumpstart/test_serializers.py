@@ -53,6 +53,7 @@ def test_jumpstart_default_serializers(
     patched_get_model_specs.assert_called_once_with(
         region=region,
         model_id=model_id,
+        hub_arn = None,
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
@@ -99,6 +100,7 @@ def test_jumpstart_serializer_options(
         region=region,
         model_id=model_id,
         version=model_version,
+        hub_arn = None,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
     )

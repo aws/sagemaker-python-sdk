@@ -17,9 +17,10 @@ from typing import Any, Dict, List, Optional
 import boto3
 
 from sagemaker.deprecations import deprecated
-from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
+from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs, HubContentType
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart import cache
+from sagemaker.jumpstart.hub.utils import construct_hub_model_arn_from_inputs, construct_hub_model_reference_arn_from_inputs
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
 
@@ -253,6 +254,7 @@ class JumpStartModelsAccessor(object):
         region: str,
         model_id: str,
         version: str,
+        hub_arn: Optional[str] = None,
         s3_client: Optional[boto3.client] = None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
     ) -> JumpStartModelSpecs:
@@ -274,6 +276,19 @@ class JumpStartModelsAccessor(object):
             {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
+
+        if hub_arn:
+            try:
+                hub_model_arn = construct_hub_model_arn_from_inputs(
+                    hub_arn=hub_arn, model_name=model_id, version=version
+                )
+                return JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn=hub_model_arn)
+            except:
+                hub_model_arn = construct_hub_model_reference_arn_from_inputs(
+                    hub_arn=hub_arn, model_name=model_id, version=version
+                )
+                return JumpStartModelsAccessor._cache.get_hub_model_reference(hub_model_arn=hub_model_arn)
+        
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, version_str=version, model_type=model_type
         )

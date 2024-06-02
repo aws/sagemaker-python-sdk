@@ -64,6 +64,7 @@ def retrieve(
     training_compiler_config=None,
     model_id=None,
     model_version=None,
+    hub_arn=None,
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
     sdk_version=None,
@@ -104,6 +105,8 @@ def retrieve(
             (default: None).
         model_version (str): The version of the JumpStart model for which to retrieve the
             image URI (default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model specifications
             should be tolerated without an exception raised. If ``False``, raises an exception if
             the script used by this version of the model has dependencies with known security
@@ -149,6 +152,7 @@ def retrieve(
             model_id,
             model_version,
             image_scope,
+            hub_arn,
             framework,
             region,
             version,

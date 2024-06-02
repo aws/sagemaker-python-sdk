@@ -381,6 +381,20 @@ def add_jumpstart_model_id_version_tags(
         )
     return tags
 
+def add_hub_arn_tags(
+    tags: Optional[List[TagsDict]],
+    hub_arn: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        hub_arn,
+        enums.JumpStartTag.HUB_ARN,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
 
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
@@ -546,6 +560,7 @@ def verify_model_region_and_return_specs(
     version: Optional[str],
     scope: Optional[str],
     region: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -561,6 +576,8 @@ def verify_model_region_and_return_specs(
         scope (Optional[str]): scope of the JumpStart model to verify.
         region (Optional[str]): region of the JumpStart model to verify and
             obtains specs.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -600,6 +617,7 @@ def verify_model_region_and_return_specs(
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
         region=region,
         model_id=model_id,
+        hub_arn=hub_arn,
         version=version,
         s3_client=sagemaker_session.s3_client,
         model_type=model_type,

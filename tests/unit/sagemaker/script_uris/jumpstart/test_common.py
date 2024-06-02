@@ -53,6 +53,7 @@ def test_jumpstart_common_script_uri(
         model_id="pytorch-ic-mobilenet-v2",
         version="*",
         s3_client=mock_client,
+        hub_arn = None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
@@ -71,6 +72,7 @@ def test_jumpstart_common_script_uri(
         model_id="pytorch-ic-mobilenet-v2",
         version="1.*",
         s3_client=mock_client,
+        hub_arn = None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
@@ -90,6 +92,7 @@ def test_jumpstart_common_script_uri(
         model_id="pytorch-ic-mobilenet-v2",
         version="*",
         s3_client=mock_client,
+        hub_arn = None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
@@ -109,6 +112,7 @@ def test_jumpstart_common_script_uri(
         model_id="pytorch-ic-mobilenet-v2",
         version="1.*",
         s3_client=mock_client,
+        hub_arn = None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
