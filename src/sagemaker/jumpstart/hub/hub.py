@@ -13,7 +13,7 @@
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 from datetime import datetime
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple, Union, Set
 from botocore import exceptions
 
 from sagemaker.jumpstart.hub.constants import JUMPSTART_MODEL_HUB_NAME
@@ -27,10 +27,17 @@ from sagemaker.jumpstart.constants import (
 from sagemaker.jumpstart.types import (
     HubContentType,
 )
+from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, BooleanValues
 from sagemaker.jumpstart.hub.utils import (
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
+    construct_hub_arn_from_name,
+    construct_hub_model_arn_from_inputs
+)
+
+from sagemaker.jumpstart.notebook_utils import (
+    list_jumpstart_models,
 )
 
 from sagemaker.jumpstart.hub.types import (
@@ -158,25 +165,35 @@ class Hub:
             self._list_hubs_cache = hub_content_summaries
         return self._list_hubs_cache
     
-    # TODO: Update to use S3 source for listing the public models
-    def list_jumpstart_service_hub_models(self, filter_name: Optional[str] = None, clear_cache: bool = True, **kwargs) -> List[Dict[str, Any]]:
-        """Lists the models from AmazonSageMakerJumpStart Public Hub.
+    def list_jumpstart_service_hub_models(self, filter: Union[Operator, str] = Constant(BooleanValues.TRUE)) -> Dict[str, str]:
+        """Lists the models and model arns from AmazonSageMakerJumpStart Public Hub.
 
-        This function caches the models in local memory
-
-        **kwargs: Passed to invocation of ``Session:list_hub_contents``.
+        Args:
+        filter (Union[Operator, str]): Optional. The filter to apply to list models. This can be
+            either an ``Operator`` type filter (e.g. ``And("task == ic", "framework == pytorch")``),
+            or simply a string filter which will get serialized into an Identity filter.
+            (e.g. ``"task == ic"``). If this argument is not supplied, all models will be listed.
+            (Default: Constant(BooleanValues.TRUE)).
         """
-        if clear_cache:
-            self._list_hubs_cache = None
-        if self._list_hubs_cache is None:
-            hub_content_summaries = self._sagemaker_session.list_hub_contents(
-                hub_name=JUMPSTART_MODEL_HUB_NAME, 
-                hub_content_type=HubContentType.MODEL_REFERENCE.value, 
-                name_contains=filter_name, 
-                **kwargs
+
+        jumpstart_public_models = {}
+
+        jumpstart_public_hub_arn = construct_hub_arn_from_name(
+            JUMPSTART_MODEL_HUB_NAME, 
+            self.region, 
+            self._sagemaker_session
             )
-            self._list_hubs_cache = hub_content_summaries
-        return self._list_hubs_cache
+        
+        models = list_jumpstart_models(filter)
+        for model in models:
+            if len(model[0])<=63:
+                jumpstart_public_models[model[0]] = construct_hub_model_arn_from_inputs(
+                    jumpstart_public_hub_arn,
+                    model[0], 
+                    model[1]
+                )
+
+        return jumpstart_public_models
 
     def delete(self) -> None:
         """Deletes this Curated Hub"""
