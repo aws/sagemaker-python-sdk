@@ -53,6 +53,7 @@ from sagemaker.utils import (
     can_model_package_source_uri_autopopulate,
     _resolve_routing_config,
 )
+import sagemaker.utils
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
@@ -392,6 +393,7 @@ def test_set_nested_value():
 
 
 def test_get_short_version():
+    assert sagemaker.utils.get_short_version("2.3.0") == "2.3"
     assert sagemaker.utils.get_short_version("2.2.0") == "2.2"
     assert sagemaker.utils.get_short_version("2.2") == "2.2"
     assert sagemaker.utils.get_short_version("2.1.0") == "2.1"
