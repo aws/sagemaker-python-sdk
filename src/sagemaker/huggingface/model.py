@@ -334,6 +334,7 @@ class HuggingFaceModel(FrameworkModel):
             endpoint_type=kwargs.get("endpoint_type", None),
             resources=kwargs.get("resources", None),
             managed_instance_scaling=kwargs.get("managed_instance_scaling", None),
+            routing_config=kwargs.get("routing_config", None),
         )
 
     def register(

@@ -44,6 +44,7 @@ from sagemaker.config.config_utils import (
     _log_sagemaker_config_single_substitution,
     _log_sagemaker_config_merge,
 )
+from sagemaker.enums import RoutingStrategy
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 from sagemaker.workflow.entities import PipelineVariable
@@ -1655,3 +1656,33 @@ def deep_override_dict(
     )
     flattened_dict1.update(flattened_dict2)
     return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
+
+
+def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Resolve Routing Config
+
+    Args:
+        routing_config (Optional[Dict[str, Any]]): The routing config.
+
+    Returns:
+        Optional[Dict[str, Any]]: The resolved routing config.
+
+    Raises:
+        ValueError: If the RoutingStrategy is invalid.
+    """
+
+    if routing_config:
+        routing_strategy = routing_config.get("RoutingStrategy", None)
+        if routing_strategy:
+            if isinstance(routing_strategy, RoutingStrategy):
+                return {"RoutingStrategy": routing_strategy.name}
+            if isinstance(routing_strategy, str) and (
+                routing_strategy.upper() == RoutingStrategy.RANDOM.name
+                or routing_strategy.upper() == RoutingStrategy.LEAST_OUTSTANDING_REQUESTS.name
+            ):
+                return {"RoutingStrategy": routing_strategy.upper()}
+            raise ValueError(
+                "RoutingStrategy must be either RoutingStrategy.RANDOM "
+                "or RoutingStrategy.LEAST_OUTSTANDING_REQUESTS"
+            )
+    return None
