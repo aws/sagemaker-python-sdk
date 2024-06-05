@@ -125,6 +125,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        routing_config=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -184,6 +185,7 @@ def test_deploy_accelerator_type(
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        routing_config=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -506,6 +508,7 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        routing_config=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -938,6 +941,7 @@ def test_deploy_customized_volume_size_and_timeout(
         volume_size=volume_size_gb,
         model_data_download_timeout=model_data_download_timeout_sec,
         container_startup_health_check_timeout=startup_health_check_timeout_sec,
+        routing_config=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -987,6 +991,7 @@ def test_deploy_with_resources(sagemaker_session, name_from_base, production_var
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        routing_config=None,
     )
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=name_from_base(MODEL_NAME),

@@ -30,6 +30,7 @@ import pytest
 from mock import call, patch, Mock, MagicMock, PropertyMock
 
 import sagemaker
+from sagemaker.enums import RoutingStrategy
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
@@ -52,6 +53,7 @@ from sagemaker.utils import (
     can_model_package_source_uri_autopopulate,
     get_instance_rate_per_hour,
     extract_instance_rate_per_hour,
+    _resolve_routing_config,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -2014,3 +2016,30 @@ def test_extract_instance_rate_per_hour(price_data, expected_result):
     out = extract_instance_rate_per_hour(price_data)
 
     assert out == expected_result
+
+
+@pytest.mark.parametrize(
+    "routing_config, expected",
+    [
+        ({"RoutingStrategy": RoutingStrategy.RANDOM}, {"RoutingStrategy": "RANDOM"}),
+        ({"RoutingStrategy": "RANDOM"}, {"RoutingStrategy": "RANDOM"}),
+        (
+            {"RoutingStrategy": RoutingStrategy.LEAST_OUTSTANDING_REQUESTS},
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+        ),
+        (
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+        ),
+        ({"RoutingStrategy": None}, None),
+        (None, None),
+    ],
+)
+def test_resolve_routing_config(routing_config, expected):
+    res = _resolve_routing_config(routing_config)
+
+    assert res == expected
+
+
+def test_resolve_routing_config_ex():
+    pytest.raises(ValueError, lambda: _resolve_routing_config({"RoutingStrategy": "Invalid"}))
