@@ -58,6 +58,15 @@ MODEL_SERVER_TO_CODE = {
     str(ModelServer.DJL_SERVING): 4,
     str(ModelServer.TRITON): 5,
     str(ModelServer.TGI): 6,
+    str(ModelServer.TEI): 7,
+}
+
+MLFLOW_MODEL_PATH_CODE = {
+    MLFLOW_LOCAL_PATH: 1,
+    MLFLOW_S3_PATH: 2,
+    MLFLOW_MODEL_PACKAGE_PATH: 3,
+    MLFLOW_RUN_ID: 4,
+    MLFLOW_REGISTRY_PATH: 5,
 }
 
 MLFLOW_MODEL_PATH_CODE = {

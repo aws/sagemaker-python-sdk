@@ -1094,6 +1094,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         config: Dict[str, Any],
         base_fields: Dict[str, Any],
         config_components: Dict[str, JumpStartConfigComponent],
+        benchmark_metrics: Dict[str, JumpStartBenchmarkStat],
     ):
         """Initializes a JumpStartMetadataConfig object from its json representation.
 
@@ -1647,6 +1648,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "resources",
         "endpoint_type",
         "config_name",
+        "routing_config",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1693,6 +1695,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: Optional[EndpointType] = None,
         config_name: Optional[str] = None,
+        routing_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1726,6 +1729,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.resources = resources
         self.endpoint_type = endpoint_type
         self.config_name = config_name
+        self.routing_config = routing_config
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):

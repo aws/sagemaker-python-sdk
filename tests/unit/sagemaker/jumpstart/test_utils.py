@@ -1367,8 +1367,10 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
         self.assertEquals(
-            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
-            (None, None, None, None),
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            (None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1382,8 +1384,10 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
-            ("model_id", None, None, None),
+            utils.get_jumpstart_model_id_version_from_resource_arn(
+                "some-arn", mock_sagemaker_session
+            ),
+            ("model_id", None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 

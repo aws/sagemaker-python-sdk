@@ -678,6 +678,7 @@ def get_deploy_kwargs(
     endpoint_type: Optional[EndpointType] = None,
     training_config_name: Optional[str] = None,
     config_name: Optional[str] = None,
+    routing_config: Optional[Dict[str, Any]] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
@@ -710,6 +711,7 @@ def get_deploy_kwargs(
         endpoint_logging=endpoint_logging,
         resources=resources,
         config_name=config_name,
+        routing_config=routing_config,
     )
 
     deploy_kwargs = _add_sagemaker_session_to_kwargs(kwargs=deploy_kwargs)

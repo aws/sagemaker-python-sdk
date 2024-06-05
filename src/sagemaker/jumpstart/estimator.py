@@ -111,8 +111,6 @@ class JumpStartEstimator(Estimator):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
-        config_name: Optional[str] = None,
-        enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
