@@ -15,6 +15,8 @@ from inspect import signature
 from typing import Optional, Set
 from unittest import mock
 import unittest
+
+import pandas as pd
 from mock import MagicMock, Mock
 import pytest
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
@@ -40,12 +42,18 @@ from sagemaker.enums import EndpointType
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
 from tests.unit.sagemaker.jumpstart.utils import (
+    get_prototype_spec_with_configs,
     get_spec_from_base_spec,
     get_special_model_spec,
     overwrite_dictionary,
     get_special_model_spec_for_inference_component_based_endpoint,
     get_prototype_manifest,
     get_prototype_model_spec,
+    get_base_spec_with_prototype_configs,
+    get_mock_init_kwargs,
+    get_base_deployment_configs,
+    get_base_spec_with_prototype_configs_with_missing_benchmarks,
+    append_instance_stat_metrics,
 )
 import boto3
 
@@ -60,9 +68,11 @@ default_predictor_with_presets = Predictor(
 
 
 class ModelTest(unittest.TestCase):
-
     mock_session_empty_config = MagicMock(sagemaker_config={})
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_LOGGER")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
@@ -80,6 +90,7 @@ class ModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
         mock_jumpstart_model_factory_logger: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -139,6 +150,9 @@ class ModelTest(unittest.TestCase):
             endpoint_logging=False,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -154,6 +168,7 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -219,6 +234,9 @@ class ModelTest(unittest.TestCase):
             endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -234,6 +252,7 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -294,6 +313,9 @@ class ModelTest(unittest.TestCase):
             endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -307,6 +329,7 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -353,6 +376,9 @@ class ModelTest(unittest.TestCase):
             endpoint_logging=False,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.model.LOGGER.warning")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.session.Session.endpoint_from_production_variants")
@@ -370,6 +396,7 @@ class ModelTest(unittest.TestCase):
         mock_endpoint_from_production_variants: mock.Mock,
         mock_timestamp: mock.Mock,
         mock_warning: mock.Mock(),
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_timestamp.return_value = "1234"
@@ -390,6 +417,9 @@ class ModelTest(unittest.TestCase):
 
         mock_warning.assert_not_called()
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.session.Session.endpoint_from_production_variants")
     @mock.patch("sagemaker.session.Session.create_model")
@@ -405,6 +435,7 @@ class ModelTest(unittest.TestCase):
         mock_create_model: mock.Mock,
         mock_endpoint_from_production_variants: mock.Mock,
         mock_timestamp: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_timestamp.return_value = "1234"
 
@@ -452,6 +483,7 @@ class ModelTest(unittest.TestCase):
             ],
         )
 
+    @mock.patch("sagemaker.jumpstart.model.get_jumpstart_configs")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
@@ -469,7 +501,9 @@ class ModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
         mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
+        mock_get_jumpstart_configs.side_effect = lambda *args, **kwargs: {}
         mock_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
@@ -509,6 +543,7 @@ class ModelTest(unittest.TestCase):
             container_startup_health_check_timeout=600,
         )
 
+    @mock.patch("sagemaker.jumpstart.model.get_jumpstart_configs")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
@@ -520,7 +555,9 @@ class ModelTest(unittest.TestCase):
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
+        mock_get_jumpstart_configs.side_effect = lambda *args, **kwargs: {}
         mock_model_deploy.return_value = default_predictor
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -536,6 +573,9 @@ class ModelTest(unittest.TestCase):
 
         JumpStartModel(model_id=model_id, tolerate_deprecated_model=True).deploy()
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
@@ -547,6 +587,7 @@ class ModelTest(unittest.TestCase):
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
@@ -610,6 +651,9 @@ class ModelTest(unittest.TestCase):
             deploy_kwargs=all_deploy_kwargs_used,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.factory.model.environment_variables.retrieve_default")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -625,6 +669,7 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_retrieve_environment_variables: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
         init_kwargs: Optional[dict] = None,
         deploy_kwargs: Optional[dict] = None,
     ):
@@ -715,6 +760,7 @@ class ModelTest(unittest.TestCase):
             "tolerate_deprecated_model",
             "instance_type",
             "model_package_arn",
+            "config_name",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -727,6 +773,9 @@ class ModelTest(unittest.TestCase):
         assert js_class_deploy_args - parent_class_deploy_args == set()
         assert parent_class_deploy_args - js_class_deploy_args == deploy_args_to_skip
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
@@ -735,6 +784,7 @@ class ModelTest(unittest.TestCase):
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_init: mock.Mock,
         mock_get_init_kwargs: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
         JumpStartModel(model_id="valid_model_id")
@@ -743,6 +793,9 @@ class ModelTest(unittest.TestCase):
         with pytest.raises(ValueError):
             JumpStartModel(model_id="invalid_model_id")
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -758,6 +811,7 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_get_default_predictor: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_get_default_predictor.return_value = default_predictor_with_presets
 
@@ -786,10 +840,14 @@ class ModelTest(unittest.TestCase):
             tolerate_vulnerable_model=False,
             sagemaker_session=model.sagemaker_session,
             model_type=JumpStartModelType.OPEN_WEIGHTS,
+            config_name=None,
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -805,6 +863,7 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_get_default_predictor: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_get_default_predictor.return_value = default_predictor_with_presets
 
@@ -826,6 +885,9 @@ class ModelTest(unittest.TestCase):
 
         mock_get_default_predictor.assert_not_called()
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -841,6 +903,7 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_get_default_predictor: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_get_default_predictor.return_value = default_predictor_with_presets
 
@@ -862,6 +925,9 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor)
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -877,6 +943,7 @@ class ModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.side_effect = [False, False]
@@ -945,6 +1012,9 @@ class ModelTest(unittest.TestCase):
             ]
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -952,6 +1022,7 @@ class ModelTest(unittest.TestCase):
         self,
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -981,6 +1052,9 @@ class ModelTest(unittest.TestCase):
             [{"Key": "blah", "Value": "blahagain"}] + js_tags,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -988,6 +1062,7 @@ class ModelTest(unittest.TestCase):
         self,
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -1015,6 +1090,9 @@ class ModelTest(unittest.TestCase):
             [{"Key": "blah", "Value": "blahagain"}],
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -1022,6 +1100,7 @@ class ModelTest(unittest.TestCase):
         self,
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -1049,6 +1128,9 @@ class ModelTest(unittest.TestCase):
 
         self.assertIn(tag, mock_session.create_model.call_args[1]["tags"])
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -1056,6 +1138,7 @@ class ModelTest(unittest.TestCase):
         self,
         mock_get_model_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -1091,6 +1174,9 @@ class ModelTest(unittest.TestCase):
             },
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1100,6 +1186,7 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -1117,6 +1204,9 @@ class ModelTest(unittest.TestCase):
             "us-east-2. Please try one of the following regions: us-west-2, us-east-1."
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -1134,6 +1224,7 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_sagemaker_timestamp: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -1183,6 +1274,9 @@ class ModelTest(unittest.TestCase):
             '"S3DataType": "S3Prefix", "CompressionType": "None"}}',
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1198,6 +1292,7 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -1227,6 +1322,9 @@ class ModelTest(unittest.TestCase):
 
         mock_js_info_logger.assert_not_called()
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1242,6 +1340,7 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -1292,6 +1391,9 @@ class ModelTest(unittest.TestCase):
             enable_network_isolation=True,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1305,6 +1407,7 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
 
@@ -1324,6 +1427,9 @@ class ModelTest(unittest.TestCase):
             response_types=["application/json;verbose", "application/json"],
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -1337,6 +1443,7 @@ class ModelTest(unittest.TestCase):
         mock_deploy,
         mock_init,
         get_default_predictor,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = True
@@ -1370,6 +1477,9 @@ class ModelTest(unittest.TestCase):
         assert len(s3_clients) == 1
         assert list(s3_clients)[0] == session.s3_client
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch.dict(
         "sagemaker.jumpstart.cache.os.environ",
         {
@@ -1388,6 +1498,7 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_get_model_specs.side_effect = get_prototype_model_spec
         mock_get_manifest.side_effect = (
@@ -1413,6 +1524,454 @@ class ModelTest(unittest.TestCase):
             wait=True,
             endpoint_logging=False,
         )
+
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_initialization_with_config_name(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id, config_name="neuron-inference")
+
+        assert model.config_name == "neuron-inference"
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.inf2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "neuron-inference"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_set_deployment_config(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        assert model.config_name is None
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+        mock_get_model_specs.reset_mock()
+        mock_model_deploy.reset_mock()
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        model.set_deployment_config("neuron-inference", "ml.inf2.2xlarge")
+
+        assert model.config_name == "neuron-inference"
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.inf2.2xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "neuron-inference"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+        mock_model_deploy.reset_mock()
+        model.set_deployment_config("neuron-inference", "ml.inf2.xlarge")
+
+        assert model.config_name == "neuron-inference"
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.inf2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "neuron-inference"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_set_deployment_config_model_package(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        assert model.config_name == "neuron-inference"
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.inf2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "neuron-inference"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+        mock_model_deploy.reset_mock()
+
+        model.set_deployment_config(
+            config_name="gpu-inference-model-package", instance_type="ml.p2.xlarge"
+        )
+
+        assert (
+            model.model_package_arn
+            == "arn:aws:sagemaker:us-west-2:594846645681:model-package/llama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
+        )
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "gpu-inference-model-package"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_set_deployment_config_incompatible_instance_type_or_name(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        assert model.config_name is None
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+        mock_get_model_specs.reset_mock()
+        mock_model_deploy.reset_mock()
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        with pytest.raises(ValueError) as error:
+            model.set_deployment_config("neuron-inference", "ml.inf2.32xlarge")
+        assert (
+            "Instance type ml.inf2.32xlarge is not supported for config neuron-inference."
+            in str(error)
+        )
+
+        with pytest.raises(ValueError) as error:
+            model.set_deployment_config("neuron-inference-unknown-name", "ml.inf2.32xlarge")
+        assert "Cannot find Jumpstart config name neuron-inference-unknown-name. " in str(error)
+
+    @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+    @mock.patch("sagemaker.jumpstart.model.add_instance_rate_stats_to_benchmark_metrics")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_list_deployment_configs(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_add_instance_rate_stats_to_benchmark_metrics: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_init_kwargs: mock.Mock,
+    ):
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
+        mock_verify_model_region_and_return_specs.side_effect = (
+            lambda *args, **kwargs: get_base_spec_with_prototype_configs_with_missing_benchmarks()
+        )
+        mock_add_instance_rate_stats_to_benchmark_metrics.side_effect = lambda region, metrics: (
+            None,
+            append_instance_stat_metrics(metrics),
+        )
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        configs = model.list_deployment_configs()
+
+        self.assertEqual(configs, get_base_deployment_configs(True))
+
+    @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_list_deployment_configs_empty(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+    ):
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_verify_model_region_and_return_specs.side_effect = (
+            lambda *args, **kwargs: get_special_model_spec(model_id="gemma-model")
+        )
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        configs = model.list_deployment_configs()
+
+        self.assertTrue(len(configs) == 0)
+
+    @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+    @mock.patch("sagemaker.jumpstart.model.add_instance_rate_stats_to_benchmark_metrics")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_retrieve_deployment_config(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_add_instance_rate_stats_to_benchmark_metrics: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_init_kwargs: mock.Mock,
+    ):
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_verify_model_region_and_return_specs.side_effect = (
+            lambda *args, **kwargs: get_base_spec_with_prototype_configs()
+        )
+        mock_add_instance_rate_stats_to_benchmark_metrics.side_effect = lambda region, metrics: (
+            None,
+            append_instance_stat_metrics(metrics),
+        )
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        expected = get_base_deployment_configs()[0]
+        config_name = expected.get("DeploymentConfigName")
+        instance_type = expected.get("InstanceType")
+        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(
+            model_id, config_name
+        )
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        model.set_deployment_config(config_name, instance_type)
+
+        self.assertEqual(model.deployment_config, expected)
+
+        mock_get_init_kwargs.reset_mock()
+        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
+
+    @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+    @mock.patch("sagemaker.jumpstart.model.add_instance_rate_stats_to_benchmark_metrics")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_display_benchmark_metrics(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_add_instance_rate_stats_to_benchmark_metrics: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_init_kwargs: mock.Mock,
+    ):
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
+        mock_verify_model_region_and_return_specs.side_effect = (
+            lambda *args, **kwargs: get_base_spec_with_prototype_configs_with_missing_benchmarks()
+        )
+        mock_add_instance_rate_stats_to_benchmark_metrics.side_effect = lambda region, metrics: (
+            None,
+            append_instance_stat_metrics(metrics),
+        )
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        model.display_benchmark_metrics()
+        model.display_benchmark_metrics(instance_type="g5.12xlarge")
+
+    @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
+    @mock.patch("sagemaker.jumpstart.model.add_instance_rate_stats_to_benchmark_metrics")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_benchmark_metrics(
+        self,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_add_instance_rate_stats_to_benchmark_metrics: mock.Mock,
+        mock_verify_model_region_and_return_specs: mock.Mock,
+        mock_get_init_kwargs: mock.Mock,
+    ):
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        mock_get_init_kwargs.side_effect = lambda *args, **kwargs: get_mock_init_kwargs(model_id)
+        mock_verify_model_region_and_return_specs.side_effect = (
+            lambda *args, **kwargs: get_base_spec_with_prototype_configs()
+        )
+        mock_add_instance_rate_stats_to_benchmark_metrics.side_effect = lambda region, metrics: (
+            None,
+            append_instance_stat_metrics(metrics),
+        )
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        df = model.benchmark_metrics
+
+        self.assertTrue(isinstance(df, pd.DataFrame))
 
 
 def test_jumpstart_model_requires_model_id():

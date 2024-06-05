@@ -69,6 +69,14 @@ MLFLOW_MODEL_PATH_CODE = {
     MLFLOW_REGISTRY_PATH: 5,
 }
 
+MLFLOW_MODEL_PATH_CODE = {
+    MLFLOW_LOCAL_PATH: 1,
+    MLFLOW_S3_PATH: 2,
+    MLFLOW_MODEL_PACKAGE_PATH: 3,
+    MLFLOW_RUN_ID: 4,
+    MLFLOW_REGISTRY_PATH: 5,
+}
+
 
 def _capture_telemetry(func_name: str):
     """Placeholder docstring"""

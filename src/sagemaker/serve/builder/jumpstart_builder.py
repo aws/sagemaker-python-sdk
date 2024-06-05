@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import copy
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type
+from typing import Type, Any, List, Dict, Optional
 import logging
 
 from sagemaker.model import Model
@@ -467,8 +467,56 @@ class JumpStart(ABC):
             sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
         )
 
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
+        """Sets the deployment config to apply to the model.
+
+        Args:
+            config_name (str):
+                The name of the deployment config to apply to the model.
+                Call list_deployment_configs to see the list of config names.
+            instance_type (str):
+                The instance_type that the model will use after setting
+                the config.
+        """
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            raise Exception("Cannot set deployment config to an uninitialized model.")
+
+        self.pysdk_model.set_deployment_config(config_name, instance_type)
+
+    def get_deployment_config(self) -> Optional[Dict[str, Any]]:
+        """Gets the deployment config to apply to the model.
+
+        Returns:
+            Optional[Dict[str, Any]]: Deployment config to apply to this model.
+        """
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        return self.pysdk_model.deployment_config
+
+    def display_benchmark_metrics(self, **kwargs):
+        """Display Markdown Benchmark Metrics for deployment configs."""
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        self.pysdk_model.display_benchmark_metrics(**kwargs)
+
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for ``This`` model in the current region.
+
+        Returns:
+            List[Dict[str, Any]]: A list of deployment configs.
+        """
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        return self.pysdk_model.list_deployment_configs()
+
     def _build_for_jumpstart(self):
         """Placeholder docstring"""
+        if hasattr(self, "pysdk_model") and self.pysdk_model is not None:
+            return self.pysdk_model
+
         # we do not pickle for jumpstart. set to none
         self.secret_key = None
         self.jumpstart = True
