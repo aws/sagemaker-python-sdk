@@ -1094,7 +1094,6 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         config: Dict[str, Any],
         base_fields: Dict[str, Any],
         config_components: Dict[str, JumpStartConfigComponent],
-        benchmark_metrics: Dict[str, JumpStartBenchmarkStat],
     ):
         """Initializes a JumpStartMetadataConfig object from its json representation.
 
