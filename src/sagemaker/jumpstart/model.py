@@ -14,7 +14,8 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Any, Union
+import pandas as pd
 from botocore.exceptions import ClientError
 
 from sagemaker import payloads
@@ -36,10 +37,18 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
-from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.types import (
+    JumpStartSerializablePayload,
+    DeploymentConfigMetadata,
+)
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
+    get_jumpstart_configs,
+    get_metrics_from_deployment_configs,
+    add_instance_rate_stats_to_benchmark_metrics,
+    deployment_config_response_data,
+    _deployment_config_lru_cache,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -92,6 +101,7 @@ class JumpStartModel(Model):
         git_config: Optional[Dict[str, str]] = None,
         model_package_arn: Optional[str] = None,
         resources: Optional[ResourceRequirements] = None,
+        config_name: Optional[str] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -277,6 +287,8 @@ class JumpStartModel(Model):
                 for a model to be deployed to an endpoint.
                 Only EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
+            config_name (Optional[str]): The name of the JumpStartConfig that can be
+                optionally applied to the model and override corresponding fields.
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -326,6 +338,7 @@ class JumpStartModel(Model):
             git_config=git_config,
             model_package_arn=model_package_arn,
             resources=resources,
+            config_name=config_name,
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -338,6 +351,7 @@ class JumpStartModel(Model):
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
         self.sagemaker_session = model_init_kwargs.sagemaker_session
+        self.config_name = model_init_kwargs.config_name
 
         if self.model_type == JumpStartModelType.PROPRIETARY:
             self.log_subscription_warning()
@@ -345,6 +359,15 @@ class JumpStartModel(Model):
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
 
         self.model_package_arn = model_init_kwargs.model_package_arn
+        self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
+
+        self._metadata_configs = get_jumpstart_configs(
+            region=self.region,
+            model_id=self.model_id,
+            model_version=self.model_version,
+            sagemaker_session=self.sagemaker_session,
+            model_type=self.model_type,
+        )
 
     def log_subscription_warning(self) -> None:
         """Log message prompting the customer to subscribe to the proprietary model."""
@@ -400,6 +423,70 @@ class JumpStartModel(Model):
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             sagemaker_session=self.sagemaker_session,
+        )
+
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
+        """Sets the deployment config to apply to the model.
+
+        Args:
+            config_name (str):
+                The name of the deployment config to apply to the model.
+                Call list_deployment_configs to see the list of config names.
+            instance_type (str):
+                The instance_type that the model will use after setting
+                the config.
+        """
+        self.__init__(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            instance_type=instance_type,
+            config_name=config_name,
+        )
+
+    @property
+    def deployment_config(self) -> Optional[Dict[str, Any]]:
+        """The deployment config that will be applied to ``This`` model.
+
+        Returns:
+            Optional[Dict[str, Any]]: Deployment config.
+        """
+        if self.config_name is None:
+            return None
+        for config in self.list_deployment_configs():
+            if config.get("DeploymentConfigName") == self.config_name:
+                return config
+        return None
+
+    @property
+    def benchmark_metrics(self) -> pd.DataFrame:
+        """Benchmark Metrics for deployment configs.
+
+        Returns:
+            Benchmark Metrics: Pandas DataFrame object.
+        """
+        df = pd.DataFrame(self._get_deployment_configs_benchmarks_data())
+        blank_index = [""] * len(df)
+        df.index = blank_index
+        return df
+
+    def display_benchmark_metrics(self, **kwargs) -> None:
+        """Display deployment configs benchmark metrics."""
+        df = self.benchmark_metrics
+
+        instance_type = kwargs.get("instance_type")
+        if instance_type:
+            df = df[df["Instance Type"].str.contains(instance_type)]
+
+        print(df.to_markdown(index=False, floatfmt=".2f"))
+
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for ``This`` model.
+
+        Returns:
+            List[Dict[str, Any]]: A list of deployment configs.
+        """
+        return deployment_config_response_data(
+            self._get_deployment_configs(self.config_name, self.instance_type)
         )
 
     def _create_sagemaker_model(
@@ -628,6 +715,7 @@ class JumpStartModel(Model):
             managed_instance_scaling=managed_instance_scaling,
             endpoint_type=endpoint_type,
             model_type=self.model_type,
+            config_name=self.config_name,
             routing_config=routing_config,
         )
         if (
@@ -648,6 +736,7 @@ class JumpStartModel(Model):
                 model_type=self.model_type,
                 scope=JumpStartScriptScope.INFERENCE,
                 sagemaker_session=self.sagemaker_session,
+                config_name=self.config_name,
             ).model_subscription_link
             get_proprietary_model_subscription_error(e, subscription_link)
             raise
@@ -663,6 +752,7 @@ class JumpStartModel(Model):
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
                 model_type=self.model_type,
+                config_name=self.config_name,
             )
 
         # If a predictor class was passed, do not mutate predictor
@@ -773,6 +863,7 @@ class JumpStartModel(Model):
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            config_name=self.config_name,
         )
 
         model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())
@@ -789,6 +880,89 @@ class JumpStartModel(Model):
         model_package.deploy = register_deploy_wrapper
 
         return model_package
+
+    @_deployment_config_lru_cache
+    def _get_deployment_configs_benchmarks_data(self) -> Dict[str, Any]:
+        """Deployment configs benchmark metrics.
+
+        Returns:
+            Dict[str, List[str]]: Deployment config benchmark data.
+        """
+        return get_metrics_from_deployment_configs(
+            self._get_deployment_configs(None, None),
+        )
+
+    @_deployment_config_lru_cache
+    def _get_deployment_configs(
+        self, selected_config_name: Optional[str], selected_instance_type: Optional[str]
+    ) -> List[DeploymentConfigMetadata]:
+        """Retrieve deployment configs metadata.
+
+        Args:
+            selected_config_name (Optional[str]): The name of the selected deployment config.
+            selected_instance_type (Optional[str]): The selected instance type.
+        """
+        deployment_configs = []
+        if not self._metadata_configs:
+            return deployment_configs
+
+        err = None
+        for config_name, metadata_config in self._metadata_configs.items():
+            if selected_config_name == config_name:
+                instance_type_to_use = selected_instance_type
+            else:
+                instance_type_to_use = metadata_config.resolved_config.get(
+                    "default_inference_instance_type"
+                )
+
+            if metadata_config.benchmark_metrics:
+                err, metadata_config.benchmark_metrics = (
+                    add_instance_rate_stats_to_benchmark_metrics(
+                        self.region, metadata_config.benchmark_metrics
+                    )
+                )
+
+            config_components = metadata_config.config_components.get(config_name)
+            image_uri = (
+                (
+                    config_components.hosting_instance_type_variants.get("regional_aliases", {})
+                    .get(self.region, {})
+                    .get("alias_ecr_uri_1")
+                )
+                if config_components
+                else self.image_uri
+            )
+
+            init_kwargs = get_init_kwargs(
+                config_name=config_name,
+                model_id=self.model_id,
+                instance_type=instance_type_to_use,
+                sagemaker_session=self.sagemaker_session,
+                image_uri=image_uri,
+                region=self.region,
+                model_version=self.model_version,
+            )
+            deploy_kwargs = get_deploy_kwargs(
+                model_id=self.model_id,
+                instance_type=instance_type_to_use,
+                sagemaker_session=self.sagemaker_session,
+                region=self.region,
+                model_version=self.model_version,
+            )
+
+            deployment_config_metadata = DeploymentConfigMetadata(
+                config_name,
+                metadata_config,
+                init_kwargs,
+                deploy_kwargs,
+            )
+            deployment_configs.append(deployment_config_metadata)
+
+        if err and err["Code"] == "AccessDeniedException":
+            error_message = "Instance rate metrics will be omitted. Reason: %s"
+            JUMPSTART_LOGGER.warning(error_message, err["Message"])
+
+        return deployment_configs
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

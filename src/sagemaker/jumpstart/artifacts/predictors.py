@@ -78,6 +78,7 @@ def _retrieve_default_deserializer(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> BaseDeserializer:
     """Retrieves the default deserializer for the model.
 
@@ -98,6 +99,7 @@ def _retrieve_default_deserializer(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Returns:
         BaseDeserializer: the default deserializer to use for the model.
@@ -111,6 +113,7 @@ def _retrieve_default_deserializer(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     return _retrieve_deserializer_from_accept_type(MIMEType.from_suffixed_type(default_accept_type))
@@ -124,6 +127,7 @@ def _retrieve_default_serializer(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> BaseSerializer:
     """Retrieves the default serializer for the model.
 
@@ -144,6 +148,7 @@ def _retrieve_default_serializer(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         BaseSerializer: the default serializer to use for the model.
     """
@@ -156,6 +161,7 @@ def _retrieve_default_serializer(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     return _retrieve_serializer_from_content_type(MIMEType.from_suffixed_type(default_content_type))
@@ -169,6 +175,7 @@ def _retrieve_deserializer_options(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> List[BaseDeserializer]:
     """Retrieves the supported deserializers for the model.
 
@@ -189,6 +196,7 @@ def _retrieve_deserializer_options(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         List[BaseDeserializer]: the supported deserializers to use for the model.
     """
@@ -201,6 +209,7 @@ def _retrieve_deserializer_options(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     seen_classes: Set[Type] = set()
@@ -227,6 +236,7 @@ def _retrieve_serializer_options(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
 ) -> List[BaseSerializer]:
     """Retrieves the supported serializers for the model.
 
@@ -247,6 +257,7 @@ def _retrieve_serializer_options(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         List[BaseSerializer]: the supported serializers to use for the model.
     """
@@ -258,6 +269,7 @@ def _retrieve_serializer_options(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     seen_classes: Set[Type] = set()
@@ -285,6 +297,7 @@ def _retrieve_default_content_type(
     tolerate_deprecated_model: bool = False,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
 ) -> str:
     """Retrieves the default content type for the model.
 
@@ -305,6 +318,7 @@ def _retrieve_default_content_type(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         str: the default content type to use for the model.
     """
@@ -322,6 +336,7 @@ def _retrieve_default_content_type(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     default_content_type = model_specs.predictor_specs.default_content_type
@@ -336,6 +351,7 @@ def _retrieve_default_accept_type(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> str:
     """Retrieves the default accept type for the model.
 
@@ -356,6 +372,7 @@ def _retrieve_default_accept_type(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         str: the default accept type to use for the model.
     """
@@ -373,6 +390,7 @@ def _retrieve_default_accept_type(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     default_accept_type = model_specs.predictor_specs.default_accept_type
@@ -388,6 +406,7 @@ def _retrieve_supported_accept_types(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> List[str]:
     """Retrieves the supported accept types for the model.
 
@@ -408,6 +427,7 @@ def _retrieve_supported_accept_types(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         list: the supported accept types to use for the model.
     """
@@ -425,6 +445,7 @@ def _retrieve_supported_accept_types(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     supported_accept_types = model_specs.predictor_specs.supported_accept_types
@@ -440,6 +461,7 @@ def _retrieve_supported_content_types(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> List[str]:
     """Retrieves the supported content types for the model.
 
@@ -460,6 +482,7 @@ def _retrieve_supported_content_types(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         list: the supported content types to use for the model.
     """
@@ -477,6 +500,7 @@ def _retrieve_supported_content_types(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     supported_content_types = model_specs.predictor_specs.supported_content_types

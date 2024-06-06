@@ -93,6 +93,9 @@ class JumpStartTag(str, Enum):
     MODEL_VERSION = "sagemaker-sdk:jumpstart-model-version"
     MODEL_TYPE = "sagemaker-sdk:jumpstart-model-type"
 
+    INFERENCE_CONFIG_NAME = "sagemaker-sdk:jumpstart-inference-config-name"
+    TRAINING_CONFIG_NAME = "sagemaker-sdk:jumpstart-training-config-name"
+
 
 class SerializerType(str, Enum):
     """Enum class for serializers associated with JumpStart models."""

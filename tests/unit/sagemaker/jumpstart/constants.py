@@ -7357,7 +7357,7 @@ BASE_SPEC = {
     "training_model_package_artifact_uris": None,
     "deprecate_warn_message": None,
     "deprecated_message": None,
-    "hosting_model_package_arns": None,
+    "hosting_model_package_arns": {},
     "hosting_eula_key": None,
     "model_subscription_link": None,
     "hyperparameters": [
@@ -7662,27 +7662,43 @@ INFERENCE_CONFIGS = {
     "inference_configs": {
         "neuron-inference": {
             "benchmark_metrics": {
-                "ml.inf2.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
+                "ml.inf2.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ]
             },
             "component_names": ["neuron-inference"],
         },
         "neuron-inference-budget": {
             "benchmark_metrics": {
-                "ml.inf2.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
+                "ml.inf2.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ]
             },
             "component_names": ["neuron-base"],
         },
         "gpu-inference-budget": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
+                "ml.p3.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ]
             },
             "component_names": ["gpu-inference-budget"],
         },
         "gpu-inference": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
+                "ml.p3.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ]
             },
             "component_names": ["gpu-inference"],
+        },
+        "gpu-inference-model-package": {
+            "benchmark_metrics": {
+                "ml.p3.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ]
+            },
+            "component_names": ["gpu-inference-model-package"],
         },
     },
     "inference_config_components": {
@@ -7725,6 +7741,14 @@ INFERENCE_CONFIGS = {
                 },
             },
         },
+        "gpu-inference-model-package": {
+            "default_inference_instance_type": "ml.p2.xlarge",
+            "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
+            "hosting_model_package_arns": {
+                "us-west-2": "arn:aws:sagemaker:us-west-2:594846645681:model-package/ll"
+                "ama2-7b-v3-740347e540da35b4ab9f6fc0ab3fed2c"
+            },
+        },
         "gpu-inference-budget": {
             "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-inference-budget/model/",
@@ -7748,35 +7772,70 @@ TRAINING_CONFIGS = {
     "training_configs": {
         "neuron-training": {
             "benchmark_metrics": {
-                "ml.tr1n1.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}],
-                "ml.tr1n1.4xlarge": [{"name": "Latency", "value": "50", "unit": "Tokens/S"}],
+                "ml.tr1n1.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ],
+                "ml.tr1n1.4xlarge": [
+                    {"name": "Latency", "value": "50", "unit": "Tokens/S", "concurrency": 1}
+                ],
             },
             "component_names": ["neuron-training"],
+            "default_inference_config": "neuron-inference",
+            "default_incremental_training_config": "neuron-training",
+            "supported_inference_configs": ["neuron-inference", "neuron-inference-budget"],
+            "supported_incremental_training_configs": ["neuron-training", "neuron-training-budget"],
         },
         "neuron-training-budget": {
             "benchmark_metrics": {
-                "ml.tr1n1.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}],
-                "ml.tr1n1.4xlarge": [{"name": "Latency", "value": "50", "unit": "Tokens/S"}],
+                "ml.tr1n1.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ],
+                "ml.tr1n1.4xlarge": [
+                    {"name": "Latency", "value": "50", "unit": "Tokens/S", "concurrency": 1}
+                ],
             },
             "component_names": ["neuron-training-budget"],
+            "default_inference_config": "neuron-inference-budget",
+            "default_incremental_training_config": "neuron-training-budget",
+            "supported_inference_configs": ["neuron-inference", "neuron-inference-budget"],
+            "supported_incremental_training_configs": ["neuron-training", "neuron-training-budget"],
         },
         "gpu-training": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": [{"name": "Latency", "value": "200", "unit": "Tokens/S"}],
+                "ml.p3.2xlarge": [
+                    {"name": "Latency", "value": "200", "unit": "Tokens/S", "concurrency": "1"}
+                ],
             },
             "component_names": ["gpu-training"],
+            "default_inference_config": "gpu-inference",
+            "default_incremental_training_config": "gpu-training",
+            "supported_inference_configs": ["gpu-inference", "gpu-inference-budget"],
+            "supported_incremental_training_configs": ["gpu-training", "gpu-training-budget"],
         },
         "gpu-training-budget": {
             "benchmark_metrics": {
-                "ml.p3.2xlarge": [{"name": "Latency", "value": "100", "unit": "Tokens/S"}]
+                "ml.p3.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": "1"}
+                ]
             },
             "component_names": ["gpu-training-budget"],
+            "default_inference_config": "gpu-inference-budget",
+            "default_incremental_training_config": "gpu-training-budget",
+            "supported_inference_configs": ["gpu-inference", "gpu-inference-budget"],
+            "supported_incremental_training_configs": ["gpu-training", "gpu-training-budget"],
         },
     },
     "training_config_components": {
         "neuron-training": {
+            "default_training_instance_type": "ml.trn1.2xlarge",
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training/model/",
+            "training_ecr_specs": {
+                "framework": "huggingface",
+                "framework_version": "2.0.0",
+                "py_version": "py310",
+                "huggingface_transformers_version": "4.28.1",
+            },
             "training_instance_type_variants": {
                 "regional_aliases": {
                     "us-west-2": {
@@ -7788,6 +7847,7 @@ TRAINING_CONFIGS = {
             },
         },
         "gpu-training": {
+            "default_training_instance_type": "ml.p2.xlarge",
             "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-training/model/",
             "training_instance_type_variants": {
@@ -7804,6 +7864,7 @@ TRAINING_CONFIGS = {
             },
         },
         "neuron-training-budget": {
+            "default_training_instance_type": "ml.trn1.2xlarge",
             "supported_training_instance_types": ["ml.trn1.xlarge", "ml.trn1.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/neuron-training-budget/model/",
             "training_instance_type_variants": {
@@ -7817,6 +7878,7 @@ TRAINING_CONFIGS = {
             },
         },
         "gpu-training-budget": {
+            "default_training_instance_type": "ml.p2.xlarge",
             "supported_training_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "training_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-training-budget/model/",
             "training_instance_type_variants": {
@@ -7906,4 +7968,171 @@ TRAINING_CONFIG_RANKINGS = {
             ],
         },
     }
+}
+
+
+DEPLOYMENT_CONFIGS = [
+    {
+        "DeploymentConfigName": "neuron-inference",
+        "DeploymentArgs": {
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
+            "ModelData": {
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface"
+                    "-textgeneration-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "Environment": {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "2047",
+                "MAX_TOTAL_TOKENS": "2048",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            "InstanceType": "ml.p2.xlarge",
+            "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
+        },
+        "AccelerationConfigs": None,
+        "BenchmarkMetrics": [
+            {"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs", "concurrency": 1}
+        ],
+    },
+    {
+        "DeploymentConfigName": "neuron-inference-budget",
+        "DeploymentArgs": {
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
+            "ModelData": {
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface"
+                    "-textgeneration-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "Environment": {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "2047",
+                "MAX_TOTAL_TOKENS": "2048",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            "InstanceType": "ml.p2.xlarge",
+            "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
+        },
+        "AccelerationConfigs": None,
+        "BenchmarkMetrics": [
+            {"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs", "concurrency": 1}
+        ],
+    },
+    {
+        "DeploymentConfigName": "gpu-inference-budget",
+        "DeploymentArgs": {
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
+            "ModelData": {
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface"
+                    "-textgeneration-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "Environment": {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "2047",
+                "MAX_TOTAL_TOKENS": "2048",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            "InstanceType": "ml.p2.xlarge",
+            "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
+        },
+        "AccelerationConfigs": None,
+        "BenchmarkMetrics": [
+            {"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs", "concurrency": 1}
+        ],
+    },
+    {
+        "DeploymentConfigName": "gpu-inference",
+        "DeploymentArgs": {
+            "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
+            ".0-gpu-py310-cu121-ubuntu20.04",
+            "ModelData": {
+                "S3DataSource": {
+                    "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface"
+                    "-textgeneration-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "Environment": {
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "2047",
+                "MAX_TOTAL_TOKENS": "2048",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            "InstanceType": "ml.p2.xlarge",
+            "ComputeResourceRequirements": {"MinMemoryRequiredInMb": None},
+            "ModelDataDownloadTimeout": None,
+            "ContainerStartupHealthCheckTimeout": None,
+        },
+        "AccelerationConfigs": None,
+        "BenchmarkMetrics": [{"name": "Instance Rate", "value": "0.0083000000", "unit": "USD/Hrs"}],
+    },
+]
+
+
+INIT_KWARGS = {
+    "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu"
+    "-py310-cu121-ubuntu20.04",
+    "model_data": {
+        "S3DataSource": {
+            "S3Uri": "s3://jumpstart-cache-alpha-us-west-2/huggingface-textgeneration/huggingface-textgeneration"
+            "-bloom-1b1/artifacts/inference-prepack/v4.0.0/",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    },
+    "instance_type": "ml.p2.xlarge",
+    "env": {
+        "SAGEMAKER_PROGRAM": "inference.py",
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "HF_MODEL_ID": "/opt/ml/model",
+        "SM_NUM_GPUS": "1",
+        "MAX_INPUT_LENGTH": "2047",
+        "MAX_TOTAL_TOKENS": "2048",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+    },
+    "role": "arn:aws:iam::312206380606:role/service-role/AmazonSageMaker-ExecutionRole-20230707T131628",
+    "name": "hf-textgeneration-bloom-1b1-2024-04-22-20-23-48-799",
+    "enable_network_isolation": True,
 }

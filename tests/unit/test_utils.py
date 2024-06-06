@@ -51,6 +51,8 @@ from sagemaker.utils import (
     _is_bad_link,
     custom_extractall_tarfile,
     can_model_package_source_uri_autopopulate,
+    get_instance_rate_per_hour,
+    extract_instance_rate_per_hour,
     _resolve_routing_config,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
@@ -1819,7 +1821,13 @@ def test_can_model_package_source_uri_autopopulate():
 class TestDeepMergeDict(TestCase):
     def test_flatten_dict_basic(self):
         nested_dict = {"a": 1, "b": {"x": 2, "y": {"p": 3, "q": 4}}, "c": 5}
-        flattened_dict = {"a": 1, "b.x": 2, "b.y.p": 3, "b.y.q": 4, "c": 5}
+        flattened_dict = {
+            ("a",): 1,
+            ("b", "x"): 2,
+            ("b", "y", "p"): 3,
+            ("b", "y", "q"): 4,
+            ("c",): 5,
+        }
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
@@ -1831,13 +1839,19 @@ class TestDeepMergeDict(TestCase):
 
     def test_flatten_dict_no_nested(self):
         nested_dict = {"a": 1, "b": 2, "c": 3}
-        flattened_dict = {"a": 1, "b": 2, "c": 3}
+        flattened_dict = {("a",): 1, ("b",): 2, ("c",): 3}
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
     def test_flatten_dict_with_various_types(self):
         nested_dict = {"a": [1, 2, 3], "b": {"x": None, "y": {"p": [], "q": ""}}, "c": 9}
-        flattened_dict = {"a": [1, 2, 3], "b.x": None, "b.y.p": [], "b.y.q": "", "c": 9}
+        flattened_dict = {
+            ("a",): [1, 2, 3],
+            ("b", "x"): None,
+            ("b", "y", "p"): [],
+            ("b", "y", "q"): "",
+            ("c",): 9,
+        }
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
@@ -1868,6 +1882,140 @@ class TestDeepMergeDict(TestCase):
         expected_result = {"a": 1, "b": {"x": 20, "y": 3, "z": 30}, "c": [4, 5]}
 
         self.assertEqual(deep_override_dict(dict1, dict2, skip_keys=["c", "d"]), expected_result)
+
+
+@pytest.mark.parametrize(
+    "instance, region, amazon_sagemaker_price_result, expected",
+    [
+        (
+            "ml.t4g.nano",
+            "us-west-2",
+            {
+                "PriceList": [
+                    {
+                        "terms": {
+                            "OnDemand": {
+                                "3WK7G7WSYVS3K492.JRTCKXETXF": {
+                                    "priceDimensions": {
+                                        "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7": {
+                                            "unit": "Hrs",
+                                            "endRange": "Inf",
+                                            "description": "$0.9 per Unused Reservation Linux p2.xlarge Instance Hour",
+                                            "appliesTo": [],
+                                            "rateCode": "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7",
+                                            "beginRange": "0",
+                                            "pricePerUnit": {"USD": "0.9000000000"},
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    }
+                ]
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.9"},
+        ),
+        (
+            "ml.t4g.nano",
+            "eu-central-1",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "af-south-1",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "ap-northeast-2",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+        ),
+    ],
+)
+@patch("boto3.client")
+def test_get_instance_rate_per_hour(
+    mock_client, instance, region, amazon_sagemaker_price_result, expected
+):
+
+    mock_client.return_value.get_products.side_effect = (
+        lambda *args, **kwargs: amazon_sagemaker_price_result
+    )
+    instance_rate = get_instance_rate_per_hour(instance_type=instance, region=region)
+
+    assert instance_rate == expected
+
+
+@pytest.mark.parametrize(
+    "price_data, expected_result",
+    [
+        (None, None),
+        (
+            {
+                "terms": {
+                    "OnDemand": {
+                        "3WK7G7WSYVS3K492.JRTCKXETXF": {
+                            "priceDimensions": {
+                                "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7": {
+                                    "unit": "Hrs",
+                                    "endRange": "Inf",
+                                    "description": "$0.9 per Unused Reservation Linux p2.xlarge Instance Hour",
+                                    "appliesTo": [],
+                                    "rateCode": "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7",
+                                    "beginRange": "0",
+                                    "pricePerUnit": {"USD": "0.9000000000"},
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.9"},
+        ),
+    ],
+)
+def test_extract_instance_rate_per_hour(price_data, expected_result):
+    out = extract_instance_rate_per_hour(price_data)
+
+    assert out == expected_result
 
 
 @pytest.mark.parametrize(
