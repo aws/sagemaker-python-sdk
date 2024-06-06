@@ -322,7 +322,7 @@ def get_deploy_kwargs(
         model_id=model_id,
         model_from_estimator=True,
         model_version=model_version,
-        instance_type=model_deploy_kwargs.instance_type if training_instance_type is None else None,
+        instance_type=model_deploy_kwargs.instance_type or training_instance_type,
         region=region,
         image_uri=image_uri,
         source_dir=source_dir,
