@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.222.0 (2024-06-07)
+
+### Features
+
+ * jumpstart telemetry
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  06-06-2024 07:17:31 PST
+ * bump requests from 2.31.0 to 2.32.2 in /requirements/extras
+ * chore: add HF LLM neuronx 0.0.23 image
+ * Updates for DJL 0.28.0 release
+ * chore(deps): bump mlflow from 2.11.1 to 2.12.1 in /tests/data/serve_resources/mlflow/tensorflow
+ * chore(deps): bump mlflow from 2.11.1 to 2.12.1 in /tests/data/serve_resources/mlflow/xgboost
+ * chore(deps): bump mlflow from 2.10.2 to 2.12.1 in /tests/data/serve_resources/mlflow/pytorch
+ * chore(deps): bump apache-airflow from 2.9.0 to 2.9.1 in /requirements/extras
+ * chore(deps): bump requests from 2.31.0 to 2.32.2 in /tests/data/serve_resources/mlflow/pytorch
+ * Fix ci unit-tests
+ * Making project name in workflow files dynamic
+ * update image_uri_configs  05-29-2024 07:17:35 PST
+ * Update: SM Endpoint Routing Strategy Support.
+
 ## v2.221.1 (2024-05-22)
 
 ### Bug Fixes and Other Changes
