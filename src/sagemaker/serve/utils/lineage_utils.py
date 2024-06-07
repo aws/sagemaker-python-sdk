@@ -215,7 +215,7 @@ def _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
         match = re.match(TRACKING_SERVER_ARN_REGEX, tracking_server_arn)
         mlflow_tracking_server_name = match.group(4)
         describe_result = sagemaker_session.sagemaker_client.describe_mlflow_tracking_server(
-            MlflowTrackingServerName=mlflow_tracking_server_name
+            TrackingServerName=mlflow_tracking_server_name
         )
         tracking_server_creation_time = describe_result["CreationTime"].strftime(
             TRACKING_SERVER_CREATION_TIME_FORMAT
