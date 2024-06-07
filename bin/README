@@ -1,5 +1,0 @@
-Put your python scripts into this directory.
-
-Any script that has a shebang line with python in it and is executable
-will be automatically included in your package. All others must be
-declared explicitly in the setup.py file.
