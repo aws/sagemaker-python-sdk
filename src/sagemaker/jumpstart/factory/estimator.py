@@ -324,7 +324,8 @@ def get_deploy_kwargs(
         model_version=model_version,
         instance_type=(
             model_deploy_kwargs.instance_type
-            if training_instance_type is None or instance_type is not None
+            if training_instance_type is None
+            or instance_type is not None  # always use supplied inference instance type
             else None
         ),
         region=region,
