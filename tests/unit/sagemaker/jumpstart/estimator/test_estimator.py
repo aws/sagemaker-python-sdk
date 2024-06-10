@@ -1168,6 +1168,7 @@ class EstimatorTest(unittest.TestCase):
             "inference_config_name"
         } == model_class_init_args - {
             "model_data",
+            "additional_model_data_sources",
             "self",
             "name",
             "resources",

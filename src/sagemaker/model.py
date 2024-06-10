@@ -160,6 +160,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         resources: Optional[ResourceRequirements] = None,
+        additional_model_data_sources: Optional[Dict[str, Any]] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -323,9 +324,12 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 for a model to be deployed to an endpoint. Only
                 EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
+            additional_model_data_sources (Optional[Dict[str, Any]]): Additional location
+                of SageMaker model data (default: None).
 
         """
         self.model_data = model_data
+        self.additional_model_data_sources = additional_model_data_sources
         self.image_uri = image_uri
         self.predictor_cls = predictor_cls
         self.name = name
@@ -671,6 +675,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             accept_eula=(
                 accept_eula if accept_eula is not None else getattr(self, "accept_eula", None)
             ),
+            additional_model_data_sources=self.additional_model_data_sources,
         )
 
     def is_repack(self) -> bool:

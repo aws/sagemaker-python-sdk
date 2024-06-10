@@ -7137,6 +7137,7 @@ def container_def(
     container_mode=None,
     image_config=None,
     accept_eula=None,
+    additional_model_data_sources=None,
 ):
     """Create a definition for executing a container as part of a SageMaker model.
 
@@ -7159,6 +7160,8 @@ def container_def(
             The `accept_eula` value must be explicitly defined as `True` in order to
             accept the end-user license agreement (EULA) that some
             models require. (Default: None).
+        additional_model_data_sources (PipelineVariable or dict): Additional location
+                of SageMaker model data (default: None).
 
     Returns:
         dict[str, str]: A complete container definition object usable with the CreateModel API if
@@ -7167,6 +7170,9 @@ def container_def(
     if env is None:
         env = {}
     c_def = {"Image": image_uri, "Environment": env}
+
+    if additional_model_data_sources:
+        c_def["AdditionalModelDataSources"] = additional_model_data_sources
 
     if isinstance(model_data_url, str) and (
         not (model_data_url.startswith("s3://") and model_data_url.endswith("tar.gz"))

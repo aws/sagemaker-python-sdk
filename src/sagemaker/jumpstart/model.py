@@ -369,6 +369,14 @@ class JumpStartModel(Model):
             model_type=self.model_type,
         )
 
+        self.additional_model_data_sources = (
+            self._metadata_configs.get(self.config_name).resolved_config.get(
+                "hosting_additional_data_sources"
+            )
+            if self._metadata_configs.get(self.config_name)
+            else None
+        )
+
     def log_subscription_warning(self) -> None:
         """Log message prompting the customer to subscribe to the proprietary model."""
         subscription_link = verify_model_region_and_return_specs(
