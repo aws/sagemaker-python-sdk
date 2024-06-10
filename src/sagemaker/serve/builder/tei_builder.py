@@ -175,6 +175,7 @@ class TEI(ABC):
             # if has not been built for local container we must use cache
             # that hosting has write access to.
             self.pysdk_model.env["TRANSFORMERS_CACHE"] = "/tmp"
+            self.pysdk_model.env["HF_HOME"] = "/tmp"
             self.pysdk_model.env["HUGGINGFACE_HUB_CACHE"] = "/tmp"
 
         if "endpoint_logging" not in kwargs:
