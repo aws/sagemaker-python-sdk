@@ -1640,6 +1640,7 @@ class TestConfigs:
             "gpu-inference-budget",
             "gpu-inference",
             "gpu-inference-model-package",
+            "gpu-accelerated",
         ]
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1737,6 +1738,13 @@ class TestBenchmarkStats:
                 ]
             },
             "gpu-inference-model-package": {
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
+                ]
+            },
+            "gpu-accelerated": {
                 "ml.p3.2xlarge": [
                     JumpStartBenchmarkStat(
                         {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}

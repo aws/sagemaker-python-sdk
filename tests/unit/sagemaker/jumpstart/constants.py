@@ -7515,6 +7515,7 @@ BASE_SPEC = {
     "training_config_components": None,
     "inference_config_rankings": None,
     "training_config_rankings": None,
+    "hosting_additional_data_sources": None,
 }
 
 BASE_HEADER = {
@@ -7700,6 +7701,14 @@ INFERENCE_CONFIGS = {
             },
             "component_names": ["gpu-inference-model-package"],
         },
+        "gpu-accelerated": {
+            "benchmark_metrics": {
+                "ml.p3.2xlarge": [
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                ]
+            },
+            "component_names": ["gpu-accelerated"],
+        },
     },
     "inference_config_components": {
         "neuron-base": {
@@ -7763,6 +7772,34 @@ INFERENCE_CONFIGS = {
                     "p2": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
                     "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
                 },
+            },
+        },
+        "gpu-accelerated": {
+            "hosting_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {
+                    "p2": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                    "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                },
+            },
+            "hosting_additional_data_sources": {
+                "speculative_decoding": [
+                    {
+                        "channel_name": "draft_model_name",
+                        "artifact_version": "1.2.1",
+                        "s3_data_source": {
+                            "compression_type": "None",
+                            "model_access_config": {"accept_eula": False},
+                            "s3_data_type": "S3Prefix",
+                            "s3_uri": "key/to/draft/model/artifact/",
+                        },
+                    }
+                ],
             },
         },
     },
@@ -7907,6 +7944,7 @@ INFERENCE_CONFIG_RANKINGS = {
                 "neuron-inference-budget",
                 "gpu-inference",
                 "gpu-inference-budget",
+                "gpu-accelerated",
             ],
         },
         "performance": {

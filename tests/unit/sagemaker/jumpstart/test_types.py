@@ -930,6 +930,7 @@ def test_inference_configs_parsing():
         "gpu-inference",
         "gpu-inference-model-package",
         "gpu-inference-budget",
+        "gpu-accelerated",
     ]
 
     # Non-overrided fields in top config
@@ -1167,6 +1168,7 @@ def test_set_inference_configs():
         "gpu-inference",
         "gpu-inference-model-package",
         "gpu-inference-budget",
+        "gpu-accelerated",
     ]
 
     with pytest.raises(ValueError) as error:
@@ -1319,6 +1321,82 @@ def test_training_configs_parsing():
         },
     )
     assert list(config.config_components.keys()) == ["neuron-training"]
+
+
+def test_additional_model_data_source_parsing():
+    accelerated_first_rankings = {
+        "inference_config_rankings": {
+            "overall": {
+                "description": "Overall rankings of configs",
+                "rankings": [
+                    "gpu-accelerated",
+                    "neuron-inference",
+                    "neuron-inference-budget",
+                    "gpu-inference",
+                    "gpu-inference-budget",
+                ],
+            }
+        }
+    }
+    spec = {**BASE_SPEC, **INFERENCE_CONFIGS, **accelerated_first_rankings}
+    specs1 = JumpStartModelSpecs(spec)
+
+    config = specs1.inference_configs.get_top_config_from_ranking()
+
+    assert config.benchmark_metrics == {
+        "ml.p3.2xlarge": [
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+        ]
+    }
+    assert len(config.config_components) == 1
+    assert config.config_components["gpu-accelerated"] == JumpStartConfigComponent(
+        "gpu-accelerated",
+        {
+            "hosting_instance_type_variants": {
+                "regional_aliases": {
+                    "us-west-2": {
+                        "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                    }
+                },
+                "variants": {
+                    "p2": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                    "p3": {"regional_properties": {"image_uri": "$gpu-ecr-uri"}},
+                },
+            },
+            "hosting_additional_data_sources": {
+                "speculative_decoding": [
+                    {
+                        "channel_name": "draft_model_name",
+                        "artifact_version": "1.2.1",
+                        "s3_data_source": {
+                            "compression_type": "None",
+                            "model_access_config": {"accept_eula": False},
+                            "s3_data_type": "S3Prefix",
+                            "s3_uri": "key/to/draft/model/artifact/",
+                        },
+                    }
+                ],
+            },
+        },
+    )
+    assert list(config.config_components.keys()) == ["gpu-accelerated"]
+    assert config.resolved_config["hosting_additional_data_sources"] == {
+        "speculative_decoding": [
+            {
+                "channel_name": "draft_model_name",
+                "artifact_version": "1.2.1",
+                "s3_data_source": {
+                    "compression_type": "None",
+                    "model_access_config": {"accept_eula": False},
+                    "s3_data_type": "S3Prefix",
+                    "s3_uri": "key/to/draft/model/artifact/",
+                },
+            }
+        ],
+    }
 
 
 def test_set_inference_config():

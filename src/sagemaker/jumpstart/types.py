@@ -743,6 +743,235 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         return alias_value
 
 
+class ModelAccessConfig(JumpStartDataHolderType):
+    """Data class of model access config that mirrors CreateModel API."""
+
+    __slots__ = ["accept_eula"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a ModelAccessConfig object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.accept_eula: bool = json_obj["accept_eula"]
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of ModelAccessConfig object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+
+class HubAccessConfig(JumpStartDataHolderType):
+    """Data class of model access config that mirrors CreateModel API."""
+
+    __slots__ = ["hub_content_arn"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a HubAccessConfig object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.hub_content_arn: bool = json_obj["accept_eula"]
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of ModelAccessConfig object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+
+class S3DataSource(JumpStartDataHolderType):
+    """Data class of S3 data source that mirrors CreateModel API."""
+
+    __slots__ = [
+        "compression_type",
+        "s3_data_type",
+        "s3_uri",
+        "model_access_config",
+        "hub_access_config",
+    ]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a S3DataSource object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.compression_type: str = json_obj["compression_type"]
+        self.s3_data_type: str = json_obj["s3_data_type"]
+        self.s3_uri: str = json_obj["s3_uri"]
+        self.model_access_config: ModelAccessConfig = (
+            ModelAccessConfig(json_obj["model_access_config"])
+            if json_obj.get("model_access_config")
+            else None
+        )
+        self.hub_access_config: HubAccessConfig = (
+            HubAccessConfig(json_obj["hub_access_config"])
+            if json_obj.get("hub_access_config")
+            else None
+        )
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of S3DataSource object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
+
+class AdditionalModelDataSource(JumpStartDataHolderType):
+    """Data class of additional model data source mirrors Hosting API."""
+
+    __slots__ = ["channel_name", "s3_data_source"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a AdditionalModelDataSource object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.channel_name: str = json_obj["channel_name"]
+        self.s3_data_source: S3DataSource = S3DataSource(json_obj["s3_data_source"])
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of AdditionalModelDataSource object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
+
+class JumpStartModelDataSource(JumpStartDataHolderType):
+    """Data class JumpStart additional model data source."""
+
+    __slots__ = ["version", "additional_model_data_source"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a JumpStartModelDataSource object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.version: str = json_obj["artifact_version"]
+        self.additional_model_data_source: AdditionalModelDataSource = AdditionalModelDataSource(
+            json_obj
+        )
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of JumpStartModelDataSource object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
+
+class JumpStartAdditionalDataSources(JumpStartDataHolderType):
+    """Data class of additional data sources."""
+
+    __slots__ = ["speculative_decoding", "scripts"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a AdditionalDataSources object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.speculative_decoding: Optional[List[JumpStartModelDataSource]] = (
+            [
+                JumpStartModelDataSource(data_source)
+                for data_source in json_obj["speculative_decoding"]
+            ]
+            if json_obj.get("speculative_decoding")
+            else None
+        )
+        self.scripts: Optional[List[JumpStartModelDataSource]] = (
+            [JumpStartModelDataSource(data_source) for data_source in json_obj["scripts"]]
+            if json_obj.get("scripts")
+            else None
+        )
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of AdditionalDataSources object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if isinstance(cur_val, list):
+                    json_obj[att] = []
+                    for obj in cur_val:
+                        if issubclass(type(obj), JumpStartDataHolderType):
+                            json_obj[att].append(obj.to_json())
+                        else:
+                            json_obj[att].append(obj)
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
+
 class JumpStartBenchmarkStat(JumpStartDataHolderType):
     """Data class JumpStart benchmark stat."""
 
@@ -857,6 +1086,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "default_payloads",
         "gated_bucket",
         "model_subscription_link",
+        "hosting_additional_data_sources",
     ]
 
     def __init__(self, fields: Dict[str, Any]):
@@ -960,6 +1190,11 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
             JumpStartInstanceTypeVariants(json_obj["hosting_instance_type_variants"])
             if json_obj.get("hosting_instance_type_variants")
+            else None
+        )
+        self.hosting_additional_data_sources: Optional[JumpStartAdditionalDataSources] = (
+            JumpStartAdditionalDataSources(json_obj["hosting_additional_data_sources"])
+            if json_obj.get("hosting_additional_data_sources")
             else None
         )
 

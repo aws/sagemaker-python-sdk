@@ -1873,6 +1873,18 @@ class TestDeepMergeDict(TestCase):
         expected_merged = {"a": [5], "b": {"c": [6, 7], "d": [8]}}
         self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
 
+    def test_deep_override_nested_lists_overriding_none(self):
+        dict1 = {"a": [{"c": "d"}, {"e": "f"}], "t": None}
+        dict2 = {
+            "a": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"],
+            "t": {"g": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"]},
+        }
+        expected_merged = {
+            "a": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"],
+            "t": {"g": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"]},
+        }
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
     def test_deep_override_skip_keys(self):
         dict1 = {"a": 1, "b": {"x": 2, "y": 3}, "c": [4, 5]}
         dict2 = {

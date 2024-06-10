@@ -1690,6 +1690,7 @@ def deep_override_dict(
         skip_keys = []
 
     flattened_dict1 = flatten_dict(dict1)
+    flattened_dict1 = {key: value for key, value in flattened_dict1.items() if value is not None}
     flattened_dict2 = flatten_dict(
         {key: value for key, value in dict2.items() if key not in skip_keys}
     )
