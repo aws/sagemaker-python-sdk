@@ -1532,6 +1532,9 @@ class EstimatorTest(unittest.TestCase):
         estimator.deploy(image_uri="blah")
         assert mock_estimator_deploy.call_args[1]["instance_type"] == "ml.p4de.24xlarge"
 
+        estimator.deploy(image_uri="blah", instance_type="ml.quantum.large")
+        assert mock_estimator_deploy.call_args[1]["instance_type"] == "ml.quantum.large"
+
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch(
