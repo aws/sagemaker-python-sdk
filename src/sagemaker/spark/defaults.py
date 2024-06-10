@@ -14,3 +14,5 @@
 from __future__ import absolute_import
 
 SPARK_NAME = "spark"
+
+PY_HOME = "blag"
