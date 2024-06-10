@@ -66,6 +66,7 @@ class TeiServerTests(TestCase):
             volumes={PosixPath("model_path/code"): {"bind": "/opt/ml/model/", "mode": "rw"}},
             environment={
                 "TRANSFORMERS_CACHE": "/opt/ml/model/",
+                "HF_HOME": "/opt/ml/model/",
                 "HUGGINGFACE_HUB_CACHE": "/opt/ml/model/",
                 "KEY": "VALUE",
                 "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
