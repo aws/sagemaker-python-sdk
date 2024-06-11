@@ -62,6 +62,10 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
+from sagemaker.serve.utils.optimize_utils import (
+    _is_compatible_with_compilation,
+    _poll_optimization_job,
+)
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
@@ -83,6 +87,7 @@ from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import get_met
 from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
+from sagemaker.utils import Tags
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
 
@@ -804,8 +809,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         This function is available for models served by DJL serving.
 
         Args:
-            save_path (Optional[str]): The path where you want to save resources.
-            s3_path (Optional[str]): The path where you want to upload resources.
+            save_path (Optional[str]): The path where you want to save resources. Defaults to
+                ``None``.
+            s3_path (Optional[str]): The path where you want to upload resources. Defaults to
+                ``None``.
+            sagemaker_session (Optional[Session]): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                function creates one using the default AWS configuration chain. Defaults to
+                ``None``.
+            role_arn (Optional[str]): The IAM role arn. Defaults to ``None``.
         """
         self.sagemaker_session = sagemaker_session or Session()
 
@@ -915,3 +927,129 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             raise ValueError(
                 f"Unable to determine single GPU size for instance: [{self.instance_type}]"
             )
+
+    def optimize(self, *args, **kwargs) -> Type[Model]:
+        """Runs a model optimization job.
+
+        Args:
+            instance_type (str): Target deployment instance type that the model is optimized for.
+            output_path (str): Specifies where to store the compiled/quantized model.
+            role (Optional[str]): Execution role. Defaults to ``None``.
+            tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
+            job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
+            compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            env_vars (Optional[Dict]): Additional environment variables to run the optimization
+                container. Defaults to ``None``.
+            vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
+            kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
+                to S3. Defaults to ``None``.
+            max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
+                ``None``.
+            sagemaker_session (Optional[Session]): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                function creates one using the default AWS configuration chain.
+
+        Returns:
+            Type[Model]: A deployable ``Model`` object.
+        """
+        # need to get telemetry_opt_out info before telemetry decorator is called
+        self.serve_settings = self._get_serve_setting()
+
+        return self._model_builder_optimize_wrapper(*args, **kwargs)
+
+    @_capture_telemetry("optimize")
+    def _model_builder_optimize_wrapper(
+        self,
+        instance_type: str,
+        output_path: str,
+        role: Optional[str] = None,
+        tags: Optional[Tags] = None,
+        job_name: Optional[str] = None,
+        quantization_config: Optional[Dict] = None,
+        compilation_config: Optional[Dict] = None,
+        env_vars: Optional[Dict] = None,
+        vpc_config: Optional[Dict] = None,
+        kms_key: Optional[str] = None,
+        max_runtime_in_sec: Optional[int] = None,
+        sagemaker_session: Optional[Session] = None,
+    ) -> Type[Model]:
+        """Runs a model optimization job.
+
+        Args:
+            instance_type (str): Target deployment instance type that the model is optimized for.
+            output_path (str): Specifies where to store the compiled/quantized model.
+            role (Optional[str]): Execution role. Defaults to ``None``.
+            tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
+            job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
+            compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            env_vars (Optional[Dict]): Additional environment variables to run the optimization
+                container. Defaults to ``None``.
+            vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
+            kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
+                to S3. Defaults to ``None``.
+            max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
+                ``None``.
+            sagemaker_session (Optional[Session]): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                function creates one using the default AWS configuration chain.
+
+        Returns:
+            Type[Model]: A deployable ``Model`` object.
+        """
+        self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
+
+        # TODO: inject actual model source location based on different scenarios
+        model_source = {"S3": {"S3Uri": self.model_path, "ModelAccessConfig": {"AcceptEula": True}}}
+
+        optimization_configs = []
+        if quantization_config:
+            optimization_configs.append({"ModelQuantizationConfig": quantization_config})
+        if compilation_config:
+            if _is_compatible_with_compilation(instance_type):
+                optimization_configs.append({"ModelCompilationConfig": compilation_config})
+            else:
+                logger.warning(
+                    "Model compilation is currently only supported for Inferentia and Trainium"
+                    "instances, ignoring `compilation_config'."
+                )
+
+        output_config = {"S3OutputLocation": output_path}
+        if kms_key:
+            output_config["KmsKeyId"] = kms_key
+
+        job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
+        create_optimization_job_args = {
+            "OptimizationJobName": job_name,
+            "ModelSource": model_source,
+            "DeploymentInstanceType": instance_type,
+            "OptimizationConfigs": optimization_configs,
+            "OutputConfig": output_config,
+            "RoleArn": role or self.role_arn,
+        }
+
+        if env_vars:
+            create_optimization_job_args["OptimizationEnvironment"] = env_vars
+
+        if max_runtime_in_sec:
+            create_optimization_job_args["StoppingCondition"] = {
+                "MaxRuntimeInSeconds": max_runtime_in_sec
+            }
+
+        # TODO: tag injection if it is a JumpStart model
+        if tags:
+            create_optimization_job_args["Tags"] = tags
+
+        if vpc_config:
+            create_optimization_job_args["VpcConfig"] = vpc_config
+
+        response = self.sagemaker_session.sagemaker_client.create_optimization_job(
+            **create_optimization_job_args
+        )
+
+        if not _poll_optimization_job(job_name, self.sagemaker_session):
+            raise Exception("Optimization job timed out.")
+
+        # TODO: return model created by optimization job
+        return response

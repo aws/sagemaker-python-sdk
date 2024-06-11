@@ -44,7 +44,7 @@ INSTANCE_GPU_INFO = (2, 8)
 
 mock_image_uri = "abcd/efghijk"
 mock_1p_dlc_image_uri = "763104351884.dkr.ecr.us-east-1.amazonaws.com"
-mock_role_arn = "sample role arn"
+mock_role_arn = "arn:aws:iam::123456789012:role/SageMakerRole"
 mock_s3_model_data_url = "sample s3 data url"
 mock_secret_key = "mock_secret_key"
 mock_instance_type = "mock instance type"
@@ -2256,4 +2256,85 @@ class TestModelBuilder(unittest.TestCase):
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
             mock_session,
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
+    def test_optimize(self, mock_send_telemetry, mock_get_serve_setting):
+        mock_sagemaker_session = Mock()
+
+        mock_settings = Mock()
+        mock_settings.telemetry_opt_out = False
+        mock_get_serve_setting.return_value = mock_settings
+
+        builder = ModelBuilder(
+            model_path=MODEL_PATH,
+            schema_builder=schema_builder,
+            model=mock_fw_model,
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        job_name = "my-optimization-job"
+        instance_type = "ml.inf1.xlarge"
+        output_path = "s3://my-bucket/output"
+        quantization_config = {
+            "Image": "quantization-image-uri",
+            "OverrideEnvironment": {"ENV_VAR": "value"},
+        }
+        compilation_config = {
+            "Image": "compilation-image-uri",
+            "OverrideEnvironment": {"ENV_VAR": "value"},
+        }
+        env_vars = {"Var1": "value", "Var2": "value"}
+        kms_key = "arn:aws:kms:us-west-2:123456789012:key/my-key-id"
+        max_runtime_in_sec = 3600
+        tags = [
+            {"Key": "Project", "Value": "my-project"},
+            {"Key": "Environment", "Value": "production"},
+        ]
+        vpc_config = {
+            "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+            "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+        }
+
+        expected_create_optimization_job_args = {
+            "ModelSource": {"S3": {"S3Uri": MODEL_PATH, "ModelAccessConfig": {"AcceptEula": True}}},
+            "DeploymentInstanceType": instance_type,
+            "OptimizationEnvironment": env_vars,
+            "OptimizationConfigs": [
+                {"ModelQuantizationConfig": quantization_config},
+                {"ModelCompilationConfig": compilation_config},
+            ],
+            "OutputConfig": {"S3OutputLocation": output_path, "KmsKeyId": kms_key},
+            "RoleArn": mock_role_arn,
+            "OptimizationJobName": job_name,
+            "StoppingCondition": {"MaxRuntimeInSeconds": max_runtime_in_sec},
+            "Tags": [
+                {"Key": "Project", "Value": "my-project"},
+                {"Key": "Environment", "Value": "production"},
+            ],
+            "VpcConfig": vpc_config,
+        }
+
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.return_value = {
+            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job"
+        }
+
+        builder.optimize(
+            instance_type=instance_type,
+            output_path=output_path,
+            role=mock_role_arn,
+            job_name=job_name,
+            quantization_config=quantization_config,
+            compilation_config=compilation_config,
+            env_vars=env_vars,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            tags=tags,
+            vpc_config=vpc_config,
+        )
+
+        mock_send_telemetry.assert_called_once()
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
+            **expected_create_optimization_job_args
         )
