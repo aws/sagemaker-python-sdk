@@ -29,7 +29,6 @@ from sagemaker.jumpstart.artifacts import (
 )
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.jumpstart.constants import (
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
@@ -45,6 +44,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.utils import (
     add_jumpstart_model_id_version_tags,
+    get_default_jumpstart_session_with_user_agent_suffix,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -140,7 +140,12 @@ def _add_sagemaker_session_to_kwargs(
     kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs]
 ) -> JumpStartModelInitKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
-    kwargs.sagemaker_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    kwargs.sagemaker_session = (
+        kwargs.sagemaker_session
+        or get_default_jumpstart_session_with_user_agent_suffix(
+            kwargs.model_id, kwargs.model_version
+        )
+    )
     return kwargs
 
 
