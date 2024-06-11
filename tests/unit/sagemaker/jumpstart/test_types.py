@@ -28,6 +28,7 @@ from sagemaker.jumpstart.types import (
 )
 from tests.unit.sagemaker.jumpstart.constants import (
     BASE_SPEC,
+    BASE_HOSTING_ADDITIONAL_DATA_SOURCES,
     INFERENCE_CONFIG_RANKINGS,
     INFERENCE_CONFIGS,
     TRAINING_CONFIG_RANKINGS,
@@ -434,6 +435,23 @@ def test_jumpstart_model_specs():
 
     specs3 = copy.deepcopy(specs1)
     assert specs3 == specs1
+
+
+def test_get_speculative_decoding_s3_data_sources():
+    specs = JumpStartModelSpecs({**BASE_SPEC, **BASE_HOSTING_ADDITIONAL_DATA_SOURCES})
+    assert (
+        specs.get_speculative_decoding_s3_data_sources()
+        == specs.hosting_additional_data_sources.speculative_decoding
+    )
+
+
+def test_get_additional_s3_data_sources():
+    specs = JumpStartModelSpecs({**BASE_SPEC, **BASE_HOSTING_ADDITIONAL_DATA_SOURCES})
+    data_sources = [
+        *specs.hosting_additional_data_sources.speculative_decoding,
+        *specs.hosting_additional_data_sources.scripts,
+    ]
+    assert specs.get_additional_s3_data_sources() == data_sources
 
 
 def test_jumpstart_image_uri_instance_variants():

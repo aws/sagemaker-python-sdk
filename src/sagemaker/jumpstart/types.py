@@ -884,18 +884,10 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
         return json_obj
 
 
-class JumpStartModelDataSource(JumpStartDataHolderType):
+class JumpStartModelDataSource(AdditionalModelDataSource):
     """Data class JumpStart additional model data source."""
 
-    __slots__ = ["version", "additional_model_data_source"]
-
-    def __init__(self, spec: Dict[str, Any]):
-        """Initializes a JumpStartModelDataSource object.
-
-        Args:
-            spec (Dict[str, Any]): Dictionary representation of data source.
-        """
-        self.from_json(spec)
+    __slots__ = ["artifact_version"] + AdditionalModelDataSource.__slots__
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
         """Sets fields in object based on json.
@@ -903,22 +895,8 @@ class JumpStartModelDataSource(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of data source.
         """
-        self.version: str = json_obj["artifact_version"]
-        self.additional_model_data_source: AdditionalModelDataSource = AdditionalModelDataSource(
-            json_obj
-        )
-
-    def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartModelDataSource object."""
-        json_obj = {}
-        for att in self.__slots__:
-            if hasattr(self, att):
-                cur_val = getattr(self, att)
-                if issubclass(type(cur_val), JumpStartDataHolderType):
-                    json_obj[att] = cur_val.to_json()
-                else:
-                    json_obj[att] = cur_val
-        return json_obj
+        super().from_json(json_obj)
+        self.artifact_version: str = json_obj["artifact_version"]
 
 
 class JumpStartAdditionalDataSources(JumpStartDataHolderType):
@@ -1654,6 +1632,19 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
     def supports_incremental_training(self) -> bool:
         """Returns True if the model supports incremental training."""
         return self.incremental_training_supported
+
+    def get_speculative_decoding_s3_data_sources(self) -> List[JumpStartAdditionalDataSources]:
+        """Returns data sources for speculative decoding."""
+        return self.hosting_additional_data_sources.speculative_decoding or []
+
+    def get_additional_s3_data_sources(self) -> List[JumpStartAdditionalDataSources]:
+        """Returns a list of the additional S3 data sources for use by the model."""
+        additional_data_sources = []
+        if self.hosting_additional_data_sources:
+            for data_source in self.hosting_additional_data_sources.to_json():
+                data_sources = getattr(self.hosting_additional_data_sources, data_source) or []
+                additional_data_sources.extend(data_sources)
+        return additional_data_sources
 
 
 class JumpStartVersionedModelId(JumpStartDataHolderType):

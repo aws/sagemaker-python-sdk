@@ -7518,6 +7518,37 @@ BASE_SPEC = {
     "hosting_additional_data_sources": None,
 }
 
+BASE_HOSTING_ADDITIONAL_DATA_SOURCES = {
+    "hosting_additional_data_sources": {
+        "speculative_decoding": [
+            {
+                "channel_name": "speculative_decoding_channel",
+                "artifact_version": "version",
+                "s3_data_source": {
+                    "compression_type": "None",
+                    "s3_data_type": "S3Prefix",
+                    "s3_uri": "s3://bucket/path1",
+                    "hub_access_config": None,
+                    "model_access_config": None,
+                },
+            }
+        ],
+        "scripts": [
+            {
+                "channel_name": "scripts_channel",
+                "artifact_version": "version",
+                "s3_data_source": {
+                    "compression_type": "None",
+                    "s3_data_type": "S3Prefix",
+                    "s3_uri": "s3://bucket/path1",
+                    "hub_access_config": None,
+                    "model_access_config": None,
+                },
+            }
+        ],
+    },
+}
+
 BASE_HEADER = {
     "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
     "version": "1.0.0",
