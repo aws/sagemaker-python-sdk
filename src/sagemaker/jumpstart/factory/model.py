@@ -33,6 +33,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
 )
+from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -646,6 +647,7 @@ def get_register_kwargs(
     data_input_configuration: Optional[str] = None,
     skip_model_validation: Optional[str] = None,
     source_uri: Optional[str] = None,
+    model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
 ) -> JumpStartModelRegisterKwargs:
     """Returns kwargs required to call `register` on `sagemaker.estimator.Model` object."""
 
@@ -678,6 +680,7 @@ def get_register_kwargs(
         data_input_configuration=data_input_configuration,
         skip_model_validation=skip_model_validation,
         source_uri=source_uri,
+        model_card=model_card,
     )
 
     model_specs = verify_model_region_and_return_specs(
