@@ -102,6 +102,7 @@ class JumpStartModel(Model):
         model_package_arn: Optional[str] = None,
         resources: Optional[ResourceRequirements] = None,
         config_name: Optional[str] = None,
+        additional_model_data_sources: Optional[Dict[str, Any]] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -287,8 +288,10 @@ class JumpStartModel(Model):
                 for a model to be deployed to an endpoint.
                 Only EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
-            config_name (Optional[str]): The name of the JumpStartConfig that can be
-                optionally applied to the model and override corresponding fields.
+            config_name (Optional[str]): The name of the JumpStart config that can be
+                optionally applied to the model.
+            additional_model_data_sources (Optional[Dict[str, Any]]): Additional location
+                of SageMaker model data (default: None).
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -339,6 +342,7 @@ class JumpStartModel(Model):
             model_package_arn=model_package_arn,
             resources=resources,
             config_name=config_name,
+            additional_model_data_sources=additional_model_data_sources,
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -352,6 +356,7 @@ class JumpStartModel(Model):
         self.region = model_init_kwargs.region
         self.sagemaker_session = model_init_kwargs.sagemaker_session
         self.config_name = model_init_kwargs.config_name
+        self.additional_model_data_sources = model_init_kwargs.additional_model_data_sources
 
         if self.model_type == JumpStartModelType.PROPRIETARY:
             self.log_subscription_warning()
@@ -367,14 +372,6 @@ class JumpStartModel(Model):
             model_version=self.model_version,
             sagemaker_session=self.sagemaker_session,
             model_type=self.model_type,
-        )
-
-        self.additional_model_data_sources = (
-            self._metadata_configs.get(self.config_name).resolved_config.get(
-                "hosting_additional_data_sources"
-            )
-            if self._metadata_configs.get(self.config_name)
-            else None
         )
 
     def log_subscription_warning(self) -> None:

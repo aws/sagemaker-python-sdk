@@ -844,13 +844,15 @@ class S3DataSource(JumpStartDataHolderType):
                 cur_val = getattr(self, att)
                 if issubclass(type(cur_val), JumpStartDataHolderType):
                     json_obj[att] = cur_val.to_json()
-                else:
+                elif cur_val:
                     json_obj[att] = cur_val
         return json_obj
 
 
 class AdditionalModelDataSource(JumpStartDataHolderType):
-    """Data class of additional model data source mirrors Hosting API."""
+    """Data class of additional model data source mirrors CreateModel API."""
+
+    SERIALIZATION_EXCLUSION_SET: Set[str] = set()
 
     __slots__ = ["channel_name", "s3_data_source"]
 
@@ -871,23 +873,26 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
         self.channel_name: str = json_obj["channel_name"]
         self.s3_data_source: S3DataSource = S3DataSource(json_obj["s3_data_source"])
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self, exclude_keys=True) -> Dict[str, Any]:
         """Returns json representation of AdditionalModelDataSource object."""
         json_obj = {}
         for att in self.__slots__:
             if hasattr(self, att):
-                cur_val = getattr(self, att)
-                if issubclass(type(cur_val), JumpStartDataHolderType):
-                    json_obj[att] = cur_val.to_json()
-                else:
-                    json_obj[att] = cur_val
+                if exclude_keys and att not in self.SERIALIZATION_EXCLUSION_SET or not exclude_keys:
+                    cur_val = getattr(self, att)
+                    if issubclass(type(cur_val), JumpStartDataHolderType):
+                        json_obj[att] = cur_val.to_json()
+                    else:
+                        json_obj[att] = cur_val
         return json_obj
 
 
 class JumpStartModelDataSource(AdditionalModelDataSource):
     """Data class JumpStart additional model data source."""
 
-    __slots__ = ["artifact_version"] + AdditionalModelDataSource.__slots__
+    SERIALIZATION_EXCLUSION_SET = {"artifact_version"}
+
+    __slots__ = list(SERIALIZATION_EXCLUSION_SET) + AdditionalModelDataSource.__slots__
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
         """Sets fields in object based on json.
@@ -1761,6 +1766,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "training_instance_type",
         "resources",
         "config_name",
+        "additional_model_data_sources",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1806,6 +1812,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         training_instance_type: Optional[str] = None,
         resources: Optional[ResourceRequirements] = None,
         config_name: Optional[str] = None,
+        additional_model_data_sources: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -1837,6 +1844,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.training_instance_type = training_instance_type
         self.resources = resources
         self.config_name = config_name
+        self.additional_model_data_sources = additional_model_data_sources
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):

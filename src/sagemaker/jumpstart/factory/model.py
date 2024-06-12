@@ -57,7 +57,7 @@ from sagemaker import accept_types, content_types, serializers, deserializers
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base, format_tags, Tags
+from sagemaker.utils import camel_case_to_pascal_case, name_from_base, format_tags, Tags
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker import resource_requirements
@@ -615,6 +615,40 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
     return kwargs
 
 
+def _add_additional_model_data_sources_to_kwargs(
+    kwargs: JumpStartModelInitKwargs,
+) -> JumpStartModelInitKwargs:
+    """Sets default additional model data sources to init kwargs"""
+
+    specs = verify_model_region_and_return_specs(
+        model_id=kwargs.model_id,
+        version=kwargs.model_version,
+        scope=JumpStartScriptScope.INFERENCE,
+        region=kwargs.region,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        model_type=kwargs.model_type,
+        config_name=kwargs.config_name,
+    )
+
+    additional_data_sources = specs.get_additional_s3_data_sources()
+    api_shape_additional_model_data_sources = (
+        [
+            camel_case_to_pascal_case(data_source.to_json())
+            for data_source in additional_data_sources
+        ]
+        if specs.get_additional_s3_data_sources()
+        else None
+    )
+
+    kwargs.additional_model_data_sources = (
+        kwargs.additional_model_data_sources or api_shape_additional_model_data_sources
+    )
+
+    return kwargs
+
+
 def _add_config_name_to_deploy_kwargs(
     kwargs: JumpStartModelDeployKwargs, training_config_name: Optional[str] = None
 ) -> JumpStartModelInitKwargs:
@@ -861,6 +895,7 @@ def get_init_kwargs(
     disable_instance_type_logging: bool = False,
     resources: Optional[ResourceRequirements] = None,
     config_name: Optional[str] = None,
+    additional_model_data_sources: Optional[Dict[str, Any]] = None,
 ) -> JumpStartModelInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Model` object."""
 
@@ -893,6 +928,7 @@ def get_init_kwargs(
         training_instance_type=training_instance_type,
         resources=resources,
         config_name=config_name,
+        additional_model_data_sources=additional_model_data_sources,
     )
 
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
@@ -924,5 +960,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_resources_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_config_name_to_init_kwargs(kwargs=model_init_kwargs)
+
+    model_init_kwargs = _add_additional_model_data_sources_to_kwargs(kwargs=model_init_kwargs)
 
     return model_init_kwargs

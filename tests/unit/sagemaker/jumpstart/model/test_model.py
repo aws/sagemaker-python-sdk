@@ -759,7 +759,7 @@ class ModelTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set(["additional_model_data_sources"])
+        init_args_to_skip: Set[str] = set([])
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
         parent_class_init = Model.__init__

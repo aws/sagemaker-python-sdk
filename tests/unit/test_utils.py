@@ -34,6 +34,7 @@ from sagemaker.enums import RoutingStrategy
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
+    camel_case_to_pascal_case,
     deep_override_dict,
     flatten_dict,
     get_instance_type_family,
@@ -2055,3 +2056,42 @@ def test_resolve_routing_config(routing_config, expected):
 
 def test_resolve_routing_config_ex():
     pytest.raises(ValueError, lambda: _resolve_routing_config({"RoutingStrategy": "Invalid"}))
+
+
+class TestConvertToPascalCase(TestCase):
+    def test_simple_dict(self):
+        input_dict = {"first_name": "John", "last_name": "Doe"}
+        expected_output = {"FirstName": "John", "LastName": "Doe"}
+        self.assertEqual(camel_case_to_pascal_case(input_dict), expected_output)
+
+    def camel_case_to_pascal_case_nested(self):
+        input_dict = {
+            "model_name": "my-model",
+            "primary_container": {
+                "image": "my-docker-image:latest",
+                "model_data_url": "s3://my-bucket/model.tar.gz",
+                "environment": {"env_var_1": "value1", "env_var_2": "value2"},
+            },
+            "execution_role_arn": "arn:aws:iam::123456789012:role/my-sagemaker-role",
+            "tags": [
+                {"key": "project", "value": "my-project"},
+                {"key": "environment", "value": "development"},
+            ],
+        }
+        expected_output = {
+            "ModelName": "my-model",
+            "PrimaryContainer": {
+                "Image": "my-docker-image:latest",
+                "ModelDataUrl": "s3://my-bucket/model.tar.gz",
+                "Environment": {"EnvVar1": "value1", "EnvVar2": "value2"},
+            },
+            "ExecutionRoleArn": "arn:aws:iam::123456789012:role/my-sagemaker-role",
+            "Tags": [
+                {"Key": "project", "Value": "my-project"},
+                {"Key": "environment", "Value": "development"},
+            ],
+        }
+        self.assertEqual(camel_case_to_pascal_case(input_dict), expected_output)
+
+    def test_empty_input(self):
+        self.assertEqual(camel_case_to_pascal_case({}), {})

@@ -1798,3 +1798,33 @@ def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[
                         "name": "Instance Rate",
                     }
     return None
+
+
+def camel_case_to_pascal_case(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Iteratively updates a dictionary to convert all keys from snake_case to PascalCase.
+
+    Args:
+        data (dict): The dictionary to be updated.
+
+    Returns:
+        dict: The updated dictionary with keys in PascalCase.
+    """
+    result = {}
+
+    def convert_key(key):
+        """Converts a snake_case key to PascalCase."""
+        return "".join(part.capitalize() for part in key.split("_"))
+
+    def convert_value(value):
+        """Recursively processes the value of a key-value pair."""
+        if isinstance(value, dict):
+            return camel_case_to_pascal_case(value)
+        if isinstance(value, list):
+            return [convert_value(item) for item in value]
+
+        return value
+
+    for key, value in data.items():
+        result[convert_key(key)] = convert_value(value)
+
+    return result
