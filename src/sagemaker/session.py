@@ -630,7 +630,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 = self.s3_resource
 
         bucket = s3.Bucket(name=bucket_name)
-        if bucket.creation_date is None:        
+        if bucket.creation_date is None:
             self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, True)
 
         elif self._default_bucket_set_by_sdk:
@@ -640,6 +640,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
 
     def expected_bucket_owner_id_bucket_check(self, bucket_name, s3, expected_bucket_owner_id):
+        """
+        Checks if the bucket belongs to a particular owner and throws a Client Error if it is not
+
+        Args:
+            bucket_name (str): Name of the S3 bucket
+            s3 (str): S3 object from boto session
+            expected_bucket_owner_id (str): Owner ID string
+
+        """
         try:
             s3.meta.client.head_bucket(
                 Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
@@ -660,6 +669,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 raise
 
     def general_bucket_check_if_user_has_permission(self, bucket_name, s3, bucket, region, bucket_creation_date_none):
+        """"
+        Checks if the person running has the permissions to the bucket and will create the bucket if the bucket is not found
+        If there is any other error that comes up with calling head bucket, it is raised up here
+
+        Args:
+            bucket_name (str): Name of the S3 bucket
+            s3 (str): S3 object from boto session
+            region (str): The region in which to create the bucket.
+            bucket_creation_date_none (bool): Indicating whether the S3 bucket already exists or not
+
+        """
         try:
             s3.meta.client.head_bucket(Bucket=bucket_name)
         except ClientError as e:
@@ -680,6 +700,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     raise
 
     def create_bucket_for_not_exist_error(self, bucket_name, region, s3):
+        """
+        Creates the S3 bucket in the given region
+
+        Args:
+            bucket_name (str): Name of the S3 bucket
+            s3 (str): S3 object from boto session
+            region (str): The region in which to create the bucket.
+        """
         # bucket does not exist, create one
         try:
             if region == "us-east-1":
@@ -698,8 +726,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             message = e.response["Error"]["Message"]
 
             if (
-                error_code == "OperationAborted"
-                and "conflicting conditional operation" in message
+                    error_code == "OperationAborted"
+                    and "conflicting conditional operation" in message
             ):
                 # If this bucket is already being concurrently created,
                 # we don't need to create it again.
