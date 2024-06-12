@@ -674,9 +674,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                                                     region,
                                                     bucket_creation_date_none):
         """Checks if the person running has the permissions to the bucket
-         and will create the bucket if the bucket is not found
 
         If there is any other error that comes up with calling head bucket, it is raised up here
+        If there is no bucket , it will create one
 
         Args:
             bucket_name (str): Name of the S3 bucket
