@@ -669,16 +669,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if bucket_creation_date_none:
                 if error_code == "404" and message == "Not Found":
                     self.create_bucket_for_not_exist_error(bucket_name, region, s3)
-
-            if error_code == "403" and message == "Forbidden":
-                LOGGER.error(
-                    "Bucket %s exists, but access is forbidden. Please try again after "
-                    "adding appropriate access.",
-                    bucket.name,
-                )
-                raise
-            else: 
-                raise
+                elif error_code == "403" and message == "Forbidden":
+                    LOGGER.error(
+                        "Bucket %s exists, but access is forbidden. Please try again after "
+                        "adding appropriate access.",
+                        bucket.name,
+                    )
+                    raise
+                else:
+                    raise
 
     def create_bucket_for_not_exist_error(self, bucket_name, region, s3):
         # bucket does not exist, create one
