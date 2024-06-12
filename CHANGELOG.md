@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.222.1 (2024-06-12)
+
+### Bug Fixes and Other Changes
+
+ * First changes
+ * estimator.deploy not respecting instance type
+
 ## v2.222.0 (2024-06-07)
 
 ### Features
