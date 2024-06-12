@@ -48,7 +48,7 @@ def test_default_bucket_s3_create_call(sagemaker_session):
 
     try:
         bucket_name = sagemaker_session.default_bucket()
-    except ClientError as e :
+    except ClientError:
         pass
 
     create_calls = sagemaker_session.boto_session.resource().create_bucket.mock_calls

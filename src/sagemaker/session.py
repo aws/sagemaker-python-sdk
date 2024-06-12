@@ -640,8 +640,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
 
     def expected_bucket_owner_id_bucket_check(self, bucket_name, s3, expected_bucket_owner_id):
-        """
-        Checks if the bucket belongs to a particular owner and throws a Client Error if it is not
+        """Checks if the bucket belongs to a particular owner and throws a Client Error if it is not
 
         Args:
             bucket_name (str): Name of the S3 bucket
@@ -668,16 +667,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 )
                 raise
 
-    def general_bucket_check_if_user_has_permission(self, bucket_name, s3, bucket, region, bucket_creation_date_none):
-        """"
-        Checks if the person running has the permissions to the bucket and will create the bucket if the bucket is not found
+    def general_bucket_check_if_user_has_permission(self,
+                                                    bucket_name,
+                                                    s3,
+                                                    bucket,
+                                                    region,
+                                                    bucket_creation_date_none):
+        """Checks if the person running has the permissions to the bucket
+         and will create the bucket if the bucket is not found
+
         If there is any other error that comes up with calling head bucket, it is raised up here
 
         Args:
             bucket_name (str): Name of the S3 bucket
             s3 (str): S3 object from boto session
             region (str): The region in which to create the bucket.
-            bucket_creation_date_none (bool): Indicating whether the S3 bucket already exists or not
+            bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
 
         """
         try:
@@ -700,8 +705,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     raise
 
     def create_bucket_for_not_exist_error(self, bucket_name, region, s3):
-        """
-        Creates the S3 bucket in the given region
+        """Creates the S3 bucket in the given region
 
         Args:
             bucket_name (str): Name of the S3 bucket
