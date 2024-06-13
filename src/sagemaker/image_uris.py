@@ -686,6 +686,7 @@ def get_training_image_uri(
                         "p5" in instance_type
                         or "2.1" in framework_version
                         or "2.2" in framework_version
+                        or "2.3" in framework_version
                     ):
                         container_version = "cu121"
                     else:
