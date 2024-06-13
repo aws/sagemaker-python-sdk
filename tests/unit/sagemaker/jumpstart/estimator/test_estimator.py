@@ -1953,7 +1953,8 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_init.assert_called_once_with(
             instance_type="ml.p2.xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-pytorch-training:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
             model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/meta-textgeneration-llama-2-7b/"
             "gpu-training/model/",
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/"
@@ -2005,7 +2006,8 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_init.assert_called_with(
             instance_type="ml.p2.xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "pytorch-training:1.13.1-py310-sdk2.14.1-ubuntu20.04",
             model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/meta-textgeneration-llama-2-7b/"
             "gpu-training-budget/model/",
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
@@ -2060,7 +2062,8 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_deploy.assert_called_once_with(
             instance_type="ml.p2.xlarge",
             initial_instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.5.0-gpu-py3",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-hosting"
+            ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
             "pytorch/inference/eqa/v1.0.0/sourcedir.tar.gz",
             entry_point="inference.py",
@@ -2167,7 +2170,8 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_deploy.assert_called_once_with(
             instance_type="ml.p2.xlarge",
             initial_instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.5.0-gpu-py3",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "pytorch-hosting:1.13.1-py310-sdk2.14.1-ubuntu20.04",
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
             "pytorch/inference/eqa/v1.0.0/sourcedir.tar.gz",
             entry_point="inference.py",

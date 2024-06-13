@@ -1143,7 +1143,7 @@ def test_inference_configs_parsing():
                 "regional_aliases": {
                     "us-west-2": {
                         "neuron-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                        "huggingface-pytorch-hosting:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
                     }
                 },
                 "variants": {"inf2": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},

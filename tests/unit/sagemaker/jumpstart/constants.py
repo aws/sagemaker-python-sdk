@@ -7758,7 +7758,7 @@ INFERENCE_CONFIGS = {
                 "regional_aliases": {
                     "us-west-2": {
                         "neuron-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                        "huggingface-pytorch-hosting:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
                     }
                 },
                 "variants": {"inf2": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
@@ -7772,7 +7772,7 @@ INFERENCE_CONFIGS = {
                 "regional_aliases": {
                     "us-west-2": {
                         "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                        "huggingface-pytorch-hosting:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
                     }
                 },
                 "variants": {
@@ -7796,7 +7796,7 @@ INFERENCE_CONFIGS = {
                 "regional_aliases": {
                     "us-west-2": {
                         "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                        "pytorch-hosting:1.13.1-py310-sdk2.14.1-ubuntu20.04"
                     }
                 },
                 "variants": {
@@ -7922,7 +7922,7 @@ TRAINING_CONFIGS = {
                 "regional_aliases": {
                     "us-west-2": {
                         "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                        "huggingface-pytorch-training:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
                     }
                 },
                 "variants": {
@@ -7953,7 +7953,7 @@ TRAINING_CONFIGS = {
                 "regional_aliases": {
                     "us-west-2": {
                         "gpu-ecr-uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-                        "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04"
+                        "pytorch-training:1.13.1-py310-sdk2.14.1-ubuntu20.04"
                     }
                 },
                 "variants": {

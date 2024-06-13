@@ -1660,8 +1660,6 @@ def nested_set_dict(d: Dict[str, Any], keys: List[str], value: Any) -> None:
     if len(keys) == 1:
         d[key] = value
         return
-    if not d:
-        return
 
     d = d.setdefault(key, {})
     nested_set_dict(d, keys[1:], value)

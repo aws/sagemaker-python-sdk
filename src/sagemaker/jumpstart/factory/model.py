@@ -677,6 +677,7 @@ def _add_config_name_to_deploy_kwargs(
         kwargs.config_name = _select_inference_config_from_training_config(
             specs=specs, training_config_name=training_config_name
         )
+        return kwargs
 
     if specs.inference_configs:
         default_config_name = specs.inference_configs.get_top_config_from_ranking().config_name
