@@ -22,6 +22,10 @@ from sagemaker.deserializers import JSONDeserializer
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.workflow import is_pipeline_variable
@@ -234,6 +238,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -285,6 +290,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -325,6 +332,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
         )
 
     def deploy(

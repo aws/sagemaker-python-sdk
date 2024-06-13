@@ -4090,6 +4090,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         task=None,
         skip_model_validation="None",
         source_uri=None,
+        model_card=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -4127,6 +4128,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             skip_model_validation (str): Indicates if you want to skip model validation.
                 Values can be "All" or "None" (default: None).
             source_uri (str): The URI of the source for the model package (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
         """
         if containers:
             # Containers are provided. Now we can merge missing entries from config.
@@ -4184,6 +4187,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             task=task,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
         )
 
         def submit(request):
@@ -6765,6 +6769,7 @@ def get_model_package_args(
     task=None,
     skip_model_validation=None,
     source_uri=None,
+    model_card=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -6804,6 +6809,8 @@ def get_model_package_args(
         skip_model_validation (str): Indicates if you want to skip model validation.
             Values can be "All" or "None" (default: None).
         source_uri (str): The URI of the source for the model package (default: None).
+        model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
 
     Returns:
         dict: A dictionary of method argument names and values.
@@ -6860,6 +6867,14 @@ def get_model_package_args(
         model_package_args["skip_model_validation"] = skip_model_validation
     if source_uri is not None:
         model_package_args["source_uri"] = source_uri
+    if model_card is not None:
+        original_req = model_card._create_request_args()
+        if original_req.get("ModelCardName") is not None:
+            del original_req["ModelCardName"]
+        if original_req.get("Content") is not None:
+            original_req["ModelCardContent"] = original_req["Content"]
+            del original_req["Content"]
+        model_package_args["model_card"] = original_req
     return model_package_args
 
 
@@ -6885,6 +6900,7 @@ def get_create_model_package_request(
     task=None,
     skip_model_validation="None",
     source_uri=None,
+    model_card=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -6922,6 +6938,8 @@ def get_create_model_package_request(
         skip_model_validation (str): Indicates if you want to skip model validation.
             Values can be "All" or "None" (default: None).
         source_uri (str): The URI of the source for the model package (default: None).
+        model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -7019,6 +7037,9 @@ def get_create_model_package_request(
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
     request_dict["SkipModelValidation"] = skip_model_validation
+    if model_card is not None:
+        request_dict["ModelCard"] = model_card
+
     return request_dict
 
 
