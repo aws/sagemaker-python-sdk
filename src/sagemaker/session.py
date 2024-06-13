@@ -738,7 +738,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 pass
             else:
                 raise
-        
+
     def _append_sagemaker_config_tags(self, tags: List[TagsDict], config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
 
