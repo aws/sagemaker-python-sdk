@@ -11,6 +11,7 @@ import subprocess
 import docker
 
 from sagemaker.base_predictor import PredictorBase
+from sagemaker.serve.model_server.tensorflow_serving.server import LocalTensorflowServing
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.utils.logging_agent import pull_logs
@@ -20,6 +21,7 @@ from sagemaker.serve.model_server.torchserve.server import LocalTorchServe
 from sagemaker.serve.model_server.djl_serving.server import LocalDJLServing
 from sagemaker.serve.model_server.triton.server import LocalTritonServer
 from sagemaker.serve.model_server.tgi.server import LocalTgiServing
+from sagemaker.serve.model_server.tei.server import LocalTeiServing
 from sagemaker.serve.model_server.multi_model_server.server import LocalMultiModelServer
 from sagemaker.session import Session
 
@@ -34,7 +36,12 @@ _PING_HEALTH_CHECK_FAIL_MSG = (
 
 
 class LocalContainerMode(
-    LocalTorchServe, LocalDJLServing, LocalTritonServer, LocalTgiServing, LocalMultiModelServer
+    LocalTorchServe,
+    LocalDJLServing,
+    LocalTritonServer,
+    LocalTgiServing,
+    LocalMultiModelServer,
+    LocalTensorflowServing,
 ):
     """A class that holds methods to deploy model to a container in local environment"""
 
@@ -63,6 +70,7 @@ class LocalContainerMode(
         self.container = None
         self.secret_key = None
         self._ping_container = None
+        self._invoke_serving = None
 
     def load(self, model_path: str = None):
         """Placeholder docstring"""
@@ -141,6 +149,28 @@ class LocalContainerMode(
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             self._ping_container = self._multi_model_server_deep_ping
+        elif self.model_server == ModelServer.TENSORFLOW_SERVING:
+            self._start_tensorflow_serving(
+                client=self.client,
+                image=image,
+                model_path=model_path if model_path else self.model_path,
+                secret_key=secret_key,
+                env_vars=env_vars if env_vars else self.env_vars,
+            )
+            self._ping_container = self._tensorflow_serving_deep_ping
+        elif self.model_server == ModelServer.TEI:
+            tei_serving = LocalTeiServing()
+            tei_serving._start_tei_serving(
+                client=self.client,
+                image=image,
+                model_path=model_path if model_path else self.model_path,
+                secret_key=secret_key,
+                env_vars=env_vars if env_vars else self.env_vars,
+            )
+            tei_serving.schema_builder = self.schema_builder
+            self.container = tei_serving.container
+            self._ping_container = tei_serving._tei_deep_ping
+            self._invoke_serving = tei_serving._invoke_tei_serving
 
         # allow some time for container to be ready
         time.sleep(10)

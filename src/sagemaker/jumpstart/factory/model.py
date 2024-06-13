@@ -29,11 +29,11 @@ from sagemaker.jumpstart.artifacts import (
 )
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.jumpstart.constants import (
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
 )
+from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -45,6 +45,7 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.utils import (
     add_jumpstart_model_id_version_tags,
+    get_default_jumpstart_session_with_user_agent_suffix,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -140,7 +141,12 @@ def _add_sagemaker_session_to_kwargs(
     kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs]
 ) -> JumpStartModelInitKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
-    kwargs.sagemaker_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    kwargs.sagemaker_session = (
+        kwargs.sagemaker_session
+        or get_default_jumpstart_session_with_user_agent_suffix(
+            kwargs.model_id, kwargs.model_version
+        )
+    )
     return kwargs
 
 
@@ -555,6 +561,7 @@ def get_deploy_kwargs(
     resources: Optional[ResourceRequirements] = None,
     managed_instance_scaling: Optional[str] = None,
     endpoint_type: Optional[EndpointType] = None,
+    routing_config: Optional[Dict[str, Any]] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
@@ -586,6 +593,7 @@ def get_deploy_kwargs(
         accept_eula=accept_eula,
         endpoint_logging=endpoint_logging,
         resources=resources,
+        routing_config=routing_config,
     )
 
     deploy_kwargs = _add_sagemaker_session_to_kwargs(kwargs=deploy_kwargs)
@@ -639,6 +647,7 @@ def get_register_kwargs(
     data_input_configuration: Optional[str] = None,
     skip_model_validation: Optional[str] = None,
     source_uri: Optional[str] = None,
+    model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
 ) -> JumpStartModelRegisterKwargs:
     """Returns kwargs required to call `register` on `sagemaker.estimator.Model` object."""
 
@@ -671,6 +680,7 @@ def get_register_kwargs(
         data_input_configuration=data_input_configuration,
         skip_model_validation=skip_model_validation,
         source_uri=source_uri,
+        model_card=model_card,
     )
 
     model_specs = verify_model_region_and_return_specs(

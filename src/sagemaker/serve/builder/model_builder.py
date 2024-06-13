@@ -29,12 +29,14 @@ from sagemaker.djl_inference import defaults
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
+from sagemaker.serve.builder.tf_serving_builder import TensorflowServing
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
 from sagemaker.serve.mode.local_container_mode import LocalContainerMode
 from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.builder.serve_settings import _ServeSettings
 from sagemaker.serve.builder.djl_builder import DJL
+from sagemaker.serve.builder.tei_builder import TEI
 from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.transformers_builder import Transformers
@@ -59,6 +61,7 @@ from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadat
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
+from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
@@ -89,12 +92,13 @@ supported_model_server = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
+    ModelServer.TENSORFLOW_SERVING,
 }
 
 
-# pylint: disable=attribute-defined-outside-init, disable=E1101
+# pylint: disable=attribute-defined-outside-init, disable=E1101, disable=R0901, disable=R1705
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
+class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing, TEI):
     """Class that builds a deployable model.
 
     Args:
@@ -165,7 +169,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             in order for model builder to build the artifacts correctly (according
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
-            ``TRITON``, and``TGI``.
+            ``TRITON``, ``TGI``, and ``TEI``.
         model_metadata (Optional[Dict[str, Any]): Dictionary used to override model metadata.
             Currently, ``HF_TASK`` is overridable for HuggingFace model. HF_TASK should be set for
             new models without task metadata in the Hub, adding unsupported task types will throw
@@ -493,6 +497,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self.pysdk_model.model_package_arn = new_model_package.model_package_arn
         new_model_package.deploy = self._model_builder_deploy_model_package_wrapper
         self.model_package = new_model_package
+        if getattr(self, "_is_mlflow_model", False) and self.mode == Mode.SAGEMAKER_ENDPOINT:
+            _maintain_lineage_tracking_for_mlflow_model(
+                mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
+                s3_upload_path=self.s3_upload_path,
+                sagemaker_session=self.sagemaker_session,
+            )
         return new_model_package
 
     def _model_builder_deploy_model_package_wrapper(self, *args, **kwargs):
@@ -551,12 +561,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        return self._original_deploy(
+        predictor = self._original_deploy(
             *args,
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
             **kwargs,
         )
+        if getattr(self, "_is_mlflow_model", False) and self.mode == Mode.SAGEMAKER_ENDPOINT:
+            _maintain_lineage_tracking_for_mlflow_model(
+                mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
+                s3_upload_path=self.s3_upload_path,
+                sagemaker_session=self.sagemaker_session,
+            )
+        return predictor
 
     def _overwrite_mode_in_deploy(self, overwrite_mode: str):
         """Mode overwritten by customer during model.deploy()"""
@@ -653,6 +670,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
         if not _mlflow_input_is_local_path(mlflow_path):
             # TODO: extend to package arn, run id and etc.
+            logger.info(
+                "Start downloading model artifacts from %s to %s", mlflow_path, self.model_path
+            )
             _download_s3_artifacts(mlflow_path, self.model_path, self.sagemaker_session)
         else:
             _copy_directory_contents(mlflow_path, self.model_path)
@@ -708,8 +728,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             self.role_arn = role_arn
         self.sagemaker_session = sagemaker_session or Session()
 
-        self.sagemaker_session.settings._local_download_dir = self.model_path
-
         # https://github.com/boto/botocore/blob/develop/botocore/useragent.py#L258
         # decorate to_string() due to
         # https://github.com/boto/botocore/blob/develop/botocore/client.py#L1014-L1015
@@ -728,7 +746,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 " for production at this moment."
             )
             self._initialize_for_mlflow()
-            _validate_input_for_mlflow(self.model_server)
+            _validate_input_for_mlflow(self.model_server, self.env_vars.get("MLFLOW_MODEL_FLAVOR"))
 
         if isinstance(self.model, str):
             model_task = None
@@ -736,7 +754,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 model_task = self.model_metadata.get("HF_TASK")
             if self._is_jumpstart_model_id():
                 return self._build_for_jumpstart()
-            if self._is_djl():  # pylint: disable=R1705
+            if self._is_djl():
                 return self._build_for_djl()
             else:
                 hf_model_md = get_huggingface_model_metadata(
@@ -747,8 +765,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                     model_task = hf_model_md.get("pipeline_tag")
                 if self.schema_builder is None and model_task is not None:
                     self._hf_schema_builder_init(model_task)
-                if model_task == "text-generation":  # pylint: disable=R1705
+                if model_task == "text-generation":
                     return self._build_for_tgi()
+                if model_task == "sentence-similarity":
+                    return self._build_for_tei()
                 elif self._can_fit_on_single_gpu():
                     return self._build_for_transformers()
                 elif (
@@ -766,6 +786,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         if self.model_server == ModelServer.TRITON:
             return self._build_for_triton()
+
+        if self.model_server == ModelServer.TENSORFLOW_SERVING:
+            return self._build_for_tensorflow_serving()
 
         raise ValueError("%s model server is not supported" % self.model_server)
 

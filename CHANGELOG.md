@@ -1,5 +1,115 @@
 # Changelog
 
+## v2.222.1 (2024-06-12)
+
+### Bug Fixes and Other Changes
+
+ * First changes
+ * estimator.deploy not respecting instance type
+
+## v2.222.0 (2024-06-07)
+
+### Features
+
+ * jumpstart telemetry
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  06-06-2024 07:17:31 PST
+ * bump requests from 2.31.0 to 2.32.2 in /requirements/extras
+ * chore: add HF LLM neuronx 0.0.23 image
+ * Updates for DJL 0.28.0 release
+ * chore(deps): bump mlflow from 2.11.1 to 2.12.1 in /tests/data/serve_resources/mlflow/tensorflow
+ * chore(deps): bump mlflow from 2.11.1 to 2.12.1 in /tests/data/serve_resources/mlflow/xgboost
+ * chore(deps): bump mlflow from 2.10.2 to 2.12.1 in /tests/data/serve_resources/mlflow/pytorch
+ * chore(deps): bump apache-airflow from 2.9.0 to 2.9.1 in /requirements/extras
+ * chore(deps): bump requests from 2.31.0 to 2.32.2 in /tests/data/serve_resources/mlflow/pytorch
+ * Fix ci unit-tests
+ * Making project name in workflow files dynamic
+ * update image_uri_configs  05-29-2024 07:17:35 PST
+ * Update: SM Endpoint Routing Strategy Support.
+
+## v2.221.1 (2024-05-22)
+
+### Bug Fixes and Other Changes
+
+ * Convert pytorchddp distribution to smdistributed distribution
+ * Add tei cpu image
+
+## v2.221.0 (2024-05-20)
+
+### Features
+
+ * onboard tei image config to pysdk
+
+### Bug Fixes and Other Changes
+
+ * JS Model with non-TGI/non-DJL deployment failure
+ * cover tei with image_uris.retrieve API
+ * Add more debuging
+ * model builder limited container support for endpoint mode.
+ * Image URI should take precedence for HF models
+
+## v2.220.0 (2024-05-15)
+
+### Features
+
+ * AutoGluon 1.1.0 image_uris update
+ * add new images for HF TGI release
+ * Add telemetry support for mlflow models
+
+### Bug Fixes and Other Changes
+
+ * add debug logs to workflow container dist creation
+ * model builder race condition on sagemaker session
+ * Add tensorflow_serving support for mlflow models and enable lineage tracking for mlflow models
+ * update image_uri_configs  05-09-2024 07:17:41 PST
+ * skip flakey tests pending investigation
+
+## v2.219.0 (2024-05-08)
+
+### Features
+
+ * allow choosing js payload by alias in private method
+
+### Bug Fixes and Other Changes
+
+ * chore(deps): bump jinja2 from 3.1.3 to 3.1.4 in /requirements/extras
+ * chore(deps): bump tqdm from 4.66.2 to 4.66.3 in /tests/data/serve_resources/mlflow/pytorch
+ * chore(deps): bump jinja2 from 3.1.3 to 3.1.4 in /doc
+ * Updates for SMP v2.3.1
+
+## v2.218.1 (2024-05-03)
+
+### Bug Fixes and Other Changes
+
+ * Fix UserAgent logging in Python SDK
+ * chore: release tgi 2.0.1
+ * chore: update skipped flaky tests
+
+## v2.218.0 (2024-05-01)
+
+### Features
+
+ * set default allow_pickle param to False
+
+### Bug Fixes and Other Changes
+
+ * properly close files in lineage queries and tests
+
+## v2.217.0 (2024-04-24)
+
+### Features
+
+ * support session tag chaining for training job
+
+### Bug Fixes and Other Changes
+
+ * Add Triton v24.03 URI
+ * mainline alt config parsing
+ * Fix tox installs
+ * Add PT 2.2 Graviton Inference DLC
+
 ## v2.216.1 (2024-04-22)
 
 ### Bug Fixes and Other Changes

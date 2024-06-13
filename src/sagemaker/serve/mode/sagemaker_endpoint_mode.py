@@ -6,6 +6,8 @@ from pathlib import Path
 import logging
 from typing import Type
 
+from sagemaker.serve.model_server.tei.server import SageMakerTeiServing
+from sagemaker.serve.model_server.tensorflow_serving.server import SageMakerTensorflowServing
 from sagemaker.session import Session
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -24,6 +26,7 @@ class SageMakerEndpointMode(
     SageMakerDjlServing,
     SageMakerTgiServing,
     SageMakerMultiModelServer,
+    SageMakerTensorflowServing,
 ):
     """Holds the required method to deploy a model to a SageMaker Endpoint"""
 
@@ -34,6 +37,8 @@ class SageMakerEndpointMode(
 
         self.inference_spec = inference_spec
         self.model_server = model_server
+
+        self._tei_serving = SageMakerTeiServing()
 
     def load(self, model_path: str):
         """Placeholder docstring"""
@@ -64,8 +69,9 @@ class SageMakerEndpointMode(
                 + "session to be created or supply `sagemaker_session` into @serve.invoke."
             ) from e
 
+        upload_artifacts = None
         if self.model_server == ModelServer.TORCHSERVE:
-            return self._upload_torchserve_artifacts(
+            upload_artifacts = self._upload_torchserve_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
                 secret_key=secret_key,
@@ -74,7 +80,7 @@ class SageMakerEndpointMode(
             )
 
         if self.model_server == ModelServer.TRITON:
-            return self._upload_triton_artifacts(
+            upload_artifacts = self._upload_triton_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
                 secret_key=secret_key,
@@ -83,7 +89,7 @@ class SageMakerEndpointMode(
             )
 
         if self.model_server == ModelServer.DJL_SERVING:
-            return self._upload_djl_artifacts(
+            upload_artifacts = self._upload_djl_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
@@ -91,7 +97,7 @@ class SageMakerEndpointMode(
             )
 
         if self.model_server == ModelServer.TGI:
-            return self._upload_tgi_artifacts(
+            upload_artifacts = self._upload_tgi_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
@@ -100,11 +106,31 @@ class SageMakerEndpointMode(
             )
 
         if self.model_server == ModelServer.MMS:
-            return self._upload_server_artifacts(
+            upload_artifacts = self._upload_server_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
             )
+
+        if self.model_server == ModelServer.TENSORFLOW_SERVING:
+            upload_artifacts = self._upload_tensorflow_serving_artifacts(
+                model_path=model_path,
+                sagemaker_session=sagemaker_session,
+                secret_key=secret_key,
+                s3_model_data_url=s3_model_data_url,
+                image=image,
+            )
+
+        if self.model_server == ModelServer.TEI:
+            upload_artifacts = self._tei_serving._upload_tei_artifacts(
+                model_path=model_path,
+                sagemaker_session=sagemaker_session,
+                s3_model_data_url=s3_model_data_url,
+                image=image,
+            )
+
+        if upload_artifacts:
+            return upload_artifacts
 
         raise ValueError("%s model server is not supported" % self.model_server)

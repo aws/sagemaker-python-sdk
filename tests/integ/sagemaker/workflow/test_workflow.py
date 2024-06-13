@@ -527,7 +527,8 @@ def test_one_step_ingestion_pipeline(
 
     temp_flow_path = "./ingestion.flow"
     with cleanup_feature_group(feature_group):
-        json.dump(ingestion_only_flow, open(temp_flow_path, "w"))
+        with open(temp_flow_path, "w") as f:
+            json.dump(ingestion_only_flow, f)
 
         data_wrangler_processor = DataWranglerProcessor(
             role=role,

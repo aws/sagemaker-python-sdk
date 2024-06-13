@@ -801,14 +801,15 @@ def test_pytorch_ddp_distribution_configuration(
         distribution=pytorch.distribution
     )
     expected_torch_ddp = {
-        "sagemaker_pytorch_ddp_enabled": True,
+        "sagemaker_distributed_dataparallel_enabled": True,
+        "sagemaker_distributed_dataparallel_custom_mpi_options": "",
         "sagemaker_instance_type": test_instance_type,
     }
     assert actual_pytorch_ddp == expected_torch_ddp
 
 
 def test_pytorch_ddp_distribution_configuration_unsupported(sagemaker_session):
-    unsupported_framework_version = "1.9.1"
+    unsupported_framework_version = "1.5.0"
     unsupported_py_version = "py2"
     with pytest.raises(ValueError) as error:
         _pytorch_estimator(

@@ -121,7 +121,7 @@ from sagemaker.config.config_utils import _log_sagemaker_config_merge
 from sagemaker.deprecations import deprecated_class
 from sagemaker.enums import EndpointType
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
-from sagemaker.user_agent import prepend_user_agent
+from sagemaker.user_agent import get_user_agent_extra_suffix
 from sagemaker.utils import (
     name_from_image,
     secondary_training_status_changed,
@@ -285,6 +285,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
         Sets the region_name.
         """
+
         self.boto_session = boto_session or boto3.DEFAULT_SESSION or boto3.Session()
 
         self._region_name = self.boto_session.region_name
@@ -293,18 +294,29 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Must setup local AWS configuration with a region supported by SageMaker."
             )
 
-        self.sagemaker_client = sagemaker_client or self.boto_session.client("sagemaker")
-        prepend_user_agent(self.sagemaker_client)
+        # Make use of user_agent_extra field of the botocore_config object
+        # to append SageMaker Python SDK specific user_agent suffix
+        # to the current User-Agent header value from boto3
+        # This config will also make sure that user_agent never fails to log the User-Agent string
+        # even if boto User-Agent header format is updated in the future
+        # Ref: https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
+        botocore_config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
+
+        # Create sagemaker_client with the botocore_config object
+        # This config is customized to append SageMaker Python SDK specific user_agent suffix
+        self.sagemaker_client = sagemaker_client or self.boto_session.client(
+            "sagemaker", config=botocore_config
+        )
 
         if sagemaker_runtime_client is not None:
             self.sagemaker_runtime_client = sagemaker_runtime_client
         else:
-            config = botocore.config.Config(read_timeout=80)
+            config = botocore.config.Config(
+                read_timeout=80, user_agent_extra=get_user_agent_extra_suffix()
+            )
             self.sagemaker_runtime_client = self.boto_session.client(
                 "runtime.sagemaker", config=config
             )
-
-        prepend_user_agent(self.sagemaker_runtime_client)
 
         if sagemaker_featurestore_runtime_client:
             self.sagemaker_featurestore_runtime_client = sagemaker_featurestore_runtime_client
@@ -316,8 +328,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if sagemaker_metrics_client:
             self.sagemaker_metrics_client = sagemaker_metrics_client
         else:
-            self.sagemaker_metrics_client = self.boto_session.client("sagemaker-metrics")
-        prepend_user_agent(self.sagemaker_metrics_client)
+            self.sagemaker_metrics_client = self.boto_session.client(
+                "sagemaker-metrics", config=botocore_config
+            )
 
         self.s3_client = self.boto_session.client("s3", region_name=self.boto_region_name)
         self.s3_resource = self.boto_session.resource("s3", region_name=self.boto_region_name)
@@ -618,43 +631,68 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         bucket = s3.Bucket(name=bucket_name)
         if bucket.creation_date is None:
-            try:
-                # trying head bucket call
-                s3.meta.client.head_bucket(Bucket=bucket.name)
-            except ClientError as e:
-                # bucket does not exist or forbidden to access
-                error_code = e.response["Error"]["Code"]
-                message = e.response["Error"]["Message"]
+            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, True)
 
+        elif self._default_bucket_set_by_sdk:
+            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, False)
+
+            expected_bucket_owner_id = self.account_id()
+            self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
+
+    def expected_bucket_owner_id_bucket_check(self, bucket_name, s3, expected_bucket_owner_id):
+        """Checks if the bucket belongs to a particular owner and throws a Client Error if it is not
+
+        Args:
+            bucket_name (str): Name of the S3 bucket
+            s3 (str): S3 object from boto session
+            expected_bucket_owner_id (str): Owner ID string
+
+        """
+        try:
+            s3.meta.client.head_bucket(
+                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+            )
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
+            if error_code == "403" and message == "Forbidden":
+                LOGGER.error(
+                    "Since default_bucket param was not set, SageMaker Python SDK tried to use "
+                    "%s bucket. "
+                    "This bucket cannot be configured to use as it is not owned by Account %s. "
+                    "To unblock it's recommended to use custom default_bucket "
+                    "parameter in sagemaker.Session",
+                    bucket_name,
+                    expected_bucket_owner_id,
+                )
+                raise
+
+    def general_bucket_check_if_user_has_permission(
+        self, bucket_name, s3, bucket, region, bucket_creation_date_none
+    ):
+        """Checks if the person running has the permissions to the bucket
+
+        If there is any other error that comes up with calling head bucket, it is raised up here
+        If there is no bucket , it will create one
+
+        Args:
+            bucket_name (str): Name of the S3 bucket
+            s3 (str): S3 object from boto session
+            region (str): The region in which to create the bucket.
+            bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
+
+        """
+        try:
+            s3.meta.client.head_bucket(Bucket=bucket_name)
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
+            # bucket does not exist or forbidden to access
+            if bucket_creation_date_none:
                 if error_code == "404" and message == "Not Found":
-                    # bucket does not exist, create one
-                    try:
-                        if region == "us-east-1":
-                            # 'us-east-1' cannot be specified because it is the default region:
-                            # https://github.com/boto/boto3/issues/125
-                            s3.create_bucket(Bucket=bucket_name)
-                        else:
-                            s3.create_bucket(
-                                Bucket=bucket_name,
-                                CreateBucketConfiguration={"LocationConstraint": region},
-                            )
-
-                        logger.info("Created S3 bucket: %s", bucket_name)
-                    except ClientError as e:
-                        error_code = e.response["Error"]["Code"]
-                        message = e.response["Error"]["Message"]
-
-                        if (
-                            error_code == "OperationAborted"
-                            and "conflicting conditional operation" in message
-                        ):
-                            # If this bucket is already being concurrently created,
-                            # we don't need to create it again.
-                            pass
-                        else:
-                            raise
+                    self.create_bucket_for_not_exist_error(bucket_name, region, s3)
                 elif error_code == "403" and message == "Forbidden":
-                    logger.error(
+                    LOGGER.error(
                         "Bucket %s exists, but access is forbidden. Please try again after "
                         "adding appropriate access.",
                         bucket.name,
@@ -663,27 +701,37 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
-        if self._default_bucket_set_by_sdk:
-            # make sure the s3 bucket is configured in users account.
-            expected_bucket_owner_id = self.account_id()
-            try:
-                s3.meta.client.head_bucket(
-                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+    def create_bucket_for_not_exist_error(self, bucket_name, region, s3):
+        """Creates the S3 bucket in the given region
+
+        Args:
+            bucket_name (str): Name of the S3 bucket
+            s3 (str): S3 object from boto session
+            region (str): The region in which to create the bucket.
+        """
+        # bucket does not exist, create one
+        try:
+            if region == "us-east-1":
+                # 'us-east-1' cannot be specified because it is the default region:
+                # https://github.com/boto/boto3/issues/125
+                s3.create_bucket(Bucket=bucket_name)
+            else:
+                s3.create_bucket(
+                    Bucket=bucket_name,
+                    CreateBucketConfiguration={"LocationConstraint": region},
                 )
-            except ClientError as e:
-                error_code = e.response["Error"]["Code"]
-                message = e.response["Error"]["Message"]
-                if error_code == "403" and message == "Forbidden":
-                    LOGGER.error(
-                        "Since default_bucket param was not set, SageMaker Python SDK tried to use "
-                        "%s bucket. "
-                        "This bucket cannot be configured to use as it is not owned by Account %s. "
-                        "To unblock it's recommended to use custom default_bucket "
-                        "parameter in sagemaker.Session",
-                        bucket_name,
-                        expected_bucket_owner_id,
-                    )
-                    raise
+
+            logger.info("Created S3 bucket: %s", bucket_name)
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
+
+            if error_code == "OperationAborted" and "conflicting conditional operation" in message:
+                # If this bucket is already being concurrently created,
+                # we don't need to create it again.
+                pass
+            else:
+                raise
 
     def _append_sagemaker_config_tags(self, tags: List[TagsDict], config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
@@ -758,6 +806,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         environment: Optional[Dict[str, str]] = None,
         retry_strategy=None,
         remote_debug_config=None,
+        session_chaining_config=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -877,6 +926,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     remote_debug_config = {
                         "EnableRemoteDebug": True,
                     }
+            session_chaining_config(dict): Configuration for SessionChaining. (default: ``None``)
+                The dict can contain 'EnableSessionTagChaining'(bool).
+                For example,
+
+                .. code:: python
+
+                    session_chaining_config = {
+                        "EnableSessionTagChaining": True,
+                    }
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
@@ -970,6 +1028,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=inferred_profiler_config,
             remote_debug_config=remote_debug_config,
+            session_chaining_config=session_chaining_config,
             environment=environment,
             retry_strategy=retry_strategy,
         )
@@ -1013,6 +1072,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_rule_configs=None,
         profiler_config=None,
         remote_debug_config=None,
+        session_chaining_config=None,
         environment=None,
         retry_strategy=None,
     ):
@@ -1133,6 +1193,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     remote_debug_config = {
                         "EnableRemoteDebug": True,
                     }
+            session_chaining_config(dict): Configuration for SessionChaining. (default: ``None``)
+                The dict can contain 'EnableSessionTagChaining'(bool).
+                For example,
+
+                .. code:: python
+
+                    session_chaining_config = {
+                        "EnableSessionTagChaining": True,
+                    }
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
@@ -1238,6 +1307,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if remote_debug_config is not None:
             train_request["RemoteDebugConfig"] = remote_debug_config
+
+        if session_chaining_config is not None:
+            train_request["SessionChainingConfig"] = session_chaining_config
 
         if retry_strategy is not None:
             train_request["RetryStrategy"] = retry_strategy
@@ -4018,6 +4090,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         task=None,
         skip_model_validation="None",
         source_uri=None,
+        model_card=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -4055,6 +4128,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             skip_model_validation (str): Indicates if you want to skip model validation.
                 Values can be "All" or "None" (default: None).
             source_uri (str): The URI of the source for the model package (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
         """
         if containers:
             # Containers are provided. Now we can merge missing entries from config.
@@ -4112,6 +4187,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             task=task,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
         )
 
         def submit(request):
@@ -6693,6 +6769,7 @@ def get_model_package_args(
     task=None,
     skip_model_validation=None,
     source_uri=None,
+    model_card=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -6732,6 +6809,8 @@ def get_model_package_args(
         skip_model_validation (str): Indicates if you want to skip model validation.
             Values can be "All" or "None" (default: None).
         source_uri (str): The URI of the source for the model package (default: None).
+        model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
 
     Returns:
         dict: A dictionary of method argument names and values.
@@ -6788,6 +6867,14 @@ def get_model_package_args(
         model_package_args["skip_model_validation"] = skip_model_validation
     if source_uri is not None:
         model_package_args["source_uri"] = source_uri
+    if model_card is not None:
+        original_req = model_card._create_request_args()
+        if original_req.get("ModelCardName") is not None:
+            del original_req["ModelCardName"]
+        if original_req.get("Content") is not None:
+            original_req["ModelCardContent"] = original_req["Content"]
+            del original_req["Content"]
+        model_package_args["model_card"] = original_req
     return model_package_args
 
 
@@ -6813,6 +6900,7 @@ def get_create_model_package_request(
     task=None,
     skip_model_validation="None",
     source_uri=None,
+    model_card=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -6850,6 +6938,8 @@ def get_create_model_package_request(
         skip_model_validation (str): Indicates if you want to skip model validation.
             Values can be "All" or "None" (default: None).
         source_uri (str): The URI of the source for the model package (default: None).
+        model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -6947,6 +7037,9 @@ def get_create_model_package_request(
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
     request_dict["SkipModelValidation"] = skip_model_validation
+    if model_card is not None:
+        request_dict["ModelCard"] = model_card
+
     return request_dict
 
 
