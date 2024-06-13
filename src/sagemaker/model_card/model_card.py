@@ -16,7 +16,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 from datetime import datetime
-from typing import Optional, Union, List, Any
+from typing import Optional, Union, List, Any, Dict
 from botocore.exceptions import ClientError
 from boto3.session import Session as boto3_Session
 from six.moves.urllib.parse import urlparse
@@ -1890,7 +1890,7 @@ class ModelPackageModelCard(object):
 
     def __init__(
         self,
-        model_card_content: dict[str],
+        model_card_content: Dict[str, Any],
         model_card_status: str,
     ):
 
