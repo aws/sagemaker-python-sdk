@@ -667,12 +667,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 )
                 raise
 
-    def general_bucket_check_if_user_has_permission(self,
-                                                    bucket_name,
-                                                    s3,
-                                                    bucket,
-                                                    region,
-                                                    bucket_creation_date_none):
+    def general_bucket_check_if_user_has_permission(
+            self, bucket_name, s3, bucket, region, bucket_creation_date_none
+    ):
         """Checks if the person running has the permissions to the bucket
 
         If there is any other error that comes up with calling head bucket, it is raised up here
@@ -729,10 +726,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
 
-            if (
-                    error_code == "OperationAborted"
-                    and "conflicting conditional operation" in message
-            ):
+            if error_code == "OperationAborted" and "conflicting conditional operation" in message:
                 # If this bucket is already being concurrently created,
                 # we don't need to create it again.
                 pass

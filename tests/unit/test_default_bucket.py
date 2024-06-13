@@ -44,7 +44,9 @@ def test_default_bucket_s3_create_call(sagemaker_session):
         error_response={"Error": {"Code": "404", "Message": "Not Found"}},
         operation_name="foo",
     )
-    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = Mock(side_effect=error)
+    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = Mock(
+        side_effect=error
+    )
 
     try:
         bucket_name = sagemaker_session.default_bucket()
