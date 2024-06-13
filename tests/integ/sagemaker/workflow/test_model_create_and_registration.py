@@ -825,6 +825,7 @@ def test_model_registration_with_model_card_object(
 
     my_card = ModelCard(
         name="TestName",
+        sagemaker_session=sagemaker_session_for_pipeline,
         status=ModelCardStatusEnum.DRAFT,
         model_overview=model_overview,
         intended_uses=intended_uses,
