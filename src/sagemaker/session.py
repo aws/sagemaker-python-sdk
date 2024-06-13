@@ -668,7 +668,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 raise
 
     def general_bucket_check_if_user_has_permission(
-            self, bucket_name, s3, bucket, region, bucket_creation_date_none
+        self, bucket_name, s3, bucket, region, bucket_creation_date_none
     ):
         """Checks if the person running has the permissions to the bucket
 
