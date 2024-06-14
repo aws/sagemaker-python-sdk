@@ -4736,7 +4736,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, INFERENCE_COMPONENT, TAGS)
         )
-        if len(tags) != 0:
+        if tags and len(tags) != 0:
             request["Tags"] = tags
 
         self.sagemaker_client.create_inference_component(**request)
