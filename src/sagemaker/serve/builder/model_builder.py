@@ -62,10 +62,7 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
-from sagemaker.serve.utils.optimize_utils import (
-    _is_compatible_with_compilation,
-    _poll_optimization_job,
-)
+from sagemaker.serve.utils.optimize_utils import _poll_optimization_job, _generate_optimized_model
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
@@ -961,13 +958,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     @_capture_telemetry("optimize")
     def _model_builder_optimize_wrapper(
         self,
-        instance_type: str,
         output_path: str,
+        instance_type: Optional[str] = None,
         role: Optional[str] = None,
         tags: Optional[Tags] = None,
         job_name: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
+        speculative_decoding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -977,13 +976,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """Runs a model optimization job.
 
         Args:
-            instance_type (str): Target deployment instance type that the model is optimized for.
             output_path (str): Specifies where to store the compiled/quantized model.
+            instance_type (str): Target deployment instance type that the model is optimized for.
             role (Optional[str]): Execution role. Defaults to ``None``.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
             vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
@@ -999,57 +1005,39 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             Type[Model]: A deployable ``Model`` object.
         """
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
-
-        # TODO: inject actual model source location based on different scenarios
-        model_source = {"S3": {"S3Uri": self.model_path, "ModelAccessConfig": {"AcceptEula": True}}}
-
-        optimization_configs = []
-        if quantization_config:
-            optimization_configs.append({"ModelQuantizationConfig": quantization_config})
-        if compilation_config:
-            if _is_compatible_with_compilation(instance_type):
-                optimization_configs.append({"ModelCompilationConfig": compilation_config})
-            else:
-                logger.warning(
-                    "Model compilation is currently only supported for Inferentia and Trainium"
-                    "instances, ignoring `compilation_config'."
-                )
-
-        output_config = {"S3OutputLocation": output_path}
-        if kms_key:
-            output_config["KmsKeyId"] = kms_key
-
+        self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
-        create_optimization_job_args = {
-            "OptimizationJobName": job_name,
-            "ModelSource": model_source,
-            "DeploymentInstanceType": instance_type,
-            "OptimizationConfigs": optimization_configs,
-            "OutputConfig": output_config,
-            "RoleArn": role or self.role_arn,
-        }
 
-        if env_vars:
-            create_optimization_job_args["OptimizationEnvironment"] = env_vars
+        if self._is_jumpstart_model_id():
+            self._optimize_for_jumpstart(
+                output_path=output_path,
+                instance_type=instance_type,
+                role=role if role else self.role_arn,
+                tags=tags,
+                job_name=job_name,
+                accept_eula=accept_eula,
+                quantization_config=quantization_config,
+                compilation_config=compilation_config,
+                speculative_decoding_config=speculative_decoding_config,
+                env_vars=env_vars,
+                vpc_config=vpc_config,
+                kms_key=kms_key,
+                max_runtime_in_sec=max_runtime_in_sec,
+            )
 
-        if max_runtime_in_sec:
-            create_optimization_job_args["StoppingCondition"] = {
-                "MaxRuntimeInSeconds": max_runtime_in_sec
-            }
-
-        # TODO: tag injection if it is a JumpStart model
-        if tags:
-            create_optimization_job_args["Tags"] = tags
-
-        if vpc_config:
-            create_optimization_job_args["VpcConfig"] = vpc_config
-
-        response = self.sagemaker_session.sagemaker_client.create_optimization_job(
-            **create_optimization_job_args
-        )
-
+        # TODO: use the wait for job pattern similar to
+        #  https://quip-amazon.com/TKaPAhJck5sD/PySDK-Model-Optimization#temp:C:YcX3f2b103dabb4431090568bca2
         if not _poll_optimization_job(job_name, self.sagemaker_session):
             raise Exception("Optimization job timed out.")
 
-        # TODO: return model created by optimization job
-        return response
+        describe_optimization_job_res = (
+            self.sagemaker_session.sagemaker_client.describe_optimization_job(
+                OptimizationJobName=job_name
+            )
+        )
+
+        self.pysdk_model = _generate_optimized_model(
+            self.pysdk_model, describe_optimization_job_res
+        )
+
+        return self.pysdk_model

@@ -19,6 +19,8 @@ from datetime import datetime, timedelta
 from typing import Type, Any, List, Dict, Optional
 import logging
 
+from sagemaker.jumpstart import enums
+from sagemaker.jumpstart.utils import verify_model_region_and_return_specs, get_eula_message
 from sagemaker.model import Model
 from sagemaker import model_uris
 from sagemaker.serve.model_server.djl_serving.prepare import prepare_djl_js_resources
@@ -32,6 +34,11 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelInvocationException,
     LocalModelLoadException,
     SkipTuningComboException,
+)
+from sagemaker.serve.utils.optimize_utils import (
+    _extract_supported_deployment_config,
+    _is_speculation_enabled,
+    _is_compatible_with_optimization_job,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -53,6 +60,7 @@ from sagemaker.serve.utils.tuning import (
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.jumpstart.model import JumpStartModel
+from sagemaker.utils import Tags
 
 _DJL_MODEL_BUILDER_ENTRY_POINT = "inference.py"
 _NO_JS_MODEL_EX = "HuggingFace JumpStart Model ID not detected. Building for HuggingFace Model ID."
@@ -563,6 +571,148 @@ class JumpStart(ABC):
             )
 
         return self.pysdk_model
+
+    def _optimize_for_jumpstart(
+        self,
+        output_path: str,
+        instance_type: Optional[str] = None,
+        role: Optional[str] = None,
+        tags: Optional[Tags] = None,
+        job_name: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
+        quantization_config: Optional[Dict] = None,
+        compilation_config: Optional[Dict] = None,
+        speculative_decoding_config: Optional[Dict] = None,
+        env_vars: Optional[Dict] = None,
+        vpc_config: Optional[Dict] = None,
+        kms_key: Optional[str] = None,
+        max_runtime_in_sec: Optional[int] = None,
+    ) -> None:
+        """Runs a model optimization job.
+
+        Args:
+            output_path (str): Specifies where to store the compiled/quantized model.
+            instance_type (Optional[str]): Target deployment instance type that
+                the model is optimized for.
+            role (Optional[str]): Execution role. Defaults to ``None``.
+            tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
+            job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
+            quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
+            compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            env_vars (Optional[Dict]): Additional environment variables to run the optimization
+                container. Defaults to ``None``.
+            vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
+            kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
+                to S3. Defaults to ``None``.
+            max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
+                ``None``.
+        """
+        model_specs = verify_model_region_and_return_specs(
+            region=self.sagemaker_session.boto_region_name,
+            model_id=self.pysdk_model.model_id,
+            version=self.pysdk_model.model_version,
+            sagemaker_session=self.sagemaker_session,
+            scope=enums.JumpStartScriptScope.INFERENCE,
+            model_type=self.pysdk_model.model_type,
+        )
+
+        if model_specs.is_gated_model() and accept_eula is not True:
+            raise ValueError(get_eula_message(model_specs, self.sagemaker_session.boto_region_name))
+
+        if not (self.pysdk_model.model_data and self.pysdk_model.model_data.get("S3DataSource")):
+            raise ValueError("Model Optimization Job only supports model backed by S3.")
+
+        has_alternative_config = self.pysdk_model.deployment_config is not None
+        merged_env_vars = None
+        # TODO: Match Optimization Input Schema
+        model_source = {
+            "S3": {"S3Uri": self.pysdk_model.model_data.get("S3DataSource").get("S3Uri")},
+            "SageMakerModel": {"ModelName": self.model},
+        }
+
+        if has_alternative_config:
+            image_uri = self.pysdk_model.deployment_config.get("DeploymentArgs").get("ImageUri")
+            instance_type = self.pysdk_model.deployment_config.get("InstanceType")
+        else:
+            image_uri = self.pysdk_model.image_uri
+
+        if not _is_compatible_with_optimization_job(instance_type, image_uri) or (
+            speculative_decoding_config
+            and not _is_speculation_enabled(self.pysdk_model.deployment_config)
+        ):
+            deployment_config = _extract_supported_deployment_config(
+                self.pysdk_model.list_deployment_configs(), speculative_decoding_config is None
+            )
+
+            if deployment_config:
+                self.pysdk_model.set_deployment_config(
+                    config_name=deployment_config.get("DeploymentConfigName"),
+                    instance_type=deployment_config.get("InstanceType"),
+                )
+                merged_env_vars = self.pysdk_model.deployment_config.get("Environment")
+
+                if speculative_decoding_config:
+                    # TODO: Match Optimization Input Schema
+                    s3 = {
+                        "S3Uri": self.pysdk_model.additional_model_data_sources[
+                            "SpeculativeDecoding"
+                        ][0]["S3DataSource"]["S3Uri"]
+                    }
+                    model_source["S3"].update(s3)
+            elif speculative_decoding_config:
+                raise ValueError("Can't find deployment config for model optimization job.")
+
+        optimization_config = {}
+        if env_vars:
+            if merged_env_vars:
+                merged_env_vars.update(env_vars)
+            else:
+                merged_env_vars = env_vars
+        if quantization_config:
+            optimization_config["ModelQuantizationConfig"] = quantization_config
+        if compilation_config:
+            optimization_config["ModelCompilationConfig"] = compilation_config
+
+        if accept_eula:
+            self.pysdk_model.accept_eula = accept_eula
+            self.pysdk_model.model_data["S3DataSource"].update(
+                {"ModelAccessConfig": {"AcceptEula": accept_eula}}
+            )
+            model_source["S3"].update({"ModelAccessConfig": {"AcceptEula": accept_eula}})
+
+        output_config = {"S3OutputLocation": output_path}
+        if kms_key:
+            output_config["KmsKeyId"] = kms_key
+
+        create_optimization_job_args = {
+            "OptimizationJobName": job_name,
+            "ModelSource": model_source,
+            "DeploymentInstanceType": instance_type,
+            "Environment": merged_env_vars,
+            "OptimizationConfigs": [optimization_config],
+            "OutputConfig": output_config,
+            "RoleArn": role,
+        }
+
+        if max_runtime_in_sec:
+            create_optimization_job_args["StoppingCondition"] = {
+                "MaxRuntimeInSeconds": max_runtime_in_sec
+            }
+        if tags:
+            create_optimization_job_args["Tags"] = tags
+        if vpc_config:
+            create_optimization_job_args["VpcConfig"] = vpc_config
+
+        self.sagemaker_session.sagemaker_client.create_optimization_job(
+            **create_optimization_job_args
+        )
 
     def _is_gated_model(self, model) -> bool:
         """Determine if ``this`` Model is Gated

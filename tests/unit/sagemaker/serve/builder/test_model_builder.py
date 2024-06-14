@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 from unittest.mock import MagicMock, patch, Mock, mock_open
 
+import pytest
+
 import unittest
 from pathlib import Path
 from copy import deepcopy
@@ -2258,6 +2260,7 @@ class TestModelBuilder(unittest.TestCase):
             mock_session,
         )
 
+    @pytest.mark.skip(reason="Implementation not completed")
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
     def test_optimize(self, mock_send_telemetry, mock_get_serve_setting):

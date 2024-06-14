@@ -404,6 +404,18 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.content_types = None
         self.response_types = None
         self.accept_eula = None
+        self._tags: Optional[Tags] = None
+
+    def add_tags(self, tags: Tags) -> None:
+        """Add tags to this ``Model``
+
+        Args:
+            tags (Tags): Tags to add.
+        """
+        if self._tags and tags:
+            self._tags.update(tags)
+        else:
+            self._tags = tags
 
     @runnable_by_pipeline
     def register(
@@ -1457,7 +1469,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             sagemaker_session=self.sagemaker_session,
         )
 
-        tags = format_tags(tags)
+        self.add_tags(tags)
+        tags = format_tags(self._tags)
 
         if (
             getattr(self.sagemaker_session, "settings", None) is not None

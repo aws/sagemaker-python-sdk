@@ -40,3 +40,9 @@ class RoutingStrategy(Enum):
     """The endpoint routes requests to the specific instances that have
     more capacity to process them.
     """
+
+
+class Tag(str, Enum):
+    """Enum class for tag keys to apply to models."""
+
+    OPTIMIZATION_JOB_NAME = "sagemaker-sdk:optimization-job-name"
