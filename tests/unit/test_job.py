@@ -24,6 +24,7 @@ from sagemaker.instance_group import InstanceGroup
 from sagemaker.job import _Job
 from sagemaker.model import FrameworkModel
 from sagemaker.workflow.parameters import ParameterString
+from mock import patch
 
 BUCKET_NAME = "s3://mybucket/train"
 S3_OUTPUT_PATH = "s3://bucket/prefix"
@@ -136,6 +137,7 @@ def framework(sagemaker_session):
     )
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_load_config(estimator):
     inputs = TrainingInput(BUCKET_NAME)
 
@@ -152,6 +154,7 @@ def test_load_config(estimator):
     assert config["stop_condition"]["MaxRuntimeInSeconds"] == MAX_RUNTIME
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_load_config_with_output_compression_disabled(estimator):
     inputs = TrainingInput(BUCKET_NAME)
     estimator.disable_output_compression = True
@@ -168,6 +171,7 @@ def test_load_config_with_output_compression_disabled(estimator):
     assert config["stop_condition"]["MaxRuntimeInSeconds"] == MAX_RUNTIME
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_load_config_with_model_channel(estimator):
     inputs = TrainingInput(BUCKET_NAME)
 
@@ -188,6 +192,7 @@ def test_load_config_with_model_channel(estimator):
     assert config["stop_condition"]["MaxRuntimeInSeconds"] == MAX_RUNTIME
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_load_config_with_model_channel_no_inputs(estimator):
     estimator.model_uri = MODEL_URI
     estimator.model_channel_name = MODEL_CHANNEL_NAME
@@ -205,6 +210,7 @@ def test_load_config_with_model_channel_no_inputs(estimator):
     assert config["stop_condition"]["MaxRuntimeInSeconds"] == MAX_RUNTIME
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_load_config_with_code_channel(framework):
     inputs = TrainingInput(BUCKET_NAME)
 
@@ -225,6 +231,7 @@ def test_load_config_with_code_channel(framework):
     assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_load_config_with_code_channel_no_code_uri(framework):
     inputs = TrainingInput(BUCKET_NAME)
 
@@ -242,6 +249,7 @@ def test_load_config_with_code_channel_no_code_uri(framework):
     assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_load_config_with_role_as_pipeline_parameter(estimator):
     inputs = TrainingInput(BUCKET_NAME)
     estimator.role = ParameterString(name="Role")

@@ -4228,6 +4228,7 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
     assert args["production_variants"][0]["InstanceType"] == INSTANCE_TYPE
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_deploy_with_model_name(sagemaker_session):
     estimator = Estimator(
         IMAGE_URI,
@@ -4247,6 +4248,7 @@ def test_deploy_with_model_name(sagemaker_session):
     assert kwargs["name"] == model_name
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_deploy_with_no_model_name(sagemaker_session):
     estimator = Estimator(
         IMAGE_URI,
@@ -4266,6 +4268,7 @@ def test_deploy_with_no_model_name(sagemaker_session):
 
 
 @patch("sagemaker.estimator.Estimator.create_model")
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_session):
     estimator = Estimator(
         IMAGE_URI,

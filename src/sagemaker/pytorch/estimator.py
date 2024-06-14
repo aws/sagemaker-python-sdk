@@ -33,6 +33,9 @@ from sagemaker.pytorch.training_compiler.config import TrainingCompilerConfig
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+
 logger = logging.getLogger("sagemaker")
 
 
@@ -376,6 +379,7 @@ class PyTorch(Framework):
 
         return hyperparameters
 
+    @_telemetry_emitter(Feature.SDK_DEFAULTS, "pytorch.estimator.create_model")
     def create_model(
         self,
         model_server_workers=None,

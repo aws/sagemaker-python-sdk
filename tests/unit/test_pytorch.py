@@ -191,6 +191,7 @@ def _get_environment(submit_directory, model_url, image_uri):
 
 
 @patch("sagemaker.estimator.name_from_base")
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model(
     name_from_base, sagemaker_session, pytorch_inference_version, pytorch_inference_py_version
 ):
@@ -230,6 +231,7 @@ def test_create_model(
     name_from_base.assert_called_with(base_job_name)
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model_with_optional_params(
     sagemaker_session, pytorch_inference_version, pytorch_inference_py_version
 ):
@@ -272,6 +274,7 @@ def test_create_model_with_optional_params(
 
 
 @patch("sagemaker.estimator.name_from_base")
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

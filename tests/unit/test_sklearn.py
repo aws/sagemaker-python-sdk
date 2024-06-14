@@ -172,6 +172,7 @@ def test_training_image_uri(sagemaker_session, sklearn_version):
     assert _get_full_cpu_image_uri(sklearn_version) == sklearn.training_image_uri()
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model(sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
 
@@ -188,6 +189,7 @@ def test_create_model(sagemaker_session, sklearn_version):
 
 
 @patch("sagemaker.model.FrameworkModel._upload_code")
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model_with_network_isolation(upload, sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
     repacked_model_data = "s3://mybucket/prefix/model.tar.gz"
@@ -208,6 +210,7 @@ def test_create_model_with_network_isolation(upload, sagemaker_session, sklearn_
 
 
 @patch("sagemaker.estimator.name_from_base")
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model_from_estimator(name_from_base, sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -246,6 +249,7 @@ def test_create_model_from_estimator(name_from_base, sagemaker_session, sklearn_
     name_from_base.assert_called_with(base_job_name)
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model_with_optional_params(sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -291,6 +295,7 @@ def test_create_model_with_optional_params(sagemaker_session, sklearn_version):
     assert model.name == model_name
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

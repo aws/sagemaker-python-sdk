@@ -30,6 +30,9 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow import is_pipeline_variable
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+
 logger = logging.getLogger("sagemaker")
 
 
@@ -166,6 +169,7 @@ class SKLearn(Framework):
                 instance_type=instance_type,
             )
 
+    @_telemetry_emitter(Feature.SDK_DEFAULTS, "sklearn.estimator.create_model")
     def create_model(
         self,
         model_server_workers=None,

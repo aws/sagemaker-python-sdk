@@ -246,6 +246,7 @@ def test_create_mxnet_model(name_from_base, sagemaker_session, coach_mxnet_versi
     name_from_base.assert_called_with("sagemaker-rl-mxnet")
 
 
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model_with_optional_params(sagemaker_session, coach_mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -279,6 +280,7 @@ def test_create_model_with_optional_params(sagemaker_session, coach_mxnet_versio
 
 
 @patch("sagemaker.estimator.name_from_base")
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -316,6 +318,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("time.strftime", return_value=TIMESTAMP)
 @patch("time.time", return_value=TIME)
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_rl(time, strftime, sagemaker_session, coach_mxnet_version):
     rl = RLEstimator(
         entry_point=SCRIPT_PATH,

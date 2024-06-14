@@ -336,6 +336,7 @@ def test_create_model_with_custom_image(sagemaker_session):
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("time.time", return_value=TIME)
 @patch("time.strftime", return_value=TIMESTAMP)
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_chainer(strftime, time, sagemaker_session, chainer_version, chainer_py_version):
     chainer = Chainer(
         entry_point=SCRIPT_PATH,

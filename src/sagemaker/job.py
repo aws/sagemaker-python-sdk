@@ -20,6 +20,9 @@ from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.local import file_input
 from sagemaker.workflow import is_pipeline_variable
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+
 
 class _Job(object):
     """Handle creating, starting and waiting for Amazon SageMaker jobs to finish.
@@ -36,6 +39,7 @@ class _Job(object):
         self.job_name = job_name
 
     @abstractmethod
+    @_telemetry_emitter(Feature.SDK_DEFAULTS, "job.start_new")
     def start_new(self, estimator, inputs):
         """Create a new Amazon SageMaker job from the estimator.
 
@@ -63,6 +67,7 @@ class _Job(object):
         """Stop the job."""
 
     @staticmethod
+    @_telemetry_emitter(Feature.SDK_DEFAULTS, "job._load_config")
     def _load_config(inputs, estimator, expand_role=True, validate_uri=True):
         """Placeholder docstring"""
         input_config = _Job._format_inputs_to_input_config(inputs, validate_uri)

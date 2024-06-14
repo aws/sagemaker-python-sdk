@@ -31,6 +31,9 @@ from sagemaker.tensorflow.training_compiler.config import TrainingCompilerConfig
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.utils import format_tags
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+
 logger = logging.getLogger("sagemaker")
 
 
@@ -310,6 +313,7 @@ class TensorFlow(Framework):
 
         return init_params
 
+    @_telemetry_emitter(Feature.SDK_DEFAULTS, "tensorflow.estimator.create_model")
     def create_model(
         self,
         role=None,

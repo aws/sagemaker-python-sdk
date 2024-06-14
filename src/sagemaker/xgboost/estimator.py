@@ -31,6 +31,9 @@ from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
 from sagemaker.xgboost.utils import validate_py_version, validate_framework_version
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+
 logger = logging.getLogger("sagemaker")
 
 
@@ -129,6 +132,7 @@ class XGBoost(Framework):
                 image_scope="training",
             )
 
+    @_telemetry_emitter(Feature.SDK_DEFAULTS, "xgboost.estimator.create_model")
     def create_model(
         self,
         model_server_workers=None,

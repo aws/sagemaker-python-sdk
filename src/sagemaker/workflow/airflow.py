@@ -24,7 +24,11 @@ from sagemaker.estimator import EstimatorBase
 from sagemaker.processing import Processor
 from sagemaker.utils import format_tags
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
+
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.prepare_framework")
 def prepare_framework(estimator, s3_operations):
     """Prepare S3 operations and environment variables related to framework.
 
@@ -77,6 +81,7 @@ def prepare_framework(estimator, s3_operations):
     )
 
 
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.prepare_amazon_algorithm_estimator")
 def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     """Sets up amazon algorithm estimator.
 
@@ -108,6 +113,7 @@ def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     estimator.mini_batch_size = mini_batch_size
 
 
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.training_base_config")
 def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=None):  # noqa: C901
     """Export Airflow base training config from an estimator
 
@@ -218,6 +224,7 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     return train_config
 
 
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.training_config")
 def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None):
     """Export Airflow training config from an estimator
 
@@ -470,6 +477,7 @@ def _merge_s3_operations(s3_operations_list):
     return s3_operations_merged
 
 
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.update_submit_s3_uri")
 def update_submit_s3_uri(estimator, job_name):
     """Updated the S3 URI of the framework source directory in given estimator.
 
@@ -494,6 +502,7 @@ def update_submit_s3_uri(estimator, job_name):
     estimator.uploaded_code = fw_utils.UploadedCode(submit_uri, script_name)
 
 
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.update_estimator_from_task")
 def update_estimator_from_task(estimator, task_id, task_type):
     """Update training job of the estimator from a task in the DAG
 
@@ -630,6 +639,7 @@ def model_config(model, instance_type=None, role=None, image_uri=None):
     return config
 
 
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.model_config_from_estimator")
 def model_config_from_estimator(
     estimator,
     task_id,
@@ -815,6 +825,7 @@ def transform_config(
     return config
 
 
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.transform_config_from_estimator")
 def transform_config_from_estimator(
     estimator,
     task_id,
@@ -1057,6 +1068,7 @@ def deploy_config(model, initial_instance_count, instance_type, endpoint_name=No
     return config
 
 
+@_telemetry_emitter(Feature.SDK_DEFAULTS, "airflow.deploy_config_from_estimator")
 def deploy_config_from_estimator(
     estimator,
     task_id,

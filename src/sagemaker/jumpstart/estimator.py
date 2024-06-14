@@ -47,6 +47,9 @@ from sagemaker.predictor import PredictorBase
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.workflow.entities import PipelineVariable
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+
 
 class JumpStartEstimator(Estimator):
     """JumpStartEstimator class.
@@ -762,6 +765,7 @@ class JumpStartEstimator(Estimator):
             additional_kwargs=additional_kwargs,
         )
 
+    @_telemetry_emitter(Feature.SDK_DEFAULTS, "jumpstart.estimator.deploy")
     def deploy(
         self,
         initial_instance_count: Optional[int] = None,

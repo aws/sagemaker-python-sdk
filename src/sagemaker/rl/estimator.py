@@ -26,6 +26,9 @@ from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+
 logger = logging.getLogger("sagemaker")
 
 SAGEMAKER_ESTIMATOR = "sagemaker_estimator"
@@ -171,6 +174,7 @@ class RLEstimator(Framework):
             **kwargs
         )
 
+    @_telemetry_emitter(Feature.SDK_DEFAULTS, "rl.estimator.create_model")
     def create_model(
         self,
         role=None,
