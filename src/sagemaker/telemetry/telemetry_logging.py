@@ -20,6 +20,7 @@ from typing import List
 import functools
 import requests
 
+import boto3
 from sagemaker.session import Session
 from sagemaker.utils import resolve_value_from_config
 from sagemaker.config.config_schema import TELEMETRY_OPT_OUT_PATH
@@ -71,7 +72,9 @@ def _telemetry_emitter(feature: str, func_name: str):
                 sagemaker_session = args[0].sagemaker_session
             elif feature == Feature.REMOTE_FUNCTION:
                 # Get the sagemaker_session from the function keyword arguments for remote function
-                sagemaker_session = kwargs.get("sagemaker_session", Session())
+                sagemaker_session = kwargs.get(
+                    "sagemaker_session", _get_default_sagemaker_session()
+                )
 
             if sagemaker_session:
                 logger.debug("sagemaker_session found, preparing to emit telemetry...")
@@ -243,3 +246,11 @@ def _get_region_or_default(session):
         return session.boto_session.region_name
     except Exception:  # pylint: disable=W0703
         return DEFAULT_AWS_REGION
+
+
+def _get_default_sagemaker_session():
+    """Return the default sagemaker session"""
+    boto_session = boto3.Session(region_name=DEFAULT_AWS_REGION)
+    sagemaker_session = Session(boto_session=boto_session)
+
+    return sagemaker_session
