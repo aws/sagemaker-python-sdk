@@ -24,6 +24,8 @@ import six
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
+from sagemaker.model_card.schema_constraints import ModelCardStatusEnum
+
 from .common import _raise_unexpected_client_error
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role, exceptions
@@ -5343,6 +5345,21 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
     domain = "COMPUTER_VISION"
     task = "IMAGE_CLASSIFICATION"
     sample_payload_url = "s3://test-bucket/model"
+    model_card = {
+        "ModelCardStatus": ModelCardStatusEnum.DRAFT,
+        "Content": {
+            "model_overview": {
+                "model_creator": "TestCreator",
+            },
+            "intended_uses": {
+                "purpose_of_model": "Test model card.",
+                "intended_uses": "Not used except this test.",
+                "factors_affecting_model_efficiency": "No.",
+                "risk_rating": "Low",
+                "explanations_for_risk_rating": "Just an example.",
+            },
+        },
+    }
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -5361,6 +5378,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         sample_payload_url=sample_payload_url,
         task=task,
         skip_model_validation=skip_model_validation,
+        model_card=model_card,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -5382,6 +5400,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "SamplePayloadUrl": sample_payload_url,
         "Task": task,
         "SkipModelValidation": skip_model_validation,
+        "ModelCard": model_card,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 

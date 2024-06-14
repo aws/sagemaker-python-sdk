@@ -19,6 +19,7 @@ _SHM_SIZE = "2G"
 _DEFAULT_ENV_VARS = {
     "SERVING_OPTS": "-Dai.djl.logging.level=debug",
     "TRANSFORMERS_CACHE": "/opt/ml/model/",
+    "HF_HOME": "/opt/ml/model/",
     "HUGGINGFACE_HUB_CACHE": "/opt/ml/model/",
 }
 

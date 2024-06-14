@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from botocore.exceptions import ClientError
 
 from sagemaker import payloads
@@ -44,6 +44,10 @@ from sagemaker.jumpstart.utils import (
 )
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
@@ -537,6 +541,7 @@ class JumpStartModel(Model):
         resources: Optional[ResourceRequirements] = None,
         managed_instance_scaling: Optional[str] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
+        routing_config: Optional[Dict[str, Any]] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -631,6 +636,8 @@ class JumpStartModel(Model):
                 endpoint.
             endpoint_type (EndpointType): The type of endpoint used to deploy models.
                 (Default: EndpointType.MODEL_BASED).
+            routing_config (Optional[Dict]): Settings the control how the endpoint routes
+                incoming traffic to the instances that the endpoint hosts.
 
         Raises:
             MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.
@@ -667,6 +674,7 @@ class JumpStartModel(Model):
             managed_instance_scaling=managed_instance_scaling,
             endpoint_type=endpoint_type,
             model_type=self.model_type,
+            routing_config=routing_config,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY
@@ -730,6 +738,7 @@ class JumpStartModel(Model):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -777,6 +786,8 @@ class JumpStartModel(Model):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -811,6 +822,7 @@ class JumpStartModel(Model):
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
         )
 
         model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())

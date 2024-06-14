@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
@@ -1615,6 +1616,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "endpoint_logging",
         "resources",
         "endpoint_type",
+        "routing_config",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1660,6 +1662,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_logging: Optional[bool] = None,
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: Optional[EndpointType] = None,
+        routing_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -1693,6 +1696,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_logging = endpoint_logging
         self.resources = resources
         self.endpoint_type = endpoint_type
+        self.routing_config = routing_config
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -2114,6 +2118,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "data_input_configuration",
         "skip_model_validation",
         "source_uri",
+        "model_card",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2155,6 +2160,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
+        model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
     ) -> None:
         """Instantiates JumpStartModelRegisterKwargs object."""
 
@@ -2187,3 +2193,4 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+        self.model_card = model_card

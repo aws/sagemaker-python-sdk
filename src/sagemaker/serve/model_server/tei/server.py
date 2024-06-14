@@ -18,6 +18,7 @@ MODE_DIR_BINDING = "/opt/ml/model/"
 _SHM_SIZE = "2G"
 _DEFAULT_ENV_VARS = {
     "TRANSFORMERS_CACHE": "/opt/ml/model/",
+    "HF_HOME": "/opt/ml/model/",
     "HUGGINGFACE_HUB_CACHE": "/opt/ml/model/",
 }
 
