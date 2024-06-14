@@ -289,7 +289,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_get_default_sagemaker_session(self):
         sagemaker_session = _get_default_sagemaker_session()
 
-        assert sagemaker_session is sagemaker.Session
+        assert isinstance(sagemaker_session, sagemaker.Session) is True
         assert sagemaker_session.boto_session.region_name == "us-west-2"
 
     @patch.object(boto3.Session, "region_name", None)
