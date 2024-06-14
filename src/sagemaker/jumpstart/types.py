@@ -15,7 +15,13 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
+from sagemaker.utils import (
+    S3_PREFIX,
+    get_instance_type_family,
+    format_tags,
+    Tags,
+    deep_override_dict,
+)
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -116,10 +122,14 @@ class JumpStartS3FileType(str, Enum):
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
     """Data class for launched region info."""
 
-    __slots__ = ["content_bucket", "region_name", "gated_content_bucket"]
+    __slots__ = ["content_bucket", "region_name", "gated_content_bucket", "neo_content_bucket"]
 
     def __init__(
-        self, content_bucket: str, region_name: str, gated_content_bucket: Optional[str] = None
+        self,
+        content_bucket: str,
+        region_name: str,
+        gated_content_bucket: Optional[str] = None,
+        neo_content_bucket: Optional[str] = None,
     ):
         """Instantiates JumpStartLaunchedRegionInfo object.
 
@@ -128,10 +138,13 @@ class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
             region_name (str): Name of JumpStart launched region.
             gated_content_bucket (Optional[str[]): Name of JumpStart gated s3 content bucket
                 optionally associated with region.
+            neo_content_bucket (Optional[str]): Name of Neo service s3 content bucket
+                optionally associated with region.
         """
         self.content_bucket = content_bucket
         self.gated_content_bucket = gated_content_bucket
         self.region_name = region_name
+        self.neo_content_bucket = neo_content_bucket
 
 
 class JumpStartModelHeader(JumpStartDataHolderType):
@@ -847,6 +860,21 @@ class S3DataSource(JumpStartDataHolderType):
                 elif cur_val:
                     json_obj[att] = cur_val
         return json_obj
+
+    def set_bucket(self, bucket: str) -> None:
+        """Sets bucket name from S3 URI."""
+
+        if self.s3_uri.startswith(S3_PREFIX):
+            s3_path = self.s3_uri[len(S3_PREFIX) :]
+            old_bucket = s3_path.split("/")[0]
+            key = s3_path[len(old_bucket) :]
+            self.s3_uri = f"{S3_PREFIX}{bucket}{key}"  # pylint: disable=W0201
+            return
+
+        if not bucket.endswith("/"):
+            bucket += "/"
+
+        self.s3_uri = f"{S3_PREFIX}{bucket}{self.s3_uri}"  # pylint: disable=W0201
 
 
 class AdditionalModelDataSource(JumpStartDataHolderType):
@@ -1638,8 +1666,10 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
         """Returns True if the model supports incremental training."""
         return self.incremental_training_supported
 
-    def get_speculative_decoding_s3_data_sources(self) -> List[JumpStartAdditionalDataSources]:
+    def get_speculative_decoding_s3_data_sources(self) -> List[JumpStartModelDataSource]:
         """Returns data sources for speculative decoding."""
+        if not self.hosting_additional_data_sources:
+            return []
         return self.hosting_additional_data_sources.speculative_decoding or []
 
     def get_additional_s3_data_sources(self) -> List[JumpStartAdditionalDataSources]:

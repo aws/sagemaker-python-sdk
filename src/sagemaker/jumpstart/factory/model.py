@@ -46,6 +46,7 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.utils import (
     add_jumpstart_model_info_tags,
     get_default_jumpstart_session_with_user_agent_suffix,
+    get_neo_content_bucket,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -631,14 +632,16 @@ def _add_additional_model_data_sources_to_kwargs(
         model_type=kwargs.model_type,
         config_name=kwargs.config_name,
     )
-
-    additional_data_sources = specs.get_additional_s3_data_sources()
+    # Append speculative decoding data source from metadata
+    speculative_decoding_data_sources = specs.get_speculative_decoding_s3_data_sources()
+    for data_source in speculative_decoding_data_sources:
+        data_source.s3_data_source.set_bucket(get_neo_content_bucket())
     api_shape_additional_model_data_sources = (
         [
             camel_case_to_pascal_case(data_source.to_json())
-            for data_source in additional_data_sources
+            for data_source in speculative_decoding_data_sources
         ]
-        if specs.get_additional_s3_data_sources()
+        if specs.get_speculative_decoding_s3_data_sources()
         else None
     )
 

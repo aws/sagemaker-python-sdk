@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
+from unittest import TestCase
 import pytest
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
@@ -25,7 +26,9 @@ from sagemaker.jumpstart.types import (
     JumpStartConfigComponent,
     DeploymentConfigMetadata,
     JumpStartModelInitKwargs,
+    S3DataSource,
 )
+from sagemaker.utils import S3_PREFIX
 from tests.unit.sagemaker.jumpstart.constants import (
     BASE_SPEC,
     BASE_HOSTING_ADDITIONAL_DATA_SOURCES,
@@ -435,6 +438,37 @@ def test_jumpstart_model_specs():
 
     specs3 = copy.deepcopy(specs1)
     assert specs3 == specs1
+
+
+class TestS3DataSource(TestCase):
+    def setUp(self):
+        self.s3_data_source = S3DataSource(
+            {
+                "compression_type": "None",
+                "s3_data_type": "S3Prefix",
+                "s3_uri": "key/to/model/artifact/",
+                "model_access_config": {"accept_eula": False},
+            }
+        )
+
+    def test_set_bucket_with_valid_s3_uri(self):
+        self.s3_data_source.set_bucket("my-bucket")
+        self.assertEqual(self.s3_data_source.s3_uri, f"{S3_PREFIX}my-bucket/key/to/model/artifact/")
+
+    def test_set_bucket_with_existing_s3_uri(self):
+        self.s3_data_source.s3_uri = "s3://my-bucket/key/to/model/artifact/"
+        self.s3_data_source.set_bucket("random-new-bucket")
+        assert self.s3_data_source.s3_uri == "s3://random-new-bucket/key/to/model/artifact/"
+
+    def test_set_bucket_with_existing_s3_uri_empty_bucket(self):
+        self.s3_data_source.s3_uri = "s3://my-bucket"
+        self.s3_data_source.set_bucket("random-new-bucket")
+        assert self.s3_data_source.s3_uri == "s3://random-new-bucket"
+
+    def test_set_bucket_with_existing_s3_uri_empty(self):
+        self.s3_data_source.s3_uri = "s3://"
+        self.s3_data_source.set_bucket("random-new-bucket")
+        assert self.s3_data_source.s3_uri == "s3://random-new-bucket"
 
 
 def test_get_speculative_decoding_s3_data_sources():
@@ -1372,6 +1406,7 @@ def test_additional_model_data_source_parsing():
     assert config.config_components["gpu-accelerated"] == JumpStartConfigComponent(
         "gpu-accelerated",
         {
+            "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "hosting_instance_type_variants": {
                 "regional_aliases": {
                     "us-west-2": {

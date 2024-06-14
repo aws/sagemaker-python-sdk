@@ -26,6 +26,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE,
+    ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE,
     EXTRA_MODEL_ID_TAGS,
     EXTRA_MODEL_VERSION_TAGS,
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -33,6 +34,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_LOGGER,
     JUMPSTART_REGION_NAME_SET,
     JUMPSTART_RESOURCE_BASE_NAME,
+    NEO_DEFAULT_REGION_NAME,
     JumpStartScriptScope,
 )
 from functools import partial
@@ -65,79 +67,95 @@ def random_jumpstart_s3_uri(key):
     return f"s3://{random.choice(list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET))}/{key}"
 
 
-def test_get_jumpstart_content_bucket():
-    bad_region = "bad_region"
-    assert bad_region not in JUMPSTART_REGION_NAME_SET
-    with pytest.raises(ValueError):
-        utils.get_jumpstart_content_bucket(bad_region)
+class TestBucketUtils(TestCase):
+    def test_get_jumpstart_content_bucket(self):
+        bad_region = "bad_region"
+        assert bad_region not in JUMPSTART_REGION_NAME_SET
+        with pytest.raises(ValueError):
+            utils.get_jumpstart_content_bucket(bad_region)
 
+    def test_get_jumpstart_content_bucket_no_args(self):
+        assert (
+            utils.get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
+            == utils.get_jumpstart_content_bucket()
+        )
 
-def test_get_jumpstart_content_bucket_no_args():
-    assert (
-        utils.get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
-        == utils.get_jumpstart_content_bucket()
-    )
+    def test_get_jumpstart_content_bucket_override(self):
+        with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+            with patch("logging.Logger.info") as mocked_info_log:
+                random_region = "random_region"
+                assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
+                mocked_info_log.assert_called_with("Using JumpStart bucket override: 'some-val'")
 
+    def test_get_jumpstart_gated_content_bucket(self):
+        bad_region = "bad_region"
+        assert bad_region not in JUMPSTART_REGION_NAME_SET
+        with pytest.raises(ValueError):
+            utils.get_jumpstart_gated_content_bucket(bad_region)
 
-def test_get_jumpstart_content_bucket_override():
-    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
-        with patch("logging.Logger.info") as mocked_info_log:
-            random_region = "random_region"
-            assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
-            mocked_info_log.assert_called_with("Using JumpStart bucket override: 'some-val'")
+    def test_get_jumpstart_gated_content_bucket_no_args(self):
+        assert (
+            utils.get_jumpstart_gated_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
+            == utils.get_jumpstart_gated_content_bucket()
+        )
 
+    def test_get_jumpstart_gated_content_bucket_override(self):
+        with patch.dict(
+            os.environ, {ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE: "some-val"}
+        ):
+            with patch("logging.Logger.info") as mocked_info_log:
+                random_region = "random_region"
+                assert "some-val" == utils.get_jumpstart_gated_content_bucket(random_region)
+                mocked_info_log.assert_called_once_with(
+                    "Using JumpStart gated bucket override: 'some-val'"
+                )
 
-def test_get_jumpstart_gated_content_bucket():
-    bad_region = "bad_region"
-    assert bad_region not in JUMPSTART_REGION_NAME_SET
-    with pytest.raises(ValueError):
-        utils.get_jumpstart_gated_content_bucket(bad_region)
+    def test_get_jumpstart_launched_regions_message(self):
 
-
-def test_get_jumpstart_gated_content_bucket_no_args():
-    assert (
-        utils.get_jumpstart_gated_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
-        == utils.get_jumpstart_gated_content_bucket()
-    )
-
-
-def test_get_jumpstart_gated_content_bucket_override():
-    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE: "some-val"}):
-        with patch("logging.Logger.info") as mocked_info_log:
-            random_region = "random_region"
-            assert "some-val" == utils.get_jumpstart_gated_content_bucket(random_region)
-            mocked_info_log.assert_called_once_with(
-                "Using JumpStart gated bucket override: 'some-val'"
+        with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {}):
+            assert (
+                utils.get_jumpstart_launched_regions_message()
+                == "JumpStart is not available in any region."
             )
 
+        with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"some_region"}):
+            assert (
+                utils.get_jumpstart_launched_regions_message()
+                == "JumpStart is available in some_region region."
+            )
 
-def test_get_jumpstart_launched_regions_message():
+        with patch(
+            "sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET",
+            {"some_region1", "some_region2"},
+        ):
+            assert (
+                utils.get_jumpstart_launched_regions_message()
+                == "JumpStart is available in some_region1 and some_region2 regions."
+            )
 
-    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {}):
+        with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"a", "b", "c"}):
+            assert (
+                utils.get_jumpstart_launched_regions_message()
+                == "JumpStart is available in a, b, and c regions."
+            )
+
+    def test_get_neo_content_bucket(self):
+        bad_region = "bad_region"
+        assert bad_region not in JUMPSTART_REGION_NAME_SET
+        with pytest.raises(ValueError):
+            utils.get_neo_content_bucket(bad_region)
+
+    def test_get_neo_content_bucket_no_args(self):
         assert (
-            utils.get_jumpstart_launched_regions_message()
-            == "JumpStart is not available in any region."
+            utils.get_neo_content_bucket(NEO_DEFAULT_REGION_NAME) == utils.get_neo_content_bucket()
         )
 
-    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"some_region"}):
-        assert (
-            utils.get_jumpstart_launched_regions_message()
-            == "JumpStart is available in some_region region."
-        )
-
-    with patch(
-        "sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"some_region1", "some_region2"}
-    ):
-        assert (
-            utils.get_jumpstart_launched_regions_message()
-            == "JumpStart is available in some_region1 and some_region2 regions."
-        )
-
-    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"a", "b", "c"}):
-        assert (
-            utils.get_jumpstart_launched_regions_message()
-            == "JumpStart is available in a, b, and c regions."
-        )
+    def test_get_neo_content_bucket_override(self):
+        with patch.dict(os.environ, {ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+            with patch("logging.Logger.info") as mocked_info_log:
+                random_region = "random_region"
+                assert "some-val" == utils.get_neo_content_bucket(random_region)
+                mocked_info_log.assert_called_with("Using Neo bucket override: 'some-val'")
 
 
 def test_get_formatted_manifest():

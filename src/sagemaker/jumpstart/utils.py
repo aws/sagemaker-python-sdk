@@ -156,7 +156,7 @@ def get_jumpstart_content_bucket(
         except KeyError:
             formatted_launched_regions_str = get_jumpstart_launched_regions_message()
             raise ValueError(
-                f"Unable to get content bucket for JumpStart in {region} region. "
+                f"Unable to get content bucket for Neo in {region} region. "
                 f"{formatted_launched_regions_str}"
             )
 
@@ -167,6 +167,34 @@ def get_jumpstart_content_bucket(
             accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
+    return bucket_to_return
+
+
+def get_neo_content_bucket(
+    region: str = constants.NEO_DEFAULT_REGION_NAME,
+) -> str:
+    """Returns the regionalized S3 bucket name for Neo service.
+
+    Raises:
+        ValueError: If Neo is not launched in ``region``.
+    """
+
+    bucket_to_return: Optional[str] = None
+    if (
+        constants.ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE]) > 0
+    ):
+        bucket_to_return = os.environ[constants.ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE]
+        info_log = f"Using Neo bucket override: '{bucket_to_return}'"
+        constants.JUMPSTART_LOGGER.info(info_log)
+    else:
+        try:
+            bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
+                region
+            ].neo_content_bucket
+        except KeyError:
+            raise ValueError(f"Unable to get content bucket for Neo in {region} region.")
+
     return bucket_to_return
 
 

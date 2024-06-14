@@ -7806,6 +7806,7 @@ INFERENCE_CONFIGS = {
             },
         },
         "gpu-accelerated": {
+            "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "hosting_instance_type_variants": {
                 "regional_aliases": {
                     "us-west-2": {

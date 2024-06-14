@@ -1687,6 +1687,72 @@ class ModelTest(unittest.TestCase):
             endpoint_logging=False,
         )
 
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_deployment_config_additional_model_data_source(
+        self,
+        mock_model_init: mock.Mock,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+    ):
+        mock_session.return_value = sagemaker_session
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+
+        model = JumpStartModel(model_id=model_id, config_name="gpu-accelerated")
+
+        mock_model_init.assert_called_once_with(
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "pytorch-hosting-neuronx:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
+            model_data="s3://jumpstart-cache-prod-us-west-2/pytorch-infer/"
+            "infer-pytorch-eqa-bert-base-cased.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/inference/eqa/v1.0.0/sourcedir.tar.gz",
+            entry_point="inference.py",
+            predictor_cls=Predictor,
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
+            additional_model_data_sources=[
+                {
+                    "ChannelName": "draft_model_name",
+                    "S3DataSource": {
+                        "CompressionType": "None",
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": "s3://sagemaker-sd-models-prod-us-west-2/key/to/draft/model/artifact/",
+                        "ModelAccessConfig": {"AcceptEula": False},
+                    },
+                }
+            ],
+        )
+
+        model.deploy()
+
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "gpu-accelerated"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
     @mock.patch(
         "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
     )
