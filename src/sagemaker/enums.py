@@ -46,3 +46,5 @@ class Tag(str, Enum):
     """Enum class for tag keys to apply to models."""
 
     OPTIMIZATION_JOB_NAME = "sagemaker-sdk:optimization-job-name"
+    FINE_TUNING_MODEL_PATH = "sagemaker-sdk:fine-tuning-model-path"
+    FINE_TUNING_JOB_NAME = "sagemaker-sdk:fine-tuning-job-name"

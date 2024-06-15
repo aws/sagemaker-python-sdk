@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """Holds the ModelBuilder class and the ModelServer enum."""
 from __future__ import absolute_import
+
 import uuid
 from typing import Any, Type, List, Dict, Optional, Union
 from dataclasses import dataclass, field
@@ -278,8 +279,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         default=None,
         metadata={
             "help": "Define the model metadata to override, currently supports `HF_TASK`, "
-            "`MLFLOW_MODEL_PATH`. HF_TASK should be set for new models without task metadata in "
-            "the Hub, Adding unsupported task types will throw an exception"
+            "`MLFLOW_MODEL_PATH`, `FINE_TUNING_MODEL_PATH`, and `FINE_TUNING_JOB_NAME`. HF_TASK "
+            "should be set for new models without task metadata in the Hub, Adding unsupported "
+            "task types will throw an exception."
         },
     )
 
@@ -739,8 +741,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         )
 
         self.serve_settings = self._get_serve_setting()
-
         self._is_custom_image_uri = self.image_uri is not None
+
         self._is_mlflow_model = self._check_if_input_is_mlflow_model()
         if self._is_mlflow_model:
             logger.warning(
@@ -925,7 +927,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 f"Unable to determine single GPU size for instance: [{self.instance_type}]"
             )
 
-    def optimize(self, *args, **kwargs) -> Type[Model]:
+    def optimize(self, *args, **kwargs) -> Model:
         """Runs a model optimization job.
 
         Args:
@@ -948,7 +950,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 function creates one using the default AWS configuration chain.
 
         Returns:
-            Type[Model]: A deployable ``Model`` object.
+            Model: A deployable ``Model`` object.
         """
         # need to get telemetry_opt_out info before telemetry decorator is called
         self.serve_settings = self._get_serve_setting()
@@ -972,7 +974,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         kms_key: Optional[str] = None,
         max_runtime_in_sec: Optional[int] = None,
         sagemaker_session: Optional[Session] = None,
-    ) -> Type[Model]:
+    ) -> Model:
         """Runs a model optimization job.
 
         Args:
@@ -1002,7 +1004,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 function creates one using the default AWS configuration chain.
 
         Returns:
-            Type[Model]: A deployable ``Model`` object.
+            Model: A deployable ``Model`` object.
         """
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
         self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)

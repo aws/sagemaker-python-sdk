@@ -14,11 +14,15 @@
 from __future__ import absolute_import
 
 import copy
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Type, Any, List, Dict, Optional
 import logging
 
+from botocore.exceptions import ClientError
+
+from sagemaker.enums import Tag
 from sagemaker.jumpstart import enums
 from sagemaker.jumpstart.utils import verify_model_region_and_return_specs, get_eula_message
 from sagemaker.model import Model
@@ -105,6 +109,7 @@ class JumpStart(ABC):
         self.nb_instance_type = None
         self.ram_usage_model_load = None
         self.jumpstart = None
+        self.model_metadata = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -520,6 +525,54 @@ class JumpStart(ABC):
 
         return self.pysdk_model.list_deployment_configs()
 
+    def _is_fine_tuned_model(self) -> bool:
+        """Checks whether a fine-tuned model exists."""
+        return self.model_metadata and (
+            self.model_metadata.get("FINE_TUNING_MODEL_PATH")
+            or self.model_metadata.get("FINE_TUNING_JOB_NAME")
+        )
+
+    def _update_model_data_for_fine_tuned_model(self, pysdk_model: Type[Model]) -> Type[Model]:
+        """Set the model path and data and add fine-tuning tags for the model."""
+        # TODO: determine precedence of FINE_TUNING_MODEL_PATH and FINE_TUNING_JOB_NAME
+        if fine_tuning_model_path := self.model_metadata.get("FINE_TUNING_MODEL_PATH"):
+            if not re.match("^(https|s3)://([^/]+)/?(.*)$", fine_tuning_model_path):
+                raise ValueError(
+                    f"Invalid path for FINE_TUNING_MODEL_PATH: {fine_tuning_model_path}."
+                )
+            pysdk_model.model_data["S3DataSource"]["S3Uri"] = fine_tuning_model_path
+            pysdk_model.add_tags(
+                {"key": Tag.FINE_TUNING_MODEL_PATH, "value": fine_tuning_model_path}
+            )
+            return pysdk_model
+
+        if fine_tuning_job_name := self.model_metadata.get("FINE_TUNING_JOB_NAME"):
+            try:
+                response = self.sagemaker_session.sagemaker_client.describe_training_job(
+                    TrainingJobName=fine_tuning_job_name
+                )
+                fine_tuning_model_path = response["OutputDataConfig"]["S3OutputPath"]
+                pysdk_model.model_data["S3DataSource"]["S3Uri"] = fine_tuning_model_path
+                pysdk_model.model_data["S3DataSource"]["CompressionType"] = response[
+                    "OutputDataConfig"
+                ]["CompressionType"]
+                pysdk_model.add_tags(
+                    [
+                        {"key": Tag.FINE_TUNING_JOB_NAME, "value": fine_tuning_job_name},
+                        {"key": Tag.FINE_TUNING_MODEL_PATH, "value": fine_tuning_model_path},
+                    ]
+                )
+                return pysdk_model
+            except ClientError:
+                raise ValueError(
+                    f"Invalid job name for FINE_TUNING_JOB_NAME: {fine_tuning_job_name}."
+                )
+
+        raise ValueError(
+            "Input model not found. Please provide either `model_path`, or "
+            "`FINE_TUNING_MODEL_PATH` or `FINE_TUNING_JOB_NAME` under `model_metadata`."
+        )
+
     def _build_for_jumpstart(self):
         """Placeholder docstring"""
         if hasattr(self, "pysdk_model") and self.pysdk_model is not None:
@@ -533,6 +586,9 @@ class JumpStart(ABC):
         image_uri = pysdk_model.image_uri
 
         logger.info("JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri)
+
+        if self._is_fine_tuned_model():
+            pysdk_model = self._update_model_data_for_fine_tuned_model(pysdk_model)
 
         if self._is_gated_model(pysdk_model) and self.mode != Mode.SAGEMAKER_ENDPOINT:
             raise ValueError(
@@ -714,7 +770,7 @@ class JumpStart(ABC):
             **create_optimization_job_args
         )
 
-    def _is_gated_model(self, model) -> bool:
+    def _is_gated_model(self, model: Model) -> bool:
         """Determine if ``this`` Model is Gated
 
         Args:
