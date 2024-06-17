@@ -48,6 +48,7 @@ from sagemaker.model_card import (
     ModelCard,
     ModelPackageModelCard,
 )
+from sagemaker.model_card.helpers import _hash_content_str
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
@@ -2393,3 +2394,44 @@ class ModelPackage(Model):
         )
 
         sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
+
+    def update_model_card(self, model_card: ModelCard | ModelPackageModelCard):
+        """Updates Created model card content which created with model package
+
+        Args:
+            model_card (ModelCard | ModelPackageModelCard): Updated Model Card content
+        """
+
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
+            ModelPackageName=self.model_package_arn
+        )
+        update_model_card_req = model_card._create_request_args()
+        if update_model_card_req["ModelCardStatus"] is not None:
+            if (
+                desc_model_package["ModelCard"]["ModelCardStatus"]
+                == update_model_card_req["ModelCardStatus"]
+            ):
+                del update_model_card_req["ModelCardStatus"]
+
+        if update_model_card_req.get("ModelCardName") is not None:
+            del update_model_card_req["ModelCardName"]
+        if update_model_card_req.get("Content") is not None:
+            previous_content_hash = _hash_content_str(
+                desc_model_package["ModelCard"]["ModelCardContent"]
+            )
+            current_content_hash = _hash_content_str(update_model_card_req["Content"])
+            if (
+                previous_content_hash == current_content_hash
+                or update_model_card_req.get("Content") == "{}"
+                or update_model_card_req.get("Content") == "null"
+            ):
+                del update_model_card_req["Content"]
+            else:
+                update_model_card_req["ModelCardContent"] = update_model_card_req["Content"]
+                del update_model_card_req["Content"]
+        update_model_card_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "ModelCard": update_model_card_req,
+        }
+        sagemaker_session.sagemaker_client.update_model_package(**update_model_card_args)
