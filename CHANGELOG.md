@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.223.0 (2024-06-13)
+
+### Features
+
+ * add 'ModelCard' property to Register step
+
+### Bug Fixes and Other Changes
+
+ * Fix Sniping bug fix
+ * Implement custom telemetry logging in SDK
+ * Fix ci unit-tests
+ * update image_uri_configs  06-12-2024 07:17:03 PST
+
 ## v2.222.1 (2024-06-12)
 
 ### Bug Fixes and Other Changes
