@@ -23,8 +23,6 @@ import logging
 from botocore.exceptions import ClientError
 
 from sagemaker.enums import Tag
-from sagemaker.jumpstart import enums
-from sagemaker.jumpstart.utils import verify_model_region_and_return_specs, get_eula_message
 from sagemaker.model import Model
 from sagemaker import model_uris
 from sagemaker.serve.model_server.djl_serving.prepare import prepare_djl_js_resources
@@ -40,9 +38,9 @@ from sagemaker.serve.utils.exceptions import (
     SkipTuningComboException,
 )
 from sagemaker.serve.utils.optimize_utils import (
-    _extract_supported_deployment_config,
-    _is_speculation_enabled,
     _is_compatible_with_optimization_job,
+    _extract_model_source,
+    _update_environment_variables,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -643,7 +641,7 @@ class JumpStart(ABC):
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
         max_runtime_in_sec: Optional[int] = None,
-    ) -> None:
+    ) -> Dict[str, Any]:
         """Runs a model optimization job.
 
         Args:
@@ -669,79 +667,60 @@ class JumpStart(ABC):
                 to S3. Defaults to ``None``.
             max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
                 ``None``.
+
+        Returns:
+            Dict[str, Any]: Model optimization job input arguments.
         """
-        model_specs = verify_model_region_and_return_specs(
-            region=self.sagemaker_session.boto_region_name,
-            model_id=self.pysdk_model.model_id,
-            version=self.pysdk_model.model_version,
-            sagemaker_session=self.sagemaker_session,
-            scope=enums.JumpStartScriptScope.INFERENCE,
-            model_type=self.pysdk_model.model_type,
-        )
-
-        if model_specs.is_gated_model() and accept_eula is not True:
-            raise ValueError(get_eula_message(model_specs, self.sagemaker_session.boto_region_name))
-
-        if not (self.pysdk_model.model_data and self.pysdk_model.model_data.get("S3DataSource")):
-            raise ValueError("Model Optimization Job only supports model backed by S3.")
-
-        has_alternative_config = self.pysdk_model.deployment_config is not None
-        merged_env_vars = None
-        # TODO: Match Optimization Input Schema
-        model_source = {
-            "S3": {"S3Uri": self.pysdk_model.model_data.get("S3DataSource").get("S3Uri")},
-            "SageMakerModel": {"ModelName": self.model},
-        }
-
-        if has_alternative_config:
-            image_uri = self.pysdk_model.deployment_config.get("DeploymentArgs").get("ImageUri")
-            instance_type = self.pysdk_model.deployment_config.get("InstanceType")
-        else:
-            image_uri = self.pysdk_model.image_uri
-
-        if not _is_compatible_with_optimization_job(instance_type, image_uri) or (
-            speculative_decoding_config
-            and not _is_speculation_enabled(self.pysdk_model.deployment_config)
-        ):
-            deployment_config = _extract_supported_deployment_config(
-                self.pysdk_model.list_deployment_configs(), speculative_decoding_config is None
+        if self._is_gated_model() and accept_eula is not True:
+            raise ValueError(
+                f"ValueError: Model '{self.model}' "
+                f"requires accepting end-user license agreement (EULA)."
             )
 
-            if deployment_config:
-                self.pysdk_model.set_deployment_config(
-                    config_name=deployment_config.get("DeploymentConfigName"),
-                    instance_type=deployment_config.get("InstanceType"),
-                )
-                merged_env_vars = self.pysdk_model.deployment_config.get("Environment")
+        optimization_env_vars = None
+        pysdk_model_env_vars = None
+        model_source = _extract_model_source(self.pysdk_model.model_data, accept_eula)
 
-                if speculative_decoding_config:
-                    # TODO: Match Optimization Input Schema
-                    s3 = {
-                        "S3Uri": self.pysdk_model.additional_model_data_sources[
-                            "SpeculativeDecoding"
-                        ][0]["S3DataSource"]["S3Uri"]
-                    }
-                    model_source["S3"].update(s3)
-            elif speculative_decoding_config:
-                raise ValueError("Can't find deployment config for model optimization job.")
+        if speculative_decoding_config:
+            self._set_additional_model_source(speculative_decoding_config)
+            optimization_env_vars = self.pysdk_model.deployment_config.get("DeploymentArgs").get(
+                "Environment"
+            )
+        else:
+            image_uri = None
+            if quantization_config and quantization_config.get("Image"):
+                image_uri = quantization_config.get("Image")
+            elif compilation_config and compilation_config.get("Image"):
+                image_uri = compilation_config.get("Image")
+            instance_type = (
+                instance_type
+                or self.pysdk_model.deployment_config.get("DeploymentArgs").get("InstanceType")
+                or _get_nb_instance()
+            )
+            if not _is_compatible_with_optimization_job(instance_type, image_uri):
+                deployment_config = self._find_compatible_deployment_config(None)
+                if deployment_config:
+                    optimization_env_vars = deployment_config.get("DeploymentArgs").get(
+                        "Environment"
+                    )
+                    self.pysdk_model.set_deployment_config(
+                        config_name=deployment_config.get("DeploymentConfigName"),
+                        instance_type=deployment_config.get("InstanceType"),
+                    )
+
+        optimization_env_vars = _update_environment_variables(optimization_env_vars, env_vars)
 
         optimization_config = {}
-        if env_vars:
-            if merged_env_vars:
-                merged_env_vars.update(env_vars)
-            else:
-                merged_env_vars = env_vars
         if quantization_config:
             optimization_config["ModelQuantizationConfig"] = quantization_config
+            pysdk_model_env_vars = _update_environment_variables(
+                pysdk_model_env_vars, quantization_config["OverrideEnvironment"]
+            )
         if compilation_config:
             optimization_config["ModelCompilationConfig"] = compilation_config
-
-        if accept_eula:
-            self.pysdk_model.accept_eula = accept_eula
-            self.pysdk_model.model_data["S3DataSource"].update(
-                {"ModelAccessConfig": {"AcceptEula": accept_eula}}
+            pysdk_model_env_vars = _update_environment_variables(
+                pysdk_model_env_vars, compilation_config["OverrideEnvironment"]
             )
-            model_source["S3"].update({"ModelAccessConfig": {"AcceptEula": accept_eula}})
 
         output_config = {"S3OutputLocation": output_path}
         if kms_key:
@@ -751,12 +730,13 @@ class JumpStart(ABC):
             "OptimizationJobName": job_name,
             "ModelSource": model_source,
             "DeploymentInstanceType": instance_type,
-            "Environment": merged_env_vars,
             "OptimizationConfigs": [optimization_config],
             "OutputConfig": output_config,
             "RoleArn": role,
         }
 
+        if optimization_env_vars:
+            create_optimization_job_args["Environment"] = optimization_env_vars
         if max_runtime_in_sec:
             create_optimization_job_args["StoppingCondition"] = {
                 "MaxRuntimeInSeconds": max_runtime_in_sec
@@ -766,11 +746,10 @@ class JumpStart(ABC):
         if vpc_config:
             create_optimization_job_args["VpcConfig"] = vpc_config
 
-        self.sagemaker_session.sagemaker_client.create_optimization_job(
-            **create_optimization_job_args
-        )
+        self.pysdk_model.env.update(pysdk_model_env_vars)
+        return create_optimization_job_args
 
-    def _is_gated_model(self, model: Model) -> bool:
+    def _is_gated_model(self, model=None) -> bool:
         """Determine if ``this`` Model is Gated
 
         Args:
@@ -778,10 +757,95 @@ class JumpStart(ABC):
         Returns:
             bool: ``True`` if ``this`` Model is Gated
         """
-        s3_uri = model.model_data
+        s3_uri = model.model_data if model else self.pysdk_model.model_data
         if isinstance(s3_uri, dict):
             s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
 
         if s3_uri is None:
             return False
         return "private" in s3_uri
+
+    def _set_additional_model_source(
+        self, speculative_decoding_config: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Set Additional Model Source to ``this`` model.
+
+        Args:
+            speculative_decoding_config (Optional[Dict[str, Any]]): Speculative decoding config.
+        """
+        if speculative_decoding_config:
+            model_provider: str = speculative_decoding_config["ModelProvider"]
+
+            if model_provider.lower() == "sagemaker":
+                if not self._is_speculation_enabled(self.pysdk_model.deployment_config):
+                    deployment_config = self._find_compatible_deployment_config(
+                        speculative_decoding_config
+                    )
+                    if deployment_config:
+                        self.pysdk_model.set_deployment_config(
+                            config_name=deployment_config.get("DeploymentConfigName"),
+                            instance_type=deployment_config.get("InstanceType"),
+                        )
+                        self.pysdk_model.add_tags(
+                            {"key": Tag.SPECULATIVE_DRAFT_MODL_PROVIDER, "value": "sagemaker"},
+                        )
+                    else:
+                        raise ValueError(
+                            "Cannot find deployment config compatible for optimization job."
+                        )
+            else:
+                s3_uri = speculative_decoding_config.get("ModelSource")
+                if not s3_uri:
+                    raise ValueError("Custom S3 Uri cannot be none.")
+
+                self.pysdk_model.additional_model_data_sources["speculative_decoding"][0][
+                    "s3_data_source"
+                ]["s3_uri"] = s3_uri
+                self.pysdk_model.add_tags(
+                    {"key": Tag.SPECULATIVE_DRAFT_MODL_PROVIDER, "value": "customer"},
+                )
+
+    def _find_compatible_deployment_config(
+        self, speculative_decoding_config: Optional[Dict] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Finds compatible model deployment config for optimization job.
+
+        Args:
+            speculative_decoding_config (Optional[Dict]): Speculative decoding config.
+
+        Returns:
+            Optional[Dict[str, Any]]: A compatible model deployment config for optimization job.
+        """
+        for deployment_config in self.pysdk_model.list_deployment_configs():
+            instance_type = deployment_config.get("deployment_config").get("InstanceType")
+            image_uri = deployment_config.get("deployment_config").get("ImageUri")
+
+            if _is_compatible_with_optimization_job(instance_type, image_uri):
+                if not speculative_decoding_config:
+                    return deployment_config
+
+                if self._is_speculation_enabled(deployment_config):
+                    return deployment_config
+
+        return None
+
+    def _is_speculation_enabled(self, deployment_config: Optional[Dict[str, Any]]) -> bool:
+        """Checks whether speculative is enabled for the given deployment config.
+
+        Args:
+            deployment_config (Dict[str, Any]): A deployment config.
+
+        Returns:
+            bool: Whether speculative is enabled for this deployment config.
+        """
+        if deployment_config is None:
+            return False
+
+        acceleration_configs = deployment_config.get("AccelerationConfigs")
+        if acceleration_configs:
+            for acceleration_config in acceleration_configs:
+                if acceleration_config.get(
+                    "type", "default"
+                ).lower() == "speculative" and acceleration_config.get("enabled"):
+                    return True
+        return False

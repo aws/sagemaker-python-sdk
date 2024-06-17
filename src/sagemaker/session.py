@@ -2591,6 +2591,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
         _check_job_status(job, desc, "AutoMLJobStatus")
         return desc
 
+    def wait_for_optimization_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker Optimization job to complete.
+
+        Args:
+            job (str): Name of optimization job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeOptimizationJob`` API.
+
+        Raises:
+            exceptions.ResourceNotFound: If optimization job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If optimization job fails.
+        """
+        desc = _wait_until(lambda: _optimization_job_status(self.sagemaker_client, job), poll)
+        _check_job_status(job, desc, "OptimizationJobStatus")
+        return desc
+
     def logs_for_auto_ml_job(  # noqa: C901 - suppress complexity warning for this method
         self, job_name, wait=False, poll=10
     ):
@@ -7600,6 +7618,31 @@ def _auto_ml_job_status(sagemaker_client, job_name):
     status = desc["AutoMLJobStatus"]
 
     print(auto_ml_job_status_codes.get(status, "?"), end="")
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print("")
+    return desc
+
+
+def _optimization_job_status(sagemaker_client, job_name):
+    """Placeholder docstring"""
+    optimization_job_status_codes = {
+        "INPROGRESS": "!",
+        "COMPLETED": ".",
+        "FAILED": "*",
+        "STARTING": "s",
+        "STOPPING": "_",
+        "STOPPED": ",",
+    }
+    in_progress_statuses = ["INPROGRESS", "STARTING", "STOPPING"]
+
+    desc = sagemaker_client.describe_optimization_job(OptimizationJobName=job_name)
+    status = desc["OptimizationJobStatus"]
+
+    print(optimization_job_status_codes.get(status, "?"), end="")
     sys.stdout.flush()
 
     if status in in_progress_statuses:

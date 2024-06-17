@@ -20,15 +20,16 @@ from sagemaker.enums import Tag
 from sagemaker.serve.utils.optimize_utils import (
     _generate_optimized_model,
     _is_speculation_enabled,
-    _extract_supported_deployment_config,
     _is_inferentia_or_trainium,
     _is_compatible_with_optimization_job,
+    _update_environment_variables,
 )
 
 mock_optimization_job_output = {
     "OptimizationJobName": "optimization_job_name",
     "RecommendedInferenceImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
     "huggingface-pytorch-tgi-inference:2.1.1-tgi2.0.0-gpu-py310-cu121-ubuntu22.04",
+    "OptimizationJobStatus": "COMPLETED",
     "OptimizationEnvironment": {
         "SAGEMAKER_PROGRAM": "inference.py",
         "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -76,7 +77,7 @@ def test_is_inferentia_or_trainium(instance, expected):
         ),
         (
             "ml.inf2.xlarge",
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-neuronx-sdk2.18.2",
+            None,
             True,
         ),
         (
@@ -85,66 +86,11 @@ def test_is_inferentia_or_trainium(instance, expected):
             "2.1.1-tgi2.0.0-gpu-py310-cu121-ubuntu22.04",
             False,
         ),
+        (None, None, False),
     ],
 )
 def test_is_compatible_with_optimization_job(instance, image_uri, expected):
     assert _is_compatible_with_optimization_job(instance, image_uri) == expected
-
-
-@pytest.mark.parametrize(
-    "deployment_configs, expected",
-    [
-        (
-            [
-                {
-                    "InstanceType": "ml.c7gd.4xlarge",
-                    "DeploymentArgs": {
-                        "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-lmi10.0.0-cu124"
-                    },
-                    "AccelerationConfigs": [
-                        {
-                            "type": "acceleration",
-                            "enabled": True,
-                            "spec": {"compiler": "a", "version": "1"},
-                        }
-                    ],
-                }
-            ],
-            None,
-        ),
-        (
-            [
-                {
-                    "InstanceType": "ml.g5.12xlarge",
-                    "DeploymentArgs": {
-                        "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-lmi10.0.0-cu124"
-                    },
-                    "AccelerationConfigs": [
-                        {
-                            "type": "speculation",
-                            "enabled": True,
-                        }
-                    ],
-                }
-            ],
-            {
-                "InstanceType": "ml.g5.12xlarge",
-                "DeploymentArgs": {
-                    "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-lmi10.0.0-cu124"
-                },
-                "AccelerationConfigs": [
-                    {
-                        "type": "speculation",
-                        "enabled": True,
-                    }
-                ],
-            },
-        ),
-        (None, None),
-    ],
-)
-def test_extract_supported_deployment_config(deployment_configs, expected):
-    assert _extract_supported_deployment_config(deployment_configs, True) == expected
 
 
 def test_generate_optimized_model():
@@ -199,3 +145,16 @@ def test_generate_optimized_model():
 )
 def test_is_speculation_enabled(deployment_config, expected):
     assert _is_speculation_enabled(deployment_config) is expected
+
+
+@pytest.mark.parametrize(
+    "env, new_env, output_env",
+    [
+        ({"a": "1"}, {"b": "2"}, {"a": "1", "b": "2"}),
+        (None, {"b": "2"}, {"b": "2"}),
+        ({"a": "1"}, None, {"a": "1"}),
+        (None, None, None),
+    ],
+)
+def test_update_environment_variables(env, new_env, output_env):
+    assert _update_environment_variables(env, new_env) == output_env

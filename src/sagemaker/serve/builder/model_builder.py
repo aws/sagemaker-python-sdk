@@ -63,7 +63,7 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
-from sagemaker.serve.utils.optimize_utils import _poll_optimization_job, _generate_optimized_model
+from sagemaker.serve.utils.optimize_utils import _generate_optimized_model
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
@@ -972,7 +972,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
-        max_runtime_in_sec: Optional[int] = None,
+        max_runtime_in_sec: Optional[int] = 36000,
         sagemaker_session: Optional[Session] = None,
     ) -> Model:
         """Runs a model optimization job.
@@ -998,7 +998,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
                 to S3. Defaults to ``None``.
             max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
-                ``None``.
+                36000 seconds.
             sagemaker_session (Optional[Session]): Session object which manages interactions
                 with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
                 function creates one using the default AWS configuration chain.
@@ -1010,8 +1010,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
 
+        input_args = {}
         if self._is_jumpstart_model_id():
-            self._optimize_for_jumpstart(
+            input_args = self._optimize_for_jumpstart(
                 output_path=output_path,
                 instance_type=instance_type,
                 role=role if role else self.role_arn,
@@ -1027,19 +1028,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 max_runtime_in_sec=max_runtime_in_sec,
             )
 
-        # TODO: use the wait for job pattern similar to
-        #  https://quip-amazon.com/TKaPAhJck5sD/PySDK-Model-Optimization#temp:C:YcX3f2b103dabb4431090568bca2
-        if not _poll_optimization_job(job_name, self.sagemaker_session):
-            raise Exception("Optimization job timed out.")
-
-        describe_optimization_job_res = (
-            self.sagemaker_session.sagemaker_client.describe_optimization_job(
-                OptimizationJobName=job_name
-            )
-        )
-
-        self.pysdk_model = _generate_optimized_model(
-            self.pysdk_model, describe_optimization_job_res
-        )
+        self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
+        job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
+        self.pysdk_model = _generate_optimized_model(self.pysdk_model, job_status)
 
         return self.pysdk_model
