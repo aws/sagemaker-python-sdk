@@ -358,6 +358,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             sagemaker_config=self._sagemaker_config,
         )
         self.endpoint_name = None
+        self.inference_component_name = None
         self._is_compiled_model = False
         self._compilation_job_name = None
         self._is_edge_packaged_model = False
@@ -404,6 +405,16 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.content_types = None
         self.response_types = None
         self.accept_eula = None
+
+    @classmethod
+    def attach(
+        cls,
+        endpoint_name: str,
+        inference_component_name: Optional[str] = None,
+        sagemaker_session=None,
+    ) -> "Model":
+        """Attaches a Model object to an existing SageMaker Endpoint."""
+        raise NotImplementedError
 
     @runnable_by_pipeline
     def register(
@@ -1318,6 +1329,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         managed_instance_scaling: Optional[str] = None,
+        inference_component_name=None,
         routing_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
@@ -1602,11 +1614,15 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 "ComputeResourceRequirements": resources.get_compute_resource_requirements(),
             }
             runtime_config = {"CopyCount": resources.copy_count}
-            inference_component_name = unique_name_from_base(self.name)
+            self.inference_component_name = (
+                inference_component_name
+                or self.inference_component_name
+                or unique_name_from_base(self.name)
+            )
 
             # [TODO]: Add endpoint_logging support
             self.sagemaker_session.create_inference_component(
-                inference_component_name=inference_component_name,
+                inference_component_name=self.inference_component_name,
                 endpoint_name=self.endpoint_name,
                 variant_name="AllTraffic",  # default variant name
                 specification=inference_component_spec,
@@ -1619,7 +1635,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 predictor = self.predictor_cls(
                     self.endpoint_name,
                     self.sagemaker_session,
-                    component_name=inference_component_name,
+                    component_name=self.inference_component_name,
                 )
                 if serializer:
                     predictor.serializer = serializer
