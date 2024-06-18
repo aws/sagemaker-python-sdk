@@ -90,7 +90,6 @@ class TGI(ABC):
         self.nb_instance_type = None
         self.ram_usage_model_load = None
         self.secret_key = None
-        self.jumpstart = None
         self.role_arn = None
 
     @abstractmethod

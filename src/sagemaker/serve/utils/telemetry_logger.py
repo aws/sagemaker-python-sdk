@@ -29,7 +29,12 @@ from sagemaker.serve.utils.lineage_constants import (
     MLFLOW_REGISTRY_PATH,
 )
 from sagemaker.serve.utils.lineage_utils import _get_mlflow_model_path_type
-from sagemaker.serve.utils.types import ModelServer, ImageUriOption
+from sagemaker.serve.utils.types import (
+    ModelServer,
+    ImageUriOption,
+    ModelHub,
+    SpeculativeDecodingDraftModelSource,
+)
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.user_agent import SDK_VERSION
 
@@ -67,6 +72,16 @@ MLFLOW_MODEL_PATH_CODE = {
     MLFLOW_MODEL_PACKAGE_PATH: 3,
     MLFLOW_RUN_ID: 4,
     MLFLOW_REGISTRY_PATH: 5,
+}
+
+MODEL_HUB_TO_CODE = {
+    str(ModelHub.JUMPSTART): 1,
+    str(ModelHub.HUGGINGFACE): 2,
+}
+
+SD_DRAFT_MODEL_SOURCE_TO_CODE = {
+    str(SpeculativeDecodingDraftModelSource.SAGEMAKER): 1,
+    str(SpeculativeDecodingDraftModelSource.CUSTOM): 2,
 }
 
 
@@ -107,6 +122,28 @@ def _capture_telemetry(func_name: str):
                 mlflow_model_path = self.model_metadata[MLFLOW_MODEL_PATH]
                 mlflow_model_path_type = _get_mlflow_model_path_type(mlflow_model_path)
                 extra += f"&x-mlflowModelPathType={MLFLOW_MODEL_PATH_CODE[mlflow_model_path_type]}"
+
+            if getattr(self, "model_hub", False):
+                extra += f"&x-modelHub={MODEL_HUB_TO_CODE[str(self.model_hub)]}"
+
+            if getattr(self, "is_fine_tuned", False):
+                extra += "&x-fineTuned=1"
+            if getattr(self, "is_gated", False):
+                extra += "&x-gated=1"
+
+            if kwargs.get("compilation_config"):
+                extra += "&x-compiled=1"
+            if kwargs.get("quantization_config"):
+                extra += "&x-quantized=1"
+            if kwargs.get("speculative_decoding_config"):
+                model_provider = kwargs["speculative_decoding_config"]["ModelProvider"]
+                model_provider_enum = (
+                    SpeculativeDecodingDraftModelSource.SAGEMAKER
+                    if model_provider.lower() == "sagemaker"
+                    else SpeculativeDecodingDraftModelSource.CUSTOM
+                )
+                model_provider_value = SD_DRAFT_MODEL_SOURCE_TO_CODE[str(model_provider_enum)]
+                extra += f"&x-sdDraftModelSource={model_provider_value}"
 
             start_timer = perf_counter()
             try:

@@ -78,7 +78,7 @@ from sagemaker.serve.detector.image_detector import (
 from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
 from sagemaker.serve.model_server.triton.triton_builder import Triton
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
-from sagemaker.serve.utils.types import ModelServer
+from sagemaker.serve.utils.types import ModelServer, ModelHub
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.serve.save_retrive.version_1_0_0.save.save_handler import SaveHandler
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import get_metadata
@@ -400,7 +400,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 self.serve_settings.s3_model_data_url,
                 self.sagemaker_session,
                 self.image_uri,
-                self.jumpstart if hasattr(self, "jumpstart") else False,
+                getattr(self, "model_hub", None) == ModelHub.JUMPSTART,
             )
             self.env_vars.update(env_vars_sagemaker)
             return self.s3_upload_path, env_vars_sagemaker
@@ -754,10 +754,14 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         if isinstance(self.model, str):
             model_task = None
+            if self._is_jumpstart_model_id():
+                self.model_hub = ModelHub.JUMPSTART
+                return self._build_for_jumpstart()
+            self.model_hub = ModelHub.HUGGINGFACE
+
             if self.model_metadata:
                 model_task = self.model_metadata.get("HF_TASK")
-            if self._is_jumpstart_model_id():
-                return self._build_for_jumpstart()
+
             if self._is_djl():
                 return self._build_for_djl()
             else:

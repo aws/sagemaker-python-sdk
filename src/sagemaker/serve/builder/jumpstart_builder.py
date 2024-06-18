@@ -108,8 +108,10 @@ class JumpStart(ABC):
         self.schema_builder = None
         self.nb_instance_type = None
         self.ram_usage_model_load = None
-        self.jumpstart = None
+        self.model_hub = None
         self.model_metadata = None
+        self.is_fine_tuned = None
+        self.is_gated = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -580,7 +582,6 @@ class JumpStart(ABC):
 
         # we do not pickle for jumpstart. set to none
         self.secret_key = None
-        self.jumpstart = True
 
         pysdk_model = self._create_pre_trained_js_model()
         image_uri = pysdk_model.image_uri
@@ -588,6 +589,7 @@ class JumpStart(ABC):
         logger.info("JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri)
 
         if self._is_fine_tuned_model():
+            self.is_fine_tuned = True
             pysdk_model = self._update_model_data_for_fine_tuned_model(pysdk_model)
 
         if self._is_gated_model(pysdk_model) and self.mode != Mode.SAGEMAKER_ENDPOINT:
@@ -754,8 +756,10 @@ class JumpStart(ABC):
             s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
 
         if s3_uri is None:
-            return False
-        return "private" in s3_uri
+            self.is_gated = False
+        else:
+            self.is_gated = "private" in s3_uri
+        return self.is_gated
 
     def _set_additional_model_source(
         self,
@@ -792,7 +796,7 @@ class JumpStart(ABC):
                         )
 
                 self.pysdk_model.add_tags(
-                    {"key": Tag.SPECULATIVE_DRAFT_MODL_PROVIDER, "value": "sagemaker"},
+                    {"key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "value": "sagemaker"},
                 )
             else:
                 s3_uri = speculative_decoding_config.get("ModelSource")
@@ -811,7 +815,7 @@ class JumpStart(ABC):
 
                 self.pysdk_model.additional_model_data_sources = [additional_model_data_source]
                 self.pysdk_model.add_tags(
-                    {"key": Tag.SPECULATIVE_DRAFT_MODL_PROVIDER, "value": "customer"},
+                    {"key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "value": "customer"},
                 )
 
     def _find_compatible_deployment_config(
