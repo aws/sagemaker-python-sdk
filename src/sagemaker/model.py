@@ -2430,8 +2430,8 @@ class ModelPackage(Model):
             else:
                 update_model_card_req["ModelCardContent"] = update_model_card_req["Content"]
                 del update_model_card_req["Content"]
-        update_model_card_args = {
+        update_model_package_args = {
             "ModelPackageArn": self.model_package_arn,
             "ModelCard": update_model_card_req,
         }
-        sagemaker_session.sagemaker_client.update_model_package(**update_model_card_args)
+        sagemaker_session.sagemaker_client.update_model_package(**update_model_package_args)
