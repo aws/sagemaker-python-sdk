@@ -49,11 +49,14 @@ mock_s3_model_data_url = "sample s3 data url"
 mock_secret_key = "mock_secret_key"
 mock_instance_type = "mock instance type"
 
-supported_model_server = {
+supported_model_servers = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
     ModelServer.TENSORFLOW_SERVING,
+    ModelServer.MMS,
+    ModelServer.TGI,
+    ModelServer.TEI,
 }
 
 mock_session = MagicMock()
@@ -77,7 +80,7 @@ class TestModelBuilder(unittest.TestCase):
         builder = ModelBuilder(inference_spec="some value", model=Mock(spec=object))
         self.assertRaisesRegex(
             Exception,
-            "Cannot have both the Model and Inference spec in the builder",
+            "Can only set one of the following: model, inference_spec.",
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -90,7 +93,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertRaisesRegex(
             Exception,
             "%s is not supported yet! Supported model servers: %s"
-            % (builder.model_server, supported_model_server),
+            % (builder.model_server, supported_model_servers),
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -103,7 +106,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertRaisesRegex(
             Exception,
             "Model_server must be set when non-first-party image_uri is set. "
-            + "Supported model servers: %s" % supported_model_server,
+            + "Supported model servers: %s" % supported_model_servers,
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -123,6 +126,120 @@ class TestModelBuilder(unittest.TestCase):
             mock_role_arn,
             mock_session,
         )
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_djl")
+    def test_model_server_override_djl_with_model(self, mock_build_for_djl, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.DJL_SERVING, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_djl.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_model_server_override_djl_without_model_or_mlflow(self, mock_serve_settings):
+        builder = ModelBuilder(
+            model_server=ModelServer.DJL_SERVING, model=None, inference_spec=None
+        )
+        self.assertRaisesRegex(
+            Exception,
+            "Missing required parameter `model` or 'ml_flow' path",
+            builder.build,
+            Mode.SAGEMAKER_ENDPOINT,
+            mock_role_arn,
+            mock_session,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_torchserve")
+    def test_model_server_override_torchserve_with_model(
+        self, mock_build_for_ts, mock_serve_settings
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_model_server_override_torchserve_without_model_or_mlflow(self, mock_serve_settings):
+        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE)
+        self.assertRaisesRegex(
+            Exception,
+            "Missing required parameter `model` or 'ml_flow' path",
+            builder.build,
+            Mode.SAGEMAKER_ENDPOINT,
+            mock_role_arn,
+            mock_session,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_triton")
+    def test_model_server_override_triton_with_model(self, mock_build_for_ts, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TRITON, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tensorflow_serving")
+    def test_model_server_override_tensor_with_model(self, mock_build_for_ts, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TENSORFLOW_SERVING, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tei")
+    def test_model_server_override_tei_with_model(self, mock_build_for_ts, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TEI, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tgi")
+    def test_model_server_override_tgi_with_model(self, mock_build_for_ts, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TGI, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers")
+    def test_model_server_override_transformers_with_model(
+        self, mock_build_for_ts, mock_serve_settings
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.MMS, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
 
     @patch("os.makedirs", Mock())
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
