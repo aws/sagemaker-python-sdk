@@ -2438,7 +2438,7 @@ class TestModelBuilder(unittest.TestCase):
         tracking_arn = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
         self.assertRaisesRegex(
             ImportError,
-            "Unable to import mlflow_sagemaker, check if mlflow_sagemaker is installed",
+            "Unable to import sagemaker_mlflow, check if sagemaker_mlflow is installed",
             builder.set_tracking_arn,
             tracking_arn,
         )
