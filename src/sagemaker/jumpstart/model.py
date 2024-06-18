@@ -36,12 +36,13 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
+from sagemaker.jumpstart.session_utils import get_model_id_version_from_endpoint
 from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
 )
-from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.model_card import (
     ModelCard,
@@ -406,6 +407,45 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
         )
 
+    @classmethod
+    def attach(
+        cls,
+        endpoint_name: str,
+        inference_component_name: Optional[str] = None,
+        model_id: Optional[str] = None,
+        model_version: Optional[str] = None,
+        sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    ) -> "JumpStartModel":
+        """Attaches a JumpStartModel object to an existing SageMaker Endpoint.
+
+        The model id, version (and inference component name) can be inferred from the tags.
+        """
+
+        inferred_model_id = inferred_model_version = inferred_inference_component_name = None
+
+        if inference_component_name is None or model_id is None or model_version is None:
+            inferred_model_id, inferred_model_version, inferred_inference_component_name = (
+                get_model_id_version_from_endpoint(
+                    endpoint_name=endpoint_name,
+                    inference_component_name=inference_component_name,
+                    sagemaker_session=sagemaker_session,
+                )
+            )
+
+        model_id = model_id or inferred_model_id
+        model_version = model_version or inferred_model_version or "*"
+        inference_component_name = inference_component_name or inferred_inference_component_name
+
+        model = JumpStartModel(
+            model_id=model_id,
+            model_version=model_version,
+            sagemaker_session=sagemaker_session,
+        )
+        model.endpoint_name = endpoint_name
+        model.inference_component_name = inference_component_name
+
+        return model
+
     def _create_sagemaker_model(
         self,
         instance_type=None,
@@ -484,6 +524,7 @@ class JumpStartModel(Model):
         deserializer: Optional[BaseDeserializer] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
+        inference_component_name: Optional[str] = None,
         tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = True,
@@ -614,6 +655,7 @@ class JumpStartModel(Model):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
+            inference_component_name=inference_component_name,
             tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
