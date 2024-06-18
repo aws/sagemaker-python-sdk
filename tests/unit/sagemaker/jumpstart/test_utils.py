@@ -48,7 +48,6 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartVersionedModelId,
 )
-from sagemaker.jumpstart.utils import _extract_image_tag_and_version
 from tests.unit.sagemaker.jumpstart.utils import (
     get_base_spec_with_prototype_configs,
     get_spec_from_base_spec,
@@ -2063,17 +2062,3 @@ def test_deployment_config_response_data(data, expected):
 
     print(out)
     assert out == expected
-
-
-@pytest.mark.parametrize(
-    "image_uri, expected",
-    [
-        (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-lmi10.0.0-cu124",
-            ("0.28.0-lmi10.0.0-cu124", "0.28.0"),
-        ),
-        (None, (None, None)),
-    ],
-)
-def test_extract_image_tag_and_version(image_uri, expected):
-    assert _extract_image_tag_and_version(image_uri) == expected

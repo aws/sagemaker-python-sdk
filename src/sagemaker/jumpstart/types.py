@@ -2568,6 +2568,7 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
         "compute_resource_requirements",
         "model_data_download_timeout",
         "container_startup_health_check_timeout",
+        "additional_data_sources",
     ]
 
     def __init__(
@@ -2597,6 +2598,7 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
             self.supported_instance_types = resolved_config.get(
                 "supported_inference_instance_types"
             )
+            self.additional_data_sources = resolved_config.get("hosting_additional_data_sources")
 
 
 class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):

@@ -1364,20 +1364,3 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
     if _func is None:
         return wrapper_cache
     return wrapper_cache(_func)
-
-
-def _extract_image_tag_and_version(image_uri: str) -> Tuple[Optional[str], Optional[str]]:
-    """Extract Image tag and version from image URI.
-
-    Args:
-        image_uri (str): Image URI.
-
-    Returns:
-        Tuple[Optional[str], Optional[str]]: The tag and version of the image.
-    """
-    if image_uri is None:
-        return None, None
-
-    tag = image_uri.split(":")[-1]
-
-    return tag, tag.split("-")[0]

@@ -19,7 +19,6 @@ from typing import Dict, Any, Optional, Union
 
 from sagemaker import Model
 from sagemaker.enums import Tag
-from sagemaker.fw_utils import _is_gpu_instance
 
 
 logger = logging.getLogger(__name__)
@@ -42,30 +41,19 @@ def _is_inferentia_or_trainium(instance_type: Optional[str]) -> bool:
     return False
 
 
-def _is_compatible_with_optimization_job(
-    instance_type: Optional[str], image_uri: Optional[str]
-) -> bool:
+def _is_image_compatible_with_optimization_job(image_uri: Optional[str]) -> bool:
     """Checks whether an instance is compatible with an optimization job.
 
     Args:
-        instance_type (str): The instance type used for the compilation job.
         image_uri (str): The image URI of the optimization job.
 
     Returns:
         bool: Whether the given instance type is compatible with an optimization job.
     """
-    if not instance_type:
-        return False
-
-    compatible_image = True
-    if image_uri:
-        compatible_image = "djl-inference:" in image_uri and (
-            "-lmi" in image_uri or "-neuronx-" in image_uri
-        )
-
-    return (
-        _is_gpu_instance(instance_type) or _is_inferentia_or_trainium(instance_type)
-    ) and compatible_image
+    # TODO: Use specific container type instead.
+    if image_uri is None:
+        return True
+    return "djl-inference:" in image_uri and ("-lmi" in image_uri or "-neuronx-" in image_uri)
 
 
 def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -> Model:
@@ -89,28 +77,6 @@ def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -
     return pysdk_model
 
 
-def _is_speculation_enabled(deployment_config: Optional[Dict[str, Any]]) -> bool:
-    """Checks whether speculation is enabled for this deployment config.
-
-    Args:
-        deployment_config (Dict[str, Any]): A deployment config.
-
-    Returns:
-        bool: Whether the speculation is enabled for this deployment config.
-    """
-    if deployment_config is None:
-        return False
-
-    acceleration_configs = deployment_config.get("AccelerationConfigs")
-    if acceleration_configs:
-        for acceleration_config in acceleration_configs:
-            if acceleration_config.get("type").lower() == "speculation" and acceleration_config.get(
-                "enabled"
-            ):
-                return True
-    return False
-
-
 def _extract_model_source(
     model_data: Optional[Union[Dict[str, Any], str]], accept_eula: Optional[bool]
 ) -> Optional[Dict[str, Any]]:
@@ -129,7 +95,6 @@ def _extract_model_source(
     if isinstance(s3_uri, dict):
         s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
 
-    # Todo: Inject fine-tune data source
     model_source = {"S3": {"S3Uri": s3_uri}}
     if accept_eula:
         model_source["S3"]["ModelAccessConfig"] = {"AcceptEula": True}
@@ -154,3 +119,61 @@ def _update_environment_variables(
         else:
             env = new_env
     return env
+
+
+def _extract_speculative_draft_model_provider(
+    speculative_decoding_config: Optional[Dict] = None,
+) -> Optional[str]:
+    """Extracts speculative draft model provider from speculative decoding config.
+
+    Args:
+        speculative_decoding_config (Optional[Dict]): A speculative decoding config.
+
+    Returns:
+        Optional[str]: The speculative draft model provider.
+    """
+    if speculative_decoding_config is None:
+        return None
+
+    if speculative_decoding_config.get(
+        "ModelProvider"
+    ) == "Custom" or speculative_decoding_config.get("ModelSource"):
+        return "custom"
+
+    return "sagemaker"
+
+
+def _validate_optimization_inputs(
+    output_path: Optional[str] = None,
+    instance_type: Optional[str] = None,
+    quantization_config: Optional[Dict] = None,
+    compilation_config: Optional[Dict] = None,
+) -> None:
+    """Validates optimization inputs.
+
+    Args:
+        output_path (Optional[str]): The output path.
+        instance_type (Optional[str]): The instance type.
+        quantization_config (Optional[Dict]): The quantization config.
+        compilation_config (Optional[Dict]): The compilation config.
+
+    Raises:
+        ValueError: If an optimization input is invalid.
+    """
+    if quantization_config and compilation_config:
+        raise ValueError("Quantization config and compilation config are mutually exclusive.")
+
+    instance_type_msg = "Please provide an instance type for %s optimization job."
+    output_path_msg = "Please provide an output path for %s optimization job."
+
+    if quantization_config:
+        if not instance_type:
+            raise ValueError(instance_type_msg.format("quantization"))
+        if not output_path:
+            raise ValueError(output_path_msg.format("quantization"))
+
+    if compilation_config:
+        if not instance_type:
+            raise ValueError(instance_type_msg.format("compilation"))
+        if not output_path:
+            raise ValueError(output_path_msg.format("compilation"))

@@ -19,10 +19,11 @@ import pytest
 from sagemaker.enums import Tag
 from sagemaker.serve.utils.optimize_utils import (
     _generate_optimized_model,
-    _is_speculation_enabled,
     _is_inferentia_or_trainium,
-    _is_compatible_with_optimization_job,
     _update_environment_variables,
+    _is_image_compatible_with_optimization_job,
+    _extract_speculative_draft_model_provider,
+    _validate_optimization_inputs,
 )
 
 mock_optimization_job_output = {
@@ -63,34 +64,30 @@ def test_is_inferentia_or_trainium(instance, expected):
 
 
 @pytest.mark.parametrize(
-    "instance, image_uri, expected",
+    "image_uri, expected",
     [
         (
-            "ml.g5.12xlarge",
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-lmi10.0.0-cu124",
             True,
         ),
         (
-            "ml.trn1.2xlarge",
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-neuronx-sdk2.18.2",
             True,
         ),
         (
-            "ml.inf2.xlarge",
             None,
             True,
         ),
         (
-            "ml.c7gd.4xlarge",
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:"
             "2.1.1-tgi2.0.0-gpu-py310-cu121-ubuntu22.04",
             False,
         ),
-        (None, None, False),
+        (None, True),
     ],
 )
-def test_is_compatible_with_optimization_job(instance, image_uri, expected):
-    assert _is_compatible_with_optimization_job(instance, image_uri) == expected
+def test_is_image_compatible_with_optimization_job(image_uri, expected):
+    assert _is_image_compatible_with_optimization_job(image_uri) == expected
 
 
 def test_generate_optimized_model():
@@ -115,39 +112,6 @@ def test_generate_optimized_model():
 
 
 @pytest.mark.parametrize(
-    "deployment_config, expected",
-    [
-        (
-            {
-                "AccelerationConfigs": [
-                    {
-                        "type": "acceleration",
-                        "enabled": True,
-                        "spec": {"compiler": "a", "version": "1"},
-                    }
-                ],
-            },
-            False,
-        ),
-        (
-            {
-                "AccelerationConfigs": [
-                    {
-                        "type": "speculation",
-                        "enabled": True,
-                    }
-                ],
-            },
-            True,
-        ),
-        (None, False),
-    ],
-)
-def test_is_speculation_enabled(deployment_config, expected):
-    assert _is_speculation_enabled(deployment_config) is expected
-
-
-@pytest.mark.parametrize(
     "env, new_env, output_env",
     [
         ({"a": "1"}, {"b": "2"}, {"a": "1", "b": "2"}),
@@ -158,3 +122,46 @@ def test_is_speculation_enabled(deployment_config, expected):
 )
 def test_update_environment_variables(env, new_env, output_env):
     assert _update_environment_variables(env, new_env) == output_env
+
+
+@pytest.mark.parametrize(
+    "speculative_decoding_config, expected_model_provider",
+    [
+        ({"ModelProvider": "SageMaker"}, "sagemaker"),
+        ({"ModelProvider": "Custom"}, "custom"),
+        ({"ModelSource": "s3://"}, "custom"),
+        (None, None),
+    ],
+)
+def test_extract_speculative_draft_model_provider(
+    speculative_decoding_config, expected_model_provider
+):
+    assert (
+        _extract_speculative_draft_model_provider(speculative_decoding_config)
+        == expected_model_provider
+    )
+
+
+@pytest.mark.parametrize(
+    "output_path, instance, quantization_config, compilation_config",
+    [
+        (
+            None,
+            None,
+            {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}},
+            {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}},
+        ),
+        (None, None, {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}}, None),
+        (None, None, None, {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}}),
+        ("output_path", None, None, {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}}),
+        (None, "instance_type", None, {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}}),
+    ],
+)
+def test_validate_optimization_inputs(
+    output_path, instance, quantization_config, compilation_config
+):
+
+    with pytest.raises(ValueError):
+        _validate_optimization_inputs(
+            output_path, instance, quantization_config, compilation_config
+        )
