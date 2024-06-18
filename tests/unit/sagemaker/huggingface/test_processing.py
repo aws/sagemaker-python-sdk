@@ -13,11 +13,13 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock, patch, MagicMock
+from mock import Mock, patch, MagicMock, mock_open
+import json
 
 from sagemaker.huggingface.processing import HuggingFaceProcessor
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.session_settings import SessionSettings
+from sagemaker.user_agent import process_studio_metadata_file
 
 from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
 
@@ -62,6 +64,16 @@ def uploaded_code(
     script_name="processing_code.py",
 ):
     return UploadedCode(s3_prefix=s3_prefix, script_name=script_name)
+
+
+@pytest.fixture(autouse=True)
+def mock_process_studio_metadata_file(tmp_path):
+    studio_file = tmp_path / "resource-metadata.json"
+    studio_file.write_text(json.dumps({"AppType": "TestAppType"}))
+
+    with patch("os.path.exists", return_value=True):
+        with patch("sagemaker.user_agent.open", mock_open(read_data=studio_file.read_text())):
+            yield process_studio_metadata_file
 
 
 @patch("sagemaker.utils._botocore_resolver")

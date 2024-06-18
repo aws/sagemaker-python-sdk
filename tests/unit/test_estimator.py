@@ -2354,6 +2354,7 @@ def test_local_code_location():
         local_mode=True,
         spec=sagemaker.local.LocalSession,
         settings=SessionSettings(),
+        endpoint_arn=None,
     )
 
     sms.sagemaker_config = {}

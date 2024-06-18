@@ -330,7 +330,7 @@ def test_xgboost_cpu(time, strftime, sagemaker_session, xgboost_framework_versio
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert boto_call_names == ["resource", "client"]
 
     expected_train_args = _create_train_job(xgboost_framework_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
@@ -377,7 +377,7 @@ def test_xgboost_gpu(time, strftime, sagemaker_session, xgboost_gpu_framework_ve
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert boto_call_names == ["resource", "client"]
 
     expected_train_args = _create_train_job(
         xgboost_gpu_framework_version, instance_type=GPU_INSTANCE_TYPE
@@ -427,7 +427,7 @@ def test_distributed_training(time, strftime, sagemaker_session, xgboost_framewo
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert boto_call_names == ["resource", "client"]
 
     expected_train_args = _create_train_job(xgboost_framework_version, DIST_INSTANCE_COUNT)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs

@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import json
 import os
-from mock import patch
+from mock import patch, mock_open
 
 import pytest
 import warnings
@@ -56,6 +56,7 @@ from sagemaker.workflow import is_pipeline_variable
 from sagemaker.network import NetworkConfig
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker import utils, Model
+from sagemaker.user_agent import process_studio_metadata_file
 
 from sagemaker.clarify import (
     SageMakerClarifyProcessor,
@@ -245,6 +246,15 @@ def network_config():
         enable_network_isolation=True,
         encrypt_inter_container_traffic=True,
     )
+
+
+def mock_process_studio_metadata_file(tmp_path):
+    studio_file = tmp_path / "resource-metadata.json"
+    studio_file.write_text(json.dumps({"AppType": "TestAppType"}))
+
+    with patch("os.path.exists", return_value=True):
+        with patch("sagemaker.user_agent.open", mock_open(read_data=studio_file.read_text())):
+            yield process_studio_metadata_file
 
 
 @pytest.mark.parametrize(
@@ -1127,25 +1137,28 @@ _PARAM_ROLE_NAME = "Role"
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_processor_with_role_as_pipeline_parameter(
-    exists_mock, isfile_mock, processor_args, pipeline_session
+    exists_mock, isfile_mock, tmp_path, processor_args, pipeline_session
 ):
-    processor, run_inputs = processor_args
-    processor.sagemaker_session = pipeline_session
-    processor.run(**run_inputs)
+    studio_file = tmp_path / "resource-metadata.json"
+    studio_file.write_text(json.dumps({"AppType": "TestApp"}))
+    with patch("builtins.open", mock_open(read_data=studio_file.read_text())):
+        processor, run_inputs = processor_args
+        processor.sagemaker_session = pipeline_session
+        processor.run(**run_inputs)
 
-    step_args = processor.run(**run_inputs)
-    step = ProcessingStep(
-        name="MyProcessingStep",
-        step_args=step_args,
-    )
-    pipeline = Pipeline(
-        name="MyPipeline",
-        steps=[step],
-        sagemaker_session=pipeline_session,
-    )
+        step_args = processor.run(**run_inputs)
+        step = ProcessingStep(
+            name="MyProcessingStep",
+            step_args=step_args,
+        )
+        pipeline = Pipeline(
+            name="MyPipeline",
+            steps=[step],
+            sagemaker_session=pipeline_session,
+        )
 
-    step_def = json.loads(pipeline.definition())["Steps"][0]
-    assert step_def["Arguments"]["RoleArn"] == {"Get": f"Parameters.{_PARAM_ROLE_NAME}"}
+        step_def = json.loads(pipeline.definition())["Steps"][0]
+        assert step_def["Arguments"]["RoleArn"] == {"Get": f"Parameters.{_PARAM_ROLE_NAME}"}
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG_WITH_CUSTOM_PREFIX)

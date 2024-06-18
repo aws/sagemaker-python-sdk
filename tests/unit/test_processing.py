@@ -15,8 +15,9 @@ from __future__ import absolute_import
 import copy
 
 import pytest
-from mock import Mock, patch, MagicMock
+from mock import Mock, patch, MagicMock, mock_open
 from packaging import version
+import json
 
 from sagemaker import LocalSession
 from sagemaker.dataset_definition.inputs import (
@@ -46,6 +47,7 @@ from sagemaker.fw_utils import UploadedCode
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.user_agent import process_studio_metadata_file
 from tests.unit import SAGEMAKER_CONFIG_PROCESSING_JOB
 
 BUCKET_NAME = "mybucket"
@@ -133,6 +135,26 @@ def uploaded_code(
     return UploadedCode(s3_prefix=s3_prefix, script_name=script_name)
 
 
+@pytest.fixture(autouse=True)
+def mock_process_studio_metadata_file(tmp_path):
+    studio_file = tmp_path / "resource-metadata.json"
+    studio_file.write_text(json.dumps({"AppType": "TestAppType"}))
+
+    with patch("os.path.exists", return_value=True):
+        with patch("sagemaker.user_agent.open", mock_open(read_data=studio_file.read_text())):
+            yield process_studio_metadata_file
+
+
+@pytest.fixture()
+def base_config_with_schema():
+    return {"SchemaVersion": "1.0"}
+
+
+@pytest.fixture()
+def base_local_config():
+    return {"region_name": "us-west-2"}
+
+
 @patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
@@ -208,18 +230,28 @@ def test_sklearn_with_all_parameters(
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
-def test_local_mode_disables_local_code_by_default():
-    processor = Processor(
-        image_uri="",
-        role=ROLE,
-        instance_count=1,
-        instance_type="local",
-    )
+@patch("sagemaker.config.config._load_config_from_file")
+@patch("sagemaker.config.config.load_sagemaker_config")
+def test_local_mode_disables_local_code_by_default(
+    mock_load_config, mock_load_config_from_file, base_config_with_schema, base_local_config
+):
+    local_config = base_config_with_schema
+    local_config["local"] = base_local_config
+    mock_load_config.return_value = local_config
+    mock_load_config_from_file.return_value = local_config
 
-    # Most tests use a fixture for sagemaker_session for consistent behaviour, so this unit test
-    # checks that the default initialization disables unsupported 'local_code' mode:
-    assert processor.sagemaker_session._disable_local_code
-    assert isinstance(processor.sagemaker_session, LocalSession)
+    with patch("sagemaker.config.config._load_config_from_file.open", mock_open(read_data="")):
+        processor = Processor(
+            image_uri="",
+            role=ROLE,
+            instance_count=1,
+            instance_type="local",
+        )
+
+        # Most tests use a fixture for sagemaker_session for consistent behaviour, so this unit test
+        # checks that the default initialization disables unsupported 'local_code' mode:
+        assert processor.sagemaker_session._disable_local_code
+        assert isinstance(processor.sagemaker_session, LocalSession)
 
 
 @patch("sagemaker.utils._botocore_resolver")
@@ -281,7 +313,11 @@ def test_sklearn_with_all_parameters_via_run_args(
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters_via_run_args_called_twice(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+    exists_mock,
+    isfile_mock,
+    botocore_resolver,
+    sklearn_version,
+    sagemaker_session,
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 

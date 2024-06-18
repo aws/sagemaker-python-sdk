@@ -62,6 +62,8 @@ from sagemaker.lineage.context import EndpointContext
 from sagemaker.compute_resource_requirements.resource_requirements import (
     ResourceRequirements,
 )
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -145,6 +147,7 @@ class Predictor(PredictorBase):
         self._content_type = None
         self._accept = None
 
+    @_telemetry_emitter(Feature.PREDICTOR, "sagemaker.predictor.predict")
     def predict(
         self,
         data,
