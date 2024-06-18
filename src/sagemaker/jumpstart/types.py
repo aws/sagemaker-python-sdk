@@ -1596,6 +1596,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "deserializer",
         "accelerator_type",
         "endpoint_name",
+        "inference_component_name",
         "tags",
         "kms_key",
         "wait",
@@ -1641,6 +1642,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         deserializer: Optional[Any] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
+        inference_component_name: Optional[str] = None,
         tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = None,
@@ -1674,6 +1676,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
+        self.inference_component_name = inference_component_name
         self.tags = format_tags(tags)
         self.kms_key = kms_key
         self.wait = wait
