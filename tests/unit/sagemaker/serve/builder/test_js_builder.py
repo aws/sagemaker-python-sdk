@@ -11,10 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
 
 import unittest
 
+from sagemaker.enums import Tag
+from sagemaker.serve import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import (
@@ -961,3 +963,119 @@ class TestJumpStartBuilder(unittest.TestCase):
         builder.display_benchmark_metrics()
 
         mock_pre_trained_model.return_value.display_benchmark_metrics.assert_called_once()
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    def test_fine_tuned_model_with_fine_tuning_model_path(
+        self,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        mock_pre_trained_model.return_value.image_uri = mock_djl_image_uri
+        mock_fine_tuning_model_path = "s3://test"
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species of turtle native to the brackish "
+            "coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a species of turtle native to the "
+                "brackish coastal tidal marshes of the east coast."
+            }
+        ]
+        builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            model_metadata={
+                "FINE_TUNING_MODEL_PATH": mock_fine_tuning_model_path,
+            },
+        )
+        model = builder.build()
+
+        model.model_data["S3DataSource"].__setitem__.assert_called_with(
+            "S3Uri", mock_fine_tuning_model_path
+        )
+        mock_pre_trained_model.return_value.add_tags.assert_called_with(
+            {"key": Tag.FINE_TUNING_MODEL_PATH, "value": mock_fine_tuning_model_path}
+        )
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    def test_fine_tuned_model_with_fine_tuning_job_name(
+        self,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+        mock_fine_tuning_model_path = "s3://test"
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+            "OutputDataConfig": {
+                "S3OutputPath": mock_fine_tuning_model_path,
+                "CompressionType": "None",
+            }
+        }
+        mock_pre_trained_model.return_value.image_uri = mock_djl_image_uri
+        mock_fine_tuning_job_name = "mock-job"
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species of turtle native to the brackish "
+            "coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a species of turtle native to the "
+                "brackish coastal tidal marshes of the east coast."
+            }
+        ]
+        builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            model_metadata={"FINE_TUNING_JOB_NAME": mock_fine_tuning_job_name},
+            sagemaker_session=mock_sagemaker_session,
+        )
+        model = builder.build(sagemaker_session=mock_sagemaker_session)
+
+        mock_sagemaker_session.sagemaker_client.describe_training_job.assert_called_once_with(
+            TrainingJobName=mock_fine_tuning_job_name
+        )
+
+        model.model_data["S3DataSource"].__setitem__.assert_any_call(
+            "S3Uri", mock_fine_tuning_model_path
+        )
+        mock_pre_trained_model.return_value.add_tags.assert_called_with(
+            [
+                {"key": Tag.FINE_TUNING_JOB_NAME, "value": mock_fine_tuning_job_name},
+                {"key": Tag.FINE_TUNING_MODEL_PATH, "value": mock_fine_tuning_model_path},
+            ]
+        )
