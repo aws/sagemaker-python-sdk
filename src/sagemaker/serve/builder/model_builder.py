@@ -792,7 +792,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 % (self.model_server, supported_model_servers)
             )
 
-        mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
+        mlflow_path = None
+        if self.model_metadata:
+            mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
 
         if not self.model and not mlflow_path:
             raise ValueError("Missing required parameter `model` or 'ml_flow' path")
