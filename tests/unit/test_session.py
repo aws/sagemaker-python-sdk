@@ -6282,6 +6282,24 @@ def test_create_inference_recommendations_job_propogate_other_exception(
     assert "AccessDeniedException" in str(error)
 
 
+def test_create_presigned_mlflow_tracking_server_url(sagemaker_session):
+    sagemaker_session.create_presigned_mlflow_tracking_server_url("ts", 1, 2)
+    assert (
+        sagemaker_session.sagemaker_client.create_presigned_mlflow_tracking_server_url.called_with(
+            TrackingServerName="ts", ExpiresInSeconds=1, SessionExpirationDurationInSeconds=2
+        )
+    )
+
+
+def test_create_presigned_mlflow_tracking_server_url_minimal(sagemaker_session):
+    sagemaker_session.create_presigned_mlflow_tracking_server_url("ts")
+    assert (
+        sagemaker_session.sagemaker_client.create_presigned_mlflow_tracking_server_url.called_with(
+            TrackingServerName="ts"
+        )
+    )
+
+
 DEFAULT_LOG_EVENTS_INFERENCE_RECOMMENDER = [
     MockBotoException("ResourceNotFoundException"),
     {"nextForwardToken": None, "events": [{"timestamp": 1, "message": "hi there #1"}]},

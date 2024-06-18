@@ -37,3 +37,4 @@ nbformat>=5.9,<6
 accelerate>=0.24.1,<=0.27.0
 schema==0.7.5
 tensorflow>=2.1,<=2.16
+mlflow>=2.12.2,<2.13
