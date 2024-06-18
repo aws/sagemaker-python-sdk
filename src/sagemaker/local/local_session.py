@@ -42,6 +42,8 @@ from sagemaker.local.entities import (
     _LocalPipeline,
 )
 from sagemaker.session import Session
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 from sagemaker.utils import (
     get_config_value,
     _module_import_error,
@@ -83,6 +85,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         """
         self.sagemaker_session = sagemaker_session or LocalSession()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_processing_job")
     def create_processing_job(
         self,
         ProcessingJobName,
@@ -165,6 +168,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             raise ClientError(error_response, "describe_processing_job")
         return LocalSagemakerClient._processing_jobs[ProcessingJobName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_training_job")
     def create_training_job(
         self,
         TrainingJobName,
@@ -235,6 +239,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             raise ClientError(error_response, "describe_training_job")
         return LocalSagemakerClient._training_jobs[TrainingJobName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_transform_job")
     def create_transform_job(
         self,
         TransformJobName,
@@ -280,6 +285,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             raise ClientError(error_response, "describe_transform_job")
         return LocalSagemakerClient._transform_jobs[TransformJobName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_model")
     def create_model(
         self, ModelName, PrimaryContainer, *args, **kwargs
     ):  # pylint: disable=unused-argument
@@ -329,6 +335,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             raise ClientError(error_response, "describe_endpoint_config")
         return LocalSagemakerClient._endpoint_configs[EndpointConfigName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_endpoint_config")
     def create_endpoint_config(self, EndpointConfigName, ProductionVariants, Tags=None):
         """Create the endpoint configuration.
 
@@ -360,6 +367,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             raise ClientError(error_response, "describe_endpoint")
         return LocalSagemakerClient._endpoints[EndpointName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_endpoint")
     def create_endpoint(self, EndpointName, EndpointConfigName, Tags=None):
         """Create the endpoint.
 
@@ -428,6 +436,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         if ModelName in LocalSagemakerClient._models:
             del LocalSagemakerClient._models[ModelName]
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_pipeline")
     def create_pipeline(
         self, pipeline, pipeline_description, **kwargs  # pylint: disable=unused-argument
     ):
