@@ -17,7 +17,7 @@ import os
 import time
 import re
 import logging
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from botocore.exceptions import ClientError
 
@@ -35,6 +35,8 @@ from sagemaker.serve.model_format.mlflow.constants import (
 from sagemaker.serve.utils.lineage_constants import (
     LINEAGE_POLLER_MAX_TIMEOUT_SECS,
     LINEAGE_POLLER_INTERVAL_SECS,
+    TRACKING_SERVER_ARN_REGEX,
+    TRACKING_SERVER_CREATION_TIME_FORMAT,
     MLFLOW_S3_PATH,
     MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
     MLFLOW_LOCAL_PATH,
@@ -51,24 +53,41 @@ logger = logging.getLogger(__name__)
 
 
 def _load_artifact_by_source_uri(
-    source_uri: str, artifact_type: str, sagemaker_session: Session
+    source_uri: str,
+    sagemaker_session: Session,
+    source_types_to_match: Optional[List[str]] = None,
+    artifact_type: Optional[str] = None,
 ) -> Optional[ArtifactSummary]:
     """Load lineage artifact by source uri
 
     Arguments:
         source_uri (str): The s3 uri used for uploading transfomred model artifacts.
-        artifact_type (str): The type of the lineage artifact.
         sagemaker_session (Session): Session object which manages interactions
             with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
             function creates one using the default AWS configuration chain.
+        source_types_to_match (Optional[List[str]]): A list of source type values to match against
+            the artifact's source types. If provided, the artifact's source types must match this
+            list.
+        artifact_type (Optional[str]): The type of the lineage artifact.
 
     Returns:
         ArtifactSummary: The Artifact Summary for the provided S3 URI.
     """
     artifacts = Artifact.list(source_uri=source_uri, sagemaker_session=sagemaker_session)
     for artifact_summary in artifacts:
-        if artifact_summary.artifact_type == artifact_type:
-            return artifact_summary
+        if artifact_type is None or artifact_summary.artifact_type == artifact_type:
+            if source_types_to_match:
+                if artifact_summary.source.source_types is not None:
+                    artifact_source_types = [
+                        source_type["Value"] for source_type in artifact_summary.source.source_types
+                    ]
+                    if set(artifact_source_types) == set(source_types_to_match):
+                        return artifact_summary
+                else:
+                    return None
+            else:
+                return artifact_summary
+
     return None
 
 
@@ -90,7 +109,9 @@ def _poll_lineage_artifact(
     logger.info("Polling lineage artifact for model data in %s", s3_uri)
     start_time = time.time()
     while time.time() - start_time < LINEAGE_POLLER_MAX_TIMEOUT_SECS:
-        result = _load_artifact_by_source_uri(s3_uri, artifact_type, sagemaker_session)
+        result = _load_artifact_by_source_uri(
+            s3_uri, sagemaker_session, artifact_type=artifact_type
+        )
         if result is not None:
             return result
         time.sleep(LINEAGE_POLLER_INTERVAL_SECS)
@@ -105,12 +126,12 @@ def _get_mlflow_model_path_type(mlflow_model_path: str) -> str:
     Returns:
         str: Description of what the input string is identified as.
     """
-    mlflow_rub_id_pattern = MLFLOW_RUN_ID_REGEX
+    mlflow_run_id_pattern = MLFLOW_RUN_ID_REGEX
     mlflow_registry_id_pattern = MLFLOW_REGISTRY_PATH_REGEX
     sagemaker_arn_pattern = MODEL_PACKAGE_ARN_REGEX
     s3_pattern = S3_PATH_REGEX
 
-    if re.match(mlflow_rub_id_pattern, mlflow_model_path):
+    if re.match(mlflow_run_id_pattern, mlflow_model_path):
         return MLFLOW_RUN_ID
     if re.match(mlflow_registry_id_pattern, mlflow_model_path):
         return MLFLOW_REGISTRY_PATH
@@ -127,12 +148,14 @@ def _get_mlflow_model_path_type(mlflow_model_path: str) -> str:
 def _create_mlflow_model_path_lineage_artifact(
     mlflow_model_path: str,
     sagemaker_session: Session,
+    source_types_to_match: Optional[List[str]] = None,
 ) -> Optional[Artifact]:
     """Creates a lineage artifact for the given MLflow model path.
 
     Args:
         mlflow_model_path (str): The path to the MLflow model.
         sagemaker_session (Session): The SageMaker session object.
+        source_types_to_match (Optional[List[str]]): Artifact source types.
 
     Returns:
         Optional[Artifact]: The created lineage artifact, or None if an error occurred.
@@ -142,8 +165,17 @@ def _create_mlflow_model_path_lineage_artifact(
         model_builder_input_model_data_type=_artifact_name,
     )
     try:
+        source_types = [dict(SourceIdType="Custom", Value="ModelBuilderInputModelData")]
+        if source_types_to_match:
+            source_types += [
+                dict(SourceIdType="Custom", Value=source_type)
+                for source_type in source_types_to_match
+                if source_type != "ModelBuilderInputModelData"
+            ]
+
         return Artifact.create(
             source_uri=mlflow_model_path,
+            source_types=source_types,
             artifact_type=MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
             artifact_name=_artifact_name,
             properties=properties,
@@ -160,6 +192,7 @@ def _create_mlflow_model_path_lineage_artifact(
 def _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
     mlflow_model_path: str,
     sagemaker_session: Session,
+    tracking_server_arn: Optional[str] = None,
 ) -> Optional[Union[Artifact, ArtifactSummary]]:
     """Retrieves an existing artifact for the given MLflow model path or
 
@@ -170,20 +203,35 @@ def _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
         sagemaker_session (Session): Session object which manages interactions
             with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
             function creates one using the default AWS configuration chain.
-
+        tracking_server_arn (Optional[str]): The MLflow tracking server ARN.
 
     Returns:
         Optional[Union[Artifact, ArtifactSummary]]: The existing or newly created artifact,
             or None if an error occurred.
     """
+    source_types_to_match = ["ModelBuilderInputModelData"]
+    input_type = _get_mlflow_model_path_type(mlflow_model_path)
+    if tracking_server_arn and input_type in [MLFLOW_RUN_ID, MLFLOW_REGISTRY_PATH]:
+        match = re.match(TRACKING_SERVER_ARN_REGEX, tracking_server_arn)
+        mlflow_tracking_server_name = match.group(4)
+        describe_result = sagemaker_session.sagemaker_client.describe_mlflow_tracking_server(
+            TrackingServerName=mlflow_tracking_server_name
+        )
+        tracking_server_creation_time = describe_result["CreationTime"].strftime(
+            TRACKING_SERVER_CREATION_TIME_FORMAT
+        )
+        source_types_to_match += [tracking_server_arn, tracking_server_creation_time]
     _loaded_artifact = _load_artifact_by_source_uri(
-        mlflow_model_path, MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE, sagemaker_session
+        mlflow_model_path,
+        sagemaker_session,
+        source_types_to_match,
     )
     if _loaded_artifact is not None:
         return _loaded_artifact
     return _create_mlflow_model_path_lineage_artifact(
         mlflow_model_path,
         sagemaker_session,
+        source_types_to_match,
     )
 
 
@@ -229,6 +277,7 @@ def _maintain_lineage_tracking_for_mlflow_model(
     mlflow_model_path: str,
     s3_upload_path: str,
     sagemaker_session: Session,
+    tracking_server_arn: Optional[str] = None,
 ) -> None:
     """Maintains lineage tracking for an MLflow model by creating or retrieving artifacts.
 
@@ -238,6 +287,7 @@ def _maintain_lineage_tracking_for_mlflow_model(
         sagemaker_session (Session): Session object which manages interactions
             with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
             function creates one using the default AWS configuration chain.
+        tracking_server_arn (Optional[str]): The MLflow tracking server ARN.
     """
     artifact_for_transformed_model_data = _poll_lineage_artifact(
         s3_uri=s3_upload_path,
@@ -249,6 +299,7 @@ def _maintain_lineage_tracking_for_mlflow_model(
             _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
                 mlflow_model_path=mlflow_model_path,
                 sagemaker_session=sagemaker_session,
+                tracking_server_arn=tracking_server_arn,
             )
         )
         if mlflow_model_artifact:

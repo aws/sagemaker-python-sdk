@@ -6744,6 +6744,36 @@ class Session(object):  # pylint: disable=too-many-public-methods
         _check_job_status(job_name, desc, "Status")
         return desc
 
+    def create_presigned_mlflow_tracking_server_url(
+        self,
+        tracking_server_name: str,
+        expires_in_seconds: int = None,
+        session_expiration_duration_in_seconds: int = None,
+    ) -> Dict[str, Any]:
+        """Creates a Presigned Url to acess the Mlflow UI.
+
+        Args:
+            tracking_server_name (str): Name of the Mlflow Tracking Server.
+            expires_in_seconds (int): Expiration duration of the URL.
+            session_expiration_duration_in_seconds (int): Session duration of the URL.
+        Returns:
+            (dict): Return value from the ``CreatePresignedMlflowTrackingServerUrl`` API.
+
+        """
+
+        create_presigned_url_args = {"TrackingServerName": tracking_server_name}
+        if expires_in_seconds is not None:
+            create_presigned_url_args["ExpiresInSeconds"] = expires_in_seconds
+
+        if session_expiration_duration_in_seconds is not None:
+            create_presigned_url_args["SessionExpirationDurationInSeconds"] = (
+                session_expiration_duration_in_seconds
+            )
+
+        return self.sagemaker_client.create_presigned_mlflow_tracking_server_url(
+            **create_presigned_url_args
+        )
+
 
 def get_model_package_args(
     content_types=None,
