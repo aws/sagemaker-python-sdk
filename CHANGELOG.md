@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.224.0 (2024-06-19)
+
+### Features
+
+ * JumpStartModel attach
+
+### Bug Fixes and Other Changes
+
+ * feat(sagemaker-mlflow): New features for SageMaker MLflow
+ * Upgrading to PT 2.3 for release
+ * chore: use ml.g5.2xlarge for integ test
+ * Enable telemetry logging for Remote function
+ * Fix Dependabot Issues - MLFlow Version
+
 ## v2.223.0 (2024-06-13)
 
 ### Features
