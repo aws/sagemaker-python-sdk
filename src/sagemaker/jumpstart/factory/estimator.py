@@ -332,7 +332,6 @@ def get_deploy_kwargs(
         model_from_estimator=True,
         model_version=model_version,
         hub_arn=hub_arn,
-        instance_type=model_deploy_kwargs.instance_type if training_instance_type is None else None,
         instance_type=(
             model_deploy_kwargs.instance_type
             if training_instance_type is None
