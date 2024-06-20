@@ -355,6 +355,7 @@ class JumpStartModel(Model):
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
         self.sagemaker_session = model_init_kwargs.sagemaker_session
+        self.role = role
         self.config_name = model_init_kwargs.config_name
         self.additional_model_data_sources = model_init_kwargs.additional_model_data_sources
 
@@ -446,6 +447,8 @@ class JumpStartModel(Model):
             model_version=self.model_version,
             instance_type=instance_type,
             config_name=config_name,
+            sagemaker_session=self.sagemaker_session,
+            role=self.role,
         )
 
     @property
