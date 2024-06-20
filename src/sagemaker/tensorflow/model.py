@@ -389,6 +389,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None
     ):
         """Prepare the container definition.
 
@@ -465,6 +466,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             model_data,
             env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn
         )
 
     def _get_container_env(self):

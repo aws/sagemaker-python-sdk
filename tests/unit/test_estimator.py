@@ -264,6 +264,7 @@ class DummyFrameworkModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None
     ):
         return MODEL_CONTAINER_DEF
 
@@ -5243,6 +5244,7 @@ def test_all_framework_estimators_add_jumpstart_uri_tags(
             entry_point="inference.py",
             role=ROLE,
             tags=[{"Key": "blah", "Value": "yoyoma"}],
+            model_reference_arn=None
         )
 
         assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [

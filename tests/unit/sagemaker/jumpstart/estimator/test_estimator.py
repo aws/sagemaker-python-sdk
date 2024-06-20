@@ -1113,6 +1113,7 @@ class EstimatorTest(unittest.TestCase):
             "region",
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
+            "hub_name"
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -1139,6 +1140,7 @@ class EstimatorTest(unittest.TestCase):
             "self",
             "name",
             "resources",
+            "model_reference_arn"
         }
         assert parent_class_deploy_args - js_class_deploy_args == deploy_args_to_skip
 
@@ -1213,6 +1215,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=estimator.sagemaker_session,
+            hub_arn=None
         )
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor_with_presets)
@@ -1370,6 +1373,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=sagemaker_session,
+            hub_arn=None
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
@@ -1421,6 +1425,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=sagemaker_session,
+            hub_arn=None
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -1685,6 +1690,7 @@ class EstimatorTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.TRAINING,
                     sagemaker_session=None,
+                    hub_arn=None
                 ),
                 mock.call(
                     model_id="js-trainable-model",
@@ -1692,6 +1698,7 @@ class EstimatorTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.TRAINING,
                     sagemaker_session=None,
+                    hub_arn=None
                 ),
             ]
         )
@@ -1713,6 +1720,7 @@ class EstimatorTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.TRAINING,
                     sagemaker_session=None,
+                    hub_arn=None
                 ),
                 mock.call(
                     model_id="js-trainable-model",
@@ -1720,6 +1728,7 @@ class EstimatorTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.TRAINING,
                     sagemaker_session=None,
+                    hub_arn=None
                 ),
             ]
         )

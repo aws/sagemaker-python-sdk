@@ -274,6 +274,7 @@ class ChainerModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None
     ):
         """Return a container definition with framework configuration set in model environment.
 
@@ -325,6 +326,7 @@ class ChainerModel(FrameworkModel):
             self.model_data,
             deploy_env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn
         )
 
     def serving_image_uri(

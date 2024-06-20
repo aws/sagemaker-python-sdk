@@ -167,6 +167,7 @@ def validate_hyperparameters(
     model_version: str,
     hyperparameters: Dict[str, Any],
     validation_mode: HyperparameterValidationMode = HyperparameterValidationMode.VALIDATE_PROVIDED,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     sagemaker_session: Optional[session.Session] = None,
     tolerate_vulnerable_model: bool = False,

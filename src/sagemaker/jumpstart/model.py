@@ -24,7 +24,7 @@ from sagemaker.base_serializers import BaseSerializer
 from sagemaker.enums import EndpointType
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
-from sagemaker.jumpstart.curated_hub.utils import generate_hub_arn_for_init_kwargs
+from sagemaker.jumpstart.hub.utils import generate_hub_arn_for_init_kwargs
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import (
     INVALID_MODEL_ID_ERROR_MSG,
@@ -37,7 +37,7 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
-from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.types import HubContentType, JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
@@ -284,6 +284,12 @@ class JumpStartModel(Model):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
+        hub_arn = None
+        if hub_name:
+            hub_arn = generate_hub_arn_for_init_kwargs(
+                hub_name=hub_name, region=region, session=sagemaker_session
+            )
+        
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
                 model_id=model_id,
@@ -291,21 +297,16 @@ class JumpStartModel(Model):
                 region=region or getattr(sagemaker_session, "boto_region_name", None),
                 script=JumpStartScriptScope.INFERENCE,
                 sagemaker_session=sagemaker_session,
+                hub_arn=hub_arn
             )
-
+        
         self.model_type = _validate_model_id_and_type()
         if not self.model_type:
             JumpStartModelsAccessor.reset_cache()
             self.model_type = _validate_model_id_and_type()
-            if not self.model_type:
+            if not self.model_type and not hub_arn:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
             
-        hub_arn = None
-        if hub_name:
-            hub_arn = generate_hub_arn_for_init_kwargs(
-                hub_name=hub_name, region=region, session=sagemaker_session
-            )
-
         self._model_data_is_set = model_data is not None
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
@@ -349,11 +350,14 @@ class JumpStartModel(Model):
         self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
         self.sagemaker_session = model_init_kwargs.sagemaker_session
+        self.model_reference_arn = model_init_kwargs.model_reference_arn
 
         if self.model_type == JumpStartModelType.PROPRIETARY:
             self.log_subscription_warning()
 
-        super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
+        model_init_kwargs_dict = model_init_kwargs.to_kwargs_dict()
+
+        super(JumpStartModel, self).__init__(**model_init_kwargs_dict)
 
         self.model_package_arn = model_init_kwargs.model_package_arn
 
@@ -363,6 +367,7 @@ class JumpStartModel(Model):
             region=self.region,
             model_id=self.model_id,
             version=self.model_version,
+            hub_arn=self.hub_arn,
             model_type=self.model_type,
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self.sagemaker_session,
@@ -384,6 +389,7 @@ class JumpStartModel(Model):
         return payloads.retrieve_all_examples(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
@@ -610,6 +616,7 @@ class JumpStartModel(Model):
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
+            hub_arn=self.hub_arn,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             initial_instance_count=initial_instance_count,
@@ -631,6 +638,7 @@ class JumpStartModel(Model):
             explainer_config=explainer_config,
             sagemaker_session=self.sagemaker_session,
             accept_eula=accept_eula,
+            model_reference_arn=self.model_reference_arn,
             endpoint_logging=endpoint_logging,
             resources=resources,
             managed_instance_scaling=managed_instance_scaling,
@@ -655,6 +663,7 @@ class JumpStartModel(Model):
                 model_type=self.model_type,
                 scope=JumpStartScriptScope.INFERENCE,
                 sagemaker_session=self.sagemaker_session,
+                hub_arn=self.hub_arn,
             ).model_subscription_link
             get_proprietary_model_subscription_error(e, subscription_link)
             raise

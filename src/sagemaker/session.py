@@ -6886,14 +6886,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value for ``CreateHubContentReference`` API
         """
 
-        request = {"HubName": hub_name, "SourceHubContentArn": source_hub_content_arn}
+        request = {"HubName": hub_name, "SageMakerPublicHubContentArn": source_hub_content_arn}
 
         if hub_content_name:
             request["HubContentName"] = hub_content_name
         if min_version:
             request["MinVersion"] = min_version
 
-        return self.sagemaker_client.createHubContentReference(**request)
+        return self.sagemaker_client.create_hub_content_reference(**request)
     
     def delete_hub_content_reference(
         self, hub_name: str, hub_content_type: str, hub_content_name: str
@@ -6911,7 +6911,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "HubContentName": hub_content_name,
         }
 
-        return self.sagemaker_client.deleteHubContentReference(**request)
+        return self.sagemaker_client.delete_hub_content_reference(**request)
 
     def describe_hub_content(
         self,
@@ -6940,6 +6940,53 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["HubContentVersion"] = hub_content_version
 
         return self.sagemaker_client.describe_hub_content(**request)
+
+    def list_hub_content_versions(
+        self,
+        hub_name,
+        hub_content_type: str,
+        hub_content_name: str,
+        min_version: str = None,
+        max_schema_version: str = None,
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None,
+    ) -> Dict[str, Any]:
+        
+        """List all versions of a HubContent in a SageMaker Hub
+
+        Args:
+            hub_content_name (str): The name of the HubContent to describe.
+            hub_content_type (str): The type of HubContent in the Hub.
+            hub_name (str): The name of the Hub that contains the HubContent to describe.
+
+        Returns:
+            (dict): Return value for ``DescribeHubContent`` API
+        """
+
+        request = {"HubName": hub_name, "HubContentName": hub_content_name, "HubContentType": hub_content_type}
+
+        if min_version:
+            request["MinVersion"] = min_version
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if next_token:
+            request["NextToken"] = next_token
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hub_content_versions(**request)
 
 def get_model_package_args(
     content_types=None,
@@ -7372,6 +7419,7 @@ def container_def(
     container_mode=None,
     image_config=None,
     accept_eula=None,
+    model_reference_arn=None
 ):
     """Create a definition for executing a container as part of a SageMaker model.
 
@@ -7424,6 +7472,11 @@ def container_def(
             c_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"] = {
                 "AcceptEula": accept_eula
             }
+        if model_reference_arn:
+            c_def["ModelDataSource"]["S3DataSource"]["HubAccessConfig"] = {
+                "HubContentArn": model_reference_arn
+            }
+        
     elif model_data_url is not None:
         c_def["ModelDataUrl"] = model_data_url
 

@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains utilities related to SageMaker JumpStart CuratedHub."""
+"""This module contains utilities related to SageMaker JumpStart Hub."""
 from __future__ import absolute_import
 import re
 from typing import Optional
@@ -20,6 +20,7 @@ from sagemaker.session import Session
 from sagemaker.utils import aws_partition
 from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
 from sagemaker.jumpstart import constants
+from packaging.specifiers import SpecifierSet, InvalidSpecifier
 
 def get_info_from_hub_resource_arn(
     arn: str,
@@ -107,6 +108,8 @@ def generate_hub_arn_for_init_kwargs(
 
     hub_arn = None
     if hub_name:
+        if hub_name == constants.JUMPSTART_MODEL_HUB_NAME:
+            return None
         match = re.match(constants.HUB_ARN_REGEX, hub_name)
         if match:
             hub_arn = hub_name
@@ -171,3 +174,37 @@ def create_hub_bucket_if_it_does_not_exist(
 def is_gated_bucket(bucket_name: str) -> bool:
     """Returns true if the bucket name is the JumpStart gated bucket."""
     return bucket_name in constants.JUMPSTART_GATED_BUCKET_NAME_SET
+
+def get_hub_model_version(
+        hub_name: str,
+        hub_model_name: str,
+        hub_model_type: str, 
+        hub_model_version: Optional[str] = None,
+        sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    ) -> str:
+    """Returns available Jumpstart hub model version"""
+
+    try:
+        hub_content_summaries = sagemaker_session.list_hub_content_versions(
+        hub_name=hub_name,
+        hub_content_name=hub_model_name,
+        hub_content_type=hub_model_type
+        ).get('HubContentSummaries')
+    except Exception as ex:
+        raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
+        
+    available_model_versions = [model.get('HubContentVersion') for model in hub_content_summaries]
+
+    if hub_model_version == "*" or hub_model_version is None:
+        return str(max(available_model_versions))
+        
+    try:
+        spec = SpecifierSet(f"=={hub_model_version}")
+    except InvalidSpecifier:
+        raise KeyError(f"Bad semantic version: {hub_model_version}")
+    available_versions_filtered = list(spec.filter(available_model_versions))
+    if not available_versions_filtered:
+        raise KeyError(f"Model version not available in the Hub")
+    hub_model_version = str(max(available_versions_filtered))
+
+    return hub_model_version

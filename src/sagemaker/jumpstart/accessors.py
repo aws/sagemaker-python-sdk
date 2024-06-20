@@ -22,6 +22,8 @@ from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.hub.utils import construct_hub_model_arn_from_inputs, construct_hub_model_reference_arn_from_inputs
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.session import Session
+from sagemaker.jumpstart import constants
 
 
 class SageMakerSettings(object):
@@ -257,6 +259,7 @@ class JumpStartModelsAccessor(object):
         hub_arn: Optional[str] = None,
         s3_client: Optional[boto3.client] = None,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ) -> JumpStartModelSpecs:
         """Returns model specs from JumpStart models cache.
 
@@ -272,6 +275,9 @@ class JumpStartModelsAccessor(object):
         if s3_client is not None:
             additional_kwargs.update({"s3_client": s3_client})
 
+        if hub_arn:
+            additional_kwargs.update({"sagemaker_session": sagemaker_session})
+
         cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}
         )
@@ -282,12 +288,16 @@ class JumpStartModelsAccessor(object):
                 hub_model_arn = construct_hub_model_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
-                return JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn=hub_model_arn)
+                model_specs = JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn=hub_model_arn)
+                model_specs.set_hub_content_type(HubContentType.MODEL)
+                return model_specs
             except:
                 hub_model_arn = construct_hub_model_reference_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
-                return JumpStartModelsAccessor._cache.get_hub_model_reference(hub_model_arn=hub_model_arn)
+                model_specs = JumpStartModelsAccessor._cache.get_hub_model_reference(hub_model_reference_arn=hub_model_arn)
+                model_specs.set_hub_content_type(HubContentType.MODEL_REFERENCE)
+                return model_specs
         
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, version_str=version, model_type=model_type

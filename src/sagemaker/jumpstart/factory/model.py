@@ -34,17 +34,19 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
 )
+from sagemaker.jumpstart.hub.utils import construct_hub_model_reference_arn_from_inputs
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.types import (
+    HubContentType,
     JumpStartModelDeployKwargs,
     JumpStartModelInitKwargs,
     JumpStartModelRegisterKwargs,
 )
 from sagemaker.jumpstart.utils import (
-    add_hub_arn_tags,
+    add_hub_content_arn_tags,
     add_jumpstart_model_id_version_tags,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
@@ -170,6 +172,20 @@ def _add_model_version_to_kwargs(
 
     kwargs.model_version = kwargs.model_version or "*"
 
+    if kwargs.hub_arn:
+        hub_content_version = verify_model_region_and_return_specs(
+            model_id=kwargs.model_id,
+            version=kwargs.model_version,
+            hub_arn=kwargs.hub_arn,
+            scope=JumpStartScriptScope.INFERENCE,
+            region=kwargs.region,
+             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+            sagemaker_session=kwargs.sagemaker_session,
+            model_type=kwargs.model_type,
+        ).version
+        kwargs.model_version = hub_content_version
+
     return kwargs
 
 
@@ -236,6 +252,31 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
         sagemaker_session=kwargs.sagemaker_session,
     )
 
+    return kwargs
+
+def _add_model_reference_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+    """Sets Model Reference ARN if the hub content type is Model Reference, returns full kwargs."""
+    hub_content_type = verify_model_region_and_return_specs(
+        model_id=kwargs.model_id,
+        version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
+        scope=JumpStartScriptScope.INFERENCE,
+        region=kwargs.region,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        model_type=kwargs.model_type,
+    ).hub_content_type
+    kwargs.hub_content_type = hub_content_type if kwargs.hub_arn else None
+
+    if hub_content_type == HubContentType.MODEL_REFERENCE:
+        kwargs.model_reference_arn = construct_hub_model_reference_arn_from_inputs(
+            hub_arn=kwargs.hub_arn, 
+            model_name=kwargs.model_id, 
+            version=kwargs.model_version
+        )
+    else:
+        kwargs.model_reference_arn = None
     return kwargs
 
 
@@ -502,7 +543,7 @@ def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
         )
 
     if kwargs.hub_arn:
-        kwargs.tags = add_hub_arn_tags(kwargs.tags, kwargs.hub_arn)
+        kwargs.tags = add_hub_content_arn_tags(kwargs.tags, kwargs.hub_arn)
 
     return kwargs
 
@@ -575,6 +616,7 @@ def get_deploy_kwargs(
     tolerate_deprecated_model: Optional[bool] = None,
     sagemaker_session: Optional[Session] = None,
     accept_eula: Optional[bool] = None,
+    model_reference_arn: Optional[str] = None,
     endpoint_logging: Optional[bool] = None,
     resources: Optional[ResourceRequirements] = None,
     managed_instance_scaling: Optional[str] = None,
@@ -609,6 +651,7 @@ def get_deploy_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
         accept_eula=accept_eula,
+        model_reference_arn=model_reference_arn,
         endpoint_logging=endpoint_logging,
         resources=resources,
     )
@@ -786,13 +829,12 @@ def get_init_kwargs(
         resources=resources,
     )
 
-    model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
-
     model_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_sagemaker_session_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
 
+    model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_model_name_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_instance_type_to_kwargs(
@@ -800,6 +842,12 @@ def get_init_kwargs(
     )
 
     model_init_kwargs = _add_image_uri_to_kwargs(kwargs=model_init_kwargs)
+
+    if hub_arn:
+        model_init_kwargs = _add_model_reference_arn_to_kwargs(kwargs=model_init_kwargs)
+    else:
+        model_init_kwargs.model_reference_arn = None
+        model_init_kwargs.hub_content_type = None
 
     # we use the model artifact from the training job output
     if not model_from_estimator:

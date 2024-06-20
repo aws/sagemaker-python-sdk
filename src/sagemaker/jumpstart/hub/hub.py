@@ -13,10 +13,11 @@
 """This module provides the JumpStart Curated Hub class."""
 from __future__ import absolute_import
 from datetime import datetime
+import logging
 from typing import Optional, Dict, List, Any, Tuple, Union, Set
 from botocore import exceptions
 
-from sagemaker.jumpstart.hub.constants import JUMPSTART_MODEL_HUB_NAME
+from sagemaker.jumpstart.constants import JUMPSTART_MODEL_HUB_NAME
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.session import Session
 
@@ -29,11 +30,12 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, BooleanValues
 from sagemaker.jumpstart.hub.utils import (
+    get_hub_model_version,
+    get_info_from_hub_resource_arn,
     create_hub_bucket_if_it_does_not_exist,
     generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
     construct_hub_arn_from_name,
-    construct_hub_model_arn_from_inputs
 )
 
 from sagemaker.jumpstart.notebook_utils import (
@@ -44,6 +46,7 @@ from sagemaker.jumpstart.hub.types import (
     S3ObjectLocation,
 )
 from sagemaker.jumpstart.hub.interfaces import (
+    DescribeHubResponse,
     DescribeHubContentResponse,
 )
 from sagemaker.jumpstart.hub.constants import (
@@ -55,7 +58,10 @@ from sagemaker.jumpstart import utils
 class Hub:
     """Class for creating and managing a curated JumpStart hub"""
 
-    _list_hubs_cache: Dict[str, Any] = None
+    # Setting LOGGER for backward compatibility, in case users import it...
+    logger = LOGGER = logging.getLogger("sagemaker")
+
+    _list_hubs_cache: List[Dict[str, Any]] = []
 
     def __init__(
         self,
@@ -137,14 +143,29 @@ class Hub:
             tags=tags,
         )
 
-    def describe(self) -> Dict[str, Any]:
+    def describe(self, hub_name: Optional[str] = None) -> DescribeHubResponse:
         """Returns descriptive information about the Hub"""
-
-        hub_description = self._sagemaker_session.describe_hub(
-            hub_name=self.hub_name
+        
+        hub_description: DescribeHubResponse = self._sagemaker_session.describe_hub(
+            hub_name=self.hub_name if not hub_name else hub_name
         )
-
+        
         return hub_description
+    
+    def _list_and_paginate_models(self, **kwargs) -> List[Dict[str, Any]] :
+        next_token: Optional[str] = None
+        first_iteration: bool = True
+        hub_model_summaries: List[Dict[str, Any]] = []
+
+        while first_iteration or next_token:
+            first_iteration = False
+            list_hub_content_response = self._sagemaker_session.list_hub_contents(**kwargs)
+            hub_model_summaries.extend(
+                list_hub_content_response.get('HubContentSummaries', [])
+            )
+            next_token = list_hub_content_response.get('NextToken')
+
+        return hub_model_summaries
     
     def list_models(self, clear_cache: bool = True, **kwargs) -> List[Dict[str, Any]]:
         """Lists the models and model references in this Curated Hub.
@@ -156,13 +177,22 @@ class Hub:
         if clear_cache:
             self._list_hubs_cache = None
         if self._list_hubs_cache is None:
-            hub_content_summaries = self._sagemaker_session.list_hub_contents(
-                hub_name=self.hub_name, hub_content_type=HubContentType.MODEL_REFERENCE.value, **kwargs
+
+            hub_model_reference_summeries = self._list_and_paginate_models(
+                **{
+                    "hub_name":self.hub_name,
+                    "hub_content_type":HubContentType.MODEL_REFERENCE.value
+                } | kwargs
             )
-            hub_content_summaries.update(self._sagemaker_session.list_hub_contents(
-                hub_name=self.hub_name, hub_content_type=HubContentType.MODEL.value, **kwargs
-            ))
-            self._list_hubs_cache = hub_content_summaries
+
+            hub_model_summeries = self._list_and_paginate_models(
+                **{
+                    "hub_name":self.hub_name,
+                    "hub_content_type":HubContentType.MODEL.value
+                } | kwargs
+            )
+
+            self._list_hubs_cache = hub_model_reference_summeries+hub_model_summeries
         return self._list_hubs_cache
     
     def list_jumpstart_service_hub_models(self, filter: Union[Operator, str] = Constant(BooleanValues.TRUE)) -> Dict[str, str]:
@@ -183,15 +213,13 @@ class Hub:
             self.region, 
             self._sagemaker_session
             )
-        
-        models = list_jumpstart_models(filter)
+                
+        models = list_jumpstart_models(filter=filter, list_versions=True)
         for model in models:
-            if len(model[0])<=63:
-                jumpstart_public_models[model[0]] = construct_hub_model_arn_from_inputs(
-                    jumpstart_public_hub_arn,
-                    model[0], 
-                    model[1]
-                )
+            if len(model)<=63:
+                info = get_info_from_hub_resource_arn(jumpstart_public_hub_arn)
+                hub_model_arn = f"arn:{info.partition}:sagemaker:{info.region}:aws:hub-content/{info.hub_name}/{HubContentType.MODEL}/{model[0]}"
+                jumpstart_public_models[model[0]] = hub_model_arn
 
         return jumpstart_public_models
 
@@ -200,7 +228,7 @@ class Hub:
         return self._sagemaker_session.delete_hub(self.hub_name)
 
     def create_model_reference(
-        self, model_arn: str, model_name: Optional[str], min_version: Optional[str] = None
+        self, model_arn: str, model_name: Optional[str] = None, min_version: Optional[str] = None
     ):
         """Adds model reference to this Curated Hub"""
         return self._sagemaker_session.create_hub_content_reference(
@@ -219,31 +247,40 @@ class Hub:
         )
     
     def describe_model(
-        self, model_name: str, model_version: Optional[str] = None
+        self, model_name: str, hub_name: Optional[str] = None, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
-        """Returns descriptive information about the Hub Model"""
-        if model_version == LATEST_VERSION_WILDCARD or model_version is None:
-            model_version = self._get_latest_model_version(model_name)
-        hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-            hub_name=self.hub_name,
+        
+        try:
+            model_version = get_hub_model_version(
+                hub_model_name=model_name,
+                hub_model_type=HubContentType.MODEL.value,
+                hub_name=self.hub_name,
+                sagemaker_session=self._sagemaker_session,
+                hub_model_version=model_version
+            )
+
+            hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+            hub_name=self.hub_name if not hub_name else hub_name,
             hub_content_name=model_name,
             hub_content_version=model_version,
             hub_content_type=HubContentType.MODEL.value,
-        )
+            )
+        
+        except Exception as ex:
+            logging.info("Recieved expection while calling APIs for ContentType Model: "+str(ex))
+            model_version = get_hub_model_version(
+                hub_model_name=model_name,
+                hub_model_type=HubContentType.MODEL_REFERENCE.value,
+                hub_name=self.hub_name,
+                sagemaker_session=self._sagemaker_session,
+                hub_model_version=model_version
+            )
 
-        return DescribeHubContentResponse(hub_content_description)
-    
-    def describe_model_reference(
-        self, model_name: str, model_version: Optional[str] = None
-    ) -> DescribeHubContentResponse:
-        """Returns descriptive information about the Hub Model"""
-        if model_version == LATEST_VERSION_WILDCARD or model_version is None:
-            model_version = self._get_latest_model_version(model_name)
-        hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+            hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
             hub_name=self.hub_name,
             hub_content_name=model_name,
             hub_content_version=model_version,
             hub_content_type=HubContentType.MODEL_REFERENCE.value,
-        )
-
+            )
+        
         return DescribeHubContentResponse(hub_content_description)
