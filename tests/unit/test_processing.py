@@ -136,23 +136,16 @@ def uploaded_code(
 
 
 @pytest.fixture(autouse=True)
-def mock_process_studio_metadata_file(tmp_path):
-    studio_file = tmp_path / "resource-metadata.json"
-    studio_file.write_text(json.dumps({"AppType": "TestAppType"}))
+def mock_process_studio_metadata_file(request, tmp_path):
+    if "no_mock_studio_metadata" in request.keywords:
+        yield process_studio_metadata_file
+    else:
+        studio_file = tmp_path / "resource-metadata.json"
+        studio_file.write_text(json.dumps({"AppType": "TestAppType"}))
 
-    with patch("os.path.exists", return_value=True):
-        with patch("sagemaker.user_agent.open", mock_open(read_data=studio_file.read_text())):
-            yield process_studio_metadata_file
-
-
-@pytest.fixture()
-def base_config_with_schema():
-    return {"SchemaVersion": "1.0"}
-
-
-@pytest.fixture()
-def base_local_config():
-    return {"region_name": "us-west-2"}
+        with patch("os.path.exists", return_value=True):
+            with patch("sagemaker.user_agent.open", mock_open(read_data=studio_file.read_text())):
+                yield process_studio_metadata_file
 
 
 @patch("sagemaker.utils._botocore_resolver")
@@ -230,28 +223,19 @@ def test_sklearn_with_all_parameters(
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
-@patch("sagemaker.config.config._load_config_from_file")
-@patch("sagemaker.config.config.load_sagemaker_config")
-def test_local_mode_disables_local_code_by_default(
-    mock_load_config, mock_load_config_from_file, base_config_with_schema, base_local_config
-):
-    local_config = base_config_with_schema
-    local_config["local"] = base_local_config
-    mock_load_config.return_value = local_config
-    mock_load_config_from_file.return_value = local_config
+@pytest.mark.no_mock_studio_metadata
+def test_local_mode_disables_local_code_by_default():
+    processor = Processor(
+        image_uri="",
+        role=ROLE,
+        instance_count=1,
+        instance_type="local",
+    )
 
-    with patch("sagemaker.config.config._load_config_from_file.open", mock_open(read_data="")):
-        processor = Processor(
-            image_uri="",
-            role=ROLE,
-            instance_count=1,
-            instance_type="local",
-        )
-
-        # Most tests use a fixture for sagemaker_session for consistent behaviour, so this unit test
-        # checks that the default initialization disables unsupported 'local_code' mode:
-        assert processor.sagemaker_session._disable_local_code
-        assert isinstance(processor.sagemaker_session, LocalSession)
+    # Most tests use a fixture for sagemaker_session for consistent behaviour, so this unit test
+    # checks that the default initialization disables unsupported 'local_code' mode:
+    assert processor.sagemaker_session._disable_local_code
+    assert isinstance(processor.sagemaker_session, LocalSession)
 
 
 @patch("sagemaker.utils._botocore_resolver")
