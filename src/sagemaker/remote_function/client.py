@@ -40,6 +40,8 @@ from sagemaker.remote_function import logging_config
 from sagemaker.utils import name_from_base, base_from_name
 from sagemaker.remote_function.spark_config import SparkConfig
 from sagemaker.remote_function.custom_file_filter import CustomFileFilter
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 _API_CALL_LIMIT = {
     "SubmittingIntervalInSecs": 1,
@@ -57,6 +59,7 @@ _FINISHED = "FINISHED"
 logger = logging_config.get_logger()
 
 
+@_telemetry_emitter(feature=Feature.REMOTE_FUNCTION, func_name="remote_function.remote")
 def remote(
     _func=None,
     *,

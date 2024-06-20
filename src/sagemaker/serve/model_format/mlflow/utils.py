@@ -227,28 +227,6 @@ def _get_python_version_from_parsed_mlflow_model_file(
     raise ValueError(f"{MLFLOW_PYFUNC} cannot be found in MLmodel file.")
 
 
-def _mlflow_input_is_local_path(model_path: str) -> bool:
-    """Checks if the given model_path is a local filesystem path.
-
-    Args:
-    - model_path (str): The model path to check.
-
-    Returns:
-    - bool: True if model_path is a local path, False otherwise.
-    """
-    if model_path.startswith("s3://"):
-        return False
-
-    if "/runs/" in model_path or model_path.startswith("runs:"):
-        return False
-
-    # Check if it's not a local file path
-    if not os.path.exists(model_path):
-        return False
-
-    return True
-
-
 def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> None:
     """Downloads all artifacts from a specified S3 path to a local destination path.
 

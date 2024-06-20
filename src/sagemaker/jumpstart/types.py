@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
@@ -1595,6 +1596,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "deserializer",
         "accelerator_type",
         "endpoint_name",
+        "inference_component_name",
         "tags",
         "kms_key",
         "wait",
@@ -1640,6 +1642,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         deserializer: Optional[Any] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
+        inference_component_name: Optional[str] = None,
         tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = None,
@@ -1673,6 +1676,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.deserializer = deserializer
         self.accelerator_type = accelerator_type
         self.endpoint_name = endpoint_name
+        self.inference_component_name = inference_component_name
         self.tags = format_tags(tags)
         self.kms_key = kms_key
         self.wait = wait
@@ -2114,6 +2118,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "data_input_configuration",
         "skip_model_validation",
         "source_uri",
+        "model_card",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2155,6 +2160,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
+        model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
     ) -> None:
         """Instantiates JumpStartModelRegisterKwargs object."""
 
@@ -2187,3 +2193,4 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+        self.model_card = model_card

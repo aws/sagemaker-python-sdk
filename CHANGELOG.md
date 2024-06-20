@@ -1,5 +1,61 @@
 # Changelog
 
+## v2.224.0 (2024-06-19)
+
+### Features
+
+ * JumpStartModel attach
+
+### Bug Fixes and Other Changes
+
+ * feat(sagemaker-mlflow): New features for SageMaker MLflow
+ * Upgrading to PT 2.3 for release
+ * chore: use ml.g5.2xlarge for integ test
+ * Enable telemetry logging for Remote function
+ * Fix Dependabot Issues - MLFlow Version
+
+## v2.223.0 (2024-06-13)
+
+### Features
+
+ * add 'ModelCard' property to Register step
+
+### Bug Fixes and Other Changes
+
+ * Fix Sniping bug fix
+ * Implement custom telemetry logging in SDK
+ * Fix ci unit-tests
+ * update image_uri_configs  06-12-2024 07:17:03 PST
+
+## v2.222.1 (2024-06-12)
+
+### Bug Fixes and Other Changes
+
+ * First changes
+ * estimator.deploy not respecting instance type
+
+## v2.222.0 (2024-06-07)
+
+### Features
+
+ * jumpstart telemetry
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  06-06-2024 07:17:31 PST
+ * bump requests from 2.31.0 to 2.32.2 in /requirements/extras
+ * chore: add HF LLM neuronx 0.0.23 image
+ * Updates for DJL 0.28.0 release
+ * chore(deps): bump mlflow from 2.11.1 to 2.12.1 in /tests/data/serve_resources/mlflow/tensorflow
+ * chore(deps): bump mlflow from 2.11.1 to 2.12.1 in /tests/data/serve_resources/mlflow/xgboost
+ * chore(deps): bump mlflow from 2.10.2 to 2.12.1 in /tests/data/serve_resources/mlflow/pytorch
+ * chore(deps): bump apache-airflow from 2.9.0 to 2.9.1 in /requirements/extras
+ * chore(deps): bump requests from 2.31.0 to 2.32.2 in /tests/data/serve_resources/mlflow/pytorch
+ * Fix ci unit-tests
+ * Making project name in workflow files dynamic
+ * update image_uri_configs  05-29-2024 07:17:35 PST
+ * Update: SM Endpoint Routing Strategy Support.
+
 ## v2.221.1 (2024-05-22)
 
 ### Bug Fixes and Other Changes

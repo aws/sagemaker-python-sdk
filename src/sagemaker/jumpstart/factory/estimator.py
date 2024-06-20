@@ -44,7 +44,6 @@ from sagemaker.jumpstart.artifacts import (
     _model_supports_training_model_uri,
 )
 from sagemaker.jumpstart.constants import (
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
@@ -63,6 +62,7 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.utils import (
     add_jumpstart_model_id_version_tags,
     get_eula_message,
+    get_default_jumpstart_session_with_user_agent_suffix,
     update_dict_if_key_not_present,
     resolve_estimator_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -258,6 +258,7 @@ def get_deploy_kwargs(
     deserializer: Optional[BaseDeserializer] = None,
     accelerator_type: Optional[str] = None,
     endpoint_name: Optional[str] = None,
+    inference_component_name: Optional[str] = None,
     tags: Optional[Tags] = None,
     kms_key: Optional[str] = None,
     wait: Optional[bool] = None,
@@ -302,6 +303,7 @@ def get_deploy_kwargs(
         deserializer=deserializer,
         accelerator_type=accelerator_type,
         endpoint_name=endpoint_name,
+        inference_component_name=inference_component_name,
         tags=format_tags(tags),
         kms_key=kms_key,
         wait=wait,
@@ -322,7 +324,12 @@ def get_deploy_kwargs(
         model_id=model_id,
         model_from_estimator=True,
         model_version=model_version,
-        instance_type=model_deploy_kwargs.instance_type if training_instance_type is None else None,
+        instance_type=(
+            model_deploy_kwargs.instance_type
+            if training_instance_type is None
+            or instance_type is not None  # always use supplied inference instance type
+            else None
+        ),
         region=region,
         image_uri=image_uri,
         source_dir=source_dir,
@@ -403,7 +410,12 @@ def _add_region_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
 
 def _add_sagemaker_session_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
-    kwargs.sagemaker_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    kwargs.sagemaker_session = (
+        kwargs.sagemaker_session
+        or get_default_jumpstart_session_with_user_agent_suffix(
+            kwargs.model_id, kwargs.model_version
+        )
+    )
     return kwargs
 
 
