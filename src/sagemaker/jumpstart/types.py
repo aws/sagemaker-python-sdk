@@ -470,7 +470,10 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         "regional_aliases",
         "aliases",
         "variants",
+        "_is_hub_content",
     ]
+
+    _non_serializable_slots = ["_is_hub_content"]
 
     def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartInstanceTypeVariants object from its json representation.
@@ -478,7 +481,10 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         Args:
             spec (Dict[str, Any]): Dictionary representation of instance type variants.
         """
-        if is_hub_content:
+
+        self._is_hub_content = is_hub_content
+
+        if self._is_hub_content:
             self.from_describe_hub_content_response(spec)
         else:
             self.from_json(spec)
@@ -734,7 +740,14 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         Returns None if a model, instance type tuple does not have instance
         specific property.
         """
-        return self._get_instance_specific_property(instance_type, "gated_model_key_env_var_value")
+
+        gated_model_key_env_var_value = (
+            "gated_model_env_var_uri"
+            if self._is_hub_content
+            else "gated_model_key_env_var_value"
+        )
+        
+        return self._get_instance_specific_property(instance_type, gated_model_key_env_var_value)
 
     def get_instance_specific_default_inference_instance_type(
         self, instance_type: str
