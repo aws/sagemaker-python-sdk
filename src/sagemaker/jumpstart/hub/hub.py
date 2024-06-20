@@ -195,7 +195,7 @@ class Hub:
             self._list_hubs_cache = hub_model_reference_summeries+hub_model_summeries
         return self._list_hubs_cache
     
-    def list_jumpstart_service_hub_models(self, filter: Union[Operator, str] = Constant(BooleanValues.TRUE)) -> Dict[str, str]:
+    def list_sagemaker_public_hub_models(self, filter: Union[Operator, str] = Constant(BooleanValues.TRUE)) -> Dict[str, str]:
         """Lists the models and model arns from AmazonSageMakerJumpStart Public Hub.
 
         Args:
