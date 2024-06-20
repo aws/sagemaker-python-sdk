@@ -2094,6 +2094,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "region",
         "model_id",
+        "model_type",
         "model_version",
         "sagemaker_session",
         "content_types",
@@ -2128,6 +2129,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "sagemaker_session",
+        "model_type",
     }
 
     def __init__(
@@ -2135,6 +2137,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         model_id: str,
         model_version: Optional[str] = None,
         region: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Any] = None,
@@ -2166,6 +2169,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.model_type = model_type
         self.region = region
         self.image_uri = image_uri
         self.sagemaker_session = sagemaker_session

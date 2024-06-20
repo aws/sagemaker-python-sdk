@@ -473,9 +473,11 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.model.Model.register")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_proprietary_model_endpoint(
         self,
+        mock_model_register: mock.Mock,
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
@@ -507,7 +509,13 @@ class ModelTest(unittest.TestCase):
             enable_network_isolation=False,
         )
 
+        model.register()
         model.deploy()
+
+        mock_model_register.assert_called_once_with(
+            content_types=["application/json"],
+            response_types=["application/json"],
+        )
 
         mock_model_deploy.assert_called_once_with(
             initial_instance_count=1,

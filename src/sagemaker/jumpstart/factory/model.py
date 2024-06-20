@@ -623,6 +623,7 @@ def get_deploy_kwargs(
 def get_register_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     region: Optional[str] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     tolerate_vulnerable_model: Optional[bool] = None,
@@ -656,6 +657,7 @@ def get_register_kwargs(
     register_kwargs = JumpStartModelRegisterKwargs(
         model_id=model_id,
         model_version=model_version,
+        model_type=model_type,
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -688,6 +690,7 @@ def get_register_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        model_type=model_type,
         region=region,
         scope=JumpStartScriptScope.INFERENCE,
         sagemaker_session=sagemaker_session,

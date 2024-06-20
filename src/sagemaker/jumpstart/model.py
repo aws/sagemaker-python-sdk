@@ -796,6 +796,7 @@ class JumpStartModel(Model):
         register_kwargs = get_register_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
+            model_type=self.model_type,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
