@@ -144,7 +144,6 @@ class DescribeHubContentResponse(HubDataHolderType):
         "hub_content_status",
         "hub_content_type",
         "hub_content_version",
-        "hub_content_reference_arn"
         "reference_min_version"
         "hub_name",
         "_region",
@@ -171,8 +170,6 @@ class DescribeHubContentResponse(HubDataHolderType):
         self.failure_reason: Optional[str] = json_obj.get("FailureReason")
         self.hub_arn: str = json_obj["HubArn"]
         self.hub_content_arn: str = json_obj["HubContentArn"]
-        self.hub_content_reference_arn: str = json.obj["HubContentReferenceArn"]
-        self.reference_min_version: str = json.obj["ReferenceMinVersion"]
         self.hub_content_dependencies = []
         if "Dependencies" in json_obj:
             self.hub_content_dependencies: Optional[List[HubContentDependency]] = [
@@ -441,7 +438,7 @@ class NotebookLocationUris(HubDataHolderType):
 class HubModelDocument(HubDataHolderType):
     """Data class for model type HubContentDocument from session.describe_hub_content()."""
 
-    SCHEMA_VERSION = "2.0.0"
+    SCHEMA_VERSION = "2.2.0"
 
     __slots__ = [
         "url",

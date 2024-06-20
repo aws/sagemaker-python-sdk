@@ -28,7 +28,7 @@ from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.curated_hub.utils import generate_hub_arn_for_init_kwargs
+from sagemaker.jumpstart.hub.utils import generate_hub_arn_for_init_kwargs
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
@@ -511,6 +511,12 @@ class JumpStartEstimator(Estimator):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
+        hub_arn = None
+        if hub_name:
+            hub_arn = generate_hub_arn_for_init_kwargs(
+                hub_name=hub_name, region=region, session=sagemaker_session
+            )
+        
         def _validate_model_id_and_get_type_hook():
             return validate_model_id_and_get_type(
                 model_id=model_id,
@@ -518,20 +524,15 @@ class JumpStartEstimator(Estimator):
                 region=region or getattr(sagemaker_session, "boto_region_name", None),
                 script=JumpStartScriptScope.TRAINING,
                 sagemaker_session=sagemaker_session,
+                hub_arn=hub_arn
             )
-
+        
         self.model_type = _validate_model_id_and_get_type_hook()
         if not self.model_type:
             JumpStartModelsAccessor.reset_cache()
             self.model_type = _validate_model_id_and_get_type_hook()
-            if not self.model_type:
+            if not self.model_type and not hub_arn:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
-
-        hub_arn = None
-        if hub_name:
-            hub_arn = generate_hub_arn_for_init_kwargs(
-                hub_name=hub_name, region=region, session=sagemaker_session
-            )
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
@@ -691,6 +692,7 @@ class JumpStartEstimator(Estimator):
         training_job_name: str,
         model_id: Optional[str] = None,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         sagemaker_session: session.Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
         model_channel_name: str = "model",
     ) -> "JumpStartEstimator":
@@ -756,6 +758,7 @@ class JumpStartEstimator(Estimator):
         model_specs = verify_model_region_and_return_specs(
             model_id=model_id,
             version=model_version,
+            hub_arn=hub_arn,
             region=sagemaker_session.boto_region_name,
             scope=JumpStartScriptScope.TRAINING,
             tolerate_deprecated_model=True,  # model is already trained, so tolerate if deprecated
@@ -1110,6 +1113,7 @@ class JumpStartEstimator(Estimator):
                 predictor=predictor,
                 model_id=self.model_id,
                 model_version=self.model_version,
+                hub_arn=self.hub_arn,
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,

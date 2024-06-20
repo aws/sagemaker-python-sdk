@@ -10,9 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module stores constants related to SageMaker JumpStart CuratedHub."""
+"""This module stores constants related to SageMaker JumpStart Hub."""
 from __future__ import absolute_import
-
-JUMPSTART_MODEL_HUB_NAME = "JumpStartServiceHub"
 
 LATEST_VERSION_WILDCARD = "*"

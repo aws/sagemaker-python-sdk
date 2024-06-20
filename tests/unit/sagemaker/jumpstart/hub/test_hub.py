@@ -13,13 +13,15 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 from copy import deepcopy
-import datetime
+from datetime import datetime
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import pytest
 from mock import Mock
+from sagemaker.session import Session
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.hub.hub import Hub
+from sagemaker.jumpstart.hub.interfaces import DescribeHubContentResponse
 from sagemaker.jumpstart.hub.types import S3ObjectLocation
 
 
@@ -29,7 +31,7 @@ HUB_NAME = "mock-hub-name"
 
 MODULE_PATH = "sagemaker.jumpstart.hub.hub.Hub"
 
-FAKE_TIME = datetime.datetime(1997, 8, 14, 00, 00, 00)
+FAKE_TIME = datetime(1997, 8, 14, 00, 00, 00)
 
 
 @pytest.fixture()
@@ -46,6 +48,13 @@ def sagemaker_session():
     }
     sagemaker_session_mock.account_id.return_value = ACCOUNT_ID
     return sagemaker_session_mock
+
+@pytest.fixture
+def mock_instance(sagemaker_session):
+    mock_instance = MagicMock()
+    mock_instance.hub_name = 'test-hub'
+    mock_instance._sagemaker_session = sagemaker_session
+    return mock_instance
 
 
 def test_instantiates(sagemaker_session):
@@ -159,35 +168,49 @@ def test_create_with_bucket_name(
     sagemaker_session.create_hub.assert_called_with(**request)
     assert response == {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
 
-@patch(f"{MODULE_PATH}._get_latest_model_version")
 @patch("sagemaker.jumpstart.hub.interfaces.DescribeHubContentResponse.from_json")
-def test_describe_model_with_none_version(
-    mock_describe_hub_content_response, mock_get_latest_model_version, sagemaker_session
-):
-    hub = Hub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
-    model_name = "mock-model-one-huggingface"
-    mock_get_latest_model_version.return_value = "1.1.1"
+def test_describe_model_success(mock_describe_hub_content_response, sagemaker_session):
     mock_describe_hub_content_response.return_value = Mock()
+    mock_list_hub_content_versions = sagemaker_session.list_hub_content_versions
+    mock_list_hub_content_versions.return_value = {
+        'HubContentSummaries': [
+            {'HubContentVersion': '1.0'},
+            {'HubContentVersion': '2.0'},
+            {'HubContentVersion': '3.0'},
+        ]
+    }
 
-    hub.describe_model(model_name, None)
-    sagemaker_session.describe_hub_content.assert_called_with(
-        hub_name=HUB_NAME,
-        hub_content_name="mock-model-one-huggingface",
-        hub_content_version="1.1.1",
-        hub_content_type="Model",
-    )
+    hub = Hub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
 
-@patch(f"{MODULE_PATH}._get_latest_model_version")
+    with patch('sagemaker.jumpstart.hub.utils.get_hub_model_version') as mock_get_hub_model_version:
+        mock_get_hub_model_version.return_value = '3.0'
+            # Act
+        hub.describe_model('test-model')
+
+        # Assert
+        mock_list_hub_content_versions.assert_called_with(
+            hub_name=HUB_NAME,
+            hub_content_name='test-model',
+            hub_content_type='Model'
+            )
+        sagemaker_session.describe_hub_content.assert_called_with(
+            hub_name=HUB_NAME,
+            hub_content_name='test-model',
+            hub_content_version='3.0',
+            hub_content_type='Model'
+        )
+
 @patch("sagemaker.jumpstart.hub.interfaces.DescribeHubContentResponse.from_json")
+@patch("sagemaker.jumpstart.hub.utils.get_hub_model_version")
 def test_describe_model_with_wildcard_version(
-    mock_describe_hub_content_response, mock_get_latest_model_version, sagemaker_session
+    mock_describe_hub_content_response, mock_get_hub_model_version, sagemaker_session
 ):
     hub = Hub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
     model_name = "mock-model-one-huggingface"
-    mock_get_latest_model_version.return_value = "1.1.1"
+    mock_get_hub_model_version.return_value = "1.1.1"
     mock_describe_hub_content_response.return_value = Mock()
 
-    hub.describe_model_reference(model_name, "*")
+    hub.describe_model(model_name, "*")
     sagemaker_session.describe_hub_content.assert_called_with(
         hub_name=HUB_NAME,
         hub_content_name="mock-model-one-huggingface",

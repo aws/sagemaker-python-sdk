@@ -11,14 +11,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module stores types related to SageMaker JumpStart CuratedHub."""
+"""This module stores types related to SageMaker JumpStart Hub."""
 from __future__ import absolute_import
-from typing import Dict, Any, Optional, List
-from enum import Enum
+from typing import Dict
 from dataclasses import dataclass
-from datetime import datetime
-
-from sagemaker.jumpstart.types import JumpStartDataHolderType
 
 @dataclass
 class S3ObjectLocation:

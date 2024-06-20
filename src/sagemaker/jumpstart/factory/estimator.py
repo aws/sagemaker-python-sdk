@@ -60,7 +60,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelInitKwargs,
 )
 from sagemaker.jumpstart.utils import (
-    add_hub_arn_tags,
+    add_hub_content_arn_tags,
     add_jumpstart_model_id_version_tags,
     get_eula_message,
     get_default_jumpstart_session_with_user_agent_suffix,
@@ -434,6 +434,20 @@ def _add_model_version_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
 
     kwargs.model_version = kwargs.model_version or "*"
 
+    if kwargs.hub_arn:
+        hub_content_version = verify_model_region_and_return_specs(
+            model_id=kwargs.model_id,
+            version=kwargs.model_version,
+            hub_arn=kwargs.hub_arn,
+            scope=JumpStartScriptScope.TRAINING,
+            region=kwargs.region,
+             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+            sagemaker_session=kwargs.sagemaker_session,
+            model_type=kwargs.model_type,
+        ).version
+        kwargs.model_version = hub_content_version
+
     return kwargs
 
 
@@ -498,7 +512,7 @@ def _add_tags_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstima
         )
 
     if kwargs.hub_arn:
-        kwargs.tags = add_hub_arn_tags(kwargs.tags, kwargs.hub_arn)
+        kwargs.tags = add_hub_content_arn_tags(kwargs.tags, kwargs.hub_arn)
 
     return kwargs
 

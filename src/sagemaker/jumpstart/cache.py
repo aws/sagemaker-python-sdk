@@ -22,6 +22,7 @@ import botocore
 from packaging.version import Version
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
@@ -48,7 +49,6 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartVersionedModelId,
-    HubType,
     HubContentType
 )
 from sagemaker.jumpstart.hub import utils as hub_utils
@@ -56,9 +56,13 @@ from sagemaker.jumpstart.hub.interfaces import (
     DescribeHubResponse,
     DescribeHubContentResponse,
 )
+from sagemaker.jumpstart.hub.parsers import (
+    make_model_specs_from_describe_hub_content_response,
+)
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart import utils
 from sagemaker.utilities.cache import LRUCache
+from sagemaker.session import Session
 
 
 class JumpStartModelsCache:
@@ -84,6 +88,7 @@ class JumpStartModelsCache:
         s3_bucket_name: Optional[str] = None,
         s3_client_config: Optional[botocore.config.Config] = None,
         s3_client: Optional[boto3.client] = None,
+        sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ) -> None:
         """Initialize a ``JumpStartModelsCache`` instance.
 
@@ -105,6 +110,8 @@ class JumpStartModelsCache:
             s3_client_config (Optional[botocore.config.Config]): s3 client config to use for cache.
                 Default: None (no config).
             s3_client (Optional[boto3.client]): s3 client to use. Default: None.
+            sagemaker_session: sagemaker session object to use. 
+                Default: session object from default region us-west-2.
         """
 
         self._region = region or utils.get_region_fallback(
@@ -146,6 +153,7 @@ class JumpStartModelsCache:
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
         )
+        self._sagemaker_session = sagemaker_session
 
     def set_region(self, region: str) -> None:
         """Set region for cache. Clears cache after new region is set."""
@@ -453,22 +461,34 @@ class JumpStartModelsCache:
             hub_notebook_description = DescribeHubContentResponse(response)
             return JumpStartCachedContentValue(formatted_content=hub_notebook_description)
 
-        if data_type in [HubContentType.MODEL, HubContentType.MODEL_REFERENCE]:
-            hub_name, _, model_name, model_version = hub_utils.get_info_from_hub_resource_arn(
+        if data_type in {
+            HubContentType.MODEL, 
+            HubContentType.MODEL_REFERENCE,
+        }:
+            
+            hub_arn_extracted_info = hub_utils.get_info_from_hub_resource_arn(
                 id_info
             )
+        
+            model_version: str = hub_utils.get_hub_model_version(
+                hub_model_name=hub_arn_extracted_info.hub_content_name,
+                hub_model_type=data_type.value,
+                hub_name=hub_arn_extracted_info.hub_name,
+                sagemaker_session=self._sagemaker_session,
+                hub_model_version=hub_arn_extracted_info.hub_content_version
+            )
+            
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=hub_name,
-                hub_content_name=model_name,
+                hub_name=hub_arn_extracted_info.hub_name,
+                hub_content_name=hub_arn_extracted_info.hub_content_name,
                 hub_content_version=model_version,
-                hub_content_type=data_type,
+                hub_content_type=data_type.value,
             )
 
             model_specs = make_model_specs_from_describe_hub_content_response(
                 DescribeHubContentResponse(hub_model_description),
             )
 
-            utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
             return JumpStartCachedContentValue(formatted_content=model_specs)
 
         raise ValueError(self._file_type_error_msg(data_type))

@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from unittest.mock import Mock
+from unittest.mock import patch, Mock, MagicMock 
 from sagemaker.jumpstart.types import HubArnExtractedInfo
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.hub import utils
@@ -192,3 +192,65 @@ def test_create_hub_bucket_if_it_does_not_exist():
 
     mock_sagemaker_session.boto_session.resource("s3").create_bucketassert_called_once()
     assert created_hub_bucket_name == bucket_name
+
+
+@patch('sagemaker.session.Session')
+def test_get_hub_model_version_success(mock_session):
+    hub_name = 'test_hub'
+    hub_model_name = 'test_model'
+    hub_model_type = 'test_type'
+    hub_model_version = '1.0.0'
+    mock_session.list_hub_content_versions.return_value = {
+        'HubContentSummaries': [
+            {'HubContentVersion': '1.0.0'},
+            {'HubContentVersion': '1.2.3'},
+            {'HubContentVersion': '2.0.0'},
+        ]
+    }
+
+    result = utils.get_hub_model_version(
+        hub_name, hub_model_name, hub_model_type, hub_model_version, mock_session
+    )
+
+    assert result == '1.0.0'
+
+@patch('sagemaker.session.Session')
+def test_get_hub_model_version_None(mock_session):
+    hub_name = 'test_hub'
+    hub_model_name = 'test_model'
+    hub_model_type = 'test_type'
+    hub_model_version = None
+    mock_session.list_hub_content_versions.return_value = {
+        'HubContentSummaries': [
+            {'HubContentVersion': '1.0.0'},
+            {'HubContentVersion': '1.2.3'},
+            {'HubContentVersion': '2.0.0'},
+        ]
+    }
+
+    result = utils.get_hub_model_version(
+        hub_name, hub_model_name, hub_model_type, hub_model_version, mock_session
+    )
+
+    assert result == '2.0.0'
+
+@patch('sagemaker.session.Session')
+def test_get_hub_model_version_wildcard_char(mock_session):
+    hub_name = 'test_hub'
+    hub_model_name = 'test_model'
+    hub_model_type = 'test_type'
+    hub_model_version = '*'
+    mock_session.list_hub_content_versions.return_value = {
+        'HubContentSummaries': [
+            {'HubContentVersion': '1.0.0'},
+            {'HubContentVersion': '1.2.3'},
+            {'HubContentVersion': '2.0.0'},
+        ]
+    }
+
+    result = utils.get_hub_model_version(
+        hub_name, hub_model_name, hub_model_type, hub_model_version, mock_session
+    )
+
+    assert result == '2.0.0'
+    

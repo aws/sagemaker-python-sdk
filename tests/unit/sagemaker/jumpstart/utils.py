@@ -17,6 +17,7 @@ import boto3
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
     JUMPSTART_REGION_NAME_SET,
@@ -110,6 +111,7 @@ def get_prototype_model_spec(
     s3_client: boto3.client = None,
     hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID.
@@ -127,6 +129,7 @@ def get_special_model_spec(
     s3_client: boto3.client = None,
     hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID. This is reserved
@@ -144,6 +147,7 @@ def get_special_model_spec_for_inference_component_based_endpoint(
     s3_client: boto3.client = None,
     hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID and adding
@@ -169,6 +173,7 @@ def get_spec_from_base_spec(
     hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
 
     if version and version_str:
@@ -191,6 +196,7 @@ def get_spec_from_base_spec(
             "catboost" not in model_id,
             "lightgbm" not in model_id,
             "sklearn" not in model_id,
+            "ai21" not in model_id,
         ]
     ):
         raise KeyError("Bad model ID")
@@ -216,6 +222,7 @@ def get_base_spec_with_prototype_configs(
     hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     spec = copy.deepcopy(BASE_SPEC)
     inference_configs = {**INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}

@@ -7092,6 +7092,35 @@ def test_list_hub_contents(sagemaker_session):
 
     sagemaker_session.sagemaker_client.list_hub_contents.assert_called_with(**request)
 
+def test_list_hub_content_versions(sagemaker_session):
+    sagemaker_session.list_hub_content_versions(
+        hub_name="mock-hub-123",
+        hub_content_type="MODELREF",
+        hub_content_name="mock-hub-content-1",
+        min_version="1.0.0",
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08/2024 10:25:00",
+        max_results=25,
+        max_schema_version="1.0.5",
+        sort_by="HubName",
+        sort_order="Ascending",
+    )
+
+    request = {
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODELREF",
+        "HubContentName": "mock-hub-content-1",
+        "MinVersion": "1.0.0",
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08/2024 10:25:00",
+        "MaxResults": 25,
+        "MaxSchemaVersion": "1.0.5",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending",
+    }
+
+    sagemaker_session.sagemaker_client.list_hub_content_versions.assert_called_with(**request)
+
 def test_delete_hub(sagemaker_session):
     sagemaker_session.delete_hub(
         hub_name="mock-hub-123",
@@ -7113,7 +7142,7 @@ def test_create_hub_content_reference(sagemaker_session):
 
     request = {
         "HubName": "mock-hub-name",
-        "SourceHubContentArn": "arn:aws:sagemaker:us-east-1:123456789123:hub-content/JumpStartHub/model/mock-hub-content-1",
+        "SageMakerPublicHubContentArn": "arn:aws:sagemaker:us-east-1:123456789123:hub-content/JumpStartHub/model/mock-hub-content-1",
         "HubContentName": "mock-hub-content-1",
         "MinVersion": "1.1.1",
     }
