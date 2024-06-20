@@ -693,6 +693,7 @@ def get_register_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
     hub_arn: Optional[str] = None,
+    model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     region: Optional[str] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     tolerate_vulnerable_model: Optional[bool] = None,
@@ -720,6 +721,7 @@ def get_register_kwargs(
     skip_model_validation: Optional[str] = None,
     source_uri: Optional[str] = None,
     model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
+    accept_eula: Optional[bool] = None,
 ) -> JumpStartModelRegisterKwargs:
     """Returns kwargs required to call `register` on `sagemaker.estimator.Model` object."""
 
@@ -727,6 +729,7 @@ def get_register_kwargs(
         model_id=model_id,
         model_version=model_version,
         hub_arn=hub_arn,
+        model_type=model_type,
         region=region,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -754,12 +757,14 @@ def get_register_kwargs(
         skip_model_validation=skip_model_validation,
         source_uri=source_uri,
         model_card=model_card,
+        accept_eula=accept_eula,
     )
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
         hub_arn=hub_arn,
+        model_type=model_type,
         region=region,
         scope=JumpStartScriptScope.INFERENCE,
         sagemaker_session=sagemaker_session,
