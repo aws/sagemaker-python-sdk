@@ -1440,8 +1440,7 @@ unique ID which can be used to retrieve the model URI. The following information
 
    -  ``model_id``: A unique identifier for the JumpStart model.
    -  ``model_version``: The version of the specifications for the
-      model. To use the latest version, enter ``"*"``. This is a
-      required parameter.
+      model. To use the latest version, enter ``"*"``.
 
 To retrieve a model, first select a ``model ID`` and ``version`` from
 the :doc:`available models <./doc_utils/pretrainedmodels>`.
@@ -1460,6 +1459,43 @@ Then use those values to retrieve the model as follows.
    model_uri = model_uris.retrieve(
        model_id=model_id, model_version=model_version, model_scope=scope
    )
+
+There are utilities built-in to list the available models and their versions,
+
+.. code:: python
+
+   from sagemaker.jumpstart import notebook_utils
+
+   notebook_utils.list_jumpstart_models(list_versions=True)
+
+You can constuct custom filters to filter the list of models,
+
+.. code:: python
+
+   from sagemaker.jumpstart import notebook_utils
+
+   # List Huggingface Large language models 
+   filter_value = And("task == llm", "framework == huggingface")
+   notebook_utils.list_jumpstart_models(filter_value)
+
+   # List models that supports fine-tuning
+   filter_value = "training_supported == true"
+   notebook_utils.list_jumpstart_models(filter_value)
+
+   # List models based on search keywords
+   filter_value = "search_keywords includes Foundation Models"
+   notebook_utils.list_jumpstart_models(filter_value)
+
+   # List models based on supported instance types
+   filter_value = "supported_inference_instance_types includes ml.p4de.24xlarge"
+   notebook_utils.list_jumpstart_models(filter_value)
+
+   # List only publicly available models
+   notebook_utils.list_jumpstart_models("model_type == open_weights")
+
+   # List only proprietary models
+   notebook_utils.list_jumpstart_models("model_type == proprietary")
+
 
 Model scripts
 -------------
