@@ -167,35 +167,37 @@ class Hub:
 
         return hub_model_summaries
     
-    def list_models(self, clear_cache: bool = True, **kwargs) -> List[Dict[str, Any]]:
+    def list_models(self, clear_cache: bool = True, **kwargs) -> Dict[str, Any]:
         """Lists the models and model references in this Curated Hub.
 
         This function caches the models in local memory
 
         **kwargs: Passed to invocation of ``Session:list_hub_contents``.
         """
+        response = {}
+
         if clear_cache:
             self._list_hubs_cache = None
         if self._list_hubs_cache is None:
 
-            hub_model_reference_summeries = self._list_and_paginate_models(
+            hub_model_reference_summaries = self._list_and_paginate_models(
                 **{
                     "hub_name":self.hub_name,
                     "hub_content_type":HubContentType.MODEL_REFERENCE.value
                 } | kwargs
             )
 
-            hub_model_summeries = self._list_and_paginate_models(
+            hub_model_summaries = self._list_and_paginate_models(
                 **{
                     "hub_name":self.hub_name,
                     "hub_content_type":HubContentType.MODEL.value
                 } | kwargs
             )
-
-            self._list_hubs_cache = hub_model_reference_summeries+hub_model_summeries
-        return self._list_hubs_cache
+            response["hub_content_summaries"] = hub_model_reference_summaries+hub_model_summaries
+        response["next_token"] = None # Temporary until pagination is implemented
+        return response
     
-    def list_sagemaker_public_hub_models(self, filter: Union[Operator, str] = Constant(BooleanValues.TRUE)) -> Dict[str, str]:
+    def list_sagemaker_public_hub_models(self, filter: Union[Operator, str] = Constant(BooleanValues.TRUE), next_token: Optional[str] = None) -> Dict[str, Any]:
         """Lists the models and model arns from AmazonSageMakerJumpStart Public Hub.
 
         Args:
@@ -204,9 +206,10 @@ class Hub:
             or simply a string filter which will get serialized into an Identity filter.
             (e.g. ``"task == ic"``). If this argument is not supplied, all models will be listed.
             (Default: Constant(BooleanValues.TRUE)).
+        next_token (str): Optional. A token to resume pagination of list_inference_components. This is currently not implemented.
         """
 
-        jumpstart_public_models = {}
+        response = {}
 
         jumpstart_public_hub_arn = construct_hub_arn_from_name(
             JUMPSTART_MODEL_HUB_NAME, 
@@ -214,14 +217,22 @@ class Hub:
             self._sagemaker_session
             )
                 
+        hub_content_summaries = []
         models = list_jumpstart_models(filter=filter, list_versions=True)
         for model in models:
             if len(model)<=63:
                 info = get_info_from_hub_resource_arn(jumpstart_public_hub_arn)
                 hub_model_arn = f"arn:{info.partition}:sagemaker:{info.region}:aws:hub-content/{info.hub_name}/{HubContentType.MODEL}/{model[0]}"
-                jumpstart_public_models[model[0]] = hub_model_arn
+                hub_content_summary = {
+                    "hub_content_name": model[0],
+                    "hub_content_arn": hub_model_arn
+                }
+                hub_content_summaries.append(hub_content_summary)
+        response["hub_content_summaries"] = hub_content_summaries
 
-        return jumpstart_public_models
+        response["next_token"] = None # Temporary until pagination is implemented for this function
+
+        return response
 
     def delete(self) -> None:
         """Deletes this Curated Hub"""
