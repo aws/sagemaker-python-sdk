@@ -184,8 +184,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             Currently, ``HF_TASK`` is overridable for HuggingFace model. HF_TASK should be set for
             new models without task metadata in the Hub, adding unsupported task types will throw
             an exception. ``MLFLOW_MODEL_PATH`` is available for providing local path or s3 path
-            to MLflow artifacts. However, ``MLFLOW_MODEL_PATH`` is experimental and is not
-            intended for production use at this moment.
+            to MLflow artifacts. ``MLFLOW_TRACKING_ARN`` is available for providing managed MLflow
+            tracking server ARN containing MLflow artifacts.
     """
 
     model_path: Optional[str] = field(
@@ -288,7 +288,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             "help": "Define the model metadata to override, currently supports `HF_TASK`, "
             "`MLFLOW_MODEL_PATH`, and `MLFLOW_TRACKING_ARN`. HF_TASK should be set for new "
             "models without task metadata in the Hub, Adding unsupported task types will "
-            "throw an exception"
+            "throw an exception."
         },
     )
 
