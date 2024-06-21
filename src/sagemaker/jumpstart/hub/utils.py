@@ -82,7 +82,7 @@ def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: 
     info = get_info_from_hub_resource_arn(hub_arn)
     arn = (
         f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/"
-        f"{info.hub_name}/{HubContentType.MODEL}/{model_name}/{version}"
+        f"{info.hub_name}/{HubContentType.MODEL.value}/{model_name}/{version}"
     )
 
     return arn
@@ -212,7 +212,7 @@ def get_hub_model_version(
         raise KeyError(f"Bad semantic version: {hub_model_version}")
     available_versions_filtered = list(spec.filter(available_model_versions))
     if not available_versions_filtered:
-        raise KeyError(f"Model version not available in the Hub")
+        raise KeyError("Model version not available in the Hub")
     hub_model_version = str(max(available_versions_filtered))
 
     return hub_model_version

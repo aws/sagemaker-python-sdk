@@ -12,11 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch, Mock
 from sagemaker.jumpstart.types import HubArnExtractedInfo
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.hub import utils
-from sagemaker.jumpstart.hub.interfaces import HubContentInfo
 
 
 def test_get_info_from_hub_resource_arn():

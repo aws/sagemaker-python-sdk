@@ -296,7 +296,7 @@ class JumpStartModelsAccessor(object):
                 )
                 model_specs.set_hub_content_type(HubContentType.MODEL)
                 return model_specs
-            except:
+            except:  # noqa: E722
                 hub_model_arn = construct_hub_model_reference_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )

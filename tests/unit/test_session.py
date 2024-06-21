@@ -7142,14 +7142,19 @@ def test_delete_hub(sagemaker_session):
 def test_create_hub_content_reference(sagemaker_session):
     sagemaker_session.create_hub_content_reference(
         hub_name="mock-hub-name",
-        source_hub_content_arn="arn:aws:sagemaker:us-east-1:123456789123:hub-content/JumpStartHub/model/mock-hub-content-1",
+        source_hub_content_arn=(
+            "arn:aws:sagemaker:us-east-1:"
+            "123456789123:"
+            "hub-content/JumpStartHub/"
+            "model/mock-hub-content-1"
+        ),
         hub_content_name="mock-hub-content-1",
         min_version="1.1.1",
     )
 
     request = {
         "HubName": "mock-hub-name",
-        "SageMakerPublicHubContentArn": "arn:aws:sagemaker:us-east-1:123456789123:hub-content/JumpStartHub/model/mock-hub-content-1",
+        "SageMakerPublicHubContentArn": "arn:aws:sagemaker:us-east-1:123456789123:hub-content/JumpStartHub/model/mock-hub-content-1",  # noqa: E501
         "HubContentName": "mock-hub-content-1",
         "MinVersion": "1.1.1",
     }

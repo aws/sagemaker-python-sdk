@@ -16,7 +16,6 @@ import boto3
 from mock.mock import patch, Mock, ANY
 
 from sagemaker import accept_types
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 from sagemaker.jumpstart.enums import JumpStartModelType
 

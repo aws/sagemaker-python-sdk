@@ -11,16 +11,11 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from copy import deepcopy
 from datetime import datetime
-from unittest import mock
 from unittest.mock import patch, MagicMock
 import pytest
 from mock import Mock
-from sagemaker.session import Session
-from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.jumpstart.hub.hub import Hub
-from sagemaker.jumpstart.hub.interfaces import DescribeHubContentResponse
 from sagemaker.jumpstart.hub.types import S3ObjectLocation
 
 
@@ -206,7 +201,7 @@ def test_create_hub_content_reference(sagemaker_session):
     )
     create_hub_content_reference = {
         "HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{HUB_NAME}",
-        "HubContentReferenceArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub-content/{HUB_NAME}/ModelRef/{model_name}",
+        "HubContentReferenceArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub-content/{HUB_NAME}/ModelRef/{model_name}",  # noqa: E501
     }
     sagemaker_session.create_hub_content_reference = Mock(return_value=create_hub_content_reference)
 
@@ -223,8 +218,8 @@ def test_create_hub_content_reference(sagemaker_session):
     sagemaker_session.create_hub_content_reference.assert_called_with(**request)
 
     assert response == {
-        "HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/mock-hub-name",
-        "HubContentReferenceArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub-content/mock-hub-name/ModelRef/mock-model-one-huggingface",
+        "HubArn": "arn:aws:sagemaker:us-east-1:123456789123:hub/mock-hub-name",
+        "HubContentReferenceArn": "arn:aws:sagemaker:us-east-1:123456789123:hub-content/mock-hub-name/ModelRef/mock-model-one-huggingface",  # noqa: E501
     }
 
 

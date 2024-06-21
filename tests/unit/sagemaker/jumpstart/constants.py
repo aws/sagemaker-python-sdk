@@ -1250,6 +1250,7 @@ SPECIAL_MODEL_SPECS_DICT = {
             "dynamic_container_deployment_supported": True,
         },
     },
+    # noqa: E501
     "gemma-model-2b-v1_1_0": {
         "model_id": "huggingface-llm-gemma-2b-instruct",
         "url": "https://huggingface.co/google/gemma-2b-it",
@@ -2037,6 +2038,7 @@ SPECIAL_MODEL_SPECS_DICT = {
         "hosting_resource_requirements": {"min_memory_mb": 8192, "num_accelerators": 1},
         "dynamic_container_deployment_supported": True,
     },
+    # noqa: E501
     "env-var-variant-model": {
         "model_id": "huggingface-llm-falcon-180b-bf16",
         "url": "https://huggingface.co/tiiuae/falcon-180B",
@@ -2639,6 +2641,7 @@ SPECIAL_MODEL_SPECS_DICT = {
         "inference_enable_network_isolation": True,
         "training_enable_network_isolation": False,
     },
+    # noqa: E501
     "variant-model": {
         "model_id": "pytorch-ic-mobilenet-v2",
         "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",

@@ -17,7 +17,6 @@ import boto3
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
 from sagemaker.jumpstart.constants import (
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
     JUMPSTART_REGION_NAME_SET,

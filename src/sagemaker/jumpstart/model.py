@@ -38,7 +38,7 @@ from sagemaker.jumpstart.factory.model import (
     get_register_kwargs,
 )
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_endpoint
-from sagemaker.jumpstart.types import HubContentType, JumpStartSerializablePayload
+from sagemaker.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,

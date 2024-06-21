@@ -52,8 +52,6 @@ from tests.unit.sagemaker.jumpstart.utils import (
 )
 from mock import MagicMock, call
 
-from tests.unit.sagemaker.workflow.conftest import mock_client
-
 
 MOCK_CLIENT = MagicMock()
 

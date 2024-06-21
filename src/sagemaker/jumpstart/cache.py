@@ -52,10 +52,7 @@ from sagemaker.jumpstart.types import (
     HubContentType,
 )
 from sagemaker.jumpstart.hub import utils as hub_utils
-from sagemaker.jumpstart.hub.interfaces import (
-    DescribeHubResponse,
-    DescribeHubContentResponse,
-)
+from sagemaker.jumpstart.hub.interfaces import DescribeHubContentResponse
 from sagemaker.jumpstart.hub.parsers import (
     make_model_specs_from_describe_hub_content_response,
 )

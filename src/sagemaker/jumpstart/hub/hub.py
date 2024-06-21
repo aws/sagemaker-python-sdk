@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 from datetime import datetime
 import logging
-from typing import Optional, Dict, List, Any, Tuple, Union, Set
+from typing import Optional, Dict, List, Any, Union
 from botocore import exceptions
 
 from sagemaker.jumpstart.constants import JUMPSTART_MODEL_HUB_NAME
@@ -28,7 +28,7 @@ from sagemaker.jumpstart.constants import (
 from sagemaker.jumpstart.types import (
     HubContentType,
 )
-from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, BooleanValues
+from sagemaker.jumpstart.filters import Constant, Operator, BooleanValues
 from sagemaker.jumpstart.hub.utils import (
     get_hub_model_version,
     get_info_from_hub_resource_arn,
@@ -207,7 +207,8 @@ class Hub:
             or simply a string filter which will get serialized into an Identity filter.
             (e.g. ``"task == ic"``). If this argument is not supplied, all models will be listed.
             (Default: Constant(BooleanValues.TRUE)).
-        next_token (str): Optional. A token to resume pagination of list_inference_components. This is currently not implemented.
+        next_token (str): Optional. A token to resume pagination of list_inference_components.
+            This is currently not implemented.
         """
 
         response = {}
@@ -221,7 +222,12 @@ class Hub:
         for model in models:
             if len(model) <= 63:
                 info = get_info_from_hub_resource_arn(jumpstart_public_hub_arn)
-                hub_model_arn = f"arn:{info.partition}:sagemaker:{info.region}:aws:hub-content/{info.hub_name}/{HubContentType.MODEL}/{model[0]}"
+                hub_model_arn = (
+                    f"arn:{info.partition}:"
+                    f"sagemaker:{info.region}:"
+                    f"aws:hub-content/{info.hub_name}/"
+                    f"{HubContentType.MODEL}/{model[0]}"
+                )
                 hub_content_summary = {
                     "hub_content_name": model[0],
                     "hub_content_arn": hub_model_arn,
