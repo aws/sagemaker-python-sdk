@@ -81,7 +81,7 @@ def retrieve_default(
         raise ValueError("Must specify scope for resource requirements.")
 
     return artifacts._retrieve_default_resources(
-       model_id=model_id,
+        model_id=model_id,
         model_version=model_version,
         hub_arn=hub_arn,
         scope=scope,

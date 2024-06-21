@@ -96,6 +96,7 @@ class JumpStartTag(str, Enum):
 
     HUB_CONTENT_ARN = "sagemaker-sdk:hub-content-arn"
 
+
 class SerializerType(str, Enum):
     """Enum class for serializers associated with JumpStart models."""
 
@@ -126,7 +127,8 @@ class MIMEType(str, Enum):
         """Removes suffix from type and instantiates enum."""
         base_type, _, _ = mime_type_with_suffix.partition(";")
         return MIMEType(base_type)
-    
+
+
 class NamingConventionType(str, Enum):
     """Enum class for naming conventions."""
 

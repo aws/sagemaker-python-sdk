@@ -161,7 +161,7 @@ def _retrieve_model_uri(
                 _retrieve_hosting_prepacked_artifact_key(model_specs, instance_type)
                 if is_prepacked
                 else _retrieve_hosting_artifact_key(model_specs, instance_type)
-                )
+            )
 
     elif model_scope == JumpStartScriptScope.TRAINING:
 

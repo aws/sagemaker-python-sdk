@@ -294,7 +294,7 @@ class JumpStartModel(Model):
             hub_arn = generate_hub_arn_for_init_kwargs(
                 hub_name=hub_name, region=region, session=sagemaker_session
             )
-        
+
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
                 model_id=model_id,
@@ -302,16 +302,16 @@ class JumpStartModel(Model):
                 region=region or getattr(sagemaker_session, "boto_region_name", None),
                 script=JumpStartScriptScope.INFERENCE,
                 sagemaker_session=sagemaker_session,
-                hub_arn=hub_arn
+                hub_arn=hub_arn,
             )
-        
+
         self.model_type = _validate_model_id_and_type()
         if not self.model_type:
             JumpStartModelsAccessor.reset_cache()
             self.model_type = _validate_model_id_and_type()
             if not self.model_type and not hub_arn:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
-            
+
         self._model_data_is_set = model_data is not None
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,

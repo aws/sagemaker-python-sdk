@@ -1,4 +1,3 @@
-
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
@@ -8137,7 +8136,7 @@ BASE_SPEC = {
     },
     "training_instance_type_variants": None,
     "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
-    'hosting_artifact_uri': None,
+    "hosting_artifact_uri": None,
     "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
     "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
     "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",

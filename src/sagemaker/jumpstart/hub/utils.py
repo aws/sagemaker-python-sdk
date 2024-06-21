@@ -22,6 +22,7 @@ from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
 from sagemaker.jumpstart import constants
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
 
+
 def get_info_from_hub_resource_arn(
     arn: str,
 ) -> HubArnExtractedInfo:
@@ -60,6 +61,7 @@ def get_info_from_hub_resource_arn(
             hub_name=hub_name,
         )
 
+
 def construct_hub_arn_from_name(
     hub_name: str,
     region: Optional[str] = None,
@@ -73,6 +75,7 @@ def construct_hub_arn_from_name(
 
     return f"arn:{partition}:sagemaker:{region}:{account_id}:hub/{hub_name}"
 
+
 def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: str) -> str:
     """Constructs a HubContent model arn from the Hub name, model name, and model version."""
 
@@ -84,7 +87,10 @@ def construct_hub_model_arn_from_inputs(hub_arn: str, model_name: str, version: 
 
     return arn
 
-def construct_hub_model_reference_arn_from_inputs(hub_arn: str, model_name: str, version: str) -> str:
+
+def construct_hub_model_reference_arn_from_inputs(
+    hub_arn: str, model_name: str, version: str
+) -> str:
     """Constructs a HubContent model arn from the Hub name, model name, and model version."""
 
     info = get_info_from_hub_resource_arn(hub_arn)
@@ -94,6 +100,7 @@ def construct_hub_model_reference_arn_from_inputs(hub_arn: str, model_name: str,
     )
 
     return arn
+
 
 def generate_hub_arn_for_init_kwargs(
     hub_name: str, region: Optional[str] = None, session: Optional[Session] = None
@@ -116,6 +123,7 @@ def generate_hub_arn_for_init_kwargs(
         else:
             hub_arn = construct_hub_arn_from_name(hub_name=hub_name, region=region, session=session)
     return hub_arn
+
 
 def generate_default_hub_bucket_name(
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -171,33 +179,33 @@ def create_hub_bucket_if_it_does_not_exist(
 
     return bucket_name
 
+
 def is_gated_bucket(bucket_name: str) -> bool:
     """Returns true if the bucket name is the JumpStart gated bucket."""
     return bucket_name in constants.JUMPSTART_GATED_BUCKET_NAME_SET
 
+
 def get_hub_model_version(
-        hub_name: str,
-        hub_model_name: str,
-        hub_model_type: str, 
-        hub_model_version: Optional[str] = None,
-        sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    ) -> str:
+    hub_name: str,
+    hub_model_name: str,
+    hub_model_type: str,
+    hub_model_version: Optional[str] = None,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> str:
     """Returns available Jumpstart hub model version"""
 
     try:
         hub_content_summaries = sagemaker_session.list_hub_content_versions(
-        hub_name=hub_name,
-        hub_content_name=hub_model_name,
-        hub_content_type=hub_model_type
-        ).get('HubContentSummaries')
+            hub_name=hub_name, hub_content_name=hub_model_name, hub_content_type=hub_model_type
+        ).get("HubContentSummaries")
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
-        
-    available_model_versions = [model.get('HubContentVersion') for model in hub_content_summaries]
+
+    available_model_versions = [model.get("HubContentVersion") for model in hub_content_summaries]
 
     if hub_model_version == "*" or hub_model_version is None:
         return str(max(available_model_versions))
-        
+
     try:
         spec = SpecifierSet(f"=={hub_model_version}")
     except InvalidSpecifier:

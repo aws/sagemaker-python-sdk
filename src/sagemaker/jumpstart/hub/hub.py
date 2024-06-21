@@ -110,16 +110,16 @@ class Hub:
         hub_bucket_name = bucket_name or self._fetch_hub_bucket_name()
         curr_timestamp = datetime.now().timestamp()
         return S3ObjectLocation(bucket=hub_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
-    
-    def _get_latest_model_version(self, model_id: str) -> str:
-            """Populates the lastest version of a model from specs no matter what is passed.
 
-            Returns model ({ model_id: str, version: str })
-            """
-            model_specs = utils.verify_model_region_and_return_specs(
-                model_id, LATEST_VERSION_WILDCARD, JumpStartScriptScope.INFERENCE, self.region
-            )
-            return model_specs.version
+    def _get_latest_model_version(self, model_id: str) -> str:
+        """Populates the lastest version of a model from specs no matter what is passed.
+
+        Returns model ({ model_id: str, version: str })
+        """
+        model_specs = utils.verify_model_region_and_return_specs(
+            model_id, LATEST_VERSION_WILDCARD, JumpStartScriptScope.INFERENCE, self.region
+        )
+        return model_specs.version
 
     def create(
         self,
@@ -145,14 +145,14 @@ class Hub:
 
     def describe(self, hub_name: Optional[str] = None) -> DescribeHubResponse:
         """Returns descriptive information about the Hub"""
-        
+
         hub_description: DescribeHubResponse = self._sagemaker_session.describe_hub(
             hub_name=self.hub_name if not hub_name else hub_name
         )
-        
+
         return hub_description
-    
-    def _list_and_paginate_models(self, **kwargs) -> List[Dict[str, Any]] :
+
+    def _list_and_paginate_models(self, **kwargs) -> List[Dict[str, Any]]:
         next_token: Optional[str] = None
         first_iteration: bool = True
         hub_model_summaries: List[Dict[str, Any]] = []
@@ -160,13 +160,11 @@ class Hub:
         while first_iteration or next_token:
             first_iteration = False
             list_hub_content_response = self._sagemaker_session.list_hub_contents(**kwargs)
-            hub_model_summaries.extend(
-                list_hub_content_response.get('HubContentSummaries', [])
-            )
-            next_token = list_hub_content_response.get('NextToken')
+            hub_model_summaries.extend(list_hub_content_response.get("HubContentSummaries", []))
+            next_token = list_hub_content_response.get("NextToken")
 
         return hub_model_summaries
-    
+
     def list_models(self, clear_cache: bool = True, **kwargs) -> Dict[str, Any]:
         """Lists the models and model references in this Curated Hub.
 
@@ -182,22 +180,25 @@ class Hub:
 
             hub_model_reference_summaries = self._list_and_paginate_models(
                 **{
-                    "hub_name":self.hub_name,
-                    "hub_content_type":HubContentType.MODEL_REFERENCE.value
-                } | kwargs
+                    "hub_name": self.hub_name,
+                    "hub_content_type": HubContentType.MODEL_REFERENCE.value,
+                }
+                | kwargs
             )
 
             hub_model_summaries = self._list_and_paginate_models(
-                **{
-                    "hub_name":self.hub_name,
-                    "hub_content_type":HubContentType.MODEL.value
-                } | kwargs
+                **{"hub_name": self.hub_name, "hub_content_type": HubContentType.MODEL.value}
+                | kwargs
             )
-            response["hub_content_summaries"] = hub_model_reference_summaries+hub_model_summaries
-        response["next_token"] = None # Temporary until pagination is implemented
+            response["hub_content_summaries"] = hub_model_reference_summaries + hub_model_summaries
+        response["next_token"] = None  # Temporary until pagination is implemented
         return response
-    
-    def list_sagemaker_public_hub_models(self, filter: Union[Operator, str] = Constant(BooleanValues.TRUE), next_token: Optional[str] = None) -> Dict[str, Any]:
+
+    def list_sagemaker_public_hub_models(
+        self,
+        filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
+        next_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Lists the models and model arns from AmazonSageMakerJumpStart Public Hub.
 
         Args:
@@ -212,25 +213,23 @@ class Hub:
         response = {}
 
         jumpstart_public_hub_arn = construct_hub_arn_from_name(
-            JUMPSTART_MODEL_HUB_NAME, 
-            self.region, 
-            self._sagemaker_session
-            )
-                
+            JUMPSTART_MODEL_HUB_NAME, self.region, self._sagemaker_session
+        )
+
         hub_content_summaries = []
         models = list_jumpstart_models(filter=filter, list_versions=True)
         for model in models:
-            if len(model)<=63:
+            if len(model) <= 63:
                 info = get_info_from_hub_resource_arn(jumpstart_public_hub_arn)
                 hub_model_arn = f"arn:{info.partition}:sagemaker:{info.region}:aws:hub-content/{info.hub_name}/{HubContentType.MODEL}/{model[0]}"
                 hub_content_summary = {
                     "hub_content_name": model[0],
-                    "hub_content_arn": hub_model_arn
+                    "hub_content_arn": hub_model_arn,
                 }
                 hub_content_summaries.append(hub_content_summary)
         response["hub_content_summaries"] = hub_content_summaries
 
-        response["next_token"] = None # Temporary until pagination is implemented for this function
+        response["next_token"] = None  # Temporary until pagination is implemented for this function
 
         return response
 
@@ -256,42 +255,42 @@ class Hub:
             hub_content_type=HubContentType.MODEL_REFERENCE.value,
             hub_content_name=model_name,
         )
-    
+
     def describe_model(
         self, model_name: str, hub_name: Optional[str] = None, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
-        
+
         try:
             model_version = get_hub_model_version(
                 hub_model_name=model_name,
                 hub_model_type=HubContentType.MODEL.value,
                 hub_name=self.hub_name,
                 sagemaker_session=self._sagemaker_session,
-                hub_model_version=model_version
+                hub_model_version=model_version,
             )
 
             hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-            hub_name=self.hub_name if not hub_name else hub_name,
-            hub_content_name=model_name,
-            hub_content_version=model_version,
-            hub_content_type=HubContentType.MODEL.value,
+                hub_name=self.hub_name if not hub_name else hub_name,
+                hub_content_name=model_name,
+                hub_content_version=model_version,
+                hub_content_type=HubContentType.MODEL.value,
             )
-        
+
         except Exception as ex:
-            logging.info("Recieved expection while calling APIs for ContentType Model: "+str(ex))
+            logging.info("Recieved expection while calling APIs for ContentType Model: " + str(ex))
             model_version = get_hub_model_version(
                 hub_model_name=model_name,
                 hub_model_type=HubContentType.MODEL_REFERENCE.value,
                 hub_name=self.hub_name,
                 sagemaker_session=self._sagemaker_session,
-                hub_model_version=model_version
+                hub_model_version=model_version,
             )
 
             hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-            hub_name=self.hub_name,
-            hub_content_name=model_name,
-            hub_content_version=model_version,
-            hub_content_type=HubContentType.MODEL_REFERENCE.value,
+                hub_name=self.hub_name,
+                hub_content_name=model_name,
+                hub_content_version=model_version,
+                hub_content_type=HubContentType.MODEL_REFERENCE.value,
             )
-        
+
         return DescribeHubContentResponse(hub_content_description)

@@ -49,7 +49,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartVersionedModelId,
-    HubContentType
+    HubContentType,
 )
 from sagemaker.jumpstart.hub import utils as hub_utils
 from sagemaker.jumpstart.hub.interfaces import (
@@ -110,7 +110,7 @@ class JumpStartModelsCache:
             s3_client_config (Optional[botocore.config.Config]): s3 client config to use for cache.
                 Default: None (no config).
             s3_client (Optional[boto3.client]): s3 client to use. Default: None.
-            sagemaker_session: sagemaker session object to use. 
+            sagemaker_session: sagemaker session object to use.
                 Default: session object from default region us-west-2.
         """
 
@@ -445,13 +445,12 @@ class JumpStartModelsCache:
             formatted_body, _ = self._get_json_file(id_info, data_type)
             model_specs = JumpStartModelSpecs(formatted_body)
             utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
-            return JumpStartCachedContentValue(
-                formatted_content=model_specs
-            )
+            return JumpStartCachedContentValue(formatted_content=model_specs)
 
         if data_type == HubContentType.NOTEBOOK:
-            hub_name, _, notebook_name, notebook_version = hub_utils \
-                .get_info_from_hub_resource_arn(id_info)
+            hub_name, _, notebook_name, notebook_version = hub_utils.get_info_from_hub_resource_arn(
+                id_info
+            )
             response: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
                 hub_name=hub_name,
                 hub_content_name=notebook_name,
@@ -462,22 +461,20 @@ class JumpStartModelsCache:
             return JumpStartCachedContentValue(formatted_content=hub_notebook_description)
 
         if data_type in {
-            HubContentType.MODEL, 
+            HubContentType.MODEL,
             HubContentType.MODEL_REFERENCE,
         }:
-            
-            hub_arn_extracted_info = hub_utils.get_info_from_hub_resource_arn(
-                id_info
-            )
-        
+
+            hub_arn_extracted_info = hub_utils.get_info_from_hub_resource_arn(id_info)
+
             model_version: str = hub_utils.get_hub_model_version(
                 hub_model_name=hub_arn_extracted_info.hub_content_name,
                 hub_model_type=data_type.value,
                 hub_name=hub_arn_extracted_info.hub_name,
                 sagemaker_session=self._sagemaker_session,
-                hub_model_version=hub_arn_extracted_info.hub_content_version
+                hub_model_version=hub_arn_extracted_info.hub_content_version,
             )
-            
+
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
                 hub_name=hub_arn_extracted_info.hub_name,
                 hub_content_name=hub_arn_extracted_info.hub_content_name,
@@ -626,7 +623,7 @@ class JumpStartModelsCache:
                 get_wildcard_model_version_msg(header.model_id, version_str, header.version)
             )
         return specs.formatted_content
-    
+
     def get_hub_model(self, hub_model_arn: str) -> JumpStartModelSpecs:
         """Return JumpStart-compatible specs for a given Hub model
 
@@ -634,10 +631,12 @@ class JumpStartModelsCache:
             hub_model_arn (str): Arn for the Hub model to get specs for
         """
 
-        details, _ = self._content_cache.get(JumpStartCachedContentKey(
-            HubContentType.MODEL,
-            hub_model_arn,
-        ))
+        details, _ = self._content_cache.get(
+            JumpStartCachedContentKey(
+                HubContentType.MODEL,
+                hub_model_arn,
+            )
+        )
         return details.formatted_content
 
     def get_hub_model_reference(self, hub_model_reference_arn: str) -> JumpStartModelSpecs:
@@ -647,10 +646,12 @@ class JumpStartModelsCache:
             hub_model_arn (str): Arn for the Hub model to get specs for
         """
 
-        details, _ = self._content_cache.get(JumpStartCachedContentKey(
-            HubContentType.MODEL_REFERENCE,
-            hub_model_reference_arn,
-        ))
+        details, _ = self._content_cache.get(
+            JumpStartCachedContentKey(
+                HubContentType.MODEL_REFERENCE,
+                hub_model_reference_arn,
+            )
+        )
         return details.formatted_content
 
     def clear(self) -> None:

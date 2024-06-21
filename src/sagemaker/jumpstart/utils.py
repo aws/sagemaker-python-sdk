@@ -381,6 +381,7 @@ def add_jumpstart_model_id_version_tags(
         )
     return tags
 
+
 def add_hub_content_arn_tags(
     tags: Optional[List[TagsDict]],
     hub_arn: str,
@@ -782,7 +783,7 @@ def validate_model_id_and_get_type(
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-    hub_arn: Optional[str] = None
+    hub_arn: Optional[str] = None,
 ) -> Optional[enums.JumpStartModelType]:
     """Returns model type if the model ID is supported for the given script.
 

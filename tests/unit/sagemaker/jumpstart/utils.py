@@ -243,9 +243,7 @@ def patched_retrieval_function(
     data_type, id_info = key.data_type, key.id_info
     if data_type == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
 
-        return JumpStartCachedContentValue(
-            formatted_content=get_formatted_manifest(BASE_MANIFEST)
-        )
+        return JumpStartCachedContentValue(formatted_content=get_formatted_manifest(BASE_MANIFEST))
 
     if data_type == JumpStartS3FileType.OPEN_WEIGHT_SPECS:
         _, model_id, specs_version = id_info.split("/")

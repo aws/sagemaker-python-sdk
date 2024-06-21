@@ -786,5 +786,5 @@ def test_get_model_url(
         s3_client=ANY,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )

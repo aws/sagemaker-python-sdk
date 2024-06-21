@@ -126,7 +126,7 @@ class MultiDataModel(Model):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
-        model_reference_arn=None
+        model_reference_arn=None,
     ):
         """Return a container definition set.
 
@@ -155,7 +155,7 @@ class MultiDataModel(Model):
             model_data_url=self.model_data_prefix,
             container_mode=self.container_mode,
             accept_eula=accept_eula,
-            model_reference_arn=model_reference_arn
+            model_reference_arn=model_reference_arn,
         )
 
     def deploy(

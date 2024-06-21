@@ -440,7 +440,7 @@ def _add_model_version_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
             hub_arn=kwargs.hub_arn,
             scope=JumpStartScriptScope.TRAINING,
             region=kwargs.region,
-             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             sagemaker_session=kwargs.sagemaker_session,
             model_type=kwargs.model_type,

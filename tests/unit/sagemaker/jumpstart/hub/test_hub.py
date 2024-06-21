@@ -1,4 +1,3 @@
-
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
@@ -49,10 +48,11 @@ def sagemaker_session():
     sagemaker_session_mock.account_id.return_value = ACCOUNT_ID
     return sagemaker_session_mock
 
+
 @pytest.fixture
 def mock_instance(sagemaker_session):
     mock_instance = MagicMock()
-    mock_instance.hub_name = 'test-hub'
+    mock_instance.hub_name = "test-hub"
     mock_instance._sagemaker_session = sagemaker_session
     return mock_instance
 
@@ -148,9 +148,7 @@ def test_create_with_bucket_name(
     mock_generate_hub_storage_location.return_value = storage_location
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
-    hub = Hub(
-        hub_name=hub_name, sagemaker_session=sagemaker_session, bucket_name=hub_bucket_name
-    )
+    hub = Hub(hub_name=hub_name, sagemaker_session=sagemaker_session, bucket_name=hub_bucket_name)
     request = {
         "hub_name": hub_name,
         "hub_description": hub_description,
@@ -168,36 +166,36 @@ def test_create_with_bucket_name(
     sagemaker_session.create_hub.assert_called_with(**request)
     assert response == {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
 
+
 @patch("sagemaker.jumpstart.hub.interfaces.DescribeHubContentResponse.from_json")
 def test_describe_model_success(mock_describe_hub_content_response, sagemaker_session):
     mock_describe_hub_content_response.return_value = Mock()
     mock_list_hub_content_versions = sagemaker_session.list_hub_content_versions
     mock_list_hub_content_versions.return_value = {
-        'HubContentSummaries': [
-            {'HubContentVersion': '1.0'},
-            {'HubContentVersion': '2.0'},
-            {'HubContentVersion': '3.0'},
+        "HubContentSummaries": [
+            {"HubContentVersion": "1.0"},
+            {"HubContentVersion": "2.0"},
+            {"HubContentVersion": "3.0"},
         ]
     }
 
     hub = Hub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
 
-    with patch('sagemaker.jumpstart.hub.utils.get_hub_model_version') as mock_get_hub_model_version:
-        mock_get_hub_model_version.return_value = '3.0'
+    with patch("sagemaker.jumpstart.hub.utils.get_hub_model_version") as mock_get_hub_model_version:
+        mock_get_hub_model_version.return_value = "3.0"
 
-        hub.describe_model('test-model')
+        hub.describe_model("test-model")
 
         mock_list_hub_content_versions.assert_called_with(
-            hub_name=HUB_NAME,
-            hub_content_name='test-model',
-            hub_content_type='Model'
-            )
+            hub_name=HUB_NAME, hub_content_name="test-model", hub_content_type="Model"
+        )
         sagemaker_session.describe_hub_content.assert_called_with(
             hub_name=HUB_NAME,
-            hub_content_name='test-model',
-            hub_content_version='3.0',
-            hub_content_type='Model'
+            hub_content_name="test-model",
+            hub_content_version="3.0",
+            hub_content_type="Model",
         )
+
 
 def test_create_hub_content_reference(sagemaker_session):
     hub = Hub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)

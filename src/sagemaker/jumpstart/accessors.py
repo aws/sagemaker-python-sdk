@@ -20,7 +20,10 @@ from sagemaker.deprecations import deprecated
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs, HubContentType
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart import cache
-from sagemaker.jumpstart.hub.utils import construct_hub_model_arn_from_inputs, construct_hub_model_reference_arn_from_inputs
+from sagemaker.jumpstart.hub.utils import (
+    construct_hub_model_arn_from_inputs,
+    construct_hub_model_reference_arn_from_inputs,
+)
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.session import Session
 from sagemaker.jumpstart import constants
@@ -288,17 +291,21 @@ class JumpStartModelsAccessor(object):
                 hub_model_arn = construct_hub_model_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
-                model_specs = JumpStartModelsAccessor._cache.get_hub_model(hub_model_arn=hub_model_arn)
+                model_specs = JumpStartModelsAccessor._cache.get_hub_model(
+                    hub_model_arn=hub_model_arn
+                )
                 model_specs.set_hub_content_type(HubContentType.MODEL)
                 return model_specs
             except:
                 hub_model_arn = construct_hub_model_reference_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
-                model_specs = JumpStartModelsAccessor._cache.get_hub_model_reference(hub_model_reference_arn=hub_model_arn)
+                model_specs = JumpStartModelsAccessor._cache.get_hub_model_reference(
+                    hub_model_reference_arn=hub_model_arn
+                )
                 model_specs.set_hub_content_type(HubContentType.MODEL_REFERENCE)
                 return model_specs
-        
+
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, version_str=version, model_type=model_type
         )

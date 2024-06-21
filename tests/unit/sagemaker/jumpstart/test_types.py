@@ -369,7 +369,7 @@ def test_jumpstart_model_specs():
             {
                 "name": "epochs",
                 "type": "int",
-                #"_is_hub_content": False,
+                # "_is_hub_content": False,
                 "default": 3,
                 "min": 1,
                 "max": 1000,
@@ -380,7 +380,7 @@ def test_jumpstart_model_specs():
             {
                 "name": "adam-learning-rate",
                 "type": "float",
-                #"_is_hub_content": False,
+                # "_is_hub_content": False,
                 "default": 0.05,
                 "min": 1e-08,
                 "max": 1,
@@ -391,7 +391,7 @@ def test_jumpstart_model_specs():
             {
                 "name": "batch-size",
                 "type": "int",
-                #"_is_hub_content": False,
+                # "_is_hub_content": False,
                 "default": 4,
                 "min": 1,
                 "max": 1024,
@@ -402,7 +402,7 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_submit_directory",
                 "type": "text",
-                #"_is_hub_content": False,
+                # "_is_hub_content": False,
                 "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
                 "scope": "container",
             }
@@ -411,7 +411,7 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_program",
                 "type": "text",
-                #"_is_hub_content": False,
+                # "_is_hub_content": False,
                 "default": "transfer_learning.py",
                 "scope": "container",
             }
@@ -420,7 +420,7 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_container_log_level",
                 "type": "text",
-                #"_is_hub_content": False,
+                # "_is_hub_content": False,
                 "default": "20",
                 "scope": "container",
             }

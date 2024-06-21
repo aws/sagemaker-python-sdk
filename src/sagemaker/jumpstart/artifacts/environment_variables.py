@@ -229,7 +229,7 @@ def _retrieve_gated_model_uri_env_var_value(
     )
     if s3_key is None:
         return None
-    
+
     if hub_arn:
         return s3_key
 

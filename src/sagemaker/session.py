@@ -6811,7 +6811,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["Tags"] = tags
 
         return self.sagemaker_client.create_hub(**request)
-    
+
     def describe_hub(self, hub_name: str) -> Dict[str, Any]:
         """Describes a SageMaker Hub
 
@@ -6824,7 +6824,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         request = {"HubName": hub_name}
 
         return self.sagemaker_client.describe_hub(**request)
-    
+
     def list_hubs(
         self,
         creation_time_after: str = None,
@@ -6873,7 +6873,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["SortOrder"] = sort_order
 
         return self.sagemaker_client.list_hubs(**request)
-    
+
     def list_hub_contents(
         self,
         hub_name: str,
@@ -6926,7 +6926,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["SortOrder"] = sort_order
 
         return self.sagemaker_client.list_hub_contents(**request)
-    
+
     def delete_hub(self, hub_name: str) -> None:
         """Deletes a SageMaker Hub
 
@@ -6936,12 +6936,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         request = {"HubName": hub_name}
 
         return self.sagemaker_client.delete_hub(**request)
-    
+
     def create_hub_content_reference(
-        self, hub_name: str, 
-        source_hub_content_arn: str, 
-        hub_content_name: str = None, 
-        min_version: str = None
+        self,
+        hub_name: str,
+        source_hub_content_arn: str,
+        hub_content_name: str = None,
+        min_version: str = None,
     ) -> Dict[str, str]:
         """Creates a given HubContent reference in a SageMaker Hub
 
@@ -6963,7 +6964,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["MinVersion"] = min_version
 
         return self.sagemaker_client.create_hub_content_reference(**request)
-    
+
     def delete_hub_content_reference(
         self, hub_name: str, hub_content_type: str, hub_content_name: str
     ) -> None:
@@ -7024,7 +7025,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sort_by: str = None,
         sort_order: str = None,
     ) -> Dict[str, Any]:
-        
         """List all versions of a HubContent in a SageMaker Hub
 
         Args:
@@ -7036,7 +7036,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value for ``DescribeHubContent`` API
         """
 
-        request = {"HubName": hub_name, "HubContentName": hub_content_name, "HubContentType": hub_content_type}
+        request = {
+            "HubName": hub_name,
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+        }
 
         if min_version:
             request["MinVersion"] = min_version
@@ -7056,6 +7060,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["SortOrder"] = sort_order
 
         return self.sagemaker_client.list_hub_content_versions(**request)
+
 
 def get_model_package_args(
     content_types=None,
@@ -7505,7 +7510,7 @@ def container_def(
     container_mode=None,
     image_config=None,
     accept_eula=None,
-    model_reference_arn=None
+    model_reference_arn=None,
 ):
     """Create a definition for executing a container as part of a SageMaker model.
 
@@ -7562,7 +7567,7 @@ def container_def(
             c_def["ModelDataSource"]["S3DataSource"]["HubAccessConfig"] = {
                 "HubContentArn": model_reference_arn
             }
-        
+
     elif model_data_url is not None:
         c_def["ModelDataUrl"] = model_data_url
 

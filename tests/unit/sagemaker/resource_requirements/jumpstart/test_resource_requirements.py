@@ -57,7 +57,7 @@ def test_jumpstart_resource_requirements(
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.reset_mock()
 
@@ -144,7 +144,7 @@ def test_jumpstart_no_supported_resource_requirements(
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.reset_mock()
 

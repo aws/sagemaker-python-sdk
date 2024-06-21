@@ -123,5 +123,5 @@ def retrieve_default(
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
-        sagemaker_session=sagemaker_session
+        sagemaker_session=sagemaker_session,
     )

@@ -185,7 +185,7 @@ def _add_model_version_to_kwargs(
             hub_arn=kwargs.hub_arn,
             scope=JumpStartScriptScope.INFERENCE,
             region=kwargs.region,
-             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
             tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
             sagemaker_session=kwargs.sagemaker_session,
             model_type=kwargs.model_type,
@@ -260,7 +260,10 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
 
     return kwargs
 
-def _add_model_reference_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+
+def _add_model_reference_arn_to_kwargs(
+    kwargs: JumpStartModelInitKwargs,
+) -> JumpStartModelInitKwargs:
     """Sets Model Reference ARN if the hub content type is Model Reference, returns full kwargs."""
     hub_content_type = verify_model_region_and_return_specs(
         model_id=kwargs.model_id,
@@ -277,9 +280,7 @@ def _add_model_reference_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> Jump
 
     if hub_content_type == HubContentType.MODEL_REFERENCE:
         kwargs.model_reference_arn = construct_hub_model_reference_arn_from_inputs(
-            hub_arn=kwargs.hub_arn, 
-            model_name=kwargs.model_id, 
-            version=kwargs.model_version
+            hub_arn=kwargs.hub_arn, model_name=kwargs.model_id, version=kwargs.model_version
         )
     else:
         kwargs.model_reference_arn = None

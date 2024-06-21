@@ -7010,6 +7010,7 @@ def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
         ExtraArgs=None,
     )
 
+
 def test_create_hub(sagemaker_session):
     sagemaker_session.create_hub(
         hub_name="mock-hub-name",
@@ -7031,6 +7032,7 @@ def test_create_hub(sagemaker_session):
 
     sagemaker_session.sagemaker_client.create_hub.assert_called_with(**request)
 
+
 def test_describe_hub(sagemaker_session):
     sagemaker_session.describe_hub(
         hub_name="mock-hub-name",
@@ -7041,6 +7043,7 @@ def test_describe_hub(sagemaker_session):
     }
 
     sagemaker_session.sagemaker_client.describe_hub.assert_called_with(**request)
+
 
 def test_list_hubs(sagemaker_session):
     sagemaker_session.list_hubs(
@@ -7064,6 +7067,7 @@ def test_list_hubs(sagemaker_session):
     }
 
     sagemaker_session.sagemaker_client.list_hubs.assert_called_with(**request)
+
 
 def test_list_hub_contents(sagemaker_session):
     sagemaker_session.list_hub_contents(
@@ -7091,6 +7095,7 @@ def test_list_hub_contents(sagemaker_session):
     }
 
     sagemaker_session.sagemaker_client.list_hub_contents.assert_called_with(**request)
+
 
 def test_list_hub_content_versions(sagemaker_session):
     sagemaker_session.list_hub_content_versions(
@@ -7121,6 +7126,7 @@ def test_list_hub_content_versions(sagemaker_session):
 
     sagemaker_session.sagemaker_client.list_hub_content_versions.assert_called_with(**request)
 
+
 def test_delete_hub(sagemaker_session):
     sagemaker_session.delete_hub(
         hub_name="mock-hub-123",
@@ -7131,6 +7137,7 @@ def test_delete_hub(sagemaker_session):
     }
 
     sagemaker_session.sagemaker_client.delete_hub.assert_called_with(**request)
+
 
 def test_create_hub_content_reference(sagemaker_session):
     sagemaker_session.create_hub_content_reference(
@@ -7148,6 +7155,7 @@ def test_create_hub_content_reference(sagemaker_session):
     }
 
     sagemaker_session.sagemaker_client.create_hub_content_reference.assert_called_with(**request)
+
 
 def test_delete_hub_content_reference(sagemaker_session):
     sagemaker_session.delete_hub_content_reference(

@@ -125,7 +125,9 @@ def make_model_specs_from_describe_hub_content_response(
             from SageMaker:DescribeHubContent
     """
     if response.hub_content_type not in {HubContentType.MODEL, HubContentType.MODEL_REFERENCE}:
-        raise AttributeError("Invalid content type, use either HubContentType.MODEL or HubContentType.MODEL_REFERENCE.")
+        raise AttributeError(
+            "Invalid content type, use either HubContentType.MODEL or HubContentType.MODEL_REFERENCE."
+        )
     region = response.get_hub_region()
     specs = {}
     model_id = response.hub_content_name
@@ -134,9 +136,7 @@ def make_model_specs_from_describe_hub_content_response(
     hub_model_document: HubModelDocument = response.hub_content_document
     specs["url"] = hub_model_document.url
     specs["min_sdk_version"] = hub_model_document.min_sdk_version
-    specs["training_supported"] = bool(
-        hub_model_document.training_supported
-    )
+    specs["training_supported"] = bool(hub_model_document.training_supported)
     specs["incremental_training_supported"] = bool(
         hub_model_document.incremental_training_supported
     )
@@ -162,12 +162,12 @@ def make_model_specs_from_describe_hub_content_response(
     specs["deprecate_warn_message"] = None
     specs["usage_info_message"] = None
     specs["default_inference_instance_type"] = hub_model_document.default_inference_instance_type
-    specs[
-        "supported_inference_instance_types"
-    ] = hub_model_document.supported_inference_instance_types
-    specs[
-        "dynamic_container_deployment_supported"
-    ] = hub_model_document.dynamic_container_deployment_supported
+    specs["supported_inference_instance_types"] = (
+        hub_model_document.supported_inference_instance_types
+    )
+    specs["dynamic_container_deployment_supported"] = (
+        hub_model_document.dynamic_container_deployment_supported
+    )
     specs["hosting_resource_requirements"] = hub_model_document.hosting_resource_requirements
 
     specs["hosting_prepacked_artifact_key"] = None
@@ -179,7 +179,7 @@ def make_model_specs_from_describe_hub_content_response(
         specs["hosting_prepacked_artifact_key"] = hosting_prepacked_artifact_key
 
     hub_content_document_dict: Dict[str, Any] = hub_model_document.to_json()
-    
+
     specs["fit_kwargs"] = get_model_spec_kwargs_from_hub_model_document(
         ModelSpecKwargType.FIT, hub_content_document_dict
     )
@@ -201,9 +201,9 @@ def make_model_specs_from_describe_hub_content_response(
         specs["default_payloads"] = default_payloads
     specs["gated_bucket"] = hub_model_document.gated_bucket
     specs["inference_volume_size"] = hub_model_document.inference_volume_size
-    specs[
-        "inference_enable_network_isolation"
-    ] = hub_model_document.inference_enable_network_isolation
+    specs["inference_enable_network_isolation"] = (
+        hub_model_document.inference_enable_network_isolation
+    )
     specs["resource_name_base"] = hub_model_document.resource_name_base
 
     specs["hosting_eula_key"] = None
@@ -234,9 +234,9 @@ def make_model_specs_from_describe_hub_content_response(
         specs["training_script_key"] = training_script_key
         specs["training_dependencies"] = hub_model_document.training_dependencies
         specs["default_training_instance_type"] = hub_model_document.default_training_instance_type
-        specs[
-            "supported_training_instance_types"
-        ] = hub_model_document.supported_training_instance_types
+        specs["supported_training_instance_types"] = (
+            hub_model_document.supported_training_instance_types
+        )
         specs["metrics"] = hub_model_document.training_metrics
         specs["training_prepacked_script_key"] = None
         if hub_model_document.training_prepacked_script_uri is not None:
@@ -248,14 +248,14 @@ def make_model_specs_from_describe_hub_content_response(
 
         specs["hyperparameters"] = hub_model_document.hyperparameters
         specs["training_volume_size"] = hub_model_document.training_volume_size
-        specs[
-            "training_enable_network_isolation"
-        ] = hub_model_document.training_enable_network_isolation
+        specs["training_enable_network_isolation"] = (
+            hub_model_document.training_enable_network_isolation
+        )
         if hub_model_document.training_model_package_artifact_uri:
             specs["training_model_package_artifact_uris"] = {
                 region: hub_model_document.training_model_package_artifact_uri
             }
-        specs[
-            "training_instance_type_variants"
-        ] = hub_model_document.training_instance_type_variants
+        specs["training_instance_type_variants"] = (
+            hub_model_document.training_instance_type_variants
+        )
     return JumpStartModelSpecs(_to_json(specs), is_hub_content=True)

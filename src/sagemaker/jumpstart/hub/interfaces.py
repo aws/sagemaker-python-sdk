@@ -144,8 +144,7 @@ class DescribeHubContentResponse(HubDataHolderType):
         "hub_content_status",
         "hub_content_type",
         "hub_content_version",
-        "reference_min_version"
-        "hub_name",
+        "reference_min_version" "hub_name",
         "_region",
     ]
 
@@ -188,10 +187,10 @@ class DescribeHubContentResponse(HubDataHolderType):
                 dependencies=self.hub_content_dependencies,
             )
         elif self.hub_content_type == HubContentType.MODEL_REFERENCE:
-            self.hub_content_document:HubContentDocument = HubModelDocument(
+            self.hub_content_document: HubContentDocument = HubModelDocument(
                 json_obj=hub_content_document,
                 region=self._region,
-                dependencies=self.hub_content_dependencies
+                dependencies=self.hub_content_dependencies,
             )
         elif self.hub_content_type == HubContentType.NOTEBOOK:
             self.hub_content_document: HubContentDocument = HubNotebookDocument(

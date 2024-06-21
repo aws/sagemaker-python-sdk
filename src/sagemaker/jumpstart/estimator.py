@@ -516,7 +516,7 @@ class JumpStartEstimator(Estimator):
             hub_arn = generate_hub_arn_for_init_kwargs(
                 hub_name=hub_name, region=region, session=sagemaker_session
             )
-        
+
         def _validate_model_id_and_get_type_hook():
             return validate_model_id_and_get_type(
                 model_id=model_id,
@@ -524,9 +524,9 @@ class JumpStartEstimator(Estimator):
                 region=region or getattr(sagemaker_session, "boto_region_name", None),
                 script=JumpStartScriptScope.TRAINING,
                 sagemaker_session=sagemaker_session,
-                hub_arn=hub_arn
+                hub_arn=hub_arn,
             )
-        
+
         self.model_type = _validate_model_id_and_get_type_hook()
         if not self.model_type:
             JumpStartModelsAccessor.reset_cache()

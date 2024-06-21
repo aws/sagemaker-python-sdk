@@ -59,7 +59,7 @@ def test_jumpstart_default_accept_types(
         version=model_version,
         s3_client=ANY,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
 
 
@@ -97,5 +97,5 @@ def test_jumpstart_supported_accept_types(
         s3_client=ANY,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         hub_arn=None,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )

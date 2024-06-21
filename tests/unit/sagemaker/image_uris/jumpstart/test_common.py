@@ -57,7 +57,7 @@ def test_jumpstart_common_image_uri(
         version="*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -80,7 +80,7 @@ def test_jumpstart_common_image_uri(
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -103,7 +103,7 @@ def test_jumpstart_common_image_uri(
         version="*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -126,7 +126,7 @@ def test_jumpstart_common_image_uri(
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
-        sagemaker_session=mock_session
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
