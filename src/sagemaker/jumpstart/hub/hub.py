@@ -153,7 +153,7 @@ class Hub:
         return hub_description
 
     def _list_and_paginate_models(self, **kwargs) -> List[Dict[str, Any]]:
-        """list and paginate models from Hub"""
+        """List and paginate models from Hub."""
         next_token: Optional[str] = None
         first_iteration: bool = True
         hub_model_summaries: List[Dict[str, Any]] = []
