@@ -546,6 +546,10 @@ class JumpStart(ABC):
             pysdk_model.add_tags(
                 {"key": Tag.FINE_TUNING_MODEL_PATH, "value": fine_tuning_model_path}
             )
+            logger.info(
+                "FINE_TUNING_MODEL_PATH detected. Using fine-tuned model found in %s.",
+                fine_tuning_model_path,
+            )
             return pysdk_model
 
         if fine_tuning_job_name := self.model_metadata.get("FINE_TUNING_JOB_NAME"):
@@ -553,16 +557,17 @@ class JumpStart(ABC):
                 response = self.sagemaker_session.sagemaker_client.describe_training_job(
                     TrainingJobName=fine_tuning_job_name
                 )
-                fine_tuning_model_path = response["OutputDataConfig"]["S3OutputPath"]
+                fine_tuning_model_path = response["ModelArtifacts"]["S3ModelArtifacts"]
                 pysdk_model.model_data["S3DataSource"]["S3Uri"] = fine_tuning_model_path
-                pysdk_model.model_data["S3DataSource"]["CompressionType"] = response[
-                    "OutputDataConfig"
-                ]["CompressionType"]
                 pysdk_model.add_tags(
                     [
                         {"key": Tag.FINE_TUNING_JOB_NAME, "value": fine_tuning_job_name},
                         {"key": Tag.FINE_TUNING_MODEL_PATH, "value": fine_tuning_model_path},
                     ]
+                )
+                logger.info(
+                    "FINE_TUNING_JOB_NAME detected. Using fine-tuned model found in %s.",
+                    fine_tuning_model_path,
                 )
                 return pysdk_model
             except ClientError:

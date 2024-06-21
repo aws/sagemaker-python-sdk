@@ -1039,9 +1039,8 @@ class TestJumpStartBuilder(unittest.TestCase):
         mock_fine_tuning_model_path = "s3://test"
         mock_sagemaker_session = Mock()
         mock_sagemaker_session.sagemaker_client.describe_training_job.return_value = {
-            "OutputDataConfig": {
-                "S3OutputPath": mock_fine_tuning_model_path,
-                "CompressionType": "None",
+            "ModelArtifacts": {
+                "S3ModelArtifacts": mock_fine_tuning_model_path,
             }
         }
         mock_pre_trained_model.return_value.image_uri = mock_djl_image_uri
