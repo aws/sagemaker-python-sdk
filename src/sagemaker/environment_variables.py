@@ -47,7 +47,7 @@ def retrieve_default(
             retrieve the default environment variables. (Default: None).
         model_version (str): Optional. The version of the model for which to retrieve the
             default environment variables. (Default: None).
-        hub_arn (str): The arn of the SageMaker Hub for which to 
+        hub_arn (str): The arn of the SageMaker Hub for which to
             retrieve model details from. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
