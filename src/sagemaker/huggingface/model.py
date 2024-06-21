@@ -479,6 +479,7 @@ class HuggingFaceModel(FrameworkModel):
         serverless_inference_config=None,
         inference_tool=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """A container definition with framework configuration set in model environment variables.
 
@@ -533,6 +534,7 @@ class HuggingFaceModel(FrameworkModel):
             self.repacked_model_data or self.model_data,
             deploy_env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def serving_image_uri(

@@ -6774,6 +6774,293 @@ class Session(object):  # pylint: disable=too-many-public-methods
             **create_presigned_url_args
         )
 
+    def create_hub(
+        self,
+        hub_name: str,
+        hub_description: str,
+        hub_display_name: str = None,
+        hub_search_keywords: List[str] = None,
+        s3_storage_config: Dict[str, Any] = None,
+        tags: List[Dict[str, Any]] = None,
+    ) -> Dict[str, str]:
+        """Creates a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub to create.
+            hub_description (str): A description of the Hub.
+            hub_display_name (str): The display name of the Hub.
+            hub_search_keywords (list): The searchable keywords for the Hub.
+            s3_storage_config (S3StorageConfig): The Amazon S3 storage configuration for the Hub.
+            tags (list): Any tags to associate with the Hub.
+
+        Returns:
+            (dict): Return value from the ``CreateHub`` API.
+        """
+        request = {"HubName": hub_name, "HubDescription": hub_description}
+
+        if hub_display_name:
+            request["HubDisplayName"] = hub_display_name
+        else:
+            request["HubDisplayName"] = hub_name
+
+        if hub_search_keywords:
+            request["HubSearchKeywords"] = hub_search_keywords
+        if s3_storage_config:
+            request["S3StorageConfig"] = s3_storage_config
+        if tags:
+            request["Tags"] = tags
+
+        return self.sagemaker_client.create_hub(**request)
+
+    def describe_hub(self, hub_name: str) -> Dict[str, Any]:
+        """Describes a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the hub to describe.
+
+        Returns:
+            (dict): Return value for ``DescribeHub`` API
+        """
+        request = {"HubName": hub_name}
+
+        return self.sagemaker_client.describe_hub(**request)
+
+    def list_hubs(
+        self,
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        max_schema_version: str = None,
+        name_contains: str = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None,
+    ) -> Dict[str, Any]:
+        """Lists all existing SageMaker Hubs
+
+        Args:
+            creation_time_after (str): Only list HubContent that was created after
+                the time specified.
+            creation_time_before (str): Only list HubContent that was created
+                before the time specified.
+            max_results (int): The maximum amount of HubContent to list.
+            max_schema_version (str): The upper bound of the HubContentSchemaVersion.
+            name_contains (str): Only list HubContent if the name contains the specified string.
+            next_token (str): If the response to a previous ``ListHubContents`` request was
+                truncated, the response includes a ``NextToken``. To retrieve the next set of
+                hub content, use the token in the next request.
+            sort_by (str): Sort HubContent versions by either name or creation time.
+            sort_order (str): Sort Hubs by ascending or descending order.
+        Returns:
+            (dict): Return value for ``ListHubs`` API
+        """
+        request = {}
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if name_contains:
+            request["NameContains"] = name_contains
+        if next_token:
+            request["NextToken"] = next_token
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hubs(**request)
+
+    def list_hub_contents(
+        self,
+        hub_name: str,
+        hub_content_type: str,
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        max_schema_version: str = None,
+        name_contains: str = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None,
+    ) -> Dict[str, Any]:
+        """Lists the HubContents in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub to list the contents of.
+            hub_content_type (str): The type of the HubContent to list.
+            creation_time_after (str): Only list HubContent that was created after the
+                time specified.
+            creation_time_before (str): Only list HubContent that was created before the
+                time specified.
+            max_results (int): The maximum amount of HubContent to list.
+            max_schema_version (str): The upper bound of the HubContentSchemaVersion.
+            name_contains (str): Only list HubContent if the name contains the specified string.
+            next_token (str): If the response to a previous ``ListHubContents`` request was
+                truncated, the response includes a ``NextToken``. To retrieve the next set of
+                hub content, use the token in the next request.
+            sort_by (str): Sort HubContent versions by either name or creation time.
+            sort_order (str): Sort Hubs by ascending or descending order.
+        Returns:
+            (dict): Return value for ``ListHubContents`` API
+        """
+        request = {"HubName": hub_name, "HubContentType": hub_content_type}
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if name_contains:
+            request["NameContains"] = name_contains
+        if next_token:
+            request["NextToken"] = next_token
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hub_contents(**request)
+
+    def delete_hub(self, hub_name: str) -> None:
+        """Deletes a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the hub to delete.
+        """
+        request = {"HubName": hub_name}
+
+        return self.sagemaker_client.delete_hub(**request)
+
+    def create_hub_content_reference(
+        self,
+        hub_name: str,
+        source_hub_content_arn: str,
+        hub_content_name: str = None,
+        min_version: str = None,
+    ) -> Dict[str, str]:
+        """Creates a given HubContent reference in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub that you want to delete content in.
+            source_hub_content_arn (str): Hub content arn in the public/source Hub.
+            hub_content_name (str): The name of the reference that you want to add to the Hub.
+            min_version (str): A minimum version of the hub content to add to the Hub.
+
+        Returns:
+            (dict): Return value for ``CreateHubContentReference`` API
+        """
+
+        request = {"HubName": hub_name, "SageMakerPublicHubContentArn": source_hub_content_arn}
+
+        if hub_content_name:
+            request["HubContentName"] = hub_content_name
+        if min_version:
+            request["MinVersion"] = min_version
+
+        return self.sagemaker_client.create_hub_content_reference(**request)
+
+    def delete_hub_content_reference(
+        self, hub_name: str, hub_content_type: str, hub_content_name: str
+    ) -> None:
+        """Deletes a given HubContent reference in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub that you want to delete content in.
+            hub_content_type (str): The type of the content that you want to delete from a Hub.
+            hub_content_name (str): The name of the content that you want to delete from a Hub.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentType": hub_content_type,
+            "HubContentName": hub_content_name,
+        }
+
+        return self.sagemaker_client.delete_hub_content_reference(**request)
+
+    def describe_hub_content(
+        self,
+        hub_content_name: str,
+        hub_content_type: str,
+        hub_name: str,
+        hub_content_version: str = None,
+    ) -> Dict[str, Any]:
+        """Describes a HubContent in a SageMaker Hub
+
+        Args:
+            hub_content_name (str): The name of the HubContent to describe.
+            hub_content_type (str): The type of HubContent in the Hub.
+            hub_name (str): The name of the Hub that contains the HubContent to describe.
+            hub_content_version (str): The version of the HubContent to describe
+
+        Returns:
+            (dict): Return value for ``DescribeHubContent`` API
+        """
+        request = {
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+            "HubName": hub_name,
+        }
+        if hub_content_version:
+            request["HubContentVersion"] = hub_content_version
+
+        return self.sagemaker_client.describe_hub_content(**request)
+
+    def list_hub_content_versions(
+        self,
+        hub_name,
+        hub_content_type: str,
+        hub_content_name: str,
+        min_version: str = None,
+        max_schema_version: str = None,
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None,
+    ) -> Dict[str, Any]:
+        """List all versions of a HubContent in a SageMaker Hub
+
+        Args:
+            hub_content_name (str): The name of the HubContent to describe.
+            hub_content_type (str): The type of HubContent in the Hub.
+            hub_name (str): The name of the Hub that contains the HubContent to describe.
+
+        Returns:
+            (dict): Return value for ``DescribeHubContent`` API
+        """
+
+        request = {
+            "HubName": hub_name,
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+        }
+
+        if min_version:
+            request["MinVersion"] = min_version
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if next_token:
+            request["NextToken"] = next_token
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hub_content_versions(**request)
+
 
 def get_model_package_args(
     content_types=None,
@@ -7223,6 +7510,7 @@ def container_def(
     container_mode=None,
     image_config=None,
     accept_eula=None,
+    model_reference_arn=None,
 ):
     """Create a definition for executing a container as part of a SageMaker model.
 
@@ -7275,6 +7563,11 @@ def container_def(
             c_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"] = {
                 "AcceptEula": accept_eula
             }
+        if model_reference_arn:
+            c_def["ModelDataSource"]["S3DataSource"]["HubAccessConfig"] = {
+                "HubContentArn": model_reference_arn
+            }
+
     elif model_data_url is not None:
         c_def["ModelDataUrl"] = model_data_url
 
