@@ -819,6 +819,7 @@ class JumpStartModel(Model):
             model_version=self.model_version,
             model_type=self.model_type,
             hub_arn=self.hub_arn,
+            model_type=self.model_type,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,

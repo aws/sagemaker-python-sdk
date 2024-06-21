@@ -2452,6 +2452,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.model_version = model_version
         self.model_type = model_type
         self.hub_arn = hub_arn
+        self.model_type = model_type
         self.region = region
         self.image_uri = image_uri
         self.sagemaker_session = sagemaker_session
