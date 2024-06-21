@@ -124,4 +124,5 @@ def retrieve_default(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        model_type=model_type,
     )
