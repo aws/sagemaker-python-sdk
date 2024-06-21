@@ -133,7 +133,7 @@ def _retrieve_image_uri(
         if hub_arn:
             ecr_uri = model_specs.hosting_ecr_uri
             return ecr_uri
-        
+
         ecr_specs = model_specs.hosting_ecr_specs
         if ecr_specs is None:
             raise ValueError(
@@ -152,7 +152,7 @@ def _retrieve_image_uri(
         if hub_arn:
             ecr_uri = model_specs.training_ecr_uri
             return ecr_uri
-        
+
         ecr_specs = model_specs.training_ecr_specs
         if ecr_specs is None:
             raise ValueError(
