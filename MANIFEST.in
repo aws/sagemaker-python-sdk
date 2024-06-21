@@ -1,0 +1,15 @@
+recursive-include src/sagemaker *.py
+
+include src/sagemaker/image_uri_config/*.json
+include src/sagemaker/serve/schema/*.json
+include src/sagemaker/serve/requirements.txt
+recursive-include requirements *
+
+include VERSION
+include LICENSE.txt
+include README.rst
+
+prune tests
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

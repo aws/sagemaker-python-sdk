@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling", "hatch-requirements-txt>=0.3.0"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
@@ -65,15 +65,8 @@ Homepage = "https://github.com/aws/sagemaker-python-sdk"
 path = "VERSION"
 pattern = "(?P<version>.+)"
 
-# Keep format of *_requirements.txt to be tracked by dependabot
-[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
-feature-processor = ["requirements/extras/feature-processor_requirements.txt"]
-huggingface = ["requirements/extras/huggingface_requirements.txt"]
-local = ["requirements/extras/local_requirements.txt"]
-scipy = ["requirements/extras/scipy_requirements.txt"]
-test = ["requirements/extras/test_requirements.txt"]
-
-# Then do some postprocessing of optional dependencies
+# Dynamically define optional dependencies from requirements.txt files so
+# they can be be tracked by Dependabot
 [tool.hatch.metadata.hooks.custom]
 
 [tool.hatch.build.targets.wheel]
