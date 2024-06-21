@@ -382,6 +382,21 @@ def add_jumpstart_model_id_version_tags(
     return tags
 
 
+def add_hub_content_arn_tags(
+    tags: Optional[List[TagsDict]],
+    hub_arn: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        hub_arn,
+        enums.JumpStartTag.HUB_CONTENT_ARN,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
@@ -546,6 +561,7 @@ def verify_model_region_and_return_specs(
     version: Optional[str],
     scope: Optional[str],
     region: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -561,6 +577,8 @@ def verify_model_region_and_return_specs(
         scope (Optional[str]): scope of the JumpStart model to verify.
         region (Optional[str]): region of the JumpStart model to verify and
             obtains specs.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -600,9 +618,11 @@ def verify_model_region_and_return_specs(
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
         region=region,
         model_id=model_id,
+        hub_arn=hub_arn,
         version=version,
         s3_client=sagemaker_session.s3_client,
         model_type=model_type,
+        sagemaker_session=sagemaker_session,
     )
 
     if (
@@ -763,6 +783,7 @@ def validate_model_id_and_get_type(
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    hub_arn: Optional[str] = None,
 ) -> Optional[enums.JumpStartModelType]:
     """Returns model type if the model ID is supported for the given script.
 
@@ -773,6 +794,8 @@ def validate_model_id_and_get_type(
     if model_id in {None, ""}:
         return None
     if not isinstance(model_id, str):
+        return None
+    if hub_arn:
         return None
 
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
@@ -918,6 +941,7 @@ def get_benchmark_stats(
     model_id: str,
     model_version: str,
     config_names: Optional[List[str]] = None,
+    hub_arn: Optional[str] = None,
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
@@ -927,6 +951,7 @@ def get_benchmark_stats(
         region=region,
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         sagemaker_session=sagemaker_session,
         scope=scope,
         model_type=model_type,

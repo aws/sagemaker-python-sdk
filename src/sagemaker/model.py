@@ -165,6 +165,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         resources: Optional[ResourceRequirements] = None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -328,6 +329,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 for a model to be deployed to an endpoint. Only
                 EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
+            model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
+                content (default: None).
 
         """
         self.model_data = model_data
@@ -406,6 +409,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.content_types = None
         self.response_types = None
         self.accept_eula = None
+        self.model_reference_arn = model_reference_arn
 
     @classmethod
     def attach(
@@ -591,6 +595,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
         tags: Optional[Tags] = None,
         accept_eula: Optional[bool] = None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Create a SageMaker Model Entity
 
@@ -632,6 +637,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             tags=format_tags(tags),
             serverless_inference_config=serverless_inference_config,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
@@ -653,6 +659,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()``.
 
@@ -694,6 +701,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             image_config=self.image_config,
             accept_eula=(
                 accept_eula if accept_eula is not None else getattr(self, "accept_eula", None)
+            ),
+            model_reference_arn=(
+                model_reference_arn
+                if model_reference_arn is not None
+                else getattr(self, "model_reference_arn", None)
             ),
         )
 
@@ -837,6 +849,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         tags: Optional[Tags] = None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Create a SageMaker Model Entity
 
@@ -861,6 +874,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 The `accept_eula` value must be explicitly defined as `True` in order to
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
+            model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
+                content (default: None).
         """
         if self.model_package_arn is not None or self.algorithm_arn is not None:
             model_package = ModelPackage(
@@ -892,6 +907,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 accelerator_type=accelerator_type,
                 serverless_inference_config=serverless_inference_config,
                 accept_eula=accept_eula,
+                model_reference_arn=model_reference_arn,
             )
 
             if not isinstance(self.sagemaker_session, PipelineSession):
@@ -1655,6 +1671,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 accelerator_type=accelerator_type,
                 tags=tags,
                 serverless_inference_config=serverless_inference_config,
+                **kwargs,
             )
             serverless_inference_config_dict = (
                 serverless_inference_config._to_request_dict() if is_serverless else None

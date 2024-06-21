@@ -7009,3 +7009,170 @@ def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
         Filename="./foo/bar/mode.tar.gz",
         ExtraArgs=None,
     )
+
+
+def test_create_hub(sagemaker_session):
+    sagemaker_session.create_hub(
+        hub_name="mock-hub-name",
+        hub_description="this is my sagemaker hub",
+        hub_display_name="Mock Hub",
+        hub_search_keywords=["mock", "hub", "123"],
+        s3_storage_config={"S3OutputPath": "s3://my-hub-bucket/"},
+        tags=[{"Key": "tag-key-1", "Value": "tag-value-1"}],
+    )
+
+    request = {
+        "HubName": "mock-hub-name",
+        "HubDescription": "this is my sagemaker hub",
+        "HubDisplayName": "Mock Hub",
+        "HubSearchKeywords": ["mock", "hub", "123"],
+        "S3StorageConfig": {"S3OutputPath": "s3://my-hub-bucket/"},
+        "Tags": [{"Key": "tag-key-1", "Value": "tag-value-1"}],
+    }
+
+    sagemaker_session.sagemaker_client.create_hub.assert_called_with(**request)
+
+
+def test_describe_hub(sagemaker_session):
+    sagemaker_session.describe_hub(
+        hub_name="mock-hub-name",
+    )
+
+    request = {
+        "HubName": "mock-hub-name",
+    }
+
+    sagemaker_session.sagemaker_client.describe_hub.assert_called_with(**request)
+
+
+def test_list_hubs(sagemaker_session):
+    sagemaker_session.list_hubs(
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08-2024 10:25:00",
+        max_results=25,
+        max_schema_version="1.0.5",
+        name_contains="mock-hub",
+        sort_by="HubName",
+        sort_order="Ascending",
+    )
+
+    request = {
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08-2024 10:25:00",
+        "MaxResults": 25,
+        "MaxSchemaVersion": "1.0.5",
+        "NameContains": "mock-hub",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending",
+    }
+
+    sagemaker_session.sagemaker_client.list_hubs.assert_called_with(**request)
+
+
+def test_list_hub_contents(sagemaker_session):
+    sagemaker_session.list_hub_contents(
+        hub_name="mock-hub-123",
+        hub_content_type="MODELREF",
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08/2024 10:25:00",
+        max_results=25,
+        max_schema_version="1.0.5",
+        name_contains="mock-hub",
+        sort_by="HubName",
+        sort_order="Ascending",
+    )
+
+    request = {
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODELREF",
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08/2024 10:25:00",
+        "MaxResults": 25,
+        "MaxSchemaVersion": "1.0.5",
+        "NameContains": "mock-hub",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending",
+    }
+
+    sagemaker_session.sagemaker_client.list_hub_contents.assert_called_with(**request)
+
+
+def test_list_hub_content_versions(sagemaker_session):
+    sagemaker_session.list_hub_content_versions(
+        hub_name="mock-hub-123",
+        hub_content_type="MODELREF",
+        hub_content_name="mock-hub-content-1",
+        min_version="1.0.0",
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08/2024 10:25:00",
+        max_results=25,
+        max_schema_version="1.0.5",
+        sort_by="HubName",
+        sort_order="Ascending",
+    )
+
+    request = {
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODELREF",
+        "HubContentName": "mock-hub-content-1",
+        "MinVersion": "1.0.0",
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08/2024 10:25:00",
+        "MaxResults": 25,
+        "MaxSchemaVersion": "1.0.5",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending",
+    }
+
+    sagemaker_session.sagemaker_client.list_hub_content_versions.assert_called_with(**request)
+
+
+def test_delete_hub(sagemaker_session):
+    sagemaker_session.delete_hub(
+        hub_name="mock-hub-123",
+    )
+
+    request = {
+        "HubName": "mock-hub-123",
+    }
+
+    sagemaker_session.sagemaker_client.delete_hub.assert_called_with(**request)
+
+
+def test_create_hub_content_reference(sagemaker_session):
+    sagemaker_session.create_hub_content_reference(
+        hub_name="mock-hub-name",
+        source_hub_content_arn=(
+            "arn:aws:sagemaker:us-east-1:"
+            "123456789123:"
+            "hub-content/JumpStartHub/"
+            "model/mock-hub-content-1"
+        ),
+        hub_content_name="mock-hub-content-1",
+        min_version="1.1.1",
+    )
+
+    request = {
+        "HubName": "mock-hub-name",
+        "SageMakerPublicHubContentArn": "arn:aws:sagemaker:us-east-1:123456789123:hub-content/JumpStartHub/model/mock-hub-content-1",  # noqa: E501
+        "HubContentName": "mock-hub-content-1",
+        "MinVersion": "1.1.1",
+    }
+
+    sagemaker_session.sagemaker_client.create_hub_content_reference.assert_called_with(**request)
+
+
+def test_delete_hub_content_reference(sagemaker_session):
+    sagemaker_session.delete_hub_content_reference(
+        hub_name="mock-hub-name",
+        hub_content_type="ModelReference",
+        hub_content_name="mock-hub-content-1",
+    )
+
+    request = {
+        "HubName": "mock-hub-name",
+        "HubContentType": "ModelReference",
+        "HubContentName": "mock-hub-content-1",
+    }
+
+    sagemaker_session.sagemaker_client.delete_hub_content_reference.assert_called_with(**request)
