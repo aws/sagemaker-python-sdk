@@ -144,7 +144,8 @@ class DescribeHubContentResponse(HubDataHolderType):
         "hub_content_status",
         "hub_content_type",
         "hub_content_version",
-        "reference_min_version" "hub_name",
+        "reference_min_version",
+        "hub_name",
         "_region",
     ]
 

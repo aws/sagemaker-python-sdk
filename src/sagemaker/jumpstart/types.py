@@ -890,8 +890,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if self.regional_aliases:
             alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
             return alias_value
-        else:
-            return regional_property_value
+        return regional_property_value
 
 
 class JumpStartBenchmarkStat(JumpStartDataHolderType):
@@ -1207,6 +1206,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         return json_obj
 
     def set_hub_content_type(self, hub_content_type: HubContentType) -> None:
+        """Sets the hub content type."""
         if self._is_hub_content:
             self.hub_content_type = hub_content_type
 

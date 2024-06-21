@@ -214,6 +214,7 @@ def validate_hyperparameters(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         region=region,
         scope=JumpStartScriptScope.TRAINING,
         sagemaker_session=sagemaker_session,

@@ -133,8 +133,8 @@ def _retrieve_image_uri(
         if hub_arn:
             ecr_uri = model_specs.hosting_ecr_uri
             return ecr_uri
-        else:
-            ecr_specs = model_specs.hosting_ecr_specs
+        
+        ecr_specs = model_specs.hosting_ecr_specs
         if ecr_specs is None:
             raise ValueError(
                 f"No inference ECR configuration found for JumpStart model ID '{model_id}' "
@@ -152,8 +152,8 @@ def _retrieve_image_uri(
         if hub_arn:
             ecr_uri = model_specs.training_ecr_uri
             return ecr_uri
-        else:
-            ecr_specs = model_specs.training_ecr_specs
+        
+        ecr_specs = model_specs.training_ecr_specs
         if ecr_specs is None:
             raise ValueError(
                 f"No training ECR configuration found for JumpStart model ID '{model_id}' "

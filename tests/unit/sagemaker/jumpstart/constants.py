@@ -1266,7 +1266,9 @@ SPECIAL_MODEL_SPECS_DICT = {
         },
         "hosting_artifact_key": "huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference/v1.0.0/",
         "hosting_script_key": "source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",
-        "hosting_prepacked_artifact_key": "huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference-prepack/v1.0.0/",
+        "hosting_prepacked_artifact_key": (
+            "huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference-prepack/v1.0.0/"
+        ),
         "hosting_prepacked_artifact_version": "1.0.0",
         "hosting_use_script_uri": False,
         "hosting_eula_key": "fmhMetadata/terms/gemmaTerms.txt",
@@ -1654,7 +1656,9 @@ SPECIAL_MODEL_SPECS_DICT = {
             },
         ],
         "training_script_key": "source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",
-        "training_prepacked_script_key": "source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz",
+        "training_prepacked_script_key": (
+            "source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz"
+        ),
         "training_prepacked_script_version": "1.1.1",
         "training_ecr_specs": {
             "framework": "huggingface",
@@ -1820,7 +1824,9 @@ SPECIAL_MODEL_SPECS_DICT = {
                     "input_logprobs": "[0].details.prefill[*].logprob",
                 },
                 "body": {
-                    "inputs": "<bos><start_of_turn>user\nWrite a hello world program<end_of_turn>\n<start_of_turn>model",
+                    "inputs": (
+                        "<bos><start_of_turn>user\nWrite a hello world program<end_of_turn>\n<start_of_turn>model"
+                    ),
                     "parameters": {
                         "max_new_tokens": 256,
                         "decoder_input_details": True,
@@ -1849,70 +1855,136 @@ SPECIAL_MODEL_SPECS_DICT = {
         "hosting_instance_type_variants": {
             "regional_aliases": {
                 "af-south-1": {
-                    "gpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "626614931356.dkr.ecr.af-south-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "ap-east-1": {
-                    "gpu_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "871362719292.dkr.ecr.ap-east-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "ap-northeast-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "ap-northeast-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "ap-south-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-south-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "ap-southeast-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "ap-southeast-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "ca-central-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ca-central-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "cn-north-1": {
-                    "gpu_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "eu-central-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-central-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "eu-north-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-north-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "eu-south-1": {
-                    "gpu_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "692866216735.dkr.ecr.eu-south-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "eu-west-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "eu-west-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "eu-west-3": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-3.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "il-central-1": {
-                    "gpu_ecr_uri_1": "780543022126.dkr.ecr.il-central-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "780543022126.dkr.ecr.il-central-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "me-south-1": {
-                    "gpu_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "217643126080.dkr.ecr.me-south-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "sa-east-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.sa-east-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "us-east-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "us-east-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-east-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "us-west-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-west-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
                 "us-west-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
                 },
             },
             "variants": {
@@ -1935,83 +2007,153 @@ SPECIAL_MODEL_SPECS_DICT = {
         "training_instance_type_variants": {
             "regional_aliases": {
                 "af-south-1": {
-                    "gpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "626614931356.dkr.ecr.af-south-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "ap-east-1": {
-                    "gpu_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "871362719292.dkr.ecr.ap-east-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "ap-northeast-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "ap-northeast-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "ap-south-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-south-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "ap-southeast-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "ap-southeast-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "ca-central-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ca-central-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "cn-north-1": {
-                    "gpu_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "eu-central-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-central-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "eu-north-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-north-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "eu-south-1": {
-                    "gpu_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "692866216735.dkr.ecr.eu-south-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "eu-west-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "eu-west-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "eu-west-3": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-3.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "il-central-1": {
-                    "gpu_ecr_uri_1": "780543022126.dkr.ecr.il-central-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "780543022126.dkr.ecr.il-central-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "me-south-1": {
-                    "gpu_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "217643126080.dkr.ecr.me-south-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "sa-east-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.sa-east-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "us-east-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "us-east-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-east-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "us-west-1": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-west-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
                 "us-west-2": {
-                    "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
                 },
             },
             "variants": {
                 "g4dn": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        "gated_model_key_env_var_value": (
+                            "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        )
                     },
                 },
                 "g5": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        "gated_model_key_env_var_value": (
+                            "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        )
                     },
                 },
                 "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -2020,13 +2162,17 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "p3dn": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        "gated_model_key_env_var_value": (
+                            "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        )
                     },
                 },
                 "p4d": {
                     "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
                     "properties": {
-                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        "gated_model_key_env_var_value": (
+                            "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        )
                     },
                 },
                 "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},

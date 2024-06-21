@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module provides the JumpStart Curated Hub class."""
+"""This module provides the JumpStart Hub class."""
 from __future__ import absolute_import
 from datetime import datetime
 import logging
@@ -153,6 +153,7 @@ class Hub:
         return hub_description
 
     def _list_and_paginate_models(self, **kwargs) -> List[Dict[str, Any]]:
+        """list and paginate models from Hub"""
         next_token: Optional[str] = None
         first_iteration: bool = True
         hub_model_summaries: List[Dict[str, Any]] = []
@@ -166,7 +167,7 @@ class Hub:
         return hub_model_summaries
 
     def list_models(self, clear_cache: bool = True, **kwargs) -> Dict[str, Any]:
-        """Lists the models and model references in this Curated Hub.
+        """Lists the models and model references in this SageMaker Hub.
 
         This function caches the models in local memory
 
@@ -240,13 +241,13 @@ class Hub:
         return response
 
     def delete(self) -> None:
-        """Deletes this Curated Hub"""
+        """Deletes this SageMaker Hub."""
         return self._sagemaker_session.delete_hub(self.hub_name)
 
     def create_model_reference(
         self, model_arn: str, model_name: Optional[str] = None, min_version: Optional[str] = None
     ):
-        """Adds model reference to this Curated Hub"""
+        """Adds model reference to this SageMaker Hub."""
         return self._sagemaker_session.create_hub_content_reference(
             hub_name=self.hub_name,
             source_hub_content_arn=model_arn,
@@ -255,7 +256,7 @@ class Hub:
         )
 
     def delete_model_reference(self, model_name: str) -> None:
-        """Deletes model reference from this Curated Hub"""
+        """Deletes model reference from this SageMaker Hub."""
         return self._sagemaker_session.delete_hub_content_reference(
             hub_name=self.hub_name,
             hub_content_type=HubContentType.MODEL_REFERENCE.value,
@@ -265,7 +266,7 @@ class Hub:
     def describe_model(
         self, model_name: str, hub_name: Optional[str] = None, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
-
+        """Describe model in the SageMaker Hub."""
         try:
             model_version = get_hub_model_version(
                 hub_model_name=model_name,

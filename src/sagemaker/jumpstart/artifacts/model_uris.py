@@ -156,12 +156,11 @@ def _retrieve_model_uri(
         if hub_arn:
             model_artifact_uri = model_specs.hosting_artifact_uri
             return model_artifact_uri
-        else:
-            model_artifact_key = (
-                _retrieve_hosting_prepacked_artifact_key(model_specs, instance_type)
-                if is_prepacked
-                else _retrieve_hosting_artifact_key(model_specs, instance_type)
-            )
+        model_artifact_key = (
+            _retrieve_hosting_prepacked_artifact_key(model_specs, instance_type)
+            if is_prepacked
+            else _retrieve_hosting_artifact_key(model_specs, instance_type)
+        )
 
     elif model_scope == JumpStartScriptScope.TRAINING:
 

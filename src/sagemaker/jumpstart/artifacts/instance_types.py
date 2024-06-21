@@ -204,7 +204,7 @@ def _retrieve_instance_types(
 
     elif scope == JumpStartScriptScope.TRAINING:
         if training_instance_type is not None:
-            raise ValueError("Cannot use `training_instance_type` argument " "with training scope.")
+            raise ValueError("Cannot use `training_instance_type` argument with training scope.")
         instance_types = model_specs.supported_training_instance_types
     else:
         raise NotImplementedError(
