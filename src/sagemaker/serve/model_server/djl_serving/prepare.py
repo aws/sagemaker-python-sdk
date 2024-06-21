@@ -23,7 +23,6 @@ from pathlib import Path
 from sagemaker.utils import _tmpdir, custom_extractall_tarfile
 from sagemaker.s3 import S3Downloader
 from sagemaker.djl_inference import DJLModel
-from sagemaker.djl_inference.model import _read_existing_serving_properties
 from sagemaker.serve.utils.local_hardware import _check_disk_space, _check_docker_disk_usage
 
 _SERVING_PROPERTIES_FILE = "serving.properties"
