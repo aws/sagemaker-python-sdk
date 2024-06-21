@@ -24,30 +24,56 @@ from sagemaker.serve.utils.optimize_utils import (
     _is_image_compatible_with_optimization_job,
     _extract_speculative_draft_model_provider,
     _validate_optimization_inputs,
+    _extracts_and_validates_speculative_model_source,
 )
 
 mock_optimization_job_output = {
-    "OptimizationJobName": "optimization_job_name",
-    "RecommendedInferenceImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-    "huggingface-pytorch-tgi-inference:2.1.1-tgi2.0.0-gpu-py310-cu121-ubuntu22.04",
+    "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:312206380606:"
+    "optimization-job/modelbuilderjob-6b09ffebeb0741b8a28b85623fd9c968",
     "OptimizationJobStatus": "COMPLETED",
+    "OptimizationJobName": "modelbuilderjob-6b09ffebeb0741b8a28b85623fd9c968",
+    "ModelSource": {
+        "S3": {
+            "S3Uri": "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/"
+            "meta-textgeneration-llama-3-8b/artifacts/inference-prepack/v1.0.1/"
+        }
+    },
     "OptimizationEnvironment": {
-        "SAGEMAKER_PROGRAM": "inference.py",
         "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "HF_MODEL_ID": "/opt/ml/model",
         "MODEL_CACHE_ROOT": "/opt/ml/model",
         "SAGEMAKER_ENV": "1",
-        "HF_MODEL_ID": "/opt/ml/model",
-        "MAX_INPUT_LENGTH": "4095",
-        "MAX_TOTAL_TOKENS": "4096",
-        "MAX_BATCH_PREFILL_TOKENS": "8192",
-        "MAX_CONCURRENT_REQUESTS": "512",
         "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
     },
-    "ModelSource": {
-        "S3": "s3://jumpstart-private-cache-prod-us-west-2/meta-textgeneration/"
-        "meta-textgeneration-llama-3-8b/artifacts/inference-prepack/v2.0.0/"
+    "DeploymentInstanceType": "ml.g5.48xlarge",
+    "OptimizationConfigs": [
+        {
+            "ModelQuantizationConfig": {
+                "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-lmi10.0.0-cu124",
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            }
+        }
+    ],
+    "OutputConfig": {
+        "S3OutputLocation": "s3://dont-delete-ss-jarvis-integ-test-312206380606-us-west-2/"
     },
-    "DeploymentInstanceType": "ml.m5.xlarge",
+    "OptimizationOutput": {
+        "RecommendedInferenceImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-lmi10.0.0-cu124"
+    },
+    "RoleArn": "arn:aws:iam::312206380606:role/service-role/AmazonSageMaker-ExecutionRole-20230707T131628",
+    "StoppingCondition": {"MaxRuntimeInSeconds": 36000},
+    "ResponseMetadata": {
+        "RequestId": "17ae151f-b51d-4194-8ba9-edbba068c90b",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "x-amzn-requestid": "17ae151f-b51d-4194-8ba9-edbba068c90b",
+            "content-type": "application/x-amz-json-1.1",
+            "content-length": "1380",
+            "date": "Thu, 20 Jun 2024 19:25:53 GMT",
+        },
+        "RetryAttempts": 0,
+    },
 }
 
 
@@ -92,11 +118,19 @@ def test_is_image_compatible_with_optimization_job(image_uri, expected):
 
 def test_generate_optimized_model():
     pysdk_model = Mock()
-    pysdk_model.model_data = {"S3DataSource": {"S3Uri": "s3://foo/bar"}}
+    pysdk_model.model_data = {
+        "S3DataSource": {
+            "S3Uri": "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/"
+            "meta-textgeneration-llama-3-8b/artifacts/inference-prepack/v1.0.1/"
+        }
+    }
 
     optimized_model = _generate_optimized_model(pysdk_model, mock_optimization_job_output)
 
-    assert optimized_model.image_uri == mock_optimization_job_output["RecommendedInferenceImage"]
+    assert (
+        optimized_model.image_uri
+        == mock_optimization_job_output["OptimizationOutput"]["RecommendedInferenceImage"]
+    )
     assert optimized_model.env == mock_optimization_job_output["OptimizationEnvironment"]
     assert (
         optimized_model.model_data["S3DataSource"]["S3Uri"]
@@ -105,8 +139,8 @@ def test_generate_optimized_model():
     assert optimized_model.instance_type == mock_optimization_job_output["DeploymentInstanceType"]
     pysdk_model.add_tags.assert_called_once_with(
         {
-            "key": Tag.OPTIMIZATION_JOB_NAME,
-            "value": mock_optimization_job_output["OptimizationJobName"],
+            "Key": Tag.OPTIMIZATION_JOB_NAME,
+            "Value": mock_optimization_job_output["OptimizationJobName"],
         }
     )
 
@@ -165,3 +199,13 @@ def test_validate_optimization_inputs(
         _validate_optimization_inputs(
             output_path, instance, quantization_config, compilation_config
         )
+
+
+def test_extract_speculative_draft_model_s3_uri():
+    res = _extracts_and_validates_speculative_model_source({"ModelSource": "s3://"})
+    assert res == "s3://"
+
+
+def test_extract_speculative_draft_model_s3_uri_ex():
+    with pytest.raises(ValueError):
+        _extracts_and_validates_speculative_model_source({"ModelSource": None})

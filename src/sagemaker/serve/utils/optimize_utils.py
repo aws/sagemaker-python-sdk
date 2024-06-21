@@ -15,7 +15,8 @@ from __future__ import absolute_import
 
 import re
 import logging
-from typing import Dict, Any, Optional, Union
+import uuid
+from typing import Dict, Any, Optional, Union, List
 
 from sagemaker import Model
 from sagemaker.enums import Tag
@@ -66,18 +67,27 @@ def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -
     Returns:
         Model: A deployable optimized model.
     """
-    pysdk_model.image_uri = optimization_response["RecommendedInferenceImage"]
-    pysdk_model.env = optimization_response["OptimizationEnvironment"]
-    pysdk_model.model_data["S3DataSource"]["S3Uri"] = optimization_response["ModelSource"]["S3"]
-    pysdk_model.instance_type = optimization_response["DeploymentInstanceType"]
-    pysdk_model.add_tags(
-        {"key": Tag.OPTIMIZATION_JOB_NAME, "value": optimization_response["OptimizationJobName"]}
-    )
+    recommended_image_uri = optimization_response["OptimizationOutput"]["RecommendedInferenceImage"]
+    optimized_environment = optimization_response["OptimizationEnvironment"]
+    s3_uri = optimization_response["ModelSource"]["S3"]
+    deployment_instance_type = optimization_response["DeploymentInstanceType"]
 
+    if recommended_image_uri:
+        pysdk_model.image_uri = recommended_image_uri
+    if optimized_environment:
+        pysdk_model.env = optimized_environment
+    if s3_uri:
+        pysdk_model.model_data["S3DataSource"]["S3Uri"] = s3_uri
+    if deployment_instance_type:
+        pysdk_model.instance_type = deployment_instance_type
+
+    pysdk_model.add_tags(
+        {"Key": Tag.OPTIMIZATION_JOB_NAME, "Value": optimization_response["OptimizationJobName"]}
+    )
     return pysdk_model
 
 
-def _extract_model_source(
+def _generate_model_source(
     model_data: Optional[Union[Dict[str, Any], str]], accept_eula: Optional[bool]
 ) -> Optional[Dict[str, Any]]:
     """Extracts model source from model data.
@@ -143,6 +153,27 @@ def _extract_speculative_draft_model_provider(
     return "sagemaker"
 
 
+def _extracts_and_validates_speculative_model_source(
+    speculative_decoding_config: Dict,
+) -> str:
+    """Extracts model source from speculative decoding config.
+
+    Args:
+        speculative_decoding_config (Optional[Dict]): A speculative decoding config.
+
+    Returns:
+        str: Model source.
+
+    Raises:
+        ValueError: If model source is none.
+    """
+    s3_uri: str = speculative_decoding_config.get("ModelSource")
+
+    if not s3_uri:
+        raise ValueError("ModelSource must be provided in speculative decoding config.")
+    return s3_uri
+
+
 def _validate_optimization_inputs(
     output_path: Optional[str] = None,
     instance_type: Optional[str] = None,
@@ -177,3 +208,53 @@ def _validate_optimization_inputs(
             raise ValueError(instance_type_msg.format("compilation"))
         if not output_path:
             raise ValueError(output_path_msg.format("compilation"))
+
+
+def _generate_channel_name(additional_model_data_sources: Optional[List[Dict]]) -> str:
+    """Generates a channel name.
+
+    Args:
+        additional_model_data_sources (Optional[List[Dict]]): The additional model data sources.
+
+    Returns:
+        str: The channel name.
+    """
+    channel_name = f"model-builder-channel-{uuid.uuid4().hex}"
+    if additional_model_data_sources and len(additional_model_data_sources) > 0:
+        channel_name = additional_model_data_sources[0].get("ChannelName", channel_name)
+
+    return channel_name
+
+
+def _generate_additional_model_data_sources(
+    model_source: str,
+    channel_name: str,
+    accept_eula: bool = False,
+    s3_data_type: Optional[str] = "S3Prefix",
+    compression_type: Optional[str] = "None",
+) -> List[Dict]:
+    """Generates additional model data sources.
+
+    Args:
+        model_source (Optional[str]): The model source.
+        channel_name (Optional[str]): The channel name.
+        accept_eula (Optional[bool]): Whether to accept eula or not.
+        s3_data_type (Optional[str]): The S3 data type, defaults to 'S3Prefix'.
+        compression_type (Optional[str]): The compression type, defaults to None.
+
+    Returns:
+        List[Dict]: The additional model data sources.
+    """
+
+    additional_model_data_source = {
+        "ChannelName": channel_name,
+        "S3DataSource": {
+            "S3Uri": model_source,
+            "S3DataType": s3_data_type,
+            "CompressionType": compression_type,
+        },
+    }
+    if accept_eula:
+        additional_model_data_source["S3DataSource"]["ModelAccessConfig"] = {"ACCEPT_EULA": True}
+
+    return [additional_model_data_source]

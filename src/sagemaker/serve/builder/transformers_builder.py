@@ -223,10 +223,7 @@ class Transformers(ABC):
             self.pysdk_model.role = kwargs.get("role")
             del kwargs["role"]
 
-        # set model_data to uncompressed s3 dict
-        self.pysdk_model.model_data, env_vars = self._prepare_for_mode()
-        self.env_vars.update(env_vars)
-        self.pysdk_model.env.update(self.env_vars)
+        self._prepare_for_mode()
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
@@ -303,4 +300,8 @@ class Transformers(ABC):
 
         self._build_transformers_env()
 
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
         return self.pysdk_model

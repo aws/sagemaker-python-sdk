@@ -1011,7 +1011,7 @@ class TestJumpStartBuilder(unittest.TestCase):
             "S3Uri", mock_fine_tuning_model_path
         )
         mock_pre_trained_model.return_value.add_tags.assert_called_with(
-            {"key": Tag.FINE_TUNING_MODEL_PATH, "value": mock_fine_tuning_model_path}
+            {"Key": Tag.FINE_TUNING_MODEL_PATH, "Value": mock_fine_tuning_model_path}
         )
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)

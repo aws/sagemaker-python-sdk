@@ -181,7 +181,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -284,7 +284,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -391,7 +391,7 @@ class TestModelBuilder(unittest.TestCase):
             if inference_spec == mock_inference_spec and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -487,7 +487,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -591,7 +591,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -817,7 +817,7 @@ class TestModelBuilder(unittest.TestCase):
             if inference_spec == mock_inference_spec and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_sagemaker_endpoint_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_sagemaker_endpoint_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -939,7 +939,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,

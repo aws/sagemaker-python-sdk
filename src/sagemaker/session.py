@@ -7630,12 +7630,12 @@ def _auto_ml_job_status(sagemaker_client, job_name):
 def _optimization_job_status(sagemaker_client, job_name):
     """Placeholder docstring"""
     optimization_job_status_codes = {
-        "INPROGRESS": "!",
-        "COMPLETED": ".",
+        "INPROGRESS": ".",
+        "COMPLETED": "!",
         "FAILED": "*",
-        "STARTING": "s",
+        "STARTING": ".",
         "STOPPING": "_",
-        "STOPPED": ",",
+        "STOPPED": "s",
     }
     in_progress_statuses = ["INPROGRESS", "STARTING", "STOPPING"]
 

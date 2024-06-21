@@ -1826,3 +1826,50 @@ def camel_case_to_pascal_case(data: Dict[str, Any]) -> Dict[str, Any]:
         result[convert_key(key)] = convert_value(value)
 
     return result
+
+
+def tag_exists(tag: TagsDict, curr_tags: Optional[Tags]) -> bool:
+    """Returns True if ``tag`` already exists.
+
+    Args:
+        tag (TagsDict): The tag dictionary.
+        curr_tags (Optional[Tags]): The current tags.
+
+    Returns:
+        bool: True if the tag exists.
+    """
+    if curr_tags is None:
+        return False
+
+    for curr_tag in curr_tags:
+        if tag["Key"] == curr_tag["Key"]:
+            return True
+
+    return False
+
+
+def _validate_new_tags(new_tags: Optional[Tags], curr_tags: Optional[Tags]) -> Optional[Tags]:
+    """Validates new tags against existing tags.
+
+    Args:
+        new_tags (Optional[Tags]): The new tags.
+        curr_tags (Optional[Tags]): The current tags.
+
+    Returns:
+        Optional[Tags]: The updated tags.
+    """
+    if curr_tags is None:
+        return new_tags
+
+    if curr_tags and isinstance(curr_tags, dict):
+        curr_tags = [curr_tags]
+
+    if isinstance(new_tags, dict):
+        if not tag_exists(new_tags, curr_tags):
+            curr_tags.append(new_tags)
+    elif isinstance(new_tags, list):
+        for new_tag in new_tags:
+            if not tag_exists(new_tag, curr_tags):
+                curr_tags.append(new_tag)
+
+    return curr_tags

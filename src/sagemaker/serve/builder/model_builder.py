@@ -63,7 +63,10 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
-from sagemaker.serve.utils.optimize_utils import _generate_optimized_model
+from sagemaker.serve.utils.optimize_utils import (
+    _generate_optimized_model,
+    _validate_optimization_inputs,
+)
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
@@ -87,7 +90,9 @@ from sagemaker.serve.validations.check_image_and_hardware_type import (
 )
 from sagemaker.utils import Tags
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
+from sagemaker.huggingface.llm_utils import (
+    get_huggingface_model_metadata,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -383,7 +388,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             sagemaker_session=self.sagemaker_session,
         )
 
-    def _prepare_for_mode(self):
+    def _prepare_for_mode(self, should_upload_artifacts: bool = False):
         """Placeholder docstring"""
         # TODO: move mode specific prepare steps under _model_builder_deploy_wrapper
         self.s3_upload_path = None
@@ -401,6 +406,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 self.sagemaker_session,
                 self.image_uri,
                 getattr(self, "model_hub", None) == ModelHub.JUMPSTART,
+                should_upload=should_upload_artifacts,
             )
             self.env_vars.update(env_vars_sagemaker)
             return self.s3_upload_path, env_vars_sagemaker
@@ -479,6 +485,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.pysdk_model.mode = self.mode
         self.pysdk_model.modes = self.modes
         self.pysdk_model.serve_settings = self.serve_settings
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
 
         # dynamically generate a method to direct model.deploy() logic based on mode
         # unique method to models created via ModelBuilder()
@@ -935,8 +945,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """Runs a model optimization job.
 
         Args:
-            instance_type (str): Target deployment instance type that the model is optimized for.
-            output_path (str): Specifies where to store the compiled/quantized model.
+            instance_type (Optional[str]): Target deployment instance type that the
+                model is optimized for.
+            output_path (Optional[str]): Specifies where to store the compiled/quantized model.
             role (Optional[str]): Execution role. Defaults to ``None``.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
@@ -964,7 +975,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     @_capture_telemetry("optimize")
     def _model_builder_optimize_wrapper(
         self,
-        output_path: str,
+        output_path: Optional[str] = None,
         instance_type: Optional[str] = None,
         role: Optional[str] = None,
         tags: Optional[Tags] = None,
@@ -1010,11 +1021,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Model: A deployable ``Model`` object.
         """
+        _validate_optimization_inputs(
+            output_path, instance_type, quantization_config, compilation_config
+        )
+
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
         self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
 
-        input_args = {}
+        input_args = None
         if self._is_jumpstart_model_id():
             input_args = self._optimize_for_jumpstart(
                 output_path=output_path,
@@ -1032,8 +1047,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 max_runtime_in_sec=max_runtime_in_sec,
             )
 
-        self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
-        job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
-        self.pysdk_model = _generate_optimized_model(self.pysdk_model, job_status)
+        if input_args:
+            self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
+            job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
+            self.pysdk_model = _generate_optimized_model(self.pysdk_model, job_status)
 
         return self.pysdk_model

@@ -67,6 +67,7 @@ from sagemaker.utils import (
     format_tags,
     Tags,
     _resolve_routing_config,
+    _validate_new_tags,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -412,10 +413,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         Args:
             tags (Tags): Tags to add.
         """
-        if self._tags and tags:
-            self._tags.update(tags)
-        else:
-            self._tags = tags
+        self._tags = _validate_new_tags(tags, self._tags)
 
     @runnable_by_pipeline
     def register(

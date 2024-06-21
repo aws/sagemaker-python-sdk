@@ -38,11 +38,13 @@ from sagemaker.serve.utils.exceptions import (
     SkipTuningComboException,
 )
 from sagemaker.serve.utils.optimize_utils import (
-    _extract_model_source,
+    _generate_model_source,
     _update_environment_variables,
     _extract_speculative_draft_model_provider,
     _is_image_compatible_with_optimization_job,
-    _validate_optimization_inputs,
+    _extracts_and_validates_speculative_model_source,
+    _generate_channel_name,
+    _generate_additional_model_data_sources,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -110,6 +112,7 @@ class JumpStart(ABC):
         self.ram_usage_model_load = None
         self.model_hub = None
         self.model_metadata = None
+        self.role_arn = None
         self.is_fine_tuned = None
         self.is_gated = None
 
@@ -544,7 +547,7 @@ class JumpStart(ABC):
                 )
             pysdk_model.model_data["S3DataSource"]["S3Uri"] = fine_tuning_model_path
             pysdk_model.add_tags(
-                {"key": Tag.FINE_TUNING_MODEL_PATH, "value": fine_tuning_model_path}
+                {"Key": Tag.FINE_TUNING_MODEL_PATH, "Value": fine_tuning_model_path}
             )
             logger.info(
                 "FINE_TUNING_MODEL_PATH detected. Using fine-tuned model found in %s.",
@@ -633,6 +636,10 @@ class JumpStart(ABC):
                 "with djl-inference, tgi-inference, or mms-inference container."
             )
 
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
         return self.pysdk_model
 
     def _optimize_for_jumpstart(
@@ -650,7 +657,7 @@ class JumpStart(ABC):
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
         max_runtime_in_sec: Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Runs a model optimization job.
 
         Args:
@@ -685,13 +692,9 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
-        _validate_optimization_inputs(
-            output_path, instance_type, quantization_config, compilation_config
-        )
-
         optimization_env_vars = None
         pysdk_model_env_vars = None
-        model_source = _extract_model_source(self.pysdk_model.model_data, accept_eula)
+        model_source = _generate_model_source(self.pysdk_model.model_data, accept_eula)
 
         if speculative_decoding_config:
             self._set_additional_model_source(speculative_decoding_config)
@@ -745,8 +748,12 @@ class JumpStart(ABC):
         if vpc_config:
             create_optimization_job_args["VpcConfig"] = vpc_config
 
-        self.pysdk_model.env.update(pysdk_model_env_vars)
-        return create_optimization_job_args
+        if pysdk_model_env_vars:
+            self.pysdk_model.env.update(pysdk_model_env_vars)
+
+        if quantization_config or compilation_config:
+            return create_optimization_job_args
+        return None
 
     def _is_gated_model(self, model=None) -> bool:
         """Determine if ``this`` Model is Gated
@@ -779,14 +786,13 @@ class JumpStart(ABC):
         """
         if speculative_decoding_config:
             model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
+            channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
 
             if model_provider.lower() == "sagemaker":
-                if (
-                    self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
-                        "AdditionalDataSources"
-                    )
-                    is None
-                ):
+                additional_model_data_sources = self.pysdk_model.deployment_config.get(
+                    "DeploymentArgs", {}
+                ).get("AdditionalDataSources")
+                if additional_model_data_sources is None:
                     deployment_config = self._find_compatible_deployment_config(
                         speculative_decoding_config
                     )
@@ -801,27 +807,25 @@ class JumpStart(ABC):
                         )
 
                 self.pysdk_model.add_tags(
-                    {"key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "value": "sagemaker"},
+                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
                 )
             else:
-                s3_uri = speculative_decoding_config.get("ModelSource")
-                if not s3_uri:
-                    raise ValueError("Custom S3 Uri cannot be none.")
-
-                # TODO: Set correct channel name.
-                additional_model_data_source = {
-                    "ChannelName": "DraftModelName",
-                    "S3DataSource": {"S3Uri": s3_uri},
-                }
-                if accept_eula:
-                    additional_model_data_source["S3DataSource"]["ModelAccessConfig"] = {
-                        "ACCEPT_EULA": True
-                    }
-
-                self.pysdk_model.additional_model_data_sources = [additional_model_data_source]
-                self.pysdk_model.add_tags(
-                    {"key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "value": "customer"},
+                s3_uri = _extracts_and_validates_speculative_model_source(
+                    speculative_decoding_config
                 )
+
+                self.pysdk_model.additional_model_data_sources = (
+                    _generate_additional_model_data_sources(s3_uri, channel_name, accept_eula)
+                )
+                self.pysdk_model.add_tags(
+                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "customer"},
+                )
+
+            speculative_draft_model = f"/opt/ml/additional-model-data-sources/{channel_name}"
+            self.pysdk_model.env = _update_environment_variables(
+                self.pysdk_model.env,
+                {"OPTION_SPECULATIVE_DRAFT_MODEL": speculative_draft_model},
+            )
 
     def _find_compatible_deployment_config(
         self, speculative_decoding_config: Optional[Dict] = None

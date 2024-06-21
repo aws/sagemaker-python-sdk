@@ -55,6 +55,8 @@ from sagemaker.utils import (
     get_instance_rate_per_hour,
     extract_instance_rate_per_hour,
     _resolve_routing_config,
+    tag_exists,
+    _validate_new_tags,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -2095,3 +2097,30 @@ class TestConvertToPascalCase(TestCase):
 
     def test_empty_input(self):
         self.assertEqual(camel_case_to_pascal_case({}), {})
+
+
+class TestTags(TestCase):
+    def test_tag_exists(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        self.assertTrue(tag_exists({"Key": "project", "Value": "my-project"}, curr_tags=curr_tags))
+
+    def test_does_not_tag_exists(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        self.assertFalse(
+            tag_exists({"Key": "project-2", "Value": "my-project-2"}, curr_tags=curr_tags)
+        )
+
+    def test_add_tags(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        new_tag = {"Key": "project-2", "Value": "my-project-2"}
+        expected = [
+            {"Key": "project", "Value": "my-project"},
+            {"Key": "project-2", "Value": "my-project-2"},
+        ]
+
+        self.assertEqual(_validate_new_tags(new_tag, curr_tags), expected)
+
+    def test_new_add_tags(self):
+        new_tag = {"Key": "project-2", "Value": "my-project-2"}
+
+        self.assertEqual(_validate_new_tags(new_tag, None), new_tag)

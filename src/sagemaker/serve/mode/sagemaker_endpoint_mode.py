@@ -59,6 +59,7 @@ class SageMakerEndpointMode(
         sagemaker_session: Session = None,
         image: str = None,
         jumpstart: bool = False,
+        should_upload: bool = False,
     ):
         """Placeholder docstring"""
         try:
@@ -96,7 +97,7 @@ class SageMakerEndpointMode(
                 image=image,
             )
 
-        if self.model_server == ModelServer.TGI:
+        if self.model_server == ModelServer.TGI and should_upload:
             upload_artifacts = self._upload_tgi_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
@@ -105,7 +106,7 @@ class SageMakerEndpointMode(
                 jumpstart=jumpstart,
             )
 
-        if self.model_server == ModelServer.MMS:
+        if self.model_server == ModelServer.MMS and should_upload:
             upload_artifacts = self._upload_server_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
@@ -122,7 +123,7 @@ class SageMakerEndpointMode(
                 image=image,
             )
 
-        if self.model_server == ModelServer.TEI:
+        if self.model_server == ModelServer.TEI and should_upload:
             upload_artifacts = self._tei_serving._upload_tei_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
@@ -130,7 +131,7 @@ class SageMakerEndpointMode(
                 image=image,
             )
 
-        if upload_artifacts:
+        if upload_artifacts or isinstance(self.model_server, ModelServer):
             return upload_artifacts
 
         raise ValueError("%s model server is not supported" % self.model_server)
