@@ -77,7 +77,7 @@ def test_jumpstart_supported_content_types(
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"
 
-    supported_content_types = content_types.retrieve_options(
+    content_types.retrieve_options(
         region=region,
         model_id=model_id,
         model_version=model_version,
