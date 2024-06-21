@@ -48,6 +48,7 @@ def _retrieve_default_resources(
     model_id: str,
     model_version: str,
     scope: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -64,6 +65,8 @@ def _retrieve_default_resources(
             default resource requirements.
         scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve default resource requirements.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -96,6 +99,7 @@ def _retrieve_default_resources(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

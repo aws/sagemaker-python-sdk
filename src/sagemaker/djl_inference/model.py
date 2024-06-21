@@ -732,6 +732,7 @@ class DJLModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):  # pylint: disable=unused-argument
         """A container definition with framework configuration set in model environment variables.
 

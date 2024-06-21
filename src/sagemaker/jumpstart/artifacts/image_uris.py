@@ -33,6 +33,7 @@ def _retrieve_image_uri(
     model_id: str,
     model_version: str,
     image_scope: str,
+    hub_arn: Optional[str] = None,
     framework: Optional[str] = None,
     region: Optional[str] = None,
     version: Optional[str] = None,
@@ -57,6 +58,8 @@ def _retrieve_image_uri(
         model_id (str): JumpStart model ID for which to retrieve image URI.
         model_version (str): Version of the JumpStart model for which to retrieve
             the image URI.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         image_scope (str): The image type, i.e. what it is used for.
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.
@@ -111,6 +114,7 @@ def _retrieve_image_uri(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=image_scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -126,6 +130,10 @@ def _retrieve_image_uri(
             )
             if image_uri is not None:
                 return image_uri
+        if hub_arn:
+            ecr_uri = model_specs.hosting_ecr_uri
+            return ecr_uri
+
         ecr_specs = model_specs.hosting_ecr_specs
         if ecr_specs is None:
             raise ValueError(
@@ -141,6 +149,10 @@ def _retrieve_image_uri(
             )
             if image_uri is not None:
                 return image_uri
+        if hub_arn:
+            ecr_uri = model_specs.training_ecr_uri
+            return ecr_uri
+
         ecr_specs = model_specs.training_ecr_specs
         if ecr_specs is None:
             raise ValueError(
@@ -194,6 +206,7 @@ def _retrieve_image_uri(
         version=version_override or ecr_specs.framework_version,
         py_version=ecr_specs.py_version,
         instance_type=instance_type,
+        hub_arn=hub_arn,
         accelerator_type=accelerator_type,
         image_scope=image_scope,
         container_version=container_version,

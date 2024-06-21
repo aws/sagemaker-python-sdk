@@ -267,6 +267,7 @@ class XGBoostModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """Return a container definition with framework configuration.
 
@@ -314,6 +315,7 @@ class XGBoostModel(FrameworkModel):
             model_data,
             deploy_env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def serving_image_uri(self, region_name, instance_type, serverless_inference_config=None):

@@ -714,7 +714,7 @@ class ModelTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set([])
+        init_args_to_skip: Set[str] = set(["model_reference_arn"])
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
         parent_class_init = Model.__init__
@@ -731,6 +731,7 @@ class ModelTest(unittest.TestCase):
             "tolerate_deprecated_model",
             "instance_type",
             "model_package_arn",
+            "hub_name",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -800,6 +801,7 @@ class ModelTest(unittest.TestCase):
             model_id=model_id,
             model_version="*",
             region=region,
+            hub_arn=None,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=model.sagemaker_session,
@@ -927,6 +929,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
@@ -934,6 +937,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
             ]
         )
@@ -958,6 +962,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
@@ -965,6 +970,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
             ]
         )

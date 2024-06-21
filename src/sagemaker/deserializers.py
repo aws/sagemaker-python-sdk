@@ -43,6 +43,7 @@ def retrieve_options(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -56,6 +57,8 @@ def retrieve_options(
             retrieve the supported deserializers. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             supported deserializers. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -80,11 +83,12 @@ def retrieve_options(
         )
 
     return artifacts._retrieve_deserializer_options(
-        model_id,
-        model_version,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
     )
 
@@ -93,6 +97,7 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -107,6 +112,8 @@ def retrieve_default(
             retrieve the default deserializer. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default deserializer. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -131,11 +138,12 @@ def retrieve_default(
         )
 
     return artifacts._retrieve_default_deserializer(
-        model_id,
-        model_version,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
     )
