@@ -68,10 +68,7 @@ def test_create_djl_model_only_model_id(sagemaker_session):
     )
     assert model.engine == "Python"
     assert model.image_uri == LMI_IMAGE_URI
-    assert model.env == {
-        "HF_MODEL_ID": VALID_UNCOMPRESSED_MODEL_DATA,
-        "OPTION_ENGINE": "Python"
-    }
+    assert model.env == {"HF_MODEL_ID": VALID_UNCOMPRESSED_MODEL_DATA, "OPTION_ENGINE": "Python"}
 
 
 def test_create_djl_model_only_model_data(sagemaker_session):
@@ -88,9 +85,7 @@ def test_create_djl_model_only_model_data(sagemaker_session):
     )
     assert model.engine == "Python"
     assert model.image_uri == LMI_IMAGE_URI
-    assert model.env == {
-        "OPTION_ENGINE": "Python"
-    }
+    assert model.env == {"OPTION_ENGINE": "Python"}
 
 
 def test_create_djl_model_with_task(sagemaker_session):
@@ -98,14 +93,14 @@ def test_create_djl_model_with_task(sagemaker_session):
         model_id=VALID_UNCOMPRESSED_MODEL_DATA,
         sagemaker_session=sagemaker_session,
         role=ROLE,
-        task="text-generation"
+        task="text-generation",
     )
     assert model.engine == "Python"
     assert model.image_uri == LMI_IMAGE_URI
     assert model.env == {
         "HF_MODEL_ID": VALID_UNCOMPRESSED_MODEL_DATA,
         "OPTION_ENGINE": "Python",
-        "HF_TASK": "text-generation"
+        "HF_TASK": "text-generation",
     }
 
     model = DJLModel(
@@ -119,7 +114,7 @@ def test_create_djl_model_with_task(sagemaker_session):
     assert model.env == {
         "HF_MODEL_ID": HF_MODEL_ID,
         "OPTION_ENGINE": "OnnxRuntime",
-        "HF_TASK": "text-embedding"
+        "HF_TASK": "text-embedding",
     }
 
 
@@ -129,13 +124,13 @@ def test_create_djl_model_with_provided_image(sagemaker_session):
             model_id=VALID_UNCOMPRESSED_MODEL_DATA,
             sagemaker_session=sagemaker_session,
             role=ROLE,
-            image_uri=img_uri
+            image_uri=img_uri,
         )
         assert model.engine == "Python"
         assert model.image_uri == img_uri
         assert model.env == {
             "HF_MODEL_ID": VALID_UNCOMPRESSED_MODEL_DATA,
-            "OPTION_ENGINE": "Python"
+            "OPTION_ENGINE": "Python",
         }
 
     for framework in ["djl-lmi", "djl-tensorrtllm", "djl-neuronx"]:
@@ -143,13 +138,15 @@ def test_create_djl_model_with_provided_image(sagemaker_session):
             model_id=VALID_UNCOMPRESSED_MODEL_DATA,
             sagemaker_session=sagemaker_session,
             role=ROLE,
-            djl_framework=framework
+            djl_framework=framework,
         )
         assert model.engine == "Python"
-        assert model.image_uri == image_uris.retrieve(framework=framework, version=VERSION, region=REGION)
+        assert model.image_uri == image_uris.retrieve(
+            framework=framework, version=VERSION, region=REGION
+        )
         assert model.env == {
             "HF_MODEL_ID": VALID_UNCOMPRESSED_MODEL_DATA,
-            "OPTION_ENGINE": "Python"
+            "OPTION_ENGINE": "Python",
         }
 
 
@@ -187,7 +184,3 @@ def test_create_djl_model_all_provided_args(sagemaker_session):
         "HF_TOKEN": "token",
         "OPTION_DTYPE": "fp16",
     }
-
-
-
-

@@ -161,7 +161,6 @@ class DJLModel(Model):
             version=self.djl_version,
         )
 
-
     def _configure_environment_variables(self) -> Dict[str, str]:
         env = self.env.copy() if self.env else {}
         env = _set_env_var_from_property(self.model_id, "HF_MODEL_ID", env)

@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 from unittest import TestCase
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch, ANY
 
 from sagemaker.serve.model_server.tgi.prepare import (
     _create_dir_structure,
@@ -168,4 +168,4 @@ class TgiPrepareTests(TestCase):
 
         mock_path.assert_called_once_with(js_model_dir)
         mock_path_obj.joinpath.assert_called_once_with(f"infer-prepack-{MOCK_JUMPSTART_ID}.tar.gz")
-        mock_resource_obj.extractall.assert_called_once_with(path=code_dir, filter="data")
+        mock_resource_obj.extractall.assert_called_once_with(path=code_dir, members=ANY)
