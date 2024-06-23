@@ -12,12 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import json
-from json import JSONDecodeError
-
 import pytest
-from mock import Mock, MagicMock
-from mock import patch
+from mock import Mock
 
 from sagemaker.djl_inference import (
     DJLModel,

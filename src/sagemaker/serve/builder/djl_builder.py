@@ -255,7 +255,6 @@ class DJL(ABC):
             self.schema_builder.sample_input["parameters"][
                 "max_new_tokens"
             ] = _default_max_new_tokens
-        logger.info(f"env vars are {self.env_vars}")
         self.pysdk_model = self._create_djl_model()
 
         if self.mode == Mode.LOCAL_CONTAINER:

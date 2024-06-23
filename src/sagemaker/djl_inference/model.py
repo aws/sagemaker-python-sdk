@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 def _set_env_var_from_property(
     property_value: Optional[Any], env_key: str, env: dict, override_env_var=False
 ) -> dict:
+    """Utility method to set an environment variable configuration"""
     if not property_value:
         return env
     if override_env_var or env_key not in env:
@@ -129,20 +130,23 @@ class DJLModel(Model):
         self._initialize_model()
 
     def _initialize_model(self):
+        """Placeholder docstring"""
         self._validate_model_artifacts()
         self.engine = self._infer_engine()
         self.env = self._configure_environment_variables()
         self.image_uri = self._infer_image_uri()
 
     def _validate_model_artifacts(self):
+        """Placeholder docstring"""
         if self.model_id is not None and self.model_data is not None:
             raise ValueError(
                 "both model_id and model_data are provided. Please only provide one of them"
             )
 
     def _infer_engine(self) -> Optional[str]:
+        """Placeholder docstring"""
         if self.engine is not None:
-            logger.info(f"Using provided engine {self.engine}")
+            logger.info("Using provided engine %s", self.engine)
             return self.engine
 
         if self.task is not None:
@@ -151,6 +155,7 @@ class DJLModel(Model):
         return "Python"
 
     def _infer_image_uri(self):
+        """Placeholder docstring"""
         if self.image_uri is not None:
             return self.image_uri
         if self.djl_framework is None:
@@ -162,6 +167,7 @@ class DJLModel(Model):
         )
 
     def _configure_environment_variables(self) -> Dict[str, str]:
+        """Placeholder docstring"""
         env = self.env.copy() if self.env else {}
         env = _set_env_var_from_property(self.model_id, "HF_MODEL_ID", env)
         env = _set_env_var_from_property(self.task, "HF_TASK", env)
@@ -188,6 +194,7 @@ class DJLModel(Model):
         accelerator_type=None,
         serverless_inference_config=None,
     ):
+        """Placeholder docstring"""
         if self.image_uri:
             return self.image_uri
         return image_uris.retrieve(
