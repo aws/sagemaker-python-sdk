@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.224.1 (2024-06-21)
+
+### Bug Fixes and Other Changes
+
+ * JumpStart CuratedHub Launch
+ * Update README.rst to show conda-forge version of SageMaker SDK
+ * Update tox.ini
+ * chore(deps): bump apache-airflow from 2.9.1 to 2.9.2 in /requirements/extras
+ * Model server override logic
+
 ## v2.224.0 (2024-06-19)
 
 ### Features

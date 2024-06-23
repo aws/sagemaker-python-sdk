@@ -10,6 +10,10 @@ SageMaker Python SDK
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Latest Version
 
+.. image:: https://img.shields.io/conda/vn/conda-forge/sagemaker-python-sdk.svg
+   :target: https://anaconda.org/conda-forge/sagemaker-python-sdk
+   :alt: Conda-Forge Version
+
 .. image:: https://img.shields.io/pypi/pyversions/sagemaker.svg
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Supported Python Versions
