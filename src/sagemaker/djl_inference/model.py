@@ -108,8 +108,6 @@ class DJLModel(Model):
             **kwargs: Keyword arguments passed to the superclass
                 :class:`~sagemaker.model.FrameworkModel` and, subsequently, its
                 superclass :class:`~sagemaker.model.Model`.
-
-        .. tip::
         """
         super(DJLModel, self).__init__(predictor_cls=predictor_cls, **kwargs)
         self.model_id = model_id

@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 from unittest import TestCase
-from unittest.mock import Mock, PropertyMock, patch, mock_open, ANY
+from unittest.mock import Mock, PropertyMock, patch, mock_open
 
 from sagemaker.serve.model_server.djl_serving.prepare import (
     _copy_jumpstart_artifacts,
@@ -186,4 +186,4 @@ class DjlPrepareTests(TestCase):
 
         mock_path.assert_called_once_with(js_model_dir)
         mock_path_obj.joinpath.assert_called_once_with(f"infer-prepack-{MOCK_JUMPSTART_ID}.tar.gz")
-        mock_resource_obj.extractall.assert_called_once_with(path=code_dir, members=ANY)
+        mock_resource_obj.extractall.assert_called_once_with(path=code_dir, filter="data")
