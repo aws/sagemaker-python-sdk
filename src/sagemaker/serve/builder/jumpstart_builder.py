@@ -109,7 +109,7 @@ class JumpStart(ABC):
         self.prepared_for_djl = None
         self.prepared_for_mms = None
         self.schema_builder = None
-        self.nb_instance_type = None
+        self.instance_type = None
         self.ram_usage_model_load = None
         self.model_hub = None
         self.model_metadata = None
@@ -138,7 +138,9 @@ class JumpStart(ABC):
 
     def _create_pre_trained_js_model(self) -> Type[Model]:
         """Placeholder docstring"""
-        pysdk_model = JumpStartModel(self.model, vpc_config=self.vpc_config)
+        pysdk_model = JumpStartModel(
+            self.model, vpc_config=self.vpc_config, instance_type=self.instance_type
+        )
         pysdk_model.sagemaker_session = self.sagemaker_session
 
         self._original_deploy = pysdk_model.deploy
@@ -234,8 +236,8 @@ class JumpStart(ABC):
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        if hasattr(self, "nb_instance_type"):
-            kwargs.update({"instance_type": self.nb_instance_type})
+        if self.instance_type:
+            kwargs.update({"instance_type": self.instance_type})
 
         if "mode" in kwargs:
             del kwargs["mode"]
@@ -268,7 +270,7 @@ class JumpStart(ABC):
                 )
             self._prepare_for_mode()
         elif self.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(self, "prepared_for_djl"):
-            self.nb_instance_type = _get_nb_instance()
+            self.instance_type = self.instance_type or _get_nb_instance()
             self.pysdk_model.model_data, env = self._prepare_for_mode()
 
         self.pysdk_model.env.update(env)
@@ -647,7 +649,7 @@ class JumpStart(ABC):
         self,
         output_path: Optional[str] = None,
         instance_type: Optional[str] = None,
-        role: Optional[str] = None,
+        role_arn: Optional[str] = None,
         tags: Optional[Tags] = None,
         job_name: Optional[str] = None,
         accept_eula: Optional[bool] = None,
@@ -665,7 +667,7 @@ class JumpStart(ABC):
             output_path (Optional[str]): Specifies where to store the compiled/quantized model.
             instance_type (Optional[str]): Target deployment instance type that
                 the model is optimized for.
-            role (Optional[str]): Execution role. Defaults to ``None``.
+            role_arn (Optional[str]): Execution role. Defaults to ``None``.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
             accept_eula (bool): For models that require a Model Access Config, specify True or
@@ -735,7 +737,7 @@ class JumpStart(ABC):
             "DeploymentInstanceType": instance_type,
             "OptimizationConfigs": [optimization_config],
             "OutputConfig": output_config,
-            "RoleArn": role,
+            "RoleArn": role_arn,
         }
 
         if optimization_env_vars:

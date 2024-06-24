@@ -949,7 +949,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             instance_type (Optional[str]): Target deployment instance type that the
                 model is optimized for.
             output_path (Optional[str]): Specifies where to store the compiled/quantized model.
-            role (Optional[str]): Execution role. Defaults to ``None``.
+            role_arn (Optional[str]): Execution role. Defaults to ``None``.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
@@ -978,7 +978,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self,
         output_path: Optional[str] = None,
         instance_type: Optional[str] = None,
-        role: Optional[str] = None,
+        role_arn: Optional[str] = None,
         tags: Optional[Tags] = None,
         job_name: Optional[str] = None,
         accept_eula: Optional[bool] = None,
@@ -996,7 +996,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Args:
             output_path (str): Specifies where to store the compiled/quantized model.
             instance_type (str): Target deployment instance type that the model is optimized for.
-            role (Optional[str]): Execution role. Defaults to ``None``.
+            role_arn (Optional[str]): Execution role arn. Defaults to ``None``.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
             accept_eula (bool): For models that require a Model Access Config, specify True or
@@ -1030,8 +1030,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         if instance_type:
             self.instance_type = instance_type
-        if role:
-            self.role = role
+        if role_arn:
+            self.role_arn = role_arn
 
         self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
@@ -1041,7 +1041,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             input_args = self._optimize_for_jumpstart(
                 output_path=output_path,
                 instance_type=instance_type,
-                role=role if role else self.role_arn,
+                role_arn=self.role_arn,
                 tags=tags,
                 job_name=job_name,
                 accept_eula=accept_eula,
