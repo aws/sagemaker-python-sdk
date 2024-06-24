@@ -25,23 +25,6 @@ from sagemaker.enums import Tag
 logger = logging.getLogger(__name__)
 
 
-def _is_inferentia_or_trainium(instance_type: Optional[str]) -> bool:
-    """Checks whether an instance is compatible with Inferentia.
-
-    Args:
-        instance_type (str): The instance type used for the compilation job.
-
-    Returns:
-        bool: Whether the given instance type is Inferentia or Trainium.
-    """
-    if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match:
-            if match[1].startswith("inf") or match[1].startswith("trn"):
-                return True
-    return False
-
-
 def _is_image_compatible_with_optimization_job(image_uri: Optional[str]) -> bool:
     """Checks whether an instance is compatible with an optimization job.
 
@@ -69,13 +52,16 @@ def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -
     """
     recommended_image_uri = optimization_response["OptimizationOutput"]["RecommendedInferenceImage"]
     optimized_environment = optimization_response["OptimizationEnvironment"]
-    s3_uri = optimization_response["ModelSource"]["S3"]
+    s3_uri = optimization_response["OutputConfig"]["S3OutputLocation"]
     deployment_instance_type = optimization_response["DeploymentInstanceType"]
 
     if recommended_image_uri:
         pysdk_model.image_uri = recommended_image_uri
     if optimized_environment:
-        pysdk_model.env = optimized_environment
+        if pysdk_model.env:
+            pysdk_model.env.update(optimized_environment)
+        else:
+            pysdk_model.env = optimized_environment
     if s3_uri:
         pysdk_model.model_data["S3DataSource"]["S3Uri"] = s3_uri
     if deployment_instance_type:
@@ -258,3 +244,18 @@ def _generate_additional_model_data_sources(
         additional_model_data_source["S3DataSource"]["ModelAccessConfig"] = {"ACCEPT_EULA": True}
 
     return [additional_model_data_source]
+
+
+def _is_s3_uri(s3_uri: Optional[str]) -> bool:
+    """Checks whether an S3 URI is valid.
+
+    Args:
+        s3_uri (Optional[str]): The S3 URI.
+
+    Returns:
+        bool: Whether the S3 URI is valid.
+    """
+    if s3_uri is None:
+        return False
+
+    return re.match("^s3://([^/]+)/?(.*)$", s3_uri) is not None

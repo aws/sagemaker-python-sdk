@@ -19,19 +19,21 @@ import pytest
 from sagemaker.enums import Tag
 from sagemaker.serve.utils.optimize_utils import (
     _generate_optimized_model,
-    _is_inferentia_or_trainium,
     _update_environment_variables,
     _is_image_compatible_with_optimization_job,
     _extract_speculative_draft_model_provider,
     _validate_optimization_inputs,
     _extracts_and_validates_speculative_model_source,
+    _is_s3_uri,
+    _generate_additional_model_data_sources,
+    _generate_channel_name,
 )
 
 mock_optimization_job_output = {
-    "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:312206380606:"
-    "optimization-job/modelbuilderjob-6b09ffebeb0741b8a28b85623fd9c968",
+    "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:312206380606:optimization-job/"
+    "modelbuilderjob-3cbf9c40b63c455d85b60033f9a01691",
     "OptimizationJobStatus": "COMPLETED",
-    "OptimizationJobName": "modelbuilderjob-6b09ffebeb0741b8a28b85623fd9c968",
+    "OptimizationJobName": "modelbuilderjob-3cbf9c40b63c455d85b60033f9a01691",
     "ModelSource": {
         "S3": {
             "S3Uri": "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/"
@@ -46,7 +48,7 @@ mock_optimization_job_output = {
         "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
         "SAGEMAKER_PROGRAM": "inference.py",
     },
-    "DeploymentInstanceType": "ml.g5.48xlarge",
+    "DeploymentInstanceType": "ml.g5.2xlarge",
     "OptimizationConfigs": [
         {
             "ModelQuantizationConfig": {
@@ -55,38 +57,24 @@ mock_optimization_job_output = {
             }
         }
     ],
-    "OutputConfig": {
-        "S3OutputLocation": "s3://dont-delete-ss-jarvis-integ-test-312206380606-us-west-2/"
-    },
+    "OutputConfig": {"S3OutputLocation": "s3://quicksilver-model-data/llama-3-8b/quantized-1/"},
     "OptimizationOutput": {
         "RecommendedInferenceImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-lmi10.0.0-cu124"
     },
-    "RoleArn": "arn:aws:iam::312206380606:role/service-role/AmazonSageMaker-ExecutionRole-20230707T131628",
+    "RoleArn": "arn:aws:iam::312206380606:role/service-role/AmazonSageMaker-ExecutionRole-20240116T151132",
     "StoppingCondition": {"MaxRuntimeInSeconds": 36000},
     "ResponseMetadata": {
-        "RequestId": "17ae151f-b51d-4194-8ba9-edbba068c90b",
+        "RequestId": "a95253d5-c045-4708-8aac-9f0d327515f7",
         "HTTPStatusCode": 200,
         "HTTPHeaders": {
-            "x-amzn-requestid": "17ae151f-b51d-4194-8ba9-edbba068c90b",
+            "x-amzn-requestid": "a95253d5-c045-4708-8aac-9f0d327515f7",
             "content-type": "application/x-amz-json-1.1",
-            "content-length": "1380",
-            "date": "Thu, 20 Jun 2024 19:25:53 GMT",
+            "content-length": "1371",
+            "date": "Fri, 21 Jun 2024 04:27:42 GMT",
         },
         "RetryAttempts": 0,
     },
 }
-
-
-@pytest.mark.parametrize(
-    "instance, expected",
-    [
-        ("ml.trn1.2xlarge", True),
-        ("ml.inf2.xlarge", True),
-        ("ml.c7gd.4xlarge", False),
-    ],
-)
-def test_is_inferentia_or_trainium(instance, expected):
-    assert _is_inferentia_or_trainium(instance) == expected
 
 
 @pytest.mark.parametrize(
@@ -124,6 +112,7 @@ def test_generate_optimized_model():
             "meta-textgeneration-llama-3-8b/artifacts/inference-prepack/v1.0.1/"
         }
     }
+    pysdk_model.env = {"OPTION_QUANTIZE": "awq"}
 
     optimized_model = _generate_optimized_model(pysdk_model, mock_optimization_job_output)
 
@@ -131,10 +120,13 @@ def test_generate_optimized_model():
         optimized_model.image_uri
         == mock_optimization_job_output["OptimizationOutput"]["RecommendedInferenceImage"]
     )
-    assert optimized_model.env == mock_optimization_job_output["OptimizationEnvironment"]
+    assert optimized_model.env == {
+        "OPTION_QUANTIZE": "awq",
+        **mock_optimization_job_output["OptimizationEnvironment"],
+    }
     assert (
         optimized_model.model_data["S3DataSource"]["S3Uri"]
-        == mock_optimization_job_output["ModelSource"]["S3"]
+        == mock_optimization_job_output["OutputConfig"]["S3OutputLocation"]
     )
     assert optimized_model.instance_type == mock_optimization_job_output["DeploymentInstanceType"]
     pysdk_model.add_tags.assert_called_once_with(
@@ -209,3 +201,61 @@ def test_extract_speculative_draft_model_s3_uri():
 def test_extract_speculative_draft_model_s3_uri_ex():
     with pytest.raises(ValueError):
         _extracts_and_validates_speculative_model_source({"ModelSource": None})
+
+
+def test_generate_channel_name():
+    assert _generate_channel_name(None) is not None
+
+    additional_model_data_sources = _generate_additional_model_data_sources(
+        "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/", "channel_name", True
+    )
+
+    assert _generate_channel_name(additional_model_data_sources) == "channel_name"
+
+
+def test_generate_additional_model_data_sources():
+    model_source = _generate_additional_model_data_sources(
+        "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/", "channel_name", True
+    )
+
+    assert model_source == [
+        {
+            "ChannelName": "channel_name",
+            "S3DataSource": {
+                "S3Uri": "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/",
+                "S3DataType": "S3Prefix",
+                "CompressionType": "None",
+                "ModelAccessConfig": {"ACCEPT_EULA": True},
+            },
+        }
+    ]
+
+    model_source = _generate_additional_model_data_sources(
+        "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/", "channel_name", False
+    )
+
+    assert model_source == [
+        {
+            "ChannelName": "channel_name",
+            "S3DataSource": {
+                "S3Uri": "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/",
+                "S3DataType": "S3Prefix",
+                "CompressionType": "None",
+            },
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    "s3_uri, expected",
+    [
+        (
+            "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/"
+            "meta-textgeneration-llama-3-8b/artifacts/inference-prepack/v1.0.1/",
+            True,
+        ),
+        ("invalid://", False),
+    ],
+)
+def test_is_s3_uri(s3_uri, expected):
+    assert _is_s3_uri(s3_uri) == expected

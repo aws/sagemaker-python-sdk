@@ -45,6 +45,7 @@ from sagemaker.serve.utils.optimize_utils import (
     _extracts_and_validates_speculative_model_source,
     _generate_channel_name,
     _generate_additional_model_data_sources,
+    _is_s3_uri,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -750,6 +751,8 @@ class JumpStart(ABC):
 
         if pysdk_model_env_vars:
             self.pysdk_model.env.update(pysdk_model_env_vars)
+        if accept_eula:
+            self.pysdk_model.accept_eula = accept_eula
 
         if quantization_config or compilation_config:
             return create_optimization_job_args
@@ -787,8 +790,9 @@ class JumpStart(ABC):
         if speculative_decoding_config:
             model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
+            speculative_draft_model = f"/opt/ml/additional-model-data-sources/{channel_name}"
 
-            if model_provider.lower() == "sagemaker":
+            if model_provider == "sagemaker":
                 additional_model_data_sources = self.pysdk_model.deployment_config.get(
                     "DeploymentArgs", {}
                 ).get("AdditionalDataSources")
@@ -805,27 +809,31 @@ class JumpStart(ABC):
                         raise ValueError(
                             "Cannot find deployment config compatible for optimization job."
                         )
-
-                self.pysdk_model.add_tags(
-                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
-                )
             else:
-                s3_uri = _extracts_and_validates_speculative_model_source(
+                model_source = _extracts_and_validates_speculative_model_source(
                     speculative_decoding_config
                 )
 
-                self.pysdk_model.additional_model_data_sources = (
-                    _generate_additional_model_data_sources(s3_uri, channel_name, accept_eula)
-                )
-                self.pysdk_model.add_tags(
-                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "customer"},
-                )
+                if _is_s3_uri(model_source):
+                    self.pysdk_model.additional_model_data_sources = (
+                        _generate_additional_model_data_sources(
+                            model_source, channel_name, accept_eula
+                        )
+                    )
+                else:
+                    speculative_draft_model = model_source
 
-            speculative_draft_model = f"/opt/ml/additional-model-data-sources/{channel_name}"
             self.pysdk_model.env = _update_environment_variables(
                 self.pysdk_model.env,
                 {"OPTION_SPECULATIVE_DRAFT_MODEL": speculative_draft_model},
             )
+            self.pysdk_model.add_tags(
+                {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": model_provider},
+            )
+            if accept_eula and isinstance(self.pysdk_model.model_data, dict):
+                self.pysdk_model.model_data["S3DataSource"]["ModelAccessConfig"] = {
+                    "AcceptEula": True
+                }
 
     def _find_compatible_deployment_config(
         self, speculative_decoding_config: Optional[Dict] = None

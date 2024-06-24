@@ -70,7 +70,7 @@ class SageMakerEndpointMode(
                 + "session to be created or supply `sagemaker_session` into @serve.invoke."
             ) from e
 
-        upload_artifacts = None
+        upload_artifacts = None, None
         if self.model_server == ModelServer.TORCHSERVE:
             upload_artifacts = self._upload_torchserve_artifacts(
                 model_path=model_path,

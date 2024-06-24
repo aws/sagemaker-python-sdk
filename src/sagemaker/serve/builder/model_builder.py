@@ -408,7 +408,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 getattr(self, "model_hub", None) == ModelHub.JUMPSTART,
                 should_upload=should_upload_artifacts,
             )
-            self.env_vars.update(env_vars_sagemaker)
+            if env_vars_sagemaker:
+                self.env_vars.update(env_vars_sagemaker)
             return self.s3_upload_path, env_vars_sagemaker
         if self.mode == Mode.LOCAL_CONTAINER:
             # init the LocalContainerMode object
@@ -1026,6 +1027,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         )
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
+
+        if instance_type:
+            self.instance_type = instance_type
+        if role:
+            self.role = role
+
         self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
 
