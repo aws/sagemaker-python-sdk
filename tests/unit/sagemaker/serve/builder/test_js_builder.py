@@ -303,7 +303,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalDeepPingException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalDeepPingException("mock_exception")},
     )
     def test_tune_for_tgi_js_local_container_deep_ping_ex(
         self,
@@ -353,7 +353,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalModelLoadException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalModelLoadException("mock_exception")},
     )
     def test_tune_for_tgi_js_local_container_load_ex(
         self,
@@ -403,7 +403,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalModelOutOfMemoryException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalModelOutOfMemoryException("mock_exception")},
     )
     def test_tune_for_tgi_js_local_container_oom_ex(
         self,
@@ -453,7 +453,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalModelInvocationException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalModelInvocationException("mock_exception")},
     )
     def test_tune_for_tgi_js_local_container_invoke_ex(
         self,
@@ -568,7 +568,7 @@ class TestJumpStartBuilder(unittest.TestCase):
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalModelInvocationException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalModelInvocationException("mock_exception")},
     )
     def test_tune_for_djl_js_local_container_invoke_ex(
         self,

@@ -307,7 +307,7 @@ class TestDjlBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalDeepPingException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalDeepPingException("mock_exception")},
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._get_admissible_tensor_parallel_degrees",
@@ -360,7 +360,7 @@ class TestDjlBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalModelLoadException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalModelLoadException("mock_exception")},
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._get_admissible_tensor_parallel_degrees",
@@ -413,7 +413,7 @@ class TestDjlBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalModelOutOfMemoryException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalModelOutOfMemoryException("mock_exception")},
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._get_admissible_tensor_parallel_degrees",
@@ -466,7 +466,7 @@ class TestDjlBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
         "sagemaker.serve.builder.djl_builder._serial_benchmark",
-        **{"return_value.raiseError.side_effect": LocalModelInvocationException("mock_exception")}
+        **{"return_value.raiseError.side_effect": LocalModelInvocationException("mock_exception")},
     )
     @patch(
         "sagemaker.serve.builder.djl_builder._get_admissible_tensor_parallel_degrees",
