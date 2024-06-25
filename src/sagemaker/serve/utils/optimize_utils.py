@@ -160,42 +160,6 @@ def _extracts_and_validates_speculative_model_source(
     return s3_uri
 
 
-def _validate_optimization_inputs(
-    output_path: Optional[str] = None,
-    instance_type: Optional[str] = None,
-    quantization_config: Optional[Dict] = None,
-    compilation_config: Optional[Dict] = None,
-) -> None:
-    """Validates optimization inputs.
-
-    Args:
-        output_path (Optional[str]): The output path.
-        instance_type (Optional[str]): The instance type.
-        quantization_config (Optional[Dict]): The quantization config.
-        compilation_config (Optional[Dict]): The compilation config.
-
-    Raises:
-        ValueError: If an optimization input is invalid.
-    """
-    if quantization_config and compilation_config:
-        raise ValueError("Quantization config and compilation config are mutually exclusive.")
-
-    instance_type_msg = "Please provide an instance type for %s optimization job."
-    output_path_msg = "Please provide an output path for %s optimization job."
-
-    if quantization_config:
-        if not instance_type:
-            raise ValueError(instance_type_msg.format("quantization"))
-        if not output_path:
-            raise ValueError(output_path_msg.format("quantization"))
-
-    if compilation_config:
-        if not instance_type:
-            raise ValueError(instance_type_msg.format("compilation"))
-        if not output_path:
-            raise ValueError(output_path_msg.format("compilation"))
-
-
 def _generate_channel_name(additional_model_data_sources: Optional[List[Dict]]) -> str:
     """Generates a channel name.
 

@@ -2569,6 +2569,8 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
         "model_data_download_timeout",
         "container_startup_health_check_timeout",
         "additional_data_sources",
+        "neuron_model_id",
+        "neuron_model_version",
     ]
 
     def __init__(
@@ -2599,6 +2601,8 @@ class DeploymentArgs(BaseDeploymentConfigDataHolder):
                 "supported_inference_instance_types"
             )
             self.additional_data_sources = resolved_config.get("hosting_additional_data_sources")
+            self.neuron_model_id = resolved_config.get("hosting_neuron_model_id")
+            self.neuron_model_version = resolved_config.get("hosting_neuron_model_version")
 
 
 class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):

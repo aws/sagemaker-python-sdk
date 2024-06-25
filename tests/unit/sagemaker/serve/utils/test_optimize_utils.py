@@ -22,7 +22,6 @@ from sagemaker.serve.utils.optimize_utils import (
     _update_environment_variables,
     _is_image_compatible_with_optimization_job,
     _extract_speculative_draft_model_provider,
-    _validate_optimization_inputs,
     _extracts_and_validates_speculative_model_source,
     _is_s3_uri,
     _generate_additional_model_data_sources,
@@ -166,31 +165,6 @@ def test_extract_speculative_draft_model_provider(
         _extract_speculative_draft_model_provider(speculative_decoding_config)
         == expected_model_provider
     )
-
-
-@pytest.mark.parametrize(
-    "output_path, instance, quantization_config, compilation_config",
-    [
-        (
-            None,
-            None,
-            {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}},
-            {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}},
-        ),
-        (None, None, {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}}, None),
-        (None, None, None, {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}}),
-        ("output_path", None, None, {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}}),
-        (None, "instance_type", None, {"OverrideEnvironment": {"TENSOR_PARALLEL_DEGREE": 4}}),
-    ],
-)
-def test_validate_optimization_inputs(
-    output_path, instance, quantization_config, compilation_config
-):
-
-    with pytest.raises(ValueError):
-        _validate_optimization_inputs(
-            output_path, instance, quantization_config, compilation_config
-        )
 
 
 def test_extract_speculative_draft_model_s3_uri():

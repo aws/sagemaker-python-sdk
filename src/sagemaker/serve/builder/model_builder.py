@@ -65,7 +65,6 @@ from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
 from sagemaker.serve.utils.optimize_utils import (
     _generate_optimized_model,
-    _validate_optimization_inputs,
 )
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
@@ -238,7 +237,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         metadata={"help": "Define the s3 location where you want to upload the model package"},
     )
     instance_type: Optional[str] = field(
-        default="ml.c5.xlarge",
+        default=None,
         metadata={"help": "Define the instance_type of the endpoint"},
     )
     schema_builder: Optional[SchemaBuilder] = field(
@@ -1022,9 +1021,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Model: A deployable ``Model`` object.
         """
-        _validate_optimization_inputs(
-            output_path, instance_type, quantization_config, compilation_config
-        )
+        if quantization_config and compilation_config:
+            raise ValueError("Quantization config and compilation config are mutually exclusive.")
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
 

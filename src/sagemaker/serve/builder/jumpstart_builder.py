@@ -110,6 +110,7 @@ class JumpStart(ABC):
         self.prepared_for_mms = None
         self.schema_builder = None
         self.instance_type = None
+        self.nb_instance_type = None
         self.ram_usage_model_load = None
         self.model_hub = None
         self.model_metadata = None
@@ -236,8 +237,8 @@ class JumpStart(ABC):
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        if self.instance_type:
-            kwargs.update({"instance_type": self.instance_type})
+        if hasattr(self, "nb_instance_type"):
+            kwargs.update({"instance_type": self.nb_instance_type})
 
         if "mode" in kwargs:
             del kwargs["mode"]
@@ -270,7 +271,7 @@ class JumpStart(ABC):
                 )
             self._prepare_for_mode()
         elif self.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(self, "prepared_for_djl"):
-            self.instance_type = self.instance_type or _get_nb_instance()
+            self.nb_instance_type = self.instance_type or _get_nb_instance()
             self.pysdk_model.model_data, env = self._prepare_for_mode()
 
         self.pysdk_model.env.update(env)
@@ -695,25 +696,29 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
-        optimization_env_vars = None
-        pysdk_model_env_vars = None
-        model_source = _generate_model_source(self.pysdk_model.model_data, accept_eula)
+        if compilation_config:
+            neuro_model_id = self.pysdk_model.deployment_config.get("DeploymentArgs").get(
+                "NeuronModelId"
+            )
+            self.model = neuro_model_id
+            self.pysdk_model = self._create_pre_trained_js_model()
 
         if speculative_decoding_config:
             self._set_additional_model_source(speculative_decoding_config)
-            optimization_env_vars = self.pysdk_model.deployment_config.get(
-                "DeploymentArgs", {}
-            ).get("Environment")
         else:
             deployment_config = self._find_compatible_deployment_config(None)
             if deployment_config:
-                optimization_env_vars = deployment_config.get("DeploymentArgs").get("Environment")
                 self.pysdk_model.set_deployment_config(
                     config_name=deployment_config.get("DeploymentConfigName"),
                     instance_type=deployment_config.get("InstanceType"),
                 )
 
+        model_source = _generate_model_source(self.pysdk_model.model_data, accept_eula)
+        optimization_env_vars = self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
+            "Environment"
+        )
         optimization_env_vars = _update_environment_variables(optimization_env_vars, env_vars)
+        pysdk_model_env_vars = env_vars
 
         optimization_config = {}
         if quantization_config:
@@ -730,6 +735,10 @@ class JumpStart(ABC):
         output_config = {"S3OutputLocation": output_path}
         if kms_key:
             output_config["KmsKeyId"] = kms_key
+        if not instance_type:
+            instance_type = self.pysdk_model.deployment_config.get("DeploymentArgs").get(
+                "InstanceType"
+            )
 
         create_optimization_job_args = {
             "OptimizationJobName": job_name,
