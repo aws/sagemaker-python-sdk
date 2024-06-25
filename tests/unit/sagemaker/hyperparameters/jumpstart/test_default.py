@@ -54,6 +54,8 @@ def test_jumpstart_default_hyperparameters(
         version="*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -72,6 +74,8 @@ def test_jumpstart_default_hyperparameters(
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -98,6 +102,8 @@ def test_jumpstart_default_hyperparameters(
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()

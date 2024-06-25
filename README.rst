@@ -10,6 +10,10 @@ SageMaker Python SDK
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Latest Version
 
+.. image:: https://img.shields.io/conda/vn/conda-forge/sagemaker-python-sdk.svg
+   :target: https://anaconda.org/conda-forge/sagemaker-python-sdk
+   :alt: Conda-Forge Version
+
 .. image:: https://img.shields.io/pypi/pyversions/sagemaker.svg
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Supported Python Versions
@@ -94,6 +98,13 @@ SageMaker Python SDK is tested on:
 - Python 3.9
 - Python 3.10
 - Python 3.11
+
+Telemetry
+~~~~~~~~~~~~~~~
+
+The ``sagemaker`` library has telemetry enabled to help us better understand user needs, diagnose issues, and deliver new features. This telemetry tracks the usage of various SageMaker functions.
+
+If you prefer to opt out of telemetry, you can easily do so by setting the ``TelemetryOptOut`` parameter to ``true`` in the SDK defaults configuration. For detailed instructions, please visit `Configuring and using defaults with the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html#configuring-and-using-defaults-with-the-sagemaker-python-sdk>`__.
 
 AWS Permissions
 ~~~~~~~~~~~~~~~

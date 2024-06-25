@@ -329,6 +329,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         task=None,
         skip_model_validation=None,
         source_uri=None,
+        model_card=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -381,6 +382,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
             skip_model_validation (str): Indicates if you want to skip model validation.
                 Values can be "All" or "None" (default: None).
             source_uri (str): The URI of the source for the model package (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
@@ -418,6 +421,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.container_def_list = container_def_list
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+        self.model_card = model_card
 
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeModelPackageOutput"
@@ -493,6 +497,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 task=self.task,
                 skip_model_validation=self.skip_model_validation,
                 source_uri=self.source_uri,
+                model_card=self.model_card,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)

@@ -44,6 +44,10 @@ from sagemaker.config import (
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
     load_sagemaker_config,
 )
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
@@ -160,6 +164,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         resources: Optional[ResourceRequirements] = None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -323,6 +328,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 for a model to be deployed to an endpoint. Only
                 EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
+            model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
+                content (default: None).
 
         """
         self.model_data = model_data
@@ -354,6 +361,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             sagemaker_config=self._sagemaker_config,
         )
         self.endpoint_name = None
+        self.inference_component_name = None
         self._is_compiled_model = False
         self._compilation_job_name = None
         self._is_edge_packaged_model = False
@@ -400,6 +408,17 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.content_types = None
         self.response_types = None
         self.accept_eula = None
+        self.model_reference_arn = model_reference_arn
+
+    @classmethod
+    def attach(
+        cls,
+        endpoint_name: str,
+        inference_component_name: Optional[str] = None,
+        sagemaker_session=None,
+    ) -> "Model":
+        """Attaches a Model object to an existing SageMaker Endpoint."""
+        raise NotImplementedError
 
     @runnable_by_pipeline
     def register(
@@ -428,6 +447,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -479,6 +499,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance or pipeline step arguments
@@ -545,6 +567,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             task=task,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -567,6 +590,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
         tags: Optional[Tags] = None,
         accept_eula: Optional[bool] = None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Create a SageMaker Model Entity
 
@@ -608,6 +632,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             tags=format_tags(tags),
             serverless_inference_config=serverless_inference_config,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
@@ -629,6 +654,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()``.
 
@@ -670,6 +696,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             image_config=self.image_config,
             accept_eula=(
                 accept_eula if accept_eula is not None else getattr(self, "accept_eula", None)
+            ),
+            model_reference_arn=(
+                model_reference_arn
+                if model_reference_arn is not None
+                else getattr(self, "model_reference_arn", None)
             ),
         )
 
@@ -813,6 +844,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         tags: Optional[Tags] = None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Create a SageMaker Model Entity
 
@@ -837,6 +869,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 The `accept_eula` value must be explicitly defined as `True` in order to
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
+            model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
+                content (default: None).
         """
         if self.model_package_arn is not None or self.algorithm_arn is not None:
             model_package = ModelPackage(
@@ -868,6 +902,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 accelerator_type=accelerator_type,
                 serverless_inference_config=serverless_inference_config,
                 accept_eula=accept_eula,
+                model_reference_arn=model_reference_arn,
             )
 
             if not isinstance(self.sagemaker_session, PipelineSession):
@@ -1310,6 +1345,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         managed_instance_scaling: Optional[str] = None,
+        inference_component_name=None,
         routing_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
@@ -1594,11 +1630,15 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 "ComputeResourceRequirements": resources.get_compute_resource_requirements(),
             }
             runtime_config = {"CopyCount": resources.copy_count}
-            inference_component_name = unique_name_from_base(self.name)
+            self.inference_component_name = (
+                inference_component_name
+                or self.inference_component_name
+                or unique_name_from_base(self.name)
+            )
 
             # [TODO]: Add endpoint_logging support
             self.sagemaker_session.create_inference_component(
-                inference_component_name=inference_component_name,
+                inference_component_name=self.inference_component_name,
                 endpoint_name=self.endpoint_name,
                 variant_name="AllTraffic",  # default variant name
                 specification=inference_component_spec,
@@ -1611,7 +1651,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 predictor = self.predictor_cls(
                     self.endpoint_name,
                     self.sagemaker_session,
-                    component_name=inference_component_name,
+                    component_name=self.inference_component_name,
                 )
                 if serializer:
                     predictor.serializer = serializer
@@ -1626,6 +1666,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 accelerator_type=accelerator_type,
                 tags=tags,
                 serverless_inference_config=serverless_inference_config,
+                **kwargs,
             )
             serverless_inference_config_dict = (
                 serverless_inference_config._to_request_dict() if is_serverless else None

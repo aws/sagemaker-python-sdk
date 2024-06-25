@@ -16,6 +16,8 @@ from __future__ import absolute_import
 
 LINEAGE_POLLER_INTERVAL_SECS = 15
 LINEAGE_POLLER_MAX_TIMEOUT_SECS = 120
+TRACKING_SERVER_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):mlflow-tracking-server/(.*?)$"
+TRACKING_SERVER_CREATION_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE = "ModelBuilderInputModelData"
 MLFLOW_S3_PATH = "S3"
 MLFLOW_MODEL_PACKAGE_PATH = "ModelPackage"

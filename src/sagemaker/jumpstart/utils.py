@@ -12,12 +12,14 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+from copy import copy
 import logging
 import os
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from packaging.version import Version
+import botocore
 import sagemaker
 from sagemaker.config.config_schema import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
@@ -46,6 +48,7 @@ from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
 from sagemaker.utils import resolve_value_from_config, TagsDict
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.user_agent import get_user_agent_extra_suffix
 
 
 def get_jumpstart_launched_regions_message() -> str:
@@ -379,6 +382,21 @@ def add_jumpstart_model_id_version_tags(
     return tags
 
 
+def add_hub_content_arn_tags(
+    tags: Optional[List[TagsDict]],
+    hub_arn: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        hub_arn,
+        enums.JumpStartTag.HUB_CONTENT_ARN,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
@@ -543,6 +561,7 @@ def verify_model_region_and_return_specs(
     version: Optional[str],
     scope: Optional[str],
     region: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -558,6 +577,8 @@ def verify_model_region_and_return_specs(
         scope (Optional[str]): scope of the JumpStart model to verify.
         region (Optional[str]): region of the JumpStart model to verify and
             obtains specs.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -597,9 +618,11 @@ def verify_model_region_and_return_specs(
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(  # type: ignore
         region=region,
         model_id=model_id,
+        hub_arn=hub_arn,
         version=version,
         s3_client=sagemaker_session.s3_client,
         model_type=model_type,
+        sagemaker_session=sagemaker_session,
     )
 
     if (
@@ -760,6 +783,7 @@ def validate_model_id_and_get_type(
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    hub_arn: Optional[str] = None,
 ) -> Optional[enums.JumpStartModelType]:
     """Returns model type if the model ID is supported for the given script.
 
@@ -770,6 +794,8 @@ def validate_model_id_and_get_type(
     if model_id in {None, ""}:
         return None
     if not isinstance(model_id, str):
+        return None
+    if hub_arn:
         return None
 
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
@@ -915,6 +941,7 @@ def get_benchmark_stats(
     model_id: str,
     model_version: str,
     config_names: Optional[List[str]] = None,
+    hub_arn: Optional[str] = None,
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
@@ -924,6 +951,7 @@ def get_benchmark_stats(
         region=region,
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         sagemaker_session=sagemaker_session,
         scope=scope,
         model_type=model_type,
@@ -982,3 +1010,39 @@ def get_jumpstart_configs(
         if metadata_configs
         else {}
     )
+
+
+def get_jumpstart_user_agent_extra_suffix(model_id: str, model_version: str) -> str:
+    """Returns the model-specific user agent string to be added to requests."""
+    sagemaker_python_sdk_headers = get_user_agent_extra_suffix()
+    jumpstart_specific_suffix = f"md/js_model_id#{model_id} md/js_model_ver#{model_version}"
+    return (
+        sagemaker_python_sdk_headers
+        if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, None)
+        else f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix}"
+    )
+
+
+def get_default_jumpstart_session_with_user_agent_suffix(
+    model_id: str, model_version: str
+) -> Session:
+    """Returns default JumpStart SageMaker Session with model-specific user agent suffix."""
+    botocore_session = botocore.session.get_session()
+    botocore_config = botocore.config.Config(
+        user_agent_extra=get_jumpstart_user_agent_extra_suffix(model_id, model_version),
+    )
+    botocore_session.set_default_client_config(botocore_config)
+    # shallow copy to not affect default session constant
+    session = copy(constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION)
+    session.boto_session = boto3.Session(
+        region_name=constants.JUMPSTART_DEFAULT_REGION_NAME, botocore_session=botocore_session
+    )
+    session.sagemaker_client = boto3.client(
+        "sagemaker", region_name=constants.JUMPSTART_DEFAULT_REGION_NAME, config=botocore_config
+    )
+    session.sagemaker_runtime_client = boto3.client(
+        "sagemaker-runtime",
+        region_name=constants.JUMPSTART_DEFAULT_REGION_NAME,
+        config=botocore_config,
+    )
+    return session

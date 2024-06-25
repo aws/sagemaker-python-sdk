@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import boto3
-from mock.mock import patch, Mock
+from mock.mock import patch, Mock, ANY
 
 from sagemaker import accept_types
 from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
@@ -54,9 +54,11 @@ def test_jumpstart_default_accept_types(
     patched_get_model_specs.assert_called_once_with(
         region=region,
         model_id=model_id,
+        hub_arn=None,
         version=model_version,
-        s3_client=mock_client,
+        s3_client=ANY,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=mock_session,
     )
 
 
@@ -91,6 +93,8 @@ def test_jumpstart_supported_accept_types(
         region=region,
         model_id=model_id,
         version=model_version,
-        s3_client=mock_client,
+        s3_client=ANY,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )

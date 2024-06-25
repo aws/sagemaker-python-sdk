@@ -32,6 +32,7 @@ from sagemaker.session import Session
 def _retrieve_default_environment_variables(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -47,6 +48,8 @@ def _retrieve_default_environment_variables(
             retrieve the default environment variables.
         model_version (str): Version of the JumpStart model for which to retrieve the
             default environment variables.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve default environment variables.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -79,6 +82,7 @@ def _retrieve_default_environment_variables(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=script,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -116,6 +120,7 @@ def _retrieve_default_environment_variables(
                 lambda instance_type: _retrieve_gated_model_uri_env_var_value(
                     model_id=model_id,
                     model_version=model_version,
+                    hub_arn=hub_arn,
                     region=region,
                     tolerate_vulnerable_model=tolerate_vulnerable_model,
                     tolerate_deprecated_model=tolerate_deprecated_model,
@@ -162,6 +167,7 @@ def _retrieve_default_environment_variables(
 def _retrieve_gated_model_uri_env_var_value(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -175,6 +181,8 @@ def _retrieve_gated_model_uri_env_var_value(
             retrieve the gated model env var URI.
         model_version (str): Version of the JumpStart model for which to retrieve the
             gated model env var URI.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve the gated model env var URI.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -206,6 +214,7 @@ def _retrieve_gated_model_uri_env_var_value(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.TRAINING,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -220,5 +229,8 @@ def _retrieve_gated_model_uri_env_var_value(
     )
     if s3_key is None:
         return None
+
+    if hub_arn:
+        return s3_key
 
     return f"s3://{get_jumpstart_gated_content_bucket(region)}/{s3_key}"

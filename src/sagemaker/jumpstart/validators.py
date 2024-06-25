@@ -167,6 +167,7 @@ def validate_hyperparameters(
     model_version: str,
     hyperparameters: Dict[str, Any],
     validation_mode: HyperparameterValidationMode = HyperparameterValidationMode.VALIDATE_PROVIDED,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     sagemaker_session: Optional[session.Session] = None,
     tolerate_vulnerable_model: bool = False,
@@ -213,6 +214,7 @@ def validate_hyperparameters(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         region=region,
         scope=JumpStartScriptScope.TRAINING,
         sagemaker_session=sagemaker_session,

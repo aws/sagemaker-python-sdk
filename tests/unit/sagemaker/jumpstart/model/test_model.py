@@ -66,7 +66,9 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_LOGGER")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -141,7 +143,9 @@ class ModelTest(unittest.TestCase):
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -221,7 +225,9 @@ class ModelTest(unittest.TestCase):
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -295,7 +301,9 @@ class ModelTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -358,7 +366,9 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.session.Session.endpoint_from_production_variants")
     @mock.patch("sagemaker.session.Session.create_model")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_compiled_model_warning_log_js_models(
@@ -394,7 +404,9 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.session.Session.endpoint_from_production_variants")
     @mock.patch("sagemaker.session.Session.create_model")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_eula_gated_conditional_s3_prefix_metadata_model(
@@ -455,7 +467,9 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -612,7 +626,9 @@ class ModelTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.factory.model.environment_variables.retrieve_default")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -698,7 +714,7 @@ class ModelTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set([])
+        init_args_to_skip: Set[str] = set(["model_reference_arn"])
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
         parent_class_init = Model.__init__
@@ -715,6 +731,7 @@ class ModelTest(unittest.TestCase):
             "tolerate_deprecated_model",
             "instance_type",
             "model_package_arn",
+            "hub_name",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -745,7 +762,9 @@ class ModelTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -782,6 +801,7 @@ class ModelTest(unittest.TestCase):
             model_id=model_id,
             model_version="*",
             region=region,
+            hub_arn=None,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=model.sagemaker_session,
@@ -792,7 +812,9 @@ class ModelTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -828,7 +850,9 @@ class ModelTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -865,7 +889,9 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.JumpStartModelsAccessor.reset_cache")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
@@ -903,6 +929,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
@@ -910,6 +937,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
             ]
         )
@@ -934,6 +962,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
@@ -941,6 +970,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
             ]
         )
@@ -1092,7 +1122,9 @@ class ModelTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_jumpstart_model_package_arn_unsupported_region(
@@ -1119,7 +1151,9 @@ class ModelTest(unittest.TestCase):
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -1184,7 +1218,9 @@ class ModelTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -1228,7 +1264,9 @@ class ModelTest(unittest.TestCase):
         mock_js_info_logger.assert_not_called()
 
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -1292,8 +1330,58 @@ class ModelTest(unittest.TestCase):
             enable_network_isolation=True,
         )
 
+    @mock.patch("sagemaker.jumpstart.model.get_model_id_version_from_endpoint")
+    @mock.patch("sagemaker.jumpstart.model.JumpStartModel.__init__")
+    def test_attach(
+        self,
+        mock_js_model_init,
+        mock_get_model_id_version_from_endpoint,
+    ):
+        mock_js_model_init.return_value = None
+        mock_get_model_id_version_from_endpoint.return_value = "model-id", "model-version", None
+        val = JumpStartModel.attach("some-endpoint")
+        mock_get_model_id_version_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+        mock_js_model_init.assert_called_once_with(
+            model_id="model-id",
+            model_version="model-version",
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+        assert isinstance(val, JumpStartModel)
+
+        mock_get_model_id_version_from_endpoint.reset_mock()
+        JumpStartModel.attach("some-endpoint", model_id="some-id")
+        mock_get_model_id_version_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+
+        mock_get_model_id_version_from_endpoint.reset_mock()
+        JumpStartModel.attach("some-endpoint", model_id="some-id", model_version="some-version")
+        mock_get_model_id_version_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+
+        # providing model id, version, and ic name should bypass check with endpoint tags
+        mock_get_model_id_version_from_endpoint.reset_mock()
+        JumpStartModel.attach(
+            "some-endpoint",
+            model_id="some-id",
+            model_version="some-version",
+            inference_component_name="some-ic-name",
+        )
+        mock_get_model_id_version_from_endpoint.assert_not_called()
+
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.model.Model.register")
@@ -1378,7 +1466,9 @@ class ModelTest(unittest.TestCase):
         },
     )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)

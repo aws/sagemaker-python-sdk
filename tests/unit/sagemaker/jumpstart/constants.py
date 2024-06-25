@@ -1250,6 +1250,941 @@ SPECIAL_MODEL_SPECS_DICT = {
             "dynamic_container_deployment_supported": True,
         },
     },
+    # noqa: E501
+    "gemma-model-2b-v1_1_0": {
+        "model_id": "huggingface-llm-gemma-2b-instruct",
+        "url": "https://huggingface.co/google/gemma-2b-it",
+        "version": "1.1.0",
+        "min_sdk_version": "2.189.0",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "huggingface-llm",
+            "framework_version": "1.4.2",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.33.2",
+        },
+        "hosting_artifact_key": "huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference/v1.0.0/",
+        "hosting_script_key": "source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": (
+            "huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference-prepack/v1.0.0/"
+        ),
+        "hosting_prepacked_artifact_version": "1.0.0",
+        "hosting_use_script_uri": False,
+        "hosting_eula_key": "fmhMetadata/terms/gemmaTerms.txt",
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [
+            "accelerate==0.26.1",
+            "bitsandbytes==0.42.0",
+            "deepspeed==0.10.3",
+            "docstring-parser==0.15",
+            "flash_attn==2.5.5",
+            "ninja==1.11.1",
+            "packaging==23.2",
+            "peft==0.8.2",
+            "py_cpuinfo==9.0.0",
+            "rich==13.7.0",
+            "safetensors==0.4.2",
+            "sagemaker_jumpstart_huggingface_script_utilities==1.2.1",
+            "sagemaker_jumpstart_script_utilities==1.1.9",
+            "sagemaker_jumpstart_tabular_script_utilities==1.0.0",
+            "shtab==1.6.5",
+            "tokenizers==0.15.1",
+            "transformers==4.38.1",
+            "trl==0.7.10",
+            "tyro==0.7.2",
+        ],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "hyperparameters": [
+            {
+                "name": "peft_type",
+                "type": "text",
+                "default": "lora",
+                "options": ["lora", "None"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "instruction_tuned",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "chat_dataset",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "epoch",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "learning_rate",
+                "type": "float",
+                "default": 0.0001,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "lora_r",
+                "type": "int",
+                "default": 64,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {"name": "lora_alpha", "type": "int", "default": 16, "min": 0, "scope": "algorithm"},
+            {
+                "name": "lora_dropout",
+                "type": "float",
+                "default": 0,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {"name": "bits", "type": "int", "default": 4, "scope": "algorithm"},
+            {
+                "name": "double_quant",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "quant_type",
+                "type": "text",
+                "default": "nf4",
+                "options": ["fp4", "nf4"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_train_batch_size",
+                "type": "int",
+                "default": 1,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "per_device_eval_batch_size",
+                "type": "int",
+                "default": 2,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "warmup_ratio",
+                "type": "float",
+                "default": 0.1,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "train_from_scratch",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "fp16",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "bf16",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "evaluation_strategy",
+                "type": "text",
+                "default": "steps",
+                "options": ["steps", "epoch", "no"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "eval_steps",
+                "type": "int",
+                "default": 20,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "gradient_accumulation_steps",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_steps",
+                "type": "int",
+                "default": 8,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "weight_decay",
+                "type": "float",
+                "default": 0.2,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "load_best_model_at_end",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_train_samples",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_val_samples",
+                "type": "int",
+                "default": -1,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "seed",
+                "type": "int",
+                "default": 10,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_input_length",
+                "type": "int",
+                "default": 1024,
+                "min": -1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "validation_split_ratio",
+                "type": "float",
+                "default": 0.2,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "train_data_split_seed",
+                "type": "int",
+                "default": 0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "preprocessing_num_workers",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {"name": "max_steps", "type": "int", "default": -1, "scope": "algorithm"},
+            {
+                "name": "gradient_checkpointing",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "early_stopping_patience",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "early_stopping_threshold",
+                "type": "float",
+                "default": 0.0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_beta1",
+                "type": "float",
+                "default": 0.9,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_beta2",
+                "type": "float",
+                "default": 0.999,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam_epsilon",
+                "type": "float",
+                "default": 1e-08,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "max_grad_norm",
+                "type": "float",
+                "default": 1.0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "label_smoothing_factor",
+                "type": "float",
+                "default": 0,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_first_step",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "logging_nan_inf_filter",
+                "type": "text",
+                "default": "True",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "save_strategy",
+                "type": "text",
+                "default": "steps",
+                "options": ["no", "epoch", "steps"],
+                "scope": "algorithm",
+            },
+            {"name": "save_steps", "type": "int", "default": 500, "min": 1, "scope": "algorithm"},
+            {"name": "save_total_limit", "type": "int", "default": 1, "scope": "algorithm"},
+            {
+                "name": "dataloader_drop_last",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "dataloader_num_workers",
+                "type": "int",
+                "default": 0,
+                "min": 0,
+                "scope": "algorithm",
+            },
+            {
+                "name": "eval_accumulation_steps",
+                "type": "text",
+                "default": "None",
+                "scope": "algorithm",
+            },
+            {
+                "name": "auto_find_batch_size",
+                "type": "text",
+                "default": "False",
+                "options": ["True", "False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "lr_scheduler_type",
+                "type": "text",
+                "default": "constant_with_warmup",
+                "options": ["constant_with_warmup", "linear"],
+                "scope": "algorithm",
+            },
+            {"name": "warmup_steps", "type": "int", "default": 0, "min": 0, "scope": "algorithm"},
+            {
+                "name": "deepspeed",
+                "type": "text",
+                "default": "False",
+                "options": ["False"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "training_script_key": "source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",
+        "training_prepacked_script_key": (
+            "source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz"
+        ),
+        "training_prepacked_script_version": "1.1.1",
+        "training_ecr_specs": {
+            "framework": "huggingface",
+            "framework_version": "2.0.0",
+            "py_version": "py310",
+            "huggingface_transformers_version": "4.28.1",
+        },
+        "training_artifact_key": "huggingface-training/train-huggingface-llm-gemma-2b-instruct.tar.gz",
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+                "required_for_model_class": False,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_ENV",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "HF_MODEL_ID",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_INPUT_LENGTH",
+                "type": "text",
+                "default": "8191",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_TOTAL_TOKENS",
+                "type": "text",
+                "default": "8192",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "MAX_BATCH_PREFILL_TOKENS",
+                "type": "text",
+                "default": "8191",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SM_NUM_GPUS",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "int",
+                "default": 1,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "metrics": [
+            {
+                "Name": "huggingface-textgeneration:eval-loss",
+                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+            },
+            {"Name": "huggingface-textgeneration:train-loss", "Regex": "'loss': ([0-9]+\\.[0-9]+)"},
+        ],
+        "default_inference_instance_type": "ml.g5.xlarge",
+        "supported_inference_instance_types": [
+            "ml.g5.xlarge",
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "ml.g5.16xlarge",
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "default_training_instance_type": "ml.g5.2xlarge",
+        "supported_training_instance_types": [
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "ml.g5.16xlarge",
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "model_kwargs": {},
+        "deploy_kwargs": {
+            "model_data_download_timeout": 1200,
+            "container_startup_health_check_timeout": 1200,
+        },
+        "estimator_kwargs": {
+            "encrypt_inter_container_traffic": True,
+            "disable_output_compression": True,
+            "max_run": 360000,
+        },
+        "fit_kwargs": {},
+        "predictor_specs": {
+            "supported_content_types": ["application/json"],
+            "supported_accept_types": ["application/json"],
+            "default_content_type": "application/json",
+            "default_accept_type": "application/json",
+        },
+        "inference_volume_size": 512,
+        "training_volume_size": 512,
+        "inference_enable_network_isolation": True,
+        "training_enable_network_isolation": True,
+        "default_training_dataset_key": "training-datasets/oasst_top/train/",
+        "validation_supported": True,
+        "fine_tuning_supported": True,
+        "resource_name_base": "hf-llm-gemma-2b-instruct",
+        "default_payloads": {
+            "HelloWorld": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {
+                    "generated_text": "[0].generated_text",
+                    "input_logprobs": "[0].details.prefill[*].logprob",
+                },
+                "body": {
+                    "inputs": (
+                        "<bos><start_of_turn>user\nWrite a hello world program<end_of_turn>\n<start_of_turn>model"
+                    ),
+                    "parameters": {
+                        "max_new_tokens": 256,
+                        "decoder_input_details": True,
+                        "details": True,
+                    },
+                },
+            },
+            "MachineLearningPoem": {
+                "content_type": "application/json",
+                "prompt_key": "inputs",
+                "output_keys": {
+                    "generated_text": "[0].generated_text",
+                    "input_logprobs": "[0].details.prefill[*].logprob",
+                },
+                "body": {
+                    "inputs": "Write me a poem about Machine Learning.",
+                    "parameters": {
+                        "max_new_tokens": 256,
+                        "decoder_input_details": True,
+                        "details": True,
+                    },
+                },
+            },
+        },
+        "gated_bucket": True,
+        "hosting_instance_type_variants": {
+            "regional_aliases": {
+                "af-south-1": {
+                    "gpu_ecr_uri_1": (
+                        "626614931356.dkr.ecr.af-south-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "ap-east-1": {
+                    "gpu_ecr_uri_1": (
+                        "871362719292.dkr.ecr.ap-east-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "ap-northeast-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "ap-northeast-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "ap-south-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-south-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "ap-southeast-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "ap-southeast-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "ca-central-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ca-central-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "cn-north-1": {
+                    "gpu_ecr_uri_1": (
+                        "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "eu-central-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-central-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "eu-north-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-north-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "eu-south-1": {
+                    "gpu_ecr_uri_1": (
+                        "692866216735.dkr.ecr.eu-south-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "eu-west-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "eu-west-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "eu-west-3": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-3.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "il-central-1": {
+                    "gpu_ecr_uri_1": (
+                        "780543022126.dkr.ecr.il-central-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "me-south-1": {
+                    "gpu_ecr_uri_1": (
+                        "217643126080.dkr.ecr.me-south-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "sa-east-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.sa-east-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "us-east-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "us-east-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-east-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "us-west-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-west-1.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+                "us-west-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04"
+                    )
+                },
+            },
+            "variants": {
+                "g4dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "ml.g4dn.12xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.12xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.48xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+                "ml.p4d.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+            },
+        },
+        "training_instance_type_variants": {
+            "regional_aliases": {
+                "af-south-1": {
+                    "gpu_ecr_uri_1": (
+                        "626614931356.dkr.ecr.af-south-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "ap-east-1": {
+                    "gpu_ecr_uri_1": (
+                        "871362719292.dkr.ecr.ap-east-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "ap-northeast-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "ap-northeast-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "ap-south-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-south-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "ap-southeast-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "ap-southeast-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "ca-central-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.ca-central-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "cn-north-1": {
+                    "gpu_ecr_uri_1": (
+                        "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "eu-central-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-central-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "eu-north-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-north-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "eu-south-1": {
+                    "gpu_ecr_uri_1": (
+                        "692866216735.dkr.ecr.eu-south-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "eu-west-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "eu-west-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "eu-west-3": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.eu-west-3.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "il-central-1": {
+                    "gpu_ecr_uri_1": (
+                        "780543022126.dkr.ecr.il-central-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "me-south-1": {
+                    "gpu_ecr_uri_1": (
+                        "217643126080.dkr.ecr.me-south-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "sa-east-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.sa-east-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "us-east-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "us-east-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-east-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "us-west-1": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-west-1.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+                "us-west-2": {
+                    "gpu_ecr_uri_1": (
+                        "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+                        "huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                    )
+                },
+            },
+            "variants": {
+                "g4dn": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": (
+                            "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        )
+                    },
+                },
+                "g5": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": (
+                            "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        )
+                    },
+                },
+                "local_gpu": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": (
+                            "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        )
+                    },
+                },
+                "p4d": {
+                    "regional_properties": {"image_uri": "$gpu_ecr_uri_1"},
+                    "properties": {
+                        "gated_model_key_env_var_value": (
+                            "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz"
+                        )
+                    },
+                },
+                "p4de": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"regional_properties": {"image_uri": "$gpu_ecr_uri_1"}},
+            },
+        },
+        "hosting_artifact_s3_data_type": "S3Prefix",
+        "hosting_artifact_compression_type": "None",
+        "hosting_resource_requirements": {"min_memory_mb": 8192, "num_accelerators": 1},
+        "dynamic_container_deployment_supported": True,
+    },
+    # noqa: E501
     "env-var-variant-model": {
         "model_id": "huggingface-llm-falcon-180b-bf16",
         "url": "https://huggingface.co/tiiuae/falcon-180B",
@@ -1852,6 +2787,7 @@ SPECIAL_MODEL_SPECS_DICT = {
         "inference_enable_network_isolation": True,
         "training_enable_network_isolation": False,
     },
+    # noqa: E501
     "variant-model": {
         "model_id": "pytorch-ic-mobilenet-v2",
         "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",
@@ -7349,6 +8285,7 @@ BASE_SPEC = {
     },
     "training_instance_type_variants": None,
     "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+    "hosting_artifact_uri": None,
     "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
     "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
     "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
@@ -7906,4 +8843,999 @@ TRAINING_CONFIG_RANKINGS = {
             ],
         },
     }
+}
+
+HUB_MODEL_DOCUMENT_DICTS = {
+    "huggingface-llm-gemma-2b-instruct": {
+        "Url": "https://huggingface.co/google/gemma-2b-it",
+        "MinSdkVersion": "2.189.0",
+        "TrainingSupported": True,
+        "IncrementalTrainingSupported": False,
+        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.2-gpu-py310-cu121-ubuntu22.04",  # noqa: E501
+        "HostingArtifactS3DataType": "S3Prefix",
+        "HostingArtifactCompressionType": "None",
+        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference/v1.0.0/",  # noqa: E501
+        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/inference/llm/v1.0.1/sourcedir.tar.gz",  # noqa: E501
+        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/huggingface-llm-gemma-2b-instruct/artifacts/inference-prepack/v1.0.0/",  # noqa: E501
+        "HostingPrepackedArtifactVersion": "1.0.0",
+        "HostingUseScriptUri": False,
+        "HostingEulaUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-llm/fmhMetadata/terms/gemmaTerms.txt",
+        "TrainingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/v1.1.1/sourcedir.tar.gz",  # noqa: E501
+        "TrainingPrepackedScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/llm/prepack/v1.1.1/sourcedir.tar.gz",  # noqa: E501
+        "TrainingPrepackedScriptVersion": "1.1.1",
+        "TrainingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",  # noqa: E501
+        "TrainingArtifactS3DataType": "S3Prefix",
+        "TrainingArtifactCompressionType": "None",
+        "TrainingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+        "Hyperparameters": [
+            {
+                "Name": "peft_type",
+                "Type": "text",
+                "Default": "lora",
+                "Options": ["lora", "None"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "instruction_tuned",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "chat_dataset",
+                "Type": "text",
+                "Default": "True",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "epoch",
+                "Type": "int",
+                "Default": 1,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "learning_rate",
+                "Type": "float",
+                "Default": 0.0001,
+                "Min": 1e-08,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "lora_r",
+                "Type": "int",
+                "Default": 64,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {"Name": "lora_alpha", "Type": "int", "Default": 16, "Min": 0, "Scope": "algorithm"},
+            {
+                "Name": "lora_dropout",
+                "Type": "float",
+                "Default": 0,
+                "Min": 0,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {"Name": "bits", "Type": "int", "Default": 4, "Scope": "algorithm"},
+            {
+                "Name": "double_quant",
+                "Type": "text",
+                "Default": "True",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "quant_Type",
+                "Type": "text",
+                "Default": "nf4",
+                "Options": ["fp4", "nf4"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "per_device_train_batch_size",
+                "Type": "int",
+                "Default": 1,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "per_device_eval_batch_size",
+                "Type": "int",
+                "Default": 2,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "warmup_ratio",
+                "Type": "float",
+                "Default": 0.1,
+                "Min": 0,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "train_from_scratch",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "fp16",
+                "Type": "text",
+                "Default": "True",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "bf16",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "evaluation_strategy",
+                "Type": "text",
+                "Default": "steps",
+                "Options": ["steps", "epoch", "no"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "eval_steps",
+                "Type": "int",
+                "Default": 20,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "gradient_accumulation_steps",
+                "Type": "int",
+                "Default": 4,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "logging_steps",
+                "Type": "int",
+                "Default": 8,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "weight_decay",
+                "Type": "float",
+                "Default": 0.2,
+                "Min": 1e-08,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "load_best_model_at_end",
+                "Type": "text",
+                "Default": "True",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "max_train_samples",
+                "Type": "int",
+                "Default": -1,
+                "Min": -1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "max_val_samples",
+                "Type": "int",
+                "Default": -1,
+                "Min": -1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "seed",
+                "Type": "int",
+                "Default": 10,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "max_input_length",
+                "Type": "int",
+                "Default": 1024,
+                "Min": -1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "validation_split_ratio",
+                "Type": "float",
+                "Default": 0.2,
+                "Min": 0,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "train_data_split_seed",
+                "Type": "int",
+                "Default": 0,
+                "Min": 0,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "preprocessing_num_workers",
+                "Type": "text",
+                "Default": "None",
+                "Scope": "algorithm",
+            },
+            {"Name": "max_steps", "Type": "int", "Default": -1, "Scope": "algorithm"},
+            {
+                "Name": "gradient_checkpointing",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "early_stopping_patience",
+                "Type": "int",
+                "Default": 3,
+                "Min": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "early_stopping_threshold",
+                "Type": "float",
+                "Default": 0.0,
+                "Min": 0,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "adam_beta1",
+                "Type": "float",
+                "Default": 0.9,
+                "Min": 0,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "adam_beta2",
+                "Type": "float",
+                "Default": 0.999,
+                "Min": 0,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "adam_epsilon",
+                "Type": "float",
+                "Default": 1e-08,
+                "Min": 0,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "max_grad_norm",
+                "Type": "float",
+                "Default": 1.0,
+                "Min": 0,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "label_smoothing_factor",
+                "Type": "float",
+                "Default": 0,
+                "Min": 0,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "logging_first_step",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "logging_nan_inf_filter",
+                "Type": "text",
+                "Default": "True",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "save_strategy",
+                "Type": "text",
+                "Default": "steps",
+                "Options": ["no", "epoch", "steps"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "save_steps",
+                "Type": "int",
+                "Default": 500,
+                "Min": 1,
+                "Scope": "algorithm",
+            },  # noqa: E501
+            {
+                "Name": "save_total_limit",
+                "Type": "int",
+                "Default": 1,
+                "Scope": "algorithm",
+            },  # noqa: E501
+            {
+                "Name": "dataloader_drop_last",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "dataloader_num_workers",
+                "Type": "int",
+                "Default": 0,
+                "Min": 0,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "eval_accumulation_steps",
+                "Type": "text",
+                "Default": "None",
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "auto_find_batch_size",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "lr_scheduler_type",
+                "Type": "text",
+                "Default": "constant_with_warmup",
+                "Options": ["constant_with_warmup", "linear"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "warmup_steps",
+                "Type": "int",
+                "Default": 0,
+                "Min": 0,
+                "Scope": "algorithm",
+            },  # noqa: E501
+            {
+                "Name": "deepspeed",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["False"],
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "sagemaker_submit_directory",
+                "Type": "text",
+                "Default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "Scope": "container",
+            },
+            {
+                "Name": "sagemaker_program",
+                "Type": "text",
+                "Default": "transfer_learning.py",
+                "Scope": "container",
+            },
+            {
+                "Name": "sagemaker_container_log_level",
+                "Type": "text",
+                "Default": "20",
+                "Scope": "container",
+            },
+        ],
+        "InferenceEnvironmentVariables": [
+            {
+                "Name": "SAGEMAKER_PROGRAM",
+                "Type": "text",
+                "Default": "inference.py",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "Type": "text",
+                "Default": "/opt/ml/model/code",
+                "Scope": "container",
+                "RequiredForModelClass": False,
+            },
+            {
+                "Name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "Type": "text",
+                "Default": "20",
+                "Scope": "container",
+                "RequiredForModelClass": False,
+            },
+            {
+                "Name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "Type": "text",
+                "Default": "3600",
+                "Scope": "container",
+                "RequiredForModelClass": False,
+            },
+            {
+                "Name": "ENDPOINT_SERVER_TIMEOUT",
+                "Type": "int",
+                "Default": 3600,
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "MODEL_CACHE_ROOT",
+                "Type": "text",
+                "Default": "/opt/ml/model",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "SAGEMAKER_ENV",
+                "Type": "text",
+                "Default": "1",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "HF_MODEL_ID",
+                "Type": "text",
+                "Default": "/opt/ml/model",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "MAX_INPUT_LENGTH",
+                "Type": "text",
+                "Default": "8191",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "MAX_TOTAL_TOKENS",
+                "Type": "text",
+                "Default": "8192",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "MAX_BATCH_PREFILL_TOKENS",
+                "Type": "text",
+                "Default": "8191",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "SM_NUM_GPUS",
+                "Type": "text",
+                "Default": "1",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+            {
+                "Name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "Type": "int",
+                "Default": 1,
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            },
+        ],
+        "TrainingMetrics": [
+            {
+                "Name": "huggingface-textgeneration:eval-loss",
+                "Regex": "'eval_loss': ([0-9]+\\.[0-9]+)",
+            },
+            {
+                "Name": "huggingface-textgeneration:train-loss",
+                "Regex": "'loss': ([0-9]+\\.[0-9]+)",
+            },  # noqa: E501
+        ],
+        "InferenceDependencies": [],
+        "TrainingDependencies": [
+            "accelerate==0.26.1",
+            "bitsandbytes==0.42.0",
+            "deepspeed==0.10.3",
+            "docstring-parser==0.15",
+            "flash_attn==2.5.5",
+            "ninja==1.11.1",
+            "packaging==23.2",
+            "peft==0.8.2",
+            "py_cpuinfo==9.0.0",
+            "rich==13.7.0",
+            "safetensors==0.4.2",
+            "sagemaker_jumpstart_huggingface_script_utilities==1.2.1",
+            "sagemaker_jumpstart_script_utilities==1.1.9",
+            "sagemaker_jumpstart_tabular_script_utilities==1.0.0",
+            "shtab==1.6.5",
+            "tokenizers==0.15.1",
+            "transformers==4.38.1",
+            "trl==0.7.10",
+            "tyro==0.7.2",
+        ],
+        "DefaultInferenceInstanceType": "ml.g5.xlarge",
+        "SupportedInferenceInstanceTypes": [
+            "ml.g5.xlarge",
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "ml.g5.16xlarge",
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "DefaultTrainingInstanceType": "ml.g5.2xlarge",
+        "SupportedTrainingInstanceTypes": [
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "ml.g5.16xlarge",
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.g5.48xlarge",
+            "ml.p4d.24xlarge",
+        ],
+        "SageMakerSdkPredictorSpecifications": {
+            "SupportedContentTypes": ["application/json"],
+            "SupportedAcceptTypes": ["application/json"],
+            "DefaultContentType": "application/json",
+            "DefaultAcceptType": "application/json",
+        },
+        "InferenceVolumeSize": 512,
+        "TrainingVolumeSize": 512,
+        "InferenceEnableNetworkIsolation": True,
+        "TrainingEnableNetworkIsolation": True,
+        "FineTuningSupported": True,
+        "ValidationSupported": True,
+        "DefaultTrainingDatasetUri": "s3://jumpstart-cache-prod-us-west-2/training-datasets/oasst_top/train/",  # noqa: E501
+        "ResourceNameBase": "hf-llm-gemma-2b-instruct",
+        "DefaultPayloads": {
+            "HelloWorld": {
+                "ContentType": "application/json",
+                "PromptKey": "inputs",
+                "OutputKeys": {
+                    "GeneratedText": "[0].generated_text",
+                    "InputLogprobs": "[0].details.prefill[*].logprob",
+                },
+                "Body": {
+                    "Inputs": "<bos><start_of_turn>user\nWrite a hello world program<end_of_turn>\n<start_of_turn>model",  # noqa: E501
+                    "Parameters": {
+                        "MaxNewTokens": 256,
+                        "DecoderInputDetails": True,
+                        "Details": True,
+                    },
+                },
+            },
+            "MachineLearningPoem": {
+                "ContentType": "application/json",
+                "PromptKey": "inputs",
+                "OutputKeys": {
+                    "GeneratedText": "[0].generated_text",
+                    "InputLogprobs": "[0].details.prefill[*].logprob",
+                },
+                "Body": {
+                    "Inputs": "Write me a poem about Machine Learning.",
+                    "Parameters": {
+                        "MaxNewTokens": 256,
+                        "DecoderInputDetails": True,
+                        "Details": True,
+                    },
+                },
+            },
+        },
+        "GatedBucket": True,
+        "HostingResourceRequirements": {"MinMemoryMb": 8192, "NumAccelerators": 1},
+        "HostingInstanceTypeVariants": {
+            "Aliases": {
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"  # noqa: E501
+            },
+            "Variants": {
+                "g4dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "ml.g5.12xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.48xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+                "ml.p4d.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+            },
+        },
+        "TrainingInstanceTypeVariants": {
+            "Aliases": {
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"  # noqa: E501
+            },
+            "Variants": {
+                "g4dn": {
+                    "properties": {
+                        "image_uri": "$gpu_ecr_uri_1",
+                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+                    },
+                },
+                "g5": {
+                    "properties": {
+                        "image_uri": "$gpu_ecr_uri_1",
+                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+                    },
+                },
+                "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {
+                    "properties": {
+                        "image_uri": "$gpu_ecr_uri_1",
+                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+                    },
+                },
+                "p4d": {
+                    "properties": {
+                        "image_uri": "$gpu_ecr_uri_1",
+                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+                    },
+                },
+                "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+            },
+        },
+        "ContextualHelp": {
+            "HubFormatTrainData": [
+                "A train and an optional validation directories. Each directory contains a CSV/JSON/TXT. ",
+                "- For CSV/JSON files, the text data is used from the column called 'text' or the first column if no column called 'text' is found",  # noqa: E501
+                "- The number of files under train and validation (if provided) should equal to one, respectively.",
+                " [Learn how to setup an AWS S3 bucket.](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html)",  # noqa: E501
+            ],
+            "HubDefaultTrainData": [
+                "Dataset: [SEC](https://www.sec.gov/edgar/searchedgar/companysearch)",
+                "SEC filing contains regulatory documents that companies and issuers of securities must submit to the Securities and Exchange Commission (SEC) on a regular basis.",  # noqa: E501
+                "License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode)",
+            ],
+        },
+        "ModelDataDownloadTimeout": 1200,
+        "ContainerStartupHealthCheckTimeout": 1200,
+        "EncryptInterContainerTraffic": True,
+        "DisableOutputCompression": True,
+        "MaxRuntimeInSeconds": 360000,
+        "DynamicContainerDeploymentSupported": True,
+        "TrainingModelPackageArtifactUri": None,
+        "Dependencies": [],
+    },
+    "meta-textgeneration-llama-2-70b": {
+        "Url": "https://ai.meta.com/resources/models-and-libraries/llama-downloads/",
+        "MinSdkVersion": "2.198.0",
+        "TrainingSupported": True,
+        "IncrementalTrainingSupported": False,
+        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",  # noqa: E501
+        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-70b/artifacts/inference/v1.0.0/",  # noqa: E501
+        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/inference/textgeneration/v1.2.3/sourcedir.tar.gz",  # noqa: E501
+        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-70b/artifacts/inference-prepack/v1.0.0/",  # noqa: E501
+        "HostingPrepackedArtifactVersion": "1.0.0",
+        "HostingUseScriptUri": False,
+        "HostingEulaUri": "s3://jumpstart-cache-prod-us-west-2/fmhMetadata/eula/llamaEula.txt",
+        "InferenceDependencies": [],
+        "TrainingDependencies": [
+            "accelerate==0.21.0",
+            "bitsandbytes==0.39.1",
+            "black==23.7.0",
+            "brotli==1.0.9",
+            "datasets==2.14.1",
+            "fire==0.5.0",
+            "huggingface-hub==0.20.3",
+            "inflate64==0.3.1",
+            "loralib==0.1.1",
+            "multivolumefile==0.2.3",
+            "mypy-extensions==1.0.0",
+            "nvidia-cublas-cu12==12.1.3.1",
+            "nvidia-cuda-cupti-cu12==12.1.105",
+            "nvidia-cuda-nvrtc-cu12==12.1.105",
+            "nvidia-cuda-runtime-cu12==12.1.105",
+            "nvidia-cudnn-cu12==8.9.2.26",
+            "nvidia-cufft-cu12==11.0.2.54",
+            "nvidia-curand-cu12==10.3.2.106",
+            "nvidia-cusolver-cu12==11.4.5.107",
+            "nvidia-cusolver-cu12==11.4.5.107",
+            "nvidia-cusparse-cu12==12.1.0.106",
+            "nvidia-nccl-cu12==2.19.3",
+            "nvidia-nvjitlink-cu12==12.3.101",
+            "nvidia-nvtx-cu12==12.1.105",
+            "pathspec==0.11.1",
+            "peft==0.4.0",
+            "py7zr==0.20.5",
+            "pybcj==1.0.1",
+            "pycryptodomex==3.18.0",
+            "pyppmd==1.0.0",
+            "pyzstd==0.15.9",
+            "safetensors==0.3.1",
+            "sagemaker_jumpstart_huggingface_script_utilities==1.1.4",
+            "sagemaker_jumpstart_script_utilities==1.1.9",
+            "scipy==1.11.1",
+            "termcolor==2.3.0",
+            "texttable==1.6.7",
+            "tokenize-rt==5.1.0",
+            "tokenizers==0.13.3",
+            "torch==2.2.0",
+            "transformers==4.33.3",
+            "triton==2.2.0",
+            "typing-extensions==4.8.0",
+        ],
+        "Hyperparameters": [
+            {
+                "Name": "epoch",
+                "Type": "int",
+                "Default": 5,
+                "Min": 1,
+                "Max": 1000,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "learning_rate",
+                "Type": "float",
+                "Default": 0.0001,
+                "Min": 1e-08,
+                "Max": 1,
+                "Scope": "algorithm",
+            },
+            {
+                "Name": "instruction_tuned",
+                "Type": "text",
+                "Default": "False",
+                "Options": ["True", "False"],
+                "Scope": "algorithm",
+            },
+        ],
+        "TrainingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.11/sourcedir.tar.gz",  # noqa: E501
+        "TrainingPrepackedScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/prepack/v1.0.5/sourcedir.tar.gz",  # noqa: E501
+        "TrainingPrepackedScriptVersion": "1.0.5",
+        "TrainingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",  # TODO: not a training image  # noqa: E501
+        "TrainingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/meta-training/train-meta-textgeneration-llama-2-70b.tar.gz",  # noqa: E501
+        "InferenceEnvironmentVariables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+            {
+                "name": "ENDPOINT_SERVER_TIMEOUT",
+                "type": "int",
+                "default": 3600,
+                "scope": "container",
+                "required_for_model_class": True,
+            },
+        ],
+        "TrainingMetrics": [
+            {
+                "Name": "huggingface-textgeneration:eval-loss",
+                "Regex": "eval_epoch_loss=tensor\\(([0-9\\.]+)",
+            },
+            {
+                "Name": "huggingface-textgeneration:eval-ppl",
+                "Regex": "eval_ppl=tensor\\(([0-9\\.]+)",
+            },
+            {
+                "Name": "huggingface-textgeneration:train-loss",
+                "Regex": "train_epoch_loss=([0-9\\.]+)",
+            },
+        ],
+        "DefaultInferenceInstanceType": "ml.g5.48xlarge",
+        "supported_inference_instance_types": ["ml.g5.48xlarge", "ml.p4d.24xlarge"],
+        "default_training_instance_type": "ml.g5.48xlarge",
+        "SupportedInferenceInstanceTypes": ["ml.g5.48xlarge", "ml.p4d.24xlarge"],
+        "ModelDataDownloadTimeout": 1200,
+        "ContainerStartupHealthCheckTimeout": 1200,
+        "EncryptInterContainerTraffic": True,
+        "DisableOutputCompression": True,
+        "MaxRuntimeInSeconds": 360000,
+        "SageMakerSdkPredictorSpecifications": {
+            "SupportedContentTypes": ["application/json"],
+            "SupportedAcceptTypes": ["application/json"],
+            "DefaultContentType": "application/json",
+            "DefaultAcceptType": "application/json",
+        },
+        "InferenceVolumeSize": 256,
+        "TrainingVolumeSize": 256,
+        "InferenceEnableNetworkIsolation": True,
+        "TrainingEnableNetworkIsolation": True,
+        "DefaultTrainingDatasetUri": "s3://jumpstart-cache-prod-us-west-2/training-datasets/sec_amazon/",  # noqa: E501
+        "ValidationSupported": True,
+        "FineTuningSupported": True,
+        "ResourceNameBase": "meta-textgeneration-llama-2-70b",
+        "DefaultPayloads": {
+            "meaningOfLife": {
+                "ContentType": "application/json",
+                "PromptKey": "inputs",
+                "OutputKeys": {
+                    "generated_text": "[0].generated_text",
+                    "input_logprobs": "[0].details.prefill[*].logprob",
+                },
+                "Body": {
+                    "inputs": "I believe the meaning of life is",
+                    "parameters": {
+                        "max_new_tokens": 64,
+                        "top_p": 0.9,
+                        "temperature": 0.6,
+                        "decoder_input_details": True,
+                        "details": True,
+                    },
+                },
+            },
+            "theoryOfRelativity": {
+                "ContentType": "application/json",
+                "PromptKey": "inputs",
+                "OutputKeys": {"generated_text": "[0].generated_text"},
+                "Body": {
+                    "inputs": "Simply put, the theory of relativity states that ",
+                    "parameters": {"max_new_tokens": 64, "top_p": 0.9, "temperature": 0.6},
+                },
+            },
+        },
+        "GatedBucket": True,
+        "HostingInstanceTypeVariants": {
+            "Aliases": {
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"  # noqa: E501
+            },
+            "Variants": {
+                "g4dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "ml.g5.12xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "4"}}},
+                "ml.g5.48xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+                "ml.p4d.24xlarge": {"properties": {"environment_variables": {"SM_NUM_GPUS": "8"}}},
+            },
+        },
+        "TrainingInstanceTypeVariants": {
+            "Aliases": {
+                "gpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"  # noqa: E501
+            },
+            "Variants": {
+                "g4dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "g5": {
+                    "properties": {
+                        "image_uri": "$gpu_ecr_uri_1",
+                        "gated_model_key_env_var_value": "meta-training/g5/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz",  # noqa: E501
+                    },
+                },
+                "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p2": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p3dn": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p4d": {
+                    "properties": {
+                        "image_uri": "$gpu_ecr_uri_1",
+                        "gated_model_key_env_var_value": "meta-training/p4d/v1.0.0/train-meta-textgeneration-llama-2-70b.tar.gz",  # noqa: E501
+                    },
+                },
+                "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+                "p5": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
+            },
+        },
+        "HostingArtifactS3DataType": "S3Prefix",
+        "HostingArtifactCompressionType": "None",
+        "HostingResourceRequirements": {"MinMemoryMb": 393216, "NumAccelerators": 8},
+        "DynamicContainerDeploymentSupported": True,
+        "TrainingModelPackageArtifactUri": None,
+        "Task": "text generation",
+        "DataType": "text",
+        "Framework": "meta",
+        "Dependencies": [],
+    },
+    "huggingface-textembedding-bloom-7b1": {
+        "Url": "https://huggingface.co/bigscience/bloom-7b1",
+        "MinSdkVersion": "2.144.0",
+        "TrainingSupported": False,
+        "IncrementalTrainingSupported": False,
+        "HostingEcrUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",  # noqa: E501
+        "HostingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/infer-huggingface-textembedding-bloom-7b1.tar.gz",  # noqa: E501
+        "HostingScriptUri": "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/inference/textembedding/v1.0.1/sourcedir.tar.gz",  # noqa: E501
+        "HostingPrepackedArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/v1.0.1/infer-prepack-huggingface-textembedding-bloom-7b1.tar.gz",  # noqa: E501
+        "HostingPrepackedArtifactVersion": "1.0.1",
+        "InferenceDependencies": [
+            "accelerate==0.16.0",
+            "bitsandbytes==0.37.0",
+            "filelock==3.9.0",
+            "huggingface_hub==0.12.0",
+            "regex==2022.7.9",
+            "tokenizers==0.13.2",
+            "transformers==4.26.0",
+        ],
+        "TrainingDependencies": [],
+        "InferenceEnvironmentVariables": [
+            {
+                "Name": "SAGEMAKER_PROGRAM",
+                "Type": "text",
+                "Default": "inference.py",
+                "Scope": "container",
+                "RequiredForModelClass": True,
+            }
+        ],
+        "TrainingMetrics": [],
+        "DefaultInferenceInstanceType": "ml.g5.12xlarge",
+        "SupportedInferenceInstanceTypes": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.p3.8xlarge",
+            "ml.p3.16xlarge",
+            "ml.g4dn.12xlarge",
+        ],
+        "deploy_kwargs": {
+            "ModelDataDownloadTimeout": 3600,
+            "ContainerStartupHealthCheckTimeout": 3600,
+        },
+        "SageMakerSdkPredictorSpecifications": {
+            "SupportedContentTypes": ["application/json", "application/x-text"],
+            "SupportedAcceptTypes": ["application/json;verbose", "application/json"],
+            "DefaultContentType": "application/json",
+            "DefaultAcceptType": "application/json",
+        },
+        "InferenceVolumeSize": 256,
+        "InferenceEnableNetworkIsolation": True,
+        "ValidationSupported": False,
+        "FineTuningSupported": False,
+        "ResourceNameBase": "hf-textembedding-bloom-7b1",
+        "HostingInstanceTypeVariants": {
+            "Aliases": {
+                "alias_ecr_uri_3": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",  # noqa: E501
+                "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.0-cpu-py38",
+                "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.0-gpu-py38",
+            },
+            "Variants": {
+                "c4": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5d": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c5n": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c6i": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "c7i": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "g4dn": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "g5": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "local": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "m4": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "m5": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "m5d": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "m6i": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "m7i": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "p2": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p3": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p3dn": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p4d": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "p5": {"properties": {"image_uri": "$gpu_ecr_uri_2"}},
+                "r5": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "r5d": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "r7i": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "t2": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "t3": {"properties": {"image_uri": "$cpu_ecr_uri_1"}},
+                "trn1": {"properties": {"image_uri": "$alias_ecr_uri_3"}},
+                "trn1n": {"properties": {"image_uri": "$alias_ecr_uri_3"}},
+            },
+        },
+        "TrainingModelPackageArtifactUri": None,
+        "DynamicContainerDeploymentSupported": False,
+        "License": "BigScience RAIL",
+        "Dependencies": [],
+    },
 }
