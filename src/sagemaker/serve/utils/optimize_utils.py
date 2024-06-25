@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import re
 import logging
-import uuid
 from typing import Dict, Any, Optional, Union, List
 
 from sagemaker import Model
@@ -169,7 +168,7 @@ def _generate_channel_name(additional_model_data_sources: Optional[List[Dict]]) 
     Returns:
         str: The channel name.
     """
-    channel_name = f"model-builder-channel-{uuid.uuid4().hex}"
+    channel_name = "model-builder-channel"
     if additional_model_data_sources and len(additional_model_data_sources) > 0:
         channel_name = additional_model_data_sources[0].get("ChannelName", channel_name)
 

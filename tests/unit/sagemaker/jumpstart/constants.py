@@ -7516,6 +7516,8 @@ BASE_SPEC = {
     "inference_config_rankings": None,
     "training_config_rankings": None,
     "hosting_additional_data_sources": None,
+    "hosting_neuron_model_id": None,
+    "hosting_neuron_model_version": None,
 }
 
 BASE_HOSTING_ADDITIONAL_DATA_SOURCES = {
