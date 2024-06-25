@@ -184,13 +184,16 @@ class Hub:
                 **{
                     "hub_name": self.hub_name,
                     "hub_content_type": HubContentType.MODEL_REFERENCE.value,
+                    **kwargs,
                 }
-                | kwargs
             )
 
             hub_model_summaries = self._list_and_paginate_models(
-                **{"hub_name": self.hub_name, "hub_content_type": HubContentType.MODEL.value}
-                | kwargs
+                **{
+                    "hub_name": self.hub_name,
+                    "hub_content_type": HubContentType.MODEL.value,
+                    **kwargs,
+                }
             )
             response["hub_content_summaries"] = hub_model_reference_summaries + hub_model_summaries
         response["next_token"] = None  # Temporary until pagination is implemented
