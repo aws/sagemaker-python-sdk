@@ -49,7 +49,11 @@ Alternatively, you can provide full specifications to the DJLModel to have full 
         },
         image_uri=<djl lmi image uri>,
     )
+    # Deploy the model to an Amazon SageMaker Endpoint and get a Predictor
+    predictor = djl_model.deploy("ml.g5.12xlarge",
+                                 initial_instance_count=1)
 
+Regardless of how you create your model, a ``Predictor`` object is returned.
 Each ``Predictor`` provides a ``predict`` method, which can do inference with json data, numpy arrays, or Python lists.
 Inference data are serialized and sent to the DJL Serving model server by an ``InvokeEndpoint`` SageMaker operation. The
 ``predict`` method returns the result of inference against your model.

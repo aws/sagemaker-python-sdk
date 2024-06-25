@@ -147,9 +147,8 @@ class DJLModel(Model):
             logger.info("Using provided engine %s", self.engine)
             return self.engine
 
-        if self.task is not None:
-            if self.task == "text-embedding":
-                return "OnnxRuntime"
+        if self.task == "text-embedding":
+            return "OnnxRuntime"
         return "Python"
 
     def _infer_image_uri(self):
