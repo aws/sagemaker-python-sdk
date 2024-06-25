@@ -15,13 +15,14 @@ from __future__ import absolute_import
 import datetime
 from difflib import get_close_matches
 import os
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import json
 import boto3
 import botocore
 from packaging.version import Version
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
 from sagemaker.jumpstart.constants import (
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
@@ -42,16 +43,23 @@ from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_SEMANTIC_VERSION_CACHE_EXPIRATION_HORIZON,
 )
 from sagemaker.jumpstart.types import (
-    JumpStartCachedS3ContentKey,
-    JumpStartCachedS3ContentValue,
+    JumpStartCachedContentKey,
+    JumpStartCachedContentValue,
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartVersionedModelId,
+    HubContentType,
+)
+from sagemaker.jumpstart.hub import utils as hub_utils
+from sagemaker.jumpstart.hub.interfaces import DescribeHubContentResponse
+from sagemaker.jumpstart.hub.parsers import (
+    make_model_specs_from_describe_hub_content_response,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart import utils
 from sagemaker.utilities.cache import LRUCache
+from sagemaker.session import Session
 
 
 class JumpStartModelsCache:
@@ -77,6 +85,7 @@ class JumpStartModelsCache:
         s3_bucket_name: Optional[str] = None,
         s3_client_config: Optional[botocore.config.Config] = None,
         s3_client: Optional[boto3.client] = None,
+        sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ) -> None:
         """Initialize a ``JumpStartModelsCache`` instance.
 
@@ -98,13 +107,15 @@ class JumpStartModelsCache:
             s3_client_config (Optional[botocore.config.Config]): s3 client config to use for cache.
                 Default: None (no config).
             s3_client (Optional[boto3.client]): s3 client to use. Default: None.
+            sagemaker_session: sagemaker session object to use.
+                Default: session object from default region us-west-2.
         """
 
         self._region = region or utils.get_region_fallback(
             s3_bucket_name=s3_bucket_name, s3_client=s3_client
         )
 
-        self._s3_cache = LRUCache[JumpStartCachedS3ContentKey, JumpStartCachedS3ContentValue](
+        self._content_cache = LRUCache[JumpStartCachedContentKey, JumpStartCachedContentValue](
             max_cache_items=max_s3_cache_items,
             expiration_horizon=s3_cache_expiration_horizon,
             retrieval_function=self._retrieval_function,
@@ -139,6 +150,7 @@ class JumpStartModelsCache:
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
         )
+        self._sagemaker_session = sagemaker_session
 
     def set_region(self, region: str) -> None:
         """Set region for cache. Clears cache after new region is set."""
@@ -230,8 +242,8 @@ class JumpStartModelsCache:
 
         model_id, version = key.model_id, key.version
         sm_version = utils.get_sagemaker_version()
-        manifest = self._s3_cache.get(
-            JumpStartCachedS3ContentKey(
+        manifest = self._content_cache.get(
+            JumpStartCachedContentKey(
                 MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type]
             )
         )[0].formatted_content
@@ -392,53 +404,96 @@ class JumpStartModelsCache:
 
     def _retrieval_function(
         self,
-        key: JumpStartCachedS3ContentKey,
-        value: Optional[JumpStartCachedS3ContentValue],
-    ) -> JumpStartCachedS3ContentValue:
-        """Return s3 content given a file type and s3_key in ``JumpStartCachedS3ContentKey``.
+        key: JumpStartCachedContentKey,
+        value: Optional[JumpStartCachedContentValue],
+    ) -> JumpStartCachedContentValue:
+        """Return s3 content given a file type and s3_key in ``JumpStartCachedContentKey``.
 
         If a manifest file is being fetched, we only download the object if the md5 hash in
         ``head_object`` does not match the current md5 hash for the stored value. This prevents
         unnecessarily downloading the full manifest when it hasn't changed.
 
         Args:
-            key (JumpStartCachedS3ContentKey): key for which to fetch s3 content.
+            key (JumpStartCachedContentKey): key for which to fetch s3 content.
             value (Optional[JumpStartVersionedModelId]): Current value of old cached
                 s3 content. This is used for the manifest file, so that it is only
                 downloaded when its content changes.
         """
 
-        file_type, s3_key = key.file_type, key.s3_key
-        if file_type in {
+        data_type, id_info = key.data_type, key.id_info
+
+        if data_type in {
             JumpStartS3FileType.OPEN_WEIGHT_MANIFEST,
             JumpStartS3FileType.PROPRIETARY_MANIFEST,
         }:
             if value is not None and not self._is_local_metadata_mode():
-                etag = self._get_json_md5_hash(s3_key)
+                etag = self._get_json_md5_hash(id_info)
                 if etag == value.md5_hash:
                     return value
-            formatted_body, etag = self._get_json_file(s3_key, file_type)
-            return JumpStartCachedS3ContentValue(
+            formatted_body, etag = self._get_json_file(id_info, data_type)
+            return JumpStartCachedContentValue(
                 formatted_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
             )
-        if file_type in {
+        if data_type in {
             JumpStartS3FileType.OPEN_WEIGHT_SPECS,
             JumpStartS3FileType.PROPRIETARY_SPECS,
         }:
-            formatted_body, _ = self._get_json_file(s3_key, file_type)
+            formatted_body, _ = self._get_json_file(id_info, data_type)
             model_specs = JumpStartModelSpecs(formatted_body)
             utils.emit_logs_based_on_model_specs(model_specs, self.get_region(), self._s3_client)
-            return JumpStartCachedS3ContentValue(formatted_content=model_specs)
-        raise ValueError(self._file_type_error_msg(file_type))
+            return JumpStartCachedContentValue(formatted_content=model_specs)
+
+        if data_type == HubContentType.NOTEBOOK:
+            hub_name, _, notebook_name, notebook_version = hub_utils.get_info_from_hub_resource_arn(
+                id_info
+            )
+            response: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+                hub_name=hub_name,
+                hub_content_name=notebook_name,
+                hub_content_version=notebook_version,
+                hub_content_type=data_type,
+            )
+            hub_notebook_description = DescribeHubContentResponse(response)
+            return JumpStartCachedContentValue(formatted_content=hub_notebook_description)
+
+        if data_type in {
+            HubContentType.MODEL,
+            HubContentType.MODEL_REFERENCE,
+        }:
+
+            hub_arn_extracted_info = hub_utils.get_info_from_hub_resource_arn(id_info)
+
+            model_version: str = hub_utils.get_hub_model_version(
+                hub_model_name=hub_arn_extracted_info.hub_content_name,
+                hub_model_type=data_type.value,
+                hub_name=hub_arn_extracted_info.hub_name,
+                sagemaker_session=self._sagemaker_session,
+                hub_model_version=hub_arn_extracted_info.hub_content_version,
+            )
+
+            hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+                hub_name=hub_arn_extracted_info.hub_name,
+                hub_content_name=hub_arn_extracted_info.hub_content_name,
+                hub_content_version=model_version,
+                hub_content_type=data_type.value,
+            )
+
+            model_specs = make_model_specs_from_describe_hub_content_response(
+                DescribeHubContentResponse(hub_model_description),
+            )
+
+            return JumpStartCachedContentValue(formatted_content=model_specs)
+
+        raise ValueError(self._file_type_error_msg(data_type))
 
     def get_manifest(
         self,
         model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     ) -> List[JumpStartModelHeader]:
         """Return entire JumpStart models manifest."""
-        manifest_dict = self._s3_cache.get(
-            JumpStartCachedS3ContentKey(
+        manifest_dict = self._content_cache.get(
+            JumpStartCachedContentKey(
                 MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type]
             )
         )[0].formatted_content
@@ -525,8 +580,8 @@ class JumpStartModelsCache:
                 JumpStartVersionedModelId(model_id, semantic_version_str)
             )[0]
 
-        manifest = self._s3_cache.get(
-            JumpStartCachedS3ContentKey(
+        manifest = self._content_cache.get(
+            JumpStartCachedContentKey(
                 MODEL_TYPE_TO_MANIFEST_MAP[model_type], self._manifest_file_s3_map[model_type]
             )
         )[0].formatted_content
@@ -556,8 +611,8 @@ class JumpStartModelsCache:
         """
         header = self.get_header(model_id, version_str, model_type)
         spec_key = header.spec_key
-        specs, cache_hit = self._s3_cache.get(
-            JumpStartCachedS3ContentKey(MODEL_TYPE_TO_SPECS_MAP[model_type], spec_key)
+        specs, cache_hit = self._content_cache.get(
+            JumpStartCachedContentKey(MODEL_TYPE_TO_SPECS_MAP[model_type], spec_key)
         )
 
         if not cache_hit and "*" in version_str:
@@ -566,8 +621,38 @@ class JumpStartModelsCache:
             )
         return specs.formatted_content
 
+    def get_hub_model(self, hub_model_arn: str) -> JumpStartModelSpecs:
+        """Return JumpStart-compatible specs for a given Hub model
+
+        Args:
+            hub_model_arn (str): Arn for the Hub model to get specs for
+        """
+
+        details, _ = self._content_cache.get(
+            JumpStartCachedContentKey(
+                HubContentType.MODEL,
+                hub_model_arn,
+            )
+        )
+        return details.formatted_content
+
+    def get_hub_model_reference(self, hub_model_reference_arn: str) -> JumpStartModelSpecs:
+        """Return JumpStart-compatible specs for a given Hub model reference
+
+        Args:
+            hub_model_arn (str): Arn for the Hub model to get specs for
+        """
+
+        details, _ = self._content_cache.get(
+            JumpStartCachedContentKey(
+                HubContentType.MODEL_REFERENCE,
+                hub_model_reference_arn,
+            )
+        )
+        return details.formatted_content
+
     def clear(self) -> None:
         """Clears the model ID/version and s3 cache."""
-        self._s3_cache.clear()
+        self._content_cache.clear()
         self._open_weight_model_id_manifest_key_cache.clear()
         self._proprietary_model_id_manifest_key_cache.clear()

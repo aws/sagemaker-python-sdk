@@ -10,8 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+# pylint: skip-file
 """This module stores types related to SageMaker JumpStart."""
 from __future__ import absolute_import
+import re
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
@@ -30,6 +32,10 @@ from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker.enums import EndpointType
+from sagemaker.jumpstart.hub.parser_utils import (
+    camel_to_snake,
+    walk_and_apply_json,
+)
 
 
 class JumpStartDataHolderType:
@@ -114,6 +120,23 @@ class JumpStartS3FileType(str, Enum):
     PROPRIETARY_SPECS = "proprietary_specs"
 
 
+class HubType(str, Enum):
+    """Enum for Hub objects."""
+
+    HUB = "Hub"
+
+
+class HubContentType(str, Enum):
+    """Enum for Hub content objects."""
+
+    MODEL = "Model"
+    NOTEBOOK = "Notebook"
+    MODEL_REFERENCE = "ModelReference"
+
+
+JumpStartContentDataType = Union[JumpStartS3FileType, HubType, HubContentType]
+
+
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
     """Data class for launched region info."""
 
@@ -178,14 +201,18 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
         "framework_version",
         "py_version",
         "huggingface_transformers_version",
+        "_is_hub_content",
     ]
 
-    def __init__(self, spec: Dict[str, Any]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Dict[str, Any], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartECRSpecs object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -198,6 +225,9 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
         if not json_obj:
             return
 
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
+
         self.framework = json_obj.get("framework")
         self.framework_version = json_obj.get("framework_version")
         self.py_version = json_obj.get("py_version")
@@ -207,7 +237,11 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartECRSpecs object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        json_obj = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if hasattr(self, att) and att not in getattr(self, "_non_serializable_slots", [])
+        }
         return json_obj
 
 
@@ -224,14 +258,18 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         "max",
         "exclusive_min",
         "exclusive_max",
+        "_is_hub_content",
     ]
 
-    def __init__(self, spec: Dict[str, Any]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Dict[str, Any], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartHyperparameter object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of hyperparameter.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -241,6 +279,8 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of hyperparameter.
         """
 
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.name = json_obj["name"]
         self.type = json_obj["type"]
         self.default = json_obj["default"]
@@ -258,17 +298,24 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         if max_val is not None:
             self.max = max_val
 
+        # HubContentDocument model schema does not allow exclusive min/max.
+        if self._is_hub_content:
+            return
+
         exclusive_min_val = json_obj.get("exclusive_min")
+        exclusive_max_val = json_obj.get("exclusive_max")
         if exclusive_min_val is not None:
             self.exclusive_min = exclusive_min_val
-
-        exclusive_max_val = json_obj.get("exclusive_max")
         if exclusive_max_val is not None:
             self.exclusive_max = exclusive_max_val
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartHyperparameter object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        json_obj = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if hasattr(self, att) and att not in getattr(self, "_non_serializable_slots", [])
+        }
         return json_obj
 
 
@@ -281,14 +328,18 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         "default",
         "scope",
         "required_for_model_class",
+        "_is_hub_content",
     ]
 
-    def __init__(self, spec: Dict[str, Any]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Dict[str, Any], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartEnvironmentVariable object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of environment variable.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -297,7 +348,7 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of environment variable.
         """
-
+        json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.name = json_obj["name"]
         self.type = json_obj["type"]
         self.default = json_obj["default"]
@@ -306,7 +357,11 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartEnvironmentVariable object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        json_obj = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if hasattr(self, att) and att not in getattr(self, "_non_serializable_slots", [])
+        }
         return json_obj
 
 
@@ -318,14 +373,18 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         "supported_content_types",
         "default_accept_type",
         "supported_accept_types",
+        "_is_hub_content",
     ]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartPredictorSpecs object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of predictor specs.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
@@ -338,6 +397,8 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         if json_obj is None:
             return
 
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.default_content_type = json_obj["default_content_type"]
         self.supported_content_types = json_obj["supported_content_types"]
         self.default_accept_type = json_obj["default_accept_type"]
@@ -345,7 +406,11 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartPredictorSpecs object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        json_obj = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if hasattr(self, att) and att not in getattr(self, "_non_serializable_slots", [])
+        }
         return json_obj
 
 
@@ -358,16 +423,18 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         "accept",
         "body",
         "prompt_key",
+        "_is_hub_content",
     ]
 
-    _non_serializable_slots = ["raw_payload", "prompt_key"]
+    _non_serializable_slots = ["raw_payload", "prompt_key", "_is_hub_content"]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartSerializablePayload object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of payload specs.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(spec)
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
@@ -384,9 +451,11 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
         if json_obj is None:
             return
 
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.raw_payload = json_obj
         self.content_type = json_obj["content_type"]
-        self.body = json_obj["body"]
+        self.body = json_obj.get("body")
         accept = json_obj.get("accept")
         self.prompt_key = json_obj.get("prompt_key")
         if accept:
@@ -402,16 +471,26 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
     __slots__ = [
         "regional_aliases",
+        "aliases",
         "variants",
+        "_is_hub_content",
     ]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartInstanceTypeVariants object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of instance type variants.
         """
-        self.from_json(spec)
+
+        self._is_hub_content = is_hub_content
+
+        if self._is_hub_content:
+            self.from_describe_hub_content_response(spec)
+        else:
+            self.from_json(spec)
 
     def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
         """Sets fields in object based on json.
@@ -423,13 +502,49 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if json_obj is None:
             return
 
+        self.aliases = None
         self.regional_aliases: Optional[dict] = json_obj.get("regional_aliases")
         self.variants: Optional[dict] = json_obj.get("variants")
 
     def to_json(self) -> Dict[str, Any]:
-        """Returns json representation of JumpStartInstanceTypeVariants object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        """Returns json representation of JumpStartInstance object."""
+        json_obj = {
+            att: getattr(self, att)
+            for att in self.__slots__
+            if hasattr(self, att) and att not in getattr(self, "_non_serializable_slots", [])
+        }
         return json_obj
+
+    def from_describe_hub_content_response(self, response: Optional[Dict[str, Any]]) -> None:
+        """Sets fields in object based on DescribeHubContent response.
+
+        Args:
+            response (Dict[str, Any]): Dictionary representation of instance type variants.
+        """
+
+        if response is None:
+            return
+
+        response = walk_and_apply_json(response, camel_to_snake)
+        self.aliases: Optional[dict] = response.get("aliases")
+        self.regional_aliases = None
+        self.variants: Optional[dict] = response.get("variants")
+
+    def regionalize(  # pylint: disable=inconsistent-return-statements
+        self, region: str
+    ) -> Optional[Dict[str, Any]]:
+        """Returns regionalized instance type variants."""
+
+        if self.regional_aliases is None or self.aliases is not None:
+            return
+        aliases = self.regional_aliases.get(region, {})
+        variants = {}
+        for instance_name, properties in self.variants.items():
+            if properties.get("regional_properties") is not None:
+                variants.update({instance_name: properties.get("regional_properties")})
+            if properties.get("properties") is not None:
+                variants.update({instance_name: properties.get("properties")})
+        return {"Aliases": aliases, "Variants": variants}
 
     def get_instance_specific_metric_definitions(
         self, instance_type: str
@@ -628,7 +743,12 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         Returns None if a model, instance type tuple does not have instance
         specific property.
         """
-        return self._get_instance_specific_property(instance_type, "gated_model_key_env_var_value")
+
+        gated_model_key_env_var_value = (
+            "gated_model_env_var_uri" if self._is_hub_content else "gated_model_key_env_var_value"
+        )
+
+        return self._get_instance_specific_property(instance_type, gated_model_key_env_var_value)
 
     def get_instance_specific_default_inference_instance_type(
         self, instance_type: str
@@ -680,7 +800,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             )
         )
 
-    def get_image_uri(self, instance_type: str, region: str) -> Optional[str]:
+    def get_image_uri(self, instance_type: str, region: Optional[str] = None) -> Optional[str]:
         """Returns image uri from instance type and region.
 
         Returns None if no instance type is available or found.
@@ -701,36 +821,63 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         )
 
     def _get_regional_property(
-        self, instance_type: str, region: str, property_name: str
+        self, instance_type: str, region: Optional[str], property_name: str
     ) -> Optional[str]:
         """Returns regional property from instance type and region.
 
         Returns None if no instance type is available or found.
         None is also returned if the metadata is improperly formatted.
         """
+        # pylint: disable=too-many-return-statements
+        # if self.variants is None or (self.aliases is None and self.regional_aliases is None):
+        #    return None
 
-        if None in [self.regional_aliases, self.variants]:
+        if self.variants is None:
             return None
 
-        regional_property_alias: Optional[str] = (
-            self.variants.get(instance_type, {}).get("regional_properties", {}).get(property_name)
-        )
-        if regional_property_alias is None:
+        if region is None and self.regional_aliases is not None:
+            return None
+
+        regional_property_alias: Optional[str] = None
+        regional_property_value: Optional[str] = None
+
+        if self.regional_aliases:
+            regional_property_alias = (
+                self.variants.get(instance_type, {})
+                .get("regional_properties", {})
+                .get(property_name)
+            )
+        else:
+            regional_property_value = (
+                self.variants.get(instance_type, {}).get("properties", {}).get(property_name)
+            )
+
+        if regional_property_alias is None and regional_property_value is None:
             instance_type_family = get_instance_type_family(instance_type)
 
             if instance_type_family in {"", None}:
                 return None
 
-            regional_property_alias = (
-                self.variants.get(instance_type_family, {})
-                .get("regional_properties", {})
-                .get(property_name)
-            )
+            if self.regional_aliases:
+                regional_property_alias = (
+                    self.variants.get(instance_type_family, {})
+                    .get("regional_properties", {})
+                    .get(property_name)
+                )
+            else:
+                # if reading from HubContent, aliases are already regionalized
+                regional_property_value = (
+                    self.variants.get(instance_type_family, {})
+                    .get("properties", {})
+                    .get(property_name)
+                )
 
-        if regional_property_alias is None or len(regional_property_alias) == 0:
+        if (regional_property_alias is None or len(regional_property_alias) == 0) and (
+            regional_property_value is None or len(regional_property_value) == 0
+        ):
             return None
 
-        if not regional_property_alias.startswith("$"):
+        if regional_property_alias and not regional_property_alias.startswith("$"):
             # No leading '$' indicates bad metadata.
             # There are tests to ensure this never happens.
             # However, to allow for fallback options in the unlikely event
@@ -738,10 +885,13 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             # We return None, indicating the field does not exist.
             return None
 
-        if region not in self.regional_aliases:
+        if self.regional_aliases and region not in self.regional_aliases:
             return None
-        alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
-        return alias_value
+
+        if self.regional_aliases:
+            alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
+            return alias_value
+        return regional_property_value
 
 
 class JumpStartBenchmarkStat(JumpStartDataHolderType):
@@ -811,10 +961,13 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "min_sdk_version",
         "incremental_training_supported",
         "hosting_ecr_specs",
+        "hosting_ecr_uri",
+        "hosting_artifact_uri",
         "hosting_artifact_key",
         "hosting_script_key",
         "training_supported",
         "training_ecr_specs",
+        "training_ecr_uri",
         "training_artifact_key",
         "training_script_key",
         "hyperparameters",
@@ -837,7 +990,9 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "supported_training_instance_types",
         "metrics",
         "training_prepacked_script_key",
+        "training_prepacked_script_version",
         "hosting_prepacked_artifact_key",
+        "hosting_prepacked_artifact_version",
         "model_kwargs",
         "deploy_kwargs",
         "estimator_kwargs",
@@ -857,14 +1012,19 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "default_payloads",
         "gated_bucket",
         "model_subscription_link",
+        "hub_content_type",
+        "_is_hub_content",
     ]
 
-    def __init__(self, fields: Dict[str, Any]):
+    _non_serializable_slots = ["_is_hub_content"]
+
+    def __init__(self, fields: Dict[str, Any], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartMetadataFields object.
 
         Args:
             fields (Dict[str, Any]): Dictionary representation of metadata fields.
         """
+        self._is_hub_content = is_hub_content
         self.from_json(fields)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -880,16 +1040,24 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.incremental_training_supported: bool = bool(
             json_obj.get("incremental_training_supported", False)
         )
-        self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
-            JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
-            if "hosting_ecr_specs" in json_obj
-            else None
-        )
+        if self._is_hub_content:
+            self.hosting_ecr_uri: Optional[str] = json_obj["hosting_ecr_uri"]
+            self._non_serializable_slots.append("hosting_ecr_specs")
+        else:
+            self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
+                JumpStartECRSpecs(
+                    json_obj["hosting_ecr_specs"], is_hub_content=self._is_hub_content
+                )
+                if "hosting_ecr_specs" in json_obj
+                else None
+            )
+            self._non_serializable_slots.append("hosting_ecr_uri")
         self.hosting_artifact_key: Optional[str] = json_obj.get("hosting_artifact_key")
+        self.hosting_artifact_uri: Optional[str] = json_obj.get("hosting_artifact_uri")
         self.hosting_script_key: Optional[str] = json_obj.get("hosting_script_key")
         self.training_supported: Optional[bool] = bool(json_obj.get("training_supported", False))
         self.inference_environment_variables = [
-            JumpStartEnvironmentVariable(env_variable)
+            JumpStartEnvironmentVariable(env_variable, is_hub_content=self._is_hub_content)
             for env_variable in json_obj.get("inference_environment_variables", [])
         ]
         self.inference_vulnerable: bool = bool(json_obj.get("inference_vulnerable", False))
@@ -927,16 +1095,26 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
             "hosting_prepacked_artifact_key", None
         )
+        # New fields required for Hub model.
+        if self._is_hub_content:
+            self.training_prepacked_script_version: Optional[str] = json_obj.get(
+                "training_prepacked_script_version"
+            )
+            self.hosting_prepacked_artifact_version: Optional[str] = json_obj.get(
+                "hosting_prepacked_artifact_version"
+            )
         self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
-            JumpStartPredictorSpecs(json_obj["predictor_specs"])
+            JumpStartPredictorSpecs(
+                json_obj["predictor_specs"], is_hub_content=self._is_hub_content
+            )
             if "predictor_specs" in json_obj
             else None
         )
         self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
             {
-                alias: JumpStartSerializablePayload(payload)
+                alias: JumpStartSerializablePayload(payload, is_hub_content=self._is_hub_content)
                 for alias, payload in json_obj["default_payloads"].items()
             }
             if json_obj.get("default_payloads")
@@ -955,24 +1133,34 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
-            JumpStartInstanceTypeVariants(json_obj["hosting_instance_type_variants"])
+            JumpStartInstanceTypeVariants(
+                json_obj["hosting_instance_type_variants"], self._is_hub_content
+            )
             if json_obj.get("hosting_instance_type_variants")
             else None
         )
 
         if self.training_supported:
-            self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
-                JumpStartECRSpecs(json_obj["training_ecr_specs"])
-                if "training_ecr_specs" in json_obj
-                else None
-            )
+            if self._is_hub_content:
+                self.training_ecr_uri: Optional[str] = json_obj["training_ecr_uri"]
+                self._non_serializable_slots.append("training_ecr_specs")
+            else:
+                self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
+                    JumpStartECRSpecs(json_obj["training_ecr_specs"])
+                    if "training_ecr_specs" in json_obj
+                    else None
+                )
+                self._non_serializable_slots.append("training_ecr_uri")
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
             hyperparameters: Any = json_obj.get("hyperparameters")
             self.hyperparameters: List[JumpStartHyperparameter] = []
             if hyperparameters is not None:
                 self.hyperparameters.extend(
-                    [JumpStartHyperparameter(hyperparameter) for hyperparameter in hyperparameters]
+                    [
+                        JumpStartHyperparameter(hyperparameter, is_hub_content=self._is_hub_content)
+                        for hyperparameter in hyperparameters
+                    ]
                 )
             self.estimator_kwargs = deepcopy(json_obj.get("estimator_kwargs", {}))
             self.fit_kwargs = deepcopy(json_obj.get("fit_kwargs", {}))
@@ -984,7 +1172,9 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
                 "training_model_package_artifact_uris"
             )
             self.training_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
-                JumpStartInstanceTypeVariants(json_obj["training_instance_type_variants"])
+                JumpStartInstanceTypeVariants(
+                    json_obj["training_instance_type_variants"], is_hub_content=self._is_hub_content
+                )
                 if json_obj.get("training_instance_type_variants")
                 else None
             )
@@ -994,7 +1184,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         """Returns json representation of JumpStartMetadataBaseFields object."""
         json_obj = {}
         for att in self.__slots__:
-            if hasattr(self, att):
+            if hasattr(self, att) and att not in getattr(self, "_non_serializable_slots", []):
                 cur_val = getattr(self, att)
                 if issubclass(type(cur_val), JumpStartDataHolderType):
                     json_obj[att] = cur_val.to_json()
@@ -1015,6 +1205,11 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
                 else:
                     json_obj[att] = cur_val
         return json_obj
+
+    def set_hub_content_type(self, hub_content_type: HubContentType) -> None:
+        """Sets the hub content type."""
+        if self._is_hub_content:
+            self.hub_content_type = hub_content_type
 
 
 class JumpStartConfigComponent(JumpStartMetadataBaseFields):
@@ -1212,13 +1407,13 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     __slots__ = JumpStartMetadataBaseFields.__slots__ + slots
 
-    def __init__(self, spec: Dict[str, Any]):
+    def __init__(self, spec: Dict[str, Any], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartModelSpecs object from its json representation.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
         """
-        super().__init__(spec)
+        super().__init__(spec, is_hub_content)
         self.from_json(spec)
         if self.inference_configs and self.inference_configs.get_top_config_from_ranking():
             super().from_json(self.inference_configs.get_top_config_from_ranking().resolved_config)
@@ -1414,27 +1609,84 @@ class JumpStartVersionedModelId(JumpStartDataHolderType):
         self.version = version
 
 
-class JumpStartCachedS3ContentKey(JumpStartDataHolderType):
-    """Data class for the s3 cached content keys."""
+class JumpStartCachedContentKey(JumpStartDataHolderType):
+    """Data class for the cached content keys."""
 
-    __slots__ = ["file_type", "s3_key"]
+    __slots__ = ["data_type", "id_info"]
 
     def __init__(
         self,
-        file_type: JumpStartS3FileType,
-        s3_key: str,
+        data_type: JumpStartContentDataType,
+        id_info: str,
     ) -> None:
-        """Instantiates JumpStartCachedS3ContentKey object.
+        """Instantiates JumpStartCachedContentKey object.
 
         Args:
-            file_type (JumpStartS3FileType): JumpStart file type.
-            s3_key (str): object key in s3.
+            data_type (JumpStartContentDataType): JumpStart content data type.
+            id_info (str): if S3Content, object key in s3. if HubContent, hub content arn.
         """
-        self.file_type = file_type
-        self.s3_key = s3_key
+        self.data_type = data_type
+        self.id_info = id_info
 
 
-class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
+class HubArnExtractedInfo(JumpStartDataHolderType):
+    """Data class for info extracted from Hub arn."""
+
+    __slots__ = [
+        "partition",
+        "region",
+        "account_id",
+        "hub_name",
+        "hub_content_type",
+        "hub_content_name",
+        "hub_content_version",
+    ]
+
+    def __init__(
+        self,
+        partition: str,
+        region: str,
+        account_id: str,
+        hub_name: str,
+        hub_content_type: Optional[str] = None,
+        hub_content_name: Optional[str] = None,
+        hub_content_version: Optional[str] = None,
+    ) -> None:
+        """Instantiates HubArnExtractedInfo object."""
+
+        self.partition = partition
+        self.region = region
+        self.account_id = account_id
+        self.hub_name = hub_name
+        self.hub_content_name = hub_content_name
+        self.hub_content_type = hub_content_type
+        self.hub_content_version = hub_content_version
+
+    @staticmethod
+    def extract_region_from_arn(arn: str) -> Optional[str]:
+        """Extracts hub_name, content_name, and content_version from a HubContentArn"""
+
+        HUB_CONTENT_ARN_REGEX = (
+            r"arn:(.*?):sagemaker:(.*?):(.*?):hub-content/(.*?)/(.*?)/(.*?)/(.*?)$"
+        )
+        HUB_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub/(.*?)$"
+
+        match = re.match(HUB_CONTENT_ARN_REGEX, arn)
+        hub_region = None
+        if match:
+            hub_region = match.group(2)
+
+            return hub_region
+
+        match = re.match(HUB_ARN_REGEX, arn)
+        if match:
+            hub_region = match.group(2)
+            return hub_region
+
+        return hub_region
+
+
+class JumpStartCachedContentValue(JumpStartDataHolderType):
     """Data class for the s3 cached content values."""
 
     __slots__ = ["formatted_content", "md5_hash"]
@@ -1447,7 +1699,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
         ],
         md5_hash: Optional[str] = None,
     ) -> None:
-        """Instantiates JumpStartCachedS3ContentValue object.
+        """Instantiates JumpStartCachedContentValue object.
 
         Args:
             formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],
@@ -1482,6 +1734,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "instance_type",
         "tolerate_vulnerable_model",
@@ -1507,24 +1760,29 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_package_arn",
         "training_instance_type",
         "resources",
+        "hub_content_type",
+        "model_reference_arn",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
         "instance_type",
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "tolerate_vulnerable_model",
         "tolerate_deprecated_model",
         "region",
         "model_package_arn",
         "training_instance_type",
+        "hub_content_type",
     }
 
     def __init__(
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
@@ -1555,6 +1813,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.model_type = model_type
         self.instance_type = instance_type
         self.region = region
@@ -1588,6 +1847,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "initial_instance_count",
         "instance_type",
@@ -1613,6 +1873,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "sagemaker_session",
         "training_instance_type",
         "accept_eula",
+        "model_reference_arn",
         "endpoint_logging",
         "resources",
         "endpoint_type",
@@ -1623,6 +1884,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "model_type",
+        "hub_arn",
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
@@ -1634,6 +1896,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         initial_instance_count: Optional[int] = None,
@@ -1659,6 +1922,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         sagemaker_session: Optional[Session] = None,
         training_instance_type: Optional[str] = None,
         accept_eula: Optional[bool] = None,
+        model_reference_arn: Optional[str] = None,
         endpoint_logging: Optional[bool] = None,
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: Optional[EndpointType] = None,
@@ -1668,6 +1932,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.model_type = model_type
         self.initial_instance_count = initial_instance_count
         self.instance_type = instance_type
@@ -1693,6 +1958,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.sagemaker_session = sagemaker_session
         self.training_instance_type = training_instance_type
         self.accept_eula = accept_eula
+        self.model_reference_arn = model_reference_arn
         self.endpoint_logging = endpoint_logging
         self.resources = resources
         self.endpoint_type = endpoint_type
@@ -1705,6 +1971,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "instance_type",
         "instance_count",
@@ -1766,6 +2033,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
     }
 
@@ -1773,6 +2041,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         image_uri: Optional[Union[str, Any]] = None,
@@ -1831,6 +2100,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.model_type = (model_type,)
         self.instance_type = instance_type
         self.instance_count = instance_count
@@ -1894,6 +2164,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "region",
         "inputs",
@@ -1909,6 +2180,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
     SERIALIZATION_EXCLUSION_SET = {
         "model_id",
         "model_version",
+        "hub_arn",
         "model_type",
         "region",
         "tolerate_deprecated_model",
@@ -1920,6 +2192,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         region: Optional[str] = None,
         inputs: Optional[Union[str, Dict, Any, Any]] = None,
@@ -1935,6 +2208,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.model_type = model_type
         self.region = region
         self.inputs = inputs
@@ -1953,6 +2227,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
+        "hub_arn",
         "instance_type",
         "initial_instance_count",
         "region",
@@ -1998,6 +2273,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
     }
 
@@ -2005,6 +2281,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         initial_instance_count: Optional[int] = None,
         instance_type: Optional[str] = None,
@@ -2047,6 +2324,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.instance_type = instance_type
         self.initial_instance_count = initial_instance_count
         self.region = region
@@ -2095,6 +2373,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
         "content_types",
         "response_types",
@@ -2127,6 +2406,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "hub_arn",
         "sagemaker_session",
     }
 
@@ -2134,6 +2414,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        hub_arn: Optional[str] = None,
         region: Optional[str] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
@@ -2166,6 +2447,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
 
         self.model_id = model_id
         self.model_version = model_version
+        self.hub_arn = hub_arn
         self.region = region
         self.image_uri = image_uri
         self.sagemaker_session = sagemaker_session
