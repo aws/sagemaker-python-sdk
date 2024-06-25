@@ -168,7 +168,7 @@ def _generate_channel_name(additional_model_data_sources: Optional[List[Dict]]) 
     Returns:
         str: The channel name.
     """
-    channel_name = "model-builder-channel"
+    channel_name = "draft-model"
     if additional_model_data_sources and len(additional_model_data_sources) > 0:
         channel_name = additional_model_data_sources[0].get("ChannelName", channel_name)
 
