@@ -237,7 +237,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         metadata={"help": "Define the s3 location where you want to upload the model package"},
     )
     instance_type: Optional[str] = field(
-        default=None,
+        default="ml.c5.xlarge",
         metadata={"help": "Define the instance_type of the endpoint"},
     )
     schema_builder: Optional[SchemaBuilder] = field(
@@ -1055,6 +1055,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if input_args:
             self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
             job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
-            self.pysdk_model = _generate_optimized_model(self.pysdk_model, job_status)
+            return _generate_optimized_model(self.pysdk_model, job_status)
 
         return self.pysdk_model

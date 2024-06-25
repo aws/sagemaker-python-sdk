@@ -139,9 +139,7 @@ class JumpStart(ABC):
 
     def _create_pre_trained_js_model(self) -> Type[Model]:
         """Placeholder docstring"""
-        pysdk_model = JumpStartModel(
-            self.model, vpc_config=self.vpc_config, instance_type=self.instance_type
-        )
+        pysdk_model = JumpStartModel(self.model, vpc_config=self.vpc_config)
         pysdk_model.sagemaker_session = self.sagemaker_session
 
         self._original_deploy = pysdk_model.deploy
@@ -696,12 +694,12 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
+        optimization_env_vars = env_vars
+        pysdk_model_env_vars = env_vars
+
         if compilation_config:
-            neuro_model_id = self.pysdk_model.deployment_config.get("DeploymentArgs").get(
-                "NeuronModelId"
-            )
-            self.model = neuro_model_id
-            self.pysdk_model = self._create_pre_trained_js_model()
+            neuron_env = self._get_neuron_model_env_vars(instance_type)
+            optimization_env_vars = _update_environment_variables(neuron_env, optimization_env_vars)
 
         if speculative_decoding_config:
             self._set_additional_model_source(speculative_decoding_config)
@@ -714,11 +712,6 @@ class JumpStart(ABC):
                 )
 
         model_source = _generate_model_source(self.pysdk_model.model_data, accept_eula)
-        optimization_env_vars = self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
-            "Environment"
-        )
-        optimization_env_vars = _update_environment_variables(optimization_env_vars, env_vars)
-        pysdk_model_env_vars = env_vars
 
         optimization_config = {}
         if quantization_config:
@@ -874,3 +867,26 @@ class JumpStart(ABC):
 
         # fall back to the default jumpstart model deployment config for optimization job
         return self.pysdk_model.deployment_config
+
+    def _get_neuron_model_env_vars(
+        self, instance_type: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Gets Neuron model env vars.
+
+        Args:
+            instance_type (Optional[str]): Instance type.
+
+        Returns:
+            Optional[Dict[str, Any]]: Neuron Model environment variables.
+        """
+        metadata_config = self.pysdk_model._metadata_configs.get(self.pysdk_model.config_name)
+        resolve_config = metadata_config.resolved_config
+        if instance_type not in resolve_config.get("supported_inference_instance_types", []):
+            neuro_model_id = resolve_config.get("hosting_neuron_model_id")
+            neuro_model_version = resolve_config.get("hosting_neuron_model_version")
+            if neuro_model_id:
+                job_model = JumpStartModel(
+                    neuro_model_id, model_version=neuro_model_version, vpc_config=self.vpc_config
+                )
+                return job_model.env
+        return None
