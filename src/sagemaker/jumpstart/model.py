@@ -312,6 +312,16 @@ class JumpStartModel(Model):
             if not self.model_type and not hub_arn:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
+        self._specs = verify_model_region_and_return_specs(
+            region=self.region,
+            model_id=self.model_id,
+            version=self.model_version,
+            hub_arn=self.hub_arn,
+            model_type=self.model_type,
+            scope=JumpStartScriptScope.INFERENCE,
+            sagemaker_session=self.sagemaker_session,
+        )
+
         self._model_data_is_set = model_data is not None
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
