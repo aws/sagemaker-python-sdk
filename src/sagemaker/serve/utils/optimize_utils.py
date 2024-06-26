@@ -49,10 +49,12 @@ def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -
     Returns:
         Model: A deployable optimized model.
     """
-    recommended_image_uri = optimization_response["OptimizationOutput"]["RecommendedInferenceImage"]
-    optimized_environment = optimization_response["OptimizationEnvironment"]
-    s3_uri = optimization_response["OutputConfig"]["S3OutputLocation"]
-    deployment_instance_type = optimization_response["DeploymentInstanceType"]
+    recommended_image_uri = optimization_response.get("OptimizationOutput", {}).get(
+        "RecommendedInferenceImage"
+    )
+    optimized_environment = optimization_response.get("OptimizationEnvironment")
+    s3_uri = optimization_response.get("OutputConfig", {}).get("S3OutputLocation")
+    deployment_instance_type = optimization_response.get("DeploymentInstanceType")
 
     if recommended_image_uri:
         pysdk_model.image_uri = recommended_image_uri
