@@ -28,7 +28,6 @@ from sagemaker.s3 import S3Downloader
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
-from sagemaker.djl_inference import defaults
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
@@ -846,11 +845,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                     return self._build_for_tei()
                 elif self._can_fit_on_single_gpu():
                     return self._build_for_transformers()
-                elif (
-                    self.model in defaults.DEEPSPEED_RECOMMENDED_ARCHITECTURES
-                    or self.model in defaults.FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES
-                ):
-                    return self._build_for_djl()
                 else:
                     return self._build_for_transformers()
 
