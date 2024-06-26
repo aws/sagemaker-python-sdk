@@ -19,7 +19,7 @@ from mock import Mock, patch
 
 import sagemaker
 from sagemaker.model import ModelPackage
-from sagemaker.model_card.model_card import ModelCard
+from sagemaker.model_card.model_card import ModelCard, ModelOverview
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum, ModelCardStatusEnum
 
 MODEL_PACKAGE_VERSIONED_ARN = (
@@ -472,4 +472,23 @@ def test_update_model_card(sagemaker_session):
     del update_my_card_req["Content"]
     sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
         ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN, ModelCard=update_my_card_req
+    )
+
+    model_overview = ModelOverview(
+        model_creator="UpdatedNewCreator",
+    )
+    update_my_card_1 = ModelCard(
+        name="UpdateTestName",
+        sagemaker_session=sagemaker_session,
+        status=ModelCardStatusEnum.DRAFT,
+        model_overview=model_overview,
+    )
+    model_package.update_model_card(update_my_card_1)
+    update_my_card_req_1 = update_my_card_1._create_request_args()
+    del update_my_card_req_1["ModelCardName"]
+    del update_my_card_req_1["ModelCardStatus"]
+    update_my_card_req_1["ModelCardContent"] = update_my_card_req_1["Content"]
+    del update_my_card_req_1["Content"]
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
+        ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN, ModelCard=update_my_card_req_1
     )
