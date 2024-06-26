@@ -18,7 +18,7 @@ from abc import ABC, abstractmethod
 
 from sagemaker import image_uris
 from sagemaker.model import Model
-from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
+from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 
 from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.serve.utils.local_hardware import (

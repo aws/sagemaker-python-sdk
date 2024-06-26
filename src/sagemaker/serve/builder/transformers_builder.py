@@ -22,7 +22,7 @@ from sagemaker import image_uris
 from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
 )
-from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
+from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.serve.model_server.multi_model_server.prepare import (
     _create_dir_structure,
