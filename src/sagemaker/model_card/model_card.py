@@ -1890,8 +1890,8 @@ class ModelPackageModelCard(object):
 
     def __init__(
         self,
-        model_card_content: Dict[str, Any],
-        model_card_status: str,
+        model_card_content: Optional[Dict[str, Any]] = None,
+        model_card_status: Optional[str] = None,
     ):
 
         self.model_card_content = model_card_content
