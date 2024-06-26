@@ -879,14 +879,20 @@ class JumpStart(ABC):
         Returns:
             Optional[Dict[str, Any]]: Neuron Model environment variables.
         """
-        metadata_config = self.pysdk_model._metadata_configs.get(self.pysdk_model.config_name)
-        resolve_config = metadata_config.resolved_config
-        if instance_type not in resolve_config.get("supported_inference_instance_types", []):
-            neuro_model_id = resolve_config.get("hosting_neuron_model_id")
-            neuro_model_version = resolve_config.get("hosting_neuron_model_version")
-            if neuro_model_id:
-                job_model = JumpStartModel(
-                    neuro_model_id, model_version=neuro_model_version, vpc_config=self.vpc_config
-                )
-                return job_model.env
+        metadata_configs = self.pysdk_model._metadata_configs
+        if metadata_configs:
+            metadata_config = metadata_configs.get(self.pysdk_model.config_name)
+            resolve_config = metadata_config.resolved_config if metadata_config else None
+            if resolve_config and instance_type not in resolve_config.get(
+                "supported_inference_instance_types", []
+            ):
+                neuro_model_id = resolve_config.get("hosting_neuron_model_id")
+                neuro_model_version = resolve_config.get("hosting_neuron_model_version", "*")
+                if neuro_model_id:
+                    job_model = JumpStartModel(
+                        neuro_model_id,
+                        model_version=neuro_model_version,
+                        vpc_config=self.vpc_config,
+                    )
+                    return job_model.env
         return None
