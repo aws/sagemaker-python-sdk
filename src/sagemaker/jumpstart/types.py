@@ -2410,7 +2410,6 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "sagemaker_session",
-        "model_type",
     }
 
     def __init__(

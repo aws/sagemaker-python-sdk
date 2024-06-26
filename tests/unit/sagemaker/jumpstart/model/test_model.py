@@ -513,8 +513,11 @@ class ModelTest(unittest.TestCase):
         model.deploy()
 
         mock_model_register.assert_called_once_with(
+            model_type=JumpStartModelType.PROPRIETARY,
             content_types=["application/json"],
             response_types=["application/json"],
+            model_package_group_name=model_id,
+            source_uri=model.model_package_arn,
         )
 
         mock_model_deploy.assert_called_once_with(
@@ -1416,8 +1419,10 @@ class ModelTest(unittest.TestCase):
         model.register()
 
         mock_model_register.assert_called_once_with(
+            model_type=JumpStartModelType.OPEN_WEIGHTS,
             content_types=["application/x-text"],
             response_types=["application/json;verbose", "application/json"],
+            model_package_group_name=model.model_id,
         )
 
     @mock.patch("sagemaker.jumpstart.model.get_default_predictor")

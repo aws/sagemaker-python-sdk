@@ -761,7 +761,6 @@ class JumpStartModel(Model):
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
         accept_eula: Optional[bool] = None,
-
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -820,8 +819,9 @@ class JumpStartModel(Model):
             A `sagemaker.model.ModelPackage` instance.
         """
 
-        if model_package_group_name is None and self.model_type is JumpStartModelType.PROPRIETARY:
+        if model_package_group_name is None:
             model_package_group_name = self.model_id
+        if self.model_type is JumpStartModelType.PROPRIETARY:
             source_uri = self.model_package_arn
 
         register_kwargs = get_register_kwargs(

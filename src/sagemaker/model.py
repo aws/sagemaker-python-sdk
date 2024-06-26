@@ -450,6 +450,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
         accept_eula: Optional[bool] = None,
+        model_type: Optional[JumpStartModelType] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -517,22 +518,22 @@ class Model(ModelBase, InferenceRecommenderMixin):
 
         if image_uri is not None:
             self.image_uri = image_uri
-        if self.model_type is not JumpStartModelType.PROPRIETARY:
-            if model_package_group_name is None and model_package_name is None:
-                # If model package group and model package name is not set
-                # then register to auto-generated model package group
-                model_package_group_name = utils.base_name_from_image(
-                    self.image_uri, default_base_name=ModelPackage.__name__
-                )
-            if model_package_group_name is not None:
-                container_def = self.prepare_container_def(accept_eula=accept_eula)
-                container_def = update_container_with_inference_params(
-                    framework=framework,
-                    framework_version=framework_version,
-                    nearest_model_name=nearest_model_name,
-                    data_input_configuration=data_input_configuration,
-                    container_def=container_def,
-                )
+
+        if model_package_group_name is None and model_package_name is None:
+            # If model package group and model package name is not set
+            # then register to auto-generated model package group
+            model_package_group_name = utils.base_name_from_image(
+                self.image_uri, default_base_name=ModelPackage.__name__
+            )
+        if model_package_group_name is not None:
+            container_def = self.prepare_container_def(accept_eula=accept_eula)
+            container_def = update_container_with_inference_params(
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                data_input_configuration=data_input_configuration,
+                container_def=container_def,
+            )
         else:
             container_def = {
                 "Image": self.image_uri,
@@ -546,10 +547,6 @@ class Model(ModelBase, InferenceRecommenderMixin):
 
             if self.model_data is not None:
                 container_def["ModelDataUrl"] = self.model_data
-
-        if self.model_type is JumpStartModelType.PROPRIETARY:
-            source_uri = self.model_package_arn
-            model_package_group_name = self.model_id
 
         model_pkg_args = sagemaker.get_model_package_args(
             self.content_types,

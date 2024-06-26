@@ -294,6 +294,7 @@ def test_proprietary_jumpstart_model(setup):
 
     assert response is not None
 
+
 @pytest.mark.skipif(
     True,
     reason="Only enable if test account is subscribed to the proprietary model",
@@ -309,7 +310,6 @@ def test_register_proprietary_jumpstart_model(setup):
         sagemaker_session=get_sm_session(),
     )
     model_package = model.register()
-    
 
     predictor = model_package.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}]
@@ -329,7 +329,7 @@ def test_register_proprietary_jumpstart_model(setup):
 )
 def test_register_gated_jumpstart_model(setup):
 
-    model_id="meta-textgenerationneuron-llama-2-7b"
+    model_id = "meta-textgenerationneuron-llama-2-7b"
     model = JumpStartModel(
         model_id=model_id,
         model_version="1.1.0",
@@ -339,7 +339,8 @@ def test_register_gated_jumpstart_model(setup):
     model_package = model.register(accept_eula=True)
 
     predictor = model_package.deploy(
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}], accept_eula=True
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        accept_eula=True,
     )
     payload = {"prompt": "To be, or", "maxTokens": 4, "temperature": 0, "numResults": 1}
 
@@ -348,4 +349,3 @@ def test_register_gated_jumpstart_model(setup):
     predictor.delete_predictor()
 
     assert response is not None
-
