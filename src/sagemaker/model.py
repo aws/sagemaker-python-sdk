@@ -44,6 +44,7 @@ from sagemaker.config import (
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
     load_sagemaker_config,
 )
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.model_card import (
     ModelCard,
     ModelPackageModelCard,
@@ -449,6 +450,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        accept_eula: Optional[bool] = None,
+        model_type: Optional[JumpStartModelType] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -523,9 +526,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
             model_package_group_name = utils.base_name_from_image(
                 self.image_uri, default_base_name=ModelPackage.__name__
             )
-
         if model_package_group_name is not None:
-            container_def = self.prepare_container_def()
+            container_def = self.prepare_container_def(accept_eula=accept_eula)
             container_def = update_container_with_inference_params(
                 framework=framework,
                 framework_version=framework_version,
