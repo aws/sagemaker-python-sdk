@@ -15,14 +15,9 @@ from unittest.mock import MagicMock, patch
 
 import unittest
 from sagemaker.serve.builder.model_builder import ModelBuilder
-from sagemaker.serve.utils.types import _DjlEngine
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve import ModelServer
-from sagemaker.djl_inference.model import (
-    DeepSpeedModel,
-    FasterTransformerModel,
-    HuggingFaceAccelerateModel,
-)
+from sagemaker.djl_inference.model import DJLModel
 from sagemaker.serve.utils.exceptions import (
     LocalDeepPingException,
     LocalModelLoadException,
@@ -33,45 +28,23 @@ from sagemaker.serve.utils.predictors import DjlLocalModePredictor
 from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 mock_model_id = "TheBloke/Llama-2-7b-chat-fp16"
-mock_t5_model_id = "google/flan-t5-xxl"
 mock_prompt = "Hello, I'm a language model,"
 mock_response = "Hello, I'm a language model, and I'm here to help you with your English."
 mock_sample_input = {"inputs": mock_prompt, "parameters": {}}
 mock_sample_output = [{"generated_text": mock_response}]
-mock_expected_huggingfaceaccelerate_serving_properties = {
-    "engine": "Python",
-    "option.entryPoint": "inference.py",
-    "option.model_id": "TheBloke/Llama-2-7b-chat-fp16",
-    "option.tensor_parallel_degree": 4,
-    "option.dtype": "fp16",
-}
-mock_expected_deepspeed_serving_properties = {
-    "engine": "DeepSpeed",
-    "option.entryPoint": "inference.py",
-    "option.model_id": "TheBloke/Llama-2-7b-chat-fp16",
-    "option.tensor_parallel_degree": 4,
-    "option.dtype": "fp16",
-    "option.max_tokens": 256,
-    "option.triangular_masking": True,
-    "option.return_tuple": True,
-}
-mock_expected_fastertransformer_serving_properties = {
-    "engine": "FasterTransformer",
-    "option.entryPoint": "inference.py",
-    "option.model_id": "google/flan-t5-xxl",
-    "option.tensor_parallel_degree": 4,
-    "option.dtype": "fp16",
+mock_default_configs = {
+    "HF_MODEL_ID": mock_model_id,
+    "OPTION_ENGINE": "Python",
+    "TENSOR_PARALLEL_DEGREE": "max",
+    "OPTION_DTYPE": "bf16",
+    "MODEL_LOADING_TIMEOUT": "1800",
 }
 mock_most_performant_serving_properties = {
-    "engine": "Python",
-    "option.entryPoint": "inference.py",
-    "option.model_id": "TheBloke/Llama-2-7b-chat-fp16",
-    "option.tensor_parallel_degree": 1,
-    "option.dtype": "bf16",
+    "OPTION_ENGINE": "Python",
+    "HF_MODEL_ID": "TheBloke/Llama-2-7b-chat-fp16",
+    "TENSOR_PARALLEL_DEGREE": "1",
+    "OPTION_DTYPE": "bf16",
 }
-mock_model_config_properties = {"model_type": "llama", "num_attention_heads": 32}
-mock_model_config_properties_faster_transformer = {"model_type": "t5", "num_attention_heads": 32}
-mock_set_serving_properties = (4, "fp16", 1, 256, 256)
 
 mock_schema_builder = MagicMock()
 mock_schema_builder.sample_input = mock_sample_input
@@ -88,24 +61,12 @@ class TestDjlBuilder(unittest.TestCase):
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
         return_value=False,
     )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._auto_detect_engine",
-        return_value=(_DjlEngine.HUGGINGFACE_ACCELERATE, mock_model_config_properties),
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._set_serve_properties",
-        return_value=mock_set_serving_properties,
-    )
-    @patch("sagemaker.serve.builder.djl_builder.prepare_for_djl_serving", side_effect=None)
     @patch("sagemaker.serve.builder.djl_builder._get_ram_usage_mb", return_value=1024)
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     def test_build_deploy_for_djl_local_container(
         self,
         mock_get_nb_instance,
         mock_get_ram_usage_mb,
-        mock_prepare_for_djl_serving,
-        mock_set_serving_properties,
-        mock_auto_detect_engine,
         mock_is_jumpstart_model,
         mock_telemetry,
     ):
@@ -124,20 +85,12 @@ class TestDjlBuilder(unittest.TestCase):
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
 
-        assert isinstance(model, HuggingFaceAccelerateModel)
-        assert (
-            model.generate_serving_properties()
-            == mock_expected_huggingfaceaccelerate_serving_properties
-        )
-        assert builder._default_tensor_parallel_degree == 4
-        assert builder._default_data_type == "fp16"
-        assert builder._default_max_tokens == 256
-        assert builder._default_max_new_tokens == 256
-        assert builder.schema_builder.sample_input["parameters"]["max_new_tokens"] == 256
+        assert isinstance(model, DJLModel)
+        assert builder.schema_builder.sample_input["parameters"]["max_new_tokens"] == 128
         assert builder.nb_instance_type == "ml.g5.24xlarge"
         assert model.image_config == MOCK_IMAGE_CONFIG
         assert model.vpc_config == MOCK_VPC_CONFIG
-        assert "deepspeed" in builder.image_uri
+        assert "lmi" in builder.image_uri
 
         builder.modes[str(Mode.LOCAL_CONTAINER)] = MagicMock()
         predictor = model.deploy(model_data_download_timeout=1800)
@@ -153,100 +106,11 @@ class TestDjlBuilder(unittest.TestCase):
         with self.assertRaises(ValueError) as _:
             model.deploy(mode=Mode.IN_PROCESS)
 
-    @patch(
-        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
-        return_value=False,
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._auto_detect_engine",
-        return_value=(
-            _DjlEngine.FASTER_TRANSFORMER,
-            mock_model_config_properties_faster_transformer,
-        ),
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._set_serve_properties",
-        return_value=mock_set_serving_properties,
-    )
-    @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
-    def test_build_for_djl_local_container_faster_transformer(
-        self,
-        mock_get_nb_instance,
-        mock_set_serving_properties,
-        mock_auto_detect_engine,
-        mock_is_jumpstart_model,
-    ):
-        builder = ModelBuilder(
-            model=mock_t5_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER,
-            model_server=ModelServer.DJL_SERVING,
-            image_config=MOCK_IMAGE_CONFIG,
-            vpc_config=MOCK_VPC_CONFIG,
-        )
-        model = builder.build()
-        builder.serve_settings.telemetry_opt_out = True
-
-        assert isinstance(model, FasterTransformerModel)
-        assert (
-            model.generate_serving_properties()
-            == mock_expected_fastertransformer_serving_properties
-        )
-        assert model.image_config == MOCK_IMAGE_CONFIG
-        assert model.vpc_config == MOCK_VPC_CONFIG
-        assert "fastertransformer" in builder.image_uri
-
-    @patch(
-        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
-        return_value=False,
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._auto_detect_engine",
-        return_value=(_DjlEngine.DEEPSPEED, mock_model_config_properties),
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._set_serve_properties",
-        return_value=mock_set_serving_properties,
-    )
-    @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
-    def test_build_for_djl_local_container_deepspeed(
-        self,
-        mock_get_nb_instance,
-        mock_set_serving_properties,
-        mock_auto_detect_engine,
-        mock_is_jumpstart_model,
-    ):
-        builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
-            mode=Mode.LOCAL_CONTAINER,
-            model_server=ModelServer.DJL_SERVING,
-            image_config=MOCK_IMAGE_CONFIG,
-            vpc_config=MOCK_VPC_CONFIG,
-        )
-        model = builder.build()
-        builder.serve_settings.telemetry_opt_out = True
-
-        assert isinstance(model, DeepSpeedModel)
-        assert model.image_config == MOCK_IMAGE_CONFIG
-        assert model.vpc_config == MOCK_VPC_CONFIG
-        assert model.generate_serving_properties() == mock_expected_deepspeed_serving_properties
-        assert "deepspeed" in builder.image_uri
-
     @patch("sagemaker.serve.builder.djl_builder._capture_telemetry", side_effect=None)
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
         return_value=False,
     )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._auto_detect_engine",
-        return_value=(_DjlEngine.HUGGINGFACE_ACCELERATE, mock_model_config_properties),
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._set_serve_properties",
-        return_value=mock_set_serving_properties,
-    )
-    @patch("sagemaker.serve.builder.djl_builder.prepare_for_djl_serving", side_effect=None)
     @patch("sagemaker.serve.builder.djl_builder._get_ram_usage_mb", return_value=1024)
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
@@ -268,9 +132,6 @@ class TestDjlBuilder(unittest.TestCase):
         mock_admissible_tensor_parallel_degrees,
         mock_get_nb_instance,
         mock_get_ram_usage_mb,
-        mock_prepare_for_djl_serving,
-        mock_set_serving_properties,
-        mock_auto_detect_engine,
         mock_is_jumpstart_model,
         mock_telemetry,
     ):
@@ -287,22 +148,13 @@ class TestDjlBuilder(unittest.TestCase):
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
         tuned_model = model.tune()
-        assert tuned_model.generate_serving_properties() == mock_most_performant_serving_properties
+        assert tuned_model.env == mock_most_performant_serving_properties
 
     @patch("sagemaker.serve.builder.djl_builder._capture_telemetry", side_effect=None)
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
         return_value=False,
     )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._auto_detect_engine",
-        return_value=(_DjlEngine.HUGGINGFACE_ACCELERATE, mock_model_config_properties),
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._set_serve_properties",
-        return_value=mock_set_serving_properties,
-    )
-    @patch("sagemaker.serve.builder.djl_builder.prepare_for_djl_serving", side_effect=None)
     @patch("sagemaker.serve.builder.djl_builder._get_ram_usage_mb", return_value=1024)
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
@@ -319,9 +171,6 @@ class TestDjlBuilder(unittest.TestCase):
         mock_serial_benchmarks,
         mock_get_nb_instance,
         mock_get_ram_usage_mb,
-        mock_prepare_for_djl_serving,
-        mock_set_serving_properties,
-        mock_auto_detect_engine,
         mock_is_jumpstart_model,
         mock_telemetry,
     ):
@@ -337,25 +186,13 @@ class TestDjlBuilder(unittest.TestCase):
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
         tuned_model = model.tune()
-        assert (
-            tuned_model.generate_serving_properties()
-            == mock_expected_huggingfaceaccelerate_serving_properties
-        )
+        assert tuned_model.env == mock_default_configs
 
     @patch("sagemaker.serve.builder.djl_builder._capture_telemetry", side_effect=None)
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
         return_value=False,
     )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._auto_detect_engine",
-        return_value=(_DjlEngine.HUGGINGFACE_ACCELERATE, mock_model_config_properties),
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._set_serve_properties",
-        return_value=mock_set_serving_properties,
-    )
-    @patch("sagemaker.serve.builder.djl_builder.prepare_for_djl_serving", side_effect=None)
     @patch("sagemaker.serve.builder.djl_builder._get_ram_usage_mb", return_value=1024)
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
@@ -372,9 +209,6 @@ class TestDjlBuilder(unittest.TestCase):
         mock_serial_benchmarks,
         mock_get_nb_instance,
         mock_get_ram_usage_mb,
-        mock_prepare_for_djl_serving,
-        mock_set_serving_properties,
-        mock_auto_detect_engine,
         mock_is_jumpstart_model,
         mock_telemetry,
     ):
@@ -390,25 +224,13 @@ class TestDjlBuilder(unittest.TestCase):
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
         tuned_model = model.tune()
-        assert (
-            tuned_model.generate_serving_properties()
-            == mock_expected_huggingfaceaccelerate_serving_properties
-        )
+        assert tuned_model.env == mock_default_configs
 
     @patch("sagemaker.serve.builder.djl_builder._capture_telemetry", side_effect=None)
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
         return_value=False,
     )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._auto_detect_engine",
-        return_value=(_DjlEngine.HUGGINGFACE_ACCELERATE, mock_model_config_properties),
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._set_serve_properties",
-        return_value=mock_set_serving_properties,
-    )
-    @patch("sagemaker.serve.builder.djl_builder.prepare_for_djl_serving", side_effect=None)
     @patch("sagemaker.serve.builder.djl_builder._get_ram_usage_mb", return_value=1024)
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
@@ -425,9 +247,6 @@ class TestDjlBuilder(unittest.TestCase):
         mock_serial_benchmarks,
         mock_get_nb_instance,
         mock_get_ram_usage_mb,
-        mock_prepare_for_djl_serving,
-        mock_set_serving_properties,
-        mock_auto_detect_engine,
         mock_is_jumpstart_model,
         mock_telemetry,
     ):
@@ -443,25 +262,13 @@ class TestDjlBuilder(unittest.TestCase):
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
         tuned_model = model.tune()
-        assert (
-            tuned_model.generate_serving_properties()
-            == mock_expected_huggingfaceaccelerate_serving_properties
-        )
+        assert tuned_model.env == mock_default_configs
 
     @patch("sagemaker.serve.builder.djl_builder._capture_telemetry", side_effect=None)
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
         return_value=False,
     )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._auto_detect_engine",
-        return_value=(_DjlEngine.HUGGINGFACE_ACCELERATE, mock_model_config_properties),
-    )
-    @patch(
-        "sagemaker.serve.builder.djl_builder._set_serve_properties",
-        return_value=mock_set_serving_properties,
-    )
-    @patch("sagemaker.serve.builder.djl_builder.prepare_for_djl_serving", side_effect=None)
     @patch("sagemaker.serve.builder.djl_builder._get_ram_usage_mb", return_value=1024)
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
     @patch(
@@ -478,9 +285,6 @@ class TestDjlBuilder(unittest.TestCase):
         mock_serial_benchmarks,
         mock_get_nb_instance,
         mock_get_ram_usage_mb,
-        mock_prepare_for_djl_serving,
-        mock_set_serving_properties,
-        mock_auto_detect_engine,
         mock_is_jumpstart_model,
         mock_telemetry,
     ):
@@ -496,10 +300,7 @@ class TestDjlBuilder(unittest.TestCase):
         model = builder.build()
         builder.serve_settings.telemetry_opt_out = True
         tuned_model = model.tune()
-        assert (
-            tuned_model.generate_serving_properties()
-            == mock_expected_huggingfaceaccelerate_serving_properties
-        )
+        assert tuned_model.env == mock_default_configs
 
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",

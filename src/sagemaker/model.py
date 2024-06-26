@@ -44,10 +44,12 @@ from sagemaker.config import (
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
     load_sagemaker_config,
 )
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.model_card import (
     ModelCard,
     ModelPackageModelCard,
 )
+from sagemaker.model_card.helpers import _hash_content_str
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
@@ -448,6 +450,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        accept_eula: Optional[bool] = None,
+        model_type: Optional[JumpStartModelType] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -522,9 +526,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
             model_package_group_name = utils.base_name_from_image(
                 self.image_uri, default_base_name=ModelPackage.__name__
             )
-
         if model_package_group_name is not None:
-            container_def = self.prepare_container_def()
+            container_def = self.prepare_container_def(accept_eula=accept_eula)
             container_def = update_container_with_inference_params(
                 framework=framework,
                 framework_version=framework_version,
@@ -2426,3 +2429,44 @@ class ModelPackage(Model):
         )
 
         sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
+
+    def update_model_card(self, model_card: Union[ModelCard, ModelPackageModelCard]):
+        """Updates Created model card content which created with model package
+
+        Args:
+            model_card (ModelCard | ModelPackageModelCard): Updated Model Card content
+        """
+
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
+            ModelPackageName=self.model_package_arn
+        )
+        update_model_card_req = model_card._create_request_args()
+        if update_model_card_req["ModelCardStatus"] is not None:
+            if (
+                desc_model_package["ModelCard"]["ModelCardStatus"]
+                == update_model_card_req["ModelCardStatus"]
+            ):
+                del update_model_card_req["ModelCardStatus"]
+
+        if update_model_card_req.get("ModelCardName") is not None:
+            del update_model_card_req["ModelCardName"]
+        if update_model_card_req.get("Content") is not None:
+            previous_content_hash = _hash_content_str(
+                desc_model_package["ModelCard"]["ModelCardContent"]
+            )
+            current_content_hash = _hash_content_str(update_model_card_req["Content"])
+            if (
+                previous_content_hash == current_content_hash
+                or update_model_card_req.get("Content") == "{}"
+                or update_model_card_req.get("Content") == "null"
+            ):
+                del update_model_card_req["Content"]
+            else:
+                update_model_card_req["ModelCardContent"] = update_model_card_req["Content"]
+                del update_model_card_req["Content"]
+        update_model_package_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "ModelCard": update_model_card_req,
+        }
+        sagemaker_session.sagemaker_client.update_model_package(**update_model_package_args)

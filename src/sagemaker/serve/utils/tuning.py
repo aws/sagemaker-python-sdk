@@ -33,8 +33,8 @@ def _pretty_print_results(results: dict):
 
     for key, value in ordered.items():
         avg_latencies.append(key)
-        tensor_parallel_degrees.append(value[0]["option.tensor_parallel_degree"])
-        dtypes.append(value[0]["option.dtype"])
+        tensor_parallel_degrees.append(value[0]["TENSOR_PARALLEL_DEGREE"])
+        dtypes.append(value[0]["OPTION_DTYPE"])
         p90s.append(value[1])
         avg_tokens_per_seconds.append(value[2])
         throughput_per_seconds.append(value[3])
