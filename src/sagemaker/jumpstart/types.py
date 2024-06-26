@@ -2482,3 +2482,17 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.source_uri = source_uri
         self.model_card = model_card
         self.accept_eula = accept_eula
+
+
+class JumpStartInternalMetadata(JumpStartDataHolderType):
+    """Data class for storing internal/private fields for JumpStart models."""
+
+    slots = ["specs"]
+
+    def __init__(self, specs: JumpStartModelSpecs):
+        """Initializes a JumpStartInternalMetadata object.
+
+        Args:
+            specs (JumpStartModelSpecs): specs for model.
+        """
+        self.specs = specs

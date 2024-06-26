@@ -38,7 +38,7 @@ from sagemaker.jumpstart.factory.model import (
     get_register_kwargs,
 )
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_endpoint
-from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.types import JumpStartInternalMetadata, JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
@@ -312,14 +312,16 @@ class JumpStartModel(Model):
             if not self.model_type and not hub_arn:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
-        self._specs = verify_model_region_and_return_specs(
-            region=self.region,
-            model_id=self.model_id,
-            version=self.model_version,
-            hub_arn=self.hub_arn,
-            model_type=self.model_type,
-            scope=JumpStartScriptScope.INFERENCE,
-            sagemaker_session=self.sagemaker_session,
+        self._internal = JumpStartInternalMetadata(
+            specs=verify_model_region_and_return_specs(
+                region=self.region,
+                model_id=self.model_id,
+                version=self.model_version,
+                hub_arn=self.hub_arn,
+                model_type=self.model_type,
+                scope=JumpStartScriptScope.INFERENCE,
+                sagemaker_session=self.sagemaker_session,
+            )
         )
 
         self._model_data_is_set = model_data is not None
