@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import requests
 import logging
+import platform
 from pathlib import Path
 from sagemaker import Session, fw_utils
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
@@ -42,7 +43,14 @@ class LocalMultiModelServer:
                     "mode": "rw",
                 },
             },
-            environment=_update_env_vars(env_vars),
+
+            environment={
+                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+                "LOCAL_PYTHON": platform.python_version(),
+                **env_vars,
+            },
         )
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
@@ -80,10 +88,12 @@ class SageMakerMultiModelServer:
     def _upload_server_artifacts(
         self,
         model_path: str,
+        secret_key: str,
         sagemaker_session: Session,
         s3_model_data_url: str = None,
         image: str = None,
         env_vars: dict = None,
+        
     ):
         if s3_model_data_url:
             bucket, key_prefix = parse_s3_url(url=s3_model_data_url)
@@ -116,6 +126,16 @@ class SageMakerMultiModelServer:
                 "S3Uri": model_data_url + "/",
             }
         }
+
+        env_vars = {
+            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
+            "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
+            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+            "LOCAL_PYTHON": platform.python_version(),
+        }
+
         return model_data, _update_env_vars(env_vars)
 
 
