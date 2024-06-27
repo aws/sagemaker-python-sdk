@@ -2372,6 +2372,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "region",
         "model_id",
+        "model_type",
         "model_version",
         "hub_arn",
         "sagemaker_session",
@@ -2398,6 +2399,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "skip_model_validation",
         "source_uri",
         "model_card",
+        "accept_eula",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2416,6 +2418,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         model_version: Optional[str] = None,
         hub_arn: Optional[str] = None,
         region: Optional[str] = None,
+        model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Any] = None,
@@ -2442,12 +2445,14 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
         model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
+        accept_eula: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartModelRegisterKwargs object."""
 
         self.model_id = model_id
         self.model_version = model_version
         self.hub_arn = hub_arn
+        self.model_type = model_type
         self.region = region
         self.image_uri = image_uri
         self.sagemaker_session = sagemaker_session
@@ -2476,3 +2481,4 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
         self.model_card = model_card
+        self.accept_eula = accept_eula

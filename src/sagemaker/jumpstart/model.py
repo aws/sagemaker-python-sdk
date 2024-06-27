@@ -760,6 +760,7 @@ class JumpStartModel(Model):
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        accept_eula: Optional[bool] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -809,15 +810,25 @@ class JumpStartModel(Model):
                 (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
-
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
         Returns:
             A `sagemaker.model.ModelPackage` instance.
         """
+
+        if model_package_group_name is None:
+            model_package_group_name = self.model_id
+        if self.model_type is JumpStartModelType.PROPRIETARY:
+            source_uri = self.model_package_arn
 
         register_kwargs = get_register_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
             hub_arn=self.hub_arn,
+            model_type=self.model_type,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
@@ -845,6 +856,7 @@ class JumpStartModel(Model):
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            accept_eula=accept_eula,
         )
 
         model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())

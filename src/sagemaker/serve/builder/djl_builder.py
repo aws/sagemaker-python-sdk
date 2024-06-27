@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import logging
 from typing import Type
 from abc import ABC, abstractmethod
-from pathlib import Path
 from datetime import datetime, timedelta
 
 from sagemaker.model import Model
@@ -31,12 +30,12 @@ from sagemaker.serve.utils.tuning import (
     _more_performant,
     _pretty_print_results,
 )
+from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 from sagemaker.serve.model_server.djl_serving.utils import (
-    _auto_detect_engine,
-    _set_serve_properties,
     _get_admissible_tensor_parallel_degrees,
     _get_admissible_dtypes,
     _get_default_tensor_parallel_degree,
+    _get_default_djl_configurations,
 )
 from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
@@ -45,24 +44,18 @@ from sagemaker.serve.utils.local_hardware import (
     _get_gpu_info_fallback,
 )
 from sagemaker.serve.model_server.djl_serving.prepare import (
-    prepare_for_djl_serving,
     _create_dir_structure,
 )
 from sagemaker.serve.utils.predictors import DjlLocalModePredictor
-from sagemaker.serve.utils.types import ModelServer, _DjlEngine
+from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
-from sagemaker.djl_inference.model import (
-    DeepSpeedModel,
-    FasterTransformerModel,
-    HuggingFaceAccelerateModel,
-)
+from sagemaker.djl_inference.model import DJLModel
 from sagemaker.base_predictor import PredictorBase
 
 logger = logging.getLogger(__name__)
 
 # Match JumpStart DJL entrypoint format
-_DJL_MODEL_BUILDER_ENTRY_POINT = "inference.py"
 _CODE_FOLDER = "code"
 _INVALID_SAMPLE_DATA_EX = (
     'For djl-serving, sample input must be of {"inputs": str, "parameters": dict}, '
@@ -88,14 +81,11 @@ class DJL(ABC):
         self.vpc_config = None
         self._original_deploy = None
         self.secret_key = None
-        self.engine = None
         self.hf_model_config = None
         self._default_tensor_parallel_degree = None
         self._default_data_type = None
         self._default_max_tokens = None
-        self._default_max_new_tokens = None
         self.pysdk_model = None
-        self.overwrite_props_from_file = None
         self.schema_builder = None
         self.env_vars = None
         self.nb_instance_type = None
@@ -130,37 +120,15 @@ class DJL(ABC):
 
     def _create_djl_model(self) -> Type[Model]:
         """Placeholder docstring"""
-        code_dir = str(Path(self.model_path).joinpath(_CODE_FOLDER))
-
-        kwargs = {
-            "model_id": self.model,
-            "role": self.serve_settings.role_arn,
-            "entry_point": _DJL_MODEL_BUILDER_ENTRY_POINT,
-            "dtype": self._default_data_type,
-            "sagemaker_session": self.sagemaker_session,
-            "source_dir": code_dir,
-            "env": self.env_vars,
-            "hf_hub_token": self.env_vars.get("HUGGING_FACE_HUB_TOKEN"),
-            "image_config": self.image_config,
-            "vpc_config": self.vpc_config,
-        }
-
-        if self.engine == _DjlEngine.DEEPSPEED:
-            pysdk_model = DeepSpeedModel(
-                tensor_parallel_degree=self._default_tensor_parallel_degree,
-                max_tokens=self._default_max_tokens,
-                **kwargs,
-            )
-        elif self.engine == _DjlEngine.FASTER_TRANSFORMER:
-            pysdk_model = FasterTransformerModel(
-                tensor_parallel_degree=self._default_tensor_parallel_degree,
-                **kwargs,
-            )
-        else:
-            pysdk_model = HuggingFaceAccelerateModel(
-                number_of_partitions=self._default_tensor_parallel_degree,
-                **kwargs,
-            )
+        pysdk_model = DJLModel(
+            model_id=self.model,
+            role=self.serve_settings.role_arn,
+            sagemaker_session=self.sagemaker_session,
+            env=self.env_vars,
+            huggingface_hub_token=self.env_vars.get("HF_TOKEN"),
+            image_config=self.image_config,
+            vpc_config=self.vpc_config,
+        )
 
         if not self.image_uri:
             self.image_uri = pysdk_model.serving_image_uri(self.sagemaker_session.boto_region_name)
@@ -196,7 +164,6 @@ class DJL(ABC):
             else:
                 raise ValueError("Mode %s is not supported!" % overwrite_mode)
 
-        manual_set_props = None
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
             if self.nb_instance_type and "instance_type" not in kwargs:
                 kwargs.update({"instance_type": self.nb_instance_type})
@@ -212,17 +179,9 @@ class DJL(ABC):
                 default_tensor_parallel_degree = _get_default_tensor_parallel_degree(
                     self.hf_model_config, tot_gpus
                 )
-                manual_set_props = {
-                    "option.tensor_parallel_degree": str(default_tensor_parallel_degree) + "\n"
-                }
-
-        prepare_for_djl_serving(
-            model_path=self.model_path,
-            model=self.pysdk_model,
-            dependencies=self.dependencies,
-            overwrite_props_from_file=self.overwrite_props_from_file,
-            manual_set_props=manual_set_props,
-        )
+                self.pysdk_model.env.update(
+                    {"TENSOR_PARALLEL_DEGREE": str(default_tensor_parallel_degree)}
+                )
 
         serializer = self.schema_builder.input_serializer
         deserializer = self.schema_builder._output_deserializer
@@ -239,7 +198,7 @@ class DJL(ABC):
                 timeout if timeout else 1800,
                 self.secret_key,
                 predictor,
-                self.env_vars,
+                self.pysdk_model.env,
             )
             ram_usage_after = _get_ram_usage_mb()
 
@@ -281,25 +240,21 @@ class DJL(ABC):
 
     def _build_for_hf_djl(self):
         """Placeholder docstring"""
-        self.overwrite_props_from_file = True
         self.nb_instance_type = _get_nb_instance()
 
         _create_dir_structure(self.model_path)
-        self.engine, self.hf_model_config = _auto_detect_engine(
-            self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-        )
-
         if not hasattr(self, "pysdk_model"):
-            (
-                self._default_tensor_parallel_degree,
-                self._default_data_type,
-                _,
-                self._default_max_tokens,
-                self._default_max_new_tokens,
-            ) = _set_serve_properties(self.hf_model_config, self.schema_builder)
+            self.env_vars.update({"HF_MODEL_ID": self.model})
+            self.hf_model_config = _get_model_config_properties_from_hf(
+                self.model, self.env_vars.get("HF_TOKEN")
+            )
+            default_djl_configurations, _default_max_new_tokens = _get_default_djl_configurations(
+                self.model, self.hf_model_config, self.schema_builder
+            )
+            self.env_vars.update(default_djl_configurations)
             self.schema_builder.sample_input["parameters"][
                 "max_new_tokens"
-            ] = self._default_max_new_tokens
+            ] = _default_max_new_tokens
         self.pysdk_model = self._create_djl_model()
 
         if self.mode == Mode.LOCAL_CONTAINER:
@@ -315,8 +270,6 @@ class DJL(ABC):
                 "Tuning is only a %s capability. Returning original model.", Mode.LOCAL_CONTAINER
             )
             return self.pysdk_model
-
-        self.overwrite_props_from_file = False
 
         admissible_tensor_parallel_degrees = _get_admissible_tensor_parallel_degrees(
             self.hf_model_config
@@ -337,8 +290,9 @@ class DJL(ABC):
                     "Trying tensor parallel degree: %s, dtype: %s...", tensor_parallel_degree, dtype
                 )
 
-                self._default_tensor_parallel_degree = tensor_parallel_degree
-                self._default_data_type = dtype
+                self.env_vars.update(
+                    {"TENSOR_PARALLEL_DEGREE": str(tensor_parallel_degree), "OPTION_DTYPE": dtype}
+                )
                 self.pysdk_model = self._create_djl_model()
 
                 try:
@@ -353,15 +307,15 @@ class DJL(ABC):
                         predictor, self.schema_builder.sample_input
                     )
 
-                    serving_properties = self.pysdk_model.generate_serving_properties()
+                    tested_env = self.pysdk_model.env.copy()
                     logger.info(
                         "Average latency: %s, throughput/s: %s for configuration: %s",
                         avg_latency,
                         throughput_per_second,
-                        serving_properties,
+                        tested_env,
                     )
                     benchmark_results[avg_latency] = [
-                        serving_properties,
+                        tested_env,
                         p90,
                         avg_tokens_per_second,
                         throughput_per_second,
@@ -449,6 +403,12 @@ class DJL(ABC):
         if best_tuned_combination:
             self._default_tensor_parallel_degree = best_tuned_combination[1]
             self._default_data_type = best_tuned_combination[2]
+            self.env_vars.update(
+                {
+                    "TENSOR_PARALLEL_DEGREE": str(self._default_tensor_parallel_degree),
+                    "OPTION_DTYPE": self._default_data_type,
+                }
+            )
             self.pysdk_model = self._create_djl_model()
 
             _pretty_print_results(benchmark_results)
@@ -456,7 +416,7 @@ class DJL(ABC):
                 "Model Configuration: %s was most performant with avg latency: %s, "
                 "p90 latency: %s, average tokens per second: %s, throughput/s: %s, "
                 "standard deviation of request %s",
-                self.pysdk_model.generate_serving_properties(),
+                self.pysdk_model.env,
                 best_tuned_combination[0],
                 best_tuned_combination[3],
                 best_tuned_combination[4],
@@ -464,32 +424,21 @@ class DJL(ABC):
                 best_tuned_combination[6],
             )
         else:
-            (
-                self._default_tensor_parallel_degree,
-                self._default_data_type,
-                _,
-                self._default_max_tokens,
-                self._default_max_new_tokens,
-            ) = _set_serve_properties(self.hf_model_config, self.schema_builder)
+            default_djl_configurations, _default_max_new_tokens = _get_default_djl_configurations(
+                self.model, self.hf_model_config, self.schema_builder
+            )
+            self.env_vars.update(default_djl_configurations)
             self.schema_builder.sample_input["parameters"][
                 "max_new_tokens"
-            ] = self._default_max_new_tokens
+            ] = _default_max_new_tokens
             self.pysdk_model = self._create_djl_model()
 
             logger.debug(
                 "Failed to gather any tuning results. "
                 "Please inspect the stack trace emitted from live logging for more details. "
                 "Falling back to default serving.properties: %s",
-                self.pysdk_model.generate_serving_properties(),
+                self.pysdk_model.env,
             )
-
-        prepare_for_djl_serving(
-            model_path=self.model_path,
-            model=self.pysdk_model,
-            dependencies=self.dependencies,
-            overwrite_props_from_file=self.overwrite_props_from_file,
-        )
-        self.overwrite_props_from_file = True
 
         return self.pysdk_model
 
