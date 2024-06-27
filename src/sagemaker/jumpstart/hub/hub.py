@@ -101,6 +101,7 @@ class Hub:
                 self.hub_name,
             )
             return None
+
     def _generate_hub_storage_location(self, bucket_name: Optional[str] = None) -> None:
         """Generates an ``S3ObjectLocation`` given a Hub name."""
         hub_bucket_name = bucket_name or self._fetch_hub_bucket_name()
@@ -128,9 +129,11 @@ class Hub:
     ) -> Dict[str, str]:
         """Creates a hub with the given description"""
 
-        s3_storage_config = {
-            "S3OutputPath": self.hub_storage_location.get_uri()
-        } if self.hub_storage_location else None
+        s3_storage_config = (
+            {"S3OutputPath": self.hub_storage_location.get_uri()}
+            if self.hub_storage_location
+            else None
+        )
 
         return self._sagemaker_session.create_hub(
             hub_name=self.hub_name,
