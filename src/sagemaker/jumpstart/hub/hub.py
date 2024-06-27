@@ -90,25 +90,22 @@ class Hub:
             if hub_output_location:
                 location = create_s3_object_reference_from_uri(hub_output_location)
                 return location.bucket
-            default_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
             JUMPSTART_LOGGER.warning(
-                "There is not a Hub bucket associated with %s. Using %s",
+                "There is not a Hub bucket associated with %s.",
                 self.hub_name,
-                default_bucket_name,
             )
-            return default_bucket_name
+            return None
         except exceptions.ClientError:
-            hub_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
             JUMPSTART_LOGGER.warning(
-                "There is not a Hub bucket associated with %s. Using %s",
+                "There is not a Hub bucket associated with %s.",
                 self.hub_name,
-                hub_bucket_name,
             )
-            return hub_bucket_name
-
+            return None
     def _generate_hub_storage_location(self, bucket_name: Optional[str] = None) -> None:
         """Generates an ``S3ObjectLocation`` given a Hub name."""
         hub_bucket_name = bucket_name or self._fetch_hub_bucket_name()
+        if hub_bucket_name is None:
+            return
         curr_timestamp = datetime.now().timestamp()
         return S3ObjectLocation(bucket=hub_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
 
@@ -131,16 +128,16 @@ class Hub:
     ) -> Dict[str, str]:
         """Creates a hub with the given description"""
 
-        create_hub_bucket_if_it_does_not_exist(
-            self.hub_storage_location.bucket, self._sagemaker_session
-        )
+        s3_storage_config = {
+            "S3OutputPath": self.hub_storage_location.get_uri()
+        } if self.hub_storage_location else None
 
         return self._sagemaker_session.create_hub(
             hub_name=self.hub_name,
             hub_description=description,
             hub_display_name=display_name,
             hub_search_keywords=search_keywords,
-            s3_storage_config={"S3OutputPath": self.hub_storage_location.get_uri()},
+            s3_storage_config=s3_storage_config,
             tags=tags,
         )
 
