@@ -300,7 +300,9 @@ class JumpStartModelsAccessor(object):
                 return model_specs
 
             except Exception as ex:
-                logging.info("Recieved expection while calling APIs for ContentType Model: " + str(ex))
+                logging.info(
+                    "Recieved expection while calling APIs for ContentType Model: " + str(ex)
+                )
                 hub_model_arn = construct_hub_model_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )

@@ -34,7 +34,10 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_LOGGER,
 )
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
-from sagemaker.jumpstart.hub.utils import construct_hub_model_arn_from_inputs, construct_hub_model_reference_arn_from_inputs
+from sagemaker.jumpstart.hub.utils import (
+    construct_hub_model_arn_from_inputs,
+    construct_hub_model_reference_arn_from_inputs,
+)
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -552,15 +555,11 @@ def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
     if kwargs.hub_arn:
         if kwargs.model_reference_arn:
             hub_content_arn = construct_hub_model_reference_arn_from_inputs(
-                kwargs.hub_arn,
-                kwargs.model_id,
-                kwargs.model_version
+                kwargs.hub_arn, kwargs.model_id, kwargs.model_version
             )
         else:
             hub_content_arn = construct_hub_model_arn_from_inputs(
-                kwargs.hub_arn,
-                kwargs.model_id,
-                kwargs.model_version
+                kwargs.hub_arn, kwargs.model_id, kwargs.model_version
             )
         kwargs.tags = add_hub_content_arn_tags(kwargs.tags, hub_content_arn=hub_content_arn)
 
