@@ -384,12 +384,12 @@ def add_jumpstart_model_id_version_tags(
 
 def add_hub_content_arn_tags(
     tags: Optional[List[TagsDict]],
-    hub_arn: str,
+    hub_content_arn: str,
 ) -> Optional[List[TagsDict]]:
     """Adds custom Hub arn tag to JumpStart related resources."""
 
     tags = add_single_jumpstart_tag(
-        hub_arn,
+        hub_content_arn,
         enums.JumpStartTag.HUB_CONTENT_ARN,
         tags,
         is_uri=False,
