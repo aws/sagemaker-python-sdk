@@ -38,7 +38,7 @@ from sagemaker.jumpstart.factory.model import (
     get_register_kwargs,
 )
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_endpoint
-from sagemaker.jumpstart.types import JumpStartInternalMetadata, JumpStartSerializablePayload
+from sagemaker.jumpstart.types import JumpStartModelInternalConfig, JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
@@ -312,7 +312,7 @@ class JumpStartModel(Model):
             if not self.model_type and not hub_arn:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
-        self._internal = JumpStartInternalMetadata(
+        self._internal_config = JumpStartModelInternalConfig(
             specs=verify_model_region_and_return_specs(
                 region=self.region,
                 model_id=self.model_id,
