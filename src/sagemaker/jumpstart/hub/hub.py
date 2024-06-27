@@ -33,8 +33,6 @@ from sagemaker.jumpstart.filters import Constant, Operator, BooleanValues
 from sagemaker.jumpstart.hub.utils import (
     get_hub_model_version,
     get_info_from_hub_resource_arn,
-    create_hub_bucket_if_it_does_not_exist,
-    generate_default_hub_bucket_name,
     create_s3_object_reference_from_uri,
     construct_hub_arn_from_name,
 )
