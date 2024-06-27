@@ -608,6 +608,7 @@ class JumpStartEstimator(Estimator):
         self.role = estimator_init_kwargs.role
         self.sagemaker_session = estimator_init_kwargs.sagemaker_session
         self._enable_network_isolation = estimator_init_kwargs.enable_network_isolation
+        super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
         self._internal_config = JumpStartModelInternalConfig(
             specs=verify_model_region_and_return_specs(
                 region=self.region,
@@ -617,9 +618,10 @@ class JumpStartEstimator(Estimator):
                 model_type=self.model_type,
                 scope=JumpStartScriptScope.TRAINING,
                 sagemaker_session=self.sagemaker_session,
+                tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+                tolerate_deprecated_model=self.tolerate_deprecated_model,
             )
         )
-        super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
 
     def fit(
         self,
