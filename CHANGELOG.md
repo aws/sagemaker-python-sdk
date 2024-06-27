@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.224.2 (2024-06-27)
+
+### Bug Fixes and Other Changes
+
+ * Update DJLModel class for latest container releases
+ * list_models() for python3.8
+
 ## v2.224.1 (2024-06-21)
 
 ### Bug Fixes and Other Changes
