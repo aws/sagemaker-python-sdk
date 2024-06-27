@@ -72,6 +72,7 @@ class Transformers(ABC):
         self.pytorch_version = None
         self.instance_type = None
         self.schema_builder = None
+        self.inference_spec = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -109,7 +110,7 @@ class Transformers(ABC):
         """
 
         hf_model_md = get_huggingface_model_metadata(
-            self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+            self.env_vars.get("HF_MODEL_ID"), self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
         )
         hf_config = image_uris.config_for_framework("huggingface").get("inference")
         config = hf_config["versions"]
@@ -246,18 +247,22 @@ class Transformers(ABC):
 
         _create_dir_structure(self.model_path)
         if not hasattr(self, "pysdk_model"):
-            self.env_vars.update({"HF_MODEL_ID": self.model})
+
+            if self.inference_spec is not None:
+                self.env_vars.update({"HF_MODEL_ID": self.inference_spec.get_model()})
+            else:
+                self.env_vars.update({"HF_MODEL_ID": self.model})
 
             logger.info(self.env_vars)
 
             # TODO: Move to a helper function
             if hasattr(self.env_vars, "HF_API_TOKEN"):
                 self.hf_model_config = _get_model_config_properties_from_hf(
-                    self.model, self.env_vars.get("HF_API_TOKEN")
+                    self.env_vars.get("HF_MODEL_ID"), self.env_vars.get("HF_API_TOKEN")
                 )
             else:
                 self.hf_model_config = _get_model_config_properties_from_hf(
-                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+                    self.env_vars.get("HF_MODEL_ID"), self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                 )
 
         self.pysdk_model = self._create_transformers_model()
