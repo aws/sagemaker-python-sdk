@@ -19,6 +19,7 @@ import pytest
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
+from sagemaker.jumpstart.types import JumpStartModelSpecs
 import tests
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
@@ -168,6 +169,9 @@ def test_gated_model_training_v2(setup):
         model_version=model_version,
         sagemaker_session=get_sm_session(),
     )
+
+    assert isinstance(attached_estimator._internal_config.specs, JumpStartModelSpecs)
+    assert attached_estimator._internal_config.specs.model_id == model_id
 
     # uses ml.g5.2xlarge instance
     predictor = attached_estimator.deploy(
