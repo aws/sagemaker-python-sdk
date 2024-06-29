@@ -19,6 +19,55 @@ _DEFAULT_ENV_VARS = {}
 logger = logging.getLogger(__name__)
 
 
+class InProcessMultiModelServer:
+    """In Process Mode Multi Model server instance"""
+
+    def _start_serving(
+        self,
+        client: object,
+        image: str,
+        model_path: str,
+        secret_key: str,
+        env_vars: dict,
+    ):
+        """Placeholder docstring"""
+        self.container = client.containers.run(
+            image,
+            "serve",
+            network_mode="host",
+            detach=True,
+            auto_remove=True,
+            volumes={
+                Path(model_path).joinpath("code"): {
+                    "bind": MODE_DIR_BINDING,
+                    "mode": "rw",
+                },
+            },
+            environment={
+                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+                "LOCAL_PYTHON": platform.python_version(),
+                **env_vars,
+            },
+        )
+
+    def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
+        """Placeholder docstring"""
+        try:
+            response = requests.post(
+                f"http://{get_docker_host()}:8080/invocations",
+                data=request,
+                headers={"Content-Type": content_type, "Accept": accept},
+                timeout=600,
+            )
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            raise Exception("Unable to send request to the local container server") from e
+
+        return (True, response)
+
 class LocalMultiModelServer:
     """Local Multi Model server instance"""
 
