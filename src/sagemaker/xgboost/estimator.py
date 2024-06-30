@@ -51,7 +51,7 @@ class XGBoost(Framework):
         py_version: str = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         image_uri_region: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         """An estimator that executes an XGBoost-based SageMaker Training Job.
 
@@ -137,7 +137,7 @@ class XGBoost(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``XGBoostModel`` object that can be deployed to an ``Endpoint``.
 
@@ -188,7 +188,7 @@ class XGBoost(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod

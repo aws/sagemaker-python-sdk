@@ -97,7 +97,7 @@ class ChainerModel(FrameworkModel):
         py_version: Optional[str] = None,
         predictor_cls: callable = ChainerPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an ChainerModel.
 

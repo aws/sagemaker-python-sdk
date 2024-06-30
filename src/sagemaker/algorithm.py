@@ -68,7 +68,7 @@ class AlgorithmEstimator(EstimatorBase):
         encrypt_inter_container_traffic: Union[bool, PipelineVariable] = False,
         use_spot_instances: Union[bool, PipelineVariable] = False,
         max_wait: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs  # pylint: disable=W0613
+        **kwargs,  # pylint: disable=W0613
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
 
@@ -271,7 +271,7 @@ class AlgorithmEstimator(EstimatorBase):
         serializer=IdentitySerializer(),
         deserializer=BytesDeserializer(),
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
-        **kwargs
+        **kwargs,
     ):
         """Create a model to deploy.
 
@@ -325,7 +325,7 @@ class AlgorithmEstimator(EstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
             predictor_cls=predictor_cls,
-            **kwargs
+            **kwargs,
         )
 
     def transformer(

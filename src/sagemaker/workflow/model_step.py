@@ -302,7 +302,7 @@ class ModelStep(StepCollection):
                         self._repack_model_step_settings.pop("output_kms_key", None)
                         or model.model_kms_key
                     ),
-                    **self._repack_model_step_settings
+                    **self._repack_model_step_settings,
                 )
                 self.steps.append(repack_model_step)
 

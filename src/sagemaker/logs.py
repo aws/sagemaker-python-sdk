@@ -166,7 +166,7 @@ def log_stream(client, log_group, stream_name, start_time=0, skip=0):
             logStreamName=stream_name,
             startTime=start_time,
             startFromHead=True,
-            **token_arg
+            **token_arg,
         )
         next_token = response["nextForwardToken"]
         events = response["events"]

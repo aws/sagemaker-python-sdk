@@ -190,7 +190,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         accuracy_top_k: Optional[int] = None,
         f_beta: Optional[float] = None,
         balance_multiclass_weights: Optional[bool] = None,
-        **kwargs
+        **kwargs,
     ):
         """An :class:`Estimator` for binary classification and regression.
 
@@ -420,7 +420,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             self.role,
             self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -505,7 +505,7 @@ class LinearLearnerModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for LinearLearnerModel.
 
@@ -538,5 +538,5 @@ class LinearLearnerModel(Model):
             role,
             predictor_cls=LinearLearnerPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

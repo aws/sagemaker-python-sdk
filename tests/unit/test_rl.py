@@ -95,7 +95,7 @@ def _rl_estimator(
     framework=RLFramework.MXNET,
     instance_type=None,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
     return RLEstimator(
         entry_point=SCRIPT_PATH,
@@ -107,7 +107,7 @@ def _rl_estimator(
         instance_count=INSTANCE_COUNT,
         instance_type=instance_type or INSTANCE_TYPE,
         base_job_name=base_job_name,
-        **kwargs
+        **kwargs,
     )
 
 

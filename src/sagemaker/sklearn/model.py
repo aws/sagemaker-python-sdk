@@ -93,7 +93,7 @@ class SKLearnModel(FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         predictor_cls: callable = SKLearnPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an SKLearnModel.
 

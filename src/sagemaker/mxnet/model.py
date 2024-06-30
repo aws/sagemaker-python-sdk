@@ -99,7 +99,7 @@ class MXNetModel(FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         predictor_cls: callable = MXNetPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an MXNetModel.
 
