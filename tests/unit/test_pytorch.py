@@ -337,7 +337,7 @@ def test_pytorch(
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert boto_call_names == ["resource", "client"]
 
     expected_train_args = _create_train_job(pytorch_inference_version, pytorch_inference_py_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
