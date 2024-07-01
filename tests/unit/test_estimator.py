@@ -51,6 +51,8 @@ from sagemaker.inputs import ShuffleConfig
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.interactive_apps import SupportedInteractiveAppTypes
 from sagemaker.model import FrameworkModel
+from sagemaker.model_card.model_card import ModelCard, ModelOverview
+from sagemaker.model_card.schema_constraints import ModelCardStatusEnum
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
 from sagemaker.pytorch.estimator import PyTorch
@@ -264,6 +266,7 @@ class DummyFrameworkModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         return MODEL_CONTAINER_DEF
 
@@ -4336,6 +4339,12 @@ def test_register_default_image(sagemaker_session):
     framework_version = "2.9"
     nearest_model_name = "resnet50"
     data_input_config = '{"input_1":[1,224,224,3]}'
+    model_overview = ModelOverview(model_creator="TestCreator")
+    model_card = ModelCard(
+        name="TestCard",
+        status=ModelCardStatusEnum.DRAFT,
+        model_overview=model_overview,
+    )
 
     estimator.register(
         content_types=content_types,
@@ -4349,9 +4358,13 @@ def test_register_default_image(sagemaker_session):
         framework_version=framework_version,
         nearest_model_name=nearest_model_name,
         data_input_configuration=data_input_config,
+        model_card=model_card,
     )
     sagemaker_session.create_model.assert_not_called()
-
+    exp_model_card = {
+        "ModelCardStatus": "Draft",
+        "ModelCardContent": '{"model_overview": {"model_creator": "TestCreator", "model_artifact": []}}',
+    }
     expected_create_model_package_request = {
         "containers": [{"Image": estimator.image_uri, "ModelDataUrl": estimator.model_data}],
         "content_types": content_types,
@@ -4362,6 +4375,7 @@ def test_register_default_image(sagemaker_session):
         "marketplace_cert": False,
         "sample_payload_url": sample_payload_url,
         "task": task,
+        "model_card": exp_model_card,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -5243,6 +5257,7 @@ def test_all_framework_estimators_add_jumpstart_uri_tags(
             entry_point="inference.py",
             role=ROLE,
             tags=[{"Key": "blah", "Value": "yoyoma"}],
+            model_reference_arn=None,
         )
 
         assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [

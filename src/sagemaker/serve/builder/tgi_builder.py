@@ -31,7 +31,7 @@ from sagemaker.serve.utils.tuning import (
     _more_performant,
     _pretty_print_results_tgi,
 )
-from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
+from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 from sagemaker.serve.model_server.djl_serving.utils import (
     _get_admissible_tensor_parallel_degrees,
     _get_default_tensor_parallel_degree,
@@ -210,6 +210,7 @@ class TGI(ABC):
             # if has not been built for local container we must use cache
             # that hosting has write access to.
             self.pysdk_model.env["TRANSFORMERS_CACHE"] = "/tmp"
+            self.pysdk_model.env["HF_HOME"] = "/tmp"
             self.pysdk_model.env["HUGGINGFACE_HUB_CACHE"] = "/tmp"
 
         if "endpoint_logging" not in kwargs:

@@ -31,6 +31,7 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     instance_type: Optional[str] = None,
     include_container_hyperparameters: bool = False,
     tolerate_vulnerable_model: bool = False,
@@ -47,6 +48,8 @@ def retrieve_default(
             retrieve the default hyperparameters. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default hyperparameters. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         instance_type (str): An instance type to optionally supply in order to get hyperparameters
             specific for the instance type.
         include_container_hyperparameters (bool): ``True`` if the container hyperparameters
@@ -82,6 +85,7 @@ def retrieve_default(
     return artifacts._retrieve_default_hyperparameters(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         instance_type=instance_type,
         region=region,
         include_container_hyperparameters=include_container_hyperparameters,
@@ -95,6 +99,7 @@ def retrieve_default(
 def validate(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     model_version: Optional[str] = None,
     hyperparameters: Optional[dict] = None,
     validation_mode: HyperparameterValidationMode = HyperparameterValidationMode.VALIDATE_PROVIDED,
@@ -110,6 +115,8 @@ def validate(
             (Default: None).
         model_version (str): The version of the model for which to validate hyperparameters.
             (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         hyperparameters (dict): Hyperparameters to validate.
             (Default: None).
         validation_mode (HyperparameterValidationMode): Method of validation to use with
@@ -151,6 +158,7 @@ def validate(
     return validate_hyperparameters(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         hyperparameters=hyperparameters,
         validation_mode=validation_mode,
         region=region,

@@ -5,31 +5,7 @@ DJL Classes
 DJLModel
 ---------------------------
 
-.. autoclass:: sagemaker.djl_inference.model.DJLModel
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-DeepSpeedModel
----------------------------
-
-.. autoclass:: sagemaker.djl_inference.model.DeepSpeedModel
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-HuggingFaceAccelerateModel
----------------------------
-
-.. autoclass:: sagemaker.djl_inference.model.HuggingFaceAccelerateModel
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-FasterTransformerModel
----------------------------
-
-.. autoclass:: sagemaker.djl_inference.model.FasterTransformerModel
+.. autoclass:: sagemaker.djl_inference.DJLModel
     :members:
     :undoc-members:
     :show-inheritance:
@@ -37,7 +13,7 @@ FasterTransformerModel
 DJLPredictor
 ---------------------------
 
-.. autoclass:: sagemaker.djl_inference.model.DJLPredictor
+.. autoclass:: sagemaker.djl_inference.DJLPredictor
     :members:
     :undoc-members:
     :show-inheritance:

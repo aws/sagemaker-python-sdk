@@ -18,7 +18,7 @@ from abc import ABC, abstractmethod
 
 from sagemaker import image_uris
 from sagemaker.model import Model
-from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
+from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 
 from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.serve.utils.local_hardware import (
@@ -171,6 +171,7 @@ class TEI(ABC):
             # if has not been built for local container we must use cache
             # that hosting has write access to.
             self.pysdk_model.env["TRANSFORMERS_CACHE"] = "/tmp"
+            self.pysdk_model.env["HF_HOME"] = "/tmp"
             self.pysdk_model.env["HUGGINGFACE_HUB_CACHE"] = "/tmp"
 
         if "endpoint_logging" not in kwargs:

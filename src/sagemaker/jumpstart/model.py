@@ -25,6 +25,7 @@ from sagemaker.base_serializers import BaseSerializer
 from sagemaker.enums import EndpointType
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.accessors import JumpStartModelsAccessor
+from sagemaker.jumpstart.hub.utils import generate_hub_arn_for_init_kwargs
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import (
     INVALID_MODEL_ID_ERROR_MSG,
@@ -37,6 +38,7 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
     get_register_kwargs,
 )
+from sagemaker.jumpstart.session_utils import get_model_info_from_endpoint
 from sagemaker.jumpstart.types import (
     JumpStartSerializablePayload,
     DeploymentConfigMetadata,
@@ -50,8 +52,12 @@ from sagemaker.jumpstart.utils import (
     deployment_config_response_data,
     _deployment_config_lru_cache,
 )
-from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model import (
     Model,
@@ -78,6 +84,7 @@ class JumpStartModel(Model):
         self,
         model_id: Optional[str] = None,
         model_version: Optional[str] = None,
+        hub_name: Optional[str] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         region: Optional[str] = None,
@@ -117,6 +124,7 @@ class JumpStartModel(Model):
                 https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html
                 for list of model IDs.
             model_version (Optional[str]): Version for JumpStart model to use (Default: None).
+            hub_name (Optional[str]): Hub name or arn where the model is stored (Default: None).
             tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
                 specifications should be tolerated (exception not raised). If False, raises an
                 exception if the script used by this version of the model has dependencies with
@@ -296,6 +304,12 @@ class JumpStartModel(Model):
             ValueError: If the model ID is not recognized by JumpStart.
         """
 
+        hub_arn = None
+        if hub_name:
+            hub_arn = generate_hub_arn_for_init_kwargs(
+                hub_name=hub_name, region=region, session=sagemaker_session
+            )
+
         def _validate_model_id_and_type():
             return validate_model_id_and_get_type(
                 model_id=model_id,
@@ -303,13 +317,14 @@ class JumpStartModel(Model):
                 region=region or getattr(sagemaker_session, "boto_region_name", None),
                 script=JumpStartScriptScope.INFERENCE,
                 sagemaker_session=sagemaker_session,
+                hub_arn=hub_arn,
             )
 
         self.model_type = _validate_model_id_and_type()
         if not self.model_type:
             JumpStartModelsAccessor.reset_cache()
             self.model_type = _validate_model_id_and_type()
-            if not self.model_type:
+            if not self.model_type and not hub_arn:
                 raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         self._model_data_is_set = model_data is not None
@@ -318,6 +333,7 @@ class JumpStartModel(Model):
             model_from_estimator=False,
             model_type=self.model_type,
             model_version=model_version,
+            hub_arn=hub_arn,
             instance_type=instance_type,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
@@ -349,6 +365,7 @@ class JumpStartModel(Model):
 
         self.model_id = model_init_kwargs.model_id
         self.model_version = model_init_kwargs.model_version
+        self.hub_arn = model_init_kwargs.hub_arn
         self.instance_type = model_init_kwargs.instance_type
         self.resources = model_init_kwargs.resources
         self.tolerate_vulnerable_model = model_init_kwargs.tolerate_vulnerable_model
@@ -358,11 +375,14 @@ class JumpStartModel(Model):
         self.role = role
         self.config_name = model_init_kwargs.config_name
         self.additional_model_data_sources = model_init_kwargs.additional_model_data_sources
+        self.model_reference_arn = model_init_kwargs.model_reference_arn
 
         if self.model_type == JumpStartModelType.PROPRIETARY:
             self.log_subscription_warning()
 
-        super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
+        model_init_kwargs_dict = model_init_kwargs.to_kwargs_dict()
+
+        super(JumpStartModel, self).__init__(**model_init_kwargs_dict)
 
         self.model_package_arn = model_init_kwargs.model_package_arn
         self.init_kwargs = model_init_kwargs.to_kwargs_dict(False)
@@ -381,6 +401,7 @@ class JumpStartModel(Model):
             region=self.region,
             model_id=self.model_id,
             version=self.model_version,
+            hub_arn=self.hub_arn,
             model_type=self.model_type,
             scope=JumpStartScriptScope.INFERENCE,
             sagemaker_session=self.sagemaker_session,
@@ -402,6 +423,7 @@ class JumpStartModel(Model):
         return payloads.retrieve_all_examples(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
@@ -497,6 +519,45 @@ class JumpStartModel(Model):
             self._get_deployment_configs(self.config_name, self.instance_type)
         )
 
+    @classmethod
+    def attach(
+        cls,
+        endpoint_name: str,
+        inference_component_name: Optional[str] = None,
+        model_id: Optional[str] = None,
+        model_version: Optional[str] = None,
+        sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    ) -> "JumpStartModel":
+        """Attaches a JumpStartModel object to an existing SageMaker Endpoint.
+
+        The model id, version (and inference component name) can be inferred from the tags.
+        """
+
+        inferred_model_id = inferred_model_version = inferred_inference_component_name = None
+
+        if inference_component_name is None or model_id is None or model_version is None:
+            inferred_model_id, inferred_model_version, inferred_inference_component_name, _, _ = (
+                get_model_info_from_endpoint(
+                    endpoint_name=endpoint_name,
+                    inference_component_name=inference_component_name,
+                    sagemaker_session=sagemaker_session,
+                )
+            )
+
+        model_id = model_id or inferred_model_id
+        model_version = model_version or inferred_model_version or "*"
+        inference_component_name = inference_component_name or inferred_inference_component_name
+
+        model = JumpStartModel(
+            model_id=model_id,
+            model_version=model_version,
+            sagemaker_session=sagemaker_session,
+        )
+        model.endpoint_name = endpoint_name
+        model.inference_component_name = inference_component_name
+
+        return model
+
     def _create_sagemaker_model(
         self,
         instance_type=None,
@@ -575,6 +636,7 @@ class JumpStartModel(Model):
         deserializer: Optional[BaseDeserializer] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name: Optional[str] = None,
+        inference_component_name: Optional[str] = None,
         tags: Optional[Tags] = None,
         kms_key: Optional[str] = None,
         wait: Optional[bool] = True,
@@ -697,6 +759,7 @@ class JumpStartModel(Model):
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
+            hub_arn=self.hub_arn,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             initial_instance_count=initial_instance_count,
@@ -705,6 +768,7 @@ class JumpStartModel(Model):
             deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
+            inference_component_name=inference_component_name,
             tags=format_tags(tags),
             kms_key=kms_key,
             wait=wait,
@@ -718,6 +782,7 @@ class JumpStartModel(Model):
             explainer_config=explainer_config,
             sagemaker_session=self.sagemaker_session,
             accept_eula=accept_eula,
+            model_reference_arn=self.model_reference_arn,
             endpoint_logging=endpoint_logging,
             resources=resources,
             managed_instance_scaling=managed_instance_scaling,
@@ -745,6 +810,7 @@ class JumpStartModel(Model):
                 scope=JumpStartScriptScope.INFERENCE,
                 sagemaker_session=self.sagemaker_session,
                 config_name=self.config_name,
+                hub_arn=self.hub_arn,
             ).model_subscription_link
             get_proprietary_model_subscription_error(e, subscription_link)
             raise
@@ -755,6 +821,7 @@ class JumpStartModel(Model):
                 predictor=predictor,
                 model_id=self.model_id,
                 model_version=self.model_version,
+                hub_arn=self.hub_arn,
                 region=self.region,
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
@@ -790,6 +857,8 @@ class JumpStartModel(Model):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        accept_eula: Optional[bool] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -837,14 +906,27 @@ class JumpStartModel(Model):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
-
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
         Returns:
             A `sagemaker.model.ModelPackage` instance.
         """
 
+        if model_package_group_name is None:
+            model_package_group_name = self.model_id
+        if self.model_type is JumpStartModelType.PROPRIETARY:
+            source_uri = self.model_package_arn
+
         register_kwargs = get_register_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
+            model_type=self.model_type,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
@@ -872,6 +954,8 @@ class JumpStartModel(Model):
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             config_name=self.config_name,
+            model_card=model_card,
+            accept_eula=accept_eula,
         )
 
         model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())

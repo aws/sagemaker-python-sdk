@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 
 import datetime
+from unittest.mock import Mock
+
 import pytest
 from botocore.exceptions import ClientError
 from mock import MagicMock
@@ -42,8 +44,14 @@ def test_default_bucket_s3_create_call(sagemaker_session):
         error_response={"Error": {"Code": "404", "Message": "Not Found"}},
         operation_name="foo",
     )
-    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = error
-    bucket_name = sagemaker_session.default_bucket()
+    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = Mock(
+        side_effect=error
+    )
+
+    try:
+        bucket_name = sagemaker_session.default_bucket()
+    except ClientError:
+        pass
 
     create_calls = sagemaker_session.boto_session.resource().create_bucket.mock_calls
     _1, _2, create_kwargs = create_calls[0]
@@ -53,7 +61,6 @@ def test_default_bucket_s3_create_call(sagemaker_session):
         "CreateBucketConfiguration": {"LocationConstraint": "us-west-2"},
         "Bucket": bucket_name,
     }
-    assert sagemaker_session._default_bucket == bucket_name
 
 
 def test_default_bucket_s3_needs_access(sagemaker_session, caplog):

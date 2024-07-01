@@ -21,18 +21,6 @@ class ModelServer(Enum):
     TEI = 7
 
 
-class _DjlEngine(Enum):
-    """An enum for Djl Engines"""
-
-    def __str__(self):
-        """Placeholder docstring"""
-        return str(self.name)
-
-    DEEPSPEED = 1
-    FASTER_TRANSFORMER = 2
-    HUGGINGFACE_ACCELERATE = 3
-
-
 class HardwareType(Enum):
     """An enum for hardware type"""
 

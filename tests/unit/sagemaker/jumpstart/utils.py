@@ -23,8 +23,8 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
-    JumpStartCachedS3ContentKey,
-    JumpStartCachedS3ContentValue,
+    JumpStartCachedContentKey,
+    JumpStartCachedContentValue,
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartModelHeader,
@@ -115,7 +115,9 @@ def get_prototype_model_spec(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID.
@@ -131,7 +133,9 @@ def get_special_model_spec(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID. This is reserved
@@ -147,7 +151,9 @@ def get_special_model_spec_for_inference_component_based_endpoint(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID and adding
@@ -170,8 +176,10 @@ def get_spec_from_base_spec(
     model_id: str = None,
     version_str: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
 
     if version and version_str:
@@ -194,6 +202,7 @@ def get_spec_from_base_spec(
             "catboost" not in model_id,
             "lightgbm" not in model_id,
             "sklearn" not in model_id,
+            "ai21" not in model_id,
         ]
     ):
         raise KeyError("Bad model ID")
@@ -216,8 +225,10 @@ def get_base_spec_with_prototype_configs(
     region: str = None,
     model_id: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     spec = copy.deepcopy(BASE_SPEC)
     inference_configs = {**INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
@@ -255,6 +266,8 @@ def get_prototype_spec_with_configs(
     version: str = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    hub_arn: str = None,
+    sagemaker_session: boto3.Session = None,
 ) -> JumpStartModelSpecs:
     spec = copy.deepcopy(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
     inference_configs = {**INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
@@ -268,33 +281,31 @@ def get_prototype_spec_with_configs(
 
 def patched_retrieval_function(
     _modelCacheObj: JumpStartModelsCache,
-    key: JumpStartCachedS3ContentKey,
-    value: JumpStartCachedS3ContentValue,
-) -> JumpStartCachedS3ContentValue:
+    key: JumpStartCachedContentKey,
+    value: JumpStartCachedContentValue,
+) -> JumpStartCachedContentValue:
 
-    filetype, s3_key = key.file_type, key.s3_key
-    if filetype == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
+    data_type, id_info = key.data_type, key.id_info
+    if data_type == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
 
-        return JumpStartCachedS3ContentValue(
-            formatted_content=get_formatted_manifest(BASE_MANIFEST)
-        )
+        return JumpStartCachedContentValue(formatted_content=get_formatted_manifest(BASE_MANIFEST))
 
-    if filetype == JumpStartS3FileType.OPEN_WEIGHT_SPECS:
-        _, model_id, specs_version = s3_key.split("/")
+    if data_type == JumpStartS3FileType.OPEN_WEIGHT_SPECS:
+        _, model_id, specs_version = id_info.split("/")
         version = specs_version.replace("specs_v", "").replace(".json", "")
-        return JumpStartCachedS3ContentValue(
+        return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(model_id=model_id, version=version)
         )
 
-    if filetype == JumpStartS3FileType.PROPRIETARY_MANIFEST:
-        return JumpStartCachedS3ContentValue(
+    if data_type == JumpStartS3FileType.PROPRIETARY_MANIFEST:
+        return JumpStartCachedContentValue(
             formatted_content=get_formatted_manifest(BASE_PROPRIETARY_MANIFEST)
         )
 
-    if filetype == JumpStartS3FileType.PROPRIETARY_SPECS:
-        _, model_id, specs_version = s3_key.split("/")
+    if data_type == JumpStartS3FileType.PROPRIETARY_SPECS:
+        _, model_id, specs_version = id_info.split("/")
         version = specs_version.replace("proprietary_specs_", "").replace(".json", "")
-        return JumpStartCachedS3ContentValue(
+        return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(
                 model_id=model_id,
                 version=version,
@@ -302,7 +313,7 @@ def patched_retrieval_function(
             )
         )
 
-    raise ValueError(f"Bad value for filetype: {filetype}")
+    raise ValueError(f"Bad value for filetype: {data_type}")
 
 
 def overwrite_dictionary(
@@ -337,7 +348,7 @@ def get_base_deployment_configs_with_acceleration_configs() -> List[Dict[str, An
 def get_mock_init_kwargs(
     model_id: str, config_name: Optional[str] = None
 ) -> JumpStartModelInitKwargs:
-    return JumpStartModelInitKwargs(
+    kwargs = JumpStartModelInitKwargs(
         model_id=model_id,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         model_data=INIT_KWARGS.get("model_data"),
@@ -347,6 +358,9 @@ def get_mock_init_kwargs(
         resources=ResourceRequirements(),
         config_name=config_name,
     )
+    setattr(kwargs, "model_reference_arn", None)
+    setattr(kwargs, "hub_content_type", None)
+    return kwargs
 
 
 def get_base_deployment_configs_metadata(

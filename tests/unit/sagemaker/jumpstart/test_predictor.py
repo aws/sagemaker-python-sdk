@@ -129,6 +129,7 @@ def test_jumpstart_predictor_support_no_model_id_supplied_happy_case(
         sagemaker_session=mock_session,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
         config_name=None,
+        hub_arn=None,
     )
 
 

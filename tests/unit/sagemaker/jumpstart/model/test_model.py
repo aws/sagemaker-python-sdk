@@ -505,9 +505,11 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.model.Model.register")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_proprietary_model_endpoint(
         self,
+        mock_model_register: mock.Mock,
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
@@ -541,7 +543,16 @@ class ModelTest(unittest.TestCase):
             enable_network_isolation=False,
         )
 
+        model.register()
         model.deploy()
+
+        mock_model_register.assert_called_once_with(
+            model_type=JumpStartModelType.PROPRIETARY,
+            content_types=["application/json"],
+            response_types=["application/json"],
+            model_package_group_name=model_id,
+            source_uri=model.model_package_arn,
+        )
 
         mock_model_deploy.assert_called_once_with(
             initial_instance_count=1,
@@ -759,7 +770,7 @@ class ModelTest(unittest.TestCase):
         Please add the new argument to the skip set below,
         and reach out to JumpStart team."""
 
-        init_args_to_skip: Set[str] = set([])
+        init_args_to_skip: Set[str] = set(["model_reference_arn"])
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
         parent_class_init = Model.__init__
@@ -777,6 +788,7 @@ class ModelTest(unittest.TestCase):
             "instance_type",
             "model_package_arn",
             "config_name",
+            "hub_name",
         }
         assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
@@ -854,6 +866,7 @@ class ModelTest(unittest.TestCase):
             model_id=model_id,
             model_version="*",
             region=region,
+            hub_arn=None,
             tolerate_deprecated_model=False,
             tolerate_vulnerable_model=False,
             sagemaker_session=model.sagemaker_session,
@@ -994,6 +1007,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
@@ -1001,6 +1015,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
             ]
         )
@@ -1025,6 +1040,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
                 mock.call(
                     model_id="js-trainable-model",
@@ -1032,6 +1048,7 @@ class ModelTest(unittest.TestCase):
                     region=None,
                     script=JumpStartScriptScope.INFERENCE,
                     sagemaker_session=None,
+                    hub_arn=None,
                 ),
             ]
         )
@@ -1423,6 +1440,60 @@ class ModelTest(unittest.TestCase):
             enable_network_isolation=True,
         )
 
+    @mock.patch("sagemaker.jumpstart.model.get_model_info_from_endpoint")
+    @mock.patch("sagemaker.jumpstart.model.JumpStartModel.__init__")
+    def test_attach(
+        self,
+        mock_js_model_init,
+        mock_get_model_info_from_endpoint,
+    ):
+        mock_js_model_init.return_value = None
+        mock_get_model_info_from_endpoint.return_value = (
+            "model-id",
+            "model-version",
+            None,
+            None,
+            None,
+        )
+        val = JumpStartModel.attach("some-endpoint")
+        mock_get_model_info_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+        mock_js_model_init.assert_called_once_with(
+            model_id="model-id",
+            model_version="model-version",
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+        assert isinstance(val, JumpStartModel)
+
+        mock_get_model_info_from_endpoint.reset_mock()
+        JumpStartModel.attach("some-endpoint", model_id="some-id")
+        mock_get_model_info_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+
+        mock_get_model_info_from_endpoint.reset_mock()
+        JumpStartModel.attach("some-endpoint", model_id="some-id", model_version="some-version")
+        mock_get_model_info_from_endpoint.assert_called_once_with(
+            endpoint_name="some-endpoint",
+            inference_component_name=None,
+            sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        )
+
+        # providing model id, version, and ic name should bypass check with endpoint tags
+        mock_get_model_info_from_endpoint.reset_mock()
+        JumpStartModel.attach(
+            "some-endpoint",
+            model_id="some-id",
+            model_version="some-version",
+            inference_component_name="some-ic-name",
+        )
+        mock_get_model_info_from_endpoint.assert_not_called()
+
     @mock.patch(
         "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
     )
@@ -1457,8 +1528,10 @@ class ModelTest(unittest.TestCase):
         model.register()
 
         mock_model_register.assert_called_once_with(
+            model_type=JumpStartModelType.OPEN_WEIGHTS,
             content_types=["application/x-text"],
             response_types=["application/json;verbose", "application/json"],
+            model_package_group_name=model.model_id,
         )
 
     @mock.patch(

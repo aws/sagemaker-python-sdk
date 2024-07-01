@@ -34,6 +34,7 @@ def _retrieve_default_instance_type(
     model_id: str,
     model_version: str,
     scope: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -51,6 +52,8 @@ def _retrieve_default_instance_type(
             default instance type.
         scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve default instance type.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -85,6 +88,7 @@ def _retrieve_default_instance_type(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -126,6 +130,7 @@ def _retrieve_instance_types(
     model_id: str,
     model_version: str,
     scope: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -142,6 +147,8 @@ def _retrieve_instance_types(
             supported instance types.
         scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve supported instance types.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -176,6 +183,7 @@ def _retrieve_instance_types(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
@@ -202,7 +210,7 @@ def _retrieve_instance_types(
 
     elif scope == JumpStartScriptScope.TRAINING:
         if training_instance_type is not None:
-            raise ValueError("Cannot use `training_instance_type` argument " "with training scope.")
+            raise ValueError("Cannot use `training_instance_type` argument with training scope.")
         instance_types = model_specs.supported_training_instance_types
     else:
         raise NotImplementedError(
