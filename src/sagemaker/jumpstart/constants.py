@@ -164,6 +164,16 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             content_bucket="jumpstart-cache-prod-il-central-1",
             gated_content_bucket="jumpstart-private-cache-prod-il-central-1",
         ),
+        JumpStartLaunchedRegionInfo(
+            region_name="us-gov-east-1",
+            content_bucket="jumpstart-cache-prod-us-gov-east-1",
+            gated_content_bucket="jumpstart-private-cache-prod-us-gov-east-1",
+        ),
+        JumpStartLaunchedRegionInfo(
+            region_name="us-gov-west-1",
+            content_bucket="jumpstart-cache-prod-us-gov-west-1",
+            gated_content_bucket="jumpstart-private-cache-prod-us-gov-west-1",
+        ),
     ]
 )
 
