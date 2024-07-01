@@ -931,6 +931,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "2.0.1", "py310", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "2.1.0", "py310", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "2.2.0", "py310", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "2.3.0", "py311", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py37", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.3", "py3", smdataparallel_enabled_custom_mpi),
@@ -991,7 +992,7 @@ def test_validate_torch_distributed_not_raises():
 
     # Case 3: Distribution is torch_distributed enabled, supported framework and instances
     torch_distributed_enabled = {"torch_distributed": {"enabled": True}}
-    torch_distributed_gpu_supported_fw_versions = ["1.13.1", "2.0.0", "2.0.1", "2.1.0", "2.2.0"]
+    torch_distributed_gpu_supported_fw_versions = ["1.13.1", "2.0.0", "2.0.1", "2.1.0", "2.2.0", "2.3.0"]
     for framework_version in torch_distributed_gpu_supported_fw_versions:
         fw_utils.validate_torch_distributed_distribution(
             instance_type="ml.p3.8xlarge",
