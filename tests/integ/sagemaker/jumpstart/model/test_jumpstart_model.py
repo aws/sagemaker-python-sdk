@@ -17,6 +17,7 @@ from unittest import mock
 
 import pytest
 from sagemaker.enums import EndpointType
+from sagemaker.jumpstart.types import JumpStartModelSpecs
 from sagemaker.predictor import retrieve_default
 
 import tests.integ
@@ -223,6 +224,8 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
     assert model.model_id == model_id
     assert model.endpoint_name == predictor.endpoint_name
     assert model.inference_component_name == predictor.component_name
+    assert isinstance(model._internal_config.specs, JumpStartModelSpecs)
+    assert model._internal_config.specs.model_id == model_id
 
 
 @mock.patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning")

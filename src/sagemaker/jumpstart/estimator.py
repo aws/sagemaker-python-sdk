@@ -35,6 +35,7 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
+from sagemaker.jumpstart.types import JumpStartModelInternalConfig
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
@@ -607,8 +608,20 @@ class JumpStartEstimator(Estimator):
         self.role = estimator_init_kwargs.role
         self.sagemaker_session = estimator_init_kwargs.sagemaker_session
         self._enable_network_isolation = estimator_init_kwargs.enable_network_isolation
-
         super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
+        self._internal_config = JumpStartModelInternalConfig(
+            specs=verify_model_region_and_return_specs(
+                region=self.region,
+                model_id=self.model_id,
+                version=self.model_version,
+                hub_arn=self.hub_arn,
+                model_type=self.model_type,
+                scope=JumpStartScriptScope.TRAINING,
+                sagemaker_session=self.sagemaker_session,
+                tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+                tolerate_deprecated_model=self.tolerate_deprecated_model,
+            )
+        )
 
     def fit(
         self,

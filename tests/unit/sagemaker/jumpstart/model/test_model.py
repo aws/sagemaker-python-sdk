@@ -758,8 +758,10 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
+    @mock.patch("sagemaker.jumpstart.model.verify_model_region_and_return_specs")
     def test_validate_model_id_and_get_type(
         self,
+        verify_model_region_and_return_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_init: mock.Mock,
         mock_get_init_kwargs: mock.Mock,

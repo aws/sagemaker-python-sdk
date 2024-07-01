@@ -38,7 +38,7 @@ from sagemaker.jumpstart.factory.model import (
     get_register_kwargs,
 )
 from sagemaker.jumpstart.session_utils import get_model_id_version_from_endpoint
-from sagemaker.jumpstart.types import JumpStartSerializablePayload
+from sagemaker.jumpstart.types import JumpStartModelInternalConfig, JumpStartSerializablePayload
 from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     verify_model_region_and_return_specs,
@@ -361,10 +361,22 @@ class JumpStartModel(Model):
             self.log_subscription_warning()
 
         model_init_kwargs_dict = model_init_kwargs.to_kwargs_dict()
-
         super(JumpStartModel, self).__init__(**model_init_kwargs_dict)
 
         self.model_package_arn = model_init_kwargs.model_package_arn
+        self._internal_config = JumpStartModelInternalConfig(
+            specs=verify_model_region_and_return_specs(
+                region=self.region,
+                model_id=self.model_id,
+                version=self.model_version,
+                hub_arn=self.hub_arn,
+                model_type=self.model_type,
+                scope=JumpStartScriptScope.INFERENCE,
+                sagemaker_session=self.sagemaker_session,
+                tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+                tolerate_deprecated_model=self.tolerate_deprecated_model,
+            )
+        )
 
     def log_subscription_warning(self) -> None:
         """Log message prompting the customer to subscribe to the proprietary model."""

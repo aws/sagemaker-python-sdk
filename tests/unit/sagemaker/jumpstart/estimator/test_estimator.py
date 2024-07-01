@@ -1171,8 +1171,10 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
+    @mock.patch("sagemaker.jumpstart.estimator.verify_model_region_and_return_specs")
     def test_validate_model_id_and_get_type(
         self,
+        verify_model_region_and_return_specs: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
         mock_init: mock.Mock,
         mock_get_init_kwargs: mock.Mock,
