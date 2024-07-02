@@ -279,8 +279,6 @@ class Transformers(ABC):
         if self.mode == Mode.LOCAL_CONTAINER:
             self._prepare_for_mode()
 
-        logger.info("Model configuration %s", self.pysdk_model)
-
         return self.pysdk_model
 
     def _set_instance(self, **kwargs):
