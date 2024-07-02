@@ -75,13 +75,14 @@ def prepare_mms_js_resources(
 
     return _copy_jumpstart_artifacts(model_data, js_id, code_dir)
 
+
 def prepare_for_mms(
-        model_path: str,
-        shared_libs: List[str],
-        dependencies: dict,
-        session: Session,
-        image_uri: str,
-        inference_spec: InferenceSpec = None,
+    model_path: str,
+    shared_libs: List[str],
+    dependencies: dict,
+    session: Session,
+    image_uri: str,
+    inference_spec: InferenceSpec = None,
 ) -> str:
     """This is a one-line summary of the function.
     Args:to

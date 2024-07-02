@@ -33,7 +33,7 @@ def model_fn(model_dir):
     with open(str(serve_path), mode="rb") as file:
         global inference_spec, schema_builder
         obj = cloudpickle.load(file)
-        if isinstance(obj[0], InferenceSpec): 
+        if isinstance(obj[0], InferenceSpec):
             inference_spec, schema_builder = obj
 
     logger.info("in model_fn")

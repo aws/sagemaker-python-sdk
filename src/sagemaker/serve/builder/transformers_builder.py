@@ -29,7 +29,7 @@ from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.serve.model_server.multi_model_server.prepare import (
     _create_dir_structure,
-    prepare_for_mms
+    prepare_for_mms,
 )
 from sagemaker.serve.detector.image_detector import (
     auto_detect_container,
@@ -280,7 +280,7 @@ class Transformers(ABC):
             self._prepare_for_mode()
 
         logger.info("Model configuration %s", self.pysdk_model)
-        
+
         return self.pysdk_model
 
     def _set_instance(self, **kwargs):
@@ -342,7 +342,6 @@ class Transformers(ABC):
             )
         else:
             raise ValueError("Cannot detect required model or inference spec")
-
 
     def _build_for_transformers(self):
         """Method that triggers model build
