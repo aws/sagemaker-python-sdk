@@ -818,3 +818,19 @@ def test_decorator_auto_capture(sagemaker_session, auto_capture_test_container):
         f"--rm {auto_capture_test_container}"
     )
     subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT).decode("utf-8")
+
+def test_decorator_torchrun(sagemaker_session, dummy_container_without_error, gpu_instance_type, use_torchrun=True, nproc_per_node=2):
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container_without_error,
+        instance_type=gpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        keep_alive_period_in_seconds=60,
+        use_torchrun=use_torchrun,
+        nproc_per_node=nproc_per_node
+    )
+    def divide(x, y):
+        return x / y
+
+    assert divide(10, 2) == 5
+    assert divide(20, 2) == 10
