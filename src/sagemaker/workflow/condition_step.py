@@ -20,7 +20,6 @@ from sagemaker.workflow.conditions import Condition
 
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.functions import JsonGet as NewJsonGet
-from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
