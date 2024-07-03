@@ -171,7 +171,7 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_torchserve")
     def test_model_server_override_torchserve_with_inf_spec(
-            self, mock_build_for_ts, mock_serve_settings
+        self, mock_build_for_ts, mock_serve_settings
     ):
         mock_setting_object = mock_serve_settings.return_value
         mock_setting_object.role_arn = mock_role_arn
