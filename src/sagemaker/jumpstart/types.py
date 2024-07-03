@@ -1169,12 +1169,14 @@ class JumpStartConfigRanking(JumpStartDataHolderType):
 
     __slots__ = ["description", "rankings"]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content=False):
         """Initializes a JumpStartConfigRanking object.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of training config ranking.
         """
+        if is_hub_content:
+            spec = {camel_to_snake(key): val for key, val in spec.items()}
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1285,7 +1287,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             json_obj.get("incremental_training_supported", False)
         )
         if self._is_hub_content:
-            self.hosting_ecr_uri: Optional[str] = json_obj["hosting_ecr_uri"]
+            self.hosting_ecr_uri: Optional[str] = json_obj.get("hosting_ecr_uri")
             self._non_serializable_slots.append("hosting_ecr_specs")
         else:
             self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
@@ -1491,9 +1493,7 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
     __slots__ = slots + JumpStartMetadataBaseFields.__slots__
 
     def __init__(
-        self,
-        component_name: str,
-        component: Optional[Dict[str, Any]],
+        self, component_name: str, component: Optional[Dict[str, Any]], is_hub_content=False
     ):
         """Initializes a JumpStartConfigComponent object from its json representation.
 
@@ -1504,8 +1504,10 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         Raises:
             ValueError: If the component field is invalid.
         """
-        super().__init__(component)
+        if is_hub_content:
+            component = walk_and_apply_json(component, camel_to_snake)
         self.component_name = component_name
+        super().__init__(component, is_hub_content)
         self.from_json(component)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1542,6 +1544,7 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
         config: Dict[str, Any],
         base_fields: Dict[str, Any],
         config_components: Dict[str, JumpStartConfigComponent],
+        is_hub_content=False,
     ):
         """Initializes a JumpStartMetadataConfig object from its json representation.
 
@@ -1554,6 +1557,9 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
             config_components (Dict[str, JumpStartConfigComponent]):
                 The list of components that are used to construct the resolved config.
         """
+        if is_hub_content:
+            config = walk_and_apply_json(config, camel_to_snake)
+            base_fields = walk_and_apply_json(base_fields, camel_to_snake)
         self.base_fields = base_fields
         self.config_components: Dict[str, JumpStartConfigComponent] = config_components
         self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = (

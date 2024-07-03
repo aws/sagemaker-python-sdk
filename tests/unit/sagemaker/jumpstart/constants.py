@@ -8703,7 +8703,17 @@ INFERENCE_CONFIGS = {
                 "variants": {"inf2": {"regional_properties": {"image_uri": "$neuron-ecr-uri"}}},
             },
         },
-        "neuron-budget": {"inference_environment_variables": {"BUDGET": "1234"}},
+        "neuron-budget": {
+            "inference_environment_variables": [
+                {
+                    "name": "SAGEMAKER_PROGRAM",
+                    "type": "text",
+                    "default": "inference.py",
+                    "scope": "container",
+                    "required_for_model_class": True,
+                }
+            ],
+        },
         "gpu-inference": {
             "supported_inference_instance_types": ["ml.p2.xlarge", "ml.p3.2xlarge"],
             "hosting_artifact_key": "artifacts/meta-textgeneration-llama-2-7b/gpu-inference/model/",
@@ -9816,6 +9826,58 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "DynamicContainerDeploymentSupported": True,
         "TrainingModelPackageArtifactUri": None,
         "Dependencies": [],
+        "InferenceConfigRankings": {
+            "overall": {"Description": "default", "Rankings": ["variant1"]}
+        },
+        "InferenceConfigs": {
+            "variant1": {
+                "ComponentNames": ["variant1"],
+                "BenchmarkMetrics": {
+                    "ml.g5.12xlarge": [
+                        {"Name": "latency", "Unit": "sec", "Value": "0.19", "Concurrency": "1"},
+                    ]
+                },
+            },
+        },
+        "InferenceConfigComponents": {
+            "variant1": {
+                "HostingEcrUri": "123456789012.ecr.us-west-2.amazon.com/repository",
+                "HostingArtifactUri": "s3://jumpstart-private-cache-prod-us-west-2/meta-textgeneration/meta-textgeneration-llama-2-7b/artifacts/variant1/v1.0.0/",  # noqa: E501
+                "HostingScriptUri": "s3://jumpstart-monarch-test-hub-bucket/monarch-curated-hub-1714579993.88695/curated_models/meta-textgeneration-llama-2-7b/4.0.0/source-directory-tarballs/meta/inference/textgeneration/v1.2.3/sourcedir.tar.gz",  # noqa: E501
+                "InferenceDependencies": [],
+                "InferenceEnvironmentVariables": [
+                    {
+                        "Name": "SAGEMAKER_PROGRAM",
+                        "Type": "text",
+                        "Default": "inference.py",
+                        "Scope": "container",
+                        "RequiredForModelClass": True,
+                    }
+                ],
+                "HostingAdditionalDataSources": {
+                    "speculative_decoding": [
+                        {
+                            "ArtifactVersion": 1,
+                            "ChannelName": "speculative_decoding_channel_1",
+                            "S3DataSource": {
+                                "CompressionType": "None",
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "s3://bucket/path/1",
+                            },
+                        },
+                        {
+                            "ArtifactVersion": 1,
+                            "ChannelName": "speculative_decoding_channel_2",
+                            "S3DataSource": {
+                                "CompressionType": "None",
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "s3://bucket/path/2",
+                            },
+                        },
+                    ]
+                },
+            },
+        },
     },
     "meta-textgeneration-llama-2-70b": {
         "Url": "https://ai.meta.com/resources/models-and-libraries/llama-downloads/",

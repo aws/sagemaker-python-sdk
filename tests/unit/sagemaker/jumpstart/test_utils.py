@@ -2059,6 +2059,4 @@ def test_has_instance_rate_stat(stats, expected):
 )
 def test_deployment_config_response_data(data, expected):
     out = utils.deployment_config_response_data(data)
-
-    print(out)
     assert out == expected
