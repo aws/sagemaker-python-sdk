@@ -13,9 +13,12 @@
 """Transformers build logic with model builder"""
 from __future__ import absolute_import
 import logging
+import os
 from abc import ABC, abstractmethod
 from typing import Type
 from packaging.version import Version
+
+from pathlib import Path
 
 from sagemaker.model import Model
 from sagemaker import image_uris
@@ -26,7 +29,12 @@ from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.serve.model_server.multi_model_server.prepare import (
     _create_dir_structure,
+    prepare_for_mms
 )
+from sagemaker.serve.detector.image_detector import (
+    auto_detect_container,
+)
+from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -73,6 +81,7 @@ class Transformers(ABC):
         self.instance_type = None
         self.schema_builder = None
         self.inference_spec = None
+        self.shared_libs = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -298,6 +307,40 @@ class Transformers(ABC):
                 versions_to_return.append(base_fw_version)
         return sorted(versions_to_return, reverse=True)[0]
 
+    def _auto_detect_container(self):
+        """Placeholder docstring"""
+        # Auto detect the container image uri
+        if self.image_uri:
+            logger.info(
+                "Skipping auto detection as the image uri is provided %s",
+                self.image_uri,
+            )
+            return
+
+        if self.model:
+            logger.info(
+                "Auto detect container url for the provided model and on instance %s",
+                self.instance_type,
+            )
+            self.image_uri = auto_detect_container(
+                self.model, self.sagemaker_session.boto_region_name, self.instance_type
+            )
+
+        elif self.inference_spec:
+            # TODO: this won't work for larger image.
+            # Fail and let the customer include the image uri
+            logger.warning(
+                "model_path provided with no image_uri. Attempting to autodetect the image\
+                    by loading the model using inference_spec.load()..."
+            )
+            self.image_uri = auto_detect_container(
+                self.inference_spec.load(self.model_path),
+                self.sagemaker_session.boto_region_name,
+                self.instance_type,
+            )
+        else:
+            raise ValueError("Cannot detect required model or inference spec")
+        
     def _build_for_transformers(self):
         """Method that triggers model build
 
@@ -305,6 +348,26 @@ class Transformers(ABC):
         """
         self.secret_key = None
         self.model_server = ModelServer.MMS
+
+        if not os.path.exists(self.model_path):
+            os.makedirs(self.model_path)
+
+        code_path = Path(self.model_path).joinpath("code")
+        # save the model or inference spec in cloud pickle format
+        if self.inference_spec:
+            save_pkl(code_path, (self.inference_spec, self.schema_builder))
+            logger.info("PKL file saved to file: {}".format(code_path))
+
+        self._auto_detect_container()
+
+        self.secret_key = prepare_for_mms(
+            model_path=self.model_path,
+            shared_libs=self.shared_libs,
+            dependencies=self.dependencies,
+            session=self.sagemaker_session,
+            image_uri=self.image_uri,
+            inference_spec=self.inference_spec,
+        )
 
         self._build_transformers_env()
 

@@ -1,18 +1,24 @@
 """This module is for SageMaker inference.py."""
 
 from __future__ import absolute_import
+import os
 import io
 import cloudpickle
 import shutil
+import platform
 from pathlib import Path
 from functools import partial
 from sagemaker.serve.spec.inference_spec import InferenceSpec
+from sagemaker.serve.validations.check_integrity import perform_integrity_check
 import logging
 
 logger = logging.getLogger(__name__)
 
 inference_spec = None
 schema_builder = None
+SHARED_LIBS_DIR = Path(__file__).parent.parent.joinpath("shared_libs")
+SERVE_PATH = Path(__file__).parent.joinpath("serve.pkl")
+METADATA_PATH = Path(__file__).parent.joinpath("metadata.json")
 
 
 def model_fn(model_dir):
@@ -27,9 +33,11 @@ def model_fn(model_dir):
     with open(str(serve_path), mode="rb") as file:
         global inference_spec, schema_builder
         obj = cloudpickle.load(file)
-        if isinstance(obj[0], InferenceSpec): 
+        if isinstance(obj[0], InferenceSpec):
             inference_spec, schema_builder = obj
-            
+
+    logger.info("in model_fn")
+
     if inference_spec:
         return partial(inference_spec.invoke, model=inference_spec.load(model_dir))
 
@@ -46,11 +54,13 @@ def input_fn(input_data, content_type):
                 io.BytesIO(input_data), content_type[0]
             )
     except Exception as e:
+        logger.error("Encountered error: %s in deserialize_response." % e)
         raise Exception("Encountered error in deserialize_request.") from e
 
 
 def predict_fn(input_data, predict_callable):
     """Placeholder docstring"""
+    logger.info("in predict_fn")
     return predict_callable(input_data)
 
 
@@ -66,3 +76,28 @@ def output_fn(predictions, accept_type):
         raise Exception("Encountered error in serialize_response.") from e
 
 
+def _run_preflight_diagnostics():
+    _py_vs_parity_check()
+    _pickle_file_integrity_check()
+
+
+def _py_vs_parity_check():
+    container_py_vs = platform.python_version()
+    local_py_vs = os.getenv("LOCAL_PYTHON")
+
+    if not local_py_vs or container_py_vs.split(".")[1] != local_py_vs.split(".")[1]:
+        logger.warning(
+            f"The local python version {local_py_vs} differs from the python version "
+            f"{container_py_vs} on the container. Please align the two to avoid unexpected behavior"
+        )
+
+
+def _pickle_file_integrity_check():
+    with open(SERVE_PATH, "rb") as f:
+        buffer = f.read()
+
+    perform_integrity_check(buffer=buffer, metadata_path=METADATA_PATH)
+
+
+# on import, execute
+_run_preflight_diagnostics()
