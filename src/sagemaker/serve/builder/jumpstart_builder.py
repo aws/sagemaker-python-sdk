@@ -42,10 +42,11 @@ from sagemaker.serve.utils.optimize_utils import (
     _update_environment_variables,
     _extract_speculative_draft_model_provider,
     _is_image_compatible_with_optimization_job,
-    _extracts_and_validates_speculative_model_source,
     _generate_channel_name,
-    _generate_additional_model_data_sources,
-    _is_s3_uri,
+    _extract_optimization_config_and_env,
+    _is_optimized,
+    _custom_speculative_decoding,
+    SPECULATIVE_DRAFT_MODEL,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -121,7 +122,7 @@ class JumpStart(ABC):
         self.speculative_decoding_draft_model_source = None
 
     @abstractmethod
-    def _prepare_for_mode(self):
+    def _prepare_for_mode(self, **kwargs):
         """Placeholder docstring"""
 
     @abstractmethod
@@ -130,6 +131,9 @@ class JumpStart(ABC):
 
     def _is_jumpstart_model_id(self) -> bool:
         """Placeholder docstring"""
+        if self.model is None:
+            return False
+
         try:
             model_uris.retrieve(model_id=self.model, model_version="*", model_scope=_JS_SCOPE)
         except KeyError:
@@ -141,8 +145,9 @@ class JumpStart(ABC):
 
     def _create_pre_trained_js_model(self) -> Type[Model]:
         """Placeholder docstring"""
-        pysdk_model = JumpStartModel(self.model, vpc_config=self.vpc_config)
-        pysdk_model.sagemaker_session = self.sagemaker_session
+        pysdk_model = JumpStartModel(
+            self.model, vpc_config=self.vpc_config, sagemaker_session=self.sagemaker_session
+        )
 
         self._original_deploy = pysdk_model.deploy
         pysdk_model.deploy = self._js_builder_deploy_wrapper
@@ -151,6 +156,7 @@ class JumpStart(ABC):
     @_capture_telemetry("jumpstart.deploy")
     def _js_builder_deploy_wrapper(self, *args, **kwargs) -> Type[PredictorBase]:
         """Placeholder docstring"""
+        env = {}
         if "mode" in kwargs and kwargs.get("mode") != self.mode:
             overwrite_mode = kwargs.get("mode")
             # mode overwritten by customer during model.deploy()
@@ -167,7 +173,8 @@ class JumpStart(ABC):
                     or not hasattr(self, "prepared_for_tgi")
                     or not hasattr(self, "prepared_for_mms")
                 ):
-                    self.pysdk_model.model_data, env = self._prepare_for_mode()
+                    if not _is_optimized(self.pysdk_model):
+                        self.pysdk_model.model_data, env = self._prepare_for_mode()
             elif overwrite_mode == Mode.LOCAL_CONTAINER:
                 self.mode = self.pysdk_model.mode = Mode.LOCAL_CONTAINER
 
@@ -198,7 +205,6 @@ class JumpStart(ABC):
                     )
 
                 self._prepare_for_mode()
-                env = {}
             else:
                 raise ValueError("Mode %s is not supported!" % overwrite_mode)
 
@@ -726,25 +732,17 @@ class JumpStart(ABC):
                 )
 
         model_source = _generate_model_source(self.pysdk_model.model_data, accept_eula)
-
-        optimization_config = {}
-        if quantization_config:
-            optimization_config["ModelQuantizationConfig"] = quantization_config
-            pysdk_model_env_vars = _update_environment_variables(
-                pysdk_model_env_vars, quantization_config["OverrideEnvironment"]
-            )
-        if compilation_config:
-            optimization_config["ModelCompilationConfig"] = compilation_config
-            pysdk_model_env_vars = _update_environment_variables(
-                pysdk_model_env_vars, compilation_config["OverrideEnvironment"]
-            )
+        optimization_config, env = _extract_optimization_config_and_env(
+            quantization_config, compilation_config
+        )
+        pysdk_model_env_vars = _update_environment_variables(pysdk_model_env_vars, env)
 
         output_config = {"S3OutputLocation": output_path}
         if kms_key:
             output_config["KmsKeyId"] = kms_key
         if not instance_type:
-            instance_type = self.pysdk_model.deployment_config.get("DeploymentArgs").get(
-                "InstanceType"
+            instance_type = self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
+                "InstanceType", _get_nb_instance()
             )
 
         create_optimization_job_args = {
@@ -771,6 +769,10 @@ class JumpStart(ABC):
             self.pysdk_model.env.update(pysdk_model_env_vars)
         if accept_eula:
             self.pysdk_model.accept_eula = accept_eula
+            if isinstance(self.pysdk_model.model_data, dict):
+                self.pysdk_model.model_data["S3DataSource"]["ModelAccessConfig"] = {
+                    "AcceptEula": True
+                }
 
         if quantization_config or compilation_config:
             return create_optimization_job_args
@@ -806,7 +808,6 @@ class JumpStart(ABC):
         if speculative_decoding_config:
             model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
-            speculative_draft_model = f"/opt/ml/additional-model-data-sources/{channel_name}"
 
             if model_provider == "sagemaker":
                 additional_model_data_sources = self.pysdk_model.deployment_config.get(
@@ -825,31 +826,17 @@ class JumpStart(ABC):
                         raise ValueError(
                             "Cannot find deployment config compatible for optimization job."
                         )
-            else:
-                model_source = _extracts_and_validates_speculative_model_source(
-                    speculative_decoding_config
+
+                self.pysdk_model.env.update(
+                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}"}
                 )
-
-                if _is_s3_uri(model_source):
-                    self.pysdk_model.additional_model_data_sources = (
-                        _generate_additional_model_data_sources(
-                            model_source, channel_name, accept_eula
-                        )
-                    )
-                else:
-                    speculative_draft_model = model_source
-
-            self.pysdk_model.env = _update_environment_variables(
-                self.pysdk_model.env,
-                {"OPTION_SPECULATIVE_DRAFT_MODEL": speculative_draft_model},
-            )
-            self.pysdk_model.add_tags(
-                {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": model_provider},
-            )
-            if accept_eula and isinstance(self.pysdk_model.model_data, dict):
-                self.pysdk_model.model_data["S3DataSource"]["ModelAccessConfig"] = {
-                    "AcceptEula": True
-                }
+                self.pysdk_model.add_tags(
+                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
+                )
+            else:
+                self.pysdk_model = _custom_speculative_decoding(
+                    self.pysdk_model, speculative_decoding_config, accept_eula
+                )
 
     def _find_compatible_deployment_config(
         self, speculative_decoding_config: Optional[Dict] = None

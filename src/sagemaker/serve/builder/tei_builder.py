@@ -25,6 +25,7 @@ from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
 )
 from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
+from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.predictors import TeiLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -162,7 +163,8 @@ class TEI(ABC):
             self.pysdk_model.role = kwargs.get("role")
             del kwargs["role"]
 
-        self._prepare_for_mode()
+        if not _is_optimized(self.pysdk_model):
+            self._prepare_for_mode()
 
         # if the weights have been cached via local container mode -> set to offline
         if str(Mode.LOCAL_CONTAINER) in self.modes:

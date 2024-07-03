@@ -15,13 +15,15 @@ from __future__ import absolute_import
 
 import re
 import logging
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, Union, List, Tuple
 
 from sagemaker import Model
 from sagemaker.enums import Tag
 
-
 logger = logging.getLogger(__name__)
+
+
+SPECULATIVE_DRAFT_MODEL = "/opt/ml/additional-model-data-sources"
 
 
 def _is_image_compatible_with_optimization_job(image_uri: Optional[str]) -> bool:
@@ -72,6 +74,25 @@ def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -
         {"Key": Tag.OPTIMIZATION_JOB_NAME, "Value": optimization_response["OptimizationJobName"]}
     )
     return pysdk_model
+
+
+def _is_optimized(pysdk_model: Model) -> bool:
+    """Checks whether an optimization model is optimized.
+
+    Args:
+        pysdk_model (Model): A PySDK model.
+
+    Return:
+        bool: Whether the given model type is optimized.
+    """
+    optimized_tags = [Tag.OPTIMIZATION_JOB_NAME, Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER]
+    if hasattr(pysdk_model, "_tags") and pysdk_model._tags:
+        if isinstance(pysdk_model._tags, dict):
+            return pysdk_model._tags.get("Key") in optimized_tags
+        for tag in pysdk_model._tags:
+            if tag.get("Key") in optimized_tags:
+                return True
+    return False
 
 
 def _generate_model_source(
@@ -224,3 +245,83 @@ def _is_s3_uri(s3_uri: Optional[str]) -> bool:
         return False
 
     return re.match("^s3://([^/]+)/?(.*)$", s3_uri) is not None
+
+
+def _extract_optimization_config_and_env(
+    quantization_config: Optional[Dict] = None, compilation_config: Optional[Dict] = None
+) -> Optional[Tuple[Optional[Dict], Optional[Dict]]]:
+    """Extracts optimization config and environment variables.
+
+    Args:
+        quantization_config (Optional[Dict]): The quantization config.
+        compilation_config (Optional[Dict]): The compilation config.
+
+    Returns:
+        Optional[Tuple[Optional[Dict], Optional[Dict]]]:
+            The optimization config and environment variables.
+    """
+    if quantization_config:
+        return {"ModelQuantizationConfig": quantization_config}, quantization_config.get(
+            "OverrideEnvironment"
+        )
+    if compilation_config:
+        return {"ModelCompilationConfig": compilation_config}, compilation_config.get(
+            "OverrideEnvironment"
+        )
+    return None, None
+
+
+def _normalize_local_model_path(local_model_path: Optional[str]) -> Optional[str]:
+    """Normalizes the local model path.
+
+    Args:
+        local_model_path (Optional[str]): The local model path.
+
+    Returns:
+        Optional[str]: The normalized model path.
+    """
+    if local_model_path is None:
+        return local_model_path
+
+    # Removes /code or /code/ path at the end of local_model_path,
+    # as it is appended during artifacts upload.
+    pattern = r"/code/?$"
+    if re.search(pattern, local_model_path):
+        return re.sub(pattern, "", local_model_path)
+    return local_model_path
+
+
+def _custom_speculative_decoding(
+    model: Model,
+    speculative_decoding_config: Optional[Dict],
+    accept_eula: Optional[bool] = False,
+) -> Model:
+    """Modifies the given model for speculative decoding config with custom provider.
+
+    Args:
+        model (Model): The model.
+        speculative_decoding_config (Optional[Dict]): The speculative decoding config.
+        accept_eula (Optional[bool]): Whether to accept eula or not.
+    """
+
+    if speculative_decoding_config:
+        additional_model_source = _extracts_and_validates_speculative_model_source(
+            speculative_decoding_config
+        )
+
+        if _is_s3_uri(additional_model_source):
+            channel_name = _generate_channel_name(model.additional_model_data_sources)
+            speculative_draft_model = f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}"
+
+            model.additional_model_data_sources = _generate_additional_model_data_sources(
+                additional_model_source, channel_name, accept_eula
+            )
+        else:
+            speculative_draft_model = additional_model_source
+
+        model.env.update({"OPTION_SPECULATIVE_DRAFT_MODEL": speculative_draft_model})
+        model.add_tags(
+            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "customer"},
+        )
+
+    return model

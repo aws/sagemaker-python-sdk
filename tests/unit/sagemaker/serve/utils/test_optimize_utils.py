@@ -12,7 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from unittest.mock import Mock
+import unittest
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -26,6 +27,10 @@ from sagemaker.serve.utils.optimize_utils import (
     _is_s3_uri,
     _generate_additional_model_data_sources,
     _generate_channel_name,
+    _extract_optimization_config_and_env,
+    _normalize_local_model_path,
+    _is_optimized,
+    _custom_speculative_decoding,
 )
 
 mock_optimization_job_output = {
@@ -136,6 +141,19 @@ def test_generate_optimized_model():
     )
 
 
+def test_is_optimized():
+    model = Mock()
+
+    model._tags = {"Key": Tag.OPTIMIZATION_JOB_NAME}
+    assert _is_optimized(model) is True
+
+    model._tags = [{"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER}]
+    assert _is_optimized(model) is True
+
+    model._tags = [{"Key": Tag.FINE_TUNING_MODEL_PATH}]
+    assert _is_optimized(model) is False
+
+
 @pytest.mark.parametrize(
     "env, new_env, output_env",
     [
@@ -233,3 +251,145 @@ def test_generate_additional_model_data_sources():
 )
 def test_is_s3_uri(s3_uri, expected):
     assert _is_s3_uri(s3_uri) == expected
+
+
+@pytest.mark.parametrize(
+    "quantization_config, compilation_config, expected_config, expected_env",
+    [
+        (
+            None,
+            {
+                "OverrideEnvironment": {
+                    "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                }
+            },
+            {
+                "ModelCompilationConfig": {
+                    "OverrideEnvironment": {
+                        "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                    }
+                },
+            },
+            {
+                "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+            },
+        ),
+        (
+            {
+                "OverrideEnvironment": {
+                    "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                }
+            },
+            None,
+            {
+                "ModelQuantizationConfig": {
+                    "OverrideEnvironment": {
+                        "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                    }
+                },
+            },
+            {
+                "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+            },
+        ),
+        (None, None, None, None),
+    ],
+)
+def test_extract_optimization_config_and_env(
+    quantization_config, compilation_config, expected_config, expected_env
+):
+    assert _extract_optimization_config_and_env(quantization_config, compilation_config) == (
+        expected_config,
+        expected_env,
+    )
+
+
+@pytest.mark.parametrize(
+    "my_path, expected_path",
+    [
+        ("local/path/llama/code", "local/path/llama"),
+        ("local/path/llama/code/", "local/path/llama"),
+        ("local/path/llama/", "local/path/llama/"),
+        ("local/path/llama", "local/path/llama"),
+    ],
+)
+def test_normalize_local_model_path(my_path, expected_path):
+    assert _normalize_local_model_path(my_path) == expected_path
+
+
+class TestCustomSpeculativeDecodingConfig(unittest.TestCase):
+
+    @patch("sagemaker.model.Model")
+    def test_with_s3_hf(self, mock_model):
+        mock_model.env = {}
+        mock_model.additional_model_data_sources = None
+        speculative_decoding_config = {
+            "ModelSource": "s3://bucket/djl-inference-2024-07-02-00-03-32-127/code"
+        }
+
+        res_model = _custom_speculative_decoding(mock_model, speculative_decoding_config)
+
+        mock_model.add_tags.assert_called_once_with(
+            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "customer"}
+        )
+
+        self.assertEqual(
+            res_model.env,
+            {"OPTION_SPECULATIVE_DRAFT_MODEL": "/opt/ml/additional-model-data-sources/draft_model"},
+        )
+        self.assertEqual(
+            res_model.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/djl-inference-2024-07-02-00-03-32-127/code",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                    },
+                }
+            ],
+        )
+
+    @patch("sagemaker.model.Model")
+    def test_with_s3_js(self, mock_model):
+        mock_model.env = {}
+        mock_model.additional_model_data_sources = None
+        speculative_decoding_config = {
+            "ModelSource": "s3://bucket/huggingface-pytorch-tgi-inference"
+        }
+
+        res_model = _custom_speculative_decoding(mock_model, speculative_decoding_config, True)
+
+        self.assertEqual(
+            res_model.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/huggingface-pytorch-tgi-inference",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                        "ModelAccessConfig": {"ACCEPT_EULA": True},
+                    },
+                }
+            ],
+        )
+
+    @patch("sagemaker.model.Model")
+    def test_with_non_s3(self, mock_model):
+        mock_model.env = {}
+        mock_model.additional_model_data_sources = None
+        speculative_decoding_config = {"ModelSource": "huggingface-pytorch-tgi-inference"}
+
+        res_model = _custom_speculative_decoding(mock_model, speculative_decoding_config, False)
+
+        self.assertIsNone(res_model.additional_model_data_sources)
+        self.assertEqual(
+            res_model.env,
+            {"OPTION_SPECULATIVE_DRAFT_MODEL": "huggingface-pytorch-tgi-inference"},
+        )
+
+        mock_model.add_tags.assert_called_once_with(
+            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "customer"}
+        )

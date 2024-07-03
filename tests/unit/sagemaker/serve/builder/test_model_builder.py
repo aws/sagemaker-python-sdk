@@ -245,6 +245,10 @@ class TestModelBuilder(unittest.TestCase):
         mock_build_for_ts.assert_called_once()
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -263,6 +267,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -349,6 +354,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.serve_settings, mock_setting_object)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -367,6 +376,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -551,6 +561,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.serve_settings, mock_setting_object)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -569,6 +583,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -653,6 +668,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual("sample agent ModelBuilder", user_agent)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder.save_xgboost")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
@@ -673,6 +692,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
         mock_save_xgb,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -1001,6 +1021,10 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1021,6 +1045,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_fw_version.return_value = framework, version
@@ -2221,6 +2246,10 @@ class TestModelBuilder(unittest.TestCase):
         assert isinstance(predictor, TensorflowServingLocalPredictor)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.tf_serving_builder.prepare_for_tf_serving")
     @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
@@ -2249,6 +2278,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version,
         mock_s3_downloader,
         mock_prepare_for_tf_serving,
+        mock_is_jumpstart_model_id,
     ):
         mock_s3_downloader.return_value = []
         mock_detect_container.return_value = mock_image_uri
@@ -2297,6 +2327,8 @@ class TestModelBuilder(unittest.TestCase):
             mock_role_arn,
             mock_session,
         )
+
+        # builder.build(sagemaker_session=mock_session, role_arn=mock_role_arn, mode=Mode.SAGEMAKER_ENDPOINT)
 
     @pytest.mark.skip(reason="Implementation not completed")
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)

@@ -25,6 +25,7 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelInvocationException,
     SkipTuningComboException,
 )
+from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.tuning import (
     _serial_benchmark,
     _concurrent_benchmark,
@@ -201,7 +202,8 @@ class TGI(ABC):
             self.pysdk_model.role = kwargs.get("role")
             del kwargs["role"]
 
-        self._prepare_for_mode()
+        if not _is_optimized(self.pysdk_model):
+            self._prepare_for_mode()
 
         # if the weights have been cached via local container mode -> set to offline
         if str(Mode.LOCAL_CONTAINER) in self.modes:

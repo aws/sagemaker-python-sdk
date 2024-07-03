@@ -27,6 +27,7 @@ from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.serve.model_server.multi_model_server.prepare import (
     _create_dir_structure,
 )
+from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -223,7 +224,8 @@ class Transformers(ABC):
             self.pysdk_model.role = kwargs.get("role")
             del kwargs["role"]
 
-        self._prepare_for_mode()
+        if not _is_optimized(self.pysdk_model):
+            self._prepare_for_mode()
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
