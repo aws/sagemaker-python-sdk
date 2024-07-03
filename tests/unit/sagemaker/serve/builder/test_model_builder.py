@@ -147,7 +147,7 @@ class TestModelBuilder(unittest.TestCase):
         )
         self.assertRaisesRegex(
             Exception,
-            "Missing required parameter `model` or 'ml_flow' path",
+            "Missing required parameter `model` or 'ml_flow' path or inf_spec",
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -169,11 +169,25 @@ class TestModelBuilder(unittest.TestCase):
         mock_build_for_ts.assert_called_once()
 
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_torchserve")
+    def test_model_server_override_torchserve_with_inf_spec(
+        self, mock_build_for_ts, mock_serve_settings
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE, inference_spec="some value")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_model_server_override_torchserve_without_model_or_mlflow(self, mock_serve_settings):
         builder = ModelBuilder(model_server=ModelServer.TORCHSERVE)
         self.assertRaisesRegex(
             Exception,
-            "Missing required parameter `model` or 'ml_flow' path",
+            "Missing required parameter `model` or 'ml_flow' path or inf_spec",
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
