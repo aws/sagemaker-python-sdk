@@ -3176,6 +3176,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["Autotune"] = {"Mode": "Enabled"}
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
+        )
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -3287,6 +3290,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["WarmStartConfig"] = warm_start_config
 
         tags = _append_project_tags(format_tags(tags))
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
+        )
         if tags is not None:
             tune_request["Tags"] = tags
 
