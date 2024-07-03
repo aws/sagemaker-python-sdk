@@ -57,6 +57,7 @@ from sagemaker.utils import (
     _resolve_routing_config,
     tag_exists,
     _validate_new_tags,
+    remove_tag_with_key,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -2124,3 +2125,24 @@ class TestTags(TestCase):
         new_tag = {"Key": "project-2", "Value": "my-project-2"}
 
         self.assertEqual(_validate_new_tags(new_tag, None), new_tag)
+
+    def test_remove_existing_tag(self):
+        original_tags = [
+            {"Key": "Tag1", "Value": "Value1"},
+            {"Key": "Tag2", "Value": "Value2"},
+            {"Key": "Tag3", "Value": "Value3"},
+        ]
+        expected_output = [{"Key": "Tag1", "Value": "Value1"}, {"Key": "Tag3", "Value": "Value3"}]
+        self.assertEqual(remove_tag_with_key("Tag2", original_tags), expected_output)
+
+    def test_remove_non_existent_tag(self):
+        original_tags = [
+            {"Key": "Tag1", "Value": "Value1"},
+            {"Key": "Tag2", "Value": "Value2"},
+            {"Key": "Tag3", "Value": "Value3"},
+        ]
+        self.assertEqual(remove_tag_with_key("NonExistentTag", original_tags), original_tags)
+
+    def test_remove_only_tag(self):
+        original_tags = [{"Key": "Tag1", "Value": "Value1"}]
+        self.assertIsNone(remove_tag_with_key("Tag1", original_tags))

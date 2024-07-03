@@ -116,7 +116,9 @@ class JumpStart(ABC):
         self.model_metadata = None
         self.role_arn = None
         self.is_fine_tuned = None
-        self.is_gated = None
+        self.is_compiled = False
+        self.is_quantized = False
+        self.speculative_decoding_draft_model_source = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -503,6 +505,18 @@ class JumpStart(ABC):
 
         self.pysdk_model.set_deployment_config(config_name, instance_type)
 
+        self.instance_type = instance_type
+
+        # JS-benchmarked models only include SageMaker-provided SD models
+        if self.pysdk_model.additional_model_data_sources:
+            self.speculative_decoding_draft_model_source = "sagemaker"
+            self.pysdk_model.add_tags(
+                {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
+            )
+            self.pysdk_model.remove_tag_with_key(Tag.OPTIMIZATION_JOB_NAME)
+            self.pysdk_model.remove_tag_with_key(Tag.FINE_TUNING_MODEL_PATH)
+            self.pysdk_model.remove_tag_with_key(Tag.FINE_TUNING_JOB_NAME)
+
     def get_deployment_config(self) -> Optional[Dict[str, Any]]:
         """Gets the deployment config to apply to the model.
 
@@ -775,10 +789,8 @@ class JumpStart(ABC):
             s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
 
         if s3_uri is None:
-            self.is_gated = False
-        else:
-            self.is_gated = "private" in s3_uri
-        return self.is_gated
+            return False
+        return "private" in s3_uri
 
     def _set_additional_model_source(
         self,

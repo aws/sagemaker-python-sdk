@@ -314,17 +314,15 @@ class TestTelemetryLogger(unittest.TestCase):
         mock_model_builder.model_server = ModelServer.TORCHSERVE
         mock_model_builder.sagemaker_session.endpoint_arn = None
         mock_model_builder.is_fine_tuned = True
-        mock_model_builder.is_gated = True
+        mock_model_builder.is_compiled = True
+        mock_model_builder.is_quantized = True
+        mock_model_builder.speculative_decoding_draft_model_source = "sagemaker"
 
         mock_speculative_decoding_config = MagicMock()
         mock_config = {"ModelProvider": "sagemaker"}
         mock_speculative_decoding_config.__getitem__.side_effect = mock_config.__getitem__
 
-        mock_model_builder.mock_optimize(
-            quantization_config=Mock(),
-            compilation_config=Mock(),
-            speculative_decoding_config=mock_speculative_decoding_config,
-        )
+        mock_model_builder.mock_optimize()
 
         args = mock_send_telemetry.call_args.args
         latency = str(args[5]).split("latency=")[1]
@@ -333,7 +331,6 @@ class TestTelemetryLogger(unittest.TestCase):
             "&x-modelServer=1"
             f"&x-sdkVersion={SDK_VERSION}"
             f"&x-fineTuned=1"
-            f"&x-gated=1"
             f"&x-compiled=1"
             f"&x-quantized=1"
             f"&x-sdDraftModelSource=1"

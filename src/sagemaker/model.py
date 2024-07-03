@@ -74,6 +74,7 @@ from sagemaker.utils import (
     Tags,
     _resolve_routing_config,
     _validate_new_tags,
+    remove_tag_with_key,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -425,6 +426,14 @@ class Model(ModelBase, InferenceRecommenderMixin):
             tags (Tags): Tags to add.
         """
         self._tags = _validate_new_tags(tags, self._tags)
+
+    def remove_tag_with_key(self, key: str) -> None:
+        """Remove a tag with the given key from the list of tags.
+
+        Args:
+            key (str): The key of the tag to remove.
+        """
+        self._tags = remove_tag_with_key(key, self._tags)
 
     @classmethod
     def attach(

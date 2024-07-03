@@ -23,6 +23,7 @@ import re
 
 from pathlib import Path
 
+from sagemaker.enums import Tag
 from sagemaker.s3 import S3Downloader
 
 from sagemaker import Session
@@ -69,6 +70,7 @@ from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
 from sagemaker.serve.utils.optimize_utils import (
     _generate_optimized_model,
+    _extract_speculative_draft_model_provider,
 )
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
@@ -647,11 +649,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         mlflow_model_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
         artifact_path = self._get_artifact_path(mlflow_model_path)
         if not self._mlflow_metadata_exists(artifact_path):
-            logger.info(
-                "MLflow model metadata not detected in %s. ModelBuilder is not "
-                "handling MLflow model input",
-                mlflow_model_path,
-            )
             return
 
         self._initialize_for_mlflow(artifact_path)
@@ -1144,6 +1141,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Model: A deployable ``Model`` object.
         """
+        self.is_compiled = compilation_config is not None
+        self.is_quantized = quantization_config is not None
+        self.speculative_decoding_draft_model_source = _extract_speculative_draft_model_provider(
+            speculative_decoding_config
+        )
+
         if quantization_config and compilation_config:
             raise ValueError("Quantization config and compilation config are mutually exclusive.")
 
@@ -1179,5 +1182,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
             job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
             return _generate_optimized_model(self.pysdk_model, job_status)
+
+        self.pysdk_model.remove_tag_with_key(Tag.OPTIMIZATION_JOB_NAME)
+        if not speculative_decoding_config:
+            self.pysdk_model.remove_tag_with_key(Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER)
 
         return self.pysdk_model

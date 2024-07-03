@@ -94,15 +94,38 @@ def _capture_telemetry(func_name: str):
             logger.info(TELEMETRY_OPT_OUT_MESSAGING)
             response = None
             caught_ex = None
-
+            status = "1"
+            failure_reason = None
+            failure_type = None
             extra = f"{func_name}"
+
+            start_timer = perf_counter()
+            try:
+                response = func(self, *args, **kwargs)
+            except (
+                ModelBuilderException,
+                exceptions.CapacityError,
+                exceptions.UnexpectedStatusException,
+                exceptions.AsyncInferenceError,
+            ) as e:
+                status = "0"
+                caught_ex = e
+                failure_reason = str(e)
+                failure_type = e.__class__.__name__
+            except Exception as e:  # pylint: disable=W0703
+                raise e
+
+            stop_timer = perf_counter()
+            elapsed = stop_timer - start_timer
 
             if self.model_server:
                 extra += f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
 
             if self.image_uri:
                 image_uri_tail = self.image_uri.split("/")[1]
-                image_uri_option = _get_image_uri_option(self.image_uri, self._is_custom_image_uri)
+                image_uri_option = _get_image_uri_option(
+                    self.image_uri, getattr(self, "_is_custom_image_uri", False)
+                )
 
             if self.image_uri:
                 extra += f"&x-imageTag={image_uri_tail}"
@@ -128,63 +151,36 @@ def _capture_telemetry(func_name: str):
 
             if getattr(self, "is_fine_tuned", False):
                 extra += "&x-fineTuned=1"
-            if getattr(self, "is_gated", False):
-                extra += "&x-gated=1"
 
-            if kwargs.get("compilation_config"):
+            if getattr(self, "is_compiled", False):
                 extra += "&x-compiled=1"
-            if kwargs.get("quantization_config"):
+            if getattr(self, "is_quantized", False):
                 extra += "&x-quantized=1"
-            if kwargs.get("speculative_decoding_config"):
-                model_provider = kwargs["speculative_decoding_config"]["ModelProvider"]
+            if getattr(self, "speculative_decoding_draft_model_source", False):
                 model_provider_enum = (
                     SpeculativeDecodingDraftModelSource.SAGEMAKER
-                    if model_provider.lower() == "sagemaker"
+                    if self.speculative_decoding_draft_model_source == "sagemaker"
                     else SpeculativeDecodingDraftModelSource.CUSTOM
                 )
                 model_provider_value = SD_DRAFT_MODEL_SOURCE_TO_CODE[str(model_provider_enum)]
                 extra += f"&x-sdDraftModelSource={model_provider_value}"
 
-            start_timer = perf_counter()
-            try:
-                response = func(self, *args, **kwargs)
-                stop_timer = perf_counter()
-                elapsed = stop_timer - start_timer
-                extra += f"&x-latency={round(elapsed, 2)}"
-                if not self.serve_settings.telemetry_opt_out:
-                    _send_telemetry(
-                        "1",
-                        MODE_TO_CODE[str(self.mode)],
-                        self.sagemaker_session,
-                        None,
-                        None,
-                        extra,
-                    )
-            except (
-                ModelBuilderException,
-                exceptions.CapacityError,
-                exceptions.UnexpectedStatusException,
-                exceptions.AsyncInferenceError,
-            ) as e:
-                stop_timer = perf_counter()
-                elapsed = stop_timer - start_timer
-                extra += f"&x-latency={round(elapsed, 2)}"
-                if not self.serve_settings.telemetry_opt_out:
-                    _send_telemetry(
-                        "0",
-                        MODE_TO_CODE[str(self.mode)],
-                        self.sagemaker_session,
-                        str(e),
-                        e.__class__.__name__,
-                        extra,
-                    )
-                caught_ex = e
-            except Exception as e:  # pylint: disable=W0703
-                caught_ex = e
-            finally:
-                if caught_ex:
-                    raise caught_ex
-                return response  # pylint: disable=W0150
+            extra += f"&x-latency={round(elapsed, 2)}"
+
+            if not self.serve_settings.telemetry_opt_out:
+                _send_telemetry(
+                    status,
+                    MODE_TO_CODE[str(self.mode)],
+                    self.sagemaker_session,
+                    failure_reason,
+                    failure_type,
+                    extra,
+                )
+
+            if caught_ex:
+                raise caught_ex
+
+            return response
 
         return wrapper
 

@@ -1873,3 +1873,30 @@ def _validate_new_tags(new_tags: Optional[Tags], curr_tags: Optional[Tags]) -> O
                 curr_tags.append(new_tag)
 
     return curr_tags
+
+
+def remove_tag_with_key(key: str, tags: Optional[Tags]) -> Optional[Tags]:
+    """Remove a tag with the given key from the list of tags.
+
+    Args:
+        key (str): The key of the tag to remove.
+        tags (Optional[Tags]): The current list of tags.
+
+    Returns:
+        Optional[Tags]: The updated list of tags with the tag removed.
+    """
+    if tags is None:
+        return tags
+    if isinstance(tags, dict):
+        tags = [tags]
+
+    updated_tags = []
+    for tag in tags:
+        if tag["Key"] != key:
+            updated_tags.append(tag)
+
+    if not updated_tags:
+        return None
+    if len(updated_tags) == 1:
+        return updated_tags[0]
+    return updated_tags
