@@ -286,7 +286,7 @@ class Hub:
             )
 
         except Exception as ex:
-            logging.info("Recieved expection while calling APIs for ContentType Model: " + str(ex))
+            logging.info("Recieved exeption while calling APIs for ContentType Model, retrying with ContentType ModelReference: " + str(ex))
             model_version = get_hub_model_version(
                 hub_model_name=model_name,
                 hub_model_type=HubContentType.MODEL_REFERENCE.value,
