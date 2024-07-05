@@ -87,6 +87,74 @@ mock_model_data_str = (
     "/artifacts/inference-prepack/v1.0.0/"
 )
 
+mock_optimization_job_response = {
+    "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:312206380606:optimization-job"
+    "/modelbuilderjob-c9b28846f963497ca540010b2aa2ec8d",
+    "OptimizationJobStatus": "COMPLETED",
+    "OptimizationStartTime": "",
+    "OptimizationEndTime": "",
+    "CreationTime": "",
+    "LastModifiedTime": "",
+    "OptimizationJobName": "modelbuilderjob-c9b28846f963497ca540010b2aa2ec8d",
+    "ModelSource": {
+        "S3": {
+            "S3Uri": "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/"
+            "meta-textgeneration-llama-3-8b-instruct/artifacts/inference-prepack/v1.1.0/"
+        }
+    },
+    "OptimizationEnvironment": {
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "HF_MODEL_ID": "/opt/ml/model",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "OPTION_DTYPE": "fp16",
+        "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+        "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+        "OPTION_N_POSITIONS": "2048",
+        "OPTION_ROLLING_BATCH": "auto",
+        "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+        "SAGEMAKER_ENV": "1",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
+    },
+    "DeploymentInstanceType": "ml.inf2.48xlarge",
+    "OptimizationConfigs": [
+        {
+            "ModelCompilationConfig": {
+                "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.28.0-neuronx-sdk2.18.2",
+                "OverrideEnvironment": {
+                    "OPTION_DTYPE": "fp16",
+                    "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                    "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                    "OPTION_N_POSITIONS": "2048",
+                    "OPTION_ROLLING_BATCH": "auto",
+                    "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                },
+            }
+        }
+    ],
+    "OutputConfig": {
+        "S3OutputLocation": "s3://dont-delete-ss-jarvis-integ-test-312206380606-us-west-2/"
+        "code/a75a061aba764f2aa014042bcdc1464b/"
+    },
+    "OptimizationOutput": {
+        "RecommendedInferenceImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+        "djl-inference:0.28.0-neuronx-sdk2.18.2"
+    },
+    "RoleArn": "arn:aws:iam::312206380606:role/service-role/AmazonSageMaker-ExecutionRole-20230707T131628",
+    "StoppingCondition": {"MaxRuntimeInSeconds": 36000},
+    "ResponseMetadata": {
+        "RequestId": "704c7bcd-41e2-4d73-8039-262ff6a3f38b",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "x-amzn-requestid": "704c7bcd-41e2-4d73-8039-262ff6a3f38b",
+            "content-type": "application/x-amz-json-1.1",
+            "content-length": "1787",
+            "date": "Thu, 04 Jul 2024 16:55:50 GMT",
+        },
+        "RetryAttempts": 0,
+    },
+}
+
 
 class TestJumpStartBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
@@ -1078,3 +1146,240 @@ class TestJumpStartBuilder(unittest.TestCase):
                 {"key": Tag.FINE_TUNING_MODEL_PATH, "value": mock_fine_tuning_model_path},
             ]
         )
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_quantize_for_jumpstart(
+        self,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+        mock_sagemaker_session = Mock()
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.env = {"SAGEMAKER_ENV": "1"}
+        mock_pysdk_model.model_data = mock_model_data
+        mock_pysdk_model.image_uri = mock_tgi_image_uri
+        mock_pysdk_model.list_deployment_configs.return_value = DEPLOYMENT_CONFIGS
+        mock_pysdk_model.deployment_config = DEPLOYMENT_CONFIGS[0]
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species "
+            "of turtle native to the brackish coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a "
+                "species of turtle native to the brackish coastal "
+                "tidal marshes of the east coast."
+            }
+        ]
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_jumpstart(
+            accept_eula=True,
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            env_vars={
+                "OPTION_TENSOR_PARALLEL_DEGREE": "1",
+                "OPTION_MAX_ROLLING_BATCH_SIZE": "2",
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertIsNotNone(out_put)
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_gated_model",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    def test_optimize_compile_for_jumpstart_without_neuron_env(
+        self,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_is_gated_model,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = (
+            lambda *args: mock_optimization_job_response
+        )
+
+        mock_pre_trained_model.return_value = MagicMock()
+        mock_pre_trained_model.return_value.env = dict()
+        mock_pre_trained_model.return_value.model_data = mock_model_data
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+        mock_pre_trained_model.return_value.list_deployment_configs.return_value = (
+            DEPLOYMENT_CONFIGS
+        )
+        mock_pre_trained_model.return_value.deployment_config = DEPLOYMENT_CONFIGS[0]
+        mock_pre_trained_model.return_value._metadata_configs = None
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species "
+            "of turtle native to the brackish coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a "
+                "species of turtle native to the brackish coastal "
+                "tidal marshes of the east coast."
+            }
+        ]
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        optimized_model = model_builder.optimize(
+            accept_eula=True,
+            instance_type="ml.inf2.48xlarge",
+            compilation_config={
+                "OverrideEnvironment": {
+                    "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                    "OPTION_N_POSITIONS": "2048",
+                    "OPTION_DTYPE": "fp16",
+                    "OPTION_ROLLING_BATCH": "auto",
+                    "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                    "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                }
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(
+            optimized_model.image_uri,
+            mock_optimization_job_response["OptimizationOutput"]["RecommendedInferenceImage"],
+        )
+        self.assertEqual(
+            optimized_model.model_data["S3DataSource"]["S3Uri"],
+            mock_optimization_job_response["OutputConfig"]["S3OutputLocation"],
+        )
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_gated_model",
+        return_value=True,
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    def test_optimize_compile_for_jumpstart_with_neuron_env(
+        self,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_js_model,
+        mock_is_gated_model,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+        mock_sagemaker_session = Mock()
+        mock_metadata_config = Mock()
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = (
+            lambda *args: mock_optimization_job_response
+        )
+
+        mock_metadata_config.resolved_config = {
+            "supported_inference_instance_types": ["ml.inf2.48xlarge"],
+            "hosting_neuron_model_id": "neuron_model_id",
+        }
+
+        mock_js_model.return_value = MagicMock()
+        mock_js_model.return_value.env = dict()
+
+        mock_pre_trained_model.return_value = MagicMock()
+        mock_pre_trained_model.return_value.env = dict()
+        mock_pre_trained_model.return_value.config_name = "config_name"
+        mock_pre_trained_model.return_value.model_data = mock_model_data
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+        mock_pre_trained_model.return_value.list_deployment_configs.return_value = (
+            DEPLOYMENT_CONFIGS
+        )
+        mock_pre_trained_model.return_value.deployment_config = DEPLOYMENT_CONFIGS[0]
+        mock_pre_trained_model.return_value._metadata_configs = {
+            "config_name": mock_metadata_config
+        }
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species "
+            "of turtle native to the brackish coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a "
+                "species of turtle native to the brackish coastal "
+                "tidal marshes of the east coast."
+            }
+        ]
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        optimized_model = model_builder.optimize(
+            accept_eula=True,
+            instance_type="ml.inf2.48xlarge",
+            compilation_config={
+                "OverrideEnvironment": {
+                    "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                    "OPTION_N_POSITIONS": "2048",
+                    "OPTION_DTYPE": "fp16",
+                    "OPTION_ROLLING_BATCH": "auto",
+                    "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+                    "OPTION_NEURON_OPTIMIZE_LEVEL": "2",
+                }
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(
+            optimized_model.image_uri,
+            mock_optimization_job_response["OptimizationOutput"]["RecommendedInferenceImage"],
+        )
+        self.assertEqual(
+            optimized_model.model_data["S3DataSource"]["S3Uri"],
+            mock_optimization_job_response["OutputConfig"]["S3OutputLocation"],
+        )
+        self.assertEqual(optimized_model.env["OPTION_TENSOR_PARALLEL_DEGREE"], "2")
+        self.assertEqual(optimized_model.env["OPTION_N_POSITIONS"], "2048")
+        self.assertEqual(optimized_model.env["OPTION_DTYPE"], "fp16")
+        self.assertEqual(optimized_model.env["OPTION_ROLLING_BATCH"], "auto")
+        self.assertEqual(optimized_model.env["OPTION_MAX_ROLLING_BATCH_SIZE"], "4")
+        self.assertEqual(optimized_model.env["OPTION_NEURON_OPTIMIZE_LEVEL"], "2")

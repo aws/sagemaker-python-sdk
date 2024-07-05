@@ -71,7 +71,6 @@ from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_m
 from sagemaker.serve.utils.optimize_utils import (
     _generate_optimized_model,
     _generate_model_source,
-    _update_environment_variables,
     _extract_optimization_config_and_env,
     _is_s3_uri,
     _normalize_local_model_path,
@@ -840,8 +839,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if role_arn:
             self.role_arn = role_arn
 
-        if not self.sagemaker_session:
-            self.sagemaker_session = sagemaker_session or Session()
+        self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
 
         self.sagemaker_session.settings._local_download_dir = self.model_path
 
@@ -1111,8 +1109,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Model: A deployable ``Model`` object.
         """
-        if self.mode != Mode.SAGEMAKER_ENDPOINT:
-            raise ValueError("Model optimization is only supported in Sagemaker Endpoint Mode.")
 
         # need to get telemetry_opt_out info before telemetry decorator is called
         self.serve_settings = self._get_serve_setting()
@@ -1173,6 +1169,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.speculative_decoding_draft_model_source = _extract_speculative_draft_model_provider(
             speculative_decoding_config
         )
+
+        if self.mode != Mode.SAGEMAKER_ENDPOINT:
+            raise ValueError("Model optimization is only supported in Sagemaker Endpoint Mode.")
 
         if quantization_config and compilation_config:
             raise ValueError("Quantization config and compilation config are mutually exclusive.")
@@ -1273,39 +1272,39 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             logger.info("Overwriting model server to DJL.")
             self.model_server = ModelServer.DJL_SERVING
 
-        optimization_env_vars = env_vars
-        pysdk_model_env_vars = env_vars
+        self.role_arn = role_arn or self.role_arn
+        self.instance_type = instance_type or self.instance_type
 
         if quantization_config or compilation_config:
-            self.instance_type = instance_type or self.instance_type
+            create_optimization_job_args = {
+                "OptimizationJobName": job_name,
+                "DeploymentInstanceType": self.instance_type,
+                "RoleArn": self.role_arn,
+            }
+
+            if env_vars:
+                self.pysdk_model.env.update(env_vars)
+                create_optimization_job_args["OptimizationEnvironment"] = env_vars
 
             self._optimize_prepare_for_hf()
             model_source = _generate_model_source(self.pysdk_model.model_data, False)
+            create_optimization_job_args["ModelSource"] = model_source
 
             self.pysdk_model = _custom_speculative_decoding(
                 self.pysdk_model, speculative_decoding_config, False
             )
 
-            optimization_config, env = _extract_optimization_config_and_env(
+            optimization_config, override_env = _extract_optimization_config_and_env(
                 quantization_config, compilation_config
             )
-            pysdk_model_env_vars = _update_environment_variables(pysdk_model_env_vars, env)
+            create_optimization_job_args["OptimizationConfigs"] = [optimization_config]
+            self.pysdk_model.env.update(override_env)
 
             output_config = {"S3OutputLocation": output_path}
             if kms_key:
                 output_config["KmsKeyId"] = kms_key
+            create_optimization_job_args["OutputConfig"] = output_config
 
-            create_optimization_job_args = {
-                "OptimizationJobName": job_name,
-                "ModelSource": model_source,
-                "DeploymentInstanceType": self.instance_type,
-                "OptimizationConfigs": [optimization_config],
-                "OutputConfig": output_config,
-                "RoleArn": role_arn,
-            }
-
-            if optimization_env_vars:
-                create_optimization_job_args["OptimizationEnvironment"] = optimization_env_vars
             if max_runtime_in_sec:
                 create_optimization_job_args["StoppingCondition"] = {
                     "MaxRuntimeInSeconds": max_runtime_in_sec
@@ -1315,8 +1314,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             if vpc_config:
                 create_optimization_job_args["VpcConfig"] = vpc_config
 
-            if pysdk_model_env_vars:
-                self.pysdk_model.env.update(pysdk_model_env_vars)
+            # HF_MODEL_ID needs not to be present, otherwise,
+            # HF model artifacts will be re-downloaded during deployment
+            if "HF_MODEL_ID" in self.pysdk_model.env:
+                del self.pysdk_model.env["HF_MODEL_ID"]
 
             return create_optimization_job_args
         return None

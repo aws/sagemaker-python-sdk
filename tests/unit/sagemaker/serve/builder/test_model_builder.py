@@ -2595,3 +2595,155 @@ class TestModelBuilder(unittest.TestCase):
             builder.set_tracking_arn,
             tracking_arn,
         )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_local_mode(self, mock_get_serve_setting):
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b", mode=Mode.LOCAL_CONTAINER
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Model optimization is only supported in Sagemaker Endpoint Mode.",
+            lambda: model_builder.optimize(
+                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_exclusive_args(self, mock_get_serve_setting):
+        mock_sagemaker_session = Mock()
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Quantization config and compilation config are mutually exclusive.",
+            lambda: model_builder.optimize(
+                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+                compilation_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_for_hf_with_custom_s3_path(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-8B-Instruc"}
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_hf(
+            job_name="job_name-123",
+            instance_type="ml.g5.2xlarge",
+            role_arn="role-arn",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        print(out_put)
+
+        self.assertEqual(model_builder.role_arn, "role-arn")
+        self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
+        self.assertEqual(
+            out_put,
+            {
+                "OptimizationJobName": "job_name-123",
+                "DeploymentInstanceType": "ml.g5.2xlarge",
+                "RoleArn": "role-arn",
+                "ModelSource": {"S3": {"S3Uri": "s3://bucket/code/code/"}},
+                "OptimizationConfigs": [
+                    {"ModelQuantizationConfig": {"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}}
+                ],
+                "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
+            },
+        )
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.download_huggingface_model_metadata", autospec=True
+    )
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_for_hf_without_custom_s3_path(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+        mock_download_huggingface_model_metadata,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-8B-Instruc"}
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_hf(
+            job_name="job_name-123",
+            instance_type="ml.g5.2xlarge",
+            role_arn="role-arn",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(model_builder.role_arn, "role-arn")
+        self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
+        self.assertEqual(
+            out_put,
+            {
+                "OptimizationJobName": "job_name-123",
+                "DeploymentInstanceType": "ml.g5.2xlarge",
+                "RoleArn": "role-arn",
+                "ModelSource": {"S3": {"S3Uri": "s3://bucket/code/code/"}},
+                "OptimizationConfigs": [
+                    {"ModelQuantizationConfig": {"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}}
+                ],
+                "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
+            },
+        )

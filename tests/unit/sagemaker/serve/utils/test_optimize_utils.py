@@ -116,7 +116,6 @@ def test_generate_optimized_model():
             "meta-textgeneration-llama-3-8b/artifacts/inference-prepack/v1.0.1/"
         }
     }
-    pysdk_model.env = {"OPTION_QUANTIZE": "awq"}
 
     optimized_model = _generate_optimized_model(pysdk_model, mock_optimization_job_output)
 
@@ -124,10 +123,6 @@ def test_generate_optimized_model():
         optimized_model.image_uri
         == mock_optimization_job_output["OptimizationOutput"]["RecommendedInferenceImage"]
     )
-    assert optimized_model.env == {
-        "OPTION_QUANTIZE": "awq",
-        **mock_optimization_job_output["OptimizationEnvironment"],
-    }
     assert (
         optimized_model.model_data["S3DataSource"]["S3Uri"]
         == mock_optimization_job_output["OutputConfig"]["S3OutputLocation"]

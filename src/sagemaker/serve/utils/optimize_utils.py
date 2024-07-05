@@ -54,17 +54,11 @@ def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -
     recommended_image_uri = optimization_response.get("OptimizationOutput", {}).get(
         "RecommendedInferenceImage"
     )
-    optimized_environment = optimization_response.get("OptimizationEnvironment")
     s3_uri = optimization_response.get("OutputConfig", {}).get("S3OutputLocation")
     deployment_instance_type = optimization_response.get("DeploymentInstanceType")
 
     if recommended_image_uri:
         pysdk_model.image_uri = recommended_image_uri
-    if optimized_environment:
-        if pysdk_model.env:
-            pysdk_model.env.update(optimized_environment)
-        else:
-            pysdk_model.env = optimized_environment
     if s3_uri:
         pysdk_model.model_data["S3DataSource"]["S3Uri"] = s3_uri
     if deployment_instance_type:

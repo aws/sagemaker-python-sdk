@@ -714,12 +714,9 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
-        optimization_env_vars = env_vars
-        pysdk_model_env_vars = env_vars
-
+        pysdk_model_env_vars = dict()
         if compilation_config:
-            neuron_env = self._get_neuron_model_env_vars(instance_type)
-            optimization_env_vars = _update_environment_variables(neuron_env, optimization_env_vars)
+            pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
 
         if speculative_decoding_config:
             self._set_additional_model_source(speculative_decoding_config)
@@ -730,28 +727,34 @@ class JumpStart(ABC):
                     config_name=deployment_config.get("DeploymentConfigName"),
                     instance_type=deployment_config.get("InstanceType"),
                 )
+                pysdk_model_env_vars = self.pysdk_model.env
 
         model_source = _generate_model_source(self.pysdk_model.model_data, accept_eula)
-        optimization_config, env = _extract_optimization_config_and_env(
+        optimization_env_vars = _update_environment_variables(pysdk_model_env_vars, env_vars)
+
+        optimization_config, override_env = _extract_optimization_config_and_env(
             quantization_config, compilation_config
         )
-        pysdk_model_env_vars = _update_environment_variables(pysdk_model_env_vars, env)
 
         output_config = {"S3OutputLocation": output_path}
         if kms_key:
             output_config["KmsKeyId"] = kms_key
-        if not instance_type:
-            instance_type = self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
-                "InstanceType", _get_nb_instance()
-            )
+
+        deployment_config_instance_type = (
+            self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get("InstanceType")
+            if self.pysdk_model.deployment_config
+            else None
+        )
+        self.instance_type = instance_type or deployment_config_instance_type or _get_nb_instance()
+        self.role_arn = role_arn or self.role_arn
 
         create_optimization_job_args = {
             "OptimizationJobName": job_name,
             "ModelSource": model_source,
-            "DeploymentInstanceType": instance_type,
+            "DeploymentInstanceType": self.instance_type,
             "OptimizationConfigs": [optimization_config],
             "OutputConfig": output_config,
-            "RoleArn": role_arn,
+            "RoleArn": self.role_arn,
         }
 
         if optimization_env_vars:
@@ -765,8 +768,6 @@ class JumpStart(ABC):
         if vpc_config:
             create_optimization_job_args["VpcConfig"] = vpc_config
 
-        if pysdk_model_env_vars:
-            self.pysdk_model.env.update(pysdk_model_env_vars)
         if accept_eula:
             self.pysdk_model.accept_eula = accept_eula
             if isinstance(self.pysdk_model.model_data, dict):
@@ -775,6 +776,9 @@ class JumpStart(ABC):
                 }
 
         if quantization_config or compilation_config:
+            self.pysdk_model.env = _update_environment_variables(
+                optimization_env_vars, override_env
+            )
             return create_optimization_job_args
         return None
 
@@ -810,9 +814,13 @@ class JumpStart(ABC):
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
 
             if model_provider == "sagemaker":
-                additional_model_data_sources = self.pysdk_model.deployment_config.get(
-                    "DeploymentArgs", {}
-                ).get("AdditionalDataSources")
+                additional_model_data_sources = (
+                    self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
+                        "AdditionalDataSources"
+                    )
+                    if self.pysdk_model.deployment_config
+                    else None
+                )
                 if additional_model_data_sources is None:
                     deployment_config = self._find_compatible_deployment_config(
                         speculative_decoding_config

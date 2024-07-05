@@ -22,7 +22,7 @@ DEPLOYMENT_CONFIGS = [
             {"name": "Latency", "value": "100", "unit": "Tokens/S"},
             {"name": "Throughput", "value": "1867", "unit": "Tokens/S"},
         ],
-        "DeploymentConfig": {
+        "DeploymentArgs": {
             "ModelDataDownloadTimeout": 1200,
             "ContainerStartupHealthCheckTimeout": 1200,
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
@@ -59,7 +59,7 @@ DEPLOYMENT_CONFIGS = [
             {"name": "Latency", "value": "100", "unit": "Tokens/S"},
             {"name": "Throughput", "value": "1867", "unit": "Tokens/S"},
         ],
-        "DeploymentConfig": {
+        "DeploymentArgs": {
             "ModelDataDownloadTimeout": 1200,
             "ContainerStartupHealthCheckTimeout": 1200,
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
@@ -96,7 +96,7 @@ DEPLOYMENT_CONFIGS = [
             {"name": "Latency", "value": "100", "unit": "Tokens/S"},
             {"name": "Throughput", "value": "1867", "unit": "Tokens/S"},
         ],
-        "DeploymentConfig": {
+        "DeploymentArgs": {
             "ModelDataDownloadTimeout": 1200,
             "ContainerStartupHealthCheckTimeout": 1200,
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
@@ -133,7 +133,7 @@ DEPLOYMENT_CONFIGS = [
             {"name": "Latency", "value": "100", "unit": "Tokens/S"},
             {"name": "Throughput", "value": "1867", "unit": "Tokens/S"},
         ],
-        "DeploymentConfig": {
+        "DeploymentArgs": {
             "ModelDataDownloadTimeout": 1200,
             "ContainerStartupHealthCheckTimeout": 1200,
             "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4"
