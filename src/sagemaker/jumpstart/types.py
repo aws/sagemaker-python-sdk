@@ -17,7 +17,6 @@ import re
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-from sagemaker.jumpstart.constants import HUB_ARN_REGEX, HUB_CONTENT_ARN_REGEX
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
 from sagemaker.model_metrics import ModelMetrics
@@ -1668,6 +1667,10 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
     def extract_region_from_arn(arn: str) -> Optional[str]:
         """Extracts hub_name, content_name, and content_version from a HubContentArn"""
 
+        HUB_CONTENT_ARN_REGEX = (
+            r"arn:(.*?):sagemaker:(.*?):(.*?):hub-content/(.*?)/(.*?)/(.*?)/(.*?)$"
+        )
+        HUB_ARN_REGEX = r"arn:(.*?):sagemaker:(.*?):(.*?):hub/(.*?)$"
 
         match = re.match(HUB_CONTENT_ARN_REGEX, arn)
         hub_region = None
