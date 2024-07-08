@@ -47,6 +47,7 @@ from sagemaker.serve.utils.optimize_utils import (
     _is_optimized,
     _custom_speculative_decoding,
     SPECULATIVE_DRAFT_MODEL,
+    _is_inferentia_or_trainium,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -714,9 +715,24 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
+        is_compilation = (quantization_config is None) and (
+            (compilation_config is not None) or _is_inferentia_or_trainium(instance_type)
+        )
+
         pysdk_model_env_vars = dict()
-        if compilation_config:
+        if is_compilation:
             pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
+
+        optimization_config, override_env = _extract_optimization_config_and_env(
+            quantization_config, compilation_config
+        )
+        if not optimization_config and is_compilation:
+            override_env = override_env or pysdk_model_env_vars
+            optimization_config = {
+                "ModelCompilationConfig": {
+                    "OverrideEnvironment": override_env,
+                }
+            }
 
         if speculative_decoding_config:
             self._set_additional_model_source(speculative_decoding_config)
@@ -731,10 +747,6 @@ class JumpStart(ABC):
 
         model_source = _generate_model_source(self.pysdk_model.model_data, accept_eula)
         optimization_env_vars = _update_environment_variables(pysdk_model_env_vars, env_vars)
-
-        optimization_config, override_env = _extract_optimization_config_and_env(
-            quantization_config, compilation_config
-        )
 
         output_config = {"S3OutputLocation": output_path}
         if kms_key:
@@ -775,7 +787,7 @@ class JumpStart(ABC):
                     "AcceptEula": True
                 }
 
-        if quantization_config or compilation_config:
+        if quantization_config or is_compilation:
             self.pysdk_model.env = _update_environment_variables(
                 optimization_env_vars, override_env
             )

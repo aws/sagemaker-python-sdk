@@ -26,6 +26,23 @@ logger = logging.getLogger(__name__)
 SPECULATIVE_DRAFT_MODEL = "/opt/ml/additional-model-data-sources"
 
 
+def _is_inferentia_or_trainium(instance_type: Optional[str]) -> bool:
+    """Checks whether an instance is compatible with Inferentia.
+
+    Args:
+        instance_type (str): The instance type used for the compilation job.
+
+    Returns:
+        bool: Whether the given instance type is Inferentia or Trainium.
+    """
+    if isinstance(instance_type, str):
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match:
+            if match[1].startswith("inf") or match[1].startswith("trn"):
+                return True
+    return False
+
+
 def _is_image_compatible_with_optimization_job(image_uri: Optional[str]) -> bool:
     """Checks whether an instance is compatible with an optimization job.
 
@@ -169,11 +186,11 @@ def _extracts_and_validates_speculative_model_source(
     Raises:
         ValueError: If model source is none.
     """
-    s3_uri: str = speculative_decoding_config.get("ModelSource")
+    model_source: str = speculative_decoding_config.get("ModelSource")
 
-    if not s3_uri:
+    if not model_source:
         raise ValueError("ModelSource must be provided in speculative decoding config.")
-    return s3_uri
+    return model_source
 
 
 def _generate_channel_name(additional_model_data_sources: Optional[List[Dict]]) -> str:

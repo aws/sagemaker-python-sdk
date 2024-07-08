@@ -1083,25 +1083,47 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 f"Unable to determine single GPU size for instance: [{self.instance_type}]"
             )
 
-    def optimize(self, *args, **kwargs) -> Model:
-        """Runs a model optimization job.
+    def optimize(
+        self,
+        output_path: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        role_arn: Optional[str] = None,
+        tags: Optional[Tags] = None,
+        job_name: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
+        quantization_config: Optional[Dict] = None,
+        compilation_config: Optional[Dict] = None,
+        speculative_decoding_config: Optional[Dict] = None,
+        env_vars: Optional[Dict] = None,
+        vpc_config: Optional[Dict] = None,
+        kms_key: Optional[str] = None,
+        max_runtime_in_sec: Optional[int] = 36000,
+        sagemaker_session: Optional[Session] = None,
+    ) -> Model:
+        """Create an optimized deployable ``Model`` instance with ``ModelBuilder``.
 
         Args:
-            instance_type (Optional[str]): Target deployment instance type that the
-                model is optimized for.
-            output_path (Optional[str]): Specifies where to store the compiled/quantized model.
-            role_arn (Optional[str]): Execution role. Defaults to ``None``.
+            output_path (str): Specifies where to store the compiled/quantized model.
+            instance_type (str): Target deployment instance type that the model is optimized for.
+            role_arn (Optional[str]): Execution role arn. Defaults to ``None``.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
             vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
             kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
                 to S3. Defaults to ``None``.
             max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
-                ``None``.
+                36000 seconds.
             sagemaker_session (Optional[Session]): Session object which manages interactions
                 with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
                 function creates one using the default AWS configuration chain.
@@ -1113,7 +1135,22 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         # need to get telemetry_opt_out info before telemetry decorator is called
         self.serve_settings = self._get_serve_setting()
 
-        return self._model_builder_optimize_wrapper(*args, **kwargs)
+        return self._model_builder_optimize_wrapper(
+            output_path=output_path,
+            instance_type=instance_type,
+            role_arn=role_arn,
+            tags=tags,
+            job_name=job_name,
+            accept_eula=accept_eula,
+            quantization_config=quantization_config,
+            compilation_config=compilation_config,
+            speculative_decoding_config=speculative_decoding_config,
+            env_vars=env_vars,
+            vpc_config=vpc_config,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            sagemaker_session=sagemaker_session,
+        )
 
     @_capture_telemetry("optimize")
     def _model_builder_optimize_wrapper(
@@ -1178,10 +1215,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
 
-        if instance_type:
-            self.instance_type = instance_type
-        if role_arn:
-            self.role_arn = role_arn
+        self.instance_type = instance_type or self.instance_type
+        self.role_arn = role_arn or self.role_arn
 
         self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
@@ -1266,7 +1301,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 ``None``.
 
         Returns:
-            Dict[str, Any]: Model optimization job input arguments.
+            Optional[Dict[str, Any]]: Model optimization job input arguments.
         """
         if self.model_server != ModelServer.DJL_SERVING:
             logger.info("Overwriting model server to DJL.")
@@ -1274,6 +1309,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         self.role_arn = role_arn or self.role_arn
         self.instance_type = instance_type or self.instance_type
+
+        self.pysdk_model = _custom_speculative_decoding(
+            self.pysdk_model, speculative_decoding_config, False
+        )
 
         if quantization_config or compilation_config:
             create_optimization_job_args = {
@@ -1289,10 +1328,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             self._optimize_prepare_for_hf()
             model_source = _generate_model_source(self.pysdk_model.model_data, False)
             create_optimization_job_args["ModelSource"] = model_source
-
-            self.pysdk_model = _custom_speculative_decoding(
-                self.pysdk_model, speculative_decoding_config, False
-            )
 
             optimization_config, override_env = _extract_optimization_config_and_env(
                 quantization_config, compilation_config

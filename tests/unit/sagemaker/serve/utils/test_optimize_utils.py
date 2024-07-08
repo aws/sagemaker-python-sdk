@@ -31,6 +31,7 @@ from sagemaker.serve.utils.optimize_utils import (
     _normalize_local_model_path,
     _is_optimized,
     _custom_speculative_decoding,
+    _is_inferentia_or_trainium,
 )
 
 mock_optimization_job_output = {
@@ -79,6 +80,18 @@ mock_optimization_job_output = {
         "RetryAttempts": 0,
     },
 }
+
+
+@pytest.mark.parametrize(
+    "instance, expected",
+    [
+        ("ml.trn1.2xlarge", True),
+        ("ml.inf2.xlarge", True),
+        ("ml.c7gd.4xlarge", False),
+    ],
+)
+def test_is_inferentia_or_trainium(instance, expected):
+    assert _is_inferentia_or_trainium(instance) == expected
 
 
 @pytest.mark.parametrize(
