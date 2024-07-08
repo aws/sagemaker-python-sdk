@@ -144,8 +144,8 @@ def test_happy_mms_sagemaker_endpoint(happy_mms_model_builder, gpu_instance_type
 
 
 @pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,
-    reason="The goal of these test are to test the serving components of our feature",
+    True,
+    reason="Only enable after metadata is fully deployed.",
 )
 def test_js_model_with_deployment_configs(
     meta_textgeneration_llama_2_7b_f_schema,
@@ -157,7 +157,7 @@ def test_js_model_with_deployment_configs(
     role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
 
     model_builder = ModelBuilder(
-        model="meta-textgeneration-llama-2-7b-f",
+        model="meta-textgeneration-llama-2-13b",
         schema_builder=meta_textgeneration_llama_2_7b_f_schema,
     )
     configs = model_builder.list_deployment_configs()

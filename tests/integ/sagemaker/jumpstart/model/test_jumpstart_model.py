@@ -354,8 +354,12 @@ def test_register_gated_jumpstart_model(setup):
     assert response is not None
 
 
+@pytest.mark.skipif(
+    True,
+    reason="Only enable after metadata is fully deployed.",
+)
 def test_jumpstart_model_with_deployment_configs(setup):
-    model_id = "meta-textgeneration-llama-2-7b-f"
+    model_id = "meta-textgeneration-llama-2-13b"
 
     model = JumpStartModel(
         model_id=model_id,
