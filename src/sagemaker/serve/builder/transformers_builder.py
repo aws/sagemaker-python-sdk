@@ -16,9 +16,8 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Type
-from packaging.version import Version
-
 from pathlib import Path
+from packaging.version import Version
 
 from sagemaker.model import Model
 from sagemaker import image_uris
@@ -356,7 +355,7 @@ class Transformers(ABC):
         # save the model or inference spec in cloud pickle format
         if self.inference_spec:
             save_pkl(code_path, (self.inference_spec, self.schema_builder))
-            logger.info("PKL file saved to file: {}".format(code_path))
+            logger.info("PKL file saved to file: %s", code_path)
 
         self._auto_detect_container()
 

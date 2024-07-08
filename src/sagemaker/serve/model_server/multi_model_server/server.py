@@ -31,6 +31,17 @@ class LocalMultiModelServer:
         env_vars: dict,
     ):
         """Placeholder docstring"""
+        env = {
+            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+            "LOCAL_PYTHON": platform.python_version(),
+        }
+        if env_vars:
+            env_vars.update(env)
+        else:
+            env_vars = env
+
         self.container = client.containers.run(
             image,
             "serve",
@@ -43,13 +54,7 @@ class LocalMultiModelServer:
                     "mode": "rw",
                 },
             },
-            environment={
-                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
-                "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
-                "LOCAL_PYTHON": platform.python_version(),
-                **env_vars,
-            },
+            environment=env_vars,
         )
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):

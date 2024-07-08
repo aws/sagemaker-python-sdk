@@ -25,7 +25,10 @@ from sagemaker.serve.model_server.multi_model_server.server import (
     LocalMultiModelServer,
 )
 
-CPU_TF_IMAGE = "763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-inference:2.0.0-transformers4.28.1-cpu-py310-ubuntu20.04"
+CPU_TF_IMAGE = (
+    "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
+    "huggingface-pytorch-inference:2.0.0-transformers4.28.1-cpu-py310-ubuntu20.04"
+)
 MODEL_PATH = "model_path"
 MODEL_REPO = f"{MODEL_PATH}/1"
 ENV_VAR = {"KEY": "VALUE"}
@@ -57,16 +60,16 @@ class MultiModelServerPrepareTests(TestCase):
         mock_docker_client.containers.run.assert_called_once_with(
             CPU_TF_IMAGE,
             "serve",
+            network_mode="host",
             detach=True,
             auto_remove=True,
-            network_mode="host",
-            volumes={PosixPath("model_path"): {"bind": "/opt/ml/model", "mode": "rw"}},
+            volumes={PosixPath("model_path/code"): {"bind": "/opt/ml/model/", "mode": "rw"}},
             environment={
+                "KEY": "VALUE",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
                 "LOCAL_PYTHON": platform.python_version(),
-                "KEY": "VALUE",
             },
         )
 
