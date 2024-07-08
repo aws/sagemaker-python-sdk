@@ -307,7 +307,7 @@ class Transformers(ABC):
         return sorted(versions_to_return, reverse=True)[0]
 
     def _auto_detect_container(self):
-        """Placeholder docstring"""
+        """Set image_uri by detecting container via model name or inference spec""" 
         # Auto detect the container image uri
         if self.image_uri:
             logger.info(
@@ -350,8 +350,7 @@ class Transformers(ABC):
 
         if self.inference_spec:
 
-            if not os.path.exists(self.model_path):
-                os.makedirs(self.model_path)
+            os.makedirs(self.model_path, exist_ok=True)
 
             code_path = Path(self.model_path).joinpath("code")
 
