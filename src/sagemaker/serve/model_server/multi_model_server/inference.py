@@ -22,7 +22,7 @@ METADATA_PATH = Path(__file__).parent.joinpath("metadata.json")
 
 
 def model_fn(model_dir):
-    """Placeholder docstring"""
+    """Overrides default method for loading a model"""
     shared_libs_path = Path(model_dir + "/shared_libs")
 
     if shared_libs_path.exists():
@@ -36,14 +36,12 @@ def model_fn(model_dir):
         if isinstance(obj[0], InferenceSpec):
             inference_spec, schema_builder = obj
 
-    logger.info("in model_fn")
-
     if inference_spec:
         return partial(inference_spec.invoke, model=inference_spec.load(model_dir))
 
 
 def input_fn(input_data, content_type):
-    """Placeholder docstring"""
+    """Deserializes the bytes that were received from the model server"""
     try:
         if hasattr(schema_builder, "custom_input_translator"):
             return schema_builder.custom_input_translator.deserialize(
@@ -59,13 +57,12 @@ def input_fn(input_data, content_type):
 
 
 def predict_fn(input_data, predict_callable):
-    """Placeholder docstring"""
-    logger.info("in predict_fn")
+    """Invokes the model that is taken in by model server"""
     return predict_callable(input_data)
 
 
 def output_fn(predictions, accept_type):
-    """Placeholder docstring"""
+    """Prediction is serialized to bytes and sent back to the customer"""
     try:
         if hasattr(schema_builder, "custom_output_translator"):
             return schema_builder.custom_output_translator.serialize(predictions, accept_type)
