@@ -585,7 +585,7 @@ class HubModelDocument(HubDataHolderType):
         )
         self.hosting_eula_uri: Optional[str] = json_obj.get("HostingEulaUri")
         self.hosting_model_package_arn: Optional[str] = json_obj.get("HostingModelPackageArn")
-
+          
         self.inference_config_rankings = self._get_config_rankings(json_obj)
         self.inference_config_components = self._get_config_components(json_obj)
         self.inference_configs = self._get_configs(json_obj)

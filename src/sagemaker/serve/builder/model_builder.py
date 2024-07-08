@@ -848,6 +848,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.env_vars.get("HUGGING_FACE_HUB_TOKEN") and not self.env_vars.get("HF_TOKEN"):
             self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
 
+        self.sagemaker_session.settings._local_download_dir = self.model_path
+
         # https://github.com/boto/botocore/blob/develop/botocore/useragent.py#L258
         # decorate to_string() due to
         # https://github.com/boto/botocore/blob/develop/botocore/client.py#L1014-L1015
@@ -903,6 +905,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         raise ValueError("%s model server is not supported" % self.model_server)
 
+    def _build_validations(self):
+        """Validations needed for model server overrides, or auto-detection or fallback"""
+        if self.mode == Mode.IN_PROCESS:
+            raise ValueError("IN_PROCESS mode is not supported yet!")
+
+        if self.inference_spec and self.model:
+            raise ValueError("Can only set one of the following: model, inference_spec.")
+
+        if self.image_uri and not is_1p_image_uri(self.image_uri) and self.model_server is None:
+            raise ValueError(
+                "Model_server must be set when non-first-party image_uri is set. "
+                + "Supported model servers: %s" % supported_model_servers
+            )
+
     def _build_for_model_server(self):  # pylint: disable=R0911, R1710
         """Model server overrides"""
         if self.model_server not in supported_model_servers:
@@ -915,8 +931,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.model_metadata:
             mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
 
-        if not self.model and not mlflow_path:
-            raise ValueError("Missing required parameter `model` or 'ml_flow' path")
+        if not self.model and not mlflow_path and not self.inference_spec:
+            raise ValueError("Missing required parameter `model` or 'ml_flow' path or inf_spec")
 
         if self.model_server == ModelServer.TORCHSERVE:
             return self._build_for_torchserve()

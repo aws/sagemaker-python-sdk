@@ -2328,8 +2328,6 @@ class TestModelBuilder(unittest.TestCase):
             mock_session,
         )
 
-        # builder.build(sagemaker_session=mock_session, role_arn=mock_role_arn, mode=Mode.SAGEMAKER_ENDPOINT)
-
     @pytest.mark.skip(reason="Implementation not completed")
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")

@@ -62,6 +62,7 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.utils import (
     add_hub_content_arn_tags,
     add_jumpstart_model_info_tags,
+    add_jumpstart_model_id_version_tags,
     get_eula_message,
     get_default_jumpstart_session_with_user_agent_suffix,
     update_dict_if_key_not_present,

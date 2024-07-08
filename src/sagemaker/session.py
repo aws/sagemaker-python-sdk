@@ -680,7 +680,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 (str): S3 object from boto session
             region (str): The region in which to create the bucket.
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
-
         """
         try:
             s3.meta.client.head_bucket(Bucket=bucket_name)

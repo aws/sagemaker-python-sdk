@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.224.4 (2024-07-04)
+
+### Bug Fixes and Other Changes
+
+ * allow for inf spec and server override to be passed
+
+## v2.224.3 (2024-07-03)
+
+### Bug Fixes and Other Changes
+
+ * Upgrade local dependencies
+ * Improve docstrings for estimator tags
+
+## v2.224.2 (2024-06-27)
+
+### Bug Fixes and Other Changes
+
+ * Update DJLModel class for latest container releases
+ * list_models() for python3.8
+
 ## v2.224.1 (2024-06-21)
 
 ### Bug Fixes and Other Changes

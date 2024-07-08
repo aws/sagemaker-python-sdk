@@ -867,10 +867,8 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         if regional_property_alias is None and regional_property_value is None:
             instance_type_family = get_instance_type_family(instance_type)
-
             if instance_type_family in {"", None}:
                 return None
-
             if self.regional_aliases:
                 regional_property_alias = (
                     self.variants.get(instance_type_family, {})
@@ -1976,16 +1974,14 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
         hub_region = None
         if match:
             hub_region = match.group(2)
-
             return hub_region
-
+          
         match = re.match(HUB_ARN_REGEX, arn)
         if match:
             hub_region = match.group(2)
             return hub_region
 
         return hub_region
-
 
 class JumpStartCachedContentValue(JumpStartDataHolderType):
     """Data class for the s3 cached content values."""
