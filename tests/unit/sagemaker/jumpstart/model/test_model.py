@@ -1492,7 +1492,7 @@ class ModelTest(unittest.TestCase):
             model_version="some-version",
             inference_component_name="some-ic-name",
         )
-        
+
         mock_get_model_info_from_endpoint.assert_not_called()
 
     @mock.patch(

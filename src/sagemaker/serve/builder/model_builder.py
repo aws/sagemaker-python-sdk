@@ -309,20 +309,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         },
     )
 
-    def _build_validations(self):
-        """Validations needed for model server overrides, or auto-detection or fallback"""
-        if self.mode == Mode.IN_PROCESS:
-            raise ValueError("IN_PROCESS mode is not supported yet!")
-
-        if self.inference_spec and self.model:
-            raise ValueError("Can only set one of the following: model, inference_spec.")
-
-        if self.image_uri and not is_1p_image_uri(self.image_uri) and self.model_server is None:
-            raise ValueError(
-                "Model_server must be set when non-first-party image_uri is set. "
-                + "Supported model servers: %s" % supported_model_servers
-            )
-
     def _save_model_inference_spec(self):
         """Placeholder docstring"""
         # check if path exists and create if not

@@ -1975,13 +1975,14 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
         if match:
             hub_region = match.group(2)
             return hub_region
-          
+
         match = re.match(HUB_ARN_REGEX, arn)
         if match:
             hub_region = match.group(2)
             return hub_region
 
         return hub_region
+
 
 class JumpStartCachedContentValue(JumpStartDataHolderType):
     """Data class for the s3 cached content values."""

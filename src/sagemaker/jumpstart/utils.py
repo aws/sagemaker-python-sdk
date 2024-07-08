@@ -446,21 +446,6 @@ def add_hub_content_arn_tags(
     return tags
 
 
-def add_hub_content_arn_tags(
-    tags: Optional[List[TagsDict]],
-    hub_arn: str,
-) -> Optional[List[TagsDict]]:
-    """Adds custom Hub arn tag to JumpStart related resources."""
-
-    tags = add_single_jumpstart_tag(
-        hub_arn,
-        enums.JumpStartTag.HUB_CONTENT_ARN,
-        tags,
-        is_uri=False,
-    )
-    return tags
-
-
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,

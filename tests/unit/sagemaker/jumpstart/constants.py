@@ -9805,27 +9805,6 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "p5": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
             },
         },
-        "ContextualHelp": {
-            "HubFormatTrainData": [
-                "A train and an optional validation directories. Each directory contains a CSV/JSON/TXT. ",
-                "- For CSV/JSON files, the text data is used from the column called 'text' or the first column if no column called 'text' is found",  # noqa: E501
-                "- The number of files under train and validation (if provided) should equal to one, respectively.",
-                " [Learn how to setup an AWS S3 bucket.](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html)",  # noqa: E501
-            ],
-            "HubDefaultTrainData": [
-                "Dataset: [SEC](https://www.sec.gov/edgar/searchedgar/companysearch)",
-                "SEC filing contains regulatory documents that companies and issuers of securities must submit to the Securities and Exchange Commission (SEC) on a regular basis.",  # noqa: E501
-                "License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode)",
-            ],
-        },
-        "ModelDataDownloadTimeout": 1200,
-        "ContainerStartupHealthCheckTimeout": 1200,
-        "EncryptInterContainerTraffic": True,
-        "DisableOutputCompression": True,
-        "MaxRuntimeInSeconds": 360000,
-        "DynamicContainerDeploymentSupported": True,
-        "TrainingModelPackageArtifactUri": None,
-        "Dependencies": [],
         "InferenceConfigRankings": {
             "overall": {"Description": "default", "Rankings": ["variant1"]}
         },
