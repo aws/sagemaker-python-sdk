@@ -353,7 +353,6 @@ class Transformers(ABC):
             if not os.path.exists(self.model_path):
                 os.makedirs(self.model_path)
 
-     
             code_path = Path(self.model_path).joinpath("code")
 
             save_pkl(code_path, (self.inference_spec, self.schema_builder))
@@ -363,13 +362,13 @@ class Transformers(ABC):
 
             self.secret_key = prepare_for_mms(
                 model_path=self.model_path,
-                    shared_libs=self.shared_libs,
-                    dependencies=self.dependencies,
-                    session=self.sagemaker_session,
-                    image_uri=self.image_uri,
-                    inference_spec=self.inference_spec,
+                shared_libs=self.shared_libs,
+                dependencies=self.dependencies,
+                session=self.sagemaker_session,
+                image_uri=self.image_uri,
+                inference_spec=self.inference_spec,
             )
 
-        self._build_transformers_env()   
+        self._build_transformers_env()
 
         return self.pysdk_model
