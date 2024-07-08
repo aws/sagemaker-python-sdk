@@ -307,7 +307,7 @@ class Transformers(ABC):
         return sorted(versions_to_return, reverse=True)[0]
 
     def _auto_detect_container(self):
-        """Set image_uri by detecting container via model name or inference spec""" 
+        """Set image_uri by detecting container via model name or inference spec"""
         # Auto detect the container image uri
         if self.image_uri:
             logger.info(

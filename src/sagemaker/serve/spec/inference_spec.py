@@ -32,4 +32,4 @@ class InferenceSpec(abc.ABC):
         """Custom prepare function"""
 
     def get_model(self):
-     """Return HuggingFace model name for inference spec"""
+        """Return HuggingFace model name for inference spec"""
