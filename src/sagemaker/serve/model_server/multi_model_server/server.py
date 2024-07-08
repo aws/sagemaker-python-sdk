@@ -92,13 +92,7 @@ class LocalMultiModelServer:
                     "mode": "rw",
                 },
             },
-            environment={
-                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
-                "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
-                "LOCAL_PYTHON": platform.python_version(),
-                **env_vars,
-            },
+            environment=_update_env_vars(env_vars),
         )
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
@@ -171,14 +165,6 @@ class SageMakerMultiModelServer:
                 "S3DataType": "S3Prefix",
                 "S3Uri": model_data_url + "/",
             }
-        }
-
-        env_vars = {
-            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
-            "SAGEMAKER_PROGRAM": "inference.py",
-            "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
-            "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
-            "LOCAL_PYTHON": platform.python_version(),
         }
 
         return model_data, _update_env_vars(env_vars)
