@@ -56,7 +56,7 @@ class InProcessMultiModelServer:
         """Placeholder docstring"""
         try:
             response = requests.post(
-                f"http://{get_docker_host()}:8080/invocations",
+                f"http://{0.0.0.0}:8080/invocations",
                 data=request,
                 headers={"Content-Type": content_type, "Accept": accept},
                 timeout=600,

@@ -857,7 +857,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
     def _build_validations(self):
         """Validations needed for model server overrides, or auto-detection or fallback"""
-        if self.mode == Mode.IN_PROCESS:
+        if self.mode == Mode.IN_PROCESS and self.model_server is not ModelServer.MMS:
             raise ValueError("IN_PROCESS mode is not supported yet!")
 
         if self.inference_spec and self.model:

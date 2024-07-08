@@ -161,7 +161,7 @@ class Transformers(ABC):
                 vpc_config=self.vpc_config,
             )
 
-        if self.mode == Mode.LOCAL_CONTAINER:
+        if self.mode == Mode.LOCAL_CONTAINER or self.mode == Mode.IN_PROCESS:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, "local"
             )
@@ -226,6 +226,23 @@ class Transformers(ABC):
                 jumpstart=False,
             )
             return predictor
+        
+        if self.mode == Mode.IN_PROCESS:
+            timeout = kwargs.get("model_data_download_timeout")
+
+            predictor = TransformersLocalModePredictor(
+                self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
+            )
+
+            self.modes[str(Mode.IN_PROCESS)].create_server(
+                self.image_uri,
+                timeout if timeout else DEFAULT_TIMEOUT,
+                None,
+                predictor,
+                self.pysdk_model.env,
+                jumpstart=False,
+            )
+            return predictor
 
         if "mode" in kwargs:
             del kwargs["mode"]
@@ -276,7 +293,7 @@ class Transformers(ABC):
 
         self.pysdk_model = self._create_transformers_model()
 
-        if self.mode == Mode.LOCAL_CONTAINER:
+        if self.mode == Mode.LOCAL_CONTAINER or self.mode == Mode.IN_PROCESS:
             self._prepare_for_mode()
 
         return self.pysdk_model
