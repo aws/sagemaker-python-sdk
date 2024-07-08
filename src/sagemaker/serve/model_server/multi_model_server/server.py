@@ -92,6 +92,7 @@ class SageMakerMultiModelServer:
     def _upload_server_artifacts(
         self,
         model_path: str,
+        secret_key: str,
         sagemaker_session: Session,
         s3_model_data_url: str = None,
         image: str = None,
@@ -132,6 +133,7 @@ class SageMakerMultiModelServer:
         env_vars = {
             "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
             "SAGEMAKER_PROGRAM": "inference.py",
+            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
             "LOCAL_PYTHON": platform.python_version(),
