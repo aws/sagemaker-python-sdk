@@ -338,7 +338,7 @@ class TestCustomSpeculativeDecodingConfig(unittest.TestCase):
         res_model = _custom_speculative_decoding(mock_model, speculative_decoding_config)
 
         mock_model.add_tags.assert_called_once_with(
-            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "customer"}
+            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "custom"}
         )
 
         self.assertEqual(
