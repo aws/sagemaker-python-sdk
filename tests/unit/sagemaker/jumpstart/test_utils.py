@@ -1714,21 +1714,21 @@ class TestUserAgent:
     @patch("sagemaker.jumpstart.utils.os.getenv")
     def test_get_jumpstart_user_agent_extra_suffix(self, mock_getenv):
         mock_getenv.return_value = False
-        assert utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "md/js_model_id#some-id md/js_model_ver#some-version"
-        )
+        assert utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "False"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_is_hub_content#False")
         mock_getenv.return_value = None
-        assert utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "md/js_model_id#some-id md/js_model_ver#some-version"
-        )
+        assert utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "False"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_is_hub_content#False")
         mock_getenv.return_value = "True"
-        assert not utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "md/js_model_id#some-id md/js_model_ver#some-version"
-        )
+        assert not utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "True"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_is_hub_content#True")
         mock_getenv.return_value = True
-        assert not utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "md/js_model_id#some-id md/js_model_ver#some-version"
-        )
+        assert not utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "True"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_is_hub_content#True")
 
     @patch("sagemaker.jumpstart.utils.botocore.session")
     @patch("sagemaker.jumpstart.utils.botocore.config.Config")
@@ -1748,7 +1748,7 @@ class TestUserAgent:
         utils.get_default_jumpstart_session_with_user_agent_suffix("model_id", "model_version")
         mock_boto3_session.get_session.assert_called_once_with()
         mock_get_jumpstart_user_agent_extra_suffix.assert_called_once_with(
-            "model_id", "model_version"
+            "model_id", "model_version", False
         )
         mock_botocore_config.assert_called_once_with(
             user_agent_extra=mock_get_jumpstart_user_agent_extra_suffix.return_value
