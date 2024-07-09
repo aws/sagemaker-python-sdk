@@ -23,7 +23,6 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.session import Session
 
 from sagemaker.jumpstart.constants import (
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_LOGGER,
 )
 from sagemaker.jumpstart.types import (
