@@ -36,6 +36,7 @@ def _retrieve_default_training_metric_definitions(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
+    config_name: Optional[str] = None,
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model.
 
@@ -61,6 +62,7 @@ def _retrieve_default_training_metric_definitions(
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         instance_type (str): An instance type to optionally supply in order to get
             metric definitions specific for the instance type.
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         list: the default training metric definitions to use for the model or None.
     """
@@ -78,6 +80,7 @@ def _retrieve_default_training_metric_definitions(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     default_metric_definitions = (

@@ -34,6 +34,7 @@ from sagemaker.serve.detector.image_detector import (
     auto_detect_container,
 )
 from sagemaker.serve.detector.pickler import save_pkl
+from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -160,11 +161,11 @@ class Transformers(ABC):
                 vpc_config=self.vpc_config,
             )
 
-        if self.mode == Mode.LOCAL_CONTAINER:
+        if not self.image_uri and self.mode == Mode.LOCAL_CONTAINER:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, "local"
             )
-        else:
+        elif not self.image_uri:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, self.instance_type
             )
@@ -232,10 +233,8 @@ class Transformers(ABC):
             self.pysdk_model.role = kwargs.get("role")
             del kwargs["role"]
 
-        # set model_data to uncompressed s3 dict
-        self.pysdk_model.model_data, env_vars = self._prepare_for_mode()
-        self.env_vars.update(env_vars)
-        self.pysdk_model.env.update(self.env_vars)
+        if not _is_optimized(self.pysdk_model):
+            self._prepare_for_mode()
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
@@ -370,4 +369,8 @@ class Transformers(ABC):
 
         self._build_transformers_env()
 
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
         return self.pysdk_model

@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 from unittest.mock import MagicMock, patch, Mock, mock_open
 
+import pytest
+
 import unittest
 from pathlib import Path
 from copy import deepcopy
@@ -45,7 +47,7 @@ INSTANCE_GPU_INFO = (2, 8)
 
 mock_image_uri = "abcd/efghijk"
 mock_1p_dlc_image_uri = "763104351884.dkr.ecr.us-east-1.amazonaws.com"
-mock_role_arn = "sample role arn"
+mock_role_arn = "arn:aws:iam::123456789012:role/SageMakerRole"
 mock_s3_model_data_url = "sample s3 data url"
 mock_secret_key = "mock_secret_key"
 mock_instance_type = "mock instance type"
@@ -147,7 +149,7 @@ class TestModelBuilder(unittest.TestCase):
         )
         self.assertRaisesRegex(
             Exception,
-            "Missing required parameter `model` or 'ml_flow' path or inf_spec",
+            "Missing required parameter `model` or 'ml_flow' path",
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -169,25 +171,11 @@ class TestModelBuilder(unittest.TestCase):
         mock_build_for_ts.assert_called_once()
 
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_torchserve")
-    def test_model_server_override_torchserve_with_inf_spec(
-        self, mock_build_for_ts, mock_serve_settings
-    ):
-        mock_setting_object = mock_serve_settings.return_value
-        mock_setting_object.role_arn = mock_role_arn
-        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
-
-        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE, inference_spec="some value")
-        builder.build(sagemaker_session=mock_session)
-
-        mock_build_for_ts.assert_called_once()
-
-    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_model_server_override_torchserve_without_model_or_mlflow(self, mock_serve_settings):
         builder = ModelBuilder(model_server=ModelServer.TORCHSERVE)
         self.assertRaisesRegex(
             Exception,
-            "Missing required parameter `model` or 'ml_flow' path or inf_spec",
+            "Missing required parameter `model` or 'ml_flow' path",
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -257,6 +245,10 @@ class TestModelBuilder(unittest.TestCase):
         mock_build_for_ts.assert_called_once()
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -275,6 +267,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -311,7 +304,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -361,6 +354,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.serve_settings, mock_setting_object)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -379,6 +376,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -414,7 +412,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -521,7 +519,7 @@ class TestModelBuilder(unittest.TestCase):
             if inference_spec == mock_inference_spec and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -563,6 +561,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.serve_settings, mock_setting_object)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -581,6 +583,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -617,7 +620,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -665,6 +668,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual("sample agent ModelBuilder", user_agent)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder.save_xgboost")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
@@ -685,6 +692,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
         mock_save_xgb,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -721,7 +729,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -947,7 +955,7 @@ class TestModelBuilder(unittest.TestCase):
             if inference_spec == mock_inference_spec and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_sagemaker_endpoint_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_sagemaker_endpoint_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -1013,6 +1021,10 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -1033,6 +1045,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_fw_version.return_value = framework, version
@@ -1069,7 +1082,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -2233,6 +2246,10 @@ class TestModelBuilder(unittest.TestCase):
         assert isinstance(predictor, TensorflowServingLocalPredictor)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.tf_serving_builder.prepare_for_tf_serving")
     @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
@@ -2261,6 +2278,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version,
         mock_s3_downloader,
         mock_prepare_for_tf_serving,
+        mock_is_jumpstart_model_id,
     ):
         mock_s3_downloader.return_value = []
         mock_detect_container.return_value = mock_image_uri
@@ -2308,6 +2326,88 @@ class TestModelBuilder(unittest.TestCase):
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
             mock_session,
+        )
+
+    @pytest.mark.skip(reason="Implementation not completed")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
+    def test_optimize(self, mock_send_telemetry, mock_get_serve_setting):
+        mock_sagemaker_session = Mock()
+
+        mock_settings = Mock()
+        mock_settings.telemetry_opt_out = False
+        mock_get_serve_setting.return_value = mock_settings
+
+        builder = ModelBuilder(
+            model_path=MODEL_PATH,
+            schema_builder=schema_builder,
+            model=mock_fw_model,
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        job_name = "my-optimization-job"
+        instance_type = "ml.inf1.xlarge"
+        output_path = "s3://my-bucket/output"
+        quantization_config = {
+            "Image": "quantization-image-uri",
+            "OverrideEnvironment": {"ENV_VAR": "value"},
+        }
+        compilation_config = {
+            "Image": "compilation-image-uri",
+            "OverrideEnvironment": {"ENV_VAR": "value"},
+        }
+        env_vars = {"Var1": "value", "Var2": "value"}
+        kms_key = "arn:aws:kms:us-west-2:123456789012:key/my-key-id"
+        max_runtime_in_sec = 3600
+        tags = [
+            {"Key": "Project", "Value": "my-project"},
+            {"Key": "Environment", "Value": "production"},
+        ]
+        vpc_config = {
+            "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+            "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+        }
+
+        expected_create_optimization_job_args = {
+            "ModelSource": {"S3": {"S3Uri": MODEL_PATH, "ModelAccessConfig": {"AcceptEula": True}}},
+            "DeploymentInstanceType": instance_type,
+            "OptimizationEnvironment": env_vars,
+            "OptimizationConfigs": [
+                {"ModelQuantizationConfig": quantization_config},
+                {"ModelCompilationConfig": compilation_config},
+            ],
+            "OutputConfig": {"S3OutputLocation": output_path, "KmsKeyId": kms_key},
+            "RoleArn": mock_role_arn,
+            "OptimizationJobName": job_name,
+            "StoppingCondition": {"MaxRuntimeInSeconds": max_runtime_in_sec},
+            "Tags": [
+                {"Key": "Project", "Value": "my-project"},
+                {"Key": "Environment", "Value": "production"},
+            ],
+            "VpcConfig": vpc_config,
+        }
+
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.return_value = {
+            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job"
+        }
+
+        builder.optimize(
+            instance_type=instance_type,
+            output_path=output_path,
+            role=mock_role_arn,
+            job_name=job_name,
+            quantization_config=quantization_config,
+            compilation_config=compilation_config,
+            env_vars=env_vars,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            tags=tags,
+            vpc_config=vpc_config,
+        )
+
+        mock_send_telemetry.assert_called_once()
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
+            **expected_create_optimization_job_args
         )
 
     def test_handle_mlflow_input_without_mlflow_model_path(self):
@@ -2492,4 +2592,156 @@ class TestModelBuilder(unittest.TestCase):
             "Unable to import sagemaker_mlflow, check if sagemaker_mlflow is installed",
             builder.set_tracking_arn,
             tracking_arn,
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_local_mode(self, mock_get_serve_setting):
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b", mode=Mode.LOCAL_CONTAINER
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Model optimization is only supported in Sagemaker Endpoint Mode.",
+            lambda: model_builder.optimize(
+                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_exclusive_args(self, mock_get_serve_setting):
+        mock_sagemaker_session = Mock()
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Quantization config and compilation config are mutually exclusive.",
+            lambda: model_builder.optimize(
+                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+                compilation_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_for_hf_with_custom_s3_path(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-8B-Instruc"}
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_hf(
+            job_name="job_name-123",
+            instance_type="ml.g5.2xlarge",
+            role_arn="role-arn",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        print(out_put)
+
+        self.assertEqual(model_builder.role_arn, "role-arn")
+        self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
+        self.assertEqual(
+            out_put,
+            {
+                "OptimizationJobName": "job_name-123",
+                "DeploymentInstanceType": "ml.g5.2xlarge",
+                "RoleArn": "role-arn",
+                "ModelSource": {"S3": {"S3Uri": "s3://bucket/code/code/"}},
+                "OptimizationConfigs": [
+                    {"ModelQuantizationConfig": {"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}}
+                ],
+                "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
+            },
+        )
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.download_huggingface_model_metadata", autospec=True
+    )
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_for_hf_without_custom_s3_path(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+        mock_download_huggingface_model_metadata,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-8B-Instruc"}
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_hf(
+            job_name="job_name-123",
+            instance_type="ml.g5.2xlarge",
+            role_arn="role-arn",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(model_builder.role_arn, "role-arn")
+        self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
+        self.assertEqual(
+            out_put,
+            {
+                "OptimizationJobName": "job_name-123",
+                "DeploymentInstanceType": "ml.g5.2xlarge",
+                "RoleArn": "role-arn",
+                "ModelSource": {"S3": {"S3Uri": "s3://bucket/code/code/"}},
+                "OptimizationConfigs": [
+                    {"ModelQuantizationConfig": {"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}}
+                ],
+                "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
+            },
         )
