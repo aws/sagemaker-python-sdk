@@ -399,5 +399,5 @@ class TestCustomSpeculativeDecodingConfig(unittest.TestCase):
         )
 
         mock_model.add_tags.assert_called_once_with(
-            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "customer"}
+            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "custom"}
         )
