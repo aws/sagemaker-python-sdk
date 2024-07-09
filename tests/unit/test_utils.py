@@ -1929,7 +1929,7 @@ class TestDeepMergeDict(TestCase):
                     }
                 ]
             },
-            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.9"},
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.9"},
         ),
         (
             "ml.t4g.nano",
@@ -1947,7 +1947,7 @@ class TestDeepMergeDict(TestCase):
                     '"termAttributes": {}}}}}'
                 ]
             },
-            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
         ),
         (
             "ml.t4g.nano",
@@ -1965,7 +1965,7 @@ class TestDeepMergeDict(TestCase):
                     '"termAttributes": {}}}}}'
                 ]
             },
-            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
         ),
         (
             "ml.t4g.nano",
@@ -1983,7 +1983,7 @@ class TestDeepMergeDict(TestCase):
                     '"termAttributes": {}}}}}'
                 ]
             },
-            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.008"},
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
         ),
     ],
 )
@@ -2024,7 +2024,7 @@ def test_get_instance_rate_per_hour(
                     }
                 }
             },
-            {"name": "Instance Rate", "unit": "USD/Hrs", "value": "0.9"},
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.9"},
         ),
     ],
 )

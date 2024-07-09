@@ -1791,9 +1791,9 @@ def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[
                     if value is not None:
                         value = str(round(float(value), 3))
                     return {
-                        "unit": f"{currency}/{price.get('unit', 'Hrs')}",
+                        "unit": f"{currency}/Hr",
                         "value": value,
-                        "name": "Instance Rate",
+                        "name": "On-demand Instance Rate",
                     }
     return None
 
