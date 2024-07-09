@@ -139,7 +139,7 @@ class SageMakerMultiModelServer:
             if model_data_url
             else None
         )
-        
+
         model_data = {
             "S3DataSource": {
                 "CompressionType": "None",

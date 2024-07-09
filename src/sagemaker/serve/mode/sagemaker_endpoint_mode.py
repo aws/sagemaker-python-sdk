@@ -120,7 +120,6 @@ class SageMakerEndpointMode(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
-                secret_key=secret_key,
                 image=image,
                 jumpstart=jumpstart,
                 should_upload_artifacts=should_upload_artifacts,
