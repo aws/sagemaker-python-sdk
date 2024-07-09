@@ -268,7 +268,7 @@ def _add_model_reference_arn_to_kwargs(
     kwargs: JumpStartModelInitKwargs,
 ) -> JumpStartModelInitKwargs:
     """Sets Model Reference ARN if the hub content type is Model Reference, returns full kwargs."""
-    
+
     hub_content_type = verify_model_region_and_return_specs(
         model_id=kwargs.model_id,
         version=kwargs.model_version,

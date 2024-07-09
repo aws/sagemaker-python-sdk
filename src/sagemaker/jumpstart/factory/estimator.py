@@ -29,7 +29,10 @@ from sagemaker.jumpstart.artifacts import (
     _retrieve_model_package_model_artifact_s3_uri,
 )
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
-from sagemaker.jumpstart.hub.utils import construct_hub_model_arn_from_inputs, construct_hub_model_reference_arn_from_inputs
+from sagemaker.jumpstart.hub.utils import (
+    construct_hub_model_arn_from_inputs,
+    construct_hub_model_reference_arn_from_inputs,
+)
 from sagemaker.session import Session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -549,11 +552,12 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
 
     return kwargs
 
+
 def _add_model_reference_arn_to_kwargs(
     kwargs: JumpStartEstimatorInitKwargs,
 ) -> JumpStartEstimatorInitKwargs:
     """Sets Model Reference ARN if the hub content type is Model Reference, returns full kwargs."""
-    
+
     hub_content_type = verify_model_region_and_return_specs(
         model_id=kwargs.model_id,
         version=kwargs.model_version,

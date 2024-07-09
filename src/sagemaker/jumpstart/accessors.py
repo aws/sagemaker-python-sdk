@@ -301,7 +301,8 @@ class JumpStartModelsAccessor(object):
 
             except Exception as ex:
                 logging.info(
-                    "Recieved exeption while calling APIs for ContentType Model, retrying with ContentType ModelReference: " + str(ex)
+                    "Recieved exeption while calling APIs for ContentType Model, retrying with ContentType ModelReference: "
+                    + str(ex)
                 )
                 hub_model_arn = construct_hub_model_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
