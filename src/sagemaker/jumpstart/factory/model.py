@@ -697,7 +697,7 @@ def _add_additional_model_data_sources_to_kwargs(
     # Append speculative decoding data source from metadata
     speculative_decoding_data_sources = specs.get_speculative_decoding_s3_data_sources()
     for data_source in speculative_decoding_data_sources:
-        data_source.s3_data_source.set_bucket(get_neo_content_bucket())
+        data_source.s3_data_source.set_bucket(get_neo_content_bucket(region=kwargs.region))
     api_shape_additional_model_data_sources = (
         [
             camel_case_to_pascal_case(data_source.to_json())
