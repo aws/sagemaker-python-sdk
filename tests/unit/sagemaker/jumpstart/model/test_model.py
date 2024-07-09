@@ -1941,12 +1941,6 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs.reset_mock()
         mock_model_deploy.reset_mock()
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
-        with pytest.raises(ValueError) as error:
-            model.set_deployment_config("neuron-inference", "ml.inf2.32xlarge")
-        assert (
-            "Instance type ml.inf2.32xlarge is not supported for config neuron-inference."
-            in str(error)
-        )
 
         with pytest.raises(ValueError) as error:
             model.set_deployment_config("neuron-inference-unknown-name", "ml.inf2.32xlarge")

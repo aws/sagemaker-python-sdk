@@ -674,11 +674,7 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
         resolved_config = specs.inference_configs.configs[kwargs.config_name].resolved_config
         supported_instance_types = resolved_config.get("supported_inference_instance_types", [])
         if kwargs.instance_type not in supported_instance_types:
-            raise ValueError(
-                f"Instance type {kwargs.instance_type} "
-                f"is not supported for config {kwargs.config_name}."
-            )
-
+            JUMPSTART_LOGGER.warning("Overriding instance type to %s", kwargs.instance_type)
     return kwargs
 
 
