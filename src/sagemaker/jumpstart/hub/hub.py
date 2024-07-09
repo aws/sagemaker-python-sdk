@@ -276,26 +276,6 @@ class Hub:
         try:
             model_version = get_hub_model_version(
                 hub_model_name=model_name,
-                hub_model_type=HubContentType.MODEL.value,
-                hub_name=self.hub_name,
-                sagemaker_session=self._sagemaker_session,
-                hub_model_version=model_version,
-            )
-
-            hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=self.hub_name if not hub_name else hub_name,
-                hub_content_name=model_name,
-                hub_content_version=model_version,
-                hub_content_type=HubContentType.MODEL.value,
-            )
-
-        except Exception as ex:
-            logging.info(
-                "Recieved exeption while calling APIs for ContentType Model, retrying with ContentType ModelReference: "
-                + str(ex)
-            )
-            model_version = get_hub_model_version(
-                hub_model_name=model_name,
                 hub_model_type=HubContentType.MODEL_REFERENCE.value,
                 hub_name=self.hub_name,
                 sagemaker_session=self._sagemaker_session,
@@ -307,6 +287,26 @@ class Hub:
                 hub_content_name=model_name,
                 hub_content_version=model_version,
                 hub_content_type=HubContentType.MODEL_REFERENCE.value,
+            )
+
+        except Exception as ex:
+            logging.info(
+                "Recieved exeption while calling APIs for ContentType ModelReference, retrying with ContentType Model: "
+                + str(ex)
+            )
+            model_version = get_hub_model_version(
+                hub_model_name=model_name,
+                hub_model_type=HubContentType.MODEL.value,
+                hub_name=self.hub_name,
+                sagemaker_session=self._sagemaker_session,
+                hub_model_version=model_version,
+            )
+
+            hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+                hub_name=self.hub_name if not hub_name else hub_name,
+                hub_content_name=model_name,
+                hub_content_version=model_version,
+                hub_content_type=HubContentType.MODEL.value,
             )
 
         return DescribeHubContentResponse(hub_content_description)
