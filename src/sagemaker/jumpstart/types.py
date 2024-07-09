@@ -2026,6 +2026,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "enable_infra_check",
         "enable_remote_debug",
         "enable_session_tag_chaining",
+        "hub_content_type",
+        "model_reference_arn",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2036,6 +2038,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_content_type",
     }
 
     def __init__(
