@@ -1236,6 +1236,7 @@ def get_metrics_from_deployment_configs(
                 instance_type_to_display = (
                     f"{current_instance_type} (Default)"
                     if index == 0
+                    and concurrent_user
                     and int(concurrent_user) == 1
                     and current_instance_type
                     == deployment_config.deployment_args.default_instance_type
@@ -1295,7 +1296,7 @@ def _normalize_benchmark_metrics(
     instance_type_rate = None
     concurrent_users = {}
     for current_instance_type_metric in benchmark_metric_stats:
-        if current_instance_type_metric.name.lower() == "instance rate":
+        if "instance rate" in current_instance_type_metric.name.lower():
             instance_type_rate = current_instance_type_metric
         elif current_instance_type_metric.concurrency not in concurrent_users:
             concurrent_users[current_instance_type_metric.concurrency] = [
