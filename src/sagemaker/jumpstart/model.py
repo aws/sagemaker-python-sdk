@@ -429,6 +429,7 @@ class JumpStartModel(Model):
         cls,
         endpoint_name: str,
         inference_component_name: Optional[str] = None,
+        hub_name: Optional[str] = None,
         model_id: Optional[str] = None,
         model_version: Optional[str] = None,
         sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -457,6 +458,7 @@ class JumpStartModel(Model):
             model_id=model_id,
             model_version=model_version,
             sagemaker_session=sagemaker_session,
+            hub_name=hub_name,
         )
         model.endpoint_name = endpoint_name
         model.inference_component_name = inference_component_name
