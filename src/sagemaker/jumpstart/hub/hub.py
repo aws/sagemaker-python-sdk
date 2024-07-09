@@ -68,7 +68,9 @@ class Hub:
         self,
         hub_name: str,
         bucket_name: Optional[str] = None,
-        sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        sagemaker_session: Optional[
+            Session
+        ] = utils.get_default_jumpstart_session_with_user_agent_suffix(is_hub_content=True),
     ) -> None:
         """Instantiates a SageMaker ``Hub``.
 
