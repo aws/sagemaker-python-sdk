@@ -1360,7 +1360,6 @@ class ModelTest(unittest.TestCase):
             model_id="model-id",
             model_version="model-version",
             sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-            hub_name=None,
         )
         assert isinstance(val, JumpStartModel)
 
