@@ -1220,6 +1220,8 @@ def get_metrics_from_deployment_configs(
     if not deployment_configs:
         return {}
 
+    print("deployment_configs: {}".format(deployment_configs))
+
     data = {"Instance Type": [], "Config Name": [], "Concurrent Users": []}
     instance_rate_data = {}
     for index, deployment_config in enumerate(deployment_configs):
@@ -1256,7 +1258,7 @@ def get_metrics_from_deployment_configs(
                     instance_rate_data[instance_rate_column_name].append(instance_type_rate.value)
 
                 for metric in metrics:
-                    column_name = _normalize_benchmark_metric_column_name(metric.name)
+                    column_name = _normalize_benchmark_metric_column_name(metric.name, metric.unit)
                     data[column_name] = data.get(column_name, [])
                     data[column_name].append(metric.value)
 
@@ -1264,18 +1266,19 @@ def get_metrics_from_deployment_configs(
     return data
 
 
-def _normalize_benchmark_metric_column_name(name: str) -> str:
+def _normalize_benchmark_metric_column_name(name: str, unit: str) -> str:
     """Normalizes benchmark metric column name.
 
     Args:
         name (str): Name of the metric.
+        unit (str): Unit of the metric.
     Returns:
         str: Normalized metric column name.
     """
     if "latency" in name.lower():
-        name = "Latency for each user (TTFT in ms)"
+        name = f"Latency, TTFT (P50 in {unit.lower()})"
     elif "throughput" in name.lower():
-        name = "Throughput per user (token/seconds)"
+        name = f"Throughput (P50 in {unit.lower()}/user)"
     return name
 
 

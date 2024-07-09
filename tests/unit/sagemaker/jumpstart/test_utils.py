@@ -1979,14 +1979,14 @@ def test__normalize_benchmark_metrics():
 
 
 @pytest.mark.parametrize(
-    "name, expected",
+    "name, unit, expected",
     [
-        ("latency", "Latency for each user (TTFT in ms)"),
-        ("throughput", "Throughput per user (token/seconds)"),
+        ("latency", "sec", "Latency, TTFT (P50 in sec)"),
+        ("throughput", "tokens/sec", "Throughput (P50 in tokens/sec/user)"),
     ],
 )
-def test__normalize_benchmark_metric_column_name(name, expected):
-    out = utils._normalize_benchmark_metric_column_name(name)
+def test_normalize_benchmark_metric_column_name(name, unit, expected):
+    out = utils._normalize_benchmark_metric_column_name(name, unit)
 
     assert out == expected
 
