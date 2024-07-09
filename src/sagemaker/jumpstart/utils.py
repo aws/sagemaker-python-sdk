@@ -1022,12 +1022,15 @@ def get_jumpstart_user_agent_extra_suffix(
 
     if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, None):
         headers = sagemaker_python_sdk_headers
-    elif model_id is None and model_version is None:
-        headers = f"{sagemaker_python_sdk_headers} {hub_specific_suffix}"
+    elif is_hub_content is True:
+        if model_id is None and model_version is None:
+            headers = f"{sagemaker_python_sdk_headers} {hub_specific_suffix}"
+        else:
+            headers = (
+                f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix} {hub_specific_suffix}"
+            )
     else:
-        headers = (
-            f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix} {hub_specific_suffix}"
-        )
+        headers = f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix}"
 
     return headers
 

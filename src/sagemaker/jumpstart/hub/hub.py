@@ -78,7 +78,10 @@ class Hub:
         """
         self.hub_name = hub_name
         self.region = sagemaker_session.boto_region_name
-        self._sagemaker_session = sagemaker_session or utils.get_default_jumpstart_session_with_user_agent_suffix(is_hub_content=True)
+        self._sagemaker_session = (
+            sagemaker_session
+            or utils.get_default_jumpstart_session_with_user_agent_suffix(is_hub_content=True)
+        )
         self.hub_storage_location = self._generate_hub_storage_location(bucket_name)
 
     def _fetch_hub_bucket_name(self) -> str:
