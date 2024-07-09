@@ -20,7 +20,6 @@ from botocore.config import Config
 from sagemaker import image_uris, Session
 from sagemaker.dataset_definition.inputs import (
     DatasetDefinition,
-    RedshiftDatasetDefinition,
     AthenaDatasetDefinition,
     S3Input,
 )
