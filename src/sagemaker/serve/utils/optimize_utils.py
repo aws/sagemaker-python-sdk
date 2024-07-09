@@ -332,7 +332,7 @@ def _custom_speculative_decoding(
 
         model.env.update({"OPTION_SPECULATIVE_DRAFT_MODEL": speculative_draft_model})
         model.add_tags(
-            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "customer"},
+            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "custom"},
         )
 
     return model
