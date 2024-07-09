@@ -429,10 +429,10 @@ class JumpStartModel(Model):
         cls,
         endpoint_name: str,
         inference_component_name: Optional[str] = None,
-        hub_name: Optional[str] = None,
         model_id: Optional[str] = None,
         model_version: Optional[str] = None,
         sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        hub_name: Optional[str] = None,
     ) -> "JumpStartModel":
         """Attaches a JumpStartModel object to an existing SageMaker Endpoint.
 

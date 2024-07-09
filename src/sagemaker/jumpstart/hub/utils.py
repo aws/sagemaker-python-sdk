@@ -196,7 +196,7 @@ def get_hub_model_version(
     """Returns available Jumpstart hub model version
 
     Raises:
-        ResourceNotFound: If the specified model is not found in the hub.
+        ClientError: If the specified model is not found in the hub.
     """
 
     try:

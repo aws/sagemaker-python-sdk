@@ -301,7 +301,7 @@ class JumpStartModelsAccessor(object):
 
             except Exception as ex:
                 logging.info(
-                    "Recieved exeption while calling APIs for ContentType ModelReference, \
+                    "Received exeption while calling APIs for ContentType ModelReference, \
                         retrying with ContentType Model: "
                     + str(ex)
                 )
