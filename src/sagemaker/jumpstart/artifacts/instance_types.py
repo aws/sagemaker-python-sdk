@@ -41,6 +41,7 @@ def _retrieve_default_instance_type(
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     training_instance_type: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> str:
     """Retrieves the default instance type for the model.
 
@@ -71,6 +72,7 @@ def _retrieve_default_instance_type(
             Optionally supply this to get a inference instance type conditioned
             on the training instance, to ensure compatability of training artifact to inference
             instance. (Default: None).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         str: the default instance type to use for the model or None.
 
@@ -93,6 +95,7 @@ def _retrieve_default_instance_type(
         tolerate_deprecated_model=tolerate_deprecated_model,
         model_type=model_type,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
@@ -133,6 +136,7 @@ def _retrieve_instance_types(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     training_instance_type: Optional[str] = None,
+    config_name: Optional[str] = None,
 ) -> List[str]:
     """Retrieves the supported instance types for the model.
 
@@ -163,6 +167,7 @@ def _retrieve_instance_types(
             Optionally supply this to get a inference instance type conditioned
             on the training instance, to ensure compatability of training artifact to inference
             instance. (Default: None).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         list: the supported instance types to use for the model or None.
 
@@ -184,6 +189,7 @@ def _retrieve_instance_types(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     if scope == JumpStartScriptScope.INFERENCE:

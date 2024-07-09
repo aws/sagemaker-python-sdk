@@ -25,6 +25,7 @@ import shutil
 import tarfile
 import tempfile
 import time
+from functools import lru_cache
 from typing import Union, Any, List, Optional, Dict
 import json
 import abc
@@ -33,10 +34,12 @@ from datetime import datetime
 from os.path import abspath, realpath, dirname, normpath, join as joinpath
 
 from importlib import import_module
+
+import boto3
 import botocore
 from botocore.utils import merge_dicts
 from six.moves.urllib import parse
-import pandas as pd
+from six import viewitems
 
 from sagemaker import deprecations
 from sagemaker.config import validate_sagemaker_config
@@ -1451,10 +1454,15 @@ def volume_size_supported(instance_type: str) -> bool:
         if len(parts) != 2:
             raise ValueError(f"Failed to parse instance type '{instance_type}'")
 
-        # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc) + g5
-        # does not support attaching an EBS volume.
+        # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc)
+        # + g5 or g6 or p5 does not support attaching an EBS volume.
         family = parts[0]
-        return "d" not in family and not family.startswith("g5")
+        return (
+            "d" not in family
+            and not family.startswith("g5")
+            and not family.startswith("g6")
+            and not family.startswith("p5")
+        )
     except Exception as e:
         raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")
 
@@ -1603,44 +1611,78 @@ def can_model_package_source_uri_autopopulate(source_uri: str):
     )
 
 
-def flatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
-    """Flatten a nested dictionary.
+def flatten_dict(
+    d: Dict[str, Any],
+    max_flatten_depth=None,
+) -> Dict[str, Any]:
+    """Flatten a dictionary object.
 
-    Args:
-        source_dict (dict): The dictionary to be flattened.
-        sep (str): The separator to be used in the flattened dictionary.
-    Returns:
-        transformed_dict: The flattened dictionary.
+    d (Dict[str, Any]):
+        The dict that will be flattened.
+    max_flatten_depth (Optional[int]):
+        Maximum depth to merge.
     """
-    flat_dict_list = pd.json_normalize(source_dict, sep=sep).to_dict(orient="records")
-    if flat_dict_list:
-        return flat_dict_list[0]
-    return {}
+
+    def tuple_reducer(k1, k2):
+        if k1 is None:
+            return (k2,)
+        return k1 + (k2,)
+
+    # check max_flatten_depth
+    if max_flatten_depth is not None and max_flatten_depth < 1:
+        raise ValueError("max_flatten_depth should not be less than 1.")
+
+    reducer = tuple_reducer
+
+    flat_dict = {}
+
+    def _flatten(_d, depth, parent=None):
+        key_value_iterable = viewitems(_d)
+        has_item = False
+        for key, value in key_value_iterable:
+            has_item = True
+            flat_key = reducer(parent, key)
+            if isinstance(value, dict) and (max_flatten_depth is None or depth < max_flatten_depth):
+                has_child = _flatten(value, depth=depth + 1, parent=flat_key)
+                if has_child:
+                    continue
+
+            if flat_key in flat_dict:
+                raise ValueError("duplicated key '{}'".format(flat_key))
+            flat_dict[flat_key] = value
+
+        return has_item
+
+    _flatten(d, depth=1)
+    return flat_dict
 
 
-def unflatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
-    """Unflatten a flattened dictionary back into a nested dictionary.
+def nested_set_dict(d: Dict[str, Any], keys: List[str], value: Any) -> None:
+    """Set a value to a sequence of nested keys."""
 
-    Args:
-        source_dict (dict): The input flattened dictionary.
-        sep (str): The separator used in the flattened keys.
+    key = keys[0]
 
-    Returns:
-        transformed_dict: The reconstructed nested dictionary.
+    if len(keys) == 1:
+        d[key] = value
+        return
+
+    d = d.setdefault(key, {})
+    nested_set_dict(d, keys[1:], value)
+
+
+def unflatten_dict(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Unflatten dict-like object.
+
+    d (Dict[str, Any]) :
+        The dict that will be unflattened.
     """
-    if not source_dict:
-        return {}
 
-    result = {}
-    for key, value in source_dict.items():
-        keys = key.split(sep)
-        current = result
-        for k in keys[:-1]:
-            if k not in current:
-                current[k] = {}
-            current = current[k] if current[k] is not None else current
-        current[keys[-1]] = value
-    return result
+    unflattened_dict = {}
+    for flat_key, value in viewitems(d):
+        key_tuple = flat_key
+        nested_set_dict(unflattened_dict, key_tuple, value)
+
+    return unflattened_dict
 
 
 def deep_override_dict(
@@ -1651,6 +1693,7 @@ def deep_override_dict(
         skip_keys = []
 
     flattened_dict1 = flatten_dict(dict1)
+    flattened_dict1 = {key: value for key, value in flattened_dict1.items() if value is not None}
     flattened_dict2 = flatten_dict(
         {key: value for key, value in dict2.items() if key not in skip_keys}
     )
@@ -1686,3 +1729,179 @@ def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optiona
                 "or RoutingStrategy.LEAST_OUTSTANDING_REQUESTS"
             )
     return None
+
+
+@lru_cache
+def get_instance_rate_per_hour(
+    instance_type: str,
+    region: str,
+) -> Optional[Dict[str, str]]:
+    """Gets instance rate per hour for the given instance type.
+
+    Args:
+        instance_type (str): The instance type.
+        region (str): The region.
+    Returns:
+        Optional[Dict[str, str]]: Instance rate per hour.
+        Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.125'}.
+
+    Raises:
+        Exception: An exception is raised if
+            the IAM role is not authorized to perform pricing:GetProducts.
+            or unexpected event happened.
+    """
+    region_name = "us-east-1"
+    if region.startswith("eu") or region.startswith("af"):
+        region_name = "eu-central-1"
+    elif region.startswith("ap") or region.startswith("cn"):
+        region_name = "ap-south-1"
+
+    pricing_client: boto3.client = boto3.client("pricing", region_name=region_name)
+    res = pricing_client.get_products(
+        ServiceCode="AmazonSageMaker",
+        Filters=[
+            {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
+            {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
+            {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
+        ],
+    )
+
+    price_list = res.get("PriceList", [])
+    if len(price_list) > 0:
+        price_data = price_list[0]
+        if isinstance(price_data, str):
+            price_data = json.loads(price_data)
+
+        instance_rate_per_hour = extract_instance_rate_per_hour(price_data)
+        if instance_rate_per_hour is not None:
+            return instance_rate_per_hour
+    raise Exception(f"Unable to get instance rate per hour for instance type: {instance_type}.")
+
+
+def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    """Extract instance rate per hour for the given Price JSON data.
+
+    Args:
+        price_data (Dict[str, Any]): The Price JSON data.
+    Returns:
+        Optional[Dict[str, str], None]: Instance rate per hour.
+    """
+
+    if price_data is not None:
+        price_dimensions = price_data.get("terms", {}).get("OnDemand", {}).values()
+        for dimension in price_dimensions:
+            for price in dimension.get("priceDimensions", {}).values():
+                for currency in price.get("pricePerUnit", {}).keys():
+                    value = price.get("pricePerUnit", {}).get(currency)
+                    if value is not None:
+                        value = str(round(float(value), 3))
+                    return {
+                        "unit": f"{currency}/Hr",
+                        "value": value,
+                        "name": "On-demand Instance Rate",
+                    }
+    return None
+
+
+def camel_case_to_pascal_case(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Iteratively updates a dictionary to convert all keys from snake_case to PascalCase.
+
+    Args:
+        data (dict): The dictionary to be updated.
+
+    Returns:
+        dict: The updated dictionary with keys in PascalCase.
+    """
+    result = {}
+
+    def convert_key(key):
+        """Converts a snake_case key to PascalCase."""
+        return "".join(part.capitalize() for part in key.split("_"))
+
+    def convert_value(value):
+        """Recursively processes the value of a key-value pair."""
+        if isinstance(value, dict):
+            return camel_case_to_pascal_case(value)
+        if isinstance(value, list):
+            return [convert_value(item) for item in value]
+
+        return value
+
+    for key, value in data.items():
+        result[convert_key(key)] = convert_value(value)
+
+    return result
+
+
+def tag_exists(tag: TagsDict, curr_tags: Optional[Tags]) -> bool:
+    """Returns True if ``tag`` already exists.
+
+    Args:
+        tag (TagsDict): The tag dictionary.
+        curr_tags (Optional[Tags]): The current tags.
+
+    Returns:
+        bool: True if the tag exists.
+    """
+    if curr_tags is None:
+        return False
+
+    for curr_tag in curr_tags:
+        if tag["Key"] == curr_tag["Key"]:
+            return True
+
+    return False
+
+
+def _validate_new_tags(new_tags: Optional[Tags], curr_tags: Optional[Tags]) -> Optional[Tags]:
+    """Validates new tags against existing tags.
+
+    Args:
+        new_tags (Optional[Tags]): The new tags.
+        curr_tags (Optional[Tags]): The current tags.
+
+    Returns:
+        Optional[Tags]: The updated tags.
+    """
+    if curr_tags is None:
+        return new_tags
+
+    if curr_tags and isinstance(curr_tags, dict):
+        curr_tags = [curr_tags]
+
+    if isinstance(new_tags, dict):
+        if not tag_exists(new_tags, curr_tags):
+            curr_tags.append(new_tags)
+    elif isinstance(new_tags, list):
+        for new_tag in new_tags:
+            if not tag_exists(new_tag, curr_tags):
+                curr_tags.append(new_tag)
+
+    return curr_tags
+
+
+def remove_tag_with_key(key: str, tags: Optional[Tags]) -> Optional[Tags]:
+    """Remove a tag with the given key from the list of tags.
+
+    Args:
+        key (str): The key of the tag to remove.
+        tags (Optional[Tags]): The current list of tags.
+
+    Returns:
+        Optional[Tags]: The updated list of tags with the tag removed.
+    """
+    if tags is None:
+        return tags
+    if isinstance(tags, dict):
+        tags = [tags]
+
+    updated_tags = []
+    for tag in tags:
+        if tag["Key"] != key:
+            updated_tags.append(tag)
+
+    if not updated_tags:
+        return None
+    if len(updated_tags) == 1:
+        return updated_tags[0]
+    return updated_tags

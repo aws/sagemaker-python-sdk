@@ -7,6 +7,7 @@ import logging
 import platform
 from pathlib import Path
 from sagemaker.base_predictor import PredictorBase
+from sagemaker.serve.utils.optimize_utils import _is_s3_uri
 from sagemaker.session import Session
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url
@@ -84,24 +85,31 @@ class SageMakerTorchServe:
         secret_key: str,
         s3_model_data_url: str = None,
         image: str = None,
+        should_upload_artifacts: bool = False,
     ):
         """Tar the model artifact and upload to S3 bucket, then prepare for the environment variables"""
-        if s3_model_data_url:
-            bucket, key_prefix = parse_s3_url(url=s3_model_data_url)
-        else:
-            bucket, key_prefix = None, None
+        s3_upload_path = None
+        if _is_s3_uri(model_path):
+            s3_upload_path = model_path
+        elif should_upload_artifacts:
+            if s3_model_data_url:
+                bucket, key_prefix = parse_s3_url(url=s3_model_data_url)
+            else:
+                bucket, key_prefix = None, None
 
-        code_key_prefix = fw_utils.model_code_key_prefix(key_prefix, None, image)
+            code_key_prefix = fw_utils.model_code_key_prefix(key_prefix, None, image)
 
-        bucket, code_key_prefix = determine_bucket_and_prefix(
-            bucket=bucket, key_prefix=code_key_prefix, sagemaker_session=sagemaker_session
-        )
+            bucket, code_key_prefix = determine_bucket_and_prefix(
+                bucket=bucket, key_prefix=code_key_prefix, sagemaker_session=sagemaker_session
+            )
 
-        logger.debug(
-            "Uploading the model resources to bucket=%s, key_prefix=%s.", bucket, code_key_prefix
-        )
-        s3_upload_path = upload(sagemaker_session, model_path, bucket, code_key_prefix)
-        logger.debug("Model resources uploaded to: %s", s3_upload_path)
+            logger.debug(
+                "Uploading the model resources to bucket=%s, key_prefix=%s.",
+                bucket,
+                code_key_prefix,
+            )
+            s3_upload_path = upload(sagemaker_session, model_path, bucket, code_key_prefix)
+            logger.debug("Model resources uploaded to: %s", s3_upload_path)
 
         env_vars = {
             "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",

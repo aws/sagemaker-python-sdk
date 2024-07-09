@@ -13,14 +13,20 @@
 """This module stores types related to SageMaker JumpStart HubAPI requests and responses."""
 from __future__ import absolute_import
 
+from enum import Enum
 import re
 import json
 import datetime
 
 from typing import Any, Dict, List, Union, Optional
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import (
     HubContentType,
     HubArnExtractedInfo,
+    JumpStartConfigComponent,
+    JumpStartConfigRanking,
+    JumpStartMetadataConfig,
+    JumpStartMetadataConfigs,
     JumpStartPredictorSpecs,
     JumpStartHyperparameter,
     JumpStartDataHolderType,
@@ -32,6 +38,13 @@ from sagemaker.jumpstart.hub.parser_utils import (
     snake_to_upper_camel,
     walk_and_apply_json,
 )
+
+
+class _ComponentType(str, Enum):
+    """Enum for different component types."""
+
+    INFERENCE = "Inference"
+    TRAINING = "Training"
 
 
 class HubDataHolderType(JumpStartDataHolderType):
@@ -456,6 +469,9 @@ class HubModelDocument(HubDataHolderType):
         "hosting_use_script_uri",
         "hosting_eula_uri",
         "hosting_model_package_arn",
+        "inference_configs",
+        "inference_config_components",
+        "inference_config_rankings",
         "training_artifact_s3_data_type",
         "training_artifact_compression_type",
         "training_model_package_artifact_uri",
@@ -467,6 +483,9 @@ class HubModelDocument(HubDataHolderType):
         "training_ecr_uri",
         "training_metrics",
         "training_artifact_uri",
+        "training_configs",
+        "training_config_components",
+        "training_config_rankings",
         "inference_dependencies",
         "training_dependencies",
         "default_inference_instance_type",
@@ -566,6 +585,11 @@ class HubModelDocument(HubDataHolderType):
         )
         self.hosting_eula_uri: Optional[str] = json_obj.get("HostingEulaUri")
         self.hosting_model_package_arn: Optional[str] = json_obj.get("HostingModelPackageArn")
+
+        self.inference_config_rankings = self._get_config_rankings(json_obj)
+        self.inference_config_components = self._get_config_components(json_obj)
+        self.inference_configs = self._get_configs(json_obj)
+
         self.default_inference_instance_type: Optional[str] = json_obj.get(
             "DefaultInferenceInstanceType"
         )
@@ -667,6 +691,15 @@ class HubModelDocument(HubDataHolderType):
                 "TrainingMetrics", None
             )
             self.training_artifact_uri: Optional[str] = json_obj.get("TrainingArtifactUri")
+
+            self.training_config_rankings = self._get_config_rankings(
+                json_obj, _ComponentType.TRAINING
+            )
+            self.training_config_components = self._get_config_components(
+                json_obj, _ComponentType.TRAINING
+            )
+            self.training_configs = self._get_configs(json_obj, _ComponentType.TRAINING)
+
             self.training_dependencies: Optional[str] = json_obj.get("TrainingDependencies")
             self.default_training_instance_type: Optional[str] = json_obj.get(
                 "DefaultTrainingInstanceType"
@@ -706,6 +739,64 @@ class HubModelDocument(HubDataHolderType):
     def get_region(self) -> str:
         """Returns hub region."""
         return self._region
+
+    def _get_config_rankings(
+        self, json_obj: Dict[str, Any], component_type=_ComponentType.INFERENCE
+    ) -> Optional[Dict[str, JumpStartConfigRanking]]:
+        """Returns config rankings."""
+        config_rankings = json_obj.get(f"{component_type.value}ConfigRankings")
+        return (
+            {
+                alias: JumpStartConfigRanking(ranking, is_hub_content=True)
+                for alias, ranking in config_rankings.items()
+            }
+            if config_rankings
+            else None
+        )
+
+    def _get_config_components(
+        self, json_obj: Dict[str, Any], component_type=_ComponentType.INFERENCE
+    ) -> Optional[Dict[str, JumpStartConfigComponent]]:
+        """Returns config components."""
+        config_components = json_obj.get(f"{component_type.value}ConfigComponents")
+        return (
+            {
+                alias: JumpStartConfigComponent(alias, config, is_hub_content=True)
+                for alias, config in config_components.items()
+            }
+            if config_components
+            else None
+        )
+
+    def _get_configs(
+        self, json_obj: Dict[str, Any], component_type=_ComponentType.INFERENCE
+    ) -> Optional[JumpStartMetadataConfigs]:
+        """Returns configs."""
+        if not (configs := json_obj.get(f"{component_type.value}Configs")):
+            return None
+
+        configs_dict = {}
+        for alias, config in configs.items():
+            config_components = None
+            if isinstance(config, dict) and (component_names := config.get("ComponentNames")):
+                config_components = {
+                    name: getattr(self, f"{component_type.value.lower()}_config_components").get(
+                        name
+                    )
+                    for name in component_names
+                }
+            configs_dict[alias] = JumpStartMetadataConfig(
+                alias, config, json_obj, config_components, is_hub_content=True
+            )
+
+        if component_type == _ComponentType.INFERENCE:
+            config_rankings = self.inference_config_rankings
+            scope = JumpStartScriptScope.INFERENCE
+        else:
+            config_rankings = self.training_config_rankings
+            scope = JumpStartScriptScope.TRAINING
+
+        return JumpStartMetadataConfigs(configs_dict, config_rankings, scope)
 
 
 class HubNotebookDocument(HubDataHolderType):
