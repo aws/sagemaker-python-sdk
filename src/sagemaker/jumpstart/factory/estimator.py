@@ -432,7 +432,7 @@ def _add_sagemaker_session_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs
     kwargs.sagemaker_session = (
         kwargs.sagemaker_session
         or get_default_jumpstart_session_with_user_agent_suffix(
-            kwargs.model_id, kwargs.model_version
+            kwargs.model_id, kwargs.model_version, kwargs.hub_arn
         )
     )
     return kwargs
