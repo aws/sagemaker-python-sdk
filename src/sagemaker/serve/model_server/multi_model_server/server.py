@@ -140,14 +140,6 @@ class SageMakerMultiModelServer:
             else None
         )
 
-        model_data = {
-            "S3DataSource": {
-                "CompressionType": "None",
-                "S3DataType": "S3Prefix",
-                "S3Uri": model_data_url + "/",
-            }
-        }
-
         if secret_key:
             env_vars = {
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
