@@ -337,7 +337,7 @@ class Transformers(ABC):
                 self.instance_type,
             )
         else:
-            raise ValueError("Cannot detect required model or inference spec")
+            raise ValueError("Cannot detect and set image_uri. Please pass model or inference spec.")
 
     def _build_for_transformers(self):
         """Method that triggers model build
