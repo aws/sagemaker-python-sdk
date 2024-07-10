@@ -172,6 +172,7 @@ class TritonServerTests(TestCase):
             secret_key=SECRET_KEY,
             s3_model_data_url=S3_URI,
             image=GPU_TRITON_IMAGE,
+            should_upload_artifacts=True,
         )
 
         mock_upload.assert_called_once_with(mock_session, MODEL_REPO, "mock_model_data_uri", ANY)

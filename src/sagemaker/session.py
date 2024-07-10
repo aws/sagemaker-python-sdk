@@ -680,7 +680,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 (str): S3 object from boto session
             region (str): The region in which to create the bucket.
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
-
         """
         try:
             s3.meta.client.head_bucket(Bucket=bucket_name)
@@ -2624,6 +2623,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         desc = _wait_until(lambda: _auto_ml_job_status(self.sagemaker_client, job), poll)
         _check_job_status(job, desc, "AutoMLJobStatus")
+        return desc
+
+    def wait_for_optimization_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker Optimization job to complete.
+
+        Args:
+            job (str): Name of optimization job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeOptimizationJob`` API.
+
+        Raises:
+            exceptions.ResourceNotFound: If optimization job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If optimization job fails.
+        """
+        desc = _wait_until(lambda: _optimization_job_status(self.sagemaker_client, job), poll)
+        _check_job_status(job, desc, "OptimizationJobStatus")
         return desc
 
     def logs_for_auto_ml_job(  # noqa: C901 - suppress complexity warning for this method
@@ -7510,6 +7527,7 @@ def container_def(
     container_mode=None,
     image_config=None,
     accept_eula=None,
+    additional_model_data_sources=None,
     model_reference_arn=None,
 ):
     """Create a definition for executing a container as part of a SageMaker model.
@@ -7533,6 +7551,8 @@ def container_def(
             The `accept_eula` value must be explicitly defined as `True` in order to
             accept the end-user license agreement (EULA) that some
             models require. (Default: None).
+        additional_model_data_sources (PipelineVariable or dict): Additional location
+                of SageMaker model data (default: None).
 
     Returns:
         dict[str, str]: A complete container definition object usable with the CreateModel API if
@@ -7541,6 +7561,9 @@ def container_def(
     if env is None:
         env = {}
     c_def = {"Image": image_uri, "Environment": env}
+
+    if additional_model_data_sources:
+        c_def["AdditionalModelDataSources"] = additional_model_data_sources
 
     if isinstance(model_data_url, str) and (
         not (model_data_url.startswith("s3://") and model_data_url.endswith("tar.gz"))
@@ -7973,6 +7996,31 @@ def _auto_ml_job_status(sagemaker_client, job_name):
     status = desc["AutoMLJobStatus"]
 
     print(auto_ml_job_status_codes.get(status, "?"), end="")
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print("")
+    return desc
+
+
+def _optimization_job_status(sagemaker_client, job_name):
+    """Placeholder docstring"""
+    optimization_job_status_codes = {
+        "INPROGRESS": ".",
+        "COMPLETED": "!",
+        "FAILED": "*",
+        "STARTING": ".",
+        "STOPPING": "_",
+        "STOPPED": "s",
+    }
+    in_progress_statuses = ["INPROGRESS", "STARTING", "STOPPING"]
+
+    desc = sagemaker_client.describe_optimization_job(OptimizationJobName=job_name)
+    status = desc["OptimizationJobStatus"]
+
+    print(optimization_job_status_codes.get(status, "?"), end="")
     sys.stdout.flush()
 
     if status in in_progress_statuses:

@@ -102,6 +102,10 @@ class TensorflowServing(ABC):
         self.pysdk_model.mode = self.mode
         self.pysdk_model.modes = self.modes
         self.pysdk_model.serve_settings = self.serve_settings
+        if hasattr(self, "role_arn") and self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if hasattr(self, "sagemaker_session") and self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
 
         self._original_deploy = self.pysdk_model.deploy
         self.pysdk_model.deploy = self._model_builder_deploy_wrapper

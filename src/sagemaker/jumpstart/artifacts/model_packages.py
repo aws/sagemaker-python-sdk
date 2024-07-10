@@ -38,6 +38,7 @@ def _retrieve_model_package_arn(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> Optional[str]:
     """Retrieves associated model pacakge arn for the model.
 
@@ -63,6 +64,7 @@ def _retrieve_model_package_arn(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Returns:
         str: the model package arn to use for the model or None.
@@ -82,6 +84,7 @@ def _retrieve_model_package_arn(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
@@ -97,7 +100,10 @@ def _retrieve_model_package_arn(
         if instance_specific_arn is not None:
             return instance_specific_arn
 
-        if model_specs.hosting_model_package_arns is None:
+        if (
+            model_specs.hosting_model_package_arns is None
+            or model_specs.hosting_model_package_arns == {}
+        ):
             return None
 
         regional_arn = model_specs.hosting_model_package_arns.get(region)
@@ -123,6 +129,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
 ) -> Optional[str]:
     """Retrieves s3 artifact uri associated with model package.
 
@@ -148,6 +155,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         str: the model package artifact uri to use for the model or None.
 
@@ -170,6 +178,7 @@ def _retrieve_model_package_model_artifact_s3_uri(
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
             sagemaker_session=sagemaker_session,
+            config_name=config_name,
         )
 
         if model_specs.training_model_package_artifact_uris is None:

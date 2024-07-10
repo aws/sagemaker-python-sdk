@@ -15,9 +15,11 @@ from __future__ import absolute_import
 from copy import copy
 import logging
 import os
+from functools import lru_cache, wraps
 from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
+from botocore.exceptions import ClientError
 from packaging.version import Version
 import botocore
 import sagemaker
@@ -43,10 +45,11 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
+    DeploymentConfigMetadata,
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config, TagsDict
+from sagemaker.utils import resolve_value_from_config, TagsDict, get_instance_rate_per_hour
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.user_agent import get_user_agent_extra_suffix
 
@@ -153,7 +156,7 @@ def get_jumpstart_content_bucket(
         except KeyError:
             formatted_launched_regions_str = get_jumpstart_launched_regions_message()
             raise ValueError(
-                f"Unable to get content bucket for JumpStart in {region} region. "
+                f"Unable to get content bucket for Neo in {region} region. "
                 f"{formatted_launched_regions_str}"
             )
 
@@ -164,6 +167,34 @@ def get_jumpstart_content_bucket(
             accessors.JumpStartModelsAccessor.reset_cache()
         for info_log in info_logs:
             constants.JUMPSTART_LOGGER.info(info_log)
+    return bucket_to_return
+
+
+def get_neo_content_bucket(
+    region: str = constants.NEO_DEFAULT_REGION_NAME,
+) -> str:
+    """Returns the regionalized S3 bucket name for Neo service.
+
+    Raises:
+        ValueError: If Neo is not launched in ``region``.
+    """
+
+    bucket_to_return: Optional[str] = None
+    if (
+        constants.ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE]) > 0
+    ):
+        bucket_to_return = os.environ[constants.ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE]
+        info_log = f"Using Neo bucket override: '{bucket_to_return}'"
+        constants.JUMPSTART_LOGGER.info(info_log)
+    else:
+        try:
+            bucket_to_return = constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[
+                region
+            ].neo_content_bucket
+        except KeyError:
+            raise ValueError(f"Unable to get content bucket for Neo in {region} region.")
+
     return bucket_to_return
 
 
@@ -321,6 +352,8 @@ def add_single_jumpstart_tag(
                     tag_key_in_array(enums.JumpStartTag.MODEL_ID, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_VERSION, curr_tags)
                     or tag_key_in_array(enums.JumpStartTag.MODEL_TYPE, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.INFERENCE_CONFIG_NAME, curr_tags)
+                    or tag_key_in_array(enums.JumpStartTag.TRAINING_CONFIG_NAME, curr_tags)
                 )
                 if is_uri
                 else False
@@ -351,11 +384,13 @@ def get_jumpstart_base_name_if_jumpstart_model(
     return None
 
 
-def add_jumpstart_model_id_version_tags(
+def add_jumpstart_model_info_tags(
     tags: Optional[List[TagsDict]],
     model_id: str,
     model_version: str,
     model_type: Optional[enums.JumpStartModelType] = None,
+    config_name: Optional[str] = None,
+    scope: enums.JumpStartScriptScope = None,
 ) -> List[TagsDict]:
     """Add custom model ID and version tags to JumpStart related resources."""
     if model_id is None or model_version is None:
@@ -376,6 +411,20 @@ def add_jumpstart_model_id_version_tags(
         tags = add_single_jumpstart_tag(
             enums.JumpStartModelType.PROPRIETARY.value,
             enums.JumpStartTag.MODEL_TYPE,
+            tags,
+            is_uri=False,
+        )
+    if config_name and scope == enums.JumpStartScriptScope.INFERENCE:
+        tags = add_single_jumpstart_tag(
+            config_name,
+            enums.JumpStartTag.INFERENCE_CONFIG_NAME,
+            tags,
+            is_uri=False,
+        )
+    if config_name and scope == enums.JumpStartScriptScope.TRAINING:
+        tags = add_single_jumpstart_tag(
+            config_name,
+            enums.JumpStartTag.TRAINING_CONFIG_NAME,
             tags,
             is_uri=False,
         )
@@ -566,6 +615,7 @@ def verify_model_region_and_return_specs(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
@@ -590,6 +640,7 @@ def verify_model_region_and_return_specs(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -656,6 +707,9 @@ def verify_model_region_and_return_specs(
                 vulnerabilities=model_specs.training_vulnerabilities,
                 scope=constants.JumpStartScriptScope.TRAINING,
             )
+
+    if model_specs and config_name:
+        model_specs.set_config(config_name, scope)
 
     return model_specs
 
@@ -821,52 +875,80 @@ def validate_model_id_and_get_type(
     return None
 
 
-def get_jumpstart_model_id_version_from_resource_arn(
+def _extract_value_from_list_of_tags(
+    tag_keys: List[str],
+    list_tags_result: List[str],
+    resource_name: str,
+    resource_arn: str,
+):
+    """Extracts value from list of tags with check of duplicate tags.
+
+    Returns None if no value is found.
+    """
+    resolved_value = None
+    for tag_key in tag_keys:
+        try:
+            value_from_tag = get_tag_value(tag_key, list_tags_result)
+        except KeyError:
+            continue
+        if value_from_tag is not None:
+            if resolved_value is not None and value_from_tag != resolved_value:
+                constants.JUMPSTART_LOGGER.warning(
+                    "Found multiple  %s tags on the following resource: %s",
+                    resource_name,
+                    resource_arn,
+                )
+                resolved_value = None
+                break
+            resolved_value = value_from_tag
+    return resolved_value
+
+
+def get_jumpstart_model_info_from_resource_arn(
     resource_arn: str,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> Tuple[Optional[str], Optional[str]]:
-    """Returns the JumpStart model ID and version if in resource tags.
+) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+    """Returns the JumpStart model ID, version and config name if in resource tags.
 
-    Returns 'None' if model ID or version cannot be inferred from tags.
+    Returns 'None' if model ID or version or config name cannot be inferred from tags.
     """
 
     list_tags_result = sagemaker_session.list_tags(resource_arn)
 
-    model_id: Optional[str] = None
-    model_version: Optional[str] = None
-
     model_id_keys = [enums.JumpStartTag.MODEL_ID, *constants.EXTRA_MODEL_ID_TAGS]
     model_version_keys = [enums.JumpStartTag.MODEL_VERSION, *constants.EXTRA_MODEL_VERSION_TAGS]
+    inference_config_name_keys = [enums.JumpStartTag.INFERENCE_CONFIG_NAME]
+    training_config_name_keys = [enums.JumpStartTag.TRAINING_CONFIG_NAME]
 
-    for model_id_key in model_id_keys:
-        try:
-            model_id_from_tag = get_tag_value(model_id_key, list_tags_result)
-        except KeyError:
-            continue
-        if model_id_from_tag is not None:
-            if model_id is not None and model_id_from_tag != model_id:
-                constants.JUMPSTART_LOGGER.warning(
-                    "Found multiple model ID tags on the following resource: %s", resource_arn
-                )
-                model_id = None
-                break
-            model_id = model_id_from_tag
+    model_id: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=model_id_keys,
+        list_tags_result=list_tags_result,
+        resource_name="model ID",
+        resource_arn=resource_arn,
+    )
 
-    for model_version_key in model_version_keys:
-        try:
-            model_version_from_tag = get_tag_value(model_version_key, list_tags_result)
-        except KeyError:
-            continue
-        if model_version_from_tag is not None:
-            if model_version is not None and model_version_from_tag != model_version:
-                constants.JUMPSTART_LOGGER.warning(
-                    "Found multiple model version tags on the following resource: %s", resource_arn
-                )
-                model_version = None
-                break
-            model_version = model_version_from_tag
+    model_version: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=model_version_keys,
+        list_tags_result=list_tags_result,
+        resource_name="model version",
+        resource_arn=resource_arn,
+    )
 
-    return model_id, model_version
+    inference_config_name: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=inference_config_name_keys,
+        list_tags_result=list_tags_result,
+        resource_name="inference config name",
+        resource_arn=resource_arn,
+    )
+
+    training_config_name: Optional[str] = _extract_value_from_list_of_tags(
+        tag_keys=training_config_name_keys,
+        list_tags_result=list_tags_result,
+        resource_name="training config name",
+        resource_arn=resource_arn,
+    )
+
+    return model_id, model_version, inference_config_name, training_config_name
 
 
 def get_region_fallback(
@@ -916,7 +998,11 @@ def get_config_names(
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> List[str]:
-    """Returns a list of config names for the given model ID and region."""
+    """Returns a list of config names for the given model ID and region.
+
+    Raises:
+        ValueError: If the script scope is not supported by JumpStart.
+    """
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
@@ -931,7 +1017,7 @@ def get_config_names(
     elif scope == enums.JumpStartScriptScope.TRAINING:
         metadata_configs = model_specs.training_configs
     else:
-        raise ValueError(f"Unknown script scope {scope}.")
+        raise ValueError(f"Unknown script scope: {scope}.")
 
     return list(metadata_configs.configs.keys()) if metadata_configs else []
 
@@ -946,7 +1032,11 @@ def get_benchmark_stats(
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
 ) -> Dict[str, List[JumpStartBenchmarkStat]]:
-    """Returns benchmark stats for the given model ID and region."""
+    """Returns benchmark stats for the given model ID and region.
+
+    Raises:
+        ValueError: If the script scope is not supported by JumpStart.
+    """
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
@@ -962,7 +1052,7 @@ def get_benchmark_stats(
     elif scope == enums.JumpStartScriptScope.TRAINING:
         metadata_configs = model_specs.training_configs
     else:
-        raise ValueError(f"Unknown script scope {scope}.")
+        raise ValueError(f"Unknown script scope: {scope}.")
 
     if not config_names:
         config_names = metadata_configs.configs.keys() if metadata_configs else []
@@ -970,7 +1060,7 @@ def get_benchmark_stats(
     benchmark_stats = {}
     for config_name in config_names:
         if config_name not in metadata_configs.configs:
-            raise ValueError(f"Unknown config name: '{config_name}'")
+            raise ValueError(f"Unknown config name: {config_name}")
         benchmark_stats[config_name] = metadata_configs.configs.get(config_name).benchmark_metrics
 
     return benchmark_stats
@@ -984,8 +1074,12 @@ def get_jumpstart_configs(
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
-) -> Dict[str, List[JumpStartMetadataConfig]]:
-    """Returns metadata configs for the given model ID and region."""
+) -> Dict[str, JumpStartMetadataConfig]:
+    """Returns metadata configs for the given model ID and region.
+
+    Raises:
+        ValueError: If the script scope is not supported by JumpStart.
+    """
     model_specs = verify_model_region_and_return_specs(
         region=region,
         model_id=model_id,
@@ -1000,10 +1094,12 @@ def get_jumpstart_configs(
     elif scope == enums.JumpStartScriptScope.TRAINING:
         metadata_configs = model_specs.training_configs
     else:
-        raise ValueError(f"Unknown script scope {scope}.")
+        raise ValueError(f"Unknown script scope: {scope}.")
 
     if not config_names:
-        config_names = metadata_configs.configs.keys() if metadata_configs else []
+        config_names = (
+            metadata_configs.config_rankings.get("overall").rankings if metadata_configs else []
+        )
 
     return (
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
@@ -1046,3 +1142,252 @@ def get_default_jumpstart_session_with_user_agent_suffix(
         config=botocore_config,
     )
     return session
+
+
+def add_instance_rate_stats_to_benchmark_metrics(
+    region: str,
+    benchmark_metrics: Optional[Dict[str, List[JumpStartBenchmarkStat]]],
+) -> Optional[Tuple[Dict[str, str], Dict[str, List[JumpStartBenchmarkStat]]]]:
+    """Adds instance types metric stats to the given benchmark_metrics dict.
+
+    Args:
+        region (str): AWS region.
+        benchmark_metrics (Optional[Dict[str, List[JumpStartBenchmarkStat]]]):
+    Returns:
+        Optional[Tuple[Dict[str, str], Dict[str, List[JumpStartBenchmarkStat]]]]:
+        Contains Error and metrics.
+    """
+    if not benchmark_metrics:
+        return None
+
+    err_message = None
+    final_benchmark_metrics = {}
+    for instance_type, benchmark_metric_stats in benchmark_metrics.items():
+        instance_type = instance_type if instance_type.startswith("ml.") else f"ml.{instance_type}"
+
+        if not has_instance_rate_stat(benchmark_metric_stats) and not err_message:
+            try:
+                instance_type_rate = get_instance_rate_per_hour(
+                    instance_type=instance_type, region=region
+                )
+
+                if not benchmark_metric_stats:
+                    benchmark_metric_stats = []
+                benchmark_metric_stats.append(
+                    JumpStartBenchmarkStat({"concurrency": None, **instance_type_rate})
+                )
+
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
+            except ClientError as e:
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
+                err_message = e.response["Error"]
+            except Exception:  # pylint: disable=W0703
+                final_benchmark_metrics[instance_type] = benchmark_metric_stats
+        else:
+            final_benchmark_metrics[instance_type] = benchmark_metric_stats
+
+    return err_message, final_benchmark_metrics
+
+
+def has_instance_rate_stat(benchmark_metric_stats: Optional[List[JumpStartBenchmarkStat]]) -> bool:
+    """Determines whether a benchmark metric stats contains instance rate metric stat.
+
+    Args:
+        benchmark_metric_stats (Optional[List[JumpStartBenchmarkStat]]):
+        List of benchmark metric stats.
+    Returns:
+        bool: Whether the benchmark metric stats contains instance rate metric stat.
+    """
+    if benchmark_metric_stats is None:
+        return True
+    for benchmark_metric_stat in benchmark_metric_stats:
+        if benchmark_metric_stat.name.lower() == "instance rate":
+            return True
+    return False
+
+
+def get_metrics_from_deployment_configs(
+    deployment_configs: Optional[List[DeploymentConfigMetadata]],
+) -> Dict[str, List[str]]:
+    """Extracts benchmark metrics from deployment configs metadata.
+
+    Args:
+        deployment_configs (Optional[List[DeploymentConfigMetadata]]):
+        List of deployment configs metadata.
+    Returns:
+        Dict[str, List[str]]: Deployment configs bench metrics dict.
+    """
+    if not deployment_configs:
+        return {}
+
+    data = {"Instance Type": [], "Config Name": [], "Concurrent Users": []}
+    instance_rate_data = {}
+    for index, deployment_config in enumerate(deployment_configs):
+        benchmark_metrics = deployment_config.benchmark_metrics
+        if not deployment_config.deployment_args or not benchmark_metrics:
+            continue
+
+        for current_instance_type, current_instance_type_metrics in benchmark_metrics.items():
+            instance_type_rate, concurrent_users = _normalize_benchmark_metrics(
+                current_instance_type_metrics
+            )
+
+            for concurrent_user, metrics in concurrent_users.items():
+                instance_type_to_display = (
+                    f"{current_instance_type} (Default)"
+                    if index == 0
+                    and concurrent_user
+                    and int(concurrent_user) == 1
+                    and current_instance_type
+                    == deployment_config.deployment_args.default_instance_type
+                    else current_instance_type
+                )
+
+                data["Config Name"].append(deployment_config.deployment_config_name)
+                data["Instance Type"].append(instance_type_to_display)
+                data["Concurrent Users"].append(concurrent_user)
+
+                if instance_type_rate:
+                    instance_rate_column_name = (
+                        f"{instance_type_rate.name} ({instance_type_rate.unit})"
+                    )
+                    instance_rate_data[instance_rate_column_name] = instance_rate_data.get(
+                        instance_rate_column_name, []
+                    )
+                    instance_rate_data[instance_rate_column_name].append(instance_type_rate.value)
+
+                for metric in metrics:
+                    column_name = _normalize_benchmark_metric_column_name(metric.name, metric.unit)
+                    data[column_name] = data.get(column_name, [])
+                    data[column_name].append(metric.value)
+
+    data = {**data, **instance_rate_data}
+    return data
+
+
+def _normalize_benchmark_metric_column_name(name: str, unit: str) -> str:
+    """Normalizes benchmark metric column name.
+
+    Args:
+        name (str): Name of the metric.
+        unit (str): Unit of the metric.
+    Returns:
+        str: Normalized metric column name.
+    """
+    if "latency" in name.lower():
+        name = f"Latency, TTFT (P50 in {unit.lower()})"
+    elif "throughput" in name.lower():
+        name = f"Throughput (P50 in {unit.lower()}/user)"
+    return name
+
+
+def _normalize_benchmark_metrics(
+    benchmark_metric_stats: List[JumpStartBenchmarkStat],
+) -> Tuple[JumpStartBenchmarkStat, Dict[str, List[JumpStartBenchmarkStat]]]:
+    """Normalizes benchmark metrics dict.
+
+    Args:
+        benchmark_metric_stats (List[JumpStartBenchmarkStat]):
+        List of benchmark metrics stats.
+    Returns:
+        Tuple[JumpStartBenchmarkStat, Dict[str, List[JumpStartBenchmarkStat]]]:
+        Normalized benchmark metrics dict.
+    """
+    instance_type_rate = None
+    concurrent_users = {}
+    for current_instance_type_metric in benchmark_metric_stats:
+        if "instance rate" in current_instance_type_metric.name.lower():
+            instance_type_rate = current_instance_type_metric
+        elif current_instance_type_metric.concurrency not in concurrent_users:
+            concurrent_users[current_instance_type_metric.concurrency] = [
+                current_instance_type_metric
+            ]
+        else:
+            concurrent_users[current_instance_type_metric.concurrency].append(
+                current_instance_type_metric
+            )
+
+    return instance_type_rate, concurrent_users
+
+
+def deployment_config_response_data(
+    deployment_configs: Optional[List[DeploymentConfigMetadata]],
+) -> List[Dict[str, Any]]:
+    """Deployment config api response data.
+
+    Args:
+        deployment_configs (Optional[List[DeploymentConfigMetadata]]):
+        List of deployment configs metadata.
+    Returns:
+        List[Dict[str, Any]]: List of deployment config api response data.
+    """
+    configs = []
+    if not deployment_configs:
+        return configs
+
+    for deployment_config in deployment_configs:
+        deployment_config_json = deployment_config.to_json()
+        benchmark_metrics = deployment_config_json.get("BenchmarkMetrics")
+        if benchmark_metrics and deployment_config.deployment_args:
+            deployment_config_json["BenchmarkMetrics"] = {
+                deployment_config.deployment_args.instance_type: benchmark_metrics.get(
+                    deployment_config.deployment_args.instance_type
+                )
+            }
+
+        configs.append(deployment_config_json)
+    return configs
+
+
+def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool = False):
+    """LRU cache for deployment configs."""
+
+    def has_instance_rate_metric(config: DeploymentConfigMetadata) -> bool:
+        """Determines whether metadata config contains instance rate metric stat.
+
+        Args:
+            config (DeploymentConfigMetadata): Metadata config metadata.
+        Returns:
+            bool: Whether the metadata config contains instance rate metric stat.
+        """
+        if config.benchmark_metrics is None:
+            return True
+        for benchmark_metric_stats in config.benchmark_metrics.values():
+            if not has_instance_rate_stat(benchmark_metric_stats):
+                return False
+        return True
+
+    def wrapper_cache(f):
+        f = lru_cache(maxsize=maxsize, typed=typed)(f)
+
+        @wraps(f)
+        def wrapped_f(*args, **kwargs):
+            res = f(*args, **kwargs)
+
+            # Clear cache on first call if
+            #   - The output does not contain Instant rate metrics
+            #   as this is caused by missing policy.
+            if f.cache_info().hits == 0 and f.cache_info().misses == 1:
+                if isinstance(res, list):
+                    for item in res:
+                        if isinstance(
+                            item, DeploymentConfigMetadata
+                        ) and not has_instance_rate_metric(item):
+                            f.cache_clear()
+                            break
+                elif isinstance(res, dict):
+                    keys = list(res.keys())
+                    if len(keys) == 0 or "Instance Rate" not in keys[-1]:
+                        f.cache_clear()
+                    elif len(res[keys[1]]) > len(res[keys[-1]]):
+                        del res[keys[-1]]
+                        f.cache_clear()
+            return res
+
+        wrapped_f.cache_info = f.cache_info
+        wrapped_f.cache_clear = f.cache_clear
+        return wrapped_f
+
+    if _func is None:
+        return wrapper_cache
+    return wrapper_cache(_func)

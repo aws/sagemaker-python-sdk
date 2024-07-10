@@ -135,6 +135,7 @@ class TeiServerTests(TestCase):
             sagemaker_session=mock_session,
             s3_model_data_url=S3_URI,
             image=TEI_IMAGE,
+            should_upload_artifacts=True,
         )
 
         mock_uploader.upload.assert_called_once()

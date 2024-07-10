@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 import os
 from unittest import TestCase
+
+from botocore.exceptions import ClientError
 from mock.mock import Mock, patch
 import pytest
 import boto3
@@ -24,6 +26,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE,
+    ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE,
     EXTRA_MODEL_ID_TAGS,
     EXTRA_MODEL_VERSION_TAGS,
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -31,6 +34,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_LOGGER,
     JUMPSTART_REGION_NAME_SET,
     JUMPSTART_RESOURCE_BASE_NAME,
+    NEO_DEFAULT_REGION_NAME,
     JumpStartScriptScope,
 )
 from functools import partial
@@ -49,8 +53,10 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_spec_from_base_spec,
     get_special_model_spec,
     get_prototype_manifest,
+    get_base_deployment_configs_metadata,
+    get_base_deployment_configs,
 )
-from mock import MagicMock, call
+from mock import MagicMock
 
 
 MOCK_CLIENT = MagicMock()
@@ -60,79 +66,95 @@ def random_jumpstart_s3_uri(key):
     return f"s3://{random.choice(list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET))}/{key}"
 
 
-def test_get_jumpstart_content_bucket():
-    bad_region = "bad_region"
-    assert bad_region not in JUMPSTART_REGION_NAME_SET
-    with pytest.raises(ValueError):
-        utils.get_jumpstart_content_bucket(bad_region)
+class TestBucketUtils(TestCase):
+    def test_get_jumpstart_content_bucket(self):
+        bad_region = "bad_region"
+        assert bad_region not in JUMPSTART_REGION_NAME_SET
+        with pytest.raises(ValueError):
+            utils.get_jumpstart_content_bucket(bad_region)
 
+    def test_get_jumpstart_content_bucket_no_args(self):
+        assert (
+            utils.get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
+            == utils.get_jumpstart_content_bucket()
+        )
 
-def test_get_jumpstart_content_bucket_no_args():
-    assert (
-        utils.get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
-        == utils.get_jumpstart_content_bucket()
-    )
+    def test_get_jumpstart_content_bucket_override(self):
+        with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+            with patch("logging.Logger.info") as mocked_info_log:
+                random_region = "random_region"
+                assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
+                mocked_info_log.assert_called_with("Using JumpStart bucket override: 'some-val'")
 
+    def test_get_jumpstart_gated_content_bucket(self):
+        bad_region = "bad_region"
+        assert bad_region not in JUMPSTART_REGION_NAME_SET
+        with pytest.raises(ValueError):
+            utils.get_jumpstart_gated_content_bucket(bad_region)
 
-def test_get_jumpstart_content_bucket_override():
-    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
-        with patch("logging.Logger.info") as mocked_info_log:
-            random_region = "random_region"
-            assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
-            mocked_info_log.assert_called_with("Using JumpStart bucket override: 'some-val'")
+    def test_get_jumpstart_gated_content_bucket_no_args(self):
+        assert (
+            utils.get_jumpstart_gated_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
+            == utils.get_jumpstart_gated_content_bucket()
+        )
 
+    def test_get_jumpstart_gated_content_bucket_override(self):
+        with patch.dict(
+            os.environ, {ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE: "some-val"}
+        ):
+            with patch("logging.Logger.info") as mocked_info_log:
+                random_region = "random_region"
+                assert "some-val" == utils.get_jumpstart_gated_content_bucket(random_region)
+                mocked_info_log.assert_called_once_with(
+                    "Using JumpStart gated bucket override: 'some-val'"
+                )
 
-def test_get_jumpstart_gated_content_bucket():
-    bad_region = "bad_region"
-    assert bad_region not in JUMPSTART_REGION_NAME_SET
-    with pytest.raises(ValueError):
-        utils.get_jumpstart_gated_content_bucket(bad_region)
+    def test_get_jumpstart_launched_regions_message(self):
 
-
-def test_get_jumpstart_gated_content_bucket_no_args():
-    assert (
-        utils.get_jumpstart_gated_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
-        == utils.get_jumpstart_gated_content_bucket()
-    )
-
-
-def test_get_jumpstart_gated_content_bucket_override():
-    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE: "some-val"}):
-        with patch("logging.Logger.info") as mocked_info_log:
-            random_region = "random_region"
-            assert "some-val" == utils.get_jumpstart_gated_content_bucket(random_region)
-            mocked_info_log.assert_called_once_with(
-                "Using JumpStart gated bucket override: 'some-val'"
+        with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {}):
+            assert (
+                utils.get_jumpstart_launched_regions_message()
+                == "JumpStart is not available in any region."
             )
 
+        with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"some_region"}):
+            assert (
+                utils.get_jumpstart_launched_regions_message()
+                == "JumpStart is available in some_region region."
+            )
 
-def test_get_jumpstart_launched_regions_message():
+        with patch(
+            "sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET",
+            {"some_region1", "some_region2"},
+        ):
+            assert (
+                utils.get_jumpstart_launched_regions_message()
+                == "JumpStart is available in some_region1 and some_region2 regions."
+            )
 
-    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {}):
+        with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"a", "b", "c"}):
+            assert (
+                utils.get_jumpstart_launched_regions_message()
+                == "JumpStart is available in a, b, and c regions."
+            )
+
+    def test_get_neo_content_bucket(self):
+        bad_region = "bad_region"
+        assert bad_region not in JUMPSTART_REGION_NAME_SET
+        with pytest.raises(ValueError):
+            utils.get_neo_content_bucket(bad_region)
+
+    def test_get_neo_content_bucket_no_args(self):
         assert (
-            utils.get_jumpstart_launched_regions_message()
-            == "JumpStart is not available in any region."
+            utils.get_neo_content_bucket(NEO_DEFAULT_REGION_NAME) == utils.get_neo_content_bucket()
         )
 
-    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"some_region"}):
-        assert (
-            utils.get_jumpstart_launched_regions_message()
-            == "JumpStart is available in some_region region."
-        )
-
-    with patch(
-        "sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"some_region1", "some_region2"}
-    ):
-        assert (
-            utils.get_jumpstart_launched_regions_message()
-            == "JumpStart is available in some_region1 and some_region2 regions."
-        )
-
-    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"a", "b", "c"}):
-        assert (
-            utils.get_jumpstart_launched_regions_message()
-            == "JumpStart is available in a, b, and c regions."
-        )
+    def test_get_neo_content_bucket_override(self):
+        with patch.dict(os.environ, {ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+            with patch("logging.Logger.info") as mocked_info_log:
+                random_region = "random_region"
+                assert "some-val" == utils.get_neo_content_bucket(random_region)
+                mocked_info_log.assert_called_with("Using Neo bucket override: 'some-val'")
 
 
 def test_get_formatted_manifest():
@@ -207,16 +229,16 @@ def test_is_jumpstart_model_uri():
     assert utils.is_jumpstart_model_uri(random_jumpstart_s3_uri("random_key"))
 
 
-def test_add_jumpstart_model_id_version_tags():
+def test_add_jumpstart_model_info_tags():
     tags = None
     model_id = "model_id"
     version = "version"
+    inference_config_name = "inference_config_name"
+    training_config_name = "training_config_name"
     assert [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
         {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
-    )
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
 
     tags = [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
@@ -228,9 +250,7 @@ def test_add_jumpstart_model_id_version_tags():
     assert [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
         {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version_2"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
-    )
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
 
     tags = [
         {"Key": "random key", "Value": "random_value"},
@@ -241,9 +261,7 @@ def test_add_jumpstart_model_id_version_tags():
         {"Key": "random key", "Value": "random_value"},
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
         {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
-    )
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
 
     tags = [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
@@ -254,9 +272,7 @@ def test_add_jumpstart_model_id_version_tags():
     assert [
         {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id_2"},
         {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
-    )
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
 
     tags = [
         {"Key": "random key", "Value": "random_value"},
@@ -265,8 +281,58 @@ def test_add_jumpstart_model_id_version_tags():
     version = None
     assert [
         {"Key": "random key", "Value": "random_value"},
-    ] == utils.add_jumpstart_model_id_version_tags(
-        tags=tags, model_id=model_id, model_version=version
+    ] == utils.add_jumpstart_model_info_tags(tags=tags, model_id=model_id, model_version=version)
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+        {"Key": "sagemaker-sdk:jumpstart-inference-config-name", "Value": "inference_config_name"},
+    ] == utils.add_jumpstart_model_info_tags(
+        tags=tags,
+        model_id=model_id,
+        model_version=version,
+        config_name=inference_config_name,
+        scope=JumpStartScriptScope.INFERENCE,
+    )
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+        {"Key": "sagemaker-sdk:jumpstart-training-config-name", "Value": "training_config_name"},
+    ] == utils.add_jumpstart_model_info_tags(
+        tags=tags,
+        model_id=model_id,
+        model_version=version,
+        config_name=training_config_name,
+        scope=JumpStartScriptScope.TRAINING,
+    )
+
+    tags = [
+        {"Key": "random key", "Value": "random_value"},
+    ]
+    model_id = "model_id"
+    version = "version"
+    assert [
+        {"Key": "random key", "Value": "random_value"},
+        {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "model_id"},
+        {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "version"},
+    ] == utils.add_jumpstart_model_info_tags(
+        tags=tags,
+        model_id=model_id,
+        model_version=version,
+        config_name=training_config_name,
     )
 
 
@@ -1319,10 +1385,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1336,10 +1400,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            ("model_id", None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            ("model_id", None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1353,10 +1415,66 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, "model_version"),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, "model_version", None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_no_config_name_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_inference_config_name_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, "config_name", None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_training_config_name_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "config_name"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, "config_name"),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_both_config_name_found(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "inference_config_name"},
+            {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "training_config_name"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, "inference_config_name", "training_config_name"),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1371,10 +1489,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            ("model_id", "model_version"),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            ("model_id", "model_version", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1391,10 +1507,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1411,10 +1525,8 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            ("model_id_1", "model_version_1"),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            ("model_id_1", "model_version_1", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1431,10 +1543,26 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         ]
 
         self.assertEquals(
-            utils.get_jumpstart_model_id_version_from_resource_arn(
-                "some-arn", mock_sagemaker_session
-            ),
-            (None, None),
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            (None, None, None, None),
+        )
+        mock_list_tags.assert_called_once_with("some-arn")
+
+    def test_multiple_config_names_found_aliases_inconsistent(self):
+        mock_list_tags = Mock()
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.list_tags = mock_list_tags
+        mock_list_tags.return_value = [
+            {"Key": "blah", "Value": "blah1"},
+            {"Key": JumpStartTag.MODEL_ID, "Value": "model_id_1"},
+            {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_1"},
+            {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name_1"},
+            {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name_2"},
+        ]
+
+        self.assertEquals(
+            utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
+            ("model_id_1", "model_version_1", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
 
@@ -1529,6 +1657,8 @@ class TestConfigs:
             "neuron-inference-budget",
             "gpu-inference-budget",
             "gpu-inference",
+            "gpu-inference-model-package",
+            "gpu-accelerated",
         ]
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1599,22 +1729,44 @@ class TestBenchmarkStats:
         ) == {
             "neuron-inference": {
                 "ml.inf2.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
             "neuron-inference-budget": {
                 "ml.inf2.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
             "gpu-inference-budget": {
                 "ml.p3.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
             "gpu-inference": {
                 "ml.p3.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
+                ]
+            },
+            "gpu-inference-model-package": {
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
+                ]
+            },
+            "gpu-accelerated": {
+                "ml.p3.2xlarge": [
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
         }
@@ -1634,12 +1786,16 @@ class TestBenchmarkStats:
         ) == {
             "neuron-inference-budget": {
                 "ml.inf2.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
             "gpu-inference-budget": {
                 "ml.p3.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             },
         }
@@ -1659,7 +1815,9 @@ class TestBenchmarkStats:
         ) == {
             "neuron-inference-budget": {
                 "ml.inf2.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ]
             }
         }
@@ -1687,6 +1845,16 @@ class TestBenchmarkStats:
     ):
         patched_get_model_specs.side_effect = get_base_spec_with_prototype_configs
 
+        print(
+            utils.get_benchmark_stats(
+                "mock-region",
+                "mock-model",
+                "mock-model-version",
+                scope=JumpStartScriptScope.TRAINING,
+                config_names=["neuron-training", "gpu-training-budget"],
+            )
+        )
+
         assert utils.get_benchmark_stats(
             "mock-region",
             "mock-model",
@@ -1696,97 +1864,199 @@ class TestBenchmarkStats:
         ) == {
             "neuron-training": {
                 "ml.tr1n1.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ],
                 "ml.tr1n1.4xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "50", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "50", "unit": "Tokens/S", "concurrency": 1}
+                    )
                 ],
             },
             "gpu-training-budget": {
                 "ml.p3.2xlarge": [
-                    JumpStartBenchmarkStat({"name": "Latency", "value": "100", "unit": "Tokens/S"})
+                    JumpStartBenchmarkStat(
+                        {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": "1"}
+                    )
                 ]
             },
         }
 
 
-class TestUserAgent:
-    @patch("sagemaker.jumpstart.utils.os.getenv")
-    def test_get_jumpstart_user_agent_extra_suffix(self, mock_getenv):
-        mock_getenv.return_value = False
-        assert utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "md/js_model_id#some-id md/js_model_ver#some-version"
-        )
-        mock_getenv.return_value = None
-        assert utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "md/js_model_id#some-id md/js_model_ver#some-version"
-        )
-        mock_getenv.return_value = "True"
-        assert not utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "md/js_model_id#some-id md/js_model_ver#some-version"
-        )
-        mock_getenv.return_value = True
-        assert not utils.get_jumpstart_user_agent_extra_suffix("some-id", "some-version").endswith(
-            "md/js_model_id#some-id md/js_model_ver#some-version"
-        )
+def test_extract_metrics_from_deployment_configs():
+    configs = get_base_deployment_configs_metadata()
+    configs[0].benchmark_metrics = None
+    configs[2].deployment_args = None
 
-    @patch("sagemaker.jumpstart.utils.botocore.session")
-    @patch("sagemaker.jumpstart.utils.botocore.config.Config")
-    @patch("sagemaker.jumpstart.utils.get_jumpstart_user_agent_extra_suffix")
-    @patch("sagemaker.jumpstart.utils.boto3.Session")
-    @patch("sagemaker.jumpstart.utils.boto3.client")
-    @patch("sagemaker.jumpstart.utils.Session")
-    def test_get_default_jumpstart_session_with_user_agent_suffix(
-        self,
-        mock_sm_session,
-        mock_boto3_client,
-        mock_botocore_session,
-        mock_get_jumpstart_user_agent_extra_suffix,
-        mock_botocore_config,
-        mock_boto3_session,
-    ):
-        utils.get_default_jumpstart_session_with_user_agent_suffix("model_id", "model_version")
-        mock_boto3_session.get_session.assert_called_once_with()
-        mock_get_jumpstart_user_agent_extra_suffix.assert_called_once_with(
-            "model_id", "model_version"
-        )
-        mock_botocore_config.assert_called_once_with(
-            user_agent_extra=mock_get_jumpstart_user_agent_extra_suffix.return_value
-        )
-        mock_botocore_session.assert_called_once_with(
-            region_name=JUMPSTART_DEFAULT_REGION_NAME,
-            botocore_session=mock_boto3_session.get_session.return_value,
-        )
-        mock_boto3_client.assert_has_calls(
-            [
-                call(
-                    "sagemaker",
-                    region_name=JUMPSTART_DEFAULT_REGION_NAME,
-                    config=mock_botocore_config.return_value,
-                ),
-                call(
-                    "sagemaker-runtime",
-                    region_name=JUMPSTART_DEFAULT_REGION_NAME,
-                    config=mock_botocore_config.return_value,
-                ),
+    data = utils.get_metrics_from_deployment_configs(configs)
+
+    for key in data:
+        assert len(data[key]) == (len(configs) - 2)
+
+
+@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+def test_add_instance_rate_stats_to_benchmark_metrics(
+    mock_get_instance_rate_per_hour,
+):
+    mock_get_instance_rate_per_hour.side_effect = lambda *args, **kwargs: {
+        "name": "Instance Rate",
+        "unit": "USD/Hrs",
+        "value": "3.76",
+    }
+
+    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+        "us-west-2",
+        {
+            "ml.p2.xlarge": [
+                JumpStartBenchmarkStat(
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                )
             ],
-            any_order=True,
-        )
+            "ml.gd4.xlarge": [
+                JumpStartBenchmarkStat(
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                )
+            ],
+        },
+    )
 
-    @patch("botocore.client.BaseClient._make_request")
-    def test_get_default_jumpstart_session_with_user_agent_suffix_http_header(
-        self,
-        mock_make_request,
-    ):
-        session = utils.get_default_jumpstart_session_with_user_agent_suffix(
-            "model_id", "model_version"
-        )
-        try:
-            session.sagemaker_client.list_endpoints()
-        except Exception:
-            pass
+    assert err is None
+    for key in out:
+        assert len(out[key]) == 2
+        for metric in out[key]:
+            if metric.name == "Instance Rate":
+                assert metric.to_json() == {
+                    "name": "Instance Rate",
+                    "unit": "USD/Hrs",
+                    "value": "3.76",
+                    "concurrency": None,
+                }
 
-        assert (
-            "md/js_model_id#model_id md/js_model_ver#model_version"
-            in mock_make_request.call_args[0][1]["headers"]["User-Agent"]
-        )
+
+def test__normalize_benchmark_metrics():
+    rate, metrics = utils._normalize_benchmark_metrics(
+        [
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Throughput", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 2}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Throughput", "value": "100", "unit": "Tokens/S", "concurrency": 2}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76", "concurrency": None}
+            ),
+        ]
+    )
+
+    assert rate == JumpStartBenchmarkStat(
+        {"name": "Instance Rate", "unit": "USD/Hrs", "value": "3.76", "concurrency": None}
+    )
+    assert metrics == {
+        1: [
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Throughput", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+            ),
+        ],
+        2: [
+            JumpStartBenchmarkStat(
+                {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 2}
+            ),
+            JumpStartBenchmarkStat(
+                {"name": "Throughput", "value": "100", "unit": "Tokens/S", "concurrency": 2}
+            ),
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "name, unit, expected",
+    [
+        ("latency", "sec", "Latency, TTFT (P50 in sec)"),
+        ("throughput", "tokens/sec", "Throughput (P50 in tokens/sec/user)"),
+    ],
+)
+def test_normalize_benchmark_metric_column_name(name, unit, expected):
+    out = utils._normalize_benchmark_metric_column_name(name, unit)
+
+    assert out == expected
+
+
+@patch("sagemaker.jumpstart.utils.get_instance_rate_per_hour")
+def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
+    mock_get_instance_rate_per_hour,
+):
+    mock_get_instance_rate_per_hour.side_effect = ClientError(
+        {
+            "Error": {
+                "Message": "is not authorized to perform: pricing:GetProducts",
+                "Code": "AccessDenied",
+            },
+        },
+        "GetProducts",
+    )
+
+    err, out = utils.add_instance_rate_stats_to_benchmark_metrics(
+        "us-west-2",
+        {
+            "ml.p2.xlarge": [
+                JumpStartBenchmarkStat(
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": 1}
+                )
+            ],
+        },
+    )
+
+    assert err["Message"] == "is not authorized to perform: pricing:GetProducts"
+    assert err["Code"] == "AccessDenied"
+    for key in out:
+        assert len(out[key]) == 1
+
+
+@pytest.mark.parametrize(
+    "stats, expected",
+    [
+        (None, True),
+        (
+            [
+                JumpStartBenchmarkStat(
+                    {
+                        "name": "Instance Rate",
+                        "unit": "USD/Hrs",
+                        "value": "3.76",
+                        "concurrency": None,
+                    }
+                )
+            ],
+            True,
+        ),
+        (
+            [
+                JumpStartBenchmarkStat(
+                    {"name": "Latency", "value": "100", "unit": "Tokens/S", "concurrency": None}
+                )
+            ],
+            False,
+        ),
+    ],
+)
+def test_has_instance_rate_stat(stats, expected):
+    assert utils.has_instance_rate_stat(stats) is expected
+
+
+@pytest.mark.parametrize(
+    "data, expected",
+    [(None, []), ([], []), (get_base_deployment_configs_metadata(), get_base_deployment_configs())],
+)
+def test_deployment_config_response_data(data, expected):
+    out = utils.deployment_config_response_data(data)
+    assert out == expected

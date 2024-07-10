@@ -59,6 +59,7 @@ class SageMakerEndpointMode(
         sagemaker_session: Session = None,
         image: str = None,
         jumpstart: bool = False,
+        should_upload_artifacts: bool = False,
     ):
         """Placeholder docstring"""
         try:
@@ -69,7 +70,7 @@ class SageMakerEndpointMode(
                 + "session to be created or supply `sagemaker_session` into @serve.invoke."
             ) from e
 
-        upload_artifacts = None
+        upload_artifacts = None, None
         if self.model_server == ModelServer.TORCHSERVE:
             upload_artifacts = self._upload_torchserve_artifacts(
                 model_path=model_path,
@@ -77,6 +78,7 @@ class SageMakerEndpointMode(
                 secret_key=secret_key,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
+                should_upload_artifacts=True,
             )
 
         if self.model_server == ModelServer.TRITON:
@@ -86,6 +88,7 @@ class SageMakerEndpointMode(
                 secret_key=secret_key,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
+                should_upload_artifacts=True,
             )
 
         if self.model_server == ModelServer.DJL_SERVING:
@@ -94,23 +97,7 @@ class SageMakerEndpointMode(
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
-            )
-
-        if self.model_server == ModelServer.TGI:
-            upload_artifacts = self._upload_tgi_artifacts(
-                model_path=model_path,
-                sagemaker_session=sagemaker_session,
-                s3_model_data_url=s3_model_data_url,
-                image=image,
-                jumpstart=jumpstart,
-            )
-
-        if self.model_server == ModelServer.MMS:
-            upload_artifacts = self._upload_server_artifacts(
-                model_path=model_path,
-                sagemaker_session=sagemaker_session,
-                s3_model_data_url=s3_model_data_url,
-                image=image,
+                should_upload_artifacts=True,
             )
 
         if self.model_server == ModelServer.TENSORFLOW_SERVING:
@@ -120,6 +107,31 @@ class SageMakerEndpointMode(
                 secret_key=secret_key,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
+                should_upload_artifacts=True,
+            )
+
+        # By default, we do not want to upload artifacts in S3 for the below server.
+        # In Case of Optimization, artifacts need to be uploaded into s3.
+        # In that case, `should_upload_artifacts` arg needs to come from
+        # the caller of prepare.
+
+        if self.model_server == ModelServer.TGI:
+            upload_artifacts = self._upload_tgi_artifacts(
+                model_path=model_path,
+                sagemaker_session=sagemaker_session,
+                s3_model_data_url=s3_model_data_url,
+                image=image,
+                jumpstart=jumpstart,
+                should_upload_artifacts=should_upload_artifacts,
+            )
+
+        if self.model_server == ModelServer.MMS:
+            upload_artifacts = self._upload_server_artifacts(
+                model_path=model_path,
+                sagemaker_session=sagemaker_session,
+                s3_model_data_url=s3_model_data_url,
+                image=image,
+                should_upload_artifacts=should_upload_artifacts,
             )
 
         if self.model_server == ModelServer.TEI:
@@ -128,9 +140,10 @@ class SageMakerEndpointMode(
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
+                should_upload_artifacts=should_upload_artifacts,
             )
 
-        if upload_artifacts:
+        if upload_artifacts or isinstance(self.model_server, ModelServer):
             return upload_artifacts
 
         raise ValueError("%s model server is not supported" % self.model_server)

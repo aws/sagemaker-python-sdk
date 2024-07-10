@@ -12,7 +12,7 @@ from sagemaker.base_predictor import PredictorBase
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_path_join
 from sagemaker.s3 import S3Uploader
 from sagemaker.local.utils import get_docker_host
-
+from sagemaker.serve.utils.optimize_utils import _is_s3_uri
 
 MODE_DIR_BINDING = "/opt/ml/model/"
 _SHM_SIZE = "2G"
@@ -107,6 +107,7 @@ class SageMakerTeiServing:
         s3_model_data_url: str = None,
         image: str = None,
         env_vars: dict = None,
+        should_upload_artifacts: bool = False,
     ):
         """Uploads the model artifacts to S3.
 
@@ -116,38 +117,48 @@ class SageMakerTeiServing:
             s3_model_data_url: S3 model data URL
             image: Image to use
             env_vars: Environment variables to set
+            model_data_s3_path: S3 path to model data
+            should_upload_artifacts: Whether to upload artifacts
         """
-        if s3_model_data_url:
-            bucket, key_prefix = parse_s3_url(url=s3_model_data_url)
-        else:
-            bucket, key_prefix = None, None
+        model_data_url = None
+        if _is_s3_uri(model_path):
+            model_data_url = model_path
+        elif should_upload_artifacts:
+            if s3_model_data_url:
+                bucket, key_prefix = parse_s3_url(url=s3_model_data_url)
+            else:
+                bucket, key_prefix = None, None
 
-        code_key_prefix = fw_utils.model_code_key_prefix(key_prefix, None, image)
+            code_key_prefix = fw_utils.model_code_key_prefix(key_prefix, None, image)
 
-        bucket, code_key_prefix = determine_bucket_and_prefix(
-            bucket=bucket, key_prefix=code_key_prefix, sagemaker_session=sagemaker_session
-        )
+            bucket, code_key_prefix = determine_bucket_and_prefix(
+                bucket=bucket, key_prefix=code_key_prefix, sagemaker_session=sagemaker_session
+            )
 
-        code_dir = Path(model_path).joinpath("code")
+            code_dir = Path(model_path).joinpath("code")
 
-        s3_location = s3_path_join("s3://", bucket, code_key_prefix, "code")
+            s3_location = s3_path_join("s3://", bucket, code_key_prefix, "code")
 
-        logger.debug("Uploading TEI Model Resources uncompressed to: %s", s3_location)
+            logger.debug("Uploading TEI Model Resources uncompressed to: %s", s3_location)
 
-        model_data_url = S3Uploader.upload(
-            str(code_dir),
-            s3_location,
-            None,
-            sagemaker_session,
-        )
+            model_data_url = S3Uploader.upload(
+                str(code_dir),
+                s3_location,
+                None,
+                sagemaker_session,
+            )
 
-        model_data = {
-            "S3DataSource": {
-                "CompressionType": "None",
-                "S3DataType": "S3Prefix",
-                "S3Uri": model_data_url + "/",
+        model_data = (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": model_data_url + "/",
+                }
             }
-        }
+            if model_data_url
+            else None
+        )
 
         return (model_data, _update_env_vars(env_vars))
 

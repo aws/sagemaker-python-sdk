@@ -18,7 +18,13 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
-from sagemaker.utils import get_instance_type_family, format_tags, Tags, deep_override_dict
+from sagemaker.utils import (
+    S3_PREFIX,
+    get_instance_type_family,
+    format_tags,
+    Tags,
+    deep_override_dict,
+)
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -140,10 +146,14 @@ JumpStartContentDataType = Union[JumpStartS3FileType, HubType, HubContentType]
 class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
     """Data class for launched region info."""
 
-    __slots__ = ["content_bucket", "region_name", "gated_content_bucket"]
+    __slots__ = ["content_bucket", "region_name", "gated_content_bucket", "neo_content_bucket"]
 
     def __init__(
-        self, content_bucket: str, region_name: str, gated_content_bucket: Optional[str] = None
+        self,
+        content_bucket: str,
+        region_name: str,
+        gated_content_bucket: Optional[str] = None,
+        neo_content_bucket: Optional[str] = None,
     ):
         """Instantiates JumpStartLaunchedRegionInfo object.
 
@@ -152,10 +162,13 @@ class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
             region_name (str): Name of JumpStart launched region.
             gated_content_bucket (Optional[str[]): Name of JumpStart gated s3 content bucket
                 optionally associated with region.
+            neo_content_bucket (Optional[str]): Name of Neo service s3 content bucket
+                optionally associated with region.
         """
         self.content_bucket = content_bucket
         self.gated_content_bucket = gated_content_bucket
         self.region_name = region_name
+        self.neo_content_bucket = neo_content_bucket
 
 
 class JumpStartModelHeader(JumpStartDataHolderType):
@@ -854,10 +867,8 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
 
         if regional_property_alias is None and regional_property_value is None:
             instance_type_family = get_instance_type_family(instance_type)
-
             if instance_type_family in {"", None}:
                 return None
-
             if self.regional_aliases:
                 regional_property_alias = (
                     self.variants.get(instance_type_family, {})
@@ -894,10 +905,237 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         return regional_property_value
 
 
+class JumpStartAdditionalDataSources(JumpStartDataHolderType):
+    """Data class of additional data sources."""
+
+    __slots__ = ["speculative_decoding", "scripts"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a AdditionalDataSources object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.speculative_decoding: Optional[List[JumpStartModelDataSource]] = (
+            [
+                JumpStartModelDataSource(data_source)
+                for data_source in json_obj["speculative_decoding"]
+            ]
+            if json_obj.get("speculative_decoding")
+            else None
+        )
+        self.scripts: Optional[List[JumpStartModelDataSource]] = (
+            [JumpStartModelDataSource(data_source) for data_source in json_obj["scripts"]]
+            if json_obj.get("scripts")
+            else None
+        )
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of AdditionalDataSources object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if isinstance(cur_val, list):
+                    json_obj[att] = []
+                    for obj in cur_val:
+                        if issubclass(type(obj), JumpStartDataHolderType):
+                            json_obj[att].append(obj.to_json())
+                        else:
+                            json_obj[att].append(obj)
+                else:
+                    json_obj[att] = cur_val
+        return json_obj
+
+
+class ModelAccessConfig(JumpStartDataHolderType):
+    """Data class of model access config that mirrors CreateModel API."""
+
+    __slots__ = ["accept_eula"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a ModelAccessConfig object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.accept_eula: bool = json_obj["accept_eula"]
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of ModelAccessConfig object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+
+class HubAccessConfig(JumpStartDataHolderType):
+    """Data class of model access config that mirrors CreateModel API."""
+
+    __slots__ = ["hub_content_arn"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a HubAccessConfig object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.hub_content_arn: bool = json_obj["accept_eula"]
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of ModelAccessConfig object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+
+class S3DataSource(JumpStartDataHolderType):
+    """Data class of S3 data source that mirrors CreateModel API."""
+
+    __slots__ = [
+        "compression_type",
+        "s3_data_type",
+        "s3_uri",
+        "model_access_config",
+        "hub_access_config",
+    ]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a S3DataSource object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.compression_type: str = json_obj["compression_type"]
+        self.s3_data_type: str = json_obj["s3_data_type"]
+        self.s3_uri: str = json_obj["s3_uri"]
+        self.model_access_config: ModelAccessConfig = (
+            ModelAccessConfig(json_obj["model_access_config"])
+            if json_obj.get("model_access_config")
+            else None
+        )
+        self.hub_access_config: HubAccessConfig = (
+            HubAccessConfig(json_obj["hub_access_config"])
+            if json_obj.get("hub_access_config")
+            else None
+        )
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of S3DataSource object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if issubclass(type(cur_val), JumpStartDataHolderType):
+                    json_obj[att] = cur_val.to_json()
+                elif cur_val:
+                    json_obj[att] = cur_val
+        return json_obj
+
+    def set_bucket(self, bucket: str) -> None:
+        """Sets bucket name from S3 URI."""
+
+        if self.s3_uri.startswith(S3_PREFIX):
+            s3_path = self.s3_uri[len(S3_PREFIX) :]
+            old_bucket = s3_path.split("/")[0]
+            key = s3_path[len(old_bucket) :]
+            self.s3_uri = f"{S3_PREFIX}{bucket}{key}"  # pylint: disable=W0201
+            return
+
+        if not bucket.endswith("/"):
+            bucket += "/"
+
+        self.s3_uri = f"{S3_PREFIX}{bucket}{self.s3_uri}"  # pylint: disable=W0201
+
+
+class AdditionalModelDataSource(JumpStartDataHolderType):
+    """Data class of additional model data source mirrors CreateModel API."""
+
+    SERIALIZATION_EXCLUSION_SET: Set[str] = set()
+
+    __slots__ = ["channel_name", "s3_data_source"]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a AdditionalModelDataSource object.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        self.channel_name: str = json_obj["channel_name"]
+        self.s3_data_source: S3DataSource = S3DataSource(json_obj["s3_data_source"])
+
+    def to_json(self, exclude_keys=True) -> Dict[str, Any]:
+        """Returns json representation of AdditionalModelDataSource object."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                if exclude_keys and att not in self.SERIALIZATION_EXCLUSION_SET or not exclude_keys:
+                    cur_val = getattr(self, att)
+                    if issubclass(type(cur_val), JumpStartDataHolderType):
+                        json_obj[att] = cur_val.to_json()
+                    else:
+                        json_obj[att] = cur_val
+        return json_obj
+
+
+class JumpStartModelDataSource(AdditionalModelDataSource):
+    """Data class JumpStart additional model data source."""
+
+    SERIALIZATION_EXCLUSION_SET = {"artifact_version"}
+
+    __slots__ = list(SERIALIZATION_EXCLUSION_SET) + AdditionalModelDataSource.__slots__
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of data source.
+        """
+        super().from_json(json_obj)
+        self.artifact_version: str = json_obj["artifact_version"]
+
+
 class JumpStartBenchmarkStat(JumpStartDataHolderType):
     """Data class JumpStart benchmark stat."""
 
-    __slots__ = ["name", "value", "unit"]
+    __slots__ = ["name", "value", "unit", "concurrency"]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartBenchmarkStat object.
@@ -916,6 +1154,7 @@ class JumpStartBenchmarkStat(JumpStartDataHolderType):
         self.name: str = json_obj["name"]
         self.value: str = json_obj["value"]
         self.unit: Union[int, str] = json_obj["unit"]
+        self.concurrency: Union[int, str] = json_obj["concurrency"]
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartBenchmarkStat object."""
@@ -928,12 +1167,14 @@ class JumpStartConfigRanking(JumpStartDataHolderType):
 
     __slots__ = ["description", "rankings"]
 
-    def __init__(self, spec: Optional[Dict[str, Any]]):
+    def __init__(self, spec: Optional[Dict[str, Any]], is_hub_content=False):
         """Initializes a JumpStartConfigRanking object.
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of training config ranking.
         """
+        if is_hub_content:
+            spec = {camel_to_snake(key): val for key, val in spec.items()}
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1012,6 +1253,9 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "default_payloads",
         "gated_bucket",
         "model_subscription_link",
+        "hosting_additional_data_sources",
+        "hosting_neuron_model_id",
+        "hosting_neuron_model_version",
         "hub_content_type",
         "_is_hub_content",
     ]
@@ -1041,7 +1285,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             json_obj.get("incremental_training_supported", False)
         )
         if self._is_hub_content:
-            self.hosting_ecr_uri: Optional[str] = json_obj["hosting_ecr_uri"]
+            self.hosting_ecr_uri: Optional[str] = json_obj.get("hosting_ecr_uri")
             self._non_serializable_slots.append("hosting_ecr_specs")
         else:
             self.hosting_ecr_specs: Optional[JumpStartECRSpecs] = (
@@ -1129,7 +1373,10 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
 
         self.hosting_eula_key: Optional[str] = json_obj.get("hosting_eula_key")
 
-        self.hosting_model_package_arns: Optional[Dict] = json_obj.get("hosting_model_package_arns")
+        model_package_arns = json_obj.get("hosting_model_package_arns")
+        self.hosting_model_package_arns: Optional[Dict] = (
+            model_package_arns if model_package_arns is not None else {}
+        )
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
@@ -1138,6 +1385,15 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             )
             if json_obj.get("hosting_instance_type_variants")
             else None
+        )
+        self.hosting_additional_data_sources: Optional[JumpStartAdditionalDataSources] = (
+            JumpStartAdditionalDataSources(json_obj["hosting_additional_data_sources"])
+            if json_obj.get("hosting_additional_data_sources")
+            else None
+        )
+        self.hosting_neuron_model_id: Optional[str] = json_obj.get("hosting_neuron_model_id")
+        self.hosting_neuron_model_version: Optional[str] = json_obj.get(
+            "hosting_neuron_model_version"
         )
 
         if self.training_supported:
@@ -1235,9 +1491,7 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
     __slots__ = slots + JumpStartMetadataBaseFields.__slots__
 
     def __init__(
-        self,
-        component_name: str,
-        component: Optional[Dict[str, Any]],
+        self, component_name: str, component: Optional[Dict[str, Any]], is_hub_content=False
     ):
         """Initializes a JumpStartConfigComponent object from its json representation.
 
@@ -1248,8 +1502,10 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         Raises:
             ValueError: If the component field is invalid.
         """
-        super().__init__(component)
+        if is_hub_content:
+            component = walk_and_apply_json(component, camel_to_snake)
         self.component_name = component_name
+        super().__init__(component, is_hub_content)
         self.from_json(component)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1270,30 +1526,61 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
     __slots__ = [
         "base_fields",
         "benchmark_metrics",
+        "acceleration_configs",
         "config_components",
         "resolved_metadata_config",
+        "config_name",
+        "default_inference_config",
+        "default_incremental_training_config",
+        "supported_inference_configs",
+        "supported_incremental_training_configs",
     ]
 
     def __init__(
         self,
+        config_name: str,
+        config: Dict[str, Any],
         base_fields: Dict[str, Any],
         config_components: Dict[str, JumpStartConfigComponent],
-        benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]],
+        is_hub_content=False,
     ):
         """Initializes a JumpStartMetadataConfig object from its json representation.
 
         Args:
+            config_name (str): Name of the config,
+            config (Dict[str, Any]):
+                Dictionary representation of the config.
             base_fields (Dict[str, Any]):
-                The default base fields that are used to construct the final resolved config.
+                The default base fields that are used to construct the resolved config.
             config_components (Dict[str, JumpStartConfigComponent]):
                 The list of components that are used to construct the resolved config.
-            benchmark_metrics (Dict[str, List[JumpStartBenchmarkStat]]):
-                The dictionary of benchmark metrics with name being the key.
         """
+        if is_hub_content:
+            config = walk_and_apply_json(config, camel_to_snake)
+            base_fields = walk_and_apply_json(base_fields, camel_to_snake)
         self.base_fields = base_fields
         self.config_components: Dict[str, JumpStartConfigComponent] = config_components
-        self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = benchmark_metrics
+        self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = (
+            {
+                stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
+                for stat_name, stats in config.get("benchmark_metrics").items()
+            }
+            if config and config.get("benchmark_metrics")
+            else None
+        )
+        self.acceleration_configs = config.get("acceleration_configs")
         self.resolved_metadata_config: Optional[Dict[str, Any]] = None
+        self.config_name: Optional[str] = config_name
+        self.default_inference_config: Optional[str] = config.get("default_inference_config")
+        self.default_incremental_training_config: Optional[str] = config.get(
+            "default_incremental_training_config"
+        )
+        self.supported_inference_configs: Optional[List[str]] = config.get(
+            "supported_inference_configs"
+        )
+        self.supported_incremental_training_configs: Optional[List[str]] = config.get(
+            "supported_incremental_training_configs"
+        )
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartMetadataConfig object."""
@@ -1317,6 +1604,12 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
                 deepcopy(component.to_json()),
                 component.OVERRIDING_DENY_LIST,
             )
+
+        # Remove environment variables from resolved config if using model packages
+        hosting_model_pacakge_arns = resolved_config.get("hosting_model_package_arns")
+        if hosting_model_pacakge_arns is not None and hosting_model_pacakge_arns != {}:
+            resolved_config["inference_environment_variables"] = []
+
         self.resolved_metadata_config = resolved_config
 
         return resolved_config
@@ -1359,6 +1652,8 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
     ) -> Optional[JumpStartMetadataConfig]:
         """Gets the best the config based on config ranking.
 
+        Fallback to use the ordering in config names if
+        ranking is not available.
         Args:
             ranking_name (str):
                 The ranking name that config priority is based on.
@@ -1366,13 +1661,8 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
                 The instance type which the config selection is based on.
 
         Raises:
-            ValueError: If the config exists but missing config ranking.
             NotImplementedError: If the scope is unrecognized.
         """
-        if self.configs and (
-            not self.config_rankings or not self.config_rankings.get(ranking_name)
-        ):
-            raise ValueError(f"Config exists but missing config ranking {ranking_name}.")
 
         if self.scope == JumpStartScriptScope.INFERENCE:
             instance_type_attribute = "supported_inference_instance_types"
@@ -1381,8 +1671,14 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
         else:
             raise NotImplementedError(f"Unknown script scope {self.scope}")
 
-        rankings = self.config_rankings.get(ranking_name)
-        for config_name in rankings.rankings:
+        if self.configs and (
+            not self.config_rankings or not self.config_rankings.get(ranking_name)
+        ):
+            ranked_config_names = sorted(list(self.configs.keys()))
+        else:
+            rankings = self.config_rankings.get(ranking_name)
+            ranked_config_names = rankings.rankings
+        for config_name in ranked_config_names:
             resolved_config = self.configs[config_name].resolved_config
             if instance_type and instance_type not in getattr(
                 resolved_config, instance_type_attribute
@@ -1444,6 +1740,8 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
         inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
             {
                 alias: JumpStartMetadataConfig(
+                    alias,
+                    config,
                     json_obj,
                     (
                         {
@@ -1451,14 +1749,6 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                             for component_name in config.get("component_names")
                         }
                         if config and config.get("component_names")
-                        else None
-                    ),
-                    (
-                        {
-                            stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
-                            for stat_name, stats in config.get("benchmark_metrics").items()
-                        }
-                        if config and config.get("benchmark_metrics")
                         else None
                     ),
                 )
@@ -1496,6 +1786,8 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             training_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
                 {
                     alias: JumpStartMetadataConfig(
+                        alias,
+                        config,
                         json_obj,
                         (
                             {
@@ -1503,14 +1795,6 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                                 for component_name in config.get("component_names")
                             }
                             if config and config.get("component_names")
-                            else None
-                        ),
-                        (
-                            {
-                                stat_name: [JumpStartBenchmarkStat(stat) for stat in stats]
-                                for stat_name, stats in config.get("benchmark_metrics").items()
-                            }
-                            if config and config.get("benchmark_metrics")
                             else None
                         ),
                     )
@@ -1587,6 +1871,21 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
     def supports_incremental_training(self) -> bool:
         """Returns True if the model supports incremental training."""
         return self.incremental_training_supported
+
+    def get_speculative_decoding_s3_data_sources(self) -> List[JumpStartModelDataSource]:
+        """Returns data sources for speculative decoding."""
+        if not self.hosting_additional_data_sources:
+            return []
+        return self.hosting_additional_data_sources.speculative_decoding or []
+
+    def get_additional_s3_data_sources(self) -> List[JumpStartAdditionalDataSources]:
+        """Returns a list of the additional S3 data sources for use by the model."""
+        additional_data_sources = []
+        if self.hosting_additional_data_sources:
+            for data_source in self.hosting_additional_data_sources.to_json():
+                data_sources = getattr(self.hosting_additional_data_sources, data_source) or []
+                additional_data_sources.extend(data_sources)
+        return additional_data_sources
 
 
 class JumpStartVersionedModelId(JumpStartDataHolderType):
@@ -1675,7 +1974,6 @@ class HubArnExtractedInfo(JumpStartDataHolderType):
         hub_region = None
         if match:
             hub_region = match.group(2)
-
             return hub_region
 
         match = re.match(HUB_ARN_REGEX, arn)
@@ -1717,11 +2015,11 @@ class JumpStartKwargs(JumpStartDataHolderType):
 
     SERIALIZATION_EXCLUSION_SET: Set[str] = set()
 
-    def to_kwargs_dict(self):
+    def to_kwargs_dict(self, exclude_keys: bool = True):
         """Serializes object to dictionary to be used for kwargs for method arguments."""
         kwargs_dict = {}
         for field in self.__slots__:
-            if field not in self.SERIALIZATION_EXCLUSION_SET:
+            if exclude_keys and field not in self.SERIALIZATION_EXCLUSION_SET or not exclude_keys:
                 att_value = getattr(self, field)
                 if att_value is not None:
                     kwargs_dict[field] = getattr(self, field)
@@ -1760,6 +2058,8 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_package_arn",
         "training_instance_type",
         "resources",
+        "config_name",
+        "additional_model_data_sources",
         "hub_content_type",
         "model_reference_arn",
     ]
@@ -1775,6 +2075,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "region",
         "model_package_arn",
         "training_instance_type",
+        "config_name",
         "hub_content_type",
     }
 
@@ -1808,6 +2109,8 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         model_package_arn: Optional[str] = None,
         training_instance_type: Optional[str] = None,
         resources: Optional[ResourceRequirements] = None,
+        config_name: Optional[str] = None,
+        additional_model_data_sources: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -1839,6 +2142,8 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.model_package_arn = model_package_arn
         self.training_instance_type = training_instance_type
         self.resources = resources
+        self.config_name = config_name
+        self.additional_model_data_sources = additional_model_data_sources
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -1877,6 +2182,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "endpoint_logging",
         "resources",
         "endpoint_type",
+        "config_name",
         "routing_config",
     ]
 
@@ -1890,6 +2196,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "sagemaker_session",
         "training_instance_type",
+        "config_name",
     }
 
     def __init__(
@@ -1926,6 +2233,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_logging: Optional[bool] = None,
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: Optional[EndpointType] = None,
+        config_name: Optional[str] = None,
         routing_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
@@ -1962,6 +2270,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_logging = endpoint_logging
         self.resources = resources
         self.endpoint_type = endpoint_type
+        self.config_name = config_name
         self.routing_config = routing_config
 
 
@@ -2024,6 +2333,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "disable_output_compression",
         "enable_infra_check",
         "enable_remote_debug",
+        "config_name",
         "enable_session_tag_chaining",
     ]
 
@@ -2035,6 +2345,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "config_name",
     }
 
     def __init__(
@@ -2094,6 +2405,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         disable_output_compression: Optional[bool] = None,
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
+        config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
@@ -2155,6 +2467,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.disable_output_compression = disable_output_compression
         self.enable_infra_check = enable_infra_check
         self.enable_remote_debug = enable_remote_debug
+        self.config_name = config_name
         self.enable_session_tag_chaining = enable_session_tag_chaining
 
 
@@ -2175,6 +2488,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
         "sagemaker_session",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2186,6 +2500,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -2203,6 +2518,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Session] = None,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2219,6 +2535,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.sagemaker_session = sagemaker_session
+        self.config_name = config_name
 
 
 class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
@@ -2265,6 +2582,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "model_name",
         "use_compiled_model",
+        "config_name",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2275,6 +2593,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -2319,6 +2638,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         use_compiled_model: bool = False,
+        config_name: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2362,6 +2682,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.use_compiled_model = use_compiled_model
+        self.config_name = config_name
 
 
 class JumpStartModelRegisterKwargs(JumpStartKwargs):
@@ -2398,6 +2719,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "data_input_configuration",
         "skip_model_validation",
         "source_uri",
+        "config_name",
         "model_card",
         "accept_eula",
     ]
@@ -2410,6 +2732,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "sagemaker_session",
+        "config_name",
     }
 
     def __init__(
@@ -2444,6 +2767,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
+        config_name: Optional[str] = None,
         model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
         accept_eula: Optional[bool] = None,
     ) -> None:
@@ -2480,5 +2804,128 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         self.data_input_configuration = data_input_configuration
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
+        self.config_name = config_name
         self.model_card = model_card
         self.accept_eula = accept_eula
+
+
+class BaseDeploymentConfigDataHolder(JumpStartDataHolderType):
+    """Base class for Deployment Config Data."""
+
+    def _convert_to_pascal_case(self, attr_name: str) -> str:
+        """Converts a snake_case attribute name into a camelCased string.
+
+        Args:
+            attr_name (str): The snake_case attribute name.
+        Returns:
+            str: The PascalCased attribute name.
+        """
+        return attr_name.replace("_", " ").title().replace(" ", "")
+
+    def to_json(self) -> Dict[str, Any]:
+        """Represents ``This`` object as JSON."""
+        json_obj = {}
+        for att in self.__slots__:
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                att = self._convert_to_pascal_case(att)
+                json_obj[att] = self._val_to_json(cur_val)
+        return json_obj
+
+    def _val_to_json(self, val: Any) -> Any:
+        """Converts the given value to JSON.
+
+        Args:
+            val (Any): The value to convert.
+        Returns:
+            Any: The converted json value.
+        """
+        if issubclass(type(val), JumpStartDataHolderType):
+            if isinstance(val, JumpStartBenchmarkStat):
+                val.name = val.name.replace("_", " ").title()
+            return val.to_json()
+        if isinstance(val, list):
+            list_obj = []
+            for obj in val:
+                list_obj.append(self._val_to_json(obj))
+            return list_obj
+        if isinstance(val, dict):
+            dict_obj = {}
+            for k, v in val.items():
+                if isinstance(v, JumpStartDataHolderType):
+                    dict_obj[self._convert_to_pascal_case(k)] = self._val_to_json(v)
+                else:
+                    dict_obj[k] = self._val_to_json(v)
+            return dict_obj
+        return val
+
+
+class DeploymentArgs(BaseDeploymentConfigDataHolder):
+    """Dataclass representing a Deployment Args."""
+
+    __slots__ = [
+        "image_uri",
+        "model_data",
+        "model_package_arn",
+        "environment",
+        "instance_type",
+        "compute_resource_requirements",
+        "model_data_download_timeout",
+        "container_startup_health_check_timeout",
+        "additional_data_sources",
+    ]
+
+    def __init__(
+        self,
+        init_kwargs: Optional[JumpStartModelInitKwargs] = None,
+        deploy_kwargs: Optional[JumpStartModelDeployKwargs] = None,
+        resolved_config: Optional[Dict[str, Any]] = None,
+    ):
+        """Instantiates DeploymentArgs object."""
+        if init_kwargs is not None:
+            self.image_uri = init_kwargs.image_uri
+            self.model_data = init_kwargs.model_data
+            self.model_package_arn = init_kwargs.model_package_arn
+            self.instance_type = init_kwargs.instance_type
+            self.environment = init_kwargs.env
+            if init_kwargs.resources is not None:
+                self.compute_resource_requirements = (
+                    init_kwargs.resources.get_compute_resource_requirements()
+                )
+        if deploy_kwargs is not None:
+            self.model_data_download_timeout = deploy_kwargs.model_data_download_timeout
+            self.container_startup_health_check_timeout = (
+                deploy_kwargs.container_startup_health_check_timeout
+            )
+        if resolved_config is not None:
+            self.default_instance_type = resolved_config.get("default_inference_instance_type")
+            self.supported_instance_types = resolved_config.get(
+                "supported_inference_instance_types"
+            )
+            self.additional_data_sources = resolved_config.get("hosting_additional_data_sources")
+
+
+class DeploymentConfigMetadata(BaseDeploymentConfigDataHolder):
+    """Dataclass representing a Deployment Config Metadata"""
+
+    __slots__ = [
+        "deployment_config_name",
+        "deployment_args",
+        "acceleration_configs",
+        "benchmark_metrics",
+    ]
+
+    def __init__(
+        self,
+        config_name: Optional[str] = None,
+        metadata_config: Optional[JumpStartMetadataConfig] = None,
+        init_kwargs: Optional[JumpStartModelInitKwargs] = None,
+        deploy_kwargs: Optional[JumpStartModelDeployKwargs] = None,
+    ):
+        """Instantiates DeploymentConfigMetadata object."""
+        self.deployment_config_name = config_name
+        self.deployment_args = DeploymentArgs(
+            init_kwargs, deploy_kwargs, metadata_config.resolved_config
+        )
+        self.benchmark_metrics = metadata_config.benchmark_metrics
+        self.acceleration_configs = metadata_config.acceleration_configs
