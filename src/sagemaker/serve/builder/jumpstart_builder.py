@@ -670,6 +670,7 @@ class JumpStart(ABC):
         output_path: Optional[str] = None,
         tags: Optional[Tags] = None,
         job_name: Optional[str] = None,
+        instance_type: Optional[str] = None,
         accept_eula: Optional[bool] = None,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
@@ -685,6 +686,7 @@ class JumpStart(ABC):
             output_path (Optional[str]): Specifies where to store the compiled/quantized model.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            instance_type (str): Target deployment instance type that the model is optimized for.
             accept_eula (bool): For models that require a Model Access Config, specify True or
                 False to indicate whether model terms of use have been accepted.
                 The `accept_eula` value must be explicitly defined as `True` in order to
@@ -711,12 +713,12 @@ class JumpStart(ABC):
             )
 
         is_compilation = (not quantization_config) and (
-            (compilation_config is not None) or _is_inferentia_or_trainium(self.instance_type)
+            (compilation_config is not None) or _is_inferentia_or_trainium(instance_type)
         )
 
         pysdk_model_env_vars = dict()
         if is_compilation:
-            pysdk_model_env_vars = self._get_neuron_model_env_vars(self.instance_type)
+            pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
 
         optimization_config, override_env = _extract_optimization_config_and_env(
             quantization_config, compilation_config
@@ -752,9 +754,7 @@ class JumpStart(ABC):
             if self.pysdk_model.deployment_config
             else None
         )
-        self.instance_type = (
-            self.instance_type or deployment_config_instance_type or _get_nb_instance()
-        )
+        self.instance_type = instance_type or deployment_config_instance_type or _get_nb_instance()
 
         create_optimization_job_args = {
             "OptimizationJobName": job_name,
