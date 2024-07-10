@@ -38,6 +38,7 @@ def _retrieve_example_payloads(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> Optional[Dict[str, JumpStartSerializablePayload]]:
     """Returns example payloads.
 
@@ -61,6 +62,7 @@ def _retrieve_example_payloads(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         Optional[Dict[str, JumpStartSerializablePayload]]: dictionary mapping payload aliases
             to the serializable payload object.
@@ -80,6 +82,7 @@ def _retrieve_example_payloads(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     default_payloads = model_specs.default_payloads

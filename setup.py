@@ -49,7 +49,7 @@ def read_requirements(filename):
 # Declare minimal set for installation
 required_packages = [
     "attrs>=23.1.0,<24",
-    "boto3>=1.33.3,<2.0",
+    "boto3>=1.34.142,<2.0",
     "cloudpickle==2.2.1",
     "google-pasta",
     "numpy>=1.9.0,<2.0",

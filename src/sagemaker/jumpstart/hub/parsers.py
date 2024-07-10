@@ -142,6 +142,9 @@ def make_model_specs_from_describe_hub_content_response(
         hub_model_document.incremental_training_supported
     )
     specs["hosting_ecr_uri"] = hub_model_document.hosting_ecr_uri
+    specs["inference_configs"] = hub_model_document.inference_configs
+    specs["inference_config_components"] = hub_model_document.inference_config_components
+    specs["inference_config_rankings"] = hub_model_document.inference_config_rankings
 
     hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(  # pylint: disable=unused-variable
         hub_model_document.hosting_artifact_uri
@@ -233,6 +236,11 @@ def make_model_specs_from_describe_hub_content_response(
             training_script_key,
         ) = parse_s3_url(hub_model_document.training_script_uri)
         specs["training_script_key"] = training_script_key
+
+        specs["training_configs"] = hub_model_document.training_configs
+        specs["training_config_components"] = hub_model_document.training_config_components
+        specs["training_config_rankings"] = hub_model_document.training_config_rankings
+
         specs["training_dependencies"] = hub_model_document.training_dependencies
         specs["default_training_instance_type"] = hub_model_document.default_training_instance_type
         specs["supported_training_instance_types"] = (

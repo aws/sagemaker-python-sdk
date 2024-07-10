@@ -25,6 +25,7 @@ from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
 )
 from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
+from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.predictors import TeiLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -63,7 +64,6 @@ class TEI(ABC):
         self.nb_instance_type = None
         self.ram_usage_model_load = None
         self.secret_key = None
-        self.jumpstart = None
         self.role_arn = None
 
     @abstractmethod
@@ -163,10 +163,8 @@ class TEI(ABC):
             self.pysdk_model.role = kwargs.get("role")
             del kwargs["role"]
 
-        # set model_data to uncompressed s3 dict
-        self.pysdk_model.model_data, env_vars = self._prepare_for_mode()
-        self.env_vars.update(env_vars)
-        self.pysdk_model.env.update(self.env_vars)
+        if not _is_optimized(self.pysdk_model):
+            self._prepare_for_mode()
 
         # if the weights have been cached via local container mode -> set to offline
         if str(Mode.LOCAL_CONTAINER) in self.modes:
@@ -222,4 +220,8 @@ class TEI(ABC):
         self._set_to_tei()
 
         self.pysdk_model = self._build_for_hf_tei()
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
         return self.pysdk_model

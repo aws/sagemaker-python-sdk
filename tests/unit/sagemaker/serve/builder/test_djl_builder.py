@@ -188,6 +188,7 @@ class TestDjlBuilder(unittest.TestCase):
         tuned_model = model.tune()
         assert tuned_model.env == mock_default_configs
 
+    @patch("sagemaker.serve.builder.djl_builder._get_model_config_properties_from_hf")
     @patch("sagemaker.serve.builder.djl_builder._capture_telemetry", side_effect=None)
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
@@ -211,7 +212,10 @@ class TestDjlBuilder(unittest.TestCase):
         mock_get_ram_usage_mb,
         mock_is_jumpstart_model,
         mock_telemetry,
+        mock_get_model_config_properties_from_hf,
     ):
+        mock_get_model_config_properties_from_hf.return_value = {}
+
         builder = ModelBuilder(
             model=mock_model_id,
             schema_builder=mock_schema_builder,
