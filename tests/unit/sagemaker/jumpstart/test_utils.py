@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 import os
 from unittest import TestCase
+from unittest.mock import call
 
 from botocore.exceptions import ClientError
 from mock.mock import Mock, patch
@@ -1932,7 +1933,40 @@ class TestUserAgent:
             botocore_session=mock_boto3_session.get_session.return_value,
         )
         mock_boto3_client.assert_has_calls(
-=======
+            [
+                call(
+                    "sagemaker",
+                    region_name=JUMPSTART_DEFAULT_REGION_NAME,
+                    config=mock_botocore_config.return_value,
+                ),
+                call(
+                    "sagemaker-runtime",
+                    region_name=JUMPSTART_DEFAULT_REGION_NAME,
+                    config=mock_botocore_config.return_value,
+                ),
+            ],
+            any_order=True,
+        )
+
+    @patch("botocore.client.BaseClient._make_request")
+    def test_get_default_jumpstart_session_with_user_agent_suffix_http_header(
+        self,
+        mock_make_request,
+    ):
+        session = utils.get_default_jumpstart_session_with_user_agent_suffix(
+            "model_id", "model_version"
+        )
+        try:
+            session.sagemaker_client.list_endpoints()
+        except Exception:
+            pass
+
+        assert (
+            "md/js_model_id#model_id md/js_model_ver#model_version"
+            in mock_make_request.call_args[0][1]["headers"]["User-Agent"]
+        )
+
+
 def test_extract_metrics_from_deployment_configs():
     configs = get_base_deployment_configs_metadata()
     configs[0].benchmark_metrics = None
