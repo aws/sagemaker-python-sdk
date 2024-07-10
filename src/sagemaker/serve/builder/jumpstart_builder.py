@@ -783,11 +783,10 @@ class JumpStart(ABC):
                     "AcceptEula": True
                 }
 
-        if quantization_config or is_compilation:
-            optimization_env_vars = _update_environment_variables(
-                optimization_env_vars, override_env
-            )
+        optimization_env_vars = _update_environment_variables(optimization_env_vars, override_env)
+        if optimization_env_vars:
             self.pysdk_model.env.update(optimization_env_vars)
+        if quantization_config or is_compilation:
             return create_optimization_job_args
         return None
 

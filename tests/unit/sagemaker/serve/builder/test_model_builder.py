@@ -2653,21 +2653,19 @@ class TestModelBuilder(unittest.TestCase):
             model_metadata={
                 "CUSTOM_MODEL_PATH": "s3://bucket/path/",
             },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
         )
 
         model_builder.pysdk_model = mock_pysdk_model
 
         out_put = model_builder._optimize_for_hf(
             job_name="job_name-123",
-            instance_type="ml.g5.2xlarge",
-            role_arn="role-arn",
             quantization_config={
                 "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
             },
             output_path="s3://bucket/code/",
         )
-
-        print(out_put)
 
         self.assertEqual(model_builder.role_arn, "role-arn")
         self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
@@ -2715,14 +2713,14 @@ class TestModelBuilder(unittest.TestCase):
         model_builder = ModelBuilder(
             model="meta-llama/Meta-Llama-3-8B-Instruct",
             env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
         )
 
         model_builder.pysdk_model = mock_pysdk_model
 
         out_put = model_builder._optimize_for_hf(
             job_name="job_name-123",
-            instance_type="ml.g5.2xlarge",
-            role_arn="role-arn",
             quantization_config={
                 "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
             },

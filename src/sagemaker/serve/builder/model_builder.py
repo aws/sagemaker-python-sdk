@@ -1258,10 +1258,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
 
         if input_args:
-            print(input_args)
             self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
             job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
-            print(job_status)
             return _generate_optimized_model(self.pysdk_model, job_status)
 
         self.pysdk_model.remove_tag_with_key(Tag.OPTIMIZATION_JOB_NAME)
