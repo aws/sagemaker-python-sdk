@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.225.0 (2024-07-10)
+
+### Features
+
+ * model optimization
+
+### Bug Fixes and Other Changes
+
+ * fix integ test
+ * update uris for v1.1.1
+ * update image_uri_configs  07-04-2024 07:17:24 PST
+
 ## v2.224.4 (2024-07-04)
 
 ### Bug Fixes and Other Changes
