@@ -668,8 +668,6 @@ class JumpStart(ABC):
     def _optimize_for_jumpstart(
         self,
         output_path: Optional[str] = None,
-        instance_type: Optional[str] = None,
-        role_arn: Optional[str] = None,
         tags: Optional[Tags] = None,
         job_name: Optional[str] = None,
         accept_eula: Optional[bool] = None,
@@ -685,9 +683,6 @@ class JumpStart(ABC):
 
         Args:
             output_path (Optional[str]): Specifies where to store the compiled/quantized model.
-            instance_type (Optional[str]): Target deployment instance type that
-                the model is optimized for.
-            role_arn (Optional[str]): Execution role. Defaults to ``None``.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
             accept_eula (bool): For models that require a Model Access Config, specify True or
@@ -715,13 +710,13 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
-        is_compilation = (quantization_config is None) and (
-            (compilation_config is not None) or _is_inferentia_or_trainium(instance_type)
+        is_compilation = (not quantization_config) and (
+            (compilation_config is not None) or _is_inferentia_or_trainium(self.instance_type)
         )
 
         pysdk_model_env_vars = dict()
         if is_compilation:
-            pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
+            pysdk_model_env_vars = self._get_neuron_model_env_vars(self.instance_type)
 
         optimization_config, override_env = _extract_optimization_config_and_env(
             quantization_config, compilation_config
@@ -757,8 +752,9 @@ class JumpStart(ABC):
             if self.pysdk_model.deployment_config
             else None
         )
-        self.instance_type = instance_type or deployment_config_instance_type or _get_nb_instance()
-        self.role_arn = role_arn or self.role_arn
+        self.instance_type = (
+            self.instance_type or deployment_config_instance_type or _get_nb_instance()
+        )
 
         create_optimization_job_args = {
             "OptimizationJobName": job_name,
@@ -788,9 +784,10 @@ class JumpStart(ABC):
                 }
 
         if quantization_config or is_compilation:
-            self.pysdk_model.env = _update_environment_variables(
+            optimization_env_vars = _update_environment_variables(
                 optimization_env_vars, override_env
             )
+            self.pysdk_model.env.update(optimization_env_vars)
             return create_optimization_job_args
         return None
 
