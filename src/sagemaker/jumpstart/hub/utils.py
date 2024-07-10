@@ -193,7 +193,11 @@ def get_hub_model_version(
     hub_model_version: Optional[str] = None,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
-    """Returns available Jumpstart hub model version"""
+    """Returns available Jumpstart hub model version
+
+    Raises:
+        ClientError: If the specified model is not found in the hub.
+    """
 
     try:
         hub_content_summaries = sagemaker_session.list_hub_content_versions(

@@ -1708,6 +1708,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
         Args:
             spec (Dict[str, Any]): Dictionary representation of spec.
+            is_hub_content (Optional[bool]): Whether the model is from a private hub.
         """
         super().__init__(spec, is_hub_content)
         self.from_json(spec)
@@ -2335,6 +2336,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "enable_remote_debug",
         "config_name",
         "enable_session_tag_chaining",
+        "hub_content_type",
+        "model_reference_arn",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2345,6 +2348,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_version",
         "hub_arn",
         "model_type",
+        "hub_content_type",
         "config_name",
     }
 

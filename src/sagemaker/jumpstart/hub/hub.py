@@ -23,7 +23,6 @@ from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.session import Session
 
 from sagemaker.jumpstart.constants import (
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JUMPSTART_LOGGER,
 )
 from sagemaker.jumpstart.types import (
@@ -68,7 +67,7 @@ class Hub:
         self,
         hub_name: str,
         bucket_name: Optional[str] = None,
-        sagemaker_session: Optional[Session] = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        sagemaker_session: Optional[Session] = None,
     ) -> None:
         """Instantiates a SageMaker ``Hub``.
 
@@ -79,7 +78,10 @@ class Hub:
         """
         self.hub_name = hub_name
         self.region = sagemaker_session.boto_region_name
-        self._sagemaker_session = sagemaker_session
+        self._sagemaker_session = (
+            sagemaker_session
+            or utils.get_default_jumpstart_session_with_user_agent_suffix(is_hub_content=True)
+        )
         self.hub_storage_location = self._generate_hub_storage_location(bucket_name)
 
     def _fetch_hub_bucket_name(self) -> str:
@@ -274,8 +276,28 @@ class Hub:
         try:
             model_version = get_hub_model_version(
                 hub_model_name=model_name,
+                hub_model_type=HubContentType.MODEL_REFERENCE.value,
+                hub_name=self.hub_name if not hub_name else hub_name,
+                sagemaker_session=self._sagemaker_session,
+                hub_model_version=model_version,
+            )
+
+            hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
+                hub_name=self.hub_name if not hub_name else hub_name,
+                hub_content_name=model_name,
+                hub_content_version=model_version,
+                hub_content_type=HubContentType.MODEL_REFERENCE.value,
+            )
+
+        except Exception as ex:
+            logging.info(
+                "Received exeption while calling APIs for ContentType ModelReference, retrying with ContentType Model: "
+                + str(ex)
+            )
+            model_version = get_hub_model_version(
+                hub_model_name=model_name,
                 hub_model_type=HubContentType.MODEL.value,
-                hub_name=self.hub_name,
+                hub_name=self.hub_name if not hub_name else hub_name,
                 sagemaker_session=self._sagemaker_session,
                 hub_model_version=model_version,
             )
@@ -285,23 +307,6 @@ class Hub:
                 hub_content_name=model_name,
                 hub_content_version=model_version,
                 hub_content_type=HubContentType.MODEL.value,
-            )
-
-        except Exception as ex:
-            logging.info("Recieved expection while calling APIs for ContentType Model: " + str(ex))
-            model_version = get_hub_model_version(
-                hub_model_name=model_name,
-                hub_model_type=HubContentType.MODEL_REFERENCE.value,
-                hub_name=self.hub_name,
-                sagemaker_session=self._sagemaker_session,
-                hub_model_version=model_version,
-            )
-
-            hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=self.hub_name,
-                hub_content_name=model_name,
-                hub_content_version=model_version,
-                hub_content_type=HubContentType.MODEL_REFERENCE.value,
             )
 
         return DescribeHubContentResponse(hub_content_description)
