@@ -1227,9 +1227,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
             input_args = self._optimize_for_jumpstart(
                 output_path=output_path,
+                instance_type=instance_type,
                 tags=tags,
                 job_name=job_name,
-                instance_type=instance_type,
                 accept_eula=accept_eula,
                 quantization_config=quantization_config,
                 compilation_config=compilation_config,
