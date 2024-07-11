@@ -668,9 +668,9 @@ class JumpStart(ABC):
     def _optimize_for_jumpstart(
         self,
         output_path: Optional[str] = None,
+        instance_type: Optional[str] = None,
         tags: Optional[Tags] = None,
         job_name: Optional[str] = None,
-        instance_type: Optional[str] = None,
         accept_eula: Optional[bool] = None,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
@@ -684,9 +684,9 @@ class JumpStart(ABC):
 
         Args:
             output_path (Optional[str]): Specifies where to store the compiled/quantized model.
+            instance_type (str): Target deployment instance type that the model is optimized for.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
-            instance_type (str): Target deployment instance type that the model is optimized for.
             accept_eula (bool): For models that require a Model Access Config, specify True or
                 False to indicate whether model terms of use have been accepted.
                 The `accept_eula` value must be explicitly defined as `True` in order to
