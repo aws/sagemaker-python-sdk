@@ -669,7 +669,6 @@ class JumpStart(ABC):
         self,
         output_path: Optional[str] = None,
         instance_type: Optional[str] = None,
-        role_arn: Optional[str] = None,
         tags: Optional[Tags] = None,
         job_name: Optional[str] = None,
         accept_eula: Optional[bool] = None,
@@ -685,9 +684,7 @@ class JumpStart(ABC):
 
         Args:
             output_path (Optional[str]): Specifies where to store the compiled/quantized model.
-            instance_type (Optional[str]): Target deployment instance type that
-                the model is optimized for.
-            role_arn (Optional[str]): Execution role. Defaults to ``None``.
+            instance_type (str): Target deployment instance type that the model is optimized for.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
             accept_eula (bool): For models that require a Model Access Config, specify True or
@@ -715,7 +712,7 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
-        is_compilation = (quantization_config is None) and (
+        is_compilation = (not quantization_config) and (
             (compilation_config is not None) or _is_inferentia_or_trainium(instance_type)
         )
 
@@ -758,7 +755,6 @@ class JumpStart(ABC):
             else None
         )
         self.instance_type = instance_type or deployment_config_instance_type or _get_nb_instance()
-        self.role_arn = role_arn or self.role_arn
 
         create_optimization_job_args = {
             "OptimizationJobName": job_name,
@@ -787,10 +783,10 @@ class JumpStart(ABC):
                     "AcceptEula": True
                 }
 
+        optimization_env_vars = _update_environment_variables(optimization_env_vars, override_env)
+        if optimization_env_vars:
+            self.pysdk_model.env.update(optimization_env_vars)
         if quantization_config or is_compilation:
-            self.pysdk_model.env = _update_environment_variables(
-                optimization_env_vars, override_env
-            )
             return create_optimization_job_args
         return None
 

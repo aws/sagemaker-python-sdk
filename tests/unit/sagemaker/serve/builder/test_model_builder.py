@@ -13,12 +13,11 @@
 from __future__ import absolute_import
 from unittest.mock import MagicMock, patch, Mock, mock_open
 
-import pytest
-
 import unittest
 from pathlib import Path
 from copy import deepcopy
 
+from sagemaker.serve import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.model_format.mlflow.constants import MLFLOW_TRACKING_ARN
@@ -2328,32 +2327,58 @@ class TestModelBuilder(unittest.TestCase):
             mock_session,
         )
 
-    @pytest.mark.skip(reason="Implementation not completed")
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_build_for_djl")
+    @patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=False)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
-    def test_optimize(self, mock_send_telemetry, mock_get_serve_setting):
+    def test_optimize(
+        self,
+        mock_send_telemetry,
+        mock_get_serve_setting,
+        mock_is_jumpstart_model_id,
+        mock_build_for_djl,
+        mock_prepare_for_mode,
+    ):
         mock_sagemaker_session = Mock()
 
         mock_settings = Mock()
         mock_settings.telemetry_opt_out = False
         mock_get_serve_setting.return_value = mock_settings
 
-        builder = ModelBuilder(
-            model_path=MODEL_PATH,
-            schema_builder=schema_builder,
-            model=mock_fw_model,
-            sagemaker_session=mock_sagemaker_session,
+        pysdk_model = Mock()
+        pysdk_model.env = {"key": "val"}
+        pysdk_model.add_tags.side_effect = lambda *arg, **kwargs: None
+
+        mock_build_for_djl.side_effect = lambda **kwargs: pysdk_model
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "S3Uri": "s3://uri",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            {"key": "val"},
         )
+
+        builder = ModelBuilder(
+            schema_builder=SchemaBuilder(
+                sample_input={"inputs": "Hello", "parameters": {}},
+                sample_output=[{"generated_text": "Hello"}],
+            ),
+            model="meta-llama/Meta-Llama-3-8B",
+            sagemaker_session=mock_sagemaker_session,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={"CUSTOM_MODEL_PATH": "/tmp/modelbuilders/code"},
+        )
+        builder.pysdk_model = pysdk_model
 
         job_name = "my-optimization-job"
         instance_type = "ml.inf1.xlarge"
         output_path = "s3://my-bucket/output"
         quantization_config = {
             "Image": "quantization-image-uri",
-            "OverrideEnvironment": {"ENV_VAR": "value"},
-        }
-        compilation_config = {
-            "Image": "compilation-image-uri",
             "OverrideEnvironment": {"ENV_VAR": "value"},
         }
         env_vars = {"Var1": "value", "Var2": "value"}
@@ -2368,36 +2393,17 @@ class TestModelBuilder(unittest.TestCase):
             "Subnets": ["subnet-01234567", "subnet-89abcdef"],
         }
 
-        expected_create_optimization_job_args = {
-            "ModelSource": {"S3": {"S3Uri": MODEL_PATH, "ModelAccessConfig": {"AcceptEula": True}}},
-            "DeploymentInstanceType": instance_type,
-            "OptimizationEnvironment": env_vars,
-            "OptimizationConfigs": [
-                {"ModelQuantizationConfig": quantization_config},
-                {"ModelCompilationConfig": compilation_config},
-            ],
-            "OutputConfig": {"S3OutputLocation": output_path, "KmsKeyId": kms_key},
-            "RoleArn": mock_role_arn,
-            "OptimizationJobName": job_name,
-            "StoppingCondition": {"MaxRuntimeInSeconds": max_runtime_in_sec},
-            "Tags": [
-                {"Key": "Project", "Value": "my-project"},
-                {"Key": "Environment", "Value": "production"},
-            ],
-            "VpcConfig": vpc_config,
-        }
-
-        mock_sagemaker_session.sagemaker_client.create_optimization_job.return_value = {
-            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job"
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = lambda *args, **kwargs: {
+            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job",
+            "OptimizationJobName": "my-optimization-job",
         }
 
         builder.optimize(
             instance_type=instance_type,
             output_path=output_path,
-            role=mock_role_arn,
+            role_arn=mock_role_arn,
             job_name=job_name,
             quantization_config=quantization_config,
-            compilation_config=compilation_config,
             env_vars=env_vars,
             kms_key=kms_key,
             max_runtime_in_sec=max_runtime_in_sec,
@@ -2405,9 +2411,37 @@ class TestModelBuilder(unittest.TestCase):
             vpc_config=vpc_config,
         )
 
+        self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
+        self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
+
         mock_send_telemetry.assert_called_once()
         mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
-            **expected_create_optimization_job_args
+            OptimizationJobName="my-optimization-job",
+            DeploymentInstanceType="ml.inf1.xlarge",
+            RoleArn="arn:aws:iam::123456789012:role/SageMakerRole",
+            OptimizationEnvironment={"Var1": "value", "Var2": "value"},
+            ModelSource={"S3": {"S3Uri": "s3://uri"}},
+            OptimizationConfigs=[
+                {
+                    "ModelQuantizationConfig": {
+                        "Image": "quantization-image-uri",
+                        "OverrideEnvironment": {"ENV_VAR": "value"},
+                    }
+                }
+            ],
+            OutputConfig={
+                "S3OutputLocation": "s3://my-bucket/output",
+                "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/my-key-id",
+            },
+            StoppingCondition={"MaxRuntimeInSeconds": 3600},
+            Tags=[
+                {"Key": "Project", "Value": "my-project"},
+                {"Key": "Environment", "Value": "production"},
+            ],
+            VpcConfig={
+                "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+                "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+            },
         )
 
     def test_handle_mlflow_input_without_mlflow_model_path(self):
@@ -2649,26 +2683,25 @@ class TestModelBuilder(unittest.TestCase):
 
         model_builder = ModelBuilder(
             model="meta-llama/Meta-Llama-3-8B-Instruct",
-            env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+            env_vars={"HF_TOKEN": "token"},
             model_metadata={
                 "CUSTOM_MODEL_PATH": "s3://bucket/path/",
             },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
         )
 
         model_builder.pysdk_model = mock_pysdk_model
 
         out_put = model_builder._optimize_for_hf(
             job_name="job_name-123",
-            instance_type="ml.g5.2xlarge",
-            role_arn="role-arn",
             quantization_config={
                 "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
             },
             output_path="s3://bucket/code/",
         )
 
-        print(out_put)
-
+        self.assertEqual(model_builder.env_vars["HF_TOKEN"], "token")
         self.assertEqual(model_builder.role_arn, "role-arn")
         self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
         self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
@@ -2715,14 +2748,14 @@ class TestModelBuilder(unittest.TestCase):
         model_builder = ModelBuilder(
             model="meta-llama/Meta-Llama-3-8B-Instruct",
             env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
         )
 
         model_builder.pysdk_model = mock_pysdk_model
 
         out_put = model_builder._optimize_for_hf(
             job_name="job_name-123",
-            instance_type="ml.g5.2xlarge",
-            role_arn="role-arn",
             quantization_config={
                 "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
             },
