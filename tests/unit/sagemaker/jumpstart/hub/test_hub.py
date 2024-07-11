@@ -182,13 +182,13 @@ def test_describe_model_success(mock_describe_hub_content_response, sagemaker_se
         hub.describe_model("test-model")
 
         mock_list_hub_content_versions.assert_called_with(
-            hub_name=HUB_NAME, hub_content_name="test-model", hub_content_type="Model"
+            hub_name=HUB_NAME, hub_content_name="test-model", hub_content_type="ModelReference"
         )
         sagemaker_session.describe_hub_content.assert_called_with(
             hub_name=HUB_NAME,
             hub_content_name="test-model",
             hub_content_version="3.0",
-            hub_content_type="Model",
+            hub_content_type="ModelReference",
         )
 
 
