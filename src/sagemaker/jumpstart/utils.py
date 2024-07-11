@@ -433,12 +433,12 @@ def add_jumpstart_model_info_tags(
 
 def add_hub_content_arn_tags(
     tags: Optional[List[TagsDict]],
-    hub_arn: str,
+    hub_content_arn: str,
 ) -> Optional[List[TagsDict]]:
     """Adds custom Hub arn tag to JumpStart related resources."""
 
     tags = add_single_jumpstart_tag(
-        hub_arn,
+        hub_content_arn,
         enums.JumpStartTag.HUB_CONTENT_ARN,
         tags,
         is_uri=False,
@@ -1108,24 +1108,40 @@ def get_jumpstart_configs(
     )
 
 
-def get_jumpstart_user_agent_extra_suffix(model_id: str, model_version: str) -> str:
+def get_jumpstart_user_agent_extra_suffix(
+    model_id: Optional[str], model_version: Optional[str], is_hub_content: Optional[bool]
+) -> str:
     """Returns the model-specific user agent string to be added to requests."""
     sagemaker_python_sdk_headers = get_user_agent_extra_suffix()
     jumpstart_specific_suffix = f"md/js_model_id#{model_id} md/js_model_ver#{model_version}"
-    return (
-        sagemaker_python_sdk_headers
-        if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, None)
-        else f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix}"
-    )
+    hub_specific_suffix = f"md/js_is_hub_content#{is_hub_content}"
+
+    if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, None):
+        headers = sagemaker_python_sdk_headers
+    elif is_hub_content is True:
+        if model_id is None and model_version is None:
+            headers = f"{sagemaker_python_sdk_headers} {hub_specific_suffix}"
+        else:
+            headers = (
+                f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix} {hub_specific_suffix}"
+            )
+    else:
+        headers = f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix}"
+
+    return headers
 
 
 def get_default_jumpstart_session_with_user_agent_suffix(
-    model_id: str, model_version: str
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    is_hub_content: Optional[bool] = False,
 ) -> Session:
     """Returns default JumpStart SageMaker Session with model-specific user agent suffix."""
     botocore_session = botocore.session.get_session()
     botocore_config = botocore.config.Config(
-        user_agent_extra=get_jumpstart_user_agent_extra_suffix(model_id, model_version),
+        user_agent_extra=get_jumpstart_user_agent_extra_suffix(
+            model_id, model_version, is_hub_content
+        ),
     )
     botocore_session.set_default_client_config(botocore_config)
     # shallow copy to not affect default session constant

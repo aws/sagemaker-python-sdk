@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 import os
 from unittest import TestCase
+from unittest.mock import call
 
 from botocore.exceptions import ClientError
 from mock.mock import Mock, patch
@@ -1882,6 +1883,88 @@ class TestBenchmarkStats:
                 ]
             },
         }
+
+
+class TestUserAgent:
+    @patch("sagemaker.jumpstart.utils.os.getenv")
+    def test_get_jumpstart_user_agent_extra_suffix(self, mock_getenv):
+        mock_getenv.return_value = False
+        assert utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "False"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version")
+        mock_getenv.return_value = None
+        assert utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "False"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version")
+        mock_getenv.return_value = "True"
+        assert not utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "True"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_is_hub_content#True")
+        mock_getenv.return_value = True
+        assert not utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "True"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_is_hub_content#True")
+
+    @patch("sagemaker.jumpstart.utils.botocore.session")
+    @patch("sagemaker.jumpstart.utils.botocore.config.Config")
+    @patch("sagemaker.jumpstart.utils.get_jumpstart_user_agent_extra_suffix")
+    @patch("sagemaker.jumpstart.utils.boto3.Session")
+    @patch("sagemaker.jumpstart.utils.boto3.client")
+    @patch("sagemaker.jumpstart.utils.Session")
+    def test_get_default_jumpstart_session_with_user_agent_suffix(
+        self,
+        mock_sm_session,
+        mock_boto3_client,
+        mock_botocore_session,
+        mock_get_jumpstart_user_agent_extra_suffix,
+        mock_botocore_config,
+        mock_boto3_session,
+    ):
+        utils.get_default_jumpstart_session_with_user_agent_suffix("model_id", "model_version")
+        mock_boto3_session.get_session.assert_called_once_with()
+        mock_get_jumpstart_user_agent_extra_suffix.assert_called_once_with(
+            "model_id", "model_version", False
+        )
+        mock_botocore_config.assert_called_once_with(
+            user_agent_extra=mock_get_jumpstart_user_agent_extra_suffix.return_value
+        )
+        mock_botocore_session.assert_called_once_with(
+            region_name=JUMPSTART_DEFAULT_REGION_NAME,
+            botocore_session=mock_boto3_session.get_session.return_value,
+        )
+        mock_boto3_client.assert_has_calls(
+            [
+                call(
+                    "sagemaker",
+                    region_name=JUMPSTART_DEFAULT_REGION_NAME,
+                    config=mock_botocore_config.return_value,
+                ),
+                call(
+                    "sagemaker-runtime",
+                    region_name=JUMPSTART_DEFAULT_REGION_NAME,
+                    config=mock_botocore_config.return_value,
+                ),
+            ],
+            any_order=True,
+        )
+
+    @patch("botocore.client.BaseClient._make_request")
+    def test_get_default_jumpstart_session_with_user_agent_suffix_http_header(
+        self,
+        mock_make_request,
+    ):
+        session = utils.get_default_jumpstart_session_with_user_agent_suffix(
+            "model_id", "model_version"
+        )
+        try:
+            session.sagemaker_client.list_endpoints()
+        except Exception:
+            pass
+
+        assert (
+            "md/js_model_id#model_id md/js_model_ver#model_version"
+            in mock_make_request.call_args[0][1]["headers"]["User-Agent"]
+        )
 
 
 def test_extract_metrics_from_deployment_configs():

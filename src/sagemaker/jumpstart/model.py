@@ -527,6 +527,7 @@ class JumpStartModel(Model):
         model_id: Optional[str] = None,
         model_version: Optional[str] = None,
         sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+        hub_name: Optional[str] = None,
     ) -> "JumpStartModel":
         """Attaches a JumpStartModel object to an existing SageMaker Endpoint.
 
@@ -552,6 +553,7 @@ class JumpStartModel(Model):
             model_id=model_id,
             model_version=model_version,
             sagemaker_session=sagemaker_session,
+            hub_name=hub_name,
         )
         model.endpoint_name = endpoint_name
         model.inference_component_name = inference_component_name

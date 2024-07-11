@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import requests
 import logging
+import platform
 from pathlib import Path
 from sagemaker import Session, fw_utils
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
@@ -31,6 +32,17 @@ class LocalMultiModelServer:
         env_vars: dict,
     ):
         """Placeholder docstring"""
+        env = {
+            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+            "LOCAL_PYTHON": platform.python_version(),
+        }
+        if env_vars:
+            env_vars.update(env)
+        else:
+            env_vars = env
+
         self.container = client.containers.run(
             image,
             "serve",
@@ -43,7 +55,7 @@ class LocalMultiModelServer:
                     "mode": "rw",
                 },
             },
-            environment=_update_env_vars(env_vars),
+            environment=env_vars,
         )
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
@@ -81,6 +93,7 @@ class SageMakerMultiModelServer:
     def _upload_server_artifacts(
         self,
         model_path: str,
+        secret_key: str,
         sagemaker_session: Session,
         s3_model_data_url: str = None,
         image: str = None,
@@ -126,6 +139,16 @@ class SageMakerMultiModelServer:
             if model_data_url
             else None
         )
+
+        if secret_key:
+            env_vars = {
+                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+                "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
+                "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
+                "LOCAL_PYTHON": platform.python_version(),
+            }
 
         return model_data, _update_env_vars(env_vars)
 
