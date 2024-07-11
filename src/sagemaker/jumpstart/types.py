@@ -1258,9 +1258,10 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "hosting_neuron_model_version",
         "hub_content_type",
         "_is_hub_content",
+        "_raw_json",
     ]
 
-    _non_serializable_slots = ["_is_hub_content"]
+    _non_serializable_slots = ["_is_hub_content", "_raw_json"]
 
     def __init__(self, fields: Dict[str, Any], is_hub_content: Optional[bool] = False):
         """Initializes a JumpStartMetadataFields object.
@@ -1269,6 +1270,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             fields (Dict[str, Any]): Dictionary representation of metadata fields.
         """
         self._is_hub_content = is_hub_content
+        self._raw_json = fields
         self.from_json(fields)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
