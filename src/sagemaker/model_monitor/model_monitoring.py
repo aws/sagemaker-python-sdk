@@ -25,6 +25,7 @@ import logging
 import uuid
 from typing import Union, Optional, Dict, List
 import attr
+import re
 
 from six import string_types
 from six.moves.urllib.parse import urlparse
@@ -66,6 +67,8 @@ from sagemaker.utils import (
 )
 from sagemaker.lineage._utils import get_resource_name_from_arn
 from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator
+
+from sagemaker.model_monitor.dashboards import AutomaticDataQualityDashboard
 
 DEFAULT_REPOSITORY_NAME = "sagemaker-model-monitor-analyzer"
 
@@ -1945,6 +1948,8 @@ class DefaultModelMonitor(ModelMonitor):
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
+        enable_automatic_dashboard=False,
+        dashboard_name=None,
         batch_transform_input=None,
         data_analysis_start_time=None,
         data_analysis_end_time=None,
@@ -1988,6 +1993,8 @@ class DefaultModelMonitor(ModelMonitor):
             data_analysis_end_time (str): End time for the data analysis window
                 for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
+        cw_client = self.sagemaker_session.boto_session.client('cloudwatch')
+        
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
                 "It seems that this object was already used to create an Amazon Model "
@@ -2005,6 +2012,45 @@ class DefaultModelMonitor(ModelMonitor):
             )
             logger.error(message)
             raise ValueError(message)
+        
+        # error checking and validation logic for dashboard name
+        if (enable_cloudwatch_metrics == False and enable_automatic_dashboard == True):
+            message = (
+                "Could not create automatic dashboard. Please set enable_cloudwatch_metrics to True."
+            )
+            logger.error(message)
+            raise ValueError(message)
+        
+        if (enable_automatic_dashboard == True):
+            # verify that the provided dashboard name is not taken 
+            dashboard_name = monitor_schedule_name if dashboard_name is None else dashboard_name
+            
+            dashboard_name_validation = bool(re.match(r'^[0-9A-Za-z\-_]{1,255}$', dashboard_name))
+            if dashboard_name_validation == False:
+                message = (
+                    f"Dashboard name {dashboard_name} is not a valid dashboard name. "
+                    "Dashboard name can be at most 255 characters long "
+                    "and valid characters in dashboard names include '0-9A-Za-z-_'."
+                )
+                logger.error(message)
+                raise ValueError(message)
+            
+            try:
+                # try to access dashboard name to see if it exists 
+                cw_client.get_dashboard(DashboardName=dashboard_name)
+                message = (
+                    f"Dashboard name {dashboard_name} is already in use. "
+                    "Please provide a different dashboard name, or delete the already "
+                    "existing dashboard."
+                )
+                logger.error(message)
+                raise ValueError(message)
+            except Exception as e:
+                # in this case, the dashboard name is not in use
+                # and we are free to write to it without overwriting any 
+                # customer data. 
+                pass
+            
 
         self._check_monitoring_schedule_cron_validity(
             schedule_cron_expression=schedule_cron_expression,
@@ -2068,6 +2114,11 @@ class DefaultModelMonitor(ModelMonitor):
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
                 logger.exception(message)
             raise
+                
+        cw_client.put_dashboard(
+            DashboardName=dashboard_name,
+            DashboardBody=AutomaticDataQualityDashboard(endpoint_name=endpoint_input, monitoring_schedule_name=monitor_schedule_name, batch_transform_input=batch_transform_input, region_name=self.sagemaker_session.boto_region_name)
+        )
 
     def update_monitoring_schedule(
         self,
