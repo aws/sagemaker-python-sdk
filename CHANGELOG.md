@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.226.0 (2024-07-12)
+
+### Features
+
+ * Curated hub improvements
+ * InferenceSpec support for MMS and testing
+
+### Bug Fixes and Other Changes
+
+ * ModelBuilder not passing HF_TOKEN to model.
+ * update image_uri_configs  07-10-2024 07:18:04 PST
+
 ## v2.225.0 (2024-07-10)
 
 ### Features
