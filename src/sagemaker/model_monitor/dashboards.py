@@ -12,9 +12,9 @@
 # language governing permissions and limitations under the License.
 """This module contains code containing wrapper classes for dashboard structures in CloudWatch.
 
-These classes assist with creating dashboards in Python3 and then using boto3 CloudWatch client 
-to publish the generated dashboards. To be used to aid dashboard creation in the create_monitoring_schedule 
-and update_monitoring_schedule methods in model_monitoring.py 
+These classes assist with creating dashboards in Python3 and then using boto3 CloudWatch client
+to publish the generated dashboards. To be used to aid dashboard creation in the create_monitoring_schedule
+and update_monitoring_schedule methods in model_monitoring.py
 """
 
 import json
@@ -136,7 +136,7 @@ class AutomaticDataQualityDashboard:
         estimated_unique_values_widget = self._generate_estimated_unique_values_widget()
         completeness_widget = self._generate_completeness_widget()
         baseline_drift_widget = self._generate_baseline_drift_widget()
-
+        
         self.dashboard = {
             "variables": variables,
             "widgets": [
@@ -149,7 +149,7 @@ class AutomaticDataQualityDashboard:
         }
 
     def _generate_variables(self):
-        if self.batch_transform:
+        if self.batch_transform is not None:
             return [
                 Variable(
                     variable_type="property",
@@ -175,14 +175,14 @@ class AutomaticDataQualityDashboard:
         ]
 
     def _generate_type_counts_widget(self):
-        if self.batch_transform:
+        if self.batch_transform is not None:
             type_counts_widget_properties = WidgetProperties(
                 view="timeSeries",
                 stacked=False,
                 metrics=[
                     [
                         {
-                            "expression": f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} %^(feature_fractional_counts_|feature_string_counts_|feature_integral_counts_|feature_boolean_counts_|feature_unknown_counts_).*% Feature=\"_\" MonitoringSchedule=\"{self.monitoring_schedule}\" ', 'Average')"
+                            "expression": f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} %^feature_fractional_counts_.*% OR %^feature_integral_counts_.*% OR %^feature_string_counts_.*% OR %^feature_boolean_counts_.*% OR %^feature_unknown_counts_.*% Feature=\"_\" MonitoringSchedule=\"{self.monitoring_schedule}\" ', 'Average')"
                         }
                     ]
                 ],
@@ -196,7 +196,7 @@ class AutomaticDataQualityDashboard:
                 metrics=[
                     [
                         {
-                            "expression": f'SEARCH( \'{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} %^(feature_fractional_counts_|feature_string_counts_|feature_integral_counts_|feature_boolean_counts_|feature_unknown_counts_).*% Endpoint="{self.endpoint}" Feature="_" MonitoringSchedule="{self.monitoring_schedule}" \', \'Average\')'
+                            "expression": f'SEARCH( \'{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} %^feature_fractional_counts_.*% OR %^feature_integral_counts_.*% OR %^feature_string_counts_.*% OR %^feature_boolean_counts_.*% OR %^feature_unknown_counts_.*% Endpoint="{self.endpoint}" Feature="_" MonitoringSchedule="{self.monitoring_schedule}" \', \'Average\')'
                         }
                     ]
                 ],
@@ -208,14 +208,14 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_null_counts_widget(self):
-        if self.batch_transform:
+        if self.batch_transform is not None:
             null_counts_widget_properties = WidgetProperties(
                 view="timeSeries",
                 stacked=False,
                 metrics=[
                     [
                         {
-                            "expression": f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} %^(feature_null_|feature_non_null_).*% Feature=\"_\" MonitoringSchedule=\"{self.monitoring_schedule}\" ', 'Average')"
+                            "expression": f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} %^feature_null_.*% OR %^feature_non_null_.*% Feature=\"_\" MonitoringSchedule=\"{self.monitoring_schedule}\" ', 'Average')"
                         }
                     ]
                 ],
@@ -229,7 +229,7 @@ class AutomaticDataQualityDashboard:
                 metrics=[
                     [
                         {
-                            "expression": f'SEARCH( \'{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} %^(feature_null_|feature_non_null_).*% Endpoint="{self.endpoint}" Feature="_" MonitoringSchedule="{self.monitoring_schedule}" \', \'Average\')'
+                            "expression": f'SEARCH( \'{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} %^feature_null_.*% OR %^feature_non_null_.*% Endpoint="{self.endpoint}" Feature="_" MonitoringSchedule="{self.monitoring_schedule}" \', \'Average\')'
                         }
                     ]
                 ],
@@ -241,7 +241,7 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_estimated_unique_values_widget(self):
-        if self.batch_transform:
+        if self.batch_transform is not None:
             estimated_unique_vals_widget_properties = WidgetProperties(
                 view="timeSeries",
                 stacked=False,
@@ -278,7 +278,7 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_completeness_widget(self):
-        if self.batch_transform:
+        if self.batch_transform is not None:
             completeness_widget_properties = WidgetProperties(
                 view="timeSeries",
                 stacked=False,
@@ -311,7 +311,7 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_baseline_drift_widget(self):
-        if self.batch_transform:
+        if self.batch_transform is not None:
             baseline_drift_widget_properties = WidgetProperties(
                 view="timeSeries",
                 stacked=False,
