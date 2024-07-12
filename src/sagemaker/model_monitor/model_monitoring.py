@@ -1993,8 +1993,8 @@ class DefaultModelMonitor(ModelMonitor):
             data_analysis_end_time (str): End time for the data analysis window
                 for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
-        cw_client = self.sagemaker_session.boto_session.client('cloudwatch')
-        
+        cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
                 "It seems that this object was already used to create an Amazon Model "
@@ -2012,20 +2012,18 @@ class DefaultModelMonitor(ModelMonitor):
             )
             logger.error(message)
             raise ValueError(message)
-        
+
         # error checking and validation logic for dashboard name
-        if (enable_cloudwatch_metrics == False and enable_automatic_dashboard == True):
-            message = (
-                "Could not create automatic dashboard. Please set enable_cloudwatch_metrics to True."
-            )
+        if (not enable_cloudwatch_metrics) and enable_automatic_dashboard:
+            message = "Could not create automatic dashboard. Please set enable_cloudwatch_metrics to True."
             logger.error(message)
             raise ValueError(message)
-        
-        if (enable_automatic_dashboard == True):
-            # verify that the provided dashboard name is not taken 
+
+        if enable_automatic_dashboard:
+            # verify that the provided dashboard name is not taken
             dashboard_name = monitor_schedule_name if dashboard_name is None else dashboard_name
-            
-            dashboard_name_validation = bool(re.match(r'^[0-9A-Za-z\-_]{1,255}$', dashboard_name))
+
+            dashboard_name_validation = bool(re.match(r"^[0-9A-Za-z\-_]{1,255}$", dashboard_name))
             if dashboard_name_validation == False:
                 message = (
                     f"Dashboard name {dashboard_name} is not a valid dashboard name. "
@@ -2034,9 +2032,9 @@ class DefaultModelMonitor(ModelMonitor):
                 )
                 logger.error(message)
                 raise ValueError(message)
-            
+
             try:
-                # try to access dashboard name to see if it exists 
+                # try to access dashboard name to see if it exists
                 cw_client.get_dashboard(DashboardName=dashboard_name)
                 message = (
                     f"Dashboard name {dashboard_name} is already in use. "
@@ -2047,10 +2045,9 @@ class DefaultModelMonitor(ModelMonitor):
                 raise ValueError(message)
             except Exception as e:
                 # in this case, the dashboard name is not in use
-                # and we are free to write to it without overwriting any 
-                # customer data. 
+                # and we are free to write to it without overwriting any
+                # customer data.
                 pass
-            
 
         self._check_monitoring_schedule_cron_validity(
             schedule_cron_expression=schedule_cron_expression,
@@ -2114,11 +2111,16 @@ class DefaultModelMonitor(ModelMonitor):
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
                 logger.exception(message)
             raise
-                
-        cw_client.put_dashboard(
-            DashboardName=dashboard_name,
-            DashboardBody=AutomaticDataQualityDashboard(endpoint_name=endpoint_input, monitoring_schedule_name=monitor_schedule_name, batch_transform_input=batch_transform_input, region_name=self.sagemaker_session.boto_region_name)
-        )
+        if enable_automatic_dashboard:
+            cw_client.put_dashboard(
+                DashboardName=dashboard_name,
+                DashboardBody=AutomaticDataQualityDashboard(
+                    endpoint_name=endpoint_input,
+                    monitoring_schedule_name=monitor_schedule_name,
+                    batch_transform_input=batch_transform_input,
+                    region_name=self.sagemaker_session.boto_region_name,
+                ).to_json(),
+            )
 
     def update_monitoring_schedule(
         self,
