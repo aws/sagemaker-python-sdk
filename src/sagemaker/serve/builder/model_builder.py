@@ -73,7 +73,6 @@ from sagemaker.serve.utils.optimize_utils import (
     _generate_model_source,
     _extract_optimization_config_and_env,
     _is_s3_uri,
-    _normalize_local_model_path,
     _custom_speculative_decoding,
     _extract_speculative_draft_model_provider,
 )
@@ -833,6 +832,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         # until we deprecate HUGGING_FACE_HUB_TOKEN.
         if self.env_vars.get("HUGGING_FACE_HUB_TOKEN") and not self.env_vars.get("HF_TOKEN"):
             self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+        elif self.env_vars.get("HF_TOKEN") and not self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
+            self.env_vars["HUGGING_FACE_HUB_TOKEN"] = self.env_vars.get("HF_TOKEN")
 
         self.sagemaker_session.settings._local_download_dir = self.model_path
 
@@ -851,7 +852,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         self._build_validations()
 
-        if not self._is_jumpstart_model_id() and self.model_server:
+        if (
+            not (isinstance(self.model, str) and self._is_jumpstart_model_id())
+        ) and self.model_server:
             return self._build_for_model_server()
 
         if isinstance(self.model, str):
@@ -1216,18 +1219,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             raise ValueError("Quantization config and compilation config are mutually exclusive.")
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
-
         self.instance_type = instance_type or self.instance_type
         self.role_arn = role_arn or self.role_arn
 
-        self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
-
         if self._is_jumpstart_model_id():
+            self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
             input_args = self._optimize_for_jumpstart(
                 output_path=output_path,
                 instance_type=instance_type,
-                role_arn=self.role_arn,
                 tags=tags,
                 job_name=job_name,
                 accept_eula=accept_eula,
@@ -1240,10 +1240,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 max_runtime_in_sec=max_runtime_in_sec,
             )
         else:
+            if self.model_server != ModelServer.DJL_SERVING:
+                logger.info("Overriding model server to DJL_SERVING.")
+                self.model_server = ModelServer.DJL_SERVING
+
+            self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
             input_args = self._optimize_for_hf(
                 output_path=output_path,
-                instance_type=instance_type,
-                role_arn=self.role_arn,
                 tags=tags,
                 job_name=job_name,
                 quantization_config=quantization_config,
@@ -1269,8 +1272,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     def _optimize_for_hf(
         self,
         output_path: str,
-        instance_type: Optional[str] = None,
-        role_arn: Optional[str] = None,
         tags: Optional[Tags] = None,
         job_name: Optional[str] = None,
         quantization_config: Optional[Dict] = None,
@@ -1285,9 +1286,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         Args:
             output_path (str): Specifies where to store the compiled/quantized model.
-            instance_type (Optional[str]): Target deployment instance type that
-                the model is optimized for.
-            role_arn (Optional[str]): Execution role. Defaults to ``None``.
             tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
             job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
@@ -1305,13 +1303,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Optional[Dict[str, Any]]: Model optimization job input arguments.
         """
-        if self.model_server != ModelServer.DJL_SERVING:
-            logger.info("Overwriting model server to DJL.")
-            self.model_server = ModelServer.DJL_SERVING
-
-        self.role_arn = role_arn or self.role_arn
-        self.instance_type = instance_type or self.instance_type
-
         self.pysdk_model = _custom_speculative_decoding(
             self.pysdk_model, speculative_decoding_config, False
         )
@@ -1371,13 +1362,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
         else:
             if not custom_model_path:
-                custom_model_path = f"/tmp/sagemaker/model-builder/{self.model}/code"
+                custom_model_path = f"/tmp/sagemaker/model-builder/{self.model}"
                 download_huggingface_model_metadata(
                     self.model,
-                    custom_model_path,
+                    os.path.join(custom_model_path, "code"),
                     self.env_vars.get("HUGGING_FACE_HUB_TOKEN"),
                 )
-            custom_model_path = _normalize_local_model_path(custom_model_path)
 
         self.pysdk_model.model_data, env = self._prepare_for_mode(
             model_path=custom_model_path,
