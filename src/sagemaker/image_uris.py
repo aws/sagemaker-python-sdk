@@ -71,6 +71,7 @@ def retrieve(
     inference_tool=None,
     serverless_inference_config=None,
     sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name=None,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -126,6 +127,7 @@ def retrieve(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
@@ -166,6 +168,7 @@ def retrieve(
             tolerate_vulnerable_model,
             tolerate_deprecated_model,
             sagemaker_session=sagemaker_session,
+            config_name=config_name,
         )
 
     if training_compiler_config and (framework in [HUGGING_FACE_FRAMEWORK, "pytorch"]):

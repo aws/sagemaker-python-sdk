@@ -274,7 +274,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
             tags (Optional[Tags]):
-                Tags for labeling a training job. For more, see
+                Tags for labeling a training job. These won't be propagated to Models,
+                Endpoints during :meth:`~sagemaker.estimator.EstimatorBase.deploy`. The
+                :meth:`~sagemaker.estimator.EstimatorBase.deploy` takes in a seperate
+                tags parameter. For more on tags, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             subnets (list[str] or list[PipelineVariable]): List of subnet ids. If not
                 specified training job will be created without VPC config.

@@ -45,3 +45,25 @@ class ImageUriOption(Enum):
     CUSTOM_IMAGE = 1
     CUSTOM_1P_IMAGE = 2
     DEFAULT_IMAGE = 3
+
+
+class ModelHub(Enum):
+    """Enum type for model hub source"""
+
+    def __str__(self) -> str:
+        """Convert enum to string"""
+        return str(self.name)
+
+    JUMPSTART = 1
+    HUGGINGFACE = 2
+
+
+class SpeculativeDecodingDraftModelSource(Enum):
+    """Enum type for speculative decoding draft model source"""
+
+    def __str__(self) -> str:
+        """Convert enum to string"""
+        return str(self.name)
+
+    SAGEMAKER = 1
+    CUSTOM = 2

@@ -34,6 +34,7 @@ from sagemaker.enums import RoutingStrategy
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.utils import (
+    camel_case_to_pascal_case,
     deep_override_dict,
     flatten_dict,
     get_instance_type_family,
@@ -51,7 +52,12 @@ from sagemaker.utils import (
     _is_bad_link,
     custom_extractall_tarfile,
     can_model_package_source_uri_autopopulate,
+    get_instance_rate_per_hour,
+    extract_instance_rate_per_hour,
     _resolve_routing_config,
+    tag_exists,
+    _validate_new_tags,
+    remove_tag_with_key,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -1819,7 +1825,13 @@ def test_can_model_package_source_uri_autopopulate():
 class TestDeepMergeDict(TestCase):
     def test_flatten_dict_basic(self):
         nested_dict = {"a": 1, "b": {"x": 2, "y": {"p": 3, "q": 4}}, "c": 5}
-        flattened_dict = {"a": 1, "b.x": 2, "b.y.p": 3, "b.y.q": 4, "c": 5}
+        flattened_dict = {
+            ("a",): 1,
+            ("b", "x"): 2,
+            ("b", "y", "p"): 3,
+            ("b", "y", "q"): 4,
+            ("c",): 5,
+        }
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
@@ -1831,13 +1843,19 @@ class TestDeepMergeDict(TestCase):
 
     def test_flatten_dict_no_nested(self):
         nested_dict = {"a": 1, "b": 2, "c": 3}
-        flattened_dict = {"a": 1, "b": 2, "c": 3}
+        flattened_dict = {("a",): 1, ("b",): 2, ("c",): 3}
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
     def test_flatten_dict_with_various_types(self):
         nested_dict = {"a": [1, 2, 3], "b": {"x": None, "y": {"p": [], "q": ""}}, "c": 9}
-        flattened_dict = {"a": [1, 2, 3], "b.x": None, "b.y.p": [], "b.y.q": "", "c": 9}
+        flattened_dict = {
+            ("a",): [1, 2, 3],
+            ("b", "x"): None,
+            ("b", "y", "p"): [],
+            ("b", "y", "q"): "",
+            ("c",): 9,
+        }
         self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
         self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
 
@@ -1859,6 +1877,18 @@ class TestDeepMergeDict(TestCase):
         expected_merged = {"a": [5], "b": {"c": [6, 7], "d": [8]}}
         self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
 
+    def test_deep_override_nested_lists_overriding_none(self):
+        dict1 = {"a": [{"c": "d"}, {"e": "f"}], "t": None}
+        dict2 = {
+            "a": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"],
+            "t": {"g": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"]},
+        }
+        expected_merged = {
+            "a": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"],
+            "t": {"g": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"]},
+        }
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
     def test_deep_override_skip_keys(self):
         dict1 = {"a": 1, "b": {"x": 2, "y": 3}, "c": [4, 5]}
         dict2 = {
@@ -1868,6 +1898,140 @@ class TestDeepMergeDict(TestCase):
         expected_result = {"a": 1, "b": {"x": 20, "y": 3, "z": 30}, "c": [4, 5]}
 
         self.assertEqual(deep_override_dict(dict1, dict2, skip_keys=["c", "d"]), expected_result)
+
+
+@pytest.mark.parametrize(
+    "instance, region, amazon_sagemaker_price_result, expected",
+    [
+        (
+            "ml.t4g.nano",
+            "us-west-2",
+            {
+                "PriceList": [
+                    {
+                        "terms": {
+                            "OnDemand": {
+                                "3WK7G7WSYVS3K492.JRTCKXETXF": {
+                                    "priceDimensions": {
+                                        "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7": {
+                                            "unit": "Hrs",
+                                            "endRange": "Inf",
+                                            "description": "$0.9 per Unused Reservation Linux p2.xlarge Instance Hour",
+                                            "appliesTo": [],
+                                            "rateCode": "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7",
+                                            "beginRange": "0",
+                                            "pricePerUnit": {"USD": "0.9000000000"},
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    }
+                ]
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.9"},
+        ),
+        (
+            "ml.t4g.nano",
+            "eu-central-1",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "af-south-1",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "ap-northeast-2",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
+        ),
+    ],
+)
+@patch("boto3.client")
+def test_get_instance_rate_per_hour(
+    mock_client, instance, region, amazon_sagemaker_price_result, expected
+):
+
+    mock_client.return_value.get_products.side_effect = (
+        lambda *args, **kwargs: amazon_sagemaker_price_result
+    )
+    instance_rate = get_instance_rate_per_hour(instance_type=instance, region=region)
+
+    assert instance_rate == expected
+
+
+@pytest.mark.parametrize(
+    "price_data, expected_result",
+    [
+        (None, None),
+        (
+            {
+                "terms": {
+                    "OnDemand": {
+                        "3WK7G7WSYVS3K492.JRTCKXETXF": {
+                            "priceDimensions": {
+                                "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7": {
+                                    "unit": "Hrs",
+                                    "endRange": "Inf",
+                                    "description": "$0.9 per Unused Reservation Linux p2.xlarge Instance Hour",
+                                    "appliesTo": [],
+                                    "rateCode": "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7",
+                                    "beginRange": "0",
+                                    "pricePerUnit": {"USD": "0.9000000000"},
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.9"},
+        ),
+    ],
+)
+def test_extract_instance_rate_per_hour(price_data, expected_result):
+    out = extract_instance_rate_per_hour(price_data)
+
+    assert out == expected_result
 
 
 @pytest.mark.parametrize(
@@ -1895,3 +2059,90 @@ def test_resolve_routing_config(routing_config, expected):
 
 def test_resolve_routing_config_ex():
     pytest.raises(ValueError, lambda: _resolve_routing_config({"RoutingStrategy": "Invalid"}))
+
+
+class TestConvertToPascalCase(TestCase):
+    def test_simple_dict(self):
+        input_dict = {"first_name": "John", "last_name": "Doe"}
+        expected_output = {"FirstName": "John", "LastName": "Doe"}
+        self.assertEqual(camel_case_to_pascal_case(input_dict), expected_output)
+
+    def camel_case_to_pascal_case_nested(self):
+        input_dict = {
+            "model_name": "my-model",
+            "primary_container": {
+                "image": "my-docker-image:latest",
+                "model_data_url": "s3://my-bucket/model.tar.gz",
+                "environment": {"env_var_1": "value1", "env_var_2": "value2"},
+            },
+            "execution_role_arn": "arn:aws:iam::123456789012:role/my-sagemaker-role",
+            "tags": [
+                {"key": "project", "value": "my-project"},
+                {"key": "environment", "value": "development"},
+            ],
+        }
+        expected_output = {
+            "ModelName": "my-model",
+            "PrimaryContainer": {
+                "Image": "my-docker-image:latest",
+                "ModelDataUrl": "s3://my-bucket/model.tar.gz",
+                "Environment": {"EnvVar1": "value1", "EnvVar2": "value2"},
+            },
+            "ExecutionRoleArn": "arn:aws:iam::123456789012:role/my-sagemaker-role",
+            "Tags": [
+                {"Key": "project", "Value": "my-project"},
+                {"Key": "environment", "Value": "development"},
+            ],
+        }
+        self.assertEqual(camel_case_to_pascal_case(input_dict), expected_output)
+
+    def test_empty_input(self):
+        self.assertEqual(camel_case_to_pascal_case({}), {})
+
+
+class TestTags(TestCase):
+    def test_tag_exists(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        self.assertTrue(tag_exists({"Key": "project", "Value": "my-project"}, curr_tags=curr_tags))
+
+    def test_does_not_tag_exists(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        self.assertFalse(
+            tag_exists({"Key": "project-2", "Value": "my-project-2"}, curr_tags=curr_tags)
+        )
+
+    def test_add_tags(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        new_tag = {"Key": "project-2", "Value": "my-project-2"}
+        expected = [
+            {"Key": "project", "Value": "my-project"},
+            {"Key": "project-2", "Value": "my-project-2"},
+        ]
+
+        self.assertEqual(_validate_new_tags(new_tag, curr_tags), expected)
+
+    def test_new_add_tags(self):
+        new_tag = {"Key": "project-2", "Value": "my-project-2"}
+
+        self.assertEqual(_validate_new_tags(new_tag, None), new_tag)
+
+    def test_remove_existing_tag(self):
+        original_tags = [
+            {"Key": "Tag1", "Value": "Value1"},
+            {"Key": "Tag2", "Value": "Value2"},
+            {"Key": "Tag3", "Value": "Value3"},
+        ]
+        expected_output = [{"Key": "Tag1", "Value": "Value1"}, {"Key": "Tag3", "Value": "Value3"}]
+        self.assertEqual(remove_tag_with_key("Tag2", original_tags), expected_output)
+
+    def test_remove_non_existent_tag(self):
+        original_tags = [
+            {"Key": "Tag1", "Value": "Value1"},
+            {"Key": "Tag2", "Value": "Value2"},
+            {"Key": "Tag3", "Value": "Value3"},
+        ]
+        self.assertEqual(remove_tag_with_key("NonExistentTag", original_tags), original_tags)
+
+    def test_remove_only_tag(self):
+        original_tags = [{"Key": "Tag1", "Value": "Value1"}]
+        self.assertIsNone(remove_tag_with_key("Tag1", original_tags))
