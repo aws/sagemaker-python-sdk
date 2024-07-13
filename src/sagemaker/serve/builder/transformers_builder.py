@@ -37,7 +37,10 @@ from sagemaker.serve.detector.image_detector import (
 )
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.optimize_utils import _is_optimized
-from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
+from sagemaker.serve.utils.predictors import (
+    TransformersLocalModePredictor,
+    TransformersInProcessModePredictor,
+)
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
@@ -232,7 +235,7 @@ class Transformers(ABC):
         if self.mode == Mode.IN_PROCESS:
             timeout = kwargs.get("model_data_download_timeout")
 
-            predictor = TransformersLocalModePredictor(
+            predictor = TransformersInProcessModePredictor(
                 self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
             )
 
@@ -242,7 +245,6 @@ class Transformers(ABC):
                 None,
                 predictor,
                 self.pysdk_model.env,
-                jumpstart=False,
             )
             return predictor
 

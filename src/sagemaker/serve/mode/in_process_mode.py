@@ -1,9 +1,8 @@
-"""Module that defines the LocalContainerMode class"""
+"""Module that defines the InProcessMode class"""
 
 from __future__ import absolute_import
 from pathlib import Path
 import logging
-from datetime import datetime, timedelta
 from typing import Dict, Type
 import base64
 import time
@@ -13,7 +12,6 @@ import docker
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
-from sagemaker.serve.utils.logging_agent import pull_logs
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.utils.exceptions import LocalDeepPingException
 from sagemaker.serve.model_server.multi_model_server.server import InProcessMultiModelServer
@@ -32,7 +30,7 @@ _PING_HEALTH_CHECK_FAIL_MSG = (
 class InProcessMode(
     InProcessMultiModelServer,
 ):
-    """A class that holds methods to deploy model to a container in local environment"""
+    """A class that holds methods to deploy model to a container in process environment"""
 
     def __init__(
         self,
@@ -83,9 +81,9 @@ class InProcessMode(
     ):
         """Placeholder docstring"""
 
-        self._pull_image(image=image)
+        # self._pull_image(image=image)
 
-        self.destroy_server()
+        # self.destroy_server()
 
         logger.info("Waiting for model server %s to start up...", self.model_server)
 
@@ -97,28 +95,10 @@ class InProcessMode(
                 secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
+            logger.info("Starting PING")
             self._ping_container = self._multi_model_server_deep_ping
 
-        # allow some time for container to be ready
-        time.sleep(10)
-
-        log_generator = self.container.logs(follow=True, stream=True)
-        time_limit = datetime.now() + timedelta(seconds=container_timeout_seconds)
-        healthy = False
         while True:
-            now = datetime.now()
-            final_pull = now > time_limit
-            pull_logs(
-                (x.decode("UTF-8").rstrip() for x in log_generator),
-                log_generator.close,
-                datetime.now() + timedelta(seconds=_PING_HEALTH_CHECK_INTERVAL_SEC),
-                now > time_limit,
-            )
-
-            if final_pull:
-                break
-
-            # allow some time for container to be ready
             time.sleep(10)
 
             healthy, response = self._ping_container(predictor)
@@ -128,37 +108,4 @@ class InProcessMode(
 
         if not healthy:
             raise LocalDeepPingException(_PING_HEALTH_CHECK_FAIL_MSG)
-
-    def destroy_server(self):
-        """Placeholder docstring"""
-        if self.container:
-            try:
-                logger.debug("Stopping currently running container...")
-                self.container.kill()
-            except docker.errors.APIError as exc:
-                if exc.response.status_code < 400 or exc.response.status_code > 499:
-                    raise Exception("Error encountered when cleaning up local container") from exc
-            self.container = None
-
-    def _pull_image(self, image: str):
-        """Placeholder docstring"""
-        try:
-            encoded_token = (
-                self.ecr.get_authorization_token()
-                .get("authorizationData")[0]
-                .get("authorizationToken")
-            )
-            decoded_token = base64.b64decode(encoded_token).decode("utf-8")
-            username, password = decoded_token.split(":")
-            ecr_uri = image.split("/")[0]
-            login_command = ["docker", "login", "-u", username, "-p", password, ecr_uri]
-            subprocess.run(login_command, check=True, capture_output=True)
-        except subprocess.CalledProcessError as e:
-            logger.warning("Unable to login to ecr: %s", e)
-
-        self.client = docker.from_env()
-        try:
-            logger.info("Pulling image %s from repository...", image)
-            self.client.images.pull(image)
-        except docker.errors.NotFound as e:
-            raise ValueError("Could not find remote image to pull") from e
+        

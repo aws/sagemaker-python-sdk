@@ -68,6 +68,23 @@ class InProcessMultiModelServer:
             raise Exception("Unable to send request to the local container server") from e
 
         return (True, response)
+    
+    def _multi_model_server_deep_ping(self, predictor: PredictorBase):
+        """Placeholder docstring"""
+        response = None
+        logger.debug("AM I HERE? PING PING")
+
+        # try:
+        #     response = predictor.predict(self.schema_builder.sample_input)
+        #     return True, response
+        #     # pylint: disable=broad-except
+        # except Exception as e:
+        #     if "422 Client Error: Unprocessable Entity for url" in str(e):
+        #         raise LocalModelInvocationException(str(e))
+        #     return False, response
+
+        return (True, response)
+    
 
 class LocalMultiModelServer:
     """Local Multi Model server instance"""
