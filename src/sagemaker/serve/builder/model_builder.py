@@ -916,7 +916,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.mode == Mode.IN_PROCESS and self.model_server is not ModelServer.MMS:
             raise ValueError(
                 "IN_PROCESS mode is not supported yet for model server. It is "
-                "supported for MMS/Transformers server in beta release"
+                "supported for MMS/Transformers server in beta release."
             )
 
         if self.inference_spec and self.model:
