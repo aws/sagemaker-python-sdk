@@ -19,8 +19,6 @@ from typing import Type
 from pathlib import Path
 from packaging.version import Version
 
-from pathlib import Path
-
 from sagemaker.model import Model
 from sagemaker import image_uris
 from sagemaker.serve.utils.local_hardware import (
@@ -231,7 +229,7 @@ class Transformers(ABC):
                 jumpstart=False,
             )
             return predictor
-        
+
         if self.mode == Mode.IN_PROCESS:
             timeout = kwargs.get("model_data_download_timeout")
 
@@ -361,6 +359,7 @@ class Transformers(ABC):
             raise ValueError(
                 "Cannot detect and set image_uri. Please pass model or inference spec."
             )
+
     def _build_for_transformers(self):
         """Method that triggers model build
 

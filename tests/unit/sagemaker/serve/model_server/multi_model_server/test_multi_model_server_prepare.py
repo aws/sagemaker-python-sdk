@@ -105,4 +105,3 @@ class MultiModelServerPrepareTests(TestCase):
             _create_dir_structure(mock_model_path)
 
         self.assertEquals("model_dir is not a valid directory", str(context.exception))
-        

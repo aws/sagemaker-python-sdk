@@ -75,6 +75,7 @@ def prepare_mms_js_resources(
 
     return _copy_jumpstart_artifacts(model_data, js_id, code_dir)
 
+
 def prepare_for_mms(
     model_path: str,
     shared_libs: List[str],

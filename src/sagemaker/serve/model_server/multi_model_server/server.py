@@ -32,6 +32,17 @@ class InProcessMultiModelServer:
         env_vars: dict,
     ):
         """Placeholder docstring"""
+        env = {
+            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+            "LOCAL_PYTHON": platform.python_version(),
+        }
+        if env_vars:
+            env_vars.update(env)
+        else:
+            env_vars = env
+
         self.container = client.containers.run(
             image,
             "serve",
@@ -44,31 +55,31 @@ class InProcessMultiModelServer:
                     "mode": "rw",
                 },
             },
-            environment={
-                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
-                "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
-                "LOCAL_PYTHON": platform.python_version(),
-                **env_vars,
-            },
+            environment=env_vars,
         )
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
         """Placeholder docstring"""
+        logger.info(content_type)
+        logger.info(accept)
+
         try:
             response = requests.post(
-                f"http://{0.0.0.0}:8080/invocations",
+                "http://0.0.0.0:8080/invocations",
                 data=request,
                 headers={"Content-Type": content_type, "Accept": accept},
                 timeout=600,
             )
             response.raise_for_status()
+
+            logger.info(response.content)
+
             return response.content
         except Exception as e:
             raise Exception("Unable to send request to the local container server") from e
 
         return (True, response)
-    
+
     def _multi_model_server_deep_ping(self, predictor: PredictorBase):
         """Placeholder docstring"""
         response = None
@@ -84,7 +95,7 @@ class InProcessMultiModelServer:
         #     return False, response
 
         return (True, response)
-    
+
 
 class LocalMultiModelServer:
     """Local Multi Model server instance"""
@@ -202,7 +213,6 @@ class SageMakerMultiModelServer:
                     "S3Uri": model_data_url + "/",
                 }
             }
-
             if model_data_url
             else None
         )

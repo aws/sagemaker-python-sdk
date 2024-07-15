@@ -4,10 +4,7 @@ from __future__ import absolute_import
 from pathlib import Path
 import logging
 from typing import Dict, Type
-import base64
 import time
-import subprocess
-import docker
 
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -108,4 +105,3 @@ class InProcessMode(
 
         if not healthy:
             raise LocalDeepPingException(_PING_HEALTH_CHECK_FAIL_MSG)
-        

@@ -437,7 +437,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             return None
 
         raise ValueError(
-            "Please specify mode in: %s, %s" % (Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT, Mode.IN_PROCESS)
+            "Please specify mode in: %s, %s, %s"
+            % (Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT, Mode.IN_PROCESS)
         )
 
     def _get_client_translators(self):
@@ -616,9 +617,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             s3_upload_path, env_vars_sagemaker = self._prepare_for_mode()
             self.pysdk_model.model_data = s3_upload_path
             self.pysdk_model.env.update(env_vars_sagemaker)
-
         elif overwrite_mode == Mode.LOCAL_CONTAINER:
             self.mode = self.pysdk_model.mode = Mode.LOCAL_CONTAINER
+            self._prepare_for_mode()
+        elif overwrite_mode == Mode.IN_PROCESS:
+            self.mode = self.pysdk_model.mode = Mode.IN_PROCESS
             self._prepare_for_mode()
         else:
             raise ValueError("Mode %s is not supported!" % overwrite_mode)

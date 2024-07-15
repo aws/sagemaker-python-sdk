@@ -22,7 +22,7 @@ class LocalDeepPingException(ModelBuilderException):
 
     def __init__(self, message):
         super().__init__(message=message)
-        
+
 
 class InProcessDeepPingException(ModelBuilderException):
     """Raise when in process model serving does not pass the deep ping check"""
