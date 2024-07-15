@@ -67,10 +67,18 @@ mock_session = MagicMock()
 class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_validation_in_progress_mode_not_supported(self, mock_serveSettings):
-        builder = ModelBuilder()
+        builder = ModelBuilder(
+            ModelServer.TORCHSERVE,
+            ModelServer.TRITON,
+            ModelServer.DJL_SERVING,
+            ModelServer.TENSORFLOW_SERVING,
+            ModelServer.TGI,
+            ModelServer.TEI,
+        )
         self.assertRaisesRegex(
             Exception,
-            "IN_PROCESS mode is not supported yet!",
+            "IN_PROCESS mode is not supported yet for model server. It is "
+            "supported for MMS/Transformers server in beta release.",
             builder.build,
             Mode.IN_PROCESS,
             mock_role_arn,
