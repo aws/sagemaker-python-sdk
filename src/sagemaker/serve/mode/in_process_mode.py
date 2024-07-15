@@ -70,7 +70,6 @@ class InProcessMode(
     def create_server(
         self,
         image: str,
-        container_timeout_seconds: int,
         secret_key: str,
         predictor: PredictorBase,
         env_vars: Dict[str, str] = None,
