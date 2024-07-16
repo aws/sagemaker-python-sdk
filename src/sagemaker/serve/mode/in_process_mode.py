@@ -16,10 +16,8 @@ from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
 
-_PING_HEALTH_CHECK_INTERVAL_SEC = 5
-
 _PING_HEALTH_CHECK_FAIL_MSG = (
-    "Container did not pass the ping health check. "
+    "Ping health check did not pass. "
     + "Please increase container_timeout_seconds or review your inference code."
 )
 
@@ -55,7 +53,7 @@ class InProcessMode(
         self._invoke_serving = None
 
     def load(self, model_path: str = None):
-        """Placeholder docstring"""
+        """Loads model path, checks that path exists"""
         path = Path(model_path if model_path else self.model_path)
         if not path.exists():
             raise Exception("model_path does not exist")
@@ -65,7 +63,7 @@ class InProcessMode(
         return self.inference_spec.load(str(path))
 
     def prepare(self):
-        """Placeholder docstring"""
+        """Prepares the server"""
 
     def create_server(
         self,
@@ -75,9 +73,7 @@ class InProcessMode(
         env_vars: Dict[str, str] = None,
         model_path: str = None,
     ):
-        """Placeholder docstring"""
-
-        # self._pull_image(image=image)
+        """Creating the server and checking ping health."""
 
         # self.destroy_server()
 

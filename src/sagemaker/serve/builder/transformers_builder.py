@@ -47,6 +47,7 @@ from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
 
 logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 1800
+LOCAL_MODES = [Mode.LOCAL_CONTAINER, Mode.IN_PROCESS]
 
 
 """Retrieves images for different libraries - Pytorch, TensorFlow from HuggingFace hub
@@ -164,7 +165,7 @@ class Transformers(ABC):
                 vpc_config=self.vpc_config,
             )
 
-        if self.mode == Mode.LOCAL_CONTAINER or self.mode == Mode.IN_PROCESS:
+        if self.mode in LOCAL_MODES:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, "local"
             )
@@ -293,7 +294,7 @@ class Transformers(ABC):
 
         self.pysdk_model = self._create_transformers_model()
 
-        if self.mode == Mode.LOCAL_CONTAINER or self.mode == Mode.IN_PROCESS:
+        if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
 
         return self.pysdk_model
