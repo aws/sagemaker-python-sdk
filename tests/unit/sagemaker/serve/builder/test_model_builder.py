@@ -85,6 +85,7 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     patch("sagemaker.serve.builder.model_builder._ServeSettings")
+
     def test_validation_in_progress_mode_supported(self, mock_serveSettings):
         builder = ModelBuilder(model_server=ModelServer.MMS)
         self.assertRaisesRegex(

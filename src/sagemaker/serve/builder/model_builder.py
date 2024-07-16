@@ -917,7 +917,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             raise ValueError(
                 "IN_PROCESS mode is only supported for MMS/Transformers server in beta release."
             )
-        
+
         if self.mode == Mode.IN_PROCESS and self.model_server == ModelServer.MMS:
             raise Exception(
                 "IN_PROCESS mode is supported for MMS/Transformers server in beta release."
