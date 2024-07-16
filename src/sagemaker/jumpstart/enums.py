@@ -94,6 +94,9 @@ class JumpStartTag(str, Enum):
     MODEL_VERSION = "sagemaker-sdk:jumpstart-model-version"
     MODEL_TYPE = "sagemaker-sdk:jumpstart-model-type"
 
+    INFERENCE_CONFIG_NAME = "sagemaker-sdk:jumpstart-inference-config-name"
+    TRAINING_CONFIG_NAME = "sagemaker-sdk:jumpstart-training-config-name"
+
     HUB_CONTENT_ARN = "sagemaker-sdk:hub-content-arn"
 
 

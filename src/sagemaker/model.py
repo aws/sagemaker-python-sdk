@@ -73,6 +73,8 @@ from sagemaker.utils import (
     format_tags,
     Tags,
     _resolve_routing_config,
+    _validate_new_tags,
+    remove_tag_with_key,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -166,6 +168,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         resources: Optional[ResourceRequirements] = None,
+        additional_model_data_sources: Optional[Dict[str, Any]] = None,
         model_reference_arn: Optional[str] = None,
     ):
         """Initialize an SageMaker ``Model``.
@@ -330,11 +333,14 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 for a model to be deployed to an endpoint. Only
                 EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
+            additional_model_data_sources (Optional[Dict[str, Any]]): Additional location
+                of SageMaker model data (default: None).
             model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
                 content (default: None).
 
         """
         self.model_data = model_data
+        self.additional_model_data_sources = additional_model_data_sources
         self.image_uri = image_uri
         self.predictor_cls = predictor_cls
         self.name = name
@@ -411,6 +417,23 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.response_types = None
         self.accept_eula = None
         self.model_reference_arn = model_reference_arn
+        self._tags: Optional[Tags] = None
+
+    def add_tags(self, tags: Tags) -> None:
+        """Add tags to this ``Model``
+
+        Args:
+            tags (Tags): Tags to add.
+        """
+        self._tags = _validate_new_tags(tags, self._tags)
+
+    def remove_tag_with_key(self, key: str) -> None:
+        """Remove a tag with the given key from the list of tags.
+
+        Args:
+            key (str): The key of the tag to remove.
+        """
+        self._tags = remove_tag_with_key(key, self._tags)
 
     @classmethod
     def attach(
@@ -700,6 +723,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             accept_eula=(
                 accept_eula if accept_eula is not None else getattr(self, "accept_eula", None)
             ),
+            additional_model_data_sources=self.additional_model_data_sources,
             model_reference_arn=(
                 model_reference_arn
                 if model_reference_arn is not None
@@ -1491,7 +1515,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             sagemaker_session=self.sagemaker_session,
         )
 
-        tags = format_tags(tags)
+        self.add_tags(tags)
+        tags = format_tags(self._tags)
 
         if (
             getattr(self.sagemaker_session, "settings", None) is not None

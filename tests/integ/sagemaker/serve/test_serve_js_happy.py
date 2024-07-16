@@ -12,6 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import io
+import sys
+
 import pytest
 
 from sagemaker.serve.builder.model_builder import ModelBuilder
@@ -51,6 +54,19 @@ def happy_model_builder(sagemaker_session):
         schema_builder=SchemaBuilder(SAMPLE_PROMPT, SAMPLE_RESPONSE),
         role_arn=iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"],
         sagemaker_session=sagemaker_session,
+    )
+
+
+@pytest.fixture
+def meta_textgeneration_llama_2_7b_f_schema():
+    prompt = "Hello, I'm a language model,"
+    response = "Hello, I'm a language model, and I'm here to help you with your English."
+    sample_input = {"inputs": prompt}
+    sample_output = [{"generated_text": response}]
+
+    return SchemaBuilder(
+        sample_input=sample_input,
+        sample_output=sample_output,
     )
 
 
@@ -120,6 +136,62 @@ def test_happy_mms_sagemaker_endpoint(happy_mms_model_builder, gpu_instance_type
         finally:
             cleanup_model_resources(
                 sagemaker_session=happy_mms_model_builder.sagemaker_session,
+                model_name=model.name,
+                endpoint_name=model.endpoint_name,
+            )
+            if caught_ex:
+                raise caught_ex
+
+
+@pytest.mark.skipif(
+    True,
+    reason="Only enable after metadata is fully deployed.",
+)
+def test_js_model_with_deployment_configs(
+    meta_textgeneration_llama_2_7b_f_schema,
+    sagemaker_session,
+):
+    logger.info("Running in SAGEMAKER_ENDPOINT mode...")
+    caught_ex = None
+    iam_client = sagemaker_session.boto_session.client("iam")
+    role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
+
+    model_builder = ModelBuilder(
+        model="meta-textgeneration-llama-2-13b",
+        schema_builder=meta_textgeneration_llama_2_7b_f_schema,
+    )
+    configs = model_builder.list_deployment_configs()
+
+    assert len(configs) > 0
+
+    captured_output = io.StringIO()
+    sys.stdout = captured_output
+    model_builder.display_benchmark_metrics()
+    sys.stdout = sys.__stdout__
+    assert captured_output.getvalue() is not None
+
+    model_builder.set_deployment_config(
+        configs[0]["ConfigName"],
+        "ml.g5.2xlarge",
+    )
+    model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
+    assert model.config_name == configs[0]["ConfigName"]
+    assert model_builder.get_deployment_config() is not None
+
+    with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
+        try:
+            logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
+            predictor = model.deploy(accept_eula=True)
+            logger.info("Endpoint successfully deployed.")
+
+            updated_sample_input = model_builder.schema_builder.sample_input
+
+            predictor.predict(updated_sample_input)
+        except Exception as e:
+            caught_ex = e
+        finally:
+            cleanup_model_resources(
+                sagemaker_session=sagemaker_session,
                 model_name=model.name,
                 endpoint_name=model.endpoint_name,
             )
