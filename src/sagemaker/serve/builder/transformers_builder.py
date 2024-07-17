@@ -165,7 +165,7 @@ class Transformers(ABC):
                 vpc_config=self.vpc_config,
             )
 
-        if self.mode in LOCAL_MODES:
+        if not self.image_uri and self.mode == Mode.LOCAL_CONTAINER:
             self.image_uri = pysdk_model.serving_image_uri(
                 self.sagemaker_session.boto_region_name, "local"
             )

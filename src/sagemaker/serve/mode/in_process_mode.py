@@ -44,12 +44,10 @@ class InProcessMode(
         self.env_vars = env_vars
         self.session = session
         self.schema_builder = schema_builder
-        self.ecr = session.boto_session.client("ecr")
         self.model_server = model_server
         self.client = None
         self.container = None
         self.secret_key = None
-        self._ping_container = None
         self._invoke_serving = None
 
     def load(self, model_path: str = None):
@@ -87,7 +85,6 @@ class InProcessMode(
                 secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
-            logger.info("Starting PING")
             self._ping_container = self._multi_model_server_deep_ping
 
         while True:

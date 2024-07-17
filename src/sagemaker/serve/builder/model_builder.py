@@ -918,11 +918,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 "IN_PROCESS mode is only supported for MMS/Transformers server in beta release."
             )
 
-        if self.mode == Mode.IN_PROCESS and self.model_server == ModelServer.MMS:
-            raise Exception(
-                "IN_PROCESS mode is supported for MMS/Transformers server in beta release."
-            )
-
         if self.inference_spec and self.model:
             raise ValueError("Can only set one of the following: model, inference_spec.")
 

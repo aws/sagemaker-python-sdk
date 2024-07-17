@@ -23,76 +23,17 @@ logger = logging.getLogger(__name__)
 class InProcessMultiModelServer:
     """In Process Mode Multi Model server instance"""
 
-    def _start_serving(
-        self,
-        client: object,
-        image: str,
-        model_path: str,
-        secret_key: str,
-        env_vars: dict,
-    ):
+    def _start_serving(self):
         """Initializes the start of the server"""
-        env = {
-            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
-            "SAGEMAKER_PROGRAM": "inference.py",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
-            "LOCAL_PYTHON": platform.python_version(),
-        }
-        if env_vars:
-            env_vars.update(env)
-        else:
-            env_vars = env
-
-        self.container = client.containers.run(
-            image,
-            "serve",
-            network_mode="host",
-            detach=True,
-            auto_remove=True,
-            volumes={
-                Path(model_path).joinpath("code"): {
-                    "bind": MODE_DIR_BINDING,
-                    "mode": "rw",
-                },
-            },
-            environment=env_vars,
-        )
+        return Exception("Not implemented")
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
         """Invokes the MMS server by sending POST request"""
-        logger.info(content_type)
-        logger.info(accept)
-
-        try:
-            response = requests.post(
-                "http://0.0.0.0:8080/invocations",
-                data=request,
-                headers={"Content-Type": content_type, "Accept": accept},
-                timeout=600,
-            )
-            response.raise_for_status()
-
-            logger.info(response.content)
-
-            return response.content
-        except Exception as e:
-            raise Exception("Unable to send request to the local container server") from e
-
-        return (True, response)
+        return Exception("Not implemented")
 
     def _multi_model_server_deep_ping(self, predictor: PredictorBase):
         """Sends a deep ping to ensure prediction"""
         response = None
-
-        # try:
-        #     response = predictor.predict(self.schema_builder.sample_input)
-        #     return True, response
-        #     # pylint: disable=broad-except
-        # except Exception as e:
-        #     if "422 Client Error: Unprocessable Entity for url" in str(e):
-        #         raise LocalModelInvocationException(str(e))
-        #     return False, response
-
         return (True, response)
 
 
