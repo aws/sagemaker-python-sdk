@@ -68,6 +68,7 @@ from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.interactive_apps import SupportedInteractiveAppTypes
 from sagemaker.interactive_apps.tensorboard import TensorBoardApp
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.model_card.model_card import ModelCard, TrainingDetails
 from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
@@ -1797,8 +1798,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         else:
             if "model_kms_key" not in kwargs:
                 kwargs["model_kms_key"] = self.output_kms_key
-            model = self.create_model(image_uri=image_uri, **kwargs)
+            model = self.create_model(image_uri=image_uri, name=model_name, **kwargs)
         model.name = model_name
+        if self.model_data is not None and model_card is None:
+            training_details = TrainingDetails.from_model_s3_artifacts(
+                model_artifacts=[self.model_data], sagemaker_session=self.sagemaker_session
+            )
+            model_card = ModelCard(
+                name="estimator_card",
+                training_details=training_details,
+            )
         return model.register(
             content_types,
             response_types,
