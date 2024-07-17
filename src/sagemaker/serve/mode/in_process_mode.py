@@ -49,6 +49,7 @@ class InProcessMode(
         self.container = None
         self.secret_key = None
         self._invoke_serving = None
+        self._ping_container = None
 
     def load(self, model_path: str = None):
         """Loads model path, checks that path exists"""
