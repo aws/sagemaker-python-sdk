@@ -1,4 +1,5 @@
 """Implements class that holds custom load and invoke function of a model"""
+
 from __future__ import absolute_import
 import abc
 
@@ -29,3 +30,6 @@ class InferenceSpec(abc.ABC):
 
     def prepare(self, *args, **kwargs):
         """Custom prepare function"""
+
+    def get_model(self):
+        """Return HuggingFace model name for inference spec"""

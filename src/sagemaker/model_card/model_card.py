@@ -16,7 +16,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 from datetime import datetime
-from typing import Optional, Union, List, Any
+from typing import Optional, Union, List, Any, Dict
 from botocore.exceptions import ClientError
 from boto3.session import Session as boto3_Session
 from six.moves.urllib.parse import urlparse
@@ -507,9 +507,11 @@ class ModelPackage(_DefaultToRequestDict, _DefaultFromDict):
                 "SourceAlgorithms"
             ]
             source_algorithms = [
-                SourceAlgorithm(sa["AlgorithmName"], sa["ModelDataUrl"])
-                if "ModelDataUrl" in sa
-                else SourceAlgorithm(sa["AlgorithmName"])
+                (
+                    SourceAlgorithm(sa["AlgorithmName"], sa["ModelDataUrl"])
+                    if "ModelDataUrl" in sa
+                    else SourceAlgorithm(sa["AlgorithmName"])
+                )
                 for sa in source_algorithms_response
             ]
 
@@ -948,18 +950,22 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
                 "training_environment": Environment(
                     container_image=[training_job_data["AlgorithmSpecification"]["TrainingImage"]]
                 ),
-                "training_metrics": [
-                    TrainingMetric(i["MetricName"], i["Value"])
-                    for i in training_job_data["FinalMetricDataList"]
-                ]
-                if "FinalMetricDataList" in training_job_data
-                else [],
-                "hyper_parameters": [
-                    HyperParameter(key, value)
-                    for key, value in training_job_data["HyperParameters"].items()
-                ]
-                if "HyperParameters" in training_job_data
-                else [],
+                "training_metrics": (
+                    [
+                        TrainingMetric(i["MetricName"], i["Value"])
+                        for i in training_job_data["FinalMetricDataList"]
+                    ]
+                    if "FinalMetricDataList" in training_job_data
+                    else []
+                ),
+                "hyper_parameters": (
+                    [
+                        HyperParameter(key, value)
+                        for key, value in training_job_data["HyperParameters"].items()
+                    ]
+                    if "HyperParameters" in training_job_data
+                    else []
+                ),
             }
             kwargs.update({"training_job_details": TrainingJobDetails(**job)})
             instance = cls(**kwargs)
@@ -1877,3 +1883,29 @@ class ModelCardExportJob(object):
         return sagemaker_session.sagemaker_client.list_model_card_export_jobs(
             ModelCardName=model_card_name, **kwargs
         )
+
+
+class ModelPackageModelCard(object):
+    """Use an Amazon SageMaker Model Card to document qualitative and quantitative information about a model."""  # noqa E501  # pylint: disable=c0301
+
+    def __init__(
+        self,
+        model_card_content: Optional[Dict[str, Any]] = None,
+        model_card_status: Optional[str] = None,
+    ):
+
+        self.model_card_content = model_card_content
+        self.model_card_status = model_card_status
+
+    def _create_request_args(self):
+        """Generate the request body for create model card call.
+
+        Args:
+            model_card_content dict[str]: Content of the model card.
+            model_card_status (str): Status of the model card you want to export.
+
+        """  # noqa E501 # pylint: disable=line-too-long
+        request_args = {}
+        request_args["ModelCardStatus"] = self.model_card_status
+        request_args["Content"] = json.dumps(self.model_card_content, cls=_JSONEncoder)
+        return request_args

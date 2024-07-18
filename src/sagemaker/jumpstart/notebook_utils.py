@@ -329,9 +329,12 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
         return sorted(list(model_id_version_dict.keys()))
 
     if not list_old_models:
-        model_id_version_dict = {
-            model_id: set([max(versions)]) for model_id, versions in model_id_version_dict.items()
-        }
+        for model_id, versions in model_id_version_dict.items():
+            try:
+                model_id_version_dict.update({model_id: set([max(versions)])})
+            except TypeError:
+                versions = [str(v) for v in versions]
+                model_id_version_dict.update({model_id: set([max(versions)])})
 
     model_id_version_set: Set[Tuple[str, str]] = set()
     for model_id in model_id_version_dict:
@@ -436,19 +439,19 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             manifest_specs_cached_values[val] = getattr(model_manifest, val)
 
         if is_task_filter:
-            manifest_specs_cached_values[
-                SpecialSupportedFilterKeys.TASK
-            ] = extract_framework_task_model(model_manifest.model_id)[1]
+            manifest_specs_cached_values[SpecialSupportedFilterKeys.TASK] = (
+                extract_framework_task_model(model_manifest.model_id)[1]
+            )
 
         if is_framework_filter:
-            manifest_specs_cached_values[
-                SpecialSupportedFilterKeys.FRAMEWORK
-            ] = extract_framework_task_model(model_manifest.model_id)[0]
+            manifest_specs_cached_values[SpecialSupportedFilterKeys.FRAMEWORK] = (
+                extract_framework_task_model(model_manifest.model_id)[0]
+            )
 
         if is_model_type_filter:
-            manifest_specs_cached_values[
-                SpecialSupportedFilterKeys.MODEL_TYPE
-            ] = extract_model_type_filter_representation(model_manifest.spec_key)
+            manifest_specs_cached_values[SpecialSupportedFilterKeys.MODEL_TYPE] = (
+                extract_model_type_filter_representation(model_manifest.spec_key)
+            )
 
         if Version(model_manifest.min_version) > Version(get_sagemaker_version()):
             return None
@@ -532,6 +535,7 @@ def get_model_url(
     model_version: str,
     region: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
 ) -> str:
     """Retrieve web url describing pretrained model.
 
@@ -560,5 +564,6 @@ def get_model_url(
         sagemaker_session=sagemaker_session,
         scope=JumpStartScriptScope.INFERENCE,
         model_type=model_type,
+        config_name=config_name,
     )
     return model_specs.url

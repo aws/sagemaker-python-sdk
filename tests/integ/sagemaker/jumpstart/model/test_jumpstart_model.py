@@ -11,7 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+
+import io
 import os
+import sys
 import time
 from unittest import mock
 
@@ -219,6 +222,11 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
 
     assert response is not None
 
+    model = JumpStartModel.attach(predictor.endpoint_name, sagemaker_session=get_sm_session())
+    assert model.model_id == model_id
+    assert model.endpoint_name == predictor.endpoint_name
+    assert model.inference_component_name == predictor.component_name
+
 
 @mock.patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning")
 def test_instatiating_model(mock_warning_logger, setup):
@@ -260,6 +268,8 @@ def test_jumpstart_model_register(setup):
 
     response = predictor.predict("hello world!")
 
+    predictor.delete_predictor()
+
     assert response is not None
 
 
@@ -284,5 +294,105 @@ def test_proprietary_jumpstart_model(setup):
     payload = {"prompt": "To be, or", "maxTokens": 4, "temperature": 0, "numResults": 1}
 
     response = predictor.predict(payload)
+
+    assert response is not None
+
+
+@pytest.mark.skipif(
+    True,
+    reason="Only enable if test account is subscribed to the proprietary model",
+)
+def test_register_proprietary_jumpstart_model(setup):
+
+    model_id = "ai21-jurassic-2-light"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="2.0.004",
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+    model_package = model.register()
+
+    predictor = model_package.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}]
+    )
+    payload = {"prompt": "To be, or", "maxTokens": 4, "temperature": 0, "numResults": 1}
+
+    response = predictor.predict(payload)
+
+    predictor.delete_predictor()
+
+    assert response is not None
+
+
+@pytest.mark.skipif(
+    True,
+    reason="Only enable if test account is subscribed to the proprietary model",
+)
+def test_register_gated_jumpstart_model(setup):
+
+    model_id = "meta-textgenerationneuron-llama-2-7b"
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="1.1.0",
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+    model_package = model.register(accept_eula=True)
+
+    predictor = model_package.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        accept_eula=True,
+    )
+    payload = {"prompt": "To be, or", "maxTokens": 4, "temperature": 0, "numResults": 1}
+
+    response = predictor.predict(payload)
+
+    predictor.delete_predictor()
+
+    assert response is not None
+
+
+@pytest.mark.skipif(
+    True,
+    reason="Only enable after metadata is fully deployed.",
+)
+def test_jumpstart_model_with_deployment_configs(setup):
+    model_id = "meta-textgeneration-llama-2-13b"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        model_version="*",
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    captured_output = io.StringIO()
+    sys.stdout = captured_output
+    model.display_benchmark_metrics()
+    sys.stdout = sys.__stdout__
+    assert captured_output.getvalue() is not None
+
+    configs = model.list_deployment_configs()
+    assert len(configs) > 0
+
+    model.set_deployment_config(
+        configs[0]["ConfigName"],
+        "ml.g5.2xlarge",
+    )
+    assert model.config_name == configs[0]["ConfigName"]
+
+    predictor = model.deploy(
+        accept_eula=True,
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
+
+    payload = {
+        "inputs": "some-payload",
+        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
+    }
+
+    response = predictor.predict(payload, custom_attributes="accept_eula=true")
 
     assert response is not None

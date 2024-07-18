@@ -140,7 +140,7 @@ def test_gated_model_training_v1(setup):
 def test_gated_model_training_v2(setup):
 
     model_id = "meta-textgeneration-llama-2-7b"
-    model_version = "3.*"  # model artifacts retrieved from jumpstart-private-cache-* buckets
+    model_version = "4.*"  # model artifacts retrieved from jumpstart-private-cache-* buckets
 
     estimator = JumpStartEstimator(
         model_id=model_id,
@@ -150,6 +150,7 @@ def test_gated_model_training_v2(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
+        tolerate_vulnerable_model=True,  # tolerate old version of model
     )
 
     # uses ml.g5.12xlarge instance
@@ -173,6 +174,7 @@ def test_gated_model_training_v2(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
+        instance_type="ml.g5.2xlarge",
     )
 
     payload = {

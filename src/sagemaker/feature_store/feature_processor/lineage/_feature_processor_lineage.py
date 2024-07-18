@@ -115,19 +115,19 @@ class FeatureProcessorLineageHandler:
 
     def create_lineage(self, tags: Optional[List[Dict[str, str]]] = None) -> None:
         """Create and Update Feature Processor Lineage"""
-        input_feature_group_contexts: List[
-            FeatureGroupContexts
-        ] = self._retrieve_input_feature_group_contexts()
+        input_feature_group_contexts: List[FeatureGroupContexts] = (
+            self._retrieve_input_feature_group_contexts()
+        )
         output_feature_group_contexts: FeatureGroupContexts = (
             self._retrieve_output_feature_group_contexts()
         )
         input_raw_data_artifacts: List[Artifact] = self._retrieve_input_raw_data_artifacts()
-        transformation_code_artifact: Optional[
-            Artifact
-        ] = S3LineageEntityHandler.create_transformation_code_artifact(
-            transformation_code=self.transformation_code,
-            pipeline_last_update_time=self.pipeline[LAST_MODIFIED_TIME].strftime("%s"),
-            sagemaker_session=self.sagemaker_session,
+        transformation_code_artifact: Optional[Artifact] = (
+            S3LineageEntityHandler.create_transformation_code_artifact(
+                transformation_code=self.transformation_code,
+                pipeline_last_update_time=self.pipeline[LAST_MODIFIED_TIME].strftime("%s"),
+                sagemaker_session=self.sagemaker_session,
+            )
         )
         if transformation_code_artifact is not None:
             logger.info("Created Transformation Code Artifact: %s", transformation_code_artifact)
@@ -362,40 +362,40 @@ class FeatureProcessorLineageHandler:
         current_pipeline_version_context: Context = self._get_pipeline_version_context(
             last_update_time=pipeline_context.properties[LAST_UPDATE_TIME]
         )
-        upstream_feature_group_associations: Iterator[
-            AssociationSummary
-        ] = LineageAssociationHandler.list_upstream_associations(
-            # pylint: disable=no-member
-            entity_arn=current_pipeline_version_context.context_arn,
-            source_type=FEATURE_GROUP_PIPELINE_VERSION_CONTEXT_TYPE,
-            sagemaker_session=self.sagemaker_session,
+        upstream_feature_group_associations: Iterator[AssociationSummary] = (
+            LineageAssociationHandler.list_upstream_associations(
+                # pylint: disable=no-member
+                entity_arn=current_pipeline_version_context.context_arn,
+                source_type=FEATURE_GROUP_PIPELINE_VERSION_CONTEXT_TYPE,
+                sagemaker_session=self.sagemaker_session,
+            )
         )
 
-        upstream_raw_data_associations: Iterator[
-            AssociationSummary
-        ] = LineageAssociationHandler.list_upstream_associations(
-            # pylint: disable=no-member
-            entity_arn=current_pipeline_version_context.context_arn,
-            source_type=DATA_SET,
-            sagemaker_session=self.sagemaker_session,
+        upstream_raw_data_associations: Iterator[AssociationSummary] = (
+            LineageAssociationHandler.list_upstream_associations(
+                # pylint: disable=no-member
+                entity_arn=current_pipeline_version_context.context_arn,
+                source_type=DATA_SET,
+                sagemaker_session=self.sagemaker_session,
+            )
         )
 
-        upstream_transformation_code: Iterator[
-            AssociationSummary
-        ] = LineageAssociationHandler.list_upstream_associations(
-            # pylint: disable=no-member
-            entity_arn=current_pipeline_version_context.context_arn,
-            source_type=TRANSFORMATION_CODE,
-            sagemaker_session=self.sagemaker_session,
+        upstream_transformation_code: Iterator[AssociationSummary] = (
+            LineageAssociationHandler.list_upstream_associations(
+                # pylint: disable=no-member
+                entity_arn=current_pipeline_version_context.context_arn,
+                source_type=TRANSFORMATION_CODE,
+                sagemaker_session=self.sagemaker_session,
+            )
         )
 
-        downstream_feature_group_associations: Iterator[
-            AssociationSummary
-        ] = LineageAssociationHandler.list_downstream_associations(
-            # pylint: disable=no-member
-            entity_arn=current_pipeline_version_context.context_arn,
-            destination_type=FEATURE_GROUP_PIPELINE_VERSION_CONTEXT_TYPE,
-            sagemaker_session=self.sagemaker_session,
+        downstream_feature_group_associations: Iterator[AssociationSummary] = (
+            LineageAssociationHandler.list_downstream_associations(
+                # pylint: disable=no-member
+                entity_arn=current_pipeline_version_context.context_arn,
+                destination_type=FEATURE_GROUP_PIPELINE_VERSION_CONTEXT_TYPE,
+                sagemaker_session=self.sagemaker_session,
+            )
         )
 
         is_upstream_feature_group_equal: bool = self._compare_upstream_feature_groups(
@@ -598,9 +598,9 @@ class FeatureProcessorLineageHandler:
             last_transformation_code_artifact.properties["state"]
             == TRANSFORMATION_CODE_STATUS_ACTIVE
         ):
-            last_transformation_code_artifact.properties[
-                "state"
-            ] = TRANSFORMATION_CODE_STATUS_INACTIVE
+            last_transformation_code_artifact.properties["state"] = (
+                TRANSFORMATION_CODE_STATUS_INACTIVE
+            )
             last_transformation_code_artifact.properties["exclusive_end_date"] = self.pipeline[
                 LAST_MODIFIED_TIME
             ].strftime("%s")

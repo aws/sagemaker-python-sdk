@@ -146,6 +146,8 @@ def test_jumpstart_validate_provided_hyperparameters(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -452,6 +454,8 @@ def test_jumpstart_validate_algorithm_hyperparameters(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -514,6 +518,8 @@ def test_jumpstart_validate_all_hyperparameters(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -530,9 +536,9 @@ def test_jumpstart_validate_all_hyperparameters(
         )
     assert str(e.value) == "Cannot find hyperparameter for 'sagemaker_submit_directory'."
 
-    hyperparameter_to_test[
-        "sagemaker_submit_directory"
-    ] = "/opt/ml/input/data/code/sourcedir.tar.gz"
+    hyperparameter_to_test["sagemaker_submit_directory"] = (
+        "/opt/ml/input/data/code/sourcedir.tar.gz"
+    )
     del hyperparameter_to_test["epochs"]
 
     with pytest.raises(JumpStartHyperparametersError) as e:

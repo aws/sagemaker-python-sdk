@@ -196,14 +196,14 @@ class NumpyDeserializer(SimpleBaseDeserializer):
     single array.
     """
 
-    def __init__(self, dtype=None, accept="application/x-npy", allow_pickle=True):
+    def __init__(self, dtype=None, accept="application/x-npy", allow_pickle=False):
         """Initialize a ``NumpyDeserializer`` instance.
 
         Args:
             dtype (str): The dtype of the data (default: None).
             accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
                 is expected from the inference endpoint (default: "application/x-npy").
-            allow_pickle (bool): Allow loading pickled object arrays (default: True).
+            allow_pickle (bool): Allow loading pickled object arrays (default: False).
         """
         super(NumpyDeserializer, self).__init__(accept=accept)
         self.dtype = dtype
@@ -227,10 +227,21 @@ class NumpyDeserializer(SimpleBaseDeserializer):
             if content_type == "application/json":
                 return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
             if content_type == "application/x-npy":
-                return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
+                try:
+                    return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
+                except ValueError as ve:
+                    raise ValueError(
+                        "Please set the param allow_pickle=True \
+                        to deserialize pickle objects in NumpyDeserializer"
+                    ).with_traceback(ve.__traceback__)
             if content_type == "application/x-npz":
                 try:
                     return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
+                except ValueError as ve:
+                    raise ValueError(
+                        "Please set the param allow_pickle=True \
+                        to deserialize pickle objectsin NumpyDeserializer"
+                    ).with_traceback(ve.__traceback__)
                 finally:
                     stream.close()
         finally:

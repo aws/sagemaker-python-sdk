@@ -37,6 +37,8 @@ logger = logging.getLogger(__name__)
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
+HUGGING_FACE_TEI_GPU_FRAMEWORK = "huggingface-tei"
+HUGGING_FACE_TEI_CPU_FRAMEWORK = "huggingface-tei-cpu"
 HUGGING_FACE_LLM_NEURONX_FRAMEWORK = "huggingface-llm-neuronx"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
@@ -62,12 +64,14 @@ def retrieve(
     training_compiler_config=None,
     model_id=None,
     model_version=None,
+    hub_arn=None,
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
     sdk_version=None,
     inference_tool=None,
     serverless_inference_config=None,
     sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name=None,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -102,6 +106,8 @@ def retrieve(
             (default: None).
         model_version (str): The version of the JumpStart model for which to retrieve the
             image URI (default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model specifications
             should be tolerated without an exception raised. If ``False``, raises an exception if
             the script used by this version of the model has dependencies with known security
@@ -121,6 +127,7 @@ def retrieve(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
@@ -147,6 +154,7 @@ def retrieve(
             model_id,
             model_version,
             image_scope,
+            hub_arn,
             framework,
             region,
             version,
@@ -160,6 +168,7 @@ def retrieve(
             tolerate_vulnerable_model,
             tolerate_deprecated_model,
             sagemaker_session=sagemaker_session,
+            config_name=config_name,
         )
 
     if training_compiler_config and (framework in [HUGGING_FACE_FRAMEWORK, "pytorch"]):
@@ -477,6 +486,8 @@ def _validate_version_and_set_if_needed(version, config, framework):
     if version is None and framework in [
         DATA_WRANGLER_FRAMEWORK,
         HUGGING_FACE_LLM_FRAMEWORK,
+        HUGGING_FACE_TEI_GPU_FRAMEWORK,
+        HUGGING_FACE_TEI_CPU_FRAMEWORK,
         HUGGING_FACE_LLM_NEURONX_FRAMEWORK,
         STABILITYAI_FRAMEWORK,
     ]:
@@ -682,6 +693,7 @@ def get_training_image_uri(
                         "p5" in instance_type
                         or "2.1" in framework_version
                         or "2.2" in framework_version
+                        or "2.3" in framework_version
                     ):
                         container_version = "cu121"
                     else:

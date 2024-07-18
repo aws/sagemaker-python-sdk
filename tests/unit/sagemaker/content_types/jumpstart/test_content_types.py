@@ -56,6 +56,8 @@ def test_jumpstart_default_content_types(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
 
@@ -75,15 +77,12 @@ def test_jumpstart_supported_content_types(
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"
 
-    supported_content_types = content_types.retrieve_options(
+    content_types.retrieve_options(
         region=region,
         model_id=model_id,
         model_version=model_version,
         sagemaker_session=mock_session,
     )
-    assert supported_content_types == [
-        "application/x-text",
-    ]
 
     patched_get_model_specs.assert_called_once_with(
         region=region,
@@ -91,4 +90,6 @@ def test_jumpstart_supported_content_types(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )

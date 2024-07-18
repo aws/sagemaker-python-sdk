@@ -1,5 +1,250 @@
 # Changelog
 
+## v2.226.1 (2024-07-17)
+
+## v2.226.0 (2024-07-12)
+
+### Features
+
+ * Curated hub improvements
+ * InferenceSpec support for MMS and testing
+
+### Bug Fixes and Other Changes
+
+ * ModelBuilder not passing HF_TOKEN to model.
+ * update image_uri_configs  07-10-2024 07:18:04 PST
+
+## v2.225.0 (2024-07-10)
+
+### Features
+
+ * model optimization
+
+### Bug Fixes and Other Changes
+
+ * fix integ test
+ * update uris for v1.1.1
+ * update image_uri_configs  07-04-2024 07:17:24 PST
+
+## v2.224.4 (2024-07-04)
+
+### Bug Fixes and Other Changes
+
+ * allow for inf spec and server override to be passed
+
+## v2.224.3 (2024-07-03)
+
+### Bug Fixes and Other Changes
+
+ * Upgrade local dependencies
+ * Improve docstrings for estimator tags
+
+## v2.224.2 (2024-06-27)
+
+### Bug Fixes and Other Changes
+
+ * Update DJLModel class for latest container releases
+ * list_models() for python3.8
+
+## v2.224.1 (2024-06-21)
+
+### Bug Fixes and Other Changes
+
+ * JumpStart CuratedHub Launch
+ * Update README.rst to show conda-forge version of SageMaker SDK
+ * Update tox.ini
+ * chore(deps): bump apache-airflow from 2.9.1 to 2.9.2 in /requirements/extras
+ * Model server override logic
+
+## v2.224.0 (2024-06-19)
+
+### Features
+
+ * JumpStartModel attach
+
+### Bug Fixes and Other Changes
+
+ * feat(sagemaker-mlflow): New features for SageMaker MLflow
+ * Upgrading to PT 2.3 for release
+ * chore: use ml.g5.2xlarge for integ test
+ * Enable telemetry logging for Remote function
+ * Fix Dependabot Issues - MLFlow Version
+
+## v2.223.0 (2024-06-13)
+
+### Features
+
+ * add 'ModelCard' property to Register step
+
+### Bug Fixes and Other Changes
+
+ * Fix Sniping bug fix
+ * Implement custom telemetry logging in SDK
+ * Fix ci unit-tests
+ * update image_uri_configs  06-12-2024 07:17:03 PST
+
+## v2.222.1 (2024-06-12)
+
+### Bug Fixes and Other Changes
+
+ * First changes
+ * estimator.deploy not respecting instance type
+
+## v2.222.0 (2024-06-07)
+
+### Features
+
+ * jumpstart telemetry
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  06-06-2024 07:17:31 PST
+ * bump requests from 2.31.0 to 2.32.2 in /requirements/extras
+ * chore: add HF LLM neuronx 0.0.23 image
+ * Updates for DJL 0.28.0 release
+ * chore(deps): bump mlflow from 2.11.1 to 2.12.1 in /tests/data/serve_resources/mlflow/tensorflow
+ * chore(deps): bump mlflow from 2.11.1 to 2.12.1 in /tests/data/serve_resources/mlflow/xgboost
+ * chore(deps): bump mlflow from 2.10.2 to 2.12.1 in /tests/data/serve_resources/mlflow/pytorch
+ * chore(deps): bump apache-airflow from 2.9.0 to 2.9.1 in /requirements/extras
+ * chore(deps): bump requests from 2.31.0 to 2.32.2 in /tests/data/serve_resources/mlflow/pytorch
+ * Fix ci unit-tests
+ * Making project name in workflow files dynamic
+ * update image_uri_configs  05-29-2024 07:17:35 PST
+ * Update: SM Endpoint Routing Strategy Support.
+
+## v2.221.1 (2024-05-22)
+
+### Bug Fixes and Other Changes
+
+ * Convert pytorchddp distribution to smdistributed distribution
+ * Add tei cpu image
+
+## v2.221.0 (2024-05-20)
+
+### Features
+
+ * onboard tei image config to pysdk
+
+### Bug Fixes and Other Changes
+
+ * JS Model with non-TGI/non-DJL deployment failure
+ * cover tei with image_uris.retrieve API
+ * Add more debuging
+ * model builder limited container support for endpoint mode.
+ * Image URI should take precedence for HF models
+
+## v2.220.0 (2024-05-15)
+
+### Features
+
+ * AutoGluon 1.1.0 image_uris update
+ * add new images for HF TGI release
+ * Add telemetry support for mlflow models
+
+### Bug Fixes and Other Changes
+
+ * add debug logs to workflow container dist creation
+ * model builder race condition on sagemaker session
+ * Add tensorflow_serving support for mlflow models and enable lineage tracking for mlflow models
+ * update image_uri_configs  05-09-2024 07:17:41 PST
+ * skip flakey tests pending investigation
+
+## v2.219.0 (2024-05-08)
+
+### Features
+
+ * allow choosing js payload by alias in private method
+
+### Bug Fixes and Other Changes
+
+ * chore(deps): bump jinja2 from 3.1.3 to 3.1.4 in /requirements/extras
+ * chore(deps): bump tqdm from 4.66.2 to 4.66.3 in /tests/data/serve_resources/mlflow/pytorch
+ * chore(deps): bump jinja2 from 3.1.3 to 3.1.4 in /doc
+ * Updates for SMP v2.3.1
+
+## v2.218.1 (2024-05-03)
+
+### Bug Fixes and Other Changes
+
+ * Fix UserAgent logging in Python SDK
+ * chore: release tgi 2.0.1
+ * chore: update skipped flaky tests
+
+## v2.218.0 (2024-05-01)
+
+### Features
+
+ * set default allow_pickle param to False
+
+### Bug Fixes and Other Changes
+
+ * properly close files in lineage queries and tests
+
+## v2.217.0 (2024-04-24)
+
+### Features
+
+ * support session tag chaining for training job
+
+### Bug Fixes and Other Changes
+
+ * Add Triton v24.03 URI
+ * mainline alt config parsing
+ * Fix tox installs
+ * Add PT 2.2 Graviton Inference DLC
+
+## v2.216.1 (2024-04-22)
+
+### Bug Fixes and Other Changes
+
+ * add DXB and CGK to Jumpstart regions
+ * chore(deps): bump apache-airflow from 2.8.4 to 2.9.0 in /requirements/extras
+ * bump djl-inference 0.27.0 neuronx sdk to 2.18.1
+ * chore: release TGI 2.0.0
+
+## v2.216.0 (2024-04-17)
+
+### Features
+
+ * optimum 0.0.21
+ * Add TF 2.14 Graviton Inference support
+ * JumpStart alternative config parsing
+ * TGI 1.4.5
+
+### Bug Fixes and Other Changes
+
+ * chore(deps): bump black from 22.3.0 to 24.3.0 in /requirements/extras
+ * Add back serialization for automatic speech recognition
+ * bump apache-airflow version to 2.8.4
+ * remove trailing slash when uploading to S3 with dataset_builder.to_csv_file
+ * Update Collaborator Check workflow to check for users which are part of collaborator team
+ * forward network_isolation parameter to Estimators when False
+ * Flaky slow test
+ * Revert "Test SM PySDK Variations"
+
+### Documentation Changes
+
+ * Add supported task types to schema builder omission
+
+## v2.215.0 (2024-04-12)
+
+### Features
+
+ * JumpStart Gated Model Support in ModelBuilder Local Modes
+ * Changes to support remote schema retrieval for task types (question-answering, fill-mask) and added e2e tests for both local and remote hf schema logic.
+ * Upgrade smp to version 2.3.0
+
+### Bug Fixes and Other Changes
+
+ * disable modelbuilder mlflow local integ tests
+ * add integ-tests to codebuild-ci.yml
+ * [Feat] Support MLflow Model Format Through ModelBuilder
+ * Test SM PySDK Variations
+ * typo in jumpstart manifest and refine tests
+ * add kix to launched regions
+ * Remove space specific business logic from Python SDK function to fetch execution role
+ * Remove notebook tests from CI health check and the script
+
 ## v2.214.3 (2024-04-04)
 
 ### Bug Fixes and Other Changes

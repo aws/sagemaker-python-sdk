@@ -30,12 +30,14 @@ from sagemaker.session import Session
 def _retrieve_default_hyperparameters(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     include_container_hyperparameters: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
+    config_name: Optional[str] = None,
 ):
     """Retrieves the training hyperparameters for the model matching the given arguments.
 
@@ -44,6 +46,8 @@ def _retrieve_default_hyperparameters(
             retrieve the default hyperparameters.
         model_version (str): Version of the JumpStart model for which to retrieve the
             default hyperparameters.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (str): Region for which to retrieve default hyperparameters.
             (Default: None).
         include_container_hyperparameters (bool): True if container hyperparameters
@@ -66,6 +70,7 @@ def _retrieve_default_hyperparameters(
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         instance_type (str): An instance type to optionally supply in order to get hyperparameters
             specific for the instance type.
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         dict: the hyperparameters to use for the model.
     """
@@ -77,11 +82,13 @@ def _retrieve_default_hyperparameters(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.TRAINING,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     default_hyperparameters: Dict[str, str] = {}

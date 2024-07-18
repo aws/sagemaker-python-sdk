@@ -22,6 +22,7 @@ import struct
 
 # --- this example demonstrates how to extend default behavior during model hosting ---
 
+
 # --- Model preparation ---
 # it is possible to specify own code to load the model, otherwise a default model loading takes place
 def model_fn(path_to_model_files):

@@ -53,9 +53,11 @@ def test_jumpstart_common_image_uri(
     patched_get_model_specs.assert_called_once_with(
         region="us-west-2",
         model_id="pytorch-ic-mobilenet-v2",
+        hub_arn=None,
         version="*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -74,9 +76,11 @@ def test_jumpstart_common_image_uri(
     patched_get_model_specs.assert_called_once_with(
         region="us-west-2",
         model_id="pytorch-ic-mobilenet-v2",
+        hub_arn=None,
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -95,9 +99,11 @@ def test_jumpstart_common_image_uri(
     patched_get_model_specs.assert_called_once_with(
         region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
         model_id="pytorch-ic-mobilenet-v2",
+        hub_arn=None,
         version="*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -116,9 +122,11 @@ def test_jumpstart_common_image_uri(
     patched_get_model_specs.assert_called_once_with(
         region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
         model_id="pytorch-ic-mobilenet-v2",
+        hub_arn=None,
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 

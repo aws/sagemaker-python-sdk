@@ -51,6 +51,8 @@ from sagemaker.inputs import ShuffleConfig
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.interactive_apps import SupportedInteractiveAppTypes
 from sagemaker.model import FrameworkModel
+from sagemaker.model_card.model_card import ModelCard, ModelOverview
+from sagemaker.model_card.schema_constraints import ModelCardStatusEnum
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
 from sagemaker.pytorch.estimator import PyTorch
@@ -264,6 +266,7 @@ class DummyFrameworkModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         return MODEL_CONTAINER_DEF
 
@@ -1895,6 +1898,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "encrypt_inter_container_traffic": True,
         "use_spot_instances": True,
         "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
+        "enable_network_isolation": False,
         "checkpoint_local_path": "/tmp/checkpoints",
         "environment": None,
         "experiment_config": None,
@@ -2086,6 +2090,41 @@ def test_framework_disable_remote_debug(sagemaker_session):
     }
     assert not f.get_remote_debug_config()["EnableRemoteDebug"]
     assert len(args) == 2
+
+
+def test_framework_with_session_chaining_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_session_tag_chaining=True,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["session_chaining_config"]["EnableSessionTagChaining"]
+    assert f.get_session_chaining_config()["EnableSessionTagChaining"]
+
+
+def test_framework_without_session_chaining_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("SessionTagChaining") is None
+    assert f.get_remote_debug_config() is None
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
@@ -3441,6 +3480,7 @@ NO_INPUT_TRAIN_CALL = {
     "vpc_config": None,
     "metric_definitions": None,
     "environment": None,
+    "enable_network_isolation": False,
     "experiment_config": None,
 }
 
@@ -3831,7 +3871,7 @@ def test_generic_to_fit_with_network_isolation(sagemaker_session):
 
     sagemaker_session.train.assert_called_once()
     args = sagemaker_session.train.call_args[1]
-    assert args["enable_network_isolation"]
+    assert args["enable_network_isolation"] is True
 
 
 def test_generic_to_fit_with_sagemaker_metrics_missing(sagemaker_session):
@@ -4299,6 +4339,12 @@ def test_register_default_image(sagemaker_session):
     framework_version = "2.9"
     nearest_model_name = "resnet50"
     data_input_config = '{"input_1":[1,224,224,3]}'
+    model_overview = ModelOverview(model_creator="TestCreator")
+    model_card = ModelCard(
+        name="TestCard",
+        status=ModelCardStatusEnum.DRAFT,
+        model_overview=model_overview,
+    )
 
     estimator.register(
         content_types=content_types,
@@ -4312,9 +4358,13 @@ def test_register_default_image(sagemaker_session):
         framework_version=framework_version,
         nearest_model_name=nearest_model_name,
         data_input_configuration=data_input_config,
+        model_card=model_card,
     )
     sagemaker_session.create_model.assert_not_called()
-
+    exp_model_card = {
+        "ModelCardStatus": "Draft",
+        "ModelCardContent": '{"model_overview": {"model_creator": "TestCreator", "model_artifact": []}}',
+    }
     expected_create_model_package_request = {
         "containers": [{"Image": estimator.image_uri, "ModelDataUrl": estimator.model_data}],
         "content_types": content_types,
@@ -4325,6 +4375,7 @@ def test_register_default_image(sagemaker_session):
         "marketplace_cert": False,
         "sample_payload_url": sample_payload_url,
         "task": task,
+        "model_card": exp_model_card,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -5206,6 +5257,7 @@ def test_all_framework_estimators_add_jumpstart_uri_tags(
             entry_point="inference.py",
             role=ROLE,
             tags=[{"Key": "blah", "Value": "yoyoma"}],
+            model_reference_arn=None,
         )
 
         assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [

@@ -538,14 +538,14 @@ class _SparkProcessorBase(ScriptProcessor):
         history_server_env_variables = {}
 
         if spark_event_logs_s3_uri:
-            history_server_env_variables[
-                _HistoryServer.arg_event_logs_s3_uri
-            ] = spark_event_logs_s3_uri
+            history_server_env_variables[_HistoryServer.arg_event_logs_s3_uri] = (
+                spark_event_logs_s3_uri
+            )
         # this variable will be previously set by run() method
         elif self._spark_event_logs_s3_uri is not None:
-            history_server_env_variables[
-                _HistoryServer.arg_event_logs_s3_uri
-            ] = self._spark_event_logs_s3_uri
+            history_server_env_variables[_HistoryServer.arg_event_logs_s3_uri] = (
+                self._spark_event_logs_s3_uri
+            )
         else:
             raise ValueError(
                 "SPARK_EVENT_LOGS_S3_URI not present. You can specify spark_event_logs_s3_uri "
@@ -557,9 +557,9 @@ class _SparkProcessorBase(ScriptProcessor):
         history_server_env_variables["AWS_REGION"] = region
 
         if self._is_notebook_instance():
-            history_server_env_variables[
-                _HistoryServer.arg_remote_domain_name
-            ] = self._get_notebook_instance_domain()
+            history_server_env_variables[_HistoryServer.arg_remote_domain_name] = (
+                self._get_notebook_instance_domain()
+            )
 
         return history_server_env_variables
 

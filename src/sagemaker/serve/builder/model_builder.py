@@ -12,35 +12,70 @@
 # language governing permissions and limitations under the License.
 """Holds the ModelBuilder class and the ModelServer enum."""
 from __future__ import absolute_import
+
+import importlib.util
 import uuid
 from typing import Any, Type, List, Dict, Optional, Union
 from dataclasses import dataclass, field
 import logging
 import os
+import re
 
 from pathlib import Path
+
+from sagemaker.enums import Tag
+from sagemaker.s3 import S3Downloader
 
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
-from sagemaker.djl_inference import defaults
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
+from sagemaker.serve.builder.tf_serving_builder import TensorflowServing
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
 from sagemaker.serve.mode.local_container_mode import LocalContainerMode
 from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.builder.serve_settings import _ServeSettings
 from sagemaker.serve.builder.djl_builder import DJL
+from sagemaker.serve.builder.tei_builder import TEI
 from sagemaker.serve.builder.tgi_builder import TGI
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.transformers_builder import Transformers
 from sagemaker.predictor import Predictor
+from sagemaker.serve.model_format.mlflow.constants import (
+    MLFLOW_MODEL_PATH,
+    MLFLOW_TRACKING_ARN,
+    MLFLOW_RUN_ID_REGEX,
+    MLFLOW_REGISTRY_PATH_REGEX,
+    MODEL_PACKAGE_ARN_REGEX,
+    MLFLOW_METADATA_FILE,
+    MLFLOW_PIP_DEPENDENCY_FILE,
+)
+from sagemaker.serve.model_format.mlflow.utils import (
+    _get_default_model_server_for_mlflow,
+    _download_s3_artifacts,
+    _select_container_for_mlflow_model,
+    _generate_mlflow_artifact_path,
+    _get_all_flavor_metadata,
+    _get_deployment_flavor,
+    _validate_input_for_mlflow,
+    _copy_directory_contents,
+)
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
+from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
+from sagemaker.serve.utils.optimize_utils import (
+    _generate_optimized_model,
+    _generate_model_source,
+    _extract_optimization_config_and_env,
+    _is_s3_uri,
+    _custom_speculative_decoding,
+    _extract_speculative_draft_model_provider,
+)
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
@@ -55,28 +90,37 @@ from sagemaker.serve.detector.image_detector import (
 from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
 from sagemaker.serve.model_server.triton.triton_builder import Triton
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
-from sagemaker.serve.utils.types import ModelServer
+from sagemaker.serve.utils.types import ModelServer, ModelHub
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.serve.save_retrive.version_1_0_0.save.save_handler import SaveHandler
 from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import get_metadata
 from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
+from sagemaker.utils import Tags
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
+from sagemaker.huggingface.llm_utils import (
+    get_huggingface_model_metadata,
+    download_huggingface_model_metadata,
+)
 
 logger = logging.getLogger(__name__)
 
-supported_model_server = {
+# Any new server type should be added here
+supported_model_servers = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
+    ModelServer.TENSORFLOW_SERVING,
+    ModelServer.MMS,
+    ModelServer.TGI,
+    ModelServer.TEI,
 }
 
 
-# pylint: disable=attribute-defined-outside-init, disable=E1101
+# pylint: disable=attribute-defined-outside-init, disable=E1101, disable=R0901, disable=R1705
 @dataclass
-class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
+class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing, TEI):
     """Class that builds a deployable model.
 
     Args:
@@ -123,6 +167,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             The schema builder translates the input into bytes and converts the response
             into a stream. All translations between the server and the client are handled
             automatically with the specified input and output.
+            The schema builder can be omitted for HuggingFace models with task types TextGeneration,
+            TextClassification, and QuestionAnswering. Omitting SchemaBuilder is in
+            beta for FillMask, and AutomaticSpeechRecognition use-cases.
         model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
             inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or ``inference_spec``
             is required for the model builder to build the artifact.
@@ -144,9 +191,17 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             in order for model builder to build the artifacts correctly (according
             to the model server). Possible values for this argument are
             ``TORCHSERVE``, ``MMS``, ``TENSORFLOW_SERVING``, ``DJL_SERVING``,
-            ``TRITON``, and``TGI``.
-        model_metadata (Optional[Dict[str, Any]): Dictionary used to override the HuggingFace
-            model metadata. Currently ``HF_TASK`` is overridable.
+            ``TRITON``, ``TGI``, and ``TEI``.
+        model_metadata (Optional[Dict[str, Any]): Dictionary used to override model metadata.
+            Currently, ``HF_TASK`` is overridable for HuggingFace model. HF_TASK should be set for
+            new models without task metadata in the Hub, adding unsupported task types will throw
+            an exception. ``MLFLOW_MODEL_PATH`` is available for providing local path or s3 path
+            to MLflow artifacts. However, ``MLFLOW_MODEL_PATH`` is experimental and is not
+            intended for production use at this moment. ``CUSTOM_MODEL_PATH`` is available for
+            providing local path or s3 path to model artifacts. ``FINE_TUNING_MODEL_PATH`` is
+            available for providing s3 path to fine-tuned model artifacts. ``FINE_TUNING_JOB_NAME``
+            is available for providing fine-tuned job name. Both ``FINE_TUNING_MODEL_PATH`` and
+            ``FINE_TUNING_JOB_NAME`` are mutually exclusive.
     """
 
     model_path: Optional[str] = field(
@@ -245,33 +300,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
     )
     model_metadata: Optional[Dict[str, Any]] = field(
         default=None,
-        metadata={"help": "Define the model metadata to override, currently supports `HF_TASK`"},
+        metadata={
+            "help": "Define the model metadata to override, currently supports `HF_TASK`, "
+            "`MLFLOW_MODEL_PATH`, `FINE_TUNING_MODEL_PATH`, `FINE_TUNING_JOB_NAME`, and "
+            "`CUSTOM_MODEL_PATH`. HF_TASK should be set for new models without task metadata "
+            "in the Hub, Adding unsupported task types will throw an exception."
+        },
     )
-
-    def _build_validations(self):
-        """Placeholder docstring"""
-        # TODO: Beta validations - remove after the launch
-        if self.mode == Mode.IN_PROCESS:
-            raise ValueError("IN_PROCESS mode is not supported yet!")
-
-        if self.inference_spec and self.model:
-            raise ValueError("Cannot have both the Model and Inference spec in the builder")
-
-        if self.image_uri and not is_1p_image_uri(self.image_uri) and self.model_server is None:
-            raise ValueError(
-                "Model_server must be set when non-first-party image_uri is set. "
-                + "Supported model servers: %s" % supported_model_server
-            )
-
-        # Set TorchServe as default model server
-        if not self.model_server:
-            self.model_server = ModelServer.TORCHSERVE
-
-        if self.model_server not in supported_model_server:
-            raise ValueError(
-                "%s is not supported yet! Supported model servers: %s"
-                % (self.model_server, supported_model_server)
-            )
 
     def _save_model_inference_spec(self):
         """Placeholder docstring"""
@@ -297,6 +332,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 save_pkl(code_path, (self._framework, self.schema_builder))
             else:
                 save_pkl(code_path, (self.model, self.schema_builder))
+        elif self._is_mlflow_model:
+            save_pkl(code_path, self.schema_builder)
         else:
             raise ValueError("Cannot detect required model or inference spec")
 
@@ -344,8 +381,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             sagemaker_session=self.sagemaker_session,
         )
 
-    def _prepare_for_mode(self):
-        """Placeholder docstring"""
+    def _prepare_for_mode(
+        self, model_path: Optional[str] = None, should_upload_artifacts: Optional[bool] = False
+    ):
+        """Prepare this `Model` for serving.
+
+        Args:
+            model_path (Optional[str]): Model path
+            should_upload_artifacts (Optional[bool]): Whether to upload artifacts to S3.
+        """
         # TODO: move mode specific prepare steps under _model_builder_deploy_wrapper
         self.s3_upload_path = None
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
@@ -356,12 +400,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             self.s3_upload_path, env_vars_sagemaker = self.modes[
                 str(Mode.SAGEMAKER_ENDPOINT)
             ].prepare(
-                self.model_path,
+                (model_path or self.model_path),
                 self.secret_key,
                 self.serve_settings.s3_model_data_url,
                 self.sagemaker_session,
                 self.image_uri,
-                self.jumpstart if hasattr(self, "jumpstart") else False,
+                getattr(self, "model_hub", None) == ModelHub.JUMPSTART,
+                should_upload_artifacts=should_upload_artifacts,
             )
             self.env_vars.update(env_vars_sagemaker)
             return self.s3_upload_path, env_vars_sagemaker
@@ -440,6 +485,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self.pysdk_model.mode = self.mode
         self.pysdk_model.modes = self.modes
         self.pysdk_model.serve_settings = self.serve_settings
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
 
         # dynamically generate a method to direct model.deploy() logic based on mode
         # unique method to models created via ModelBuilder()
@@ -462,6 +511,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         self.pysdk_model.model_package_arn = new_model_package.model_package_arn
         new_model_package.deploy = self._model_builder_deploy_model_package_wrapper
         self.model_package = new_model_package
+        if getattr(self, "_is_mlflow_model", False) and self.mode == Mode.SAGEMAKER_ENDPOINT:
+            _maintain_lineage_tracking_for_mlflow_model(
+                mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
+                s3_upload_path=self.s3_upload_path,
+                sagemaker_session=self.sagemaker_session,
+                tracking_server_arn=self.model_metadata.get(MLFLOW_TRACKING_ARN),
+            )
         return new_model_package
 
     def _model_builder_deploy_model_package_wrapper(self, *args, **kwargs):
@@ -520,12 +576,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        return self._original_deploy(
+        predictor = self._original_deploy(
             *args,
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
             **kwargs,
         )
+        if getattr(self, "_is_mlflow_model", False) and self.mode == Mode.SAGEMAKER_ENDPOINT:
+            _maintain_lineage_tracking_for_mlflow_model(
+                mlflow_model_path=self.model_metadata[MLFLOW_MODEL_PATH],
+                s3_upload_path=self.s3_upload_path,
+                sagemaker_session=self.sagemaker_session,
+                tracking_server_arn=self.model_metadata.get(MLFLOW_TRACKING_ARN),
+            )
+        return predictor
 
     def _overwrite_mode_in_deploy(self, overwrite_mode: str):
         """Mode overwritten by customer during model.deploy()"""
@@ -577,6 +641,160 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         return wrapper
 
+    def _handle_mlflow_input(self):
+        """Check whether an MLflow model is present and handle accordingly"""
+        self._is_mlflow_model = self._has_mlflow_arguments()
+        if not self._is_mlflow_model:
+            return
+
+        mlflow_model_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
+        artifact_path = self._get_artifact_path(mlflow_model_path)
+        if not self._mlflow_metadata_exists(artifact_path):
+            return
+
+        self._initialize_for_mlflow(artifact_path)
+        _validate_input_for_mlflow(self.model_server, self.env_vars.get("MLFLOW_MODEL_FLAVOR"))
+
+    def _has_mlflow_arguments(self) -> bool:
+        """Check whether MLflow model arguments are present
+
+        Returns:
+            bool: True if MLflow arguments are present, False otherwise.
+        """
+        if self.inference_spec or self.model:
+            logger.info(
+                "Either inference spec or model is provided. "
+                "ModelBuilder is not handling MLflow model input"
+            )
+            return False
+
+        if not self.model_metadata:
+            logger.info(
+                "No ModelMetadata provided. ModelBuilder is not handling MLflow model input"
+            )
+            return False
+
+        mlflow_model_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
+        if not mlflow_model_path:
+            logger.info(
+                "%s is not provided in ModelMetadata. ModelBuilder is not handling MLflow model "
+                "input",
+                MLFLOW_MODEL_PATH,
+            )
+            return False
+
+        return True
+
+    def _get_artifact_path(self, mlflow_model_path: str) -> str:
+        """Retrieves the model artifact location given the Mlflow model input.
+
+        Args:
+            mlflow_model_path (str): The MLflow model path input.
+
+        Returns:
+            str: The path to the model artifact.
+        """
+        if (is_run_id_type := re.match(MLFLOW_RUN_ID_REGEX, mlflow_model_path)) or re.match(
+            MLFLOW_REGISTRY_PATH_REGEX, mlflow_model_path
+        ):
+            mlflow_tracking_arn = self.model_metadata.get(MLFLOW_TRACKING_ARN)
+            if not mlflow_tracking_arn:
+                raise ValueError(
+                    "%s is not provided in ModelMetadata or through set_tracking_arn "
+                    "but MLflow model path was provided." % MLFLOW_TRACKING_ARN,
+                )
+
+            if not importlib.util.find_spec("sagemaker_mlflow"):
+                raise ImportError(
+                    "Unable to import sagemaker_mlflow, check if sagemaker_mlflow is installed"
+                )
+
+            import mlflow
+
+            mlflow.set_tracking_uri(mlflow_tracking_arn)
+            if is_run_id_type:
+                _, run_id, model_path = mlflow_model_path.split("/", 2)
+                artifact_uri = mlflow.get_run(run_id).info.artifact_uri
+                if not artifact_uri.endswith("/"):
+                    artifact_uri += "/"
+                return artifact_uri + model_path
+
+            mlflow_client = mlflow.MlflowClient()
+            if not mlflow_model_path.endswith("/"):
+                mlflow_model_path += "/"
+
+            if "@" in mlflow_model_path:
+                _, model_name_and_alias, artifact_uri = mlflow_model_path.split("/", 2)
+                model_name, model_alias = model_name_and_alias.split("@")
+                model_metadata = mlflow_client.get_model_version_by_alias(model_name, model_alias)
+            else:
+                _, model_name, model_version, artifact_uri = mlflow_model_path.split("/", 3)
+                model_metadata = mlflow_client.get_model_version(model_name, model_version)
+
+            source = model_metadata.source
+            if not source.endswith("/"):
+                source += "/"
+            return source + artifact_uri
+
+        if re.match(MODEL_PACKAGE_ARN_REGEX, mlflow_model_path):
+            model_package = self.sagemaker_session.sagemaker_client.describe_model_package(
+                ModelPackageName=mlflow_model_path
+            )
+            return model_package["SourceUri"]
+
+        return mlflow_model_path
+
+    def _mlflow_metadata_exists(self, path: str) -> bool:
+        """Checks whether an MLmodel file exists in the given directory.
+
+        Returns:
+            bool: True if the MLmodel file exists, False otherwise.
+        """
+        if path.startswith("s3://"):
+            s3_downloader = S3Downloader()
+            if not path.endswith("/"):
+                path += "/"
+            s3_uri_to_mlmodel_file = f"{path}{MLFLOW_METADATA_FILE}"
+            response = s3_downloader.list(s3_uri_to_mlmodel_file, self.sagemaker_session)
+            return len(response) > 0
+
+        file_path = os.path.join(path, MLFLOW_METADATA_FILE)
+        return os.path.isfile(file_path)
+
+    def _initialize_for_mlflow(self, artifact_path: str) -> None:
+        """Initialize mlflow model artifacts, image uri and model server.
+
+        Args:
+            artifact_path (str): The path to the artifact store.
+        """
+        if artifact_path.startswith("s3://"):
+            _download_s3_artifacts(artifact_path, self.model_path, self.sagemaker_session)
+        elif os.path.exists(artifact_path):
+            _copy_directory_contents(artifact_path, self.model_path)
+        else:
+            raise ValueError("Invalid path: %s" % artifact_path)
+        mlflow_model_metadata_path = _generate_mlflow_artifact_path(
+            self.model_path, MLFLOW_METADATA_FILE
+        )
+        # TODO: add validation on MLmodel file
+        mlflow_model_dependency_path = _generate_mlflow_artifact_path(
+            self.model_path, MLFLOW_PIP_DEPENDENCY_FILE
+        )
+        flavor_metadata = _get_all_flavor_metadata(mlflow_model_metadata_path)
+        deployment_flavor = _get_deployment_flavor(flavor_metadata)
+
+        self.model_server = self.model_server or _get_default_model_server_for_mlflow(
+            deployment_flavor
+        )
+        self.image_uri = self.image_uri or _select_container_for_mlflow_model(
+            mlflow_model_src_path=self.model_path,
+            deployment_flavor=deployment_flavor,
+            region=self.sagemaker_session.boto_region_name,
+            instance_type=self.instance_type,
+        )
+        self.env_vars.update({"MLFLOW_MODEL_FLAVOR": f"{deployment_flavor}"})
+        self.dependencies.update({"requirements": mlflow_model_dependency_path})
+
     # Model Builder is a class to build the model for deployment.
     # It supports two modes of deployment
     # 1/ SageMaker Endpoint
@@ -605,7 +823,17 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             self.mode = mode
         if role_arn:
             self.role_arn = role_arn
-        self.sagemaker_session = sagemaker_session or Session()
+
+        self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
+
+        self.sagemaker_session.settings._local_download_dir = self.model_path
+
+        # DJL expects `HF_TOKEN` key. This allows backward compatibility
+        # until we deprecate HUGGING_FACE_HUB_TOKEN.
+        if self.env_vars.get("HUGGING_FACE_HUB_TOKEN") and not self.env_vars.get("HF_TOKEN"):
+            self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+        elif self.env_vars.get("HF_TOKEN") and not self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
+            self.env_vars["HUGGING_FACE_HUB_TOKEN"] = self.env_vars.get("HF_TOKEN")
 
         self.sagemaker_session.settings._local_download_dir = self.model_path
 
@@ -618,16 +846,28 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         )
 
         self.serve_settings = self._get_serve_setting()
-
         self._is_custom_image_uri = self.image_uri is not None
+
+        self._handle_mlflow_input()
+
+        self._build_validations()
+
+        if (
+            not (isinstance(self.model, str) and self._is_jumpstart_model_id())
+        ) and self.model_server:
+            return self._build_for_model_server()
 
         if isinstance(self.model, str):
             model_task = None
+            if self._is_jumpstart_model_id():
+                self.model_hub = ModelHub.JUMPSTART
+                return self._build_for_jumpstart()
+            self.model_hub = ModelHub.HUGGINGFACE
+
             if self.model_metadata:
                 model_task = self.model_metadata.get("HF_TASK")
-            if self._is_jumpstart_model_id():
-                return self._build_for_jumpstart()
-            if self._is_djl():  # pylint: disable=R1705
+
+            if self._is_djl():
                 return self._build_for_djl()
             else:
                 hf_model_md = get_huggingface_model_metadata(
@@ -637,20 +877,51 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
                 if model_task is None:
                     model_task = hf_model_md.get("pipeline_tag")
                 if self.schema_builder is None and model_task is not None:
-                    self._schema_builder_init(model_task)
-                if model_task == "text-generation":  # pylint: disable=R1705
+                    self._hf_schema_builder_init(model_task)
+                if model_task == "text-generation":
                     return self._build_for_tgi()
+                if model_task == "sentence-similarity":
+                    return self._build_for_tei()
                 elif self._can_fit_on_single_gpu():
                     return self._build_for_transformers()
-                elif (
-                    self.model in defaults.DEEPSPEED_RECOMMENDED_ARCHITECTURES
-                    or self.model in defaults.FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES
-                ):
-                    return self._build_for_djl()
                 else:
                     return self._build_for_transformers()
 
-        self._build_validations()
+        # Set TorchServe as default model server
+        if not self.model_server:
+            self.model_server = ModelServer.TORCHSERVE
+            return self._build_for_torchserve()
+
+        raise ValueError("%s model server is not supported" % self.model_server)
+
+    def _build_validations(self):
+        """Validations needed for model server overrides, or auto-detection or fallback"""
+        if self.mode == Mode.IN_PROCESS:
+            raise ValueError("IN_PROCESS mode is not supported yet!")
+
+        if self.inference_spec and self.model:
+            raise ValueError("Can only set one of the following: model, inference_spec.")
+
+        if self.image_uri and not is_1p_image_uri(self.image_uri) and self.model_server is None:
+            raise ValueError(
+                "Model_server must be set when non-first-party image_uri is set. "
+                + "Supported model servers: %s" % supported_model_servers
+            )
+
+    def _build_for_model_server(self):  # pylint: disable=R0911, R1710
+        """Model server overrides"""
+        if self.model_server not in supported_model_servers:
+            raise ValueError(
+                "%s is not supported yet! Supported model servers: %s"
+                % (self.model_server, supported_model_servers)
+            )
+
+        mlflow_path = None
+        if self.model_metadata:
+            mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
+
+        if not self.model and not mlflow_path and not self.inference_spec:
+            raise ValueError("Missing required parameter `model` or 'ml_flow' path or inf_spec")
 
         if self.model_server == ModelServer.TORCHSERVE:
             return self._build_for_torchserve()
@@ -658,7 +929,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         if self.model_server == ModelServer.TRITON:
             return self._build_for_triton()
 
-        raise ValueError("%s model server is not supported" % self.model_server)
+        if self.model_server == ModelServer.TENSORFLOW_SERVING:
+            return self._build_for_tensorflow_serving()
+
+        if self.model_server == ModelServer.DJL_SERVING:
+            return self._build_for_djl()
+
+        if self.model_server == ModelServer.TEI:
+            return self._build_for_tei()
+
+        if self.model_server == ModelServer.TGI:
+            return self._build_for_tgi()
+
+        if self.model_server == ModelServer.MMS:
+            return self._build_for_transformers()
 
     def save(
         self,
@@ -672,8 +956,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
         This function is available for models served by DJL serving.
 
         Args:
-            save_path (Optional[str]): The path where you want to save resources.
-            s3_path (Optional[str]): The path where you want to upload resources.
+            save_path (Optional[str]): The path where you want to save resources. Defaults to
+                ``None``.
+            s3_path (Optional[str]): The path where you want to upload resources. Defaults to
+                ``None``.
+            sagemaker_session (Optional[Session]): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                function creates one using the default AWS configuration chain. Defaults to
+                ``None``.
+            role_arn (Optional[str]): The IAM role arn. Defaults to ``None``.
         """
         self.sagemaker_session = sagemaker_session or Session()
 
@@ -704,8 +995,21 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
 
         return get_metadata(model_dir)
 
-    def _schema_builder_init(self, model_task: str):
-        """Initialize the schema builder
+    def set_tracking_arn(self, arn: str):
+        """Set tracking server ARN"""
+        # TODO: support native MLflow URIs
+        if importlib.util.find_spec("sagemaker_mlflow"):
+            import mlflow
+
+            mlflow.set_tracking_uri(arn)
+            self.model_metadata[MLFLOW_TRACKING_ARN] = arn
+        else:
+            raise ImportError(
+                "Unable to import sagemaker_mlflow, check if sagemaker_mlflow is installed"
+            )
+
+    def _hf_schema_builder_init(self, model_task: str):
+        """Initialize the schema builder for the given HF_TASK
 
         Args:
             model_task (str): Required, the task name
@@ -714,10 +1018,29 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             TaskNotFoundException: If the I/O schema for the given task is not found.
         """
         try:
-            sample_inputs, sample_outputs = task.retrieve_local_schemas(model_task)
+            try:
+                sample_inputs, sample_outputs = task.retrieve_local_schemas(model_task)
+            except ValueError:
+                # samples could not be loaded locally, try to fetch remote hf schema
+                from sagemaker_schema_inference_artifacts.huggingface import remote_schema_retriever
+
+                if model_task in ("text-to-image", "automatic-speech-recognition"):
+                    logger.warning(
+                        "HF SchemaBuilder for %s is in beta mode, and is not guaranteed to work "
+                        "with all models at this time.",
+                        model_task,
+                    )
+                remote_hf_schema_helper = remote_schema_retriever.RemoteSchemaRetriever()
+                (
+                    sample_inputs,
+                    sample_outputs,
+                ) = remote_hf_schema_helper.get_resolved_hf_schema_for_task(model_task)
             self.schema_builder = SchemaBuilder(sample_inputs, sample_outputs)
         except ValueError:
-            raise TaskNotFoundException(f"Schema builder for {model_task} could not be found.")
+            raise TaskNotFoundException(
+                f"HuggingFace Schema builder samples for {model_task} could not be found "
+                f"locally or via remote."
+            )
 
     def _can_fit_on_single_gpu(self) -> Type[bool]:
         """Check if model can fit on a single GPU
@@ -764,3 +1087,290 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers):
             raise ValueError(
                 f"Unable to determine single GPU size for instance: [{self.instance_type}]"
             )
+
+    def optimize(
+        self,
+        output_path: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        role_arn: Optional[str] = None,
+        tags: Optional[Tags] = None,
+        job_name: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
+        quantization_config: Optional[Dict] = None,
+        compilation_config: Optional[Dict] = None,
+        speculative_decoding_config: Optional[Dict] = None,
+        env_vars: Optional[Dict] = None,
+        vpc_config: Optional[Dict] = None,
+        kms_key: Optional[str] = None,
+        max_runtime_in_sec: Optional[int] = 36000,
+        sagemaker_session: Optional[Session] = None,
+    ) -> Model:
+        """Create an optimized deployable ``Model`` instance with ``ModelBuilder``.
+
+        Args:
+            output_path (str): Specifies where to store the compiled/quantized model.
+            instance_type (str): Target deployment instance type that the model is optimized for.
+            role_arn (Optional[str]): Execution role arn. Defaults to ``None``.
+            tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
+            job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
+            quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
+            compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            env_vars (Optional[Dict]): Additional environment variables to run the optimization
+                container. Defaults to ``None``.
+            vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
+            kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
+                to S3. Defaults to ``None``.
+            max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
+                36000 seconds.
+            sagemaker_session (Optional[Session]): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                function creates one using the default AWS configuration chain.
+
+        Returns:
+            Model: A deployable ``Model`` object.
+        """
+
+        # need to get telemetry_opt_out info before telemetry decorator is called
+        self.serve_settings = self._get_serve_setting()
+
+        return self._model_builder_optimize_wrapper(
+            output_path=output_path,
+            instance_type=instance_type,
+            role_arn=role_arn,
+            tags=tags,
+            job_name=job_name,
+            accept_eula=accept_eula,
+            quantization_config=quantization_config,
+            compilation_config=compilation_config,
+            speculative_decoding_config=speculative_decoding_config,
+            env_vars=env_vars,
+            vpc_config=vpc_config,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            sagemaker_session=sagemaker_session,
+        )
+
+    @_capture_telemetry("optimize")
+    def _model_builder_optimize_wrapper(
+        self,
+        output_path: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        role_arn: Optional[str] = None,
+        tags: Optional[Tags] = None,
+        job_name: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
+        quantization_config: Optional[Dict] = None,
+        compilation_config: Optional[Dict] = None,
+        speculative_decoding_config: Optional[Dict] = None,
+        env_vars: Optional[Dict] = None,
+        vpc_config: Optional[Dict] = None,
+        kms_key: Optional[str] = None,
+        max_runtime_in_sec: Optional[int] = 36000,
+        sagemaker_session: Optional[Session] = None,
+    ) -> Model:
+        """Runs a model optimization job.
+
+        Args:
+            output_path (str): Specifies where to store the compiled/quantized model.
+            instance_type (str): Target deployment instance type that the model is optimized for.
+            role_arn (Optional[str]): Execution role arn. Defaults to ``None``.
+            tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
+            job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
+            quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
+            compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            env_vars (Optional[Dict]): Additional environment variables to run the optimization
+                container. Defaults to ``None``.
+            vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
+            kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
+                to S3. Defaults to ``None``.
+            max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
+                36000 seconds.
+            sagemaker_session (Optional[Session]): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                function creates one using the default AWS configuration chain.
+
+        Returns:
+            Model: A deployable ``Model`` object.
+        """
+        self.is_compiled = compilation_config is not None
+        self.is_quantized = quantization_config is not None
+        self.speculative_decoding_draft_model_source = _extract_speculative_draft_model_provider(
+            speculative_decoding_config
+        )
+
+        if self.mode != Mode.SAGEMAKER_ENDPOINT:
+            raise ValueError("Model optimization is only supported in Sagemaker Endpoint Mode.")
+
+        if quantization_config and compilation_config:
+            raise ValueError("Quantization config and compilation config are mutually exclusive.")
+
+        self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
+        self.instance_type = instance_type or self.instance_type
+        self.role_arn = role_arn or self.role_arn
+
+        job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
+        if self._is_jumpstart_model_id():
+            self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
+            input_args = self._optimize_for_jumpstart(
+                output_path=output_path,
+                instance_type=instance_type,
+                tags=tags,
+                job_name=job_name,
+                accept_eula=accept_eula,
+                quantization_config=quantization_config,
+                compilation_config=compilation_config,
+                speculative_decoding_config=speculative_decoding_config,
+                env_vars=env_vars,
+                vpc_config=vpc_config,
+                kms_key=kms_key,
+                max_runtime_in_sec=max_runtime_in_sec,
+            )
+        else:
+            if self.model_server != ModelServer.DJL_SERVING:
+                logger.info("Overriding model server to DJL_SERVING.")
+                self.model_server = ModelServer.DJL_SERVING
+
+            self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
+            input_args = self._optimize_for_hf(
+                output_path=output_path,
+                tags=tags,
+                job_name=job_name,
+                quantization_config=quantization_config,
+                compilation_config=compilation_config,
+                speculative_decoding_config=speculative_decoding_config,
+                env_vars=env_vars,
+                vpc_config=vpc_config,
+                kms_key=kms_key,
+                max_runtime_in_sec=max_runtime_in_sec,
+            )
+
+        if input_args:
+            self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
+            job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
+            return _generate_optimized_model(self.pysdk_model, job_status)
+
+        self.pysdk_model.remove_tag_with_key(Tag.OPTIMIZATION_JOB_NAME)
+        if not speculative_decoding_config:
+            self.pysdk_model.remove_tag_with_key(Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER)
+
+        return self.pysdk_model
+
+    def _optimize_for_hf(
+        self,
+        output_path: str,
+        tags: Optional[Tags] = None,
+        job_name: Optional[str] = None,
+        quantization_config: Optional[Dict] = None,
+        compilation_config: Optional[Dict] = None,
+        speculative_decoding_config: Optional[Dict] = None,
+        env_vars: Optional[Dict] = None,
+        vpc_config: Optional[Dict] = None,
+        kms_key: Optional[str] = None,
+        max_runtime_in_sec: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Runs a model optimization job.
+
+        Args:
+            output_path (str): Specifies where to store the compiled/quantized model.
+            tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
+            job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
+            compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            env_vars (Optional[Dict]): Additional environment variables to run the optimization
+                container. Defaults to ``None``.
+            vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
+            kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
+                to S3. Defaults to ``None``.
+            max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
+                ``None``.
+
+        Returns:
+            Optional[Dict[str, Any]]: Model optimization job input arguments.
+        """
+        self.pysdk_model = _custom_speculative_decoding(
+            self.pysdk_model, speculative_decoding_config, False
+        )
+
+        if quantization_config or compilation_config:
+            create_optimization_job_args = {
+                "OptimizationJobName": job_name,
+                "DeploymentInstanceType": self.instance_type,
+                "RoleArn": self.role_arn,
+            }
+
+            if env_vars:
+                self.pysdk_model.env.update(env_vars)
+                create_optimization_job_args["OptimizationEnvironment"] = env_vars
+
+            self._optimize_prepare_for_hf()
+            model_source = _generate_model_source(self.pysdk_model.model_data, False)
+            create_optimization_job_args["ModelSource"] = model_source
+
+            optimization_config, override_env = _extract_optimization_config_and_env(
+                quantization_config, compilation_config
+            )
+            create_optimization_job_args["OptimizationConfigs"] = [optimization_config]
+            self.pysdk_model.env.update(override_env)
+
+            output_config = {"S3OutputLocation": output_path}
+            if kms_key:
+                output_config["KmsKeyId"] = kms_key
+            create_optimization_job_args["OutputConfig"] = output_config
+
+            if max_runtime_in_sec:
+                create_optimization_job_args["StoppingCondition"] = {
+                    "MaxRuntimeInSeconds": max_runtime_in_sec
+                }
+            if tags:
+                create_optimization_job_args["Tags"] = tags
+            if vpc_config:
+                create_optimization_job_args["VpcConfig"] = vpc_config
+
+            # HF_MODEL_ID needs not to be present, otherwise,
+            # HF model artifacts will be re-downloaded during deployment
+            if "HF_MODEL_ID" in self.pysdk_model.env:
+                del self.pysdk_model.env["HF_MODEL_ID"]
+
+            return create_optimization_job_args
+        return None
+
+    def _optimize_prepare_for_hf(self):
+        """Prepare huggingface model data for optimization."""
+        custom_model_path: str = (
+            self.model_metadata.get("CUSTOM_MODEL_PATH") if self.model_metadata else None
+        )
+        if _is_s3_uri(custom_model_path):
+            # Remove slash by the end of s3 uri, as it may lead to / subfolder during upload.
+            custom_model_path = (
+                custom_model_path[:-1] if custom_model_path.endswith("/") else custom_model_path
+            )
+        else:
+            if not custom_model_path:
+                custom_model_path = f"/tmp/sagemaker/model-builder/{self.model}"
+                download_huggingface_model_metadata(
+                    self.model,
+                    os.path.join(custom_model_path, "code"),
+                    self.env_vars.get("HUGGING_FACE_HUB_TOKEN"),
+                )
+
+        self.pysdk_model.model_data, env = self._prepare_for_mode(
+            model_path=custom_model_path,
+            should_upload_artifacts=True,
+        )
+        self.pysdk_model.env.update(env)

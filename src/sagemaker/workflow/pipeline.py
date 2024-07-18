@@ -395,9 +395,11 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             "Version": self._version,
             "Metadata": self._metadata,
             "Parameters": list_to_request(self.parameters),
-            "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
-            if self.pipeline_experiment_config is not None
-            else None,
+            "PipelineExperimentConfig": (
+                self.pipeline_experiment_config.to_request()
+                if self.pipeline_experiment_config is not None
+                else None
+            ),
             "Steps": list_to_request(compiled_steps),
         }
 
