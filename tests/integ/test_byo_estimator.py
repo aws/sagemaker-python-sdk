@@ -108,9 +108,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
             assert prediction["score"] is not None
 
 
-def test_estimator_register_publish_training_details(
-    sagemaker_session, region, cpu_instance_type, training_set
-):
+def test_estimator_register_publish_training_details(sagemaker_session, region):
 
     bucket = sagemaker_session.default_bucket()
     prefix = "model-card-sample-notebook"
