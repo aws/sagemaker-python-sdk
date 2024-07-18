@@ -1807,6 +1807,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model_card = ModelCard(
                 name="estimator_card",
                 training_details=training_details,
+                sagemaker_session=self.sagemaker_session,
             )
         return model.register(
             content_types,
