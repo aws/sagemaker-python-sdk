@@ -549,7 +549,10 @@ class Model(ModelBase, InferenceRecommenderMixin):
             model_package_group_name = utils.base_name_from_image(
                 self.image_uri, default_base_name=ModelPackage.__name__
             )
-        if model_package_group_name is not None:
+        if (
+            model_package_group_name is not None
+            and model_type is not JumpStartModelType.PROPRIETARY
+        ):
             container_def = self.prepare_container_def(accept_eula=accept_eula)
             container_def = update_container_with_inference_params(
                 framework=framework,
