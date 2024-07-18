@@ -108,6 +108,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
             assert prediction["score"] is not None
 
 
+@pytest.mark.release
 def test_estimator_register_publish_training_details(sagemaker_session, region):
 
     bucket = sagemaker_session.default_bucket()
@@ -145,7 +146,7 @@ def test_estimator_register_publish_training_details(sagemaker_session, region):
     S3Uploader.upload_bytes(b=buf, s3_uri=s3_train_data, sagemaker_session=sagemaker_session)
     output_location = f"s3://{bucket}/{prefix}/output"
     container = image_uris.retrieve("linear-learner", region)
-    estimator = sagemaker.estimator.Estimator(
+    estimator = Estimator(
         container,
         role="SageMakerRole",
         instance_count=1,
