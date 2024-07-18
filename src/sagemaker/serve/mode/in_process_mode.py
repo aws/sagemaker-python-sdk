@@ -13,6 +13,7 @@ from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.utils.exceptions import LocalDeepPingException
 from sagemaker.serve.model_server.multi_model_server.server import InProcessMultiModelServer
 from sagemaker.session import Session
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -45,19 +46,15 @@ class InProcessMode(
         self.session = session
         self.schema_builder = schema_builder
         self.model_server = model_server
-        self.client = None
-        self.container = None
-        self.secret_key = None
-        self._invoke_serving = None
         self._ping_container = None
 
     def load(self, model_path: str = None):
         """Loads model path, checks that path exists"""
         path = Path(model_path if model_path else self.model_path)
         if not path.exists():
-            raise Exception("model_path does not exist")
+            raise ValueError("model_path does not exist")
         if not path.is_dir():
-            raise Exception("model_path is not a valid directory")
+            raise ValueError("model_path is not a valid directory")
 
         return self.inference_spec.load(str(path))
 
@@ -69,15 +66,18 @@ class InProcessMode(
         predictor: PredictorBase,
     ):
         """Creating the server and checking ping health."""
-
-        # self.destroy_server()
-
         logger.info("Waiting for model server %s to start up...", self.model_server)
 
         if self.model_server == ModelServer.MMS:
             self._ping_container = self._multi_model_server_deep_ping
 
-        while True:
+        time_limit = datetime.now() + timedelta(seconds=5)
+        while self._ping_container is not None:
+            final_pull = datetime.now() > time_limit
+
+            if final_pull:
+                break
+
             time.sleep(10)
 
             healthy, response = self._ping_container(predictor)
