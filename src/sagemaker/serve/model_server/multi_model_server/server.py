@@ -14,7 +14,6 @@ from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_pat
 from sagemaker.s3 import S3Uploader
 from sagemaker.local.utils import get_docker_host
 from sagemaker.serve.utils.optimize_utils import _is_s3_uri
-import time
 from sagemaker.app import main
 
 MODE_DIR_BINDING = "/opt/ml/model/"
@@ -42,7 +41,7 @@ class InProcessMultiModelServer:
 
         try:
             response = requests.post(
-                f"http://0.0.0.0:8080/generate",
+                "http://0.0.0.0:8080/generate",
                 data=request,
                 headers={"Content-Type": content_type, "Accept": accept},
                 timeout=600,
