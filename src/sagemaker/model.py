@@ -551,6 +551,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             )
         if (
             model_package_group_name is not None
+            and self.model_type is not None
             and self.model_type is not JumpStartModelType.PROPRIETARY
         ):
             container_def = self.prepare_container_def(accept_eula=accept_eula)
