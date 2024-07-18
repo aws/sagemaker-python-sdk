@@ -5,6 +5,7 @@ from pathlib import Path
 import logging
 from typing import Dict, Type
 import time
+from datetime import datetime, timedelta
 
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -13,7 +14,6 @@ from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.utils.exceptions import LocalDeepPingException
 from sagemaker.serve.model_server.multi_model_server.server import InProcessMultiModelServer
 from sagemaker.session import Session
-from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 

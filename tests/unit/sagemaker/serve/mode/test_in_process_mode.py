@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import unittest
-from unittest.mock import MagicMock, patch, Mock, mock_open
+from unittest.mock import patch, Mock
 
 from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve import SchemaBuilder
