@@ -4402,10 +4402,7 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
-    model_card = {
-        'ModelCardStatus': ModelCardStatusEnum.DRAFT,
-        'ModelCardContent': '{}'
-    }
+    model_card = {"ModelCardStatus": ModelCardStatusEnum.DRAFT, "ModelCardContent": "{}"}
     estimator.register(
         content_types=content_types,
         response_types=response_types,
@@ -4458,10 +4455,7 @@ def test_register_inference_image(sagemaker_session):
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
-    model_card = {
-        'ModelCardStatus': ModelCardStatusEnum.DRAFT,
-        'ModelCardContent': '{}'
-    }
+    model_card = {"ModelCardStatus": ModelCardStatusEnum.DRAFT, "ModelCardContent": "{}"}
 
     estimator.register(
         content_types=content_types,
