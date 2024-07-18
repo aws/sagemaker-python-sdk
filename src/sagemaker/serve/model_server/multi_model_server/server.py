@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import asyncio
 import requests
 import logging
 import platform
@@ -13,6 +14,8 @@ from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_pat
 from sagemaker.s3 import S3Uploader
 from sagemaker.local.utils import get_docker_host
 from sagemaker.serve.utils.optimize_utils import _is_s3_uri
+import time
+from sagemaker.app import main
 
 MODE_DIR_BINDING = "/opt/ml/model/"
 _DEFAULT_ENV_VARS = {}
@@ -25,11 +28,36 @@ class InProcessMultiModelServer:
 
     def _start_serving(self):
         """Initializes the start of the server"""
-        return Exception("Not implemented")
+
+        logger.info("Server started at http://0.0.0.0")
+
+        asyncio.create_task(main())
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
         """Invokes the MMS server by sending POST request"""
-        return Exception("Not implemented")
+
+        logger.info(request)
+        logger.info(content_type)
+        logger.info(accept)
+
+        try:
+            response = requests.post(
+                f"http://0.0.0.0:8080/generate",
+                data=request,
+                headers={"Content-Type": content_type, "Accept": accept},
+                timeout=600,
+            )
+            response.raise_for_status()
+
+            return response.content
+        except requests.exceptions.ConnectionError as e:
+            logger.debug(f"Error connecting to the server: {e}")
+        except requests.exceptions.HTTPError as e:
+            logger.debug(f"HTTP error occurred: {e}")
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"An error occurred: {e}")
+        except Exception as e:
+            raise Exception("Unable to send request to the local container server") from e
 
     def _multi_model_server_deep_ping(self, predictor: PredictorBase):
         """Sends a deep ping to ensure prediction"""
