@@ -8349,9 +8349,7 @@ def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
     sagemaker_client = sagemaker_session.sagemaker_client
     request_end_time = time.time() + timeout if timeout else None
     description = _wait_until(
-        lambda: sagemaker_client.describe_training_job(
-            TrainingJobName=job_name
-        )
+        lambda: sagemaker_client.describe_training_job(TrainingJobName=job_name)
     )
     print(secondary_training_status_message(description, None), end="")
 
