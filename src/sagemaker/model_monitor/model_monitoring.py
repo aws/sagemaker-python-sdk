@@ -3290,10 +3290,11 @@ class ModelQualityMonitor(ModelMonitor):
             cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
             cw_client.put_dashboard(
                 DashboardName=dashboard_name,
-                DashboardBody=AutomaticDataQualityDashboard(
+                DashboardBody=AutomaticModelQualityDashboard(
                     endpoint_name=endpoint_input,
                     monitoring_schedule_name=monitor_schedule_name,
                     batch_transform_input=batch_transform_input,
+                    problem_type=problem_type,
                     region_name=self.sagemaker_session.boto_region_name,
                 ).to_json(),
             )

@@ -20,6 +20,18 @@ and ModelMonitor.
 import json 
 
 class DashboardWidgetProperties:
+    """
+    Represents properties of a dashboard widget used for metrics in CloudWatch.
+
+    Attributes:
+        view (str): Type of visualization ('timeSeries', 'singleValue', 'gauge', 'bar', 'pie', 'table').
+        stacked (bool): Whether to display the graph as stacked lines (applies to 'timeSeries' view).
+        metrics (list): Array of metrics configurations for the widget.
+        region (str): Region associated with the metrics.
+        period (int): Period in seconds for data points on the graph.
+        title (str): Title displayed for the graph or number (optional).
+        markdown (str): Markdown content to display within the widget (optional).
+    """
     def __init__(
         self,
         view=None,
@@ -30,6 +42,18 @@ class DashboardWidgetProperties:
         title=None,
         markdown=None,
     ):
+        """
+        Initializes DashboardWidgetProperties instance.
+
+        Args:
+            view (str, optional): Type of visualization ('timeSeries', 'singleValue', 'gauge', 'bar', 'pie', 'table').
+            stacked (bool, optional): Whether to display the graph as stacked lines (applies to 'timeSeries' view).
+            metrics (list, optional): Array of metrics configurations for the widget.
+            region (str, optional): Region associated with the metrics.
+            period (int, optional): Period in seconds for data points on the graph.
+            title (str, optional): Title displayed for the graph or number.
+            markdown (str, optional): Markdown content to display within the widget.
+        """
         self.view = view
         self.stacked = stacked
         self.metrics = metrics
@@ -39,6 +63,12 @@ class DashboardWidgetProperties:
         self.markdown = markdown
 
     def to_dict(self):
+        """
+        Converts DashboardWidgetProperties instance to a dictionary representation.
+
+        Returns:
+            dict: Dictionary containing widget properties suitable for JSON serialization.
+        """
         widget_properties_dict = {}
         if self.view is not None:
             widget_properties_dict["view"] = self.view
@@ -57,11 +87,35 @@ class DashboardWidgetProperties:
         return widget_properties_dict
 
     def to_json(self):
+        """
+        Converts DashboardWidgetProperties instance to a JSON string.
+
+        Returns:
+            str: JSON string representation of the widget properties.
+        """
         json.dumps(self.to_dict(), indent=4)
 
 
 class DashboardWidget:
+    """
+    Represents a widget in a CloudWatch dashboard.
+
+    Attributes:
+        height (int): Height of the widget.
+        width (int): Width of the widget.
+        type (str): Type of the widget.
+        properties (DashboardWidgetProperties): Properties specific to the widget type.
+    """
     def __init__(self, height, width, widget_type, properties=None):
+        """
+        Initializes DashboardWidget instance.
+
+        Args:
+            height (int): Height of the widget.
+            width (int): Width of the widget.
+            widget_type (str): Type of the widget.
+            properties (DashboardWidgetProperties, optional): Properties specific to the widget type.
+        """
         self.height = height
         self.width = width
         self.type = widget_type
@@ -72,6 +126,12 @@ class DashboardWidget:
         )
 
     def to_dict(self):
+        """
+        Converts DashboardWidget instance to a dictionary representation.
+
+        Returns:
+            dict: Dictionary containing widget attributes suitable for JSON serialization.
+        """
         return {
             "height": self.height,
             "width": self.width,
@@ -80,4 +140,10 @@ class DashboardWidget:
         }
 
     def to_json(self):
+        """
+        Converts DashboardWidget instance to a JSON string.
+
+        Returns:
+            str: JSON string representation of the widget attributes.
+        """
         return json.dumps(self.to_dict(), indent=4)

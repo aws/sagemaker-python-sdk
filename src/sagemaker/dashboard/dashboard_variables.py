@@ -20,9 +20,33 @@ and ModelMonitor.
 import json
 
 class DashboardVariable:
+    """
+    Represents a dashboard variable used for dynamic configuration in CloudWatch Dashboards.
+
+    Attributes:
+        variable_type (str): Type of dashboard variable ('property' or 'pattern').
+        variable_property (str): Property affected by the variable, such as a JSON property or metric dimension.
+        inputType (str): Type of input field ('input', 'select', or 'radio') for user interaction.
+        id (str): Identifier for the variable, up to 32 characters.
+        label (str): Label displayed for the input field (optional, defaults based on context).
+        search (str): Metric search expression to populate input options (required for 'select' or 'radio').
+        populateFrom (str): Dimension name used to populate input options from search results.
+    """
     def __init__(
         self, variable_type, variable_property, inputType, variable_id, label, search, populateFrom
     ):
+        """
+        Initializes a DashboardVariable instance.
+
+        Args:
+            variable_type (str): Type of dashboard variable ('property' or 'pattern').
+            variable_property (str): Property affected by the variable, such as a JSON property or metric dimension.
+            inputType (str): Type of input field ('input', 'select', or 'radio') for user interaction.
+            variable_id (str): Identifier for the variable, up to 32 characters.
+            label (str, optional): Label displayed for the input field (default is None).
+            search (str, optional): Metric search expression to populate input options (required for 'select' or 'radio').
+            populateFrom (str, optional): Dimension name used to populate input options from search results.
+        """
         self.variable_type = variable_type
         self.variable_property = variable_property
         self.inputType = inputType
@@ -32,6 +56,12 @@ class DashboardVariable:
         self.populateFrom = populateFrom
 
     def to_dict(self):
+        """
+        Converts DashboardVariable instance to a dictionary representation.
+
+        Returns:
+            dict: Dictionary containing variable properties suitable for JSON serialization.
+        """
         variable_properties_dict = {}
         if self.variable_type is not None:
             variable_properties_dict["type"] = self.variable_type
@@ -50,5 +80,11 @@ class DashboardVariable:
         return variable_properties_dict
 
     def to_json(self):
+        """
+        Converts DashboardVariable instance to a JSON string.
+
+        Returns:
+            str: JSON string representation of the variable properties.
+        """
         json.dumps(self.to_dict(), indent=4)
 

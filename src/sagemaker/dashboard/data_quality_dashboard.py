@@ -17,6 +17,7 @@ creation in ModelMonitor.
 import json 
 from sagemaker.dashboard.dashboard_variables import DashboardVariable
 from sagemaker.dashboard.dashboard_widgets import DashboardWidget, DashboardWidgetProperties
+from sagemaker.model_monitor.model_monitoring import EndpointInput
 
 class AutomaticDataQualityDashboard:
     DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE = (
@@ -27,7 +28,11 @@ class AutomaticDataQualityDashboard:
     )
 
     def __init__(self, endpoint_name, monitoring_schedule_name, batch_transform_input, region_name):
-        self.endpoint = endpoint_name
+        if type(endpoint_name) == EndpointInput: 
+            self.endpoint = endpoint_name.endpoint_name
+        else:
+            self.endpoint = endpoint_name
+            
         self.monitoring_schedule = monitoring_schedule_name
         self.batch_transform = batch_transform_input
         self.region = region_name
