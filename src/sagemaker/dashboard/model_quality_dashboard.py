@@ -130,7 +130,7 @@ class AutomaticModelQualityDashboard:
         for graphs_per_line in metrics_to_graph:
             for graph in graphs_per_line:
                 graph_title = graph[0]
-                graph_metrics = graph[1] 
+                graph_metrics = ["%^" + str(metric) + "$%" for metric in graph[1]] 
                 metrics_string = " OR ".join(graph_metrics)
                 if self.batch_transform is not None:
                     graph_properties = DashboardWidgetProperties(
