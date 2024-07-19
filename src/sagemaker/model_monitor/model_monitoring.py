@@ -45,6 +45,7 @@ from sagemaker.config.config_schema import (
     MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
     MONITORING_JOB_ROLE_ARN_PATH,
 )
+from sagemaker.dashboard.model_quality_dashboard import AutomaticModelQualityDashboard
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
 from sagemaker.model_monitor.monitoring_alert import (
@@ -68,7 +69,7 @@ from sagemaker.utils import (
 from sagemaker.lineage._utils import get_resource_name_from_arn
 from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator
 
-from sagemaker.model_monitor.dashboards import AutomaticDataQualityDashboard
+from sagemaker.dashboard.data_quality_dashboard import AutomaticDataQualityDashboard
 
 DEFAULT_REPOSITORY_NAME = "sagemaker-model-monitor-analyzer"
 
@@ -1537,6 +1538,63 @@ class ModelMonitor(object):
             )
             _LOGGER.error(message)
             raise ValueError(message)
+        
+    def _check_automatic_dashboard_validity(
+        self,
+        monitor_schedule_name,
+        enable_cloudwatch_metrics=True,
+        enable_automatic_dashboard=False,
+        dashboard_name=None,
+    ):
+        """Checks if the parameters provided to generate an automatic dashboard are valid
+
+        Args:
+            monitor_schedule_name (str): Monitoring schedule name.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+            enable_automatic_dashboard (bool): Whether to publish dashboard as part of
+                the monitoring job.
+            dashboard_name (str): The name to use when publishing dashboard
+        """
+        cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+        if (not enable_cloudwatch_metrics) and enable_automatic_dashboard:
+            message = "Could not create automatic dashboard. Please set enable_cloudwatch_metrics to True."
+            _LOGGER.error(message)
+            raise ValueError(message)
+        
+        if (not enable_automatic_dashboard) and dashboard_name != None:
+            message = "Provided dashboard_name, but enable_automatic_dashboard parameter was not set to True. Dashboard will not be generated."
+            _LOGGER.warning(message)
+
+        if enable_automatic_dashboard:
+            # verify that the provided dashboard name is not taken
+            dashboard_name = monitor_schedule_name if dashboard_name is None else dashboard_name
+            
+            dashboard_name_validation = bool(re.match(r"^[0-9A-Za-z\-_]{1,255}$", dashboard_name))
+            if dashboard_name_validation == False:
+                message = (
+                    f"Dashboard name {dashboard_name} is not a valid dashboard name. "
+                    "Dashboard name can be at most 255 characters long "
+                    "and valid characters in dashboard names include '0-9A-Za-z-_'."
+                )
+                _LOGGER.error(message)
+                raise ValueError(message)
+
+            try:
+                # try to access dashboard name to see if it exists
+                cw_client.get_dashboard(DashboardName=dashboard_name)
+                message = (
+                    f"Dashboard name {dashboard_name} is already in use. "
+                    "Please provide a different dashboard name, or delete the already "
+                    "existing dashboard."
+                )
+                _LOGGER.error(message)
+                raise ValueError(message)
+            except Exception as e:
+                # in this case, the dashboard name is not in use
+                # and we are free to write to it without overwriting any
+                # customer data.
+                pass
 
     def _create_monitoring_schedule_from_job_definition(
         self,
@@ -1993,7 +2051,6 @@ class DefaultModelMonitor(ModelMonitor):
             data_analysis_end_time (str): End time for the data analysis window
                 for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
-        cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
 
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
@@ -2013,47 +2070,19 @@ class DefaultModelMonitor(ModelMonitor):
             logger.error(message)
             raise ValueError(message)
 
-        # error checking and validation logic for dashboard name
-        if (not enable_cloudwatch_metrics) and enable_automatic_dashboard:
-            message = "Could not create automatic dashboard. Please set enable_cloudwatch_metrics to True."
-            logger.error(message)
-            raise ValueError(message)
-
-        if enable_automatic_dashboard:
-            # verify that the provided dashboard name is not taken
-            dashboard_name = monitor_schedule_name if dashboard_name is None else dashboard_name
-
-            dashboard_name_validation = bool(re.match(r"^[0-9A-Za-z\-_]{1,255}$", dashboard_name))
-            if dashboard_name_validation == False:
-                message = (
-                    f"Dashboard name {dashboard_name} is not a valid dashboard name. "
-                    "Dashboard name can be at most 255 characters long "
-                    "and valid characters in dashboard names include '0-9A-Za-z-_'."
-                )
-                logger.error(message)
-                raise ValueError(message)
-
-            try:
-                # try to access dashboard name to see if it exists
-                cw_client.get_dashboard(DashboardName=dashboard_name)
-                message = (
-                    f"Dashboard name {dashboard_name} is already in use. "
-                    "Please provide a different dashboard name, or delete the already "
-                    "existing dashboard."
-                )
-                logger.error(message)
-                raise ValueError(message)
-            except Exception as e:
-                # in this case, the dashboard name is not in use
-                # and we are free to write to it without overwriting any
-                # customer data.
-                pass
-
         self._check_monitoring_schedule_cron_validity(
             schedule_cron_expression=schedule_cron_expression,
             data_analysis_start_time=data_analysis_start_time,
             data_analysis_end_time=data_analysis_end_time,
         )
+        
+        self._check_automatic_dashboard_validity(
+            monitor_schedule_name=monitor_schedule_name,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+            enable_automatic_dashboard=enable_automatic_dashboard,
+            dashboard_name=dashboard_name
+        )
+
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -2111,7 +2140,11 @@ class DefaultModelMonitor(ModelMonitor):
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
                 logger.exception(message)
             raise
+        
         if enable_automatic_dashboard:
+            if dashboard_name is None:
+                dashboard_name = monitor_schedule_name
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
             cw_client.put_dashboard(
                 DashboardName=dashboard_name,
                 DashboardBody=AutomaticDataQualityDashboard(
@@ -3114,6 +3147,8 @@ class ModelQualityMonitor(ModelMonitor):
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
+        enable_automatic_dashboard=False,
+        dashboard_name=None,
         batch_transform_input=None,
         data_analysis_start_time=None,
         data_analysis_end_time=None,
@@ -3177,11 +3212,18 @@ class ModelQualityMonitor(ModelMonitor):
             )
             logger.error(message)
             raise ValueError(message)
-
+        
         self._check_monitoring_schedule_cron_validity(
             schedule_cron_expression=schedule_cron_expression,
             data_analysis_start_time=data_analysis_start_time,
             data_analysis_end_time=data_analysis_end_time,
+        )
+        
+        self._check_automatic_dashboard_validity(
+            monitor_schedule_name=monitor_schedule_name,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+            enable_automatic_dashboard=enable_automatic_dashboard,
+            dashboard_name=dashboard_name
         )
 
         # create job definition
@@ -3241,6 +3283,20 @@ class ModelQualityMonitor(ModelMonitor):
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
                 logger.exception(message)
             raise
+        
+        if enable_automatic_dashboard:
+            if dashboard_name is None:
+                dashboard_name = monitor_schedule_name
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            cw_client.put_dashboard(
+                DashboardName=dashboard_name,
+                DashboardBody=AutomaticDataQualityDashboard(
+                    endpoint_name=endpoint_input,
+                    monitoring_schedule_name=monitor_schedule_name,
+                    batch_transform_input=batch_transform_input,
+                    region_name=self.sagemaker_session.boto_region_name,
+                ).to_json(),
+            )
 
     def update_monitoring_schedule(
         self,
