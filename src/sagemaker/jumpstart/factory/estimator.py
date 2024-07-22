@@ -29,6 +29,10 @@ from sagemaker.jumpstart.artifacts import (
     _retrieve_model_package_model_artifact_s3_uri,
 )
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
+from sagemaker.jumpstart.hub.utils import (
+    construct_hub_model_arn_from_inputs,
+    construct_hub_model_reference_arn_from_inputs,
+)
 from sagemaker.session import Session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -52,6 +56,7 @@ from sagemaker.jumpstart.constants import (
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.factory import model
 from sagemaker.jumpstart.types import (
+    HubContentType,
     JumpStartEstimatorDeployKwargs,
     JumpStartEstimatorFitKwargs,
     JumpStartEstimatorInitKwargs,
@@ -203,6 +208,11 @@ def get_init_kwargs(
     estimator_init_kwargs = _add_region_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_instance_type_and_count_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_image_uri_to_kwargs(estimator_init_kwargs)
+    if hub_arn:
+        estimator_init_kwargs = _add_model_reference_arn_to_kwargs(kwargs=estimator_init_kwargs)
+    else:
+        estimator_init_kwargs.model_reference_arn = None
+        estimator_init_kwargs.hub_content_type = None
     estimator_init_kwargs = _add_model_uri_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_source_dir_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_entry_point_to_kwargs(estimator_init_kwargs)
@@ -433,7 +443,7 @@ def _add_sagemaker_session_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs
     kwargs.sagemaker_session = (
         kwargs.sagemaker_session
         or get_default_jumpstart_session_with_user_agent_suffix(
-            kwargs.model_id, kwargs.model_version
+            kwargs.model_id, kwargs.model_version, kwargs.hub_arn
         )
     )
     return kwargs
@@ -528,7 +538,15 @@ def _add_tags_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstima
         )
 
     if kwargs.hub_arn:
-        kwargs.tags = add_hub_content_arn_tags(kwargs.tags, kwargs.hub_arn)
+        if kwargs.model_reference_arn:
+            hub_content_arn = construct_hub_model_reference_arn_from_inputs(
+                kwargs.hub_arn, kwargs.model_id, kwargs.model_version
+            )
+        else:
+            hub_content_arn = construct_hub_model_arn_from_inputs(
+                kwargs.hub_arn, kwargs.model_id, kwargs.model_version
+            )
+        kwargs.tags = add_hub_content_arn_tags(kwargs.tags, hub_content_arn=hub_content_arn)
 
     return kwargs
 
@@ -550,6 +568,33 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
         config_name=kwargs.config_name,
     )
 
+    return kwargs
+
+
+def _add_model_reference_arn_to_kwargs(
+    kwargs: JumpStartEstimatorInitKwargs,
+) -> JumpStartEstimatorInitKwargs:
+    """Sets Model Reference ARN if the hub content type is Model Reference, returns full kwargs."""
+
+    hub_content_type = verify_model_region_and_return_specs(
+        model_id=kwargs.model_id,
+        version=kwargs.model_version,
+        hub_arn=kwargs.hub_arn,
+        scope=JumpStartScriptScope.TRAINING,
+        region=kwargs.region,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        model_type=kwargs.model_type,
+    ).hub_content_type
+    kwargs.hub_content_type = hub_content_type if kwargs.hub_arn else None
+
+    if hub_content_type == HubContentType.MODEL_REFERENCE:
+        kwargs.model_reference_arn = construct_hub_model_reference_arn_from_inputs(
+            hub_arn=kwargs.hub_arn, model_name=kwargs.model_id, version=kwargs.model_version
+        )
+    else:
+        kwargs.model_reference_arn = None
     return kwargs
 
 

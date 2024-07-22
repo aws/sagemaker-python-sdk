@@ -28,7 +28,6 @@ from sagemaker.serve.utils.optimize_utils import (
     _generate_additional_model_data_sources,
     _generate_channel_name,
     _extract_optimization_config_and_env,
-    _normalize_local_model_path,
     _is_optimized,
     _custom_speculative_decoding,
     _is_inferentia_or_trainium,
@@ -310,19 +309,6 @@ def test_extract_optimization_config_and_env(
         expected_config,
         expected_env,
     )
-
-
-@pytest.mark.parametrize(
-    "my_path, expected_path",
-    [
-        ("local/path/llama/code", "local/path/llama"),
-        ("local/path/llama/code/", "local/path/llama"),
-        ("local/path/llama/", "local/path/llama/"),
-        ("local/path/llama", "local/path/llama"),
-    ],
-)
-def test_normalize_local_model_path(my_path, expected_path):
-    assert _normalize_local_model_path(my_path) == expected_path
 
 
 class TestCustomSpeculativeDecodingConfig(unittest.TestCase):

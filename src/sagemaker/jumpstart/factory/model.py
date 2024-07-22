@@ -34,7 +34,10 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_LOGGER,
 )
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
-from sagemaker.jumpstart.hub.utils import construct_hub_model_reference_arn_from_inputs
+from sagemaker.jumpstart.hub.utils import (
+    construct_hub_model_arn_from_inputs,
+    construct_hub_model_reference_arn_from_inputs,
+)
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -156,12 +159,14 @@ def _add_sagemaker_session_to_kwargs(
     kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs]
 ) -> JumpStartModelInitKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
+
     kwargs.sagemaker_session = (
         kwargs.sagemaker_session
         or get_default_jumpstart_session_with_user_agent_suffix(
-            kwargs.model_id, kwargs.model_version
+            kwargs.model_id, kwargs.model_version, kwargs.hub_arn
         )
     )
+
     return kwargs
 
 
@@ -273,6 +278,7 @@ def _add_model_reference_arn_to_kwargs(
     kwargs: JumpStartModelInitKwargs,
 ) -> JumpStartModelInitKwargs:
     """Sets Model Reference ARN if the hub content type is Model Reference, returns full kwargs."""
+
     hub_content_type = verify_model_region_and_return_specs(
         model_id=kwargs.model_id,
         version=kwargs.model_version,
@@ -573,7 +579,15 @@ def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
         )
 
     if kwargs.hub_arn:
-        kwargs.tags = add_hub_content_arn_tags(kwargs.tags, kwargs.hub_arn)
+        if kwargs.model_reference_arn:
+            hub_content_arn = construct_hub_model_reference_arn_from_inputs(
+                kwargs.hub_arn, kwargs.model_id, kwargs.model_version
+            )
+        else:
+            hub_content_arn = construct_hub_model_arn_from_inputs(
+                kwargs.hub_arn, kwargs.model_id, kwargs.model_version
+            )
+        kwargs.tags = add_hub_content_arn_tags(kwargs.tags, hub_content_arn=hub_content_arn)
 
     return kwargs
 
