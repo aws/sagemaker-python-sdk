@@ -19,6 +19,7 @@ and ModelMonitor.
 
 import json
 
+
 class DashboardVariable:
     """
     Represents a dashboard variable used for dynamic configuration in CloudWatch Dashboards.
@@ -32,6 +33,7 @@ class DashboardVariable:
         search (str): Metric search expression to populate input options (required for 'select' or 'radio').
         populateFrom (str): Dimension name used to populate input options from search results.
     """
+
     def __init__(
         self, variable_type, variable_property, inputType, variable_id, label, search, populateFrom
     ):
@@ -87,4 +89,3 @@ class DashboardVariable:
             str: JSON string representation of the variable properties.
         """
         json.dumps(self.to_dict(), indent=4)
-

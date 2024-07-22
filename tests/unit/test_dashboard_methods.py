@@ -2,6 +2,7 @@ from sagemaker.dashboard.data_quality_dashboard import AutomaticDataQualityDashb
 from sagemaker.dashboard.dashboard_variables import DashboardVariable
 from sagemaker.dashboard.dashboard_widgets import DashboardWidget, DashboardWidgetProperties
 
+
 def test_variable_to_dict():
     var = DashboardVariable(
         variable_type="property",

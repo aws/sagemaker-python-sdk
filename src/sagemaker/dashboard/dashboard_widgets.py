@@ -17,7 +17,8 @@ to publish the generated dashboards. To be used to aid dashboard creation in Cla
 and ModelMonitor. 
 """
 
-import json 
+import json
+
 
 class DashboardWidgetProperties:
     """
@@ -32,6 +33,7 @@ class DashboardWidgetProperties:
         title (str): Title displayed for the graph or number (optional).
         markdown (str): Markdown content to display within the widget (optional).
     """
+
     def __init__(
         self,
         view=None,
@@ -106,6 +108,7 @@ class DashboardWidget:
         type (str): Type of the widget.
         properties (DashboardWidgetProperties): Properties specific to the widget type.
     """
+
     def __init__(self, height, width, widget_type, properties=None):
         """
         Initializes DashboardWidget instance.

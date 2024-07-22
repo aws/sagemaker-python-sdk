@@ -14,10 +14,11 @@
 creation in ModelMonitor. 
 """
 
-import json 
+import json
 from sagemaker.dashboard.dashboard_variables import DashboardVariable
 from sagemaker.dashboard.dashboard_widgets import DashboardWidget, DashboardWidgetProperties
 from sagemaker.model_monitor.model_monitoring import EndpointInput
+
 
 class AutomaticDataQualityDashboard:
     DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE = (
@@ -28,11 +29,11 @@ class AutomaticDataQualityDashboard:
     )
 
     def __init__(self, endpoint_name, monitoring_schedule_name, batch_transform_input, region_name):
-        if type(endpoint_name) == EndpointInput: 
+        if type(endpoint_name) == EndpointInput:
             self.endpoint = endpoint_name.endpoint_name
         else:
             self.endpoint = endpoint_name
-            
+
         self.monitoring_schedule = monitoring_schedule_name
         self.batch_transform = batch_transform_input
         self.region = region_name
@@ -96,15 +97,15 @@ class AutomaticDataQualityDashboard:
                                 f"%^feature_string_counts_.*% OR "
                                 f"%^feature_boolean_counts_.*% OR "
                                 f"%^feature_unknown_counts_.*% "
-                                f"Feature=\"_\" "
-                                f"MonitoringSchedule=\"{self.monitoring_schedule}\" ', "
+                                f'Feature="_" '
+                                f'MonitoringSchedule="{self.monitoring_schedule}" \', '
                                 f"'Average')"
                             )
                         }
                     ]
                 ],
                 region=self.region,
-                title="Type Counts"
+                title="Type Counts",
             )
 
         else:
@@ -121,16 +122,16 @@ class AutomaticDataQualityDashboard:
                                 f"%^feature_string_counts_.*% OR "
                                 f"%^feature_boolean_counts_.*% OR "
                                 f"%^feature_unknown_counts_.*% "
-                                f"Endpoint=\"{self.endpoint}\" "
-                                f"Feature=\"_\" "
-                                f"MonitoringSchedule=\"{self.monitoring_schedule}\" ', "
+                                f'Endpoint="{self.endpoint}" '
+                                f'Feature="_" '
+                                f'MonitoringSchedule="{self.monitoring_schedule}" \', '
                                 f"'Average')"
                             )
                         }
                     ]
                 ],
                 region=self.region,
-                title="Type Counts"
+                title="Type Counts",
             )
 
         return DashboardWidget(
@@ -148,15 +149,15 @@ class AutomaticDataQualityDashboard:
                             "expression": (
                                 f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_null_.*% OR %^feature_non_null_.*% "
-                                f"Feature=\"_\" "
-                                f"MonitoringSchedule=\"{self.monitoring_schedule}\" ', "
+                                f'Feature="_" '
+                                f'MonitoringSchedule="{self.monitoring_schedule}" \', '
                                 f"'Average')"
                             )
                         }
                     ]
                 ],
                 region=self.region,
-                title="Missing Data Counts"
+                title="Missing Data Counts",
             )
 
         else:
@@ -167,12 +168,12 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f'SEARCH( \'{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} '
-                                f'%^feature_null_.*% OR %^feature_non_null_.*% '
+                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
+                                f"%^feature_null_.*% OR %^feature_non_null_.*% "
                                 f'Endpoint="{self.endpoint}" '
                                 f'Feature="_" '
                                 f'MonitoringSchedule="{self.monitoring_schedule}" \', '
-                                f'\'Average\')'
+                                f"'Average')"
                             )
                         }
                     ]
@@ -195,15 +196,15 @@ class AutomaticDataQualityDashboard:
                             "expression": (
                                 f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_estimated_unique_values_.*% "
-                                f"Feature=\"_\" "
-                                f"MonitoringSchedule=\"{self.monitoring_schedule}\" ', "
+                                f'Feature="_" '
+                                f'MonitoringSchedule="{self.monitoring_schedule}" \', '
                                 f"'Average')"
                             )
                         }
                     ]
                 ],
                 region=self.region,
-                title="Estimated Unique Values"
+                title="Estimated Unique Values",
             )
 
         else:
@@ -216,16 +217,16 @@ class AutomaticDataQualityDashboard:
                             "expression": (
                                 f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
                                 f"%^feature_estimated_unique_values_.*% "
-                                f"Endpoint=\"{self.endpoint}\" "
-                                f"Feature=\"_\" "
-                                f"MonitoringSchedule=\"{self.monitoring_schedule}\" ', "
+                                f'Endpoint="{self.endpoint}" '
+                                f'Feature="_" '
+                                f'MonitoringSchedule="{self.monitoring_schedule}" \', '
                                 f"'Average')"
                             )
                         }
                     ]
                 ],
                 region=self.region,
-                title="Estimated Unique Values"
+                title="Estimated Unique Values",
             )
 
         return DashboardWidget(
@@ -246,15 +247,15 @@ class AutomaticDataQualityDashboard:
                             "expression": (
                                 f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_completeness_.*% "
-                                f"Feature=\"_\" "
-                                f"MonitoringSchedule=\"{self.monitoring_schedule}\" ', "
+                                f'Feature="_" '
+                                f'MonitoringSchedule="{self.monitoring_schedule}" \', '
                                 f"'Average')"
                             )
                         }
                     ]
                 ],
                 region=self.region,
-                title="Completeness"
+                title="Completeness",
             )
 
         else:
@@ -267,9 +268,9 @@ class AutomaticDataQualityDashboard:
                             "expression": (
                                 f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
                                 f"%^feature_completeness_.*% "
-                                f"Endpoint=\"{self.endpoint}\" "
-                                f"Feature=\"_\" "
-                                f"MonitoringSchedule=\"{self.monitoring_schedule}\" ', "
+                                f'Endpoint="{self.endpoint}" '
+                                f'Feature="_" '
+                                f'MonitoringSchedule="{self.monitoring_schedule}" \', '
                                 f"'Average')"
                             )
                         }
@@ -294,8 +295,8 @@ class AutomaticDataQualityDashboard:
                             "expression": (
                                 f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_baseline_drift_.*% "
-                                f"Feature=\"_\" "
-                                f"MonitoringSchedule=\"{self.monitoring_schedule}\" ', "
+                                f'Feature="_" '
+                                f'MonitoringSchedule="{self.monitoring_schedule}" \', '
                                 f"'Average')"
                             )
                         }
@@ -313,12 +314,12 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f'SEARCH( \'{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} '
-                                f'%^feature_baseline_drift_.*% '
+                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
+                                f"%^feature_baseline_drift_.*% "
                                 f'Endpoint="{self.endpoint}" '
                                 f'Feature="_" '
                                 f'MonitoringSchedule="{self.monitoring_schedule}" \', '
-                                f'\'Average\')'
+                                f"'Average')"
                             )
                         }
                     ]
