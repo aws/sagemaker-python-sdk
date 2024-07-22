@@ -17,6 +17,8 @@ ALTERNATE_DOMAINS = {
     "cn-northwest-1": "amazonaws.com.cn",
     "us-iso-east-1": "c2s.ic.gov",
     "us-isob-east-1": "sc2s.sgov.gov",
+    "us-isof-south-1": "csp.hci.ic.gov",
+    "us-isof-east-1": "csp.hci.ic.gov",
 }
 DOMAIN = "amazonaws.com"
 IMAGE_URI_FORMAT = "{}.dkr.ecr.{}.{}/{}:{}"
