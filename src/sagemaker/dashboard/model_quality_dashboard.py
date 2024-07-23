@@ -95,8 +95,7 @@ class AutomaticModelQualityDashboard:
         problem_type,
         region_name,
     ):
-        """
-        Initializes an AutomaticModelQualityDashboard instance.
+        """Initializes an AutomaticModelQualityDashboard instance.
 
         Args:
             endpoint_name (str): Name of the SageMaker endpoint.
@@ -116,8 +115,7 @@ class AutomaticModelQualityDashboard:
         }
 
     def _generate_widgets(self):
-        """
-        Generates widgets based on the specified problem type and metrics.
+        """Generates widgets based on the specified problem type and metrics.
 
         Returns:
             list: List of DashboardWidget instances representing each metric graph.
@@ -195,8 +193,7 @@ class AutomaticModelQualityDashboard:
         return list_of_widgets
 
     def to_dict(self):
-        """
-        Converts the AutomaticModelQualityDashboard instance to a dictionary representation.
+        """Converts the AutomaticModelQualityDashboard instance to a dictionary representation.
 
         Returns:
             dict: Dictionary containing the dashboard widgets.
@@ -206,8 +203,7 @@ class AutomaticModelQualityDashboard:
         }
 
     def to_json(self):
-        """
-        Converts the AutomaticModelQualityDashboard instance to a JSON string.
+        """Converts the AutomaticModelQualityDashboard instance to a JSON string.
 
         Returns:
             str: JSON string representation of the dashboard widgets.

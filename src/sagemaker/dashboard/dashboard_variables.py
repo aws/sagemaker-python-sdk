@@ -21,8 +21,7 @@ import json
 
 
 class DashboardVariable:
-    """
-    Represents a dashboard variable used for dynamic configuration in CloudWatch Dashboards.
+    """Represents a dashboard variable used for dynamic configuration in CloudWatch Dashboards.
 
     Attributes:
         variable_type (str): Type of dashboard variable ('property' or 'pattern').
@@ -37,8 +36,7 @@ class DashboardVariable:
     def __init__(
         self, variable_type, variable_property, inputType, variable_id, label, search, populateFrom
     ):
-        """
-        Initializes a DashboardVariable instance.
+        """Initializes a DashboardVariable instance.
 
         Args:
             variable_type (str): Type of dashboard variable ('property' or 'pattern').
@@ -58,8 +56,7 @@ class DashboardVariable:
         self.populateFrom = populateFrom
 
     def to_dict(self):
-        """
-        Converts DashboardVariable instance to a dictionary representation.
+        """Converts DashboardVariable instance to a dictionary representation.
 
         Returns:
             dict: Dictionary containing variable properties suitable for JSON serialization.
@@ -82,8 +79,7 @@ class DashboardVariable:
         return variable_properties_dict
 
     def to_json(self):
-        """
-        Converts DashboardVariable instance to a JSON string.
+        """Converts DashboardVariable instance to a JSON string.
 
         Returns:
             str: JSON string representation of the variable properties.
