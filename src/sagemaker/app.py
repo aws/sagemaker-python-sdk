@@ -48,7 +48,14 @@ async def main():
     """Running server locally with uvicorn"""
     logger.info("Running")
     config = uvicorn.Config(
-        "sagemaker.app:app", host="0.0.0.0", port=8000, log_level="info", loop="asyncio"
+        "sagemaker.app:app",
+        host="0.0.0.0",
+        port=8000,
+        log_level="info",
+        loop="asyncio",
+        reload=True,
+        workers=3,
+        use_colors=True,
     )
     server = uvicorn.Server(config)
     await server.serve()
