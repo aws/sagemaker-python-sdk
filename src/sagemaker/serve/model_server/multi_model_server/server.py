@@ -41,7 +41,7 @@ class InProcessMultiModelServer:
 
         try:
             response = requests.post(
-                "http://0.0.0.0:8080/generate",
+                "http://0.0.0.0:8000/generate",
                 data=request,
                 headers={"Content-Type": content_type, "Accept": accept},
                 timeout=600,
