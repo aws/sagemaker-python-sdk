@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 import logging
 from transformers import pipeline
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import uvicorn
 
 logger = logging.getLogger(__name__)
@@ -22,14 +22,16 @@ def read_root():
     return {"Hello": "World"}
 
 
-@app.post("/generate")
-def generate_text(prompt: str, max_length=500, num_return_sequences=1):
+@app.get("/generate")
+async def generate_text(prompt: Request):
     """Placeholder docstring"""
     logger.info("Generating Text....")
 
-    generated_text = generator(
-        prompt, max_length=max_length, num_return_sequences=num_return_sequences
-    )
+    str_prompt = await prompt.json()
+
+    logger.info(str_prompt)
+
+    generated_text = generator(str_prompt, max_length=30, num_return_sequences=5, truncation=True)
     return generated_text[0]["generated_text"]
 
 
@@ -37,16 +39,16 @@ generator = pipeline("text-generation", model="gpt2")
 
 
 @app.post("/post")
-def post(prompt: str):
+def post(payload: dict):
     """Placeholder docstring"""
-    return prompt
+    return payload
 
 
 async def main():
     """Running server locally with uvicorn"""
     logger.info("Running")
     config = uvicorn.Config(
-        "sagemaker.app:app", host="0.0.0.0", port=8080, log_level="info", loop="asyncio"
+        "sagemaker.app:app", host="0.0.0.0", port=8000, log_level="info", loop="asyncio"
     )
     server = uvicorn.Server(config)
     await server.serve()
