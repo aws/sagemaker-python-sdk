@@ -16,7 +16,7 @@ These classes assist with creating dashboards in Python3 and then using boto3 Cl
 to publish the generated dashboards. To be used to aid dashboard creation in ClarifyModelMonitor
 and ModelMonitor. 
 """
-
+from __future__ import absolute_import
 import json
 
 

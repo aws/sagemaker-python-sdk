@@ -1,0 +1,4 @@
+from __future__ import absolute_import
+
+from sagemaker.dashboard.data_quality_dashboard import AutomaticDataQualityDashboard
+from sagemaker.dashboard.model_quality_dashboard import AutomaticModelQualityDashboard

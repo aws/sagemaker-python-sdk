@@ -1,11 +1,10 @@
+from __future__ import absolute_import
 import json
 from sagemaker.dashboard.dashboard_widgets import DashboardWidget, DashboardWidgetProperties
-from sagemaker.model_monitor import EndpointInput
 
 
 class AutomaticModelQualityDashboard:
-    """
-    Represents a dashboard for automatic model quality metrics in Amazon SageMaker.
+    """Represents a dashboard for automatic model quality metrics in Amazon SageMaker.
 
     Attributes:
         MODEL_QUALITY_METRICS_ENDPOINT_NAMESPACE (str): Namespace for model metrics at endpoint level.
@@ -106,11 +105,7 @@ class AutomaticModelQualityDashboard:
             problem_type (str): Type of problem ('Regression', 'BinaryClassification', or 'MulticlassClassification').
             region_name (str): AWS region name.
         """
-        if type(endpoint_name) == EndpointInput:
-            self.endpoint = endpoint_name.endpoint_name
-        else:
-            self.endpoint = endpoint_name
-
+        self.endpoint = endpoint_name
         self.monitoring_schedule = monitoring_schedule_name
         self.batch_transform = batch_transform_input
         self.region = region_name

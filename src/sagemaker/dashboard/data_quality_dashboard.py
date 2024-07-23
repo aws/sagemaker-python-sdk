@@ -13,14 +13,53 @@
 """This module the wrapper class for data quality dashboard. To be used to aid dashboard 
 creation in ModelMonitor. 
 """
+from __future__ import absolute_import
 
 import json
 from sagemaker.dashboard.dashboard_variables import DashboardVariable
 from sagemaker.dashboard.dashboard_widgets import DashboardWidget, DashboardWidgetProperties
-from sagemaker.model_monitor.model_monitoring import EndpointInput
 
 
 class AutomaticDataQualityDashboard:
+    """A wrapper class for creating a data quality dashboard to aid ModelMonitor dashboard creation.
+
+    This class generates dashboard variables and widgets based on the endpoint and monitoring
+    schedule provided.
+
+    Attributes:
+        DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE (str): Namespace for endpoint data quality metrics.
+        DATA_QUALITY_METRICS_BATCH_NAMESPACE (str): Namespace for batch transform data quality metrics.
+
+    Methods:
+        __init__(self, endpoint_name, monitoring_schedule_name, batch_transform_input, region_name):
+            Initializes the AutomaticDataQualityDashboard instance.
+
+        _generate_variables(self):
+            Generates variables for the dashboard based on whether batch transform is used or not.
+
+        _generate_type_counts_widget(self):
+            Generates a widget for displaying type counts based on endpoint or batch transform.
+
+        _generate_null_counts_widget(self):
+            Generates a widget for displaying null and non-null counts based on endpoint or batch transform.
+
+        _generate_estimated_unique_values_widget(self):
+            Generates a widget for displaying estimated unique values based on endpoint or batch transform.
+
+        _generate_completeness_widget(self):
+            Generates a widget for displaying completeness based on endpoint or batch transform.
+
+        _generate_baseline_drift_widget(self):
+            Generates a widget for displaying baseline drift based on endpoint or batch transform.
+
+        to_dict(self):
+            Converts the dashboard configuration to a dictionary representation.
+
+        to_json(self):
+            Converts the dashboard configuration to a JSON formatted string.
+
+    """
+
     DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE = (
         "{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}"
     )
@@ -29,11 +68,19 @@ class AutomaticDataQualityDashboard:
     )
 
     def __init__(self, endpoint_name, monitoring_schedule_name, batch_transform_input, region_name):
-        if type(endpoint_name) == EndpointInput:
-            self.endpoint = endpoint_name.endpoint_name
-        else:
-            self.endpoint = endpoint_name
+        """Initializes an instance of AutomaticDataQualityDashboard.
 
+        Args:
+            endpoint_name (str or EndpointInput): Name of the endpoint or EndpointInput object.
+            monitoring_schedule_name (str): Name of the monitoring schedule.
+            batch_transform_input (str): Name of the batch transform input.
+            region_name (str): AWS region name.
+
+        If endpoint_name is of type EndpointInput, it extracts endpoint_name from it.
+
+        """
+
+        self.endpoint = endpoint_name
         self.monitoring_schedule = monitoring_schedule_name
         self.batch_transform = batch_transform_input
         self.region = region_name
@@ -57,6 +104,12 @@ class AutomaticDataQualityDashboard:
         }
 
     def _generate_variables(self):
+        """Generates dashboard variables based on the presence of batch transform.
+
+        Returns:
+            list: List of DashboardVariable objects.
+
+        """
         if self.batch_transform is not None:
             return [
                 DashboardVariable(
@@ -83,6 +136,12 @@ class AutomaticDataQualityDashboard:
         ]
 
     def _generate_type_counts_widget(self):
+        """Generates a widget for displaying type counts based on endpoint or batch transform.
+
+        Returns:
+            DashboardWidget: A DashboardWidget object configured for type counts.
+
+        """
         if self.batch_transform is not None:
             type_counts_widget_properties = DashboardWidgetProperties(
                 view="timeSeries",
@@ -139,6 +198,12 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_null_counts_widget(self):
+        """Generates a widget for displaying null and non-null counts based on endpoint or batch transform.
+
+        Returns:
+            DashboardWidget: A DashboardWidget object configured for null counts.
+
+        """
         if self.batch_transform is not None:
             null_counts_widget_properties = DashboardWidgetProperties(
                 view="timeSeries",
@@ -186,6 +251,12 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_estimated_unique_values_widget(self):
+        """Generates a widget for displaying estimated unique values based on endpoint or batch transform.
+
+        Returns:
+            DashboardWidget: A DashboardWidget object configured for estimated unique values.
+
+        """
         if self.batch_transform is not None:
             estimated_unique_vals_widget_properties = DashboardWidgetProperties(
                 view="timeSeries",
@@ -237,6 +308,12 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_completeness_widget(self):
+        """Generates a widget for displaying completeness based on endpoint or batch transform.
+
+        Returns:
+            DashboardWidget: A DashboardWidget object configured for completeness.
+
+        """
         if self.batch_transform is not None:
             completeness_widget_properties = DashboardWidgetProperties(
                 view="timeSeries",
@@ -285,6 +362,12 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_baseline_drift_widget(self):
+        """Generates a widget for displaying baseline drift based on endpoint or batch transform.
+
+        Returns:
+            DashboardWidget: A DashboardWidget object configured for baseline drift.
+
+        """
         if self.batch_transform is not None:
             baseline_drift_widget_properties = DashboardWidgetProperties(
                 view="timeSeries",
@@ -332,10 +415,22 @@ class AutomaticDataQualityDashboard:
         )
 
     def to_dict(self):
+        """Converts the AutomaticDataQualityDashboard configuration to a dictionary representation.
+
+        Returns:
+            dict: A dictionary containing variables and widgets configurations.
+
+        """
         return {
             "variables": [var.to_dict() for var in self.dashboard["variables"]],
             "widgets": [widget.to_dict() for widget in self.dashboard["widgets"]],
         }
 
     def to_json(self):
+        """Converts the AutomaticDataQualityDashboard configuration to a JSON formatted string.
+
+        Returns:
+            str: A JSON formatted string representation of the dashboard configuration.
+
+        """
         return json.dumps(self.to_dict(), indent=4)

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from sagemaker.dashboard.data_quality_dashboard import AutomaticDataQualityDashboard
 from sagemaker.dashboard.dashboard_variables import DashboardVariable
 from sagemaker.dashboard.dashboard_widgets import DashboardWidget, DashboardWidgetProperties
