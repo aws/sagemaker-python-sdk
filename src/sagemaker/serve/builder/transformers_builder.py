@@ -410,9 +410,10 @@ class Transformers(ABC):
         """Creating conda environment by running commands"""
 
         try:
-            subprocess.run("conda env create -f conda_in_process.yml", shell=True)
-            print("Successfully created conda environment with dependencies from .yml file.")
-            subprocess.run("conda activate conda_env", shell=True)
-            print("Successfully activated conda environment.")
+            #subprocess.run("conda env create -f conda_in_process.yml", shell=True)
+            #print("Successfully created conda environment with dependencies from .yml file.")
+            #subprocess.run("conda activate conda_env", shell=True)
+            #print("Successfully activated conda environment.")
+            subprocess.run("conda env update -n /home/ec2-user/anaconda3/envs/pytorch_p310 --file=conda_in_process.yml", shell=True)
         except subprocess.CalledProcessError:
             print("Failed to create and activate conda environment.")
