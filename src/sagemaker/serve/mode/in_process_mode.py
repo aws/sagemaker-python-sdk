@@ -73,6 +73,7 @@ class InProcessMode(
         logger.info("Waiting for model server %s to start up...", self.model_server)
 
         if self.model_server == ModelServer.MMS:
+            self._start_serving()
             self._ping_container = self._multi_model_server_deep_ping
 
         time_limit = datetime.now() + timedelta(seconds=5)

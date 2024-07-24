@@ -35,7 +35,7 @@ async def generate_text(prompt: Request):
     return generated_text[0]["generated_text"]
 
 
-generator = pipeline("text-generation", model="gpt2")
+generator = pipeline('text-generation', model='gpt2')
 
 
 @app.post("/post")
