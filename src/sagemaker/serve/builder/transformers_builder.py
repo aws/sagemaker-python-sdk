@@ -385,7 +385,6 @@ class Transformers(ABC):
         """
         self.secret_key = None
         self.model_server = ModelServer.MMS
-        self._save_model_inference_spec()
 
         if self.inference_spec:
 
@@ -406,8 +405,6 @@ class Transformers(ABC):
                 image_uri=self.image_uri,
                 inference_spec=self.inference_spec,
             )
-
-        create_conda_env()
 
         self._build_transformers_env()
 
