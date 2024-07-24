@@ -33,8 +33,6 @@ from sagemaker.serve.model_server.multi_model_server.prepare import (
 )
 from sagemaker.serve.detector.image_detector import (
     auto_detect_container,
-    _detect_framework_and_version,
-    _get_model_base,
 )
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.optimize_utils import _is_optimized
