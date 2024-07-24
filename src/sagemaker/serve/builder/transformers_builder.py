@@ -18,6 +18,7 @@ from abc import ABC, abstractmethod
 from typing import Type
 from pathlib import Path
 from packaging.version import Version
+import subprocess
 
 from sagemaker.model import Model
 from sagemaker import image_uris
@@ -46,7 +47,7 @@ from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
-from sagemaker.serve.model_server.multi_model_server.inference import create_conda_env
+#from sagemaker.serve.model_server.multi_model_server.inference import create_conda_env
 
 
 logger = logging.getLogger(__name__)
@@ -383,7 +384,7 @@ class Transformers(ABC):
             logger.info("PKL file saved to file: %s", code_path)
 
             if self.mode == Mode.IN_PROCESS:
-                create_conda_env()
+                self._create_conda_env()
 
             self._auto_detect_container()
 
@@ -403,3 +404,15 @@ class Transformers(ABC):
         if self.sagemaker_session:
             self.pysdk_model.sagemaker_session = self.sagemaker_session
         return self.pysdk_model
+    
+
+    def _create_conda_env(self):
+        """Creating conda environment by running commands"""
+
+        try:
+            subprocess.run("conda env create -f conda_in_process.yml", shell=True)
+            print("Successfully created conda environment with dependencies from .yml file.")
+            subprocess.run("conda activate conda_env", shell=True)
+            print("Successfully activated conda environment.")
+        except subprocess.CalledProcessError:
+            print("Failed to create and activate conda environment.")
