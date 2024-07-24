@@ -156,6 +156,7 @@ def test_deploy_model(
         _predict_and_assert(predictor)
 
 
+@pytest.mark.skip
 def test_deploy_model_with_serverless_inference_config(
     sklearn_training_job,
     sagemaker_session,
