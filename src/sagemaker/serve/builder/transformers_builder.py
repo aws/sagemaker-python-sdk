@@ -35,7 +35,7 @@ from sagemaker.serve.detector.image_detector import (
     _detect_framework_and_version,
     _get_model_base,
 )
-from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
+from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.predictors import (
     TransformersLocalModePredictor,
@@ -94,19 +94,6 @@ class Transformers(ABC):
     @abstractmethod
     def _prepare_for_mode(self):
         """Abstract method"""
-
-    def _save_model_inference_spec(self):
-        """Placeholder docstring"""
-        # check if path exists and create if not
-        if not os.path.exists(self.model_path):
-            os.makedirs(self.model_path)
-
-        code_path = Path(self.model_path).joinpath("code")
-        # save the model or inference spec in cloud pickle format
-        try:
-            save_pkl(code_path, (self.inference_spec, self.schema_builder))
-        except:
-            raise ValueError("Cannot detect required model or inference spec")
 
     def _create_transformers_model(self) -> Type[Model]:
         """Initializes HF model with or without image_uri"""
@@ -394,6 +381,9 @@ class Transformers(ABC):
 
             save_pkl(code_path, (self.inference_spec, self.schema_builder))
             logger.info("PKL file saved to file: %s", code_path)
+
+            if self.mode == Mode.IN_PROCESS:
+                create_conda_env()
 
             self._auto_detect_container()
 
