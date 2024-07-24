@@ -21,7 +21,7 @@ from __future__ import absolute_import
 from sagemaker.dashboard.data_quality_dashboard import AutomaticDataQualityDashboard  # noqa: F401
 from sagemaker.dashboard.model_quality_dashboard import AutomaticModelQualityDashboard  # noqa: F401
 from sagemaker.dashboard.dashboard_variables import DashboardVariable  # noqa: F401
-from sagemaker.dashboard.dashboard_widgets import (
-    DashboardWidget, # noqa: F401
-    DashboardWidgetProperties, # noqa: F401
-)  
+from sagemaker.dashboard.dashboard_widgets import (  # noqa: F401
+    DashboardWidget,
+    DashboardWidgetProperties,
+)

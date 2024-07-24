@@ -34,7 +34,12 @@ def test_widget_properties_to_dict():
         metrics=[
             [
                 {
-                    "expression": f"SEARCH( 'aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule %^(feature_null_|feature_non_null_).*% ', 'Average')"
+                    "expression": (
+                        "SEARCH("
+                        " 'aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule "
+                        "%^(feature_null_|feature_non_null_).*% ', "
+                        "'Average')"
+                    )
                 }
             ]
         ],
@@ -47,7 +52,12 @@ def test_widget_properties_to_dict():
         "metrics": [
             [
                 {
-                    "expression": f"SEARCH( 'aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule %^(feature_null_|feature_non_null_).*% ', 'Average')"
+                    "expression": (
+                        "SEARCH( "
+                        "'aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule "
+                        "%^(feature_null_|feature_non_null_).*% ', "
+                        "'Average')"
+                    )
                 }
             ]
         ],
@@ -64,7 +74,10 @@ def test_widget_to_dict():
         metrics=[
             [
                 {
-                    "expression": f"SEARCH( 'aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule %^(feature_null_|feature_non_null_).*% ', 'Average')"
+                    "expression": (
+                        "SEARCH( 'aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule "
+                        "%^(feature_null_|feature_non_null_).*% ', 'Average')"
+                    )
                 }
             ]
         ],
@@ -82,7 +95,11 @@ def test_widget_to_dict():
             "metrics": [
                 [
                     {
-                        "expression": f"SEARCH( 'aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule %^(feature_null_|feature_non_null_).*% ', 'Average')"
+                        "expression": (
+                            "SEARCH( 'aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule "
+                            "%^(feature_null_|feature_non_null_).*% ', "
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -115,7 +132,16 @@ def test_automatic_data_quality_dashboard_endpoint():
             metrics=[
                 [
                     {
-                        "expression": f'SEARCH( \'{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} %^feature_fractional_counts_.*% OR %^feature_integral_counts_.*% OR %^feature_string_counts_.*% OR %^feature_boolean_counts_.*% OR %^feature_unknown_counts_.*% Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', \'Average\')'
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "%^feature_fractional_counts_.*% OR "
+                            "%^feature_integral_counts_.*% OR "
+                            "%^feature_string_counts_.*% OR "
+                            "%^feature_boolean_counts_.*% OR "
+                            "%^feature_unknown_counts_.*% "
+                            'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -133,7 +159,13 @@ def test_automatic_data_quality_dashboard_endpoint():
             metrics=[
                 [
                     {
-                        "expression": f'SEARCH( \'{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} %^feature_null_.*% OR %^feature_non_null_.*% Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', \'Average\')'
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "%^feature_null_.*% OR "
+                            "%^feature_non_null_.*% "
+                            'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -151,7 +183,12 @@ def test_automatic_data_quality_dashboard_endpoint():
             metrics=[
                 [
                     {
-                        "expression": f'SEARCH( \'{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} %^feature_estimated_unique_values_.*% Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', \'Average\')'
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "%^feature_estimated_unique_values_.*% "
+                            'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -169,7 +206,12 @@ def test_automatic_data_quality_dashboard_endpoint():
             metrics=[
                 [
                     {
-                        "expression": f'SEARCH( \'{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} %^feature_completeness_.*% Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', \'Average\')'
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "%^feature_completeness_.*% "
+                            'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -187,7 +229,12 @@ def test_automatic_data_quality_dashboard_endpoint():
             metrics=[
                 [
                     {
-                        "expression": f'SEARCH( \'{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} %^feature_baseline_drift_.*% Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', \'Average\')'
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "%^feature_baseline_drift_.*% "
+                            'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -237,7 +284,16 @@ def test_automatic_data_quality_dashboard_batch_transform():
             metrics=[
                 [
                     {
-                        "expression": f"SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} %^feature_fractional_counts_.*% OR %^feature_integral_counts_.*% OR %^feature_string_counts_.*% OR %^feature_boolean_counts_.*% OR %^feature_unknown_counts_.*% Feature=\"_\" MonitoringSchedule=\"monitoring_schedule\" ', 'Average')"
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "%^feature_fractional_counts_.*% OR "
+                            "%^feature_integral_counts_.*% OR "
+                            "%^feature_string_counts_.*% OR "
+                            "%^feature_boolean_counts_.*% OR "
+                            "%^feature_unknown_counts_.*% "
+                            'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -255,7 +311,13 @@ def test_automatic_data_quality_dashboard_batch_transform():
             metrics=[
                 [
                     {
-                        "expression": f"SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} %^feature_null_.*% OR %^feature_non_null_.*% Feature=\"_\" MonitoringSchedule=\"monitoring_schedule\" ', 'Average')"
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "%^feature_null_.*% OR "
+                            "%^feature_non_null_.*% "
+                            'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -273,7 +335,12 @@ def test_automatic_data_quality_dashboard_batch_transform():
             metrics=[
                 [
                     {
-                        "expression": f"SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} %^feature_estimated_unique_values_.*% Feature=\"_\" MonitoringSchedule=\"monitoring_schedule\" ', 'Average')"
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "%^feature_estimated_unique_values_.*% "
+                            'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -291,7 +358,12 @@ def test_automatic_data_quality_dashboard_batch_transform():
             metrics=[
                 [
                     {
-                        "expression": f"SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} %^feature_completeness_.*% Feature=\"_\" MonitoringSchedule=\"monitoring_schedule\" ', 'Average')"
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "%^feature_completeness_.*% "
+                            'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],
@@ -309,7 +381,12 @@ def test_automatic_data_quality_dashboard_batch_transform():
             metrics=[
                 [
                     {
-                        "expression": f"SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} %^feature_baseline_drift_.*% Feature=\"_\" MonitoringSchedule=\"monitoring_schedule\" ', 'Average')"
+                        "expression": (
+                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "%^feature_baseline_drift_.*% "
+                            'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
+                            "'Average')"
+                        )
                     }
                 ]
             ],

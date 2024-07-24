@@ -14,7 +14,7 @@
 
 These classes assist with creating dashboards in Python3 and then using boto3 CloudWatch client
 to publish the generated dashboards. To be used to aid dashboard creation in ClarifyModelMonitor
-and ModelMonitor. 
+and ModelMonitor.
 """
 from __future__ import absolute_import
 import json
@@ -44,7 +44,7 @@ class DashboardVariable:
             inputType (str): Type of input field ('input', 'select', or 'radio') for user interaction.
             variable_id (str): Identifier for the variable, up to 32 characters.
             label (str, optional): Label displayed for the input field (default is None).
-            search (str, optional): Metric search expression to populate input options (required for 'select' or 'radio').
+            search (str, optional): Metric search expression to populate input options.
             populateFrom (str, optional): Dimension name used to populate input options from search results.
         """
         self.variable_type = variable_type

@@ -10,9 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module the wrapper class for data quality dashboard. 
+"""This module the wrapper class for data quality dashboard.
 
-To be used to aid dashboard creation in ModelMonitor. 
+To be used to aid dashboard creation in ModelMonitor.
 """
 from __future__ import absolute_import
 

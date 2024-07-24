@@ -1,3 +1,20 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module the wrapper class for model quality dashboard.
+
+To be used to aid dashboard creation in ModelMonitor.
+"""
+
 from __future__ import absolute_import
 import json
 from sagemaker.dashboard.dashboard_widgets import DashboardWidget, DashboardWidgetProperties
@@ -5,13 +22,6 @@ from sagemaker.dashboard.dashboard_widgets import DashboardWidget, DashboardWidg
 
 class AutomaticModelQualityDashboard:
     """Represents a dashboard for automatic model quality metrics in Amazon SageMaker.
-
-    Attributes:
-        MODEL_QUALITY_METRICS_ENDPOINT_NAMESPACE (str): Namespace for model metrics at endpoint level.
-        MODEL_QUALITY_METRICS_BATCH_NAMESPACE (str): Namespace for model metrics at batch transform level.
-        REGRESSION_MODEL_QUALITY_METRICS (list): List of regression model quality metrics and their graphs.
-        BINARY_CLASSIFICATION_MODEL_QUALITY_METRICS (list): List of binary classification model quality metrics and their graphs.
-        MULTICLASS_CLASSIFICATION_MODEL_QUALITY_METRICS (list): List of multiclass classification model quality metrics and their graphs.
 
     Methods:
         __init__(self, endpoint_name, monitoring_schedule_name, batch_transform_input, problem_type, region_name):
@@ -134,7 +144,8 @@ class AutomaticModelQualityDashboard:
             )
         else:
             raise ValueError(
-                "Parameter problem_type is invalid. Valid options are Regression, BinaryClassification, or MulticlassClassification."
+                "Parameter problem_type is invalid. Valid options are "
+                "Regression, BinaryClassification, or MulticlassClassification."
             )
 
         for graphs_per_line in metrics_to_graph:
@@ -150,10 +161,10 @@ class AutomaticModelQualityDashboard:
                             [
                                 {
                                     "expression": (
-                                        f"SEARCH( '{AutomaticModelQualityDashboard.MODEL_QUALITY_METRICS_BATCH_NAMESPACE} "
+                                        f"SEARCH( '{self.MODEL_QUALITY_METRICS_BATCH_NAMESPACE} "
                                         f"{metrics_string} "
                                         f'MonitoringSchedule="{self.monitoring_schedule}" \', '
-                                        f"'Average')"
+                                        "'Average')"
                                     )
                                 }
                             ]
@@ -169,7 +180,7 @@ class AutomaticModelQualityDashboard:
                             [
                                 {
                                     "expression": (
-                                        f"SEARCH( '{AutomaticModelQualityDashboard.MODEL_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
+                                        f"SEARCH( '{self.MODEL_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
                                         f"{metrics_string} "
                                         f'Endpoint="{self.endpoint}" '
                                         f'MonitoringSchedule="{self.monitoring_schedule}" \', '

@@ -1546,8 +1546,7 @@ class ModelMonitor(object):
         enable_automatic_dashboard=False,
         dashboard_name=None,
     ):
-        """Checks if the parameters provided to generate an automatic dashboard are valid,
-        but does not check if the dashboard is already in use.
+        """Checks if the parameters are valid, without checking if dashboard name is taken
 
         Args:
             monitor_schedule_name (str): Monitoring schedule name.
@@ -1610,11 +1609,11 @@ class ModelMonitor(object):
             enable_automatic_dashboard=enable_automatic_dashboard,
             dashboard_name=dashboard_name,
         )
+        cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
 
         if enable_automatic_dashboard:
             try:
                 # try to access the dashboard to see if it exists already
-                cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
                 cw_client.get_dashboard(DashboardName=dashboard_name)
                 message = (
                     f"Dashboard name {dashboard_name} is already in use. "
@@ -1623,11 +1622,11 @@ class ModelMonitor(object):
                 )
                 _LOGGER.error(message)
                 raise ValueError(message)
-            except Exception as _:
+            except Exception as e:
+                _LOGGER.log(f"Correctly received error {e}.")
                 # in this case, the dashboard name is not in use
                 # and we are free to write to it without overwriting any
                 # customer data.
-                pass
 
     def _create_monitoring_schedule_from_job_definition(
         self,

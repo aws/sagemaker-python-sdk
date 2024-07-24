@@ -14,15 +14,14 @@
 
 These classes assist with creating dashboards in Python3 and then using boto3 CloudWatch client
 to publish the generated dashboards. To be used to aid dashboard creation in ClarifyModelMonitor
-and ModelMonitor. 
+and ModelMonitor.
 """
 from __future__ import absolute_import
 import json
 
 
 class DashboardWidgetProperties:
-    """
-    Represents properties of a dashboard widget used for metrics in CloudWatch.
+    """Represents properties of a dashboard widget used for metrics in CloudWatch.
 
     Attributes:
         view (str): Type of visualization ('timeSeries', 'singleValue', 'gauge', 'bar', 'pie', 'table').
@@ -44,8 +43,7 @@ class DashboardWidgetProperties:
         title=None,
         markdown=None,
     ):
-        """
-        Initializes DashboardWidgetProperties instance.
+        """Initializes DashboardWidgetProperties instance.
 
         Args:
             view (str, optional): Type of visualization ('timeSeries', 'singleValue', 'gauge', 'bar', 'pie', 'table').
@@ -65,8 +63,7 @@ class DashboardWidgetProperties:
         self.markdown = markdown
 
     def to_dict(self):
-        """
-        Converts DashboardWidgetProperties instance to a dictionary representation.
+        """Converts DashboardWidgetProperties instance to a dictionary representation.
 
         Returns:
             dict: Dictionary containing widget properties suitable for JSON serialization.
@@ -89,8 +86,7 @@ class DashboardWidgetProperties:
         return widget_properties_dict
 
     def to_json(self):
-        """
-        Converts DashboardWidgetProperties instance to a JSON string.
+        """Converts DashboardWidgetProperties instance to a JSON string.
 
         Returns:
             str: JSON string representation of the widget properties.
@@ -99,8 +95,7 @@ class DashboardWidgetProperties:
 
 
 class DashboardWidget:
-    """
-    Represents a widget in a CloudWatch dashboard.
+    """Represents a widget in a CloudWatch dashboard.
 
     Attributes:
         height (int): Height of the widget.
@@ -110,8 +105,7 @@ class DashboardWidget:
     """
 
     def __init__(self, height, width, widget_type, properties=None):
-        """
-        Initializes DashboardWidget instance.
+        """Initializes DashboardWidget instance.
 
         Args:
             height (int): Height of the widget.
@@ -129,8 +123,7 @@ class DashboardWidget:
         )
 
     def to_dict(self):
-        """
-        Converts DashboardWidget instance to a dictionary representation.
+        """Converts DashboardWidget instance to a dictionary representation.
 
         Returns:
             dict: Dictionary containing widget attributes suitable for JSON serialization.
@@ -143,8 +136,7 @@ class DashboardWidget:
         }
 
     def to_json(self):
-        """
-        Converts DashboardWidget instance to a JSON string.
+        """Converts DashboardWidget instance to a JSON string.
 
         Returns:
             str: JSON string representation of the widget attributes.
