@@ -434,8 +434,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 env_vars=self.env_vars,
                 model_server=self.model_server,
             )
+            code_path = Path(self.model_path).joinpath("code")
             if self.inference_spec:
                 create_conda_env()
+                save_pkl(code_path, (self.inference_spec, self.schema_builder))
             self.modes[str(Mode.IN_PROCESS)].prepare()
             return None
 
