@@ -10,7 +10,7 @@ then
 fi
 
 echo "Starting the service locally"
-uvicorn $1:app --port 8000 --host 0.0.0.0 --reload &
+uvicorn $1:app --port 9007 --host 0.0.0.0 --reload &
 UVICORN_PID=$!
 
 echo $UVICORN_PID
