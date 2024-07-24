@@ -38,7 +38,7 @@ def test_smp_v2(load_config):
                         if "2.1" in version or "2.2" in version or "2.3" in version:
                             cuda_vers = "cu121"
 
-                        if "2.3" in version:
+                        if "2.4" in version:
                             py_version = "py311"
 
                         uri = image_uris.get_training_image_uri(
