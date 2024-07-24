@@ -32,8 +32,10 @@ from sagemaker.serve.model_server.multi_model_server.prepare import (
 )
 from sagemaker.serve.detector.image_detector import (
     auto_detect_container,
+    _detect_framework_and_version,
+    _get_model_base,
 )
-from sagemaker.serve.detector.pickler import save_pkl
+from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.predictors import (
     TransformersLocalModePredictor,
@@ -93,13 +95,18 @@ class Transformers(ABC):
     def _prepare_for_mode(self):
         """Abstract method"""
 
-    def _save_schema_builder(self):
-        """Save schema builder for tensorflow serving."""
+    def _save_model_inference_spec(self):
+        """Placeholder docstring"""
+        # check if path exists and create if not
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
 
         code_path = Path(self.model_path).joinpath("code")
-        save_pkl(code_path, self.schema_builder)
+        # save the model or inference spec in cloud pickle format
+        try:
+            save_pkl(code_path, (self.inference_spec, self.schema_builder))
+        except:
+            raise ValueError("Cannot detect required model or inference spec")
 
     def _create_transformers_model(self) -> Type[Model]:
         """Initializes HF model with or without image_uri"""
@@ -378,6 +385,7 @@ class Transformers(ABC):
         """
         self.secret_key = None
         self.model_server = ModelServer.MMS
+        self._save_model_inference_spec()
 
         if self.inference_spec:
 
