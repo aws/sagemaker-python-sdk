@@ -227,6 +227,8 @@ class TransformersInProcessModePredictor(PredictorBase):
 
     def predict(self, data):
         """Placeholder docstring"""
+        logger.info("Entering predict to make a prediction on ")
+        logger.info(data)
         return [
             self.deserializer.deserialize(
                 io.BytesIO(

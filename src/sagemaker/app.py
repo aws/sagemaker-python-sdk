@@ -58,4 +58,5 @@ async def main():
         use_colors=True,
     )
     server = uvicorn.Server(config)
+    logger.info("I'm just waiting for a connection")
     await server.serve()

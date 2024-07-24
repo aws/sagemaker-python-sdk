@@ -6,6 +6,8 @@ import asyncio
 import requests
 import logging
 import platform
+import time
+import json
 from pathlib import Path
 from sagemaker import Session, fw_utils
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
@@ -27,28 +29,43 @@ class InProcessMultiModelServer:
 
     def _start_serving(self):
         """Initializes the start of the server"""
-
-        logger.info("Server started at http://0.0.0.0")
-
         asyncio.create_task(main())
 
-    def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
-        """Invokes the MMS server by sending POST request"""
+        time.sleep(10)
 
-        logger.info(request)
-        logger.info(content_type)
-        logger.info(accept)
+    def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
+        """Placeholder docstring"""
+
+        logger.info("Now im here ")
+
+        try:  # for Python 3
+            from http.client import HTTPConnection
+        except ImportError:
+            from httplib import HTTPConnection
+
+        HTTPConnection.debuglevel = 1
+        logging.basicConfig()  # you need to initialize logging, otherwise you will not see
+        # anything from requests
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger("urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
 
         try:
-            response = requests.post(
+            requests.get("http://localhost:8000/", verify=False).json()
+        except Exception as ex:
+            logger.error(ex)
+            raise ex
+
+        try:
+            response = requests.get(
                 "http://0.0.0.0:8000/generate",
-                data=request,
+                json=json.dumps(request),
                 headers={"Content-Type": content_type, "Accept": accept},
                 timeout=600,
-            )
-            response.raise_for_status()
+            ).json()
 
-            return response.content
+            return response
         except requests.exceptions.ConnectionError as e:
             logger.debug(f"Error connecting to the server: {e}")
         except requests.exceptions.HTTPError as e:
