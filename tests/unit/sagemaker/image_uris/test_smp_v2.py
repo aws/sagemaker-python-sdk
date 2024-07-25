@@ -28,16 +28,13 @@ def test_smp_v2(load_config):
         "smdistributed": {"modelparallel": {"enabled": True}},
     }
 
-    print("load_config", load_config)
-    print("VERSIONS", VERSIONS)
-
     for processor in PROCESSORS:
         for version in VERSIONS:
             ACCOUNTS = load_config["training"]["versions"][version]["registries"]
             PY_VERSIONS = load_config["training"]["versions"][version]["py_versions"]
             for py_version in PY_VERSIONS:
-                # py311 is only for smp version 2.4.0
-                if py_version == "py311" and "2.4" not in version:
+                # py311 is only for PT 2.3.1 and SMP 2.4.0
+                if py_version == "py311" and "2.3" not in version:
                     continue
 
                 for region in ACCOUNTS.keys():
@@ -45,8 +42,6 @@ def test_smp_v2(load_config):
                         cuda_vers = CONTAINER_VERSIONS[instance_type]
                         if "2.1" in version or "2.2" in version or "2.3" in version:
                             cuda_vers = "cu121"
-
-                        print("HERE", version, py_version)
 
                         uri = image_uris.get_training_image_uri(
                             region,
