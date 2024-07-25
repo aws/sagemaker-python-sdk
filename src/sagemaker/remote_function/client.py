@@ -278,6 +278,12 @@ def remote(
         max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
           After this amount of time Amazon SageMaker will stop waiting for managed spot training
           job to complete. Defaults to ``None``.
+
+        use_torchrun (bool): Specifies whether to use torchrun for distributed training.
+          Defaults to ``False``.
+
+        nproc_per_node (int): Specifies the number of processes per node for distributed training.
+          Defaults to ``1``.
     """
 
     def _remote(func):
