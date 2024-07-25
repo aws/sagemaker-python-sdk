@@ -717,7 +717,7 @@
                 "tag_prefix": "2.3.0-tgi2.2.0",
                 "repository": "huggingface-pytorch-tgi-inference",
                 "container_version": {
-                    "gpu": "cu121-ubuntu22.04"
+                    "gpu": "cu121-ubuntu22.04-v2.0"
                 }
             }
         }
