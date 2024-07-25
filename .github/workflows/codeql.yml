@@ -11,9 +11,7 @@ jobs:
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ 'ubuntu-latest' }}
     permissions:
-      # required for all workflows
       security-events: write
-      # required to fetch internal or private CodeQL packs
       packages: read
 
     strategy:
@@ -25,14 +23,13 @@ jobs:
             build-mode: none
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-      # Initializes the CodeQL tools for scanning.
+        uses: actions/checkout@6ccd57f4c5d15bdc2fef309bd9fb6cc9db2ef1c6
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@4b1d7da102ff94aca014c0245062b1a463356d72
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@4b1d7da102ff94aca014c0245062b1a463356d72
         with:
           category: "/language:${{matrix.language}}"
