@@ -129,11 +129,12 @@ def test_automatic_data_quality_dashboard_endpoint():
         properties=DashboardWidgetProperties(
             view="timeSeries",
             stacked=False,
+            region="us-west-2",
             metrics=[
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule} "
                             "%^feature_fractional_counts_.*% OR "
                             "%^feature_integral_counts_.*% OR "
                             "%^feature_string_counts_.*% OR "
@@ -145,7 +146,6 @@ def test_automatic_data_quality_dashboard_endpoint():
                     }
                 ]
             ],
-            region="us-west-2",
             title="Type Counts",
         ),
     )
@@ -156,11 +156,12 @@ def test_automatic_data_quality_dashboard_endpoint():
         properties=DashboardWidgetProperties(
             view="timeSeries",
             stacked=False,
+            region="us-west-2",
             metrics=[
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule} "
                             "%^feature_null_.*% OR "
                             "%^feature_non_null_.*% "
                             'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
@@ -169,7 +170,6 @@ def test_automatic_data_quality_dashboard_endpoint():
                     }
                 ]
             ],
-            region="us-west-2",
             title="Missing Data Counts",
         ),
     )
@@ -180,11 +180,12 @@ def test_automatic_data_quality_dashboard_endpoint():
         properties=DashboardWidgetProperties(
             view="timeSeries",
             stacked=False,
+            region="us-west-2",
             metrics=[
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule} "
                             "%^feature_estimated_unique_values_.*% "
                             'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
                             "'Average')"
@@ -192,7 +193,6 @@ def test_automatic_data_quality_dashboard_endpoint():
                     }
                 ]
             ],
-            region="us-west-2",
             title="Estimated Unique Values",
         ),
     )
@@ -203,11 +203,12 @@ def test_automatic_data_quality_dashboard_endpoint():
         properties=DashboardWidgetProperties(
             view="timeSeries",
             stacked=False,
+            region="us-west-2",
             metrics=[
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule} "
                             "%^feature_completeness_.*% "
                             'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
                             "'Average')"
@@ -215,10 +216,10 @@ def test_automatic_data_quality_dashboard_endpoint():
                     }
                 ]
             ],
-            region="us-west-2",
             title="Completeness",
         ),
     )
+
     mock_generate_baseline_drift_widget = DashboardWidget(
         height=8,
         width=12,
@@ -226,11 +227,12 @@ def test_automatic_data_quality_dashboard_endpoint():
         properties=DashboardWidgetProperties(
             view="timeSeries",
             stacked=False,
+            region="us-west-2",
             metrics=[
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule} "
                             "%^feature_baseline_drift_.*% "
                             'Endpoint="endpoint" Feature="_" MonitoringSchedule="monitoring_schedule" \', '
                             "'Average')"
@@ -238,7 +240,6 @@ def test_automatic_data_quality_dashboard_endpoint():
                     }
                 ]
             ],
-            region="us-west-2",
             title="Baseline Drift",
         ),
     )
@@ -285,7 +286,7 @@ def test_automatic_data_quality_dashboard_batch_transform():
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule} "
                             "%^feature_fractional_counts_.*% OR "
                             "%^feature_integral_counts_.*% OR "
                             "%^feature_string_counts_.*% OR "
@@ -312,7 +313,7 @@ def test_automatic_data_quality_dashboard_batch_transform():
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule} "
                             "%^feature_null_.*% OR "
                             "%^feature_non_null_.*% "
                             'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
@@ -336,7 +337,7 @@ def test_automatic_data_quality_dashboard_batch_transform():
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule} "
                             "%^feature_estimated_unique_values_.*% "
                             'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
                             "'Average')"
@@ -359,7 +360,7 @@ def test_automatic_data_quality_dashboard_batch_transform():
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule} "
                             "%^feature_completeness_.*% "
                             'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
                             "'Average')"
@@ -382,7 +383,7 @@ def test_automatic_data_quality_dashboard_batch_transform():
                 [
                     {
                         "expression": (
-                            "SEARCH( '{{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}} "
+                            "SEARCH( '{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule} "
                             "%^feature_baseline_drift_.*% "
                             'Feature="_" MonitoringSchedule="monitoring_schedule" \', '
                             "'Average')"
