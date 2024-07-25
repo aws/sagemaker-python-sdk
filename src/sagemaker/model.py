@@ -2466,32 +2466,55 @@ class ModelPackage(Model):
         desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
             ModelPackageName=self.model_package_arn
         )
+        if hasattr(model_card, "model_package_details"):
+            model_card.model_package_details = None
         update_model_card_req = model_card._create_request_args()
-        if update_model_card_req["ModelCardStatus"] is not None:
-            if (
-                desc_model_package["ModelCard"]["ModelCardStatus"]
-                == update_model_card_req["ModelCardStatus"]
-            ):
-                del update_model_card_req["ModelCardStatus"]
-
         if update_model_card_req.get("ModelCardName") is not None:
             del update_model_card_req["ModelCardName"]
-        if update_model_card_req.get("Content") is not None:
-            previous_content_hash = _hash_content_str(
-                desc_model_package["ModelCard"]["ModelCardContent"]
-            )
-            current_content_hash = _hash_content_str(update_model_card_req["Content"])
-            if (
-                previous_content_hash == current_content_hash
-                or update_model_card_req.get("Content") == "{}"
-                or update_model_card_req.get("Content") == "null"
-            ):
-                del update_model_card_req["Content"]
-            else:
-                update_model_card_req["ModelCardContent"] = update_model_card_req["Content"]
-                del update_model_card_req["Content"]
-        update_model_package_args = {
-            "ModelPackageArn": self.model_package_arn,
-            "ModelCard": update_model_card_req,
-        }
-        sagemaker_session.sagemaker_client.update_model_package(**update_model_package_args)
+        if update_model_card_req["Content"] is not None:
+            if "model_package_details" in update_model_card_req["Content"]:
+                update_model_card_req["Content"].pop("model_package_details", None)
+            update_model_card_req["ModelCardContent"] = update_model_card_req["Content"]
+            del update_model_card_req["Content"]
+
+        if "ModelCard" in desc_model_package:
+            if update_model_card_req["ModelCardStatus"] is not None:
+                if (
+                    desc_model_package["ModelCard"]["ModelCardStatus"]
+                    != update_model_card_req["ModelCardStatus"]
+                ):
+                    new_mc_mp_req = update_model_card_req
+                    del new_mc_mp_req["ModelCardContent"]
+                    update_model_package_args = {
+                        "ModelPackageArn": self.model_package_arn,
+                        "ModelCard": new_mc_mp_req,
+                    }
+                    sagemaker_session.sagemaker_client.update_model_package(
+                        **update_model_package_args
+                    )
+
+            if update_model_card_req.get("ModelCardContent") is not None:
+                previous_content_hash = _hash_content_str(
+                    desc_model_package["ModelCard"]["ModelCardContent"]
+                )
+                current_content_hash = _hash_content_str(update_model_card_req["ModelCardContent"])
+                if not (
+                    previous_content_hash == current_content_hash
+                    or update_model_card_req.get("ModelCardContent") == "{}"
+                    or update_model_card_req.get("ModelCardContent") == "null"
+                ):
+                    new_mc_mp_req = update_model_card_req
+                    del new_mc_mp_req["ModelCardStatus"]
+                    update_model_package_args = {
+                        "ModelPackageArn": self.model_package_arn,
+                        "ModelCard": new_mc_mp_req,
+                    }
+                    sagemaker_session.sagemaker_client.update_model_package(
+                        **update_model_package_args
+                    )
+        else:
+            update_model_package_args = {
+                "ModelPackageArn": self.model_package_arn,
+                "ModelCard": update_model_card_req,
+            }
+            sagemaker_session.sagemaker_client.update_model_package(**update_model_package_args)
