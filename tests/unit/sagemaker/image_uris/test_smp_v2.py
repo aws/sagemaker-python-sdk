@@ -33,15 +33,16 @@ def test_smp_v2(load_config):
             ACCOUNTS = load_config["training"]["versions"][version]["registries"]
             PY_VERSIONS = load_config["training"]["versions"][version]["py_versions"]
             for py_version in PY_VERSIONS:
-                # py311 is only for PT 2.3.1 and SMP 2.4.0
-                if py_version == "py311" and "2.3" not in version:
-                    continue
-
                 for region in ACCOUNTS.keys():
                     for instance_type in CONTAINER_VERSIONS.keys():
                         cuda_vers = CONTAINER_VERSIONS[instance_type]
                         if "2.1" in version or "2.2" in version or "2.3" in version:
                             cuda_vers = "cu121"
+
+                        if "2.3" in version:
+                            py_version = "py311"
+
+                        print(version, py_version)
 
                         uri = image_uris.get_training_image_uri(
                             region,
