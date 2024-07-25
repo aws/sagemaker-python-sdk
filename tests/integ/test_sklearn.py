@@ -159,8 +159,6 @@ def test_deploy_model(
 def test_deploy_model_with_serverless_inference_config(
     sklearn_training_job,
     sagemaker_session,
-    sklearn_latest_version,
-    sklearn_latest_py_version,
 ):
     endpoint_name = unique_name_from_base("test-sklearn-deploy-model-serverless")
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -173,7 +171,7 @@ def test_deploy_model_with_serverless_inference_config(
             model_data,
             ROLE,
             entry_point=script_path,
-            framework_version=sklearn_latest_version,
+            framework_version="1.0-1",
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
