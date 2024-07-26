@@ -1890,20 +1890,24 @@ class TestUserAgent:
     def test_get_jumpstart_user_agent_extra_suffix(self, mock_getenv):
         mock_getenv.return_value = False
         assert utils.get_jumpstart_user_agent_extra_suffix(
-            "some-id", "some-version", "False"
+            "some-id", "some-version", None, "False"
         ).endswith("md/js_model_id#some-id md/js_model_ver#some-version")
         mock_getenv.return_value = None
         assert utils.get_jumpstart_user_agent_extra_suffix(
-            "some-id", "some-version", "False"
+            "some-id", "some-version", None, "False"
         ).endswith("md/js_model_id#some-id md/js_model_ver#some-version")
         mock_getenv.return_value = "True"
         assert not utils.get_jumpstart_user_agent_extra_suffix(
-            "some-id", "some-version", "True"
+            "some-id", "some-version", None, "True"
         ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_is_hub_content#True")
         mock_getenv.return_value = True
         assert not utils.get_jumpstart_user_agent_extra_suffix(
-            "some-id", "some-version", "True"
+            "some-id", "some-version", None, "True"
         ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_is_hub_content#True")
+        mock_getenv.return_value = False
+        assert utils.get_jumpstart_user_agent_extra_suffix(
+            "some-id", "some-version", "some-config", "False"
+        ).endswith("md/js_model_id#some-id md/js_model_ver#some-version md/js_config#some-config")
 
     @patch("sagemaker.jumpstart.utils.botocore.session")
     @patch("sagemaker.jumpstart.utils.botocore.config.Config")
@@ -1923,7 +1927,7 @@ class TestUserAgent:
         utils.get_default_jumpstart_session_with_user_agent_suffix("model_id", "model_version")
         mock_boto3_session.get_session.assert_called_once_with()
         mock_get_jumpstart_user_agent_extra_suffix.assert_called_once_with(
-            "model_id", "model_version", False
+            "model_id", "model_version", None, False
         )
         mock_botocore_config.assert_called_once_with(
             user_agent_extra=mock_get_jumpstart_user_agent_extra_suffix.return_value

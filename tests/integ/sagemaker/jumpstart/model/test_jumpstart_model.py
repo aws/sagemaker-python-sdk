@@ -396,3 +396,20 @@ def test_jumpstart_model_with_deployment_configs(setup):
     response = predictor.predict(payload, custom_attributes="accept_eula=true")
 
     assert response is not None
+
+
+def test_jumpstart_session_with_config_name():
+    model = JumpStartModel(model_id="meta-textgeneration-llama-2-7b", model_version="*")
+    assert model.config_name != None
+    session = model.sagemaker_session
+
+    with mock.patch("botocore.client.BaseClient._make_request") as mock_make_request:
+        try:
+            session.sagemaker_client.list_endpoints()
+        except Exception:
+            pass
+
+    assert (
+        "md/js_model_id#meta-textgeneration-llama-2-7b md/js_model_ver#* md/js_config#tgi"
+        in mock_make_request.call_args[0][1]["headers"]["User-Agent"]
+    )

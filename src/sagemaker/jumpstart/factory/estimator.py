@@ -69,6 +69,7 @@ from sagemaker.jumpstart.utils import (
     add_jumpstart_model_info_tags,
     get_eula_message,
     get_default_jumpstart_session_with_user_agent_suffix,
+    get_top_ranked_config_name,
     update_dict_if_key_not_present,
     resolve_estimator_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -204,7 +205,7 @@ def get_init_kwargs(
 
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(estimator_init_kwargs)
-    estimator_init_kwargs = _add_sagemaker_session_to_kwargs(estimator_init_kwargs)
+    estimator_init_kwargs = _add_sagemaker_session_with_user_agent_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_region_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_instance_type_and_count_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_image_uri_to_kwargs(estimator_init_kwargs)
@@ -438,12 +439,15 @@ def _add_region_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
-def _add_sagemaker_session_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_sagemaker_session_with_user_agent_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
     kwargs.sagemaker_session = (
         kwargs.sagemaker_session
         or get_default_jumpstart_session_with_user_agent_suffix(
-            kwargs.model_id, kwargs.model_version, kwargs.hub_arn
+            model_id=kwargs.model_id,
+            model_version=kwargs.model_version,
+            config_name=None,
+            is_hub_content=kwargs.hub_arn is not None,
         )
     )
     return kwargs
@@ -903,20 +907,16 @@ def _add_config_name_to_kwargs(
 ) -> JumpStartEstimatorInitKwargs:
     """Sets tags in kwargs based on default or override, returns full kwargs."""
 
-    specs = verify_model_region_and_return_specs(
-        model_id=kwargs.model_id,
-        version=kwargs.model_version,
-        scope=JumpStartScriptScope.TRAINING,
+    kwargs.config_name = kwargs.config_name or get_top_ranked_config_name(
         region=kwargs.region,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
         sagemaker_session=kwargs.sagemaker_session,
-        config_name=kwargs.config_name,
+        scope=JumpStartScriptScope.TRAINING,
+        model_type=kwargs.model_type,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        hub_arn=kwargs.hub_arn,
     )
-
-    if specs.training_configs and specs.training_configs.get_top_config_from_ranking():
-        kwargs.config_name = (
-            kwargs.config_name or specs.training_configs.get_top_config_from_ranking().config_name
-        )
 
     return kwargs
