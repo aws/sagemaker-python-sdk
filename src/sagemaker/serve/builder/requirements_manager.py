@@ -58,7 +58,7 @@ class RequirementsManager:
         """Update conda env using conda yml file"""
         logger.info("Updating conda env")
         subprocess.run(
-            "conda env update --file=conda_in_process.yml"
+            "conda env update -f conda_in_process.yml"
         )
         logger.info("Conda env updated successfully")
 
