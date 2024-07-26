@@ -63,11 +63,7 @@ class InProcessMode(
 
     def create_server(
         self,
-        image: str,
-        secret_key: str,
         predictor: PredictorBase,
-        env_vars: Dict[str, str] = None,
-        model_path: str = None,
     ):
         """Creating the server and checking ping health."""
         logger.info("Waiting for model server %s to start up...", self.model_server)

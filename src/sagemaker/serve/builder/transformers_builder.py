@@ -17,8 +17,8 @@ import os
 from abc import ABC, abstractmethod
 from typing import Type
 from pathlib import Path
-from packaging.version import Version
 import subprocess
+from packaging.version import Version
 
 from sagemaker.model import Model
 from sagemaker import image_uris
