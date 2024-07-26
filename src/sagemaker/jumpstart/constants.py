@@ -44,31 +44,37 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="us-west-2",
             content_bucket="jumpstart-cache-prod-us-west-2",
             gated_content_bucket="jumpstart-private-cache-prod-us-west-2",
+            neo_content_bucket="sagemaker-sd-models-prod-us-west-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-east-1",
             content_bucket="jumpstart-cache-prod-us-east-1",
             gated_content_bucket="jumpstart-private-cache-prod-us-east-1",
+            neo_content_bucket="sagemaker-sd-models-prod-us-east-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-east-2",
             content_bucket="jumpstart-cache-prod-us-east-2",
             gated_content_bucket="jumpstart-private-cache-prod-us-east-2",
+            neo_content_bucket="sagemaker-sd-models-prod-us-east-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-1",
             content_bucket="jumpstart-cache-prod-eu-west-1",
             gated_content_bucket="jumpstart-private-cache-prod-eu-west-1",
+            neo_content_bucket="sagemaker-sd-models-prod-eu-west-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-central-1",
             content_bucket="jumpstart-cache-prod-eu-central-1",
             gated_content_bucket="jumpstart-private-cache-prod-eu-central-1",
+            neo_content_bucket="sagemaker-sd-models-prod-eu-central-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-north-1",
             content_bucket="jumpstart-cache-prod-eu-north-1",
             gated_content_bucket="jumpstart-private-cache-prod-eu-north-1",
+            neo_content_bucket="sagemaker-sd-models-prod-eu-north-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="me-south-1",
@@ -84,11 +90,13 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="ap-south-1",
             content_bucket="jumpstart-cache-prod-ap-south-1",
             gated_content_bucket="jumpstart-private-cache-prod-ap-south-1",
+            neo_content_bucket="sagemaker-sd-models-prod-ap-south-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-3",
             content_bucket="jumpstart-cache-prod-eu-west-3",
             gated_content_bucket="jumpstart-private-cache-prod-eu-west-3",
+            neo_content_bucket="sagemaker-sd-models-prod-eu-west-3",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="af-south-1",
@@ -99,6 +107,7 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="sa-east-1",
             content_bucket="jumpstart-cache-prod-sa-east-1",
             gated_content_bucket="jumpstart-private-cache-prod-sa-east-1",
+            neo_content_bucket="sagemaker-sd-models-prod-sa-east-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-east-1",
@@ -109,21 +118,25 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="ap-northeast-2",
             content_bucket="jumpstart-cache-prod-ap-northeast-2",
             gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-2",
+            neo_content_bucket="sagemaker-sd-models-prod-ap-northeast-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-northeast-3",
             content_bucket="jumpstart-cache-prod-ap-northeast-3",
             gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-3",
+            neo_content_bucket="sagemaker-sd-models-prod-ap-northeast-3",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-southeast-3",
             content_bucket="jumpstart-cache-prod-ap-southeast-3",
             gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-3",
+            neo_content_bucket="sagemaker-sd-models-prod-ap-southeast-3",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-west-2",
             content_bucket="jumpstart-cache-prod-eu-west-2",
             gated_content_bucket="jumpstart-private-cache-prod-eu-west-2",
+            neo_content_bucket="sagemaker-sd-models-prod-eu-west-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="eu-south-1",
@@ -134,26 +147,31 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="ap-northeast-1",
             content_bucket="jumpstart-cache-prod-ap-northeast-1",
             gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-1",
+            neo_content_bucket="sagemaker-sd-models-prod-ap-northeast-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-west-1",
             content_bucket="jumpstart-cache-prod-us-west-1",
             gated_content_bucket="jumpstart-private-cache-prod-us-west-1",
+            neo_content_bucket="sagemaker-sd-models-prod-us-west-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-southeast-1",
             content_bucket="jumpstart-cache-prod-ap-southeast-1",
             gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-1",
+            neo_content_bucket="sagemaker-sd-models-prod-ap-southeast-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ap-southeast-2",
             content_bucket="jumpstart-cache-prod-ap-southeast-2",
             gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-2",
+            neo_content_bucket="sagemaker-sd-models-prod-ap-southeast-2",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="ca-central-1",
             content_bucket="jumpstart-cache-prod-ca-central-1",
             gated_content_bucket="jumpstart-private-cache-prod-ca-central-1",
+            neo_content_bucket="sagemaker-sd-models-prod-ca-central-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="cn-north-1",
@@ -184,6 +202,9 @@ JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET = JUMPSTART_BUCKET_NAME_SET.union(
 )
 
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
+NEO_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
+
+JUMPSTART_MODEL_HUB_NAME = "SageMakerPublicHub"
 
 JUMPSTART_MODEL_HUB_NAME = "SageMakerPublicHub"
 
@@ -206,6 +227,7 @@ ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE = (
     "AWS_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE"
 )
 ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE = "AWS_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE"
+ENV_VARIABLE_NEO_CONTENT_BUCKET_OVERRIDE = "AWS_NEO_CONTENT_BUCKET_OVERRIDE"
 
 JUMPSTART_RESOURCE_BASE_NAME = "sagemaker-jumpstart"
 

@@ -14,6 +14,7 @@
 """This module contains accessors related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import functools
+import logging
 from typing import Any, Dict, List, Optional
 import boto3
 
@@ -289,15 +290,6 @@ class JumpStartModelsAccessor(object):
 
         if hub_arn:
             try:
-                hub_model_arn = construct_hub_model_arn_from_inputs(
-                    hub_arn=hub_arn, model_name=model_id, version=version
-                )
-                model_specs = JumpStartModelsAccessor._cache.get_hub_model(
-                    hub_model_arn=hub_model_arn
-                )
-                model_specs.set_hub_content_type(HubContentType.MODEL)
-                return model_specs
-            except:  # noqa: E722
                 hub_model_arn = construct_hub_model_reference_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
@@ -305,6 +297,21 @@ class JumpStartModelsAccessor(object):
                     hub_model_reference_arn=hub_model_arn
                 )
                 model_specs.set_hub_content_type(HubContentType.MODEL_REFERENCE)
+                return model_specs
+
+            except Exception as ex:
+                logging.info(
+                    "Received exeption while calling APIs for ContentType ModelReference, \
+                        retrying with ContentType Model: "
+                    + str(ex)
+                )
+                hub_model_arn = construct_hub_model_arn_from_inputs(
+                    hub_arn=hub_arn, model_name=model_id, version=version
+                )
+                model_specs = JumpStartModelsAccessor._cache.get_hub_model(
+                    hub_model_arn=hub_model_arn
+                )
+                model_specs.set_hub_content_type(HubContentType.MODEL)
                 return model_specs
 
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
