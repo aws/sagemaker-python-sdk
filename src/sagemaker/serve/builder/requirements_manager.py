@@ -56,11 +56,11 @@ class RequirementsManager:
 
     def _update_conda_env_in_path(self):
         """Update conda env using conda yml file"""
-        logger.info("Updating conda env")
+        print("Updating conda env")
         subprocess.run(
             "conda env update -f conda_in_process.yml"
         )
-        logger.info("Conda env updated successfully")
+        print("Conda env updated successfully")
 
     def _get_active_conda_env_name(self) -> str:
         """Returns the conda environment name from the set environment variable. None otherwise."""
