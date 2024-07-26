@@ -51,7 +51,10 @@ class RequirementsManager:
     def _install_requirements_txt(self):
         """Install requirements.txt file using pip"""
         logger.info("Running command to pip install")
-        subprocess.run("pip install -r /home/ec2-user/SageMaker/require.txt")
+        subprocess.run(
+            "pip install -r require.txt",
+            shell=True
+        )
         logger.info("Command ran successfully")
 
     def _update_conda_env_in_path(self):
