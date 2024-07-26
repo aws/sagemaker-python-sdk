@@ -37,8 +37,8 @@ class RequirementsManager:
         dependencies = self._capture_from_local_runtime()
 
         # No additional dependencies specified
-        if dependencies is None:
-            return None
+        # if dependencies is None:
+        #     return None
 
         # Dependencies specified as either req.txt or conda_env.yml
         if dependencies.endswith(".txt"):
@@ -51,13 +51,13 @@ class RequirementsManager:
     def _install_requirements_txt(self):
         """Install requirements.txt file using pip"""
         logger.info("Running command to pip install")
-        subprocess.run("pip install -r require.txt", shell=True)
+        subprocess.run("pip install -r require.txt", shell=True, check=True)
         logger.info("Command ran successfully")
 
     def _update_conda_env_in_path(self):
         """Update conda env using conda yml file"""
         print("Updating conda env")
-        subprocess.run("conda env update -f conda_in_process.yml", shell=True)
+        subprocess.run("conda env update -f conda_in_process.yml", shell=True, check=True)
         print("Conda env updated successfully")
 
     def _get_active_conda_env_name(self) -> str:
