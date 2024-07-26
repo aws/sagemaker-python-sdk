@@ -205,7 +205,9 @@ def get_init_kwargs(
 
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(estimator_init_kwargs)
-    estimator_init_kwargs = _add_sagemaker_session_with_user_agent_to_kwargs(estimator_init_kwargs)
+    estimator_init_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(
+        estimator_init_kwargs
+    )
     estimator_init_kwargs = _add_region_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_instance_type_and_count_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_image_uri_to_kwargs(estimator_init_kwargs)
@@ -439,7 +441,9 @@ def _add_region_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
-def _add_sagemaker_session_with_user_agent_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_sagemaker_session_with_custom_user_agent_to_kwargs(
+    kwargs: JumpStartKwargs,
+) -> JumpStartKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
     kwargs.sagemaker_session = (
         kwargs.sagemaker_session

@@ -1118,7 +1118,6 @@ def get_jumpstart_user_agent_extra_suffix(
     sagemaker_python_sdk_headers = get_user_agent_extra_suffix()
     jumpstart_specific_suffix = f"md/js_model_id#{model_id} md/js_model_ver#{model_version}"
     config_specific_suffix = f"md/js_config#{config_name}"
-    print(config_name)
     hub_specific_suffix = f"md/js_is_hub_content#{is_hub_content}"
 
     if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, None):
