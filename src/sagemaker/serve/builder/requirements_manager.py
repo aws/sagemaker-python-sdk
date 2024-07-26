@@ -58,7 +58,7 @@ class RequirementsManager:
         """Update conda env using conda yml file"""
         logger.info("Updating conda env")
         subprocess.run(
-            "conda env update -p '/home/ec2-user/anaconda3/envs/pytorch_p310' --file=conda_in_process.yml"
+            "conda env update --file=conda_in_process.yml"
         )
         logger.info("Conda env updated successfully")
 
