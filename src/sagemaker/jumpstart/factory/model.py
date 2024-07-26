@@ -246,6 +246,32 @@ def _add_instance_type_to_kwargs(
             kwargs.instance_type,
         )
 
+    specs = verify_model_region_and_return_specs(
+        model_id=kwargs.model_id,
+        version=kwargs.model_version,
+        scope=JumpStartScriptScope.INFERENCE,
+        region=kwargs.region,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        sagemaker_session=kwargs.sagemaker_session,
+        model_type=kwargs.model_type,
+        config_name=kwargs.config_name,
+    )
+
+    if specs.inference_configs and kwargs.config_name not in specs.inference_configs.configs:
+        return kwargs
+
+    resolved_config = (
+        specs.inference_configs.configs[kwargs.config_name].resolved_config
+        if specs.inference_configs
+        else None
+    )
+    if resolved_config is None:
+        return kwargs
+    supported_instance_types = resolved_config.get("supported_inference_instance_types", [])
+    if kwargs.instance_type not in supported_instance_types:
+        JUMPSTART_LOGGER.warning("Overriding instance type to %s", kwargs.instance_type)
+
     return kwargs
 
 
@@ -683,28 +709,6 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
     if kwargs.config_name is None:
         return kwargs
 
-    specs = verify_model_region_and_return_specs(
-        model_id=kwargs.model_id,
-        version=kwargs.model_version,
-        scope=JumpStartScriptScope.INFERENCE,
-        region=kwargs.region,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        sagemaker_session=temp_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
-    )
-
-    resolved_config = (
-        specs.inference_configs.configs[kwargs.config_name].resolved_config
-        if specs.inference_configs
-        else None
-    )
-    if resolved_config is None:
-        return kwargs
-    supported_instance_types = resolved_config.get("supported_inference_instance_types", [])
-    if kwargs.instance_type not in supported_instance_types:
-        JUMPSTART_LOGGER.warning("Overriding instance type to %s", kwargs.instance_type)
     return kwargs
 
 
@@ -873,9 +877,9 @@ def get_deploy_kwargs(
         kwargs=deploy_kwargs, training_config_name=training_config_name
     )
 
-    deploy_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(kwargs=deploy_kwargs)
-
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
+
+    deploy_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(kwargs=deploy_kwargs)
 
     deploy_kwargs = _add_endpoint_name_to_kwargs(kwargs=deploy_kwargs)
 
@@ -1060,8 +1064,8 @@ def get_init_kwargs(
     )
 
     model_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(kwargs=model_init_kwargs)
-    model_init_kwargs = _add_config_name_to_init_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
+    model_init_kwargs = _add_config_name_to_init_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(
         kwargs=model_init_kwargs

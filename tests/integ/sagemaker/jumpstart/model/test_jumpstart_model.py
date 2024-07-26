@@ -399,7 +399,7 @@ def test_jumpstart_model_with_deployment_configs(setup):
 
 
 def test_jumpstart_session_with_config_name():
-    model = JumpStartModel(model_id="meta-textgeneration-llama-2-7b", model_version="*")
+    model = JumpStartModel(model_id="meta-textgeneration-llama-2-7b")
     assert model.config_name != None
     session = model.sagemaker_session
 
