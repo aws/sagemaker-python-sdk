@@ -7,7 +7,6 @@ name = "sagemaker"
 dynamic = ["version", "optional-dependencies"]
 description = "Open source library for training and deploying models on Amazon SageMaker."
 readme = "README.rst"
-license = "Apache-2.0"
 requires-python = ">=3.8"
 authors = [
   { name = "Amazon Web Services" },
