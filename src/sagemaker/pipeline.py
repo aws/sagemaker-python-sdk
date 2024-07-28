@@ -15,8 +15,8 @@ from __future__ import absolute_import
 
 from typing import Optional, Dict, List, Union
 
-import sagemaker
 import logging
+import sagemaker
 from sagemaker import ModelMetrics, Model
 from sagemaker.config import (
     ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
