@@ -45,6 +45,7 @@ from sagemaker.utils import instance_supports_kms
 
 logger = logging.getLogger(__name__)
 
+
 class PipelineModel(object):
     """A pipeline of SageMaker `Model` instances.
 
