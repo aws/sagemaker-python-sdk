@@ -49,8 +49,8 @@ async def main():
     logger.info("Running")
     config = uvicorn.Config(
         "sagemaker.app:app",
-        host="0.0.0.0",
-        port=9007,
+        host="127.0.0.1",
+        port=8080,
         log_level="info",
         loop="asyncio",
         reload=True,

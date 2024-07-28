@@ -52,14 +52,14 @@ class InProcessMultiModelServer:
         requests_log.propagate = True
 
         try:
-            requests.get("http://localhost:9007/", verify=False).json()
+            requests.get("http://127.0.0.1:8080/", verify=False).json()
         except Exception as ex:
             logger.error(ex)
             raise ex
 
         try:
             response = requests.get(
-                "http://0.0.0.0:9007/generate",
+                "http://127.0.0.1:8080/generate",
                 json=json.dumps(request),
                 headers={"Content-Type": content_type, "Accept": accept},
                 timeout=600,
