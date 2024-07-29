@@ -37,6 +37,7 @@ def retrieve_default(
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
     script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
+    config_name: Optional[str] = None,
 ) -> Dict[str, str]:
     """Retrieves the default container environment variables for the model matching the arguments.
 
@@ -68,6 +69,7 @@ def retrieve_default(
             variables specific for the instance type.
         script (JumpStartScriptScope): The JumpStart script for which to retrieve environment
             variables.
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         dict: The variables to use for the model.
 
@@ -91,4 +93,5 @@ def retrieve_default(
         sagemaker_session=sagemaker_session,
         instance_type=instance_type,
         script=script,
+        config_name=config_name,
     )

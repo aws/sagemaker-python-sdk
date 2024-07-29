@@ -1,6 +1,7 @@
 from __future__ import absolute_import
-import json
+
 import datetime
+import json
 
 from unittest import TestCase
 from unittest.mock import Mock, patch, ANY
@@ -237,7 +238,7 @@ class ListJumpStartModels(TestCase):
             get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
         )
         patched_get_manifest.side_effect = (
-            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region)
         )
 
         manifest_length = len(get_prototype_manifest())
@@ -245,7 +246,7 @@ class ListJumpStartModels(TestCase):
         for val in vals:
             kwargs = {"filter": And(f"training_supported == {val}", "model_type is open_weights")}
             list_jumpstart_models(**kwargs)
-            assert patched_read_s3_file.call_count == manifest_length
+            assert patched_read_s3_file.call_count == 2 * manifest_length
             assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
@@ -253,7 +254,7 @@ class ListJumpStartModels(TestCase):
 
             kwargs = {"filter": And(f"training_supported != {val}", "model_type is open_weights")}
             list_jumpstart_models(**kwargs)
-            assert patched_read_s3_file.call_count == manifest_length
+            assert patched_read_s3_file.call_count == 2 * manifest_length
             assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
@@ -272,7 +273,7 @@ class ListJumpStartModels(TestCase):
             ("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
         ]
-        assert patched_read_s3_file.call_count == manifest_length
+        assert patched_read_s3_file.call_count == 2 * manifest_length
         assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
@@ -281,7 +282,7 @@ class ListJumpStartModels(TestCase):
         kwargs = {"filter": And(f"training_supported not in {vals}", "model_type is open_weights")}
         models = list_jumpstart_models(**kwargs)
         assert [] == models
-        assert patched_read_s3_file.call_count == manifest_length
+        assert patched_read_s3_file.call_count == 2 * manifest_length
         assert patched_get_manifest.call_count == 2
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
