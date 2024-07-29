@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from collections import deque
 
 import logging
+import re
 import sys
 from typing import Callable
 
@@ -66,6 +67,12 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
         None. Logs information to the "sagemaker.config" logger.
     """
     logger = get_sagemaker_config_logger()
+
+    sensitive_keywords = re.compile(r'(secret|password|key)', re.IGNORECASE)
+
+    if sensitive_keywords.search(config_key_path):
+        source_value = "***"
+        config_value = "***"
 
     if config_value is not None:
 
