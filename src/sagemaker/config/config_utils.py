@@ -70,13 +70,18 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
 
     # sensitive_keywords = re.compile(r'(secret|password|key)', re.IGNORECASE)
 
+    source_value = '*'
+    config_value = '*'
+
     if isinstance(source_value, dict):
         for key in source_value.keys():
-            source_value[key] = '***'
+            if re.search(r'(secret|password|key)', key, re.IGNORECASE):
+                source_value[key] = '***'
 
     if isinstance(config_value, dict):
         for key in config_value.keys():
-            config_value[key] = '***'
+            if re.search(r'(secret|password|key)', key, re.IGNORECASE):
+                config_value[key] = '***'
 
     if config_value is not None:
 
