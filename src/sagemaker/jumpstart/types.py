@@ -1732,32 +1732,15 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
         )
         self.inference_config_rankings: Optional[Dict[str, JumpStartConfigRanking]] = (
             {
-                alias: JumpStartConfigRanking(ranking)
+                alias: JumpStartConfigRanking(ranking, is_hub_content=self._is_hub_content)
                 for alias, ranking in json_obj["inference_config_rankings"].items()
             }
             if json_obj.get("inference_config_rankings")
             else None
         )
-        inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
-            {
-                alias: JumpStartMetadataConfig(
-                    alias,
-                    config,
-                    json_obj,
-                    (
-                        {
-                            component_name: self.inference_config_components.get(component_name)
-                            for component_name in config.get("component_names")
-                        }
-                        if config and config.get("component_names")
-                        else None
-                    ),
-                )
-                for alias, config in json_obj["inference_configs"].items()
-            }
-            if json_obj.get("inference_configs")
-            else None
-        )
+        inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = json_obj[
+            "inference_configs"
+        ]["Configs"]
         self.inference_configs: Optional[JumpStartMetadataConfigs] = (
             JumpStartMetadataConfigs(
                 inference_configs_dict,
