@@ -75,21 +75,23 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
     config_value_log_copy = deepcopy(config_value)
 
 
+    # if isinstance(source_value_log_copy, dict):
+    #     for key in source_value_log_copy.keys():
+    #         if re.search(r'(secret|password|key)', key, re.IGNORECASE):
+    #             source_value_log_copy[key] = '***'
+    #
+    # if isinstance(config_value_log_copy, dict):
+    #     for key in config_value_log_copy.keys():
+    #         if re.search(r'(secret|password|key)', key, re.IGNORECASE):
+    #             config_value_log_copy[key] = '***'
+
     if isinstance(source_value_log_copy, dict):
         for key in source_value_log_copy.keys():
-            if re.search(r'(secret|password|key)', key, re.IGNORECASE):
-                source_value_log_copy[key] = '***'
+            source_value_log_copy[key] = '***'
 
     if isinstance(config_value_log_copy, dict):
         for key in config_value_log_copy.keys():
-            if re.search(r'(secret|password|key)', key, re.IGNORECASE):
-                config_value_log_copy[key] = '***'
-
-    if isinstance(source_value_log_copy, str):
-        source_value_log_copy = '*'
-
-    if isinstance(config_value_log_copy, str):
-        config_value_log_copy = '*'
+            config_value_log_copy[key] = '***'
 
     if config_value is not None:
 
