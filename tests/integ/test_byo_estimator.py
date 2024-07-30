@@ -109,7 +109,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
 
 
 @pytest.mark.release
-def test_estimator_register_publish_training_details(sagemaker_session, region):
+def test_estimator_register_publish_training_details(sagemaker_session, region, cpu_instance_type):
 
     bucket = sagemaker_session.default_bucket()
     prefix = "model-card-sample-notebook"
@@ -150,7 +150,7 @@ def test_estimator_register_publish_training_details(sagemaker_session, region):
         container,
         role="SageMakerRole",
         instance_count=1,
-        instance_type="ml.m4.xlarge",
+        instance_type=cpu_instance_type,
         output_path=output_location,
         sagemaker_session=sagemaker_session,
     )
