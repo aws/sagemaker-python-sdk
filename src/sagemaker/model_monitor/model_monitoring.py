@@ -1599,7 +1599,7 @@ class ModelMonitor(object):
         dashboard_exists = True
         try:
             cw_client.get_dashboard(DashboardName=dashboard_name)
-        except Exception as e:
+        except Exception as _:  # noqa: F841
             dashboard_exists = False
 
         if dashboard_exists:
@@ -2266,13 +2266,14 @@ class DefaultModelMonitor(ModelMonitor):
             )
             logger.error(message)
             raise ValueError(message)
-        
+
         # error checking for dashboard
         if enable_automatic_dashboard:
-            self._check_dashboard_validity_without_checking_in_use(
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            self._check_automatic_dashboard_validity(
+                cw_client=cw_client,
                 monitor_schedule_name=self.monitoring_schedule_name,
                 enable_cloudwatch_metrics=enable_cloudwatch_metrics,
-                enable_automatic_dashboard=enable_automatic_dashboard,
                 dashboard_name=dashboard_name,
             )
 
@@ -2405,7 +2406,7 @@ class DefaultModelMonitor(ModelMonitor):
         )
 
         self._wait_for_schedule_changes_to_apply()
-        
+
         if enable_automatic_dashboard:
             if dashboard_name is None:
                 dashboard_name = self.monitoring_schedule_name
@@ -2424,7 +2425,6 @@ class DefaultModelMonitor(ModelMonitor):
                     region_name=self.sagemaker_session.boto_region_name,
                 ).to_json(),
             )
-
 
     def _update_data_quality_monitoring_schedule(
         self,
@@ -2590,7 +2590,6 @@ class DefaultModelMonitor(ModelMonitor):
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
                 logger.exception(message)
             raise
-
 
     def delete_monitoring_schedule(self):
         """Deletes the monitoring schedule and its job definition."""
@@ -3473,10 +3472,11 @@ class ModelQualityMonitor(ModelMonitor):
             raise ValueError(message)
 
         if enable_automatic_dashboard:
-            self._check_dashboard_validity_without_checking_in_use(
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            self._check_automatic_dashboard_validity(
+                cw_client=cw_client,
                 monitor_schedule_name=self.monitoring_schedule_name,
                 enable_cloudwatch_metrics=enable_cloudwatch_metrics,
-                enable_automatic_dashboard=enable_automatic_dashboard,
                 dashboard_name=dashboard_name,
             )
 

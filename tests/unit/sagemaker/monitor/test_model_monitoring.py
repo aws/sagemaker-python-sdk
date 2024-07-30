@@ -957,7 +957,8 @@ def test_data_quality_monitor_invalid_create(data_quality_monitor, sagemaker_ses
             constraints=CONSTRAINTS,
             statistics=STATISTICS,
         )
-        
+
+
 def test_data_quality_monitor_invalid_dashboard_create(data_quality_monitor, sagemaker_session):
     # invalid: cannot create a monitoring schedule with an invalid dashboard name
     with pytest.raises(ValueError):
@@ -1101,6 +1102,7 @@ def _test_data_quality_monitor_create_schedule(
     sagemaker_session.sagemaker_client.create_data_quality_job_definition.assert_called_with(
         **expected_arguments
     )
+
 
 def _test_data_quality_batch_transform_monitor_create_schedule(
     data_quality_monitor,
@@ -1598,7 +1600,7 @@ def test_model_quality_monitor_with_dashboard(model_quality_monitor, sagemaker_s
         model_quality_monitor=model_quality_monitor,
         sagemaker_session=sagemaker_session,
     )
-    
+
     _test_model_quality_monitor_delete_schedule(
         model_quality_monitor=model_quality_monitor,
         sagemaker_session=sagemaker_session,
@@ -1834,6 +1836,7 @@ def _test_model_quality_monitor_create_schedule(
         },
         Tags=TAGS,
     )
+
 
 def _test_model_quality_monitor_batch_transform_create_schedule(
     model_quality_monitor,
