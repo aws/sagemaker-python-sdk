@@ -1148,6 +1148,7 @@ def get_top_ranked_config_name(
     tolerate_deprecated_model: bool = False,
     tolerate_vulnerable_model: bool = False,
     hub_arn: Optional[str] = None,
+    ranking_name: enums.JumpStartConfigRankingName = enums.JumpStartConfigRankingName.DEFAULT,
 ) -> Optional[str]:
     """Returns the top ranked config name for the given model ID and region.
 
@@ -1168,13 +1169,17 @@ def get_top_ranked_config_name(
 
     if scope == enums.JumpStartScriptScope.INFERENCE:
         return (
-            model_specs.inference_configs.get_top_config_from_ranking().config_name
+            model_specs.inference_configs.get_top_config_from_ranking(
+                ranking_name=ranking_name
+            ).config_name
             if model_specs.inference_configs
             else None
         )
     if scope == enums.JumpStartScriptScope.TRAINING:
         return (
-            model_specs.training_configs.get_top_config_from_ranking().config_name
+            model_specs.training_configs.get_top_config_from_ranking(
+                ranking_name=ranking_name
+            ).config_name
             if model_specs.training_configs
             else None
         )

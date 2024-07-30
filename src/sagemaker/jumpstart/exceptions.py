@@ -150,7 +150,6 @@ class VulnerableJumpStartModelError(ValueError):
                 model. (Default: None).
 
         """
-        version = version or "*"
         if message:
             self.message = message
         else:
@@ -199,7 +198,6 @@ class DeprecatedJumpStartModelError(ValueError):
         version: Optional[str] = None,
         message: Optional[str] = None,
     ):
-        version = version or "*"
         if message:
             self.message = message
         else:
