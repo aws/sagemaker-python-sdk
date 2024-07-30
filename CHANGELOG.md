@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.227.0 (2024-07-30)
+
+### Features
+
+ * added code scanning through CodeQL
+
+### Bug Fixes and Other Changes
+
+ * Fixed cpu isntance type for the estimator register test
+ * update image_uri_configs  07-29-2024 11:28:28 PST
+ * avoid AccessDenied error for a while on SageMaker Studio wtih do…
+ * SMP PT 2.3 Fix
+ * chore: pin framework version in serverless inference tests
+ * image uri in TGI 2.2.0 image
+ * explicitly access enum member values to avoid Python version related regression
+ * chore: add huggingface TGI 2.2.0 config
+ * update image_uri_configs  07-22-2024 11:53:54 PST
+ * update image_uri_configs  07-17-2024 07:17:38 PST
+ * update image_uri_configs  07-16-2024 07:17:45 PST
+ * add support for new regions
+
 ## v2.226.1 (2024-07-17)
 
 ## v2.226.0 (2024-07-12)
