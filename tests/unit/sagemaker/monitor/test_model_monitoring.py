@@ -19,6 +19,7 @@ from typing import Union
 import sagemaker
 import pytest
 from mock import Mock, patch, MagicMock
+from botocore.exceptions import ClientError
 
 from sagemaker.model_monitor import (
     ModelMonitor,
@@ -473,7 +474,12 @@ NEW_DASHBOARD_NAME = "dashboard_2"
 def mock_get_dashboard(DashboardName):
     if DashboardName == EXISTING_DASHBOARD_NAME:
         return {"DashboardName": DashboardName, "DashboardBody": "dummy_dashboard_body"}
-    raise ValueError(f"Dashboard '{DashboardName}' not found.")
+    raise ClientError(
+        error_response={
+            "Error": {},
+        },
+        operation_name=f"Dashboard '{DashboardName}' not found.",
+    )
 
 
 # TODO-reinvent-2019: Continue to flesh these out.

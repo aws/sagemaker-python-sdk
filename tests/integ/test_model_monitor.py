@@ -958,6 +958,86 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     my_default_monitor.stop_monitoring_schedule()
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+    
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
+def test_default_monitor_create_stop_and_start_monitoring_schedule_with_dashboards(
+    sagemaker_session, output_kms_key, volume_kms_key, predictor
+):
+
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=volume_kms_key,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        INTEG_TEST_MONITORING_OUTPUT_BUCKET,
+        str(uuid.uuid4()),
+    )
+
+    statistics = Statistics.from_file_path(
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    my_default_monitor.create_monitoring_schedule(
+        endpoint_input=predictor.endpoint_name,
+        output_s3_uri=output_s3_uri,
+        statistics=statistics,
+        constraints=constraints,
+        schedule_cron_expression=CronExpressionGenerator.daily(),
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+    )
+
+    schedule_description = my_default_monitor.describe_schedule()
+    _verify_default_monitoring_schedule(
+        sagemaker_session=sagemaker_session,
+        schedule_description=schedule_description,
+        statistics=statistics,
+        constraints=constraints,
+        output_kms_key=output_kms_key,
+        volume_kms_key=volume_kms_key,
+        network_config=NETWORK_CONFIG,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    stopped_schedule_description = my_default_monitor.describe_schedule()
+    assert stopped_schedule_description["MonitoringScheduleStatus"] == "Stopped"
+
+    my_default_monitor.start_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    started_schedule_description = my_default_monitor.describe_schedule()
+    assert started_schedule_description["MonitoringScheduleStatus"] == "Scheduled"
+
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
 
 @pytest.mark.skipif(
