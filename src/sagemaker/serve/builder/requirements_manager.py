@@ -47,7 +47,7 @@ class RequirementsManager:
     def _install_requirements_txt(self):
         """Install requirements.txt file using pip"""
         logger.info("Running command to pip install")
-        subprocess.run("pip install -r require.txt", shell=True, check=True)
+        subprocess.run("pip install -r requirements.txt", shell=True, check=True)
         logger.info("Command ran successfully")
 
     def _update_conda_env_in_path(self):

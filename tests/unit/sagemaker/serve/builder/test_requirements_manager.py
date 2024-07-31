@@ -12,141 +12,49 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-# import unittest
-# from unittest.mock import patch, Mock
+import unittest
+import subprocess
+from unittest.mock import patch, Mock
 
-# from sagemaker.serve.mode.in_process_mode import InProcessMode
-# from sagemaker.serve import SchemaBuilder
-# from sagemaker.serve.utils.types import ModelServer
-# from sagemaker.serve.utils.exceptions import LocalDeepPingException
+from sagemaker.serve.mode.in_process_mode import InProcessMode
+from sagemaker.serve.builder.requirements_manager import RequirementsManager
+
+class TestRequirementsManager(unittest.TestCase):
+
+    def test_detect_file_exists_fail(self, mock_dependencies: str = None) -> str:
+        mock_dependencies = "mock.ini"
+        self.assertRaises(ValueError, RequirementsManager().detect_file_exists(mock_dependencies))
+
+    @patch("sagemaker.serve.mode.in_process_mode.logger")
+    @patch("sagemaker.session.Session")
+    def test_install_requirements_txt(self, mock_logger):
+
+        mock_logger.info.assert_called_once_with("Running command to pip install")
+
+        mock_logger.info.assert_called_once_with("Command ran successfully")
+
+    @patch("sagemaker.serve.mode.in_process_mode.logger")
+    @patch("sagemaker.session.Session")
+    def test_update_conda_env_in_path(self, mock_logger):
+
+        mock_logger.info.assert_called_once_with("Updating conda env")
 
 
-# mock_prompt = "Hello, I'm a language model,"
-# mock_response = "Hello, I'm a language model, and I'm here to help you with your English."
-# mock_sample_input = {"inputs": mock_prompt, "parameters": {}}
-# mock_sample_output = [{"generated_text": mock_response}]
+        # mock_multi_model_server_deep_ping = Mock()
+        # mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
+        #     True,
+        # )
 
+        # in_process_mode = InProcessMode(
+        #     model_server=ModelServer.MMS,
+        #     inference_spec=mock_inference_spec,
+        #     schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
+        #     session=mock_session,
+        #     model_path="model_path",
+        # )
 
-# class TestRequirementsManager(unittest.TestCase):
+        # in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
 
-#     @patch("sagemaker.serve.mode.in_process_mode.Path")
-#     @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
-#     @patch("sagemaker.session.Session")
-#     def test_load_happy(self, mock_session, mock_inference_spec, mock_path):
-#         mock_path.return_value.exists.side_effect = lambda *args, **kwargs: True
-#         mock_path.return_value.is_dir.side_effect = lambda *args, **kwargs: True
+        # in_process_mode.create_server(predictor=mock_predictor)
 
-#         mock_inference_spec.load.side_effect = lambda *args, **kwargs: "Dummy load"
-
-#         mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
-#         in_process_mode = InProcessMode(
-#             model_server=ModelServer.MMS,
-#             inference_spec=mock_inference_spec,
-#             schema_builder=mock_schema_builder,
-#             session=mock_session,
-#             model_path="model_path",
-#             env_vars={"key": "val"},
-#         )
-
-#         res = in_process_mode.load(model_path="/tmp/model-builder/code/")
-
-#         self.assertEqual(res, "Dummy load")
-#         self.assertEqual(in_process_mode.inference_spec, mock_inference_spec)
-#         self.assertEqual(in_process_mode.schema_builder, mock_schema_builder)
-#         self.assertEqual(in_process_mode.model_path, "model_path")
-#         self.assertEqual(in_process_mode.env_vars, {"key": "val"})
-
-#     @patch("sagemaker.serve.mode.in_process_mode.Path")
-#     @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
-#     @patch("sagemaker.session.Session")
-#     def test_load_ex(self, mock_session, mock_inference_spec, mock_path):
-#         mock_path.return_value.exists.side_effect = lambda *args, **kwargs: False
-#         mock_path.return_value.is_dir.side_effect = lambda *args, **kwargs: True
-
-#         mock_inference_spec.load.side_effect = lambda *args, **kwargs: "Dummy load"
-
-#         mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
-#         in_process_mode = InProcessMode(
-#             model_server=ModelServer.MMS,
-#             inference_spec=mock_inference_spec,
-#             schema_builder=mock_schema_builder,
-#             session=mock_session,
-#             model_path="model_path",
-#         )
-
-#         self.assertRaises(ValueError, in_process_mode.load, "/tmp/model-builder/code/")
-
-#         mock_path.return_value.exists.side_effect = lambda *args, **kwargs: True
-#         mock_path.return_value.is_dir.side_effect = lambda *args, **kwargs: False
-
-#         mock_inference_spec.load.side_effect = lambda *args, **kwargs: "Dummy load"
-#         mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
-#         in_process_mode = InProcessMode(
-#             model_server=ModelServer.MMS,
-#             inference_spec=mock_inference_spec,
-#             schema_builder=mock_schema_builder,
-#             session=mock_session,
-#             model_path="model_path",
-#         )
-
-#         self.assertRaises(ValueError, in_process_mode.load, "/tmp/model-builder/code/")
-
-#     @patch("sagemaker.serve.mode.in_process_mode.logger")
-#     @patch("sagemaker.base_predictor.PredictorBase")
-#     @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
-#     @patch("sagemaker.session.Session")
-#     def test_create_server_happy(
-#         self, mock_session, mock_inference_spec, mock_predictor, mock_logger
-#     ):
-#         mock_response = "Fake response"
-#         mock_multi_model_server_deep_ping = Mock()
-#         mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
-#             True,
-#             mock_response,
-#         )
-
-#         in_process_mode = InProcessMode(
-#             model_server=ModelServer.MMS,
-#             inference_spec=mock_inference_spec,
-#             schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
-#             session=mock_session,
-#             model_path="model_path",
-#         )
-
-#         in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
-
-#         in_process_mode.create_server(predictor=mock_predictor)
-
-#         mock_logger.info.assert_called_once_with(
-#             "Waiting for model server %s to start up...", ModelServer.MMS
-#         )
-#         mock_logger.debug.assert_called_once_with(
-#             "Ping health check has passed. Returned %s", str(mock_response)
-#         )
-
-#     @patch("sagemaker.base_predictor.PredictorBase")
-#     @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
-#     @patch("sagemaker.session.Session")
-#     def test_create_server_ex(
-#         self,
-#         mock_session,
-#         mock_inference_spec,
-#         mock_predictor,
-#     ):
-#         mock_multi_model_server_deep_ping = Mock()
-#         mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
-#             False,
-#             None,
-#         )
-
-#         in_process_mode = InProcessMode(
-#             model_server=ModelServer.MMS,
-#             inference_spec=mock_inference_spec,
-#             schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
-#             session=mock_session,
-#             model_path="model_path",
-#         )
-
-#         in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
-
-#         self.assertRaises(LocalDeepPingException, in_process_mode.create_server, mock_predictor)
+        mock_logger.info.assert_called_once_with("Conda env updated successfully")
