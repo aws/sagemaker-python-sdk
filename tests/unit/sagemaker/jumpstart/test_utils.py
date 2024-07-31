@@ -1927,7 +1927,10 @@ class TestUserAgent:
         utils.get_default_jumpstart_session_with_user_agent_suffix("model_id", "model_version")
         mock_boto3_session.get_session.assert_called_once_with()
         mock_get_jumpstart_user_agent_extra_suffix.assert_called_once_with(
-            "model_id", "model_version", None, False
+            model_id="model_id",
+            model_version="model_version",
+            config_name=None,
+            is_hub_content=False,
         )
         mock_botocore_config.assert_called_once_with(
             user_agent_extra=mock_get_jumpstart_user_agent_extra_suffix.return_value

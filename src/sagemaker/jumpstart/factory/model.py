@@ -165,7 +165,10 @@ def _add_sagemaker_session_with_custom_user_agent_to_kwargs(
     kwargs.sagemaker_session = (
         kwargs.sagemaker_session
         or get_default_jumpstart_session_with_user_agent_suffix(
-            kwargs.model_id, kwargs.model_version, kwargs.config_name, kwargs.hub_arn
+            model_id=kwargs.model_id,
+            model_version=kwargs.model_version,
+            config_name=kwargs.config_name,
+            is_hub_content=kwargs.hub_arn is not None,
         )
     )
 

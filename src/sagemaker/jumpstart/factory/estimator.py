@@ -917,7 +917,7 @@ def _add_config_name_to_kwargs(
         model_version=kwargs.model_version,
         sagemaker_session=kwargs.sagemaker_session,
         scope=JumpStartScriptScope.TRAINING,
-        model_type=kwargs.model_type[0],
+        model_type=kwargs.model_type,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         hub_arn=kwargs.hub_arn,

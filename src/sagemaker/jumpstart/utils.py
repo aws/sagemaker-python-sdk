@@ -1196,7 +1196,10 @@ def get_default_jumpstart_session_with_user_agent_suffix(
     botocore_session = botocore.session.get_session()
     botocore_config = botocore.config.Config(
         user_agent_extra=get_jumpstart_user_agent_extra_suffix(
-            model_id, model_version, config_name, is_hub_content
+            model_id=model_id,
+            model_version=model_version,
+            config_name=config_name,
+            is_hub_content=is_hub_content,
         ),
     )
     botocore_session.set_default_client_config(botocore_config)
