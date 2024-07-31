@@ -1742,20 +1742,43 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             if json_obj.get("inference_config_rankings")
             else None
         )
-        inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
-            {
-                alias: JumpStartMetadataConfig(
-                    alias,
-                    config,
-                    json_obj,
-                    config.config_components,
-                    is_hub_content=self._is_hub_content,
-                )
-                for alias, config in json_obj["inference_configs"]["configs"].items()
-            }
-            if json_obj.get("inference_configs")
-            else None
-        )
+
+        if self._is_hub_content:
+            inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
+                {
+                    alias: JumpStartMetadataConfig(
+                        alias,
+                        config,
+                        json_obj,
+                        config.config_components,
+                        is_hub_content=self._is_hub_content,
+                    )
+                    for alias, config in json_obj["inference_configs"]["configs"].items()
+                }
+                if json_obj.get("inference_configs")
+                else None
+            )
+        else:
+            inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
+                {
+                    alias: JumpStartMetadataConfig(
+                        alias,
+                        config,
+                        json_obj,
+                        (
+                            {
+                                component_name: self.inference_config_components.get(component_name)
+                                for component_name in config.get("component_names")
+                            }
+                            if config and config.get("component_names")
+                            else None
+                        ),
+                    )
+                    for alias, config in json_obj["inference_configs"].items()
+                }
+                if json_obj.get("inference_configs")
+                else None
+            )
 
         self.inference_configs: Optional[JumpStartMetadataConfigs] = (
             JumpStartMetadataConfigs(
