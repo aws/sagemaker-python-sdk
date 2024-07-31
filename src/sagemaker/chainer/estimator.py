@@ -54,7 +54,7 @@ class Chainer(Framework):
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """This ``Estimator`` executes an Chainer script in a managed execution environment.
 
@@ -173,7 +173,7 @@ class Chainer(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``ChainerModel`` object that can be deployed to an ``Endpoint``.
 
@@ -225,7 +225,7 @@ class Chainer(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
