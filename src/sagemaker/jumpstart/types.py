@@ -1277,6 +1277,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.model_id: str = json_obj.get("model_id")
         self.url: str = json_obj.get("url")
         self.version: str = json_obj.get("version")
@@ -1722,6 +1724,8 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
         super().from_json(json_obj)
+        if self._is_hub_content:
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.inference_config_components: Optional[Dict[str, JumpStartConfigComponent]] = (
             {
                 component_name: JumpStartConfigComponent(component_name, component)
@@ -1738,9 +1742,29 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             if json_obj.get("inference_config_rankings")
             else None
         )
-        inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = json_obj[
-            "inference_configs"
-        ]["Configs"]
+        inference_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
+            {
+                alias: JumpStartMetadataConfig(
+                    alias,
+                    config,
+                    json_obj,
+                    (
+                        {
+                            component_name: self.inference_config_components.get(component_name)
+                            for component_name in config.get("component_names")
+                        }
+                        if config and config.get("component_names")
+                        else None
+                    ),
+                    is_hub_content=self._is_hub_content,
+                )
+                for alias, config in json_obj["inference_configs"].items()
+                if alias != "scope"
+            }
+            if json_obj.get("inference_configs")
+            else None
+        )
+
         self.inference_configs: Optional[JumpStartMetadataConfigs] = (
             JumpStartMetadataConfigs(
                 inference_configs_dict,
