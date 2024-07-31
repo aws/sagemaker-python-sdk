@@ -189,7 +189,7 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         enc1_layers: Optional[int] = None,
         enc0_freeze_pretrained_embedding: Optional[bool] = None,
         enc1_freeze_pretrained_embedding: Optional[bool] = None,
-        **kwargs
+        **kwargs,
     ):
         """Object2Vec is :class:`Estimator` used for anomaly detection.
 
@@ -338,7 +338,7 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -363,7 +363,7 @@ class Object2VecModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for Object2VecModel class.
 
@@ -396,5 +396,5 @@ class Object2VecModel(Model):
             role,
             predictor_cls=Predictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

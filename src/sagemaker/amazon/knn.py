@@ -85,7 +85,7 @@ class KNN(AmazonAlgorithmEstimatorBase):
         index_metric: Optional[str] = None,
         faiss_index_ivf_nlists: Optional[str] = None,
         faiss_index_pq_m: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         """k-nearest neighbors (KNN) is :class:`Estimator` used for classification and regression.
 
@@ -181,7 +181,7 @@ class KNN(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -252,7 +252,7 @@ class KNNModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Function to initialize KNNModel.
 
@@ -285,5 +285,5 @@ class KNNModel(Model):
             role,
             predictor_cls=KNNPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
