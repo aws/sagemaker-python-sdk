@@ -1748,18 +1748,10 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                     alias,
                     config,
                     json_obj,
-                    (
-                        {
-                            component_name: self.inference_config_components.get(component_name)
-                            for component_name in config.get("component_names")
-                        }
-                        if config and config.get("component_names")
-                        else None
-                    ),
+                    config.config_components,
                     is_hub_content=self._is_hub_content,
                 )
-                for alias, config in json_obj["inference_configs"].items()
-                if alias != "scope"
+                for alias, config in json_obj["inference_configs"]["configs"].items()
             }
             if json_obj.get("inference_configs")
             else None
