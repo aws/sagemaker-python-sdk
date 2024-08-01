@@ -23,7 +23,7 @@ class RequirementsManager:
     """Manages dependency installation by detecting file types"""
 
     def detect_file_exists(self, dependencies: str = None) -> str:
-        """ Detects the type of file dependencies will be installed from
+        """Detects the type of file dependencies will be installed from
 
         If a req.txt or conda.yml file is provided, it verifies their existence and
         returns the local file path
