@@ -13,48 +13,67 @@
 from __future__ import absolute_import
 
 import unittest
-import subprocess
-from unittest.mock import patch, Mock
+from unittest.mock import patch, call
 
-from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve.builder.requirements_manager import RequirementsManager
+
 
 class TestRequirementsManager(unittest.TestCase):
 
-    def test_detect_file_exists_fail(self, mock_dependencies: str = None) -> str:
+    @patch(
+        "sagemaker.serve.builder.requirements_manager.RequirementsManager._update_conda_env_in_path"
+    )
+    @patch(
+        "sagemaker.serve.builder.requirements_manager.RequirementsManager._install_requirements_txt"
+    )
+    @patch(
+        "sagemaker.serve.builder.requirements_manager.RequirementsManager._capture_from_local_runtime"
+    )
+    def test_detect_file_exists(
+        self,
+        mock_capture_from_local_runtime,
+        mock_install_requirements_txt,
+        mock_update_conda_env_in_path,
+    ) -> str:
+
+        mock_capture_from_local_runtime.side_effect = lambda: ".txt"
+        RequirementsManager().detect_file_exists()
+        mock_install_requirements_txt.assert_called_once()
+
+        mock_capture_from_local_runtime.side_effect = lambda: ".yml"
+        RequirementsManager().detect_file_exists()
+        mock_update_conda_env_in_path.assert_called_once()
+
+    @patch(
+        "sagemaker.serve.builder.requirements_manager.RequirementsManager._capture_from_local_runtime"
+    )
+    def test_detect_file_exists_fail(self, mock__capture_from_local_runtime) -> str:
         mock_dependencies = "mock.ini"
-        self.assertRaises(ValueError, RequirementsManager().detect_file_exists(mock_dependencies))
+        mock__capture_from_local_runtime.side_effect = lambda: "invalid requirement"
+        self.assertRaises(
+            ValueError, lambda: RequirementsManager().detect_file_exists(mock_dependencies)
+        )
 
-    @patch("sagemaker.serve.mode.in_process_mode.logger")
-    @patch("sagemaker.session.Session")
-    def test_install_requirements_txt(self, mock_logger):
+    @patch("sagemaker.serve.builder.requirements_manager.logger")
+    @patch("sagemaker.serve.builder.requirements_manager.subprocess")
+    def test_install_requirements_txt(self, mock_subprocess, mock_logger):
 
-        mock_logger.info.assert_called_once_with("Running command to pip install")
+        RequirementsManager()._install_requirements_txt()
 
-        mock_logger.info.assert_called_once_with("Command ran successfully")
+        calls = [call("Running command to pip install"), call("Command ran successfully")]
+        mock_logger.info.assert_has_calls(calls)
+        mock_subprocess.run.assert_called_once_with(
+            "pip install -r requirements.txt", shell=True, check=True
+        )
 
-    @patch("sagemaker.serve.mode.in_process_mode.logger")
-    @patch("sagemaker.session.Session")
-    def test_update_conda_env_in_path(self, mock_logger):
+    @patch("sagemaker.serve.builder.requirements_manager.logger")
+    @patch("sagemaker.serve.builder.requirements_manager.subprocess")
+    def test_update_conda_env_in_path(self, mock_subprocess, mock_logger):
 
-        mock_logger.info.assert_called_once_with("Updating conda env")
+        RequirementsManager()._update_conda_env_in_path()
 
-
-        # mock_multi_model_server_deep_ping = Mock()
-        # mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
-        #     True,
-        # )
-
-        # in_process_mode = InProcessMode(
-        #     model_server=ModelServer.MMS,
-        #     inference_spec=mock_inference_spec,
-        #     schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
-        #     session=mock_session,
-        #     model_path="model_path",
-        # )
-
-        # in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
-
-        # in_process_mode.create_server(predictor=mock_predictor)
-
-        mock_logger.info.assert_called_once_with("Conda env updated successfully")
+        calls = [call("Updating conda env"), call("Conda env updated successfully")]
+        mock_logger.info.assert_has_calls(calls)
+        mock_subprocess.run.assert_called_once_with(
+            "conda env update -f conda_in_process.yml", shell=True, check=True
+        )
