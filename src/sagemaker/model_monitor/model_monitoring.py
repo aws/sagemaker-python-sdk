@@ -1599,7 +1599,7 @@ class ModelMonitor(object):
         dashboard_exists = True
         try:
             cw_client.get_dashboard(DashboardName=dashboard_name)
-        except Exception as _:  # noqa: F841
+        except ClientError as _:  # noqa: F841
             dashboard_exists = False
 
         if dashboard_exists:

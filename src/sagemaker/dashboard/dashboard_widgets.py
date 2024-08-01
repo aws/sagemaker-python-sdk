@@ -24,8 +24,8 @@ class DashboardWidgetProperties:
     """Represents properties of a dashboard widget used for metrics in CloudWatch.
 
     Attributes:
-        view (str): Type of visualization ('timeSeries', 'singleValue', 'gauge', 'bar', 'pie', 'table').
-        stacked (bool): Whether to display the graph as stacked lines (applies to 'timeSeries' view).
+        view (str): Type of visualization ('timeSeries', 'bar', 'pie', 'table').
+        stacked (bool): Whether to display graph as stacked lines (applies to 'timeSeries' view).
         metrics (list): Array of metrics configurations for the widget.
         region (str): Region associated with the metrics.
         period (int): Period in seconds for data points on the graph.
@@ -46,8 +46,8 @@ class DashboardWidgetProperties:
         """Initializes DashboardWidgetProperties instance.
 
         Args:
-            view (str, optional): Type of visualization ('timeSeries', 'singleValue', 'gauge', 'bar', 'pie', 'table').
-            stacked (bool, optional): Whether to display the graph as stacked lines (applies to 'timeSeries' view).
+            view (str, optional): Type of visualization ('timeSeries', 'bar', 'pie', 'table').
+            stacked (bool, optional): Whether to display the graph as stacked lines.
             metrics (list, optional): Array of metrics configurations for the widget.
             region (str, optional): Region associated with the metrics.
             period (int, optional): Period in seconds for data points on the graph.
@@ -111,7 +111,7 @@ class DashboardWidget:
             height (int): Height of the widget.
             width (int): Width of the widget.
             widget_type (str): Type of the widget.
-            properties (DashboardWidgetProperties, optional): Properties specific to the widget type.
+            properties (DashboardWidgetProperties, optional): Properties of the widget type.
         """
         self.height = height
         self.width = width

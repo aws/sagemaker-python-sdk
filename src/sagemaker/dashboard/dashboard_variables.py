@@ -25,12 +25,12 @@ class DashboardVariable:
 
     Attributes:
         variable_type (str): Type of dashboard variable ('property' or 'pattern').
-        variable_property (str): Property affected by the variable, such as a JSON property or metric dimension.
+        variable_property (str): Property affected by the variable, such as metric dimension.
         inputType (str): Type of input field ('input', 'select', or 'radio') for user interaction.
         id (str): Identifier for the variable, up to 32 characters.
         label (str): Label displayed for the input field (optional, defaults based on context).
-        search (str): Metric search expression to populate input options (required for 'select' or 'radio').
-        populateFrom (str): Dimension name used to populate input options from search results.
+        search (str): Metric search expression to populate fields (required for 'select').
+        populateFrom (str): Dimension name used to populate fields from search results.
     """
 
     def __init__(
@@ -40,12 +40,12 @@ class DashboardVariable:
 
         Args:
             variable_type (str): Type of dashboard variable ('property' or 'pattern').
-            variable_property (str): Property affected by the variable, such as a JSON property or metric dimension.
-            inputType (str): Type of input field ('input', 'select', or 'radio') for user interaction.
+            variable_property (str): Property affected by the variable, such as metric dimension.
+            inputType (str): Type of input field ('input', 'select', or 'radio').
             variable_id (str): Identifier for the variable, up to 32 characters.
             label (str, optional): Label displayed for the input field (default is None).
             search (str, optional): Metric search expression to populate input options.
-            populateFrom (str, optional): Dimension name used to populate input options from search results.
+            populateFrom (str, optional): Dimension name used to populate field.
         """
         self.variable_type = variable_type
         self.variable_property = variable_property

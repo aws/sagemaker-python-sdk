@@ -24,7 +24,8 @@ class AutomaticModelQualityDashboard:
     """Represents a dashboard for automatic model quality metrics in Amazon SageMaker.
 
     Methods:
-        __init__(self, endpoint_name, monitoring_schedule_name, batch_transform_input, problem_type, region_name):
+        __init__(self, endpoint_name, monitoring_schedule_name,
+                batch_transform_input, problem_type, region_name):
             Initializes an AutomaticModelQualityDashboard instance.
 
         _generate_widgets(self):
@@ -111,7 +112,8 @@ class AutomaticModelQualityDashboard:
             endpoint_name (str): Name of the SageMaker endpoint.
             monitoring_schedule_name (str): Name of the monitoring schedule.
             batch_transform_input (str): Batch transform input (can be None).
-            problem_type (str): Type of problem ('Regression', 'BinaryClassification', or 'MulticlassClassification').
+            problem_type (str): Type of problem
+                                ('Regression', 'BinaryClassification', 'MulticlassClassification').
             region_name (str): AWS region name.
         """
         self.endpoint = endpoint_name

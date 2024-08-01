@@ -28,8 +28,8 @@ class AutomaticDataQualityDashboard:
     schedule provided.
 
     Attributes:
-        DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE (str): Namespace for endpoint data quality metrics.
-        DATA_QUALITY_METRICS_BATCH_NAMESPACE (str): Namespace for batch transform data quality metrics.
+        DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE (str): Namespace for endpoint.
+        DATA_QUALITY_METRICS_BATCH_NAMESPACE (str): Namespace for batch transform.
 
     Methods:
         __init__(self, endpoint_name, monitoring_schedule_name, batch_transform_input, region_name):
@@ -39,19 +39,19 @@ class AutomaticDataQualityDashboard:
             Generates variables for the dashboard based on whether batch transform is used or not.
 
         _generate_type_counts_widget(self):
-            Generates a widget for displaying type counts based on endpoint or batch transform.
+            Generates a widget for displaying type counts.
 
         _generate_null_counts_widget(self):
-            Generates a widget for displaying null and non-null counts based on endpoint or batch transform.
+            Generates a widget for displaying null and non-null counts.
 
         _generate_estimated_unique_values_widget(self):
-            Generates a widget for displaying estimated unique values based on endpoint or batch transform.
+            Generates a widget for displaying estimated unique values.
 
         _generate_completeness_widget(self):
-            Generates a widget for displaying completeness based on endpoint or batch transform.
+            Generates a widget for displaying completeness.
 
         _generate_baseline_drift_widget(self):
-            Generates a widget for displaying baseline drift based on endpoint or batch transform.
+            Generates a widget for displaying baseline drift.
 
         to_dict(self):
             Converts the dashboard configuration to a dictionary representation.
@@ -151,7 +151,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_fractional_counts_.*% OR "
                                 f"%^feature_integral_counts_.*% OR "
                                 f"%^feature_string_counts_.*% OR "
@@ -176,7 +176,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
                                 f"%^feature_fractional_counts_.*% OR "
                                 f"%^feature_integral_counts_.*% OR "
                                 f"%^feature_string_counts_.*% OR "
@@ -199,7 +199,7 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_null_counts_widget(self):
-        """Generates a widget for displaying null and non-null counts based on endpoint or batch transform.
+        """Generates a widget for displaying null and non-null counts.
 
         Returns:
             DashboardWidget: A DashboardWidget object configured for null counts.
@@ -213,7 +213,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_null_.*% OR %^feature_non_null_.*% "
                                 f'Feature="_" '
                                 f'MonitoringSchedule="{self.monitoring_schedule}" \', '
@@ -234,7 +234,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
                                 f"%^feature_null_.*% OR %^feature_non_null_.*% "
                                 f'Endpoint="{self.endpoint}" '
                                 f'Feature="_" '
@@ -252,7 +252,7 @@ class AutomaticDataQualityDashboard:
         )
 
     def _generate_estimated_unique_values_widget(self):
-        """Generates a widget for displaying estimated unique values based on endpoint or batch transform.
+        """Generates a widget for displaying estimated unique values.
 
         Returns:
             DashboardWidget: A DashboardWidget object configured for estimated unique values.
@@ -266,7 +266,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_estimated_unique_values_.*% "
                                 f'Feature="_" '
                                 f'MonitoringSchedule="{self.monitoring_schedule}" \', '
@@ -287,7 +287,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
                                 f"%^feature_estimated_unique_values_.*% "
                                 f'Endpoint="{self.endpoint}" '
                                 f'Feature="_" '
@@ -323,7 +323,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_completeness_.*% "
                                 f'Feature="_" '
                                 f'MonitoringSchedule="{self.monitoring_schedule}" \', '
@@ -344,7 +344,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
                                 f"%^feature_completeness_.*% "
                                 f'Endpoint="{self.endpoint}" '
                                 f'Feature="_" '
@@ -377,7 +377,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_BATCH_NAMESPACE} "
                                 f"%^feature_baseline_drift_.*% "
                                 f'Feature="_" '
                                 f'MonitoringSchedule="{self.monitoring_schedule}" \', '
@@ -398,7 +398,7 @@ class AutomaticDataQualityDashboard:
                     [
                         {
                             "expression": (
-                                f"SEARCH( '{AutomaticDataQualityDashboard.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
+                                f"SEARCH( '{self.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE} "
                                 f"%^feature_baseline_drift_.*% "
                                 f'Endpoint="{self.endpoint}" '
                                 f'Feature="_" '
