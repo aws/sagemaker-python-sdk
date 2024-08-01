@@ -4,6 +4,10 @@ from __future__ import absolute_import
 
 import logging
 import importlib.util
+import uvicorn
+
+from transformers import pipeline
+from fastapi import FastAPI, Request
 
 if not importlib.util.find_spec("uvicorn"):
     raise ImportError("Unable to import uvicorn, check if uvicorn is installed")
@@ -13,10 +17,6 @@ if not importlib.util.find_spec("transformers"):
 
 if not importlib.util.find_spec("fastapi"):
     raise ImportError("Unable to import fastapi, check if fastapi is installed")
-
-import uvicorn
-from transformers import pipeline
-from fastapi import FastAPI, Request
 
 
 logger = logging.getLogger(__name__)
