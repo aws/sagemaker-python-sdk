@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 
 
 class RequirementsManager:
-    """Transformers build logic with ModelBuilder()"""
+    """Manages dependency installation by detecting file types"""
 
     def detect_file_exists(self, dependencies: str = None) -> str:
-        """Creates snapshot of the user's environment
+        """ Detects the type of file dependencies will be installed from
 
         If a req.txt or conda.yml file is provided, it verifies their existence and
         returns the local file path
@@ -92,7 +92,3 @@ class RequirementsManager:
         local_dependencies_path = os.path.join(os.getcwd(), "inf_env_snapshot.yml")
 
         return local_dependencies_path
-
-
-if __name__ == "__main__":
-    RequirementsManager().detect_file_exists(dependencies="auto_capture")
