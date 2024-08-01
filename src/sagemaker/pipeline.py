@@ -43,7 +43,6 @@ from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.utils import instance_supports_kms
 
 
-
 class PipelineModel(object):
     """A pipeline of SageMaker `Model` instances.
 
