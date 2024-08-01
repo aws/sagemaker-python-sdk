@@ -1806,26 +1806,45 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
                 if json_obj.get("training_config_rankings")
                 else None
             )
-            training_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
-                {
-                    alias: JumpStartMetadataConfig(
-                        alias,
-                        config,
-                        json_obj,
-                        (
-                            {
-                                component_name: self.training_config_components.get(component_name)
-                                for component_name in config.get("component_names")
-                            }
-                            if config and config.get("component_names")
-                            else None
-                        ),
-                    )
-                    for alias, config in json_obj["training_configs"].items()
-                }
-                if json_obj.get("training_configs")
-                else None
-            )
+
+            if self._is_hub_content:
+                training_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
+                    {
+                        alias: JumpStartMetadataConfig(
+                            alias,
+                            config,
+                            json_obj,
+                            config.config_components,
+                            is_hub_content=self._is_hub_content,
+                        )
+                        for alias, config in json_obj["training_configs"]["configs"].items()
+                    }
+                    if json_obj.get("training_configs")
+                    else None
+                )
+            else:
+                training_configs_dict: Optional[Dict[str, JumpStartMetadataConfig]] = (
+                    {
+                        alias: JumpStartMetadataConfig(
+                            alias,
+                            config,
+                            json_obj,
+                            (
+                                {
+                                    component_name: self.training_config_components.get(
+                                        component_name
+                                    )
+                                    for component_name in config.get("component_names")
+                                }
+                                if config and config.get("component_names")
+                                else None
+                            ),
+                        )
+                        for alias, config in json_obj["training_configs"].items()
+                    }
+                    if json_obj.get("training_configs")
+                    else None
+                )
 
             self.training_configs: Optional[JumpStartMetadataConfigs] = (
                 JumpStartMetadataConfigs(
