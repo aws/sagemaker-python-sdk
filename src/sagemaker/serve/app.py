@@ -3,10 +3,8 @@
 from __future__ import absolute_import
 
 import logging
-import uvicorn
-import pipeline
-import FastAPI
-import Request
+from transformers import pipeline
+from fastapi import FastAPI, Request
 
 
 logger = logging.getLogger(__name__)

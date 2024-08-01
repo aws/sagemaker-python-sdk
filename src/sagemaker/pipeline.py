@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 from typing import Optional, Dict, List, Union
 
-import logging
 import sagemaker
 from sagemaker import ModelMetrics, Model
 from sagemaker.config import (
@@ -43,7 +42,6 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.utils import instance_supports_kms
 
-logger = logging.getLogger(__name__)
 
 
 class PipelineModel(object):
@@ -300,7 +298,6 @@ class PipelineModel(object):
             )
 
         if self.predictor_cls:
-            logger.info("DO I come here")
             predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
             if serializer:
                 predictor.serializer = serializer
