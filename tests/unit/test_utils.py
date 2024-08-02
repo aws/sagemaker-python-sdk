@@ -1341,7 +1341,9 @@ class TestLogSagemakerConfig(TestCase):
             )
 
         self.assertIn("Skipped value", log.output[0])
-        self.assertIn("source value that will be used = {'nonsensitivevalue': 'randomvalue'}", log.output[0])
+        self.assertIn(
+            "source value that will be used = {'nonsensitivevalue': 'randomvalue'}", log.output[0]
+        )
         self.assertIn("config value = {'nonsensitivevalue': 'randomvalue'}", log.output[0])
 
         # source value is not None and config_value != source_value
