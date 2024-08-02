@@ -138,7 +138,6 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
     else:
         # nothing was specified in the config and nothing is being automatically applied
         logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
-        
 
 def _log_sagemaker_config_merge(
     source_value=None,
