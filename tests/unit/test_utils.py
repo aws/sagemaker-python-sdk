@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 
 import copy
+import logging
 import shutil
 import tarfile
 from datetime import datetime
@@ -59,6 +60,8 @@ from sagemaker.utils import (
     _validate_new_tags,
     remove_tag_with_key,
 )
+
+from src.sagemaker.config.config_utils import _log_sagemaker_config_single_substitution
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
@@ -1277,6 +1280,91 @@ def test_resolve_value_from_config():
     assert resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
 
     mock_info_logger.reset_mock()
+
+
+class TestLogSagemakerConfig(TestCase):
+
+    def test_sensitive_info_masking(self):
+        logger = logging.getLogger('sagemaker.config')
+        logger.setLevel(logging.DEBUG)
+
+        stream_handler = logging.StreamHandler()
+        logger.addHandler(stream_handler)
+
+        # source value is None
+        with self.assertLogs(logger, level='DEBUG') as log:
+            _log_sagemaker_config_single_substitution(
+                None,
+                {"apiKey": "topsecretkey"},
+                "config/path"
+            )
+
+        self.assertIn("config value that will be used = {'apiKey': '***'}", log.output[0])
+
+        # source value is None and config_value == source_value
+        with self.assertLogs(logger, level='DEBUG') as log:
+            _log_sagemaker_config_single_substitution(
+                {"secretword": "topsecretword"},
+                {"secretword": "topsecretword"},
+                "config/path"
+            )
+
+        self.assertIn("Skipped value", log.output[0])
+        self.assertIn("source value that will be used = {'secretword': '***'}", log.output[0])
+        self.assertIn("config value = {'secretword': '***'}", log.output[0])
+
+        # source value is not None and config_value != source_value
+        with self.assertLogs(logger, level='DEBUG') as log:
+            _log_sagemaker_config_single_substitution(
+                {"password": "supersecretpassword"},
+                {"apiKey": "topsecretkey"},
+                "config/path"
+            )
+
+        self.assertIn("Skipped value", log.output[0])
+        self.assertIn("source value that will be used = {'password': '***'}", log.output[0])
+        self.assertIn("config value = {'apiKey': '***'}", log.output[0])
+
+    def test_non_sensitive_info_masking(self):
+        logger = logging.getLogger('sagemaker.config')
+        logger.setLevel(logging.DEBUG)
+
+        stream_handler = logging.StreamHandler()
+        logger.addHandler(stream_handler)
+
+        # source value is None
+        with self.assertLogs(logger, level='DEBUG') as log:
+            _log_sagemaker_config_single_substitution(
+                None,
+                {"username": "randomvalue"},
+                "config/path"
+            )
+
+        self.assertIn("config value that will be used = {'username': 'randomvalue'}", log.output[0])
+
+        # source value is not None and config_value == source_value
+        with self.assertLogs(logger, level='DEBUG') as log:
+            _log_sagemaker_config_single_substitution(
+                {"nonsensitivevalue": "randomvalue"},
+                {"nonsensitivevalue": "randomvalue"},
+                "config/path"
+            )
+
+        self.assertIn("Skipped value", log.output[0])
+        self.assertIn("source value that will be used = {'nonsensitivevalue': 'randomvalue'}", log.output[0])
+        self.assertIn("config value = {'nonsensitivevalue': 'randomvalue'}", log.output[0])
+
+        # source value is not None and config_value != source_value
+        with self.assertLogs(logger, level='DEBUG') as log:
+            _log_sagemaker_config_single_substitution(
+                {"username": "nonsensitiveinfo"},
+                {"configvalue": "nonsensitivevalue"},
+                "config/path/non_sensitive"
+            )
+
+            self.assertIn("Skipped value", log.output[0])
+            self.assertIn("source value that will be used = {'username': 'nonsensitiveinfo'}", log.output[0])
+            self.assertIn("config value = {'configvalue': 'nonsensitivevalue'}", log.output[0])
 
 
 def test_get_sagemaker_config_value():
