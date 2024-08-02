@@ -1696,8 +1696,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
                 tags=tags,
-                serverless_inference_config=serverless_inference_config,
-                **kwargs,
+                serverless_inference_config=serverless_inference_config
             )
             serverless_inference_config_dict = (
                 serverless_inference_config._to_request_dict() if is_serverless else None
