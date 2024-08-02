@@ -9,15 +9,6 @@ import uvicorn
 from transformers import pipeline
 from fastapi import FastAPI, Request
 
-if not importlib.util.find_spec("uvicorn"):
-    raise ImportError("Unable to import uvicorn, check if uvicorn is installed")
-
-if not importlib.util.find_spec("transformers"):
-    raise ImportError("Unable to import transformers, check if transformers is installed")
-
-if not importlib.util.find_spec("fastapi"):
-    raise ImportError("Unable to import fastapi, check if fastapi is installed")
-
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +49,15 @@ def post(payload: dict):
 
 async def main():
     """Running server locally with uvicorn"""
+    if not importlib.util.find_spec("uvicorn"):
+        raise ImportError("Unable to import uvicorn, check if uvicorn is installed")
+
+    if not importlib.util.find_spec("transformers"):
+        raise ImportError("Unable to import transformers, check if transformers is installed")
+
+    if not importlib.util.find_spec("fastapi"):
+        raise ImportError("Unable to import fastapi, check if fastapi is installed")
+
     logger.info("Running")
     config = uvicorn.Config(
         "sagemaker.app:app",

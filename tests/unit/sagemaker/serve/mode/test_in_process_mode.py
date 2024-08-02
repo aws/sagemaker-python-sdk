@@ -98,6 +98,12 @@ class TestInProcessMode(unittest.TestCase):
     def test_create_server_happy(
         self, mock_session, mock_inference_spec, mock_predictor, mock_logger
     ):
+        mock_start_serving = Mock()
+        mock_start_serving.side_effect = lambda *args, **kwargs: (
+            True,
+            None,
+        )
+
         mock_response = "Fake response"
         mock_multi_model_server_deep_ping = Mock()
         mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
@@ -114,6 +120,7 @@ class TestInProcessMode(unittest.TestCase):
         )
 
         in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
+        in_process_mode._start_serving = mock_start_serving
 
         in_process_mode.create_server(predictor=mock_predictor)
 
@@ -133,6 +140,12 @@ class TestInProcessMode(unittest.TestCase):
         mock_inference_spec,
         mock_predictor,
     ):
+        mock_start_serving = Mock()
+        mock_start_serving.side_effect = lambda *args, **kwargs: (
+            True,
+            None,
+        )
+
         mock_multi_model_server_deep_ping = Mock()
         mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
             False,
@@ -148,5 +161,6 @@ class TestInProcessMode(unittest.TestCase):
         )
 
         in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
+        in_process_mode._start_serving = mock_start_serving
 
         self.assertRaises(LocalDeepPingException, in_process_mode.create_server, mock_predictor)
