@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 
 import copy
+import logging
 import shutil
 import tarfile
 from datetime import datetime
