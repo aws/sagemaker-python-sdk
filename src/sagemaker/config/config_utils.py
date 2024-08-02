@@ -20,6 +20,8 @@ from collections import deque
 import logging
 import sys
 from typing import Callable
+import re
+from copy import deepcopy
 
 
 def get_sagemaker_config_logger():
