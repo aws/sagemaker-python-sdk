@@ -44,6 +44,7 @@ mock_most_performant_serving_properties = {
     "HF_MODEL_ID": "TheBloke/Llama-2-7b-chat-fp16",
     "TENSOR_PARALLEL_DEGREE": "1",
     "OPTION_DTYPE": "bf16",
+    "MODEL_LOADING_TIMEOUT": "1800",
 }
 
 mock_schema_builder = MagicMock()
@@ -63,8 +64,13 @@ class TestDjlBuilder(unittest.TestCase):
     )
     @patch("sagemaker.serve.builder.djl_builder._get_ram_usage_mb", return_value=1024)
     @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.djl_builder._get_default_djl_configurations",
+        return_value=(mock_default_configs, 128),
+    )
     def test_build_deploy_for_djl_local_container(
         self,
+        mock_default_djl_config,
         mock_get_nb_instance,
         mock_get_ram_usage_mb,
         mock_is_jumpstart_model,
@@ -125,8 +131,13 @@ class TestDjlBuilder(unittest.TestCase):
         "sagemaker.serve.builder.djl_builder._concurrent_benchmark",
         side_effect=[(0.03, 16), (0.10, 4), (0.15, 2)],
     )
+    @patch(
+        "sagemaker.serve.builder.djl_builder._get_default_djl_configurations",
+        return_value=(mock_default_configs, 128),
+    )
     def test_tune_for_djl_local_container(
         self,
+        mock_default_djl_config,
         mock_concurrent_benchmarks,
         mock_serial_benchmarks,
         mock_admissible_tensor_parallel_degrees,
@@ -165,8 +176,10 @@ class TestDjlBuilder(unittest.TestCase):
         "sagemaker.serve.builder.djl_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4],
     )
+    @patch("sagemaker.serve.model_server.djl_serving.utils._get_available_gpus", return_value=None)
     def test_tune_for_djl_local_container_deep_ping_ex(
         self,
+        mock_get_available_gpus,
         mock_get_admissible_tensor_parallel_degrees,
         mock_serial_benchmarks,
         mock_get_nb_instance,
@@ -204,8 +217,10 @@ class TestDjlBuilder(unittest.TestCase):
         "sagemaker.serve.builder.djl_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4],
     )
+    @patch("sagemaker.serve.model_server.djl_serving.utils._get_available_gpus", return_value=None)
     def test_tune_for_djl_local_container_load_ex(
         self,
+        mock_get_available_gpus,
         mock_get_admissible_tensor_parallel_degrees,
         mock_serial_benchmarks,
         mock_get_nb_instance,
@@ -245,8 +260,10 @@ class TestDjlBuilder(unittest.TestCase):
         "sagemaker.serve.builder.djl_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4],
     )
+    @patch("sagemaker.serve.model_server.djl_serving.utils._get_available_gpus", return_value=None)
     def test_tune_for_djl_local_container_oom_ex(
         self,
+        mock_get_available_gpus,
         mock_get_admissible_tensor_parallel_degrees,
         mock_serial_benchmarks,
         mock_get_nb_instance,
@@ -283,8 +300,10 @@ class TestDjlBuilder(unittest.TestCase):
         "sagemaker.serve.builder.djl_builder._get_admissible_tensor_parallel_degrees",
         return_value=[4],
     )
+    @patch("sagemaker.serve.model_server.djl_serving.utils._get_available_gpus", return_value=None)
     def test_tune_for_djl_local_container_invoke_ex(
         self,
+        mock_get_available_gpus,
         mock_get_admissible_tensor_parallel_degrees,
         mock_serial_benchmarks,
         mock_get_nb_instance,
