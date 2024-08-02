@@ -72,16 +72,15 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
     source_value_log_copy = deepcopy(source_value)
     config_value_log_copy = deepcopy(config_value)
 
-
     if isinstance(source_value_log_copy, dict):
         for key in source_value_log_copy.keys():
-            if re.search(r'(secret|password|key)', key, re.IGNORECASE):
+            if re.search(r'(secret|password|key|token)', key, re.IGNORECASE):
                 source_value_log_copy[key] = '***'
 
     if isinstance(config_value_log_copy, dict):
-        for k in config_value_log_copy.keys():
-            if re.search(r'(secret|password|key)', k, re.IGNORECASE):
-                config_value_log_copy[k] = '***'
+        for key in config_value_log_copy.keys():
+            if re.search(r'(secret|password|key|token)', key, re.IGNORECASE):
+                config_value_log_copy[key] = '***'
 
     if config_value is not None:
 
@@ -138,7 +137,7 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
             )
     else:
         # nothing was specified in the config and nothing is being automatically applied
-        logger.debug("Skipped value VALUE because no value defined\n  config key = %s, source_value = %s", config_key_path, source_value_log_copy)
+        logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
 
 
 def _log_sagemaker_config_merge(
@@ -214,7 +213,7 @@ def _log_sagemaker_config_merge(
 
     else:
         # nothing was specified in the config and nothing is being automatically applied
-        logger.debug("Skipped value NO SOURCE because no value defined\n  config key = %s", config_key_path)
+        logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
 
 
 def non_repeating_log_factory(logger: logging.Logger, method: str, cache_size=100) -> Callable:
