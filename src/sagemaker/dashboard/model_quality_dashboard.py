@@ -135,15 +135,11 @@ class AutomaticModelQualityDashboard:
         list_of_widgets = []
         metrics_to_graph = None
         if self.problem_type == "Regression":
-            metrics_to_graph = AutomaticModelQualityDashboard.REGRESSION_MODEL_QUALITY_METRICS
+            metrics_to_graph = self.REGRESSION_MODEL_QUALITY_METRICS
         elif self.problem_type == "BinaryClassification":
-            metrics_to_graph = (
-                AutomaticModelQualityDashboard.BINARY_CLASSIFICATION_MODEL_QUALITY_METRICS
-            )
+            metrics_to_graph = self.BINARY_CLASSIFICATION_MODEL_QUALITY_METRICS
         elif self.problem_type == "MulticlassClassification":
-            metrics_to_graph = (
-                AutomaticModelQualityDashboard.MULTICLASS_CLASSIFICATION_MODEL_QUALITY_METRICS
-            )
+            metrics_to_graph = self.MULTICLASS_CLASSIFICATION_MODEL_QUALITY_METRICS
         else:
             raise ValueError(
                 "Parameter problem_type is invalid. Valid options are "

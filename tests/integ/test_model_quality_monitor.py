@@ -175,6 +175,7 @@ def scheduled_model_quality_monitor(
     )
     return model_quality_monitor
 
+
 @pytest.fixture
 def scheduled_model_quality_monitor_with_dashboard(
     sagemaker_session, model_quality_monitor, endpoint_name, ground_truth_input
@@ -260,14 +261,17 @@ def test_model_quality_monitor(
 
     # delete schedule
     monitor.delete_monitoring_schedule()
-    
+
 
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
 def test_model_quality_monitor_with_dashboard(
-    sagemaker_session, scheduled_model_quality_monitor_with_dashboard, endpoint_name, ground_truth_input
+    sagemaker_session,
+    scheduled_model_quality_monitor_with_dashboard,
+    endpoint_name,
+    ground_truth_input,
 ):
     monitor = scheduled_model_quality_monitor_with_dashboard
     monitor._wait_for_schedule_changes_to_apply()
@@ -297,7 +301,7 @@ def test_model_quality_monitor_with_dashboard(
 
     # update schedule
     monitor.update_monitoring_schedule(
-        max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS, 
+        max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS,
         schedule_cron_expression=UPDATED_CRON,
         enable_automatic_dashboards=True,
     )

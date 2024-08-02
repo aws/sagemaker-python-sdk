@@ -961,6 +961,7 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
+
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
@@ -1081,6 +1082,7 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
     assert len(predictor.list_monitors()) > 0
+
 
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
