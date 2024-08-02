@@ -138,7 +138,7 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
             )
     else:
         # nothing was specified in the config and nothing is being automatically applied
-        logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
+        logger.debug("Skipped value VALUE because no value defined\n  config key = %s, source_value = %s", config_key_path, source_value_log_copy)
 
 
 def _log_sagemaker_config_merge(
@@ -214,7 +214,7 @@ def _log_sagemaker_config_merge(
 
     else:
         # nothing was specified in the config and nothing is being automatically applied
-        logger.debug("Skipped value because no value defined\n  config key = %s", config_key_path)
+        logger.debug("Skipped value NO SOURCE because no value defined\n  config key = %s", config_key_path)
 
 
 def non_repeating_log_factory(logger: logging.Logger, method: str, cache_size=100) -> Callable:
