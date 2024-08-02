@@ -1074,6 +1074,7 @@ def get_jumpstart_configs(
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+    hub_arn: Optional[str] = None,
 ) -> Dict[str, JumpStartMetadataConfig]:
     """Returns metadata configs for the given model ID and region.
 
@@ -1087,6 +1088,7 @@ def get_jumpstart_configs(
         sagemaker_session=sagemaker_session,
         scope=scope,
         model_type=model_type,
+        hub_arn=hub_arn,
     )
 
     if scope == enums.JumpStartScriptScope.INFERENCE:

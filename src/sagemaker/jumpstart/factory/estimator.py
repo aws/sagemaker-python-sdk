@@ -912,6 +912,7 @@ def _add_config_name_to_kwargs(
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         sagemaker_session=kwargs.sagemaker_session,
         config_name=kwargs.config_name,
+        hub_arn=kwargs.hub_arn,
     )
 
     if specs.training_configs and specs.training_configs.get_top_config_from_ranking():
