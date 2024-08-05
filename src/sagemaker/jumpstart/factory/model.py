@@ -730,6 +730,7 @@ def _add_additional_model_data_sources_to_kwargs(
         sagemaker_session=kwargs.sagemaker_session,
         model_type=kwargs.model_type,
         config_name=kwargs.config_name,
+        hub_arn=kwargs.hub_arn,
     )
     # Append speculative decoding data source from metadata
     speculative_decoding_data_sources = specs.get_speculative_decoding_s3_data_sources()

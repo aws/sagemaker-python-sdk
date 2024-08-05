@@ -92,7 +92,7 @@ class XGBoostModel(FrameworkModel):
         py_version: str = "py3",
         predictor_cls: callable = XGBoostPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an XGBoostModel.
 
