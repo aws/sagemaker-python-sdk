@@ -1701,7 +1701,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 tags=tags,
                 serverless_inference_config=serverless_inference_config,
                 accept_eula=accept_eula,
-                model_reference_arn=model_reference_arn
+                model_reference_arn=model_reference_arn,
             )
             serverless_inference_config_dict = (
                 serverless_inference_config._to_request_dict() if is_serverless else None
