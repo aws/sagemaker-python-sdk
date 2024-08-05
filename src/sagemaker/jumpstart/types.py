@@ -2458,7 +2458,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.model_id = model_id
         self.model_version = model_version
         self.hub_arn = hub_arn
-        self.model_type = (model_type,)
+        self.model_type = model_type
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.region = region
