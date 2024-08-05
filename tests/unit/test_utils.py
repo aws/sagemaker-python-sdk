@@ -59,6 +59,7 @@ from sagemaker.utils import (
     _validate_new_tags,
     remove_tag_with_key,
 )
+import sagemaker.utils
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
@@ -398,6 +399,7 @@ def test_set_nested_value():
 
 
 def test_get_short_version():
+    assert sagemaker.utils.get_short_version("2.3.0") == "2.3"
     assert sagemaker.utils.get_short_version("2.2.0") == "2.2"
     assert sagemaker.utils.get_short_version("2.2") == "2.2"
     assert sagemaker.utils.get_short_version("2.1.0") == "2.1"
