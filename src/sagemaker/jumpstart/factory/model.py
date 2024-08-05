@@ -672,9 +672,14 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
         sagemaker_session=kwargs.sagemaker_session,
         model_type=kwargs.model_type,
         config_name=kwargs.config_name,
+        hub_arn=kwargs.hub_arn,
     )
     if specs.inference_configs:
-        default_config_name = specs.inference_configs.get_top_config_from_ranking().config_name
+        default_config_name = (
+            specs.inference_configs.get_top_config_from_ranking().config_name
+            if specs.inference_configs.get_top_config_from_ranking()
+            else None
+        )
         kwargs.config_name = kwargs.config_name or default_config_name
 
         if not kwargs.config_name:
@@ -707,6 +712,7 @@ def _add_additional_model_data_sources_to_kwargs(
         sagemaker_session=kwargs.sagemaker_session,
         model_type=kwargs.model_type,
         config_name=kwargs.config_name,
+        hub_arn=kwargs.hub_arn,
     )
     # Append speculative decoding data source from metadata
     speculative_decoding_data_sources = specs.get_speculative_decoding_s3_data_sources()
@@ -750,6 +756,7 @@ def _add_config_name_to_deploy_kwargs(
         sagemaker_session=kwargs.sagemaker_session,
         model_type=kwargs.model_type,
         config_name=kwargs.config_name,
+        hub_arn=kwargs.hub_arn,
     )
 
     if training_config_name:
@@ -759,7 +766,11 @@ def _add_config_name_to_deploy_kwargs(
         return kwargs
 
     if specs.inference_configs:
-        default_config_name = specs.inference_configs.get_top_config_from_ranking().config_name
+        default_config_name = (
+            specs.inference_configs.get_top_config_from_ranking().config_name
+            if specs.inference_configs.get_top_config_from_ranking()
+            else None
+        )
         kwargs.config_name = kwargs.config_name or default_config_name
 
     return kwargs
