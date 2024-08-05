@@ -403,6 +403,9 @@ def test_jumpstart_session_with_config_name():
     assert model.config_name is not None
     session = model.sagemaker_session
 
+    # we're mocking the http request, so it's expected to raise an Exception.
+    # we're interested that the low-level request attaches the correct
+    # jumpstart-related tags.
     with mock.patch("botocore.client.BaseClient._make_request") as mock_make_request:
         try:
             session.sagemaker_client.list_endpoints()
