@@ -3,7 +3,7 @@ import json
 import logging
 import re
 from flask import Flask
-from flask import request
+from flask import request, escape
 from joblib import dump, load
 import numpy as np
 import os
@@ -106,4 +106,4 @@ def endpoint_invocations():
 
         return response
     except Exception as e:
-        return f"Error during model invocation: {str(e)} for input: {request.get_data()}"
+        return f"Error during model invocation: {type(str(e)).__name__} for input: {escape(request.get_data())}"
