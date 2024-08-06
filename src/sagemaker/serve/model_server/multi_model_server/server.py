@@ -36,9 +36,6 @@ class InProcessMultiModelServer:
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
         """Placeholder docstring"""
-
-        logger.info("Now im here ")
-
         try:  # for Python 3
             from http.client import HTTPConnection
         except ImportError:
