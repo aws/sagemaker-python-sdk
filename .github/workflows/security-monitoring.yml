@@ -97,7 +97,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@12e3392609eaaceb7ae6191b3f54bbcb85b5002b
         with:
-          role-to-assume: ${{ secrets.SECURITY_VULNERABILITY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.MONITORING_ROLE_ARN }}
           aws-region: us-west-2
       - name: Put Code Scanning Alert Metric Data
         run: |
