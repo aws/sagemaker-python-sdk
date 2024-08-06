@@ -102,21 +102,21 @@ jobs:
       - name: Put Code Scanning Alert Metric Data
         run: |
           if [ "${{ needs.check-code-scanning-alerts.outputs.code_scanning_alert_status }}" == "1" ]; then
-            aws cloudwatch put-metric-data --metric-name CodeScanningAlert --namespace CodeScanningMonitoringMetrics --value 1 --unit Count --dimensions ProjectName=sagemaker-python-sdk
+            aws cloudwatch put-metric-data --metric-name CodeScanningAlert --namespace SecurityMonitoringMetrics --value 1 --unit Count --dimensions ProjectName=sagemaker-python-sdk
           else
-            aws cloudwatch put-metric-data --metric-name CodeScanningAlert --namespace CodeScanningMonitoringMetrics --value 0 --unit Count --dimensions ProjectName=sagemaker-python-sdk
+            aws cloudwatch put-metric-data --metric-name CodeScanningAlert --namespace SecurityMonitoringMetrics --value 0 --unit Count --dimensions ProjectName=sagemaker-python-sdk
           fi
       - name: Put Dependabot Alert Metric Data
         run: |
           if [ "${{ needs.check-dependabot-alerts.outputs.dependabot_alert_status }}" == "1" ]; then
-            aws cloudwatch put-metric-data --metric-name DependabotAlert --namespace DependabotMonitoringMetrics --value 1 --unit Count --dimensions ProjectName=sagemaker-python-sdk
+            aws cloudwatch put-metric-data --metric-name DependabotAlert --namespace SecurityMonitoringMetrics --value 1 --unit Count --dimensions ProjectName=sagemaker-python-sdk
           else
-            aws cloudwatch put-metric-data --metric-name DependabotAlert --namespace DependabotMonitoringMetrics --value 0 --unit Count --dimensions ProjectName=sagemaker-python-sdk
+            aws cloudwatch put-metric-data --metric-name DependabotAlert --namespace SecurityMonitoringMetrics --value 0 --unit Count --dimensions ProjectName=sagemaker-python-sdk
           fi
       - name: Put Secret Scanning Alert Metric Data
         run: |
           if [ "${{ needs.check-secret-scanning-alerts.outputs.secret_scanning_alert_status }}" == "1" ]; then
-            aws cloudwatch put-metric-data --metric-name SecretScanningAlert --namespace SecretScanningMonitoringMetrics --value 1 --unit Count --dimensions ProjectName=sagemaker-python-sdk
+            aws cloudwatch put-metric-data --metric-name SecretScanningAlert --namespace SecurityMonitoringMetrics --value 1 --unit Count --dimensions ProjectName=sagemaker-python-sdk
           else
-            aws cloudwatch put-metric-data --metric-name SecretScanningAlert --namespace SecretScanningMonitoringMetrics --value 0 --unit Count --dimensions ProjectName=sagemaker-python-sdk
+            aws cloudwatch put-metric-data --metric-name SecretScanningAlert --namespace SecurityMonitoringMetrics --value 0 --unit Count --dimensions ProjectName=sagemaker-python-sdk
           fi
