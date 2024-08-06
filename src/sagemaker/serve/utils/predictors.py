@@ -229,18 +229,12 @@ class TransformersInProcessModePredictor(PredictorBase):
         """Placeholder docstring"""
         logger.info("Entering predict to make a prediction on ")
         logger.info(data)
-        return [
-            self.deserializer.deserialize(
-                io.BytesIO(
-                    self._mode_obj._invoke_multi_model_server_serving(
-                        self.serializer.serialize(data),
-                        self.content_type,
-                        self.deserializer.ACCEPT[0],
-                    )
-                ),
-                self.content_type,
-            )
-        ]
+
+        return self._mode_obj._invoke_multi_model_server_serving(
+            self.serializer.serialize(data),
+            self.content_type,
+            self.deserializer.ACCEPT[0],
+        )
 
     @property
     def content_type(self):

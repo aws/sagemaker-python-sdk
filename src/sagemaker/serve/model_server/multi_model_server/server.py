@@ -7,7 +7,6 @@ import requests
 import logging
 import platform
 import time
-import json
 from pathlib import Path
 from sagemaker import Session, fw_utils
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
@@ -16,6 +15,7 @@ from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_pat
 from sagemaker.s3 import S3Uploader
 from sagemaker.local.utils import get_docker_host
 from sagemaker.serve.utils.optimize_utils import _is_s3_uri
+from sagemaker.serve.app import main
 
 MODE_DIR_BINDING = "/opt/ml/model/"
 _DEFAULT_ENV_VARS = {}
@@ -28,55 +28,64 @@ class InProcessMultiModelServer:
 
     def _start_serving(self):
         """Initializes the start of the server"""
-        from sagemaker.serve.app import main
-
-        asyncio.create_task(main())
+        background_tasks = set()
+        task = asyncio.create_task(main())
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
 
         time.sleep(10)
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
         """Placeholder docstring"""
-        try:  # for Python 3
-            from http.client import HTTPConnection
-        except ImportError:
-            from httplib import HTTPConnection
-
-        HTTPConnection.debuglevel = 1
-        logging.basicConfig()  # you need to initialize logging, otherwise you will not see
-        # anything from requests
-        logging.getLogger().setLevel(logging.DEBUG)
-        requests_log = logging.getLogger("urllib3")
-        requests_log.setLevel(logging.DEBUG)
-        requests_log.propagate = True
-
-        try:
-            requests.get("http://127.0.0.1:8080/", verify=False).json()
-        except Exception as ex:
-            logger.error(ex)
-            raise ex
-
-        try:
-            response = requests.get(
-                "http://127.0.0.1:8080/generate",
-                json=json.dumps(request),
-                headers={"Content-Type": content_type, "Accept": accept},
-                timeout=600,
-            ).json()
-
-            return response
-        except requests.exceptions.ConnectionError as e:
-            logger.debug(f"Error connecting to the server: {e}")
-        except requests.exceptions.HTTPError as e:
-            logger.debug(f"HTTP error occurred: {e}")
-        except requests.exceptions.RequestException as e:
-            logger.debug(f"An error occurred: {e}")
-        except Exception as e:
-            raise Exception("Unable to send request to the local container server") from e
+        background_tasks = set()
+        task = asyncio.create_task(self.generate_connect())
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
 
     def _multi_model_server_deep_ping(self, predictor: PredictorBase):
         """Sends a deep ping to ensure prediction"""
+        background_tasks = set()
+        task = asyncio.create_task(self.tcp_connect())
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
         response = None
-        return (True, response)
+        return True, response
+
+    async def generate_connect(self):
+        """Writes the lines in bytes for server"""
+        reader, writer = await asyncio.open_connection("127.0.0.1", 9007)
+        a = (
+            b"GET /generate HTTP/1.1\r\nHost: 127.0.0.1:9007\r\nUser-Agent: "
+            b"python-requests/2.31.0\r\nAccept-Encoding: gzip, deflate, br\r\nAccept: */*\r\nConnection: ",
+            "keep-alive\r\nContent-Length: 33\r\nContent-Type: application/json\r\n\r\n",
+        )
+        b = b'"\\"Hello, I\'m a language model\\""'
+        list = [a, b]
+        writer.writelines(list)
+        logger.debug(writer.get_extra_info("peername"))
+        logger.debug(writer.transport)
+
+        data = await reader.read()
+        logger.info("Response from server")
+        logger.info(data)
+        writer.close()
+        await writer.wait_closed()
+
+    async def tcp_connect(self):
+        """Writes the lines in bytes for server"""
+        reader, writer = await asyncio.open_connection("127.0.0.1", 9007)
+        writer.write(
+            b"GET / HTTP/1.1\r\nHost: 127.0.0.1:9007\r\nUser-Agent: python-requests/2.32.3\r\nAccept-Encoding: gzip, ",
+            "deflate, br\r\nAccept: */*\r\nConnection: keep-alive\r\n\r\n",
+        )
+        logger.debug(writer.get_extra_info("peername"))
+        logger.debug(writer.transport)
+
+        data = await reader.read()
+        logger.info("Response from server")
+        logger.info(data)
+        writer.close()
+        await writer.wait_closed()
 
 
 class LocalMultiModelServer:
