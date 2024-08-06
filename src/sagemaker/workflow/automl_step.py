@@ -34,11 +34,11 @@ class AutoMLStep(ConfigurableRetryStep):
         self,
         name: str,
         step_args: _JobStepArguments,
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Construct a `AutoMLStep`, given a `AutoML` instance.
 

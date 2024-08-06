@@ -393,6 +393,7 @@ class JumpStartModel(Model):
             model_version=self.model_version,
             sagemaker_session=self.sagemaker_session,
             model_type=self.model_type,
+            hub_arn=self.hub_arn,
         )
 
     def log_subscription_warning(self) -> None:

@@ -1637,7 +1637,7 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch(
         "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix",
-        sagemaker_session,
+        lambda *largs, **kwargs: sagemaker_session,
     )
     @mock.patch(
         "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix",
