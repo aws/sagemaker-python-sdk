@@ -239,11 +239,7 @@ class Transformers(ABC):
             )
 
             self.modes[str(Mode.IN_PROCESS)].create_server(
-                self.image_uri,
-                timeout if timeout else DEFAULT_TIMEOUT,
-                None,
                 predictor,
-                self.pysdk_model.env,
             )
             return predictor
 
