@@ -233,7 +233,7 @@ class Hub:
                     f"arn:{info.partition}:"
                     f"sagemaker:{info.region}:"
                     f"aws:hub-content/{info.hub_name}/"
-                    f"{HubContentType.MODEL}/{model[0]}"
+                    f"{HubContentType.MODEL.value}/{model[0]}"
                 )
                 hub_content_summary = {
                     "hub_content_name": model[0],
