@@ -89,6 +89,7 @@ class RequirementsManager:
                 "isolate your project dependencies from conda dependencies"
             )
 
-        local_dependencies_path = os.path.join(os.getcwd(), "inf_env_snapshot.yml")
+        local_dependencies_path = os.path.join(os.getcwd(), "conda_in_process.yml")
+        logger.info(local_dependencies_path)
 
         return local_dependencies_path
