@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import copy
+from textwrap import dedent
 
 import pytest
 from mock import Mock, patch, MagicMock
@@ -1099,6 +1100,137 @@ def test_pyspark_processor_configuration_path_pipeline_config(
     assert (
         s3_uri
         == "s3://mybucket/test-pipeline/test-processing-step/input/conf/config-hash-abcdefg/configuration.json"
+    )
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_get_codeartifact_command(pipeline_session):
+    codeartifact_repo_arn = (
+        "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+    )
+
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version="2.0.1",
+        py_version="py310",
+        instance_count=1,
+        sagemaker_session=pipeline_session,
+    )
+
+    codeartifact_command = processor._get_codeartifact_command(
+        codeartifact_repo_arn=codeartifact_repo_arn
+    )
+
+    assert (
+        codeartifact_command
+        == "aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2"  # noqa: E501 # pylint: disable=line-too-long
+    )
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_get_codeartifact_command_bad_repo_arn(pipeline_session):
+    codeartifact_repo_arn = "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain"
+
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version="2.0.1",
+        py_version="py310",
+        instance_count=1,
+        sagemaker_session=pipeline_session,
+    )
+
+    with pytest.raises(ValueError):
+        processor._get_codeartifact_command(codeartifact_repo_arn=codeartifact_repo_arn)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_generate_framework_script(pipeline_session):
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version="2.0.1",
+        py_version="py310",
+        instance_count=1,
+        sagemaker_session=pipeline_session,
+    )
+
+    framework_script = processor._generate_framework_script(user_script="process.py")
+
+    assert framework_script == dedent(
+        """\
+        #!/bin/bash
+
+        cd /opt/ml/processing/input/code/
+        tar -xzf sourcedir.tar.gz
+
+        # Exit on any error. SageMaker uses error code to mark failed job.
+        set -e
+
+        if [[ -f 'requirements.txt' ]]; then
+            # Optionally log into CodeArtifact
+            if ! hash aws 2>/dev/null; then
+                echo "AWS CLI is not installed. Skipping CodeArtifact login."
+            else
+                echo 'CodeArtifact repository not specified. Skipping login.'
+            fi
+
+            # Some py3 containers has typing, which may breaks pip install
+            pip uninstall --yes typing
+
+            pip install -r requirements.txt
+        fi
+
+        python process.py "$@"
+    """
+    )
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_generate_framework_script_with_codeartifact(pipeline_session):
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version="2.0.1",
+        py_version="py310",
+        instance_count=1,
+        sagemaker_session=pipeline_session,
+    )
+
+    framework_script = processor._generate_framework_script(
+        user_script="process.py",
+        codeartifact_repo_arn=(
+            "arn:aws:codeartifact:us-west-2:012345678901:repository/test-domain/test-repository"
+        ),
+    )
+
+    assert framework_script == dedent(
+        """\
+        #!/bin/bash
+
+        cd /opt/ml/processing/input/code/
+        tar -xzf sourcedir.tar.gz
+
+        # Exit on any error. SageMaker uses error code to mark failed job.
+        set -e
+
+        if [[ -f 'requirements.txt' ]]; then
+            # Optionally log into CodeArtifact
+            if ! hash aws 2>/dev/null; then
+                echo "AWS CLI is not installed. Skipping CodeArtifact login."
+            else
+                aws codeartifact login --tool pip --domain test-domain --domain-owner 012345678901 --repository test-repository --region us-west-2
+            fi
+
+            # Some py3 containers has typing, which may breaks pip install
+            pip uninstall --yes typing
+
+            pip install -r requirements.txt
+        fi
+
+        python process.py "$@"
+    """  # noqa: E501 # pylint: disable=line-too-long
     )
 
 
