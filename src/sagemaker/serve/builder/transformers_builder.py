@@ -87,7 +87,7 @@ class Transformers(ABC):
         self.shared_libs = None
 
     @abstractmethod
-    def _prepare_for_mode(self):
+    def _prepare_for_mode(self, *args, **kwargs):
         """Abstract method"""
 
     def _create_transformers_model(self) -> Type[Model]:
@@ -209,8 +209,6 @@ class Transformers(ABC):
             else:
                 raise ValueError("Mode %s is not supported!" % overwrite_mode)
 
-        self._set_instance()
-
         serializer = self.schema_builder.input_serializer
         deserializer = self.schema_builder._output_deserializer
         if self.mode == Mode.LOCAL_CONTAINER:
@@ -230,6 +228,8 @@ class Transformers(ABC):
             )
             return predictor
 
+        self._set_instance(kwargs)
+
         if "mode" in kwargs:
             del kwargs["mode"]
         if "role" in kwargs:
@@ -237,7 +237,23 @@ class Transformers(ABC):
             del kwargs["role"]
 
         if not _is_optimized(self.pysdk_model):
-            self._prepare_for_mode()
+            env_vars = {}
+            if str(Mode.LOCAL_CONTAINER) in self.modes:
+                # upload model artifacts to S3 if LOCAL_CONTAINER -> SAGEMAKER_ENDPOINT
+                self.pysdk_model.model_data, env_vars = self._prepare_for_mode(
+                    model_path=self.model_path, should_upload_artifacts=True
+                )
+            else:
+                _, env_vars = self._prepare_for_mode()
+
+            self.env_vars.update(env_vars)
+            self.pysdk_model.env.update(self.env_vars)
+
+        if (
+            "SAGEMAKER_SERVE_SECRET_KEY" in self.pysdk_model.env
+            and not self.pysdk_model.env["SAGEMAKER_SERVE_SECRET_KEY"]
+        ):
+            del self.pysdk_model.env["SAGEMAKER_SERVE_SECRET_KEY"]
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
@@ -282,9 +298,11 @@ class Transformers(ABC):
 
         return self.pysdk_model
 
-    def _set_instance(self, **kwargs):
+    def _set_instance(self, kwargs):
         """Set the instance : Given the detected notebook type or provided instance type"""
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
+            if "instance_type" in kwargs:
+                return
             if self.nb_instance_type and "instance_type" not in kwargs:
                 kwargs.update({"instance_type": self.nb_instance_type})
                 logger.info("Setting instance type to %s", self.nb_instance_type)

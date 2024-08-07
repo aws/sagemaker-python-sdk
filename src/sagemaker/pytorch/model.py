@@ -100,7 +100,7 @@ class PyTorchModel(FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         predictor_cls: callable = PyTorchPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a PyTorchModel.
 

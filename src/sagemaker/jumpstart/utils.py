@@ -1074,6 +1074,7 @@ def get_jumpstart_configs(
     sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+    hub_arn: Optional[str] = None,
 ) -> Dict[str, JumpStartMetadataConfig]:
     """Returns metadata configs for the given model ID and region.
 
@@ -1087,6 +1088,7 @@ def get_jumpstart_configs(
         sagemaker_session=sagemaker_session,
         scope=scope,
         model_type=model_type,
+        hub_arn=hub_arn,
     )
 
     if scope == enums.JumpStartScriptScope.INFERENCE:
@@ -1109,11 +1111,15 @@ def get_jumpstart_configs(
 
 
 def get_jumpstart_user_agent_extra_suffix(
-    model_id: Optional[str], model_version: Optional[str], is_hub_content: Optional[bool]
+    model_id: Optional[str],
+    model_version: Optional[str],
+    config_name: Optional[str],
+    is_hub_content: Optional[bool],
 ) -> str:
     """Returns the model-specific user agent string to be added to requests."""
     sagemaker_python_sdk_headers = get_user_agent_extra_suffix()
     jumpstart_specific_suffix = f"md/js_model_id#{model_id} md/js_model_ver#{model_version}"
+    config_specific_suffix = f"md/js_config#{config_name}"
     hub_specific_suffix = f"md/js_is_hub_content#{is_hub_content}"
 
     if os.getenv(constants.ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY, None):
@@ -1128,19 +1134,74 @@ def get_jumpstart_user_agent_extra_suffix(
     else:
         headers = f"{sagemaker_python_sdk_headers} {jumpstart_specific_suffix}"
 
+    if config_name:
+        headers = f"{headers} {config_specific_suffix}"
+
     return headers
+
+
+def get_top_ranked_config_name(
+    region: str,
+    model_id: str,
+    model_version: str,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+    model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
+    tolerate_deprecated_model: bool = False,
+    tolerate_vulnerable_model: bool = False,
+    hub_arn: Optional[str] = None,
+    ranking_name: enums.JumpStartConfigRankingName = enums.JumpStartConfigRankingName.DEFAULT,
+) -> Optional[str]:
+    """Returns the top ranked config name for the given model ID and region.
+
+    Raises:
+        ValueError: If the script scope is not supported by JumpStart.
+    """
+    model_specs = verify_model_region_and_return_specs(
+        model_id=model_id,
+        version=model_version,
+        scope=scope,
+        region=region,
+        hub_arn=hub_arn,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
+        model_type=model_type,
+    )
+
+    if scope == enums.JumpStartScriptScope.INFERENCE:
+        return (
+            model_specs.inference_configs.get_top_config_from_ranking(
+                ranking_name=ranking_name
+            ).config_name
+            if model_specs.inference_configs
+            else None
+        )
+    if scope == enums.JumpStartScriptScope.TRAINING:
+        return (
+            model_specs.training_configs.get_top_config_from_ranking(
+                ranking_name=ranking_name
+            ).config_name
+            if model_specs.training_configs
+            else None
+        )
+    raise ValueError(f"Unsupported script scope: {scope}.")
 
 
 def get_default_jumpstart_session_with_user_agent_suffix(
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    config_name: Optional[str] = None,
     is_hub_content: Optional[bool] = False,
 ) -> Session:
     """Returns default JumpStart SageMaker Session with model-specific user agent suffix."""
     botocore_session = botocore.session.get_session()
     botocore_config = botocore.config.Config(
         user_agent_extra=get_jumpstart_user_agent_extra_suffix(
-            model_id, model_version, is_hub_content
+            model_id=model_id,
+            model_version=model_version,
+            config_name=config_name,
+            is_hub_content=is_hub_content,
         ),
     )
     botocore_session.set_default_client_config(botocore_config)
