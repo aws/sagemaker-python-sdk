@@ -603,7 +603,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             s3_upload_path, env_vars_sagemaker = self._prepare_for_mode()
             self.pysdk_model.model_data = s3_upload_path
             self.pysdk_model.env.update(env_vars_sagemaker)
-
         elif overwrite_mode == Mode.LOCAL_CONTAINER:
             self.mode = self.pysdk_model.mode = Mode.LOCAL_CONTAINER
             self._prepare_for_mode()

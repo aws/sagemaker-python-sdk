@@ -31,7 +31,7 @@ class LocalMultiModelServer:
         secret_key: str,
         env_vars: dict,
     ):
-        """Placeholder docstring"""
+        """Initializes the start of the server"""
         env = {
             "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
             "SAGEMAKER_PROGRAM": "inference.py",
@@ -59,7 +59,7 @@ class LocalMultiModelServer:
         )
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
-        """Placeholder docstring"""
+        """Invokes MMS server by hitting the docker host"""
         try:
             response = requests.post(
                 f"http://{get_docker_host()}:8080/invocations",
@@ -73,7 +73,7 @@ class LocalMultiModelServer:
             raise Exception("Unable to send request to the local container server") from e
 
     def _multi_model_server_deep_ping(self, predictor: PredictorBase):
-        """Placeholder docstring"""
+        """Deep ping in order to ensure prediction"""
         response = None
         try:
             response = predictor.predict(self.schema_builder.sample_input)
