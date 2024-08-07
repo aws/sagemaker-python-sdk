@@ -120,7 +120,7 @@ class AutomaticDataQualityDashboard:
                     variable_id="Feature",
                     label="Feature",
                     search=self.DATA_QUALITY_METRICS_BATCH_NAMESPACE
-                    + f'MonitoringSchedule="{self.monitoring_schedule}" ',
+                    + f' MonitoringSchedule="{self.monitoring_schedule}" ',
                     populateFrom="Feature",
                 )
             ]
@@ -133,8 +133,8 @@ class AutomaticDataQualityDashboard:
                 variable_id="Feature",
                 label="Feature",
                 search=self.DATA_QUALITY_METRICS_ENDPOINT_NAMESPACE
-                + f'Endpoint="{self.endpoint}" '
-                + f'MonitoringSchedule="{self.monitoring_schedule}" ',
+                + f' Endpoint="{self.endpoint}"'
+                + f' MonitoringSchedule="{self.monitoring_schedule}" ',
                 populateFrom="Feature",
             )
         ]

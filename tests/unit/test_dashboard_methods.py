@@ -118,7 +118,9 @@ def test_automatic_data_quality_dashboard_endpoint():
             inputType="select",
             variable_id="Feature",
             label="Feature",
-            search="{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}",
+            search="{aws/sagemaker/Endpoints/data-metrics,Endpoint,Feature,MonitoringSchedule}"
+            + ' Endpoint="endpoint"'
+            + ' MonitoringSchedule="monitoring_schedule" ',
             populateFrom="Feature",
         )
     ]
@@ -259,7 +261,7 @@ def test_automatic_data_quality_dashboard_endpoint():
             ]
         ],
     }
-
+    
     assert dashboard.to_dict() == expected_dashboard
 
 
@@ -271,7 +273,8 @@ def test_automatic_data_quality_dashboard_batch_transform():
             inputType="select",
             variable_id="Feature",
             label="Feature",
-            search="{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}",
+            search="{aws/sagemaker/ModelMonitoring/data-metrics,Feature,MonitoringSchedule}"
+            + ' MonitoringSchedule="monitoring_schedule" ',
             populateFrom="Feature",
         )
     ]
