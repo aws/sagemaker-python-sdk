@@ -111,4 +111,3 @@ dependencies:
             - urllib3>=1.26.15
             - validators>=0.20.0
             - zipp>=3.15.0
-            - random2
