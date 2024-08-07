@@ -16,13 +16,15 @@ import logging
 import os
 import subprocess
 
+from typing import Optional
+
 logger = logging.getLogger(__name__)
 
 
 class RequirementsManager:
     """Manages dependency installation by detecting file types"""
 
-    def capture_and_install_dependencies(self, dependencies: str = None) -> str:
+    def capture_and_install_dependencies(self, dependencies: Optional[str] = None) -> str:
         """Detects the type of file dependencies will be installed from
 
         If a req.txt or conda.yml file is provided, it verifies their existence and
@@ -34,15 +36,15 @@ class RequirementsManager:
         Returns:
             file path of the existing or generated dependencies file
         """
-        dependencies = self._detect_conda_env_and_local_dependencies()
+        _dependencies = dependencies or self._detect_conda_env_and_local_dependencies()
 
         # Dependencies specified as either req.txt or conda_env.yml
-        if dependencies.endswith(".txt"):
+        if _dependencies.endswith(".txt"):
             self._install_requirements_txt()
-        elif dependencies.endswith(".yml"):
+        elif _dependencies.endswith(".yml"):
             self._update_conda_env_in_path()
         else:
-            raise ValueError(f'Invalid dependencies provided: "{dependencies}"')
+            raise ValueError(f'Invalid dependencies provided: "{_dependencies}"')
 
     def _install_requirements_txt(self):
         """Install requirements.txt file using pip"""
@@ -81,7 +83,10 @@ class RequirementsManager:
             conda_env_prefix = self._get_active_conda_env_prefix()
 
         if conda_env_name is None and conda_env_prefix is None:
-            raise ValueError("No conda environment seems to be active.")
+            local_dependencies_path = os.path.join(os.getcwd(), "in_process_requirements.txt")
+            logger.info(local_dependencies_path)
+
+            return local_dependencies_path
 
         if conda_env_name == "base":
             logger.warning(
