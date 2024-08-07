@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class RequirementsManager:
     """Manages dependency installation by detecting file types"""
 
-    def detect_file_exists(self, dependencies: str = None) -> str:
+    def capture_and_install_dependencies(self, dependencies: str = None) -> str:
         """Detects the type of file dependencies will be installed from
 
         If a req.txt or conda.yml file is provided, it verifies their existence and
@@ -34,7 +34,7 @@ class RequirementsManager:
         Returns:
             file path of the existing or generated dependencies file
         """
-        dependencies = self._capture_from_local_runtime()
+        dependencies = self._detect_conda_env_and_local_dependencies()
 
         # Dependencies specified as either req.txt or conda_env.yml
         if dependencies.endswith(".txt"):
@@ -47,7 +47,7 @@ class RequirementsManager:
     def _install_requirements_txt(self):
         """Install requirements.txt file using pip"""
         logger.info("Running command to pip install")
-        subprocess.run("pip install -r requirements.txt", shell=True, check=True)
+        subprocess.run("pip install -r in_process_requirements.txt", shell=True, check=True)
         logger.info("Command ran successfully")
 
     def _update_conda_env_in_path(self):
@@ -64,7 +64,7 @@ class RequirementsManager:
         """Returns the conda prefix from the set environment variable. None otherwise."""
         return os.getenv("CONDA_PREFIX")
 
-    def _capture_from_local_runtime(self) -> str:
+    def _detect_conda_env_and_local_dependencies(self) -> str:
         """Generates dependencies list from the user's local runtime.
 
         Raises RuntimeEnvironmentError if not able to.

@@ -27,31 +27,34 @@ class TestRequirementsManager(unittest.TestCase):
         "sagemaker.serve.builder.requirements_manager.RequirementsManager._install_requirements_txt"
     )
     @patch(
-        "sagemaker.serve.builder.requirements_manager.RequirementsManager._capture_from_local_runtime"
+        "sagemaker.serve.builder.requirements_manager.RequirementsManager._detect_conda_env_and_local_dependencies"
     )
-    def test_detect_file_exists(
+    def test_capture_and_install_dependencies(
         self,
-        mock_capture_from_local_runtime,
+        mock_detect_conda_env_and_local_dependencies,
         mock_install_requirements_txt,
         mock_update_conda_env_in_path,
     ) -> str:
 
-        mock_capture_from_local_runtime.side_effect = lambda: ".txt"
-        RequirementsManager().detect_file_exists()
+        mock_detect_conda_env_and_local_dependencies.side_effect = lambda: ".txt"
+        RequirementsManager().capture_and_install_dependencies()
         mock_install_requirements_txt.assert_called_once()
 
-        mock_capture_from_local_runtime.side_effect = lambda: ".yml"
-        RequirementsManager().detect_file_exists()
+        mock_detect_conda_env_and_local_dependencies.side_effect = lambda: ".yml"
+        RequirementsManager().capture_and_install_dependencies()
         mock_update_conda_env_in_path.assert_called_once()
 
     @patch(
-        "sagemaker.serve.builder.requirements_manager.RequirementsManager._capture_from_local_runtime"
+        "sagemaker.serve.builder.requirements_manager.RequirementsManager._detect_conda_env_and_local_dependencies"
     )
-    def test_detect_file_exists_fail(self, mock__capture_from_local_runtime) -> str:
+    def test_capture_and_install_dependencies_fail(
+        self, mock_detect_conda_env_and_local_dependencies
+    ) -> str:
         mock_dependencies = "mock.ini"
-        mock__capture_from_local_runtime.side_effect = lambda: "invalid requirement"
+        mock_detect_conda_env_and_local_dependencies.side_effect = lambda: "invalid requirement"
         self.assertRaises(
-            ValueError, lambda: RequirementsManager().detect_file_exists(mock_dependencies)
+            ValueError,
+            lambda: RequirementsManager().capture_and_install_dependencies(mock_dependencies),
         )
 
     @patch("sagemaker.serve.builder.requirements_manager.logger")
@@ -63,7 +66,7 @@ class TestRequirementsManager(unittest.TestCase):
         calls = [call("Running command to pip install"), call("Command ran successfully")]
         mock_logger.info.assert_has_calls(calls)
         mock_subprocess.run.assert_called_once_with(
-            "pip install -r requirements.txt", shell=True, check=True
+            "pip install -r in_process_requirements.txt", shell=True, check=True
         )
 
     @patch("sagemaker.serve.builder.requirements_manager.logger")
