@@ -812,7 +812,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.dependencies.update({"requirements": mlflow_model_dependency_path})
 
     # Model Builder is a class to build the model for deployment.
-    # It supports two* modes of deployment
+    # It supports three modes of deployment
     # 1/ SageMaker Endpoint
     # 2/ Local launch with container
     # 3/ In process mode with Transformers server in beta release
