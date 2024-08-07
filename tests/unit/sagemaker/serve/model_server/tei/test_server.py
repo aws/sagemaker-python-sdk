@@ -65,7 +65,6 @@ class TeiServerTests(TestCase):
             auto_remove=True,
             volumes={PosixPath("model_path/code"): {"bind": "/opt/ml/model/", "mode": "rw"}},
             environment={
-                "TRANSFORMERS_CACHE": "/opt/ml/model/",
                 "HF_HOME": "/opt/ml/model/",
                 "HUGGINGFACE_HUB_CACHE": "/opt/ml/model/",
                 "KEY": "VALUE",
