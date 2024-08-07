@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import logging
 import importlib.util
 import uvicorn
+import transformers
 
 from transformers import pipeline
 from fastapi import FastAPI, Request
