@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.228.0 (2024-08-06)
+
+### Features
+
+ * triton v24.05
+
+### Bug Fixes and Other Changes
+
+ * chore: telemetry for deployment configs
+ * censoring sensitive values from being logged
+ * update image_uri_configs  08-05-2024 07:17:38 PST
+ * enable uncompressed model artifacts upload to S3 for SAGEMAKER_ENDPOINT overwrite for TGI, TEI, MMS model servers
+ * ModelReference deployment for Alt Configs models
+ * Add optional typecheck for nullable parameters
+ * Update package metadata
+ * release TEI 1.4.0
+
 ## v2.227.0 (2024-07-30)
 
 ### Features
