@@ -5,7 +5,7 @@ from __future__ import absolute_import
 import logging
 import importlib.util
 import uvicorn
-import transformers # noqa: F401 # pylint: disable=W0611
+import transformers  # noqa: F401 # pylint: disable=W0611
 
 from transformers import pipeline
 from fastapi import FastAPI, Request
