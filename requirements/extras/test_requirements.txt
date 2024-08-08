@@ -1,4 +1,5 @@
 tox==3.24.5
+build[virtualenv]==1.2.1
 flake8==4.0.1
 pytest==6.2.5
 pytest-cov==3.0.0
@@ -12,7 +13,7 @@ awslogs==0.14.0
 black==24.3.0
 stopit==1.1.2
 # Update tox.ini to have correct version of airflow constraints file
-apache-airflow==2.9.2
+apache-airflow==2.9.3
 apache-airflow-providers-amazon==7.2.1
 attrs>=23.1.0,<24
 fabric==2.6.0

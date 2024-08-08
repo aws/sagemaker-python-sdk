@@ -282,26 +282,6 @@ def _extract_optimization_config_and_env(
     return None, None
 
 
-def _normalize_local_model_path(local_model_path: Optional[str]) -> Optional[str]:
-    """Normalizes the local model path.
-
-    Args:
-        local_model_path (Optional[str]): The local model path.
-
-    Returns:
-        Optional[str]: The normalized model path.
-    """
-    if local_model_path is None:
-        return local_model_path
-
-    # Removes /code or /code/ path at the end of local_model_path,
-    # as it is appended during artifacts upload.
-    pattern = r"/code/?$"
-    if re.search(pattern, local_model_path):
-        return re.sub(pattern, "", local_model_path)
-    return local_model_path
-
-
 def _custom_speculative_decoding(
     model: Model,
     speculative_decoding_config: Optional[Dict],
