@@ -3,8 +3,6 @@
 from __future__ import absolute_import
 
 import logging
-import importlib.util
-import uvicorn
 from fastapi import FastAPI, Request
 
 
@@ -43,8 +41,14 @@ try:
 
 except ImportError:
     logger.error(
-        "To enable in process mode for Transformers install transformers from HuggingFace hub"
+        "To enable in_process mode for Transformers install transformers from HuggingFace hub"
     )
+
+try:
+    import uvicorn
+
+except ImportError:
+    logger.error("To enable in_process mode for Transformers install uvicorn from HuggingFace hub")
 
 
 @app.post("/post")
@@ -55,15 +59,6 @@ def post(payload: dict):
 
 async def main():
     """Running server locally with uvicorn"""
-    if not importlib.util.find_spec("uvicorn"):
-        raise ImportError("Unable to import uvicorn, check if uvicorn is installed")
-
-    if not importlib.util.find_spec("transformers"):
-        raise ImportError("Unable to import transformers, check if transformers is installed")
-
-    if not importlib.util.find_spec("fastapi"):
-        raise ImportError("Unable to import fastapi, check if fastapi is installed")
-
     logger.info("Running")
     config = uvicorn.Config(
         "sagemaker.app:app",
