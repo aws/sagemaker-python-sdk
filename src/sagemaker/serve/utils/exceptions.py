@@ -1,4 +1,4 @@
-"""Placeholder Docstring"""
+"""Exceptions used across different model builder invocations"""
 
 from __future__ import absolute_import
 

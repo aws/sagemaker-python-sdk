@@ -24,6 +24,7 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelOutOfMemoryException,
     LocalModelInvocationException,
 )
+from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.tuning import (
     _serial_benchmark,
     _concurrent_benchmark,
@@ -90,6 +91,7 @@ class DJL(ABC):
         self.env_vars = None
         self.nb_instance_type = None
         self.ram_usage_model_load = None
+        self.role_arn = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -213,9 +215,10 @@ class DJL(ABC):
             del kwargs["role"]
 
         # set model_data to uncompressed s3 dict
-        self.pysdk_model.model_data, env_vars = self._prepare_for_mode()
-        self.env_vars.update(env_vars)
-        self.pysdk_model.env.update(self.env_vars)
+        if not _is_optimized(self.pysdk_model):
+            self.pysdk_model.model_data, env_vars = self._prepare_for_mode()
+            self.env_vars.update(env_vars)
+            self.pysdk_model.env.update(self.env_vars)
 
         # if the weights have been cached via local container mode -> set to offline
         if str(Mode.LOCAL_CONTAINER) in self.modes:
@@ -449,4 +452,8 @@ class DJL(ABC):
 
         self.pysdk_model = self._build_for_hf_djl()
         self.pysdk_model.tune = self._tune_for_hf_djl
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
         return self.pysdk_model

@@ -34,8 +34,10 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.session_utils import get_model_id_version_from_training_job
+from sagemaker.jumpstart.session_utils import get_model_info_from_training_job
+from sagemaker.jumpstart.types import JumpStartMetadataConfig
 from sagemaker.jumpstart.utils import (
+    get_jumpstart_configs,
     validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
@@ -111,6 +113,7 @@ class JumpStartEstimator(Estimator):
         container_arguments: Optional[List[str]] = None,
         disable_output_compression: Optional[bool] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
+        config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
@@ -504,6 +507,8 @@ class JumpStartEstimator(Estimator):
                 to Amazon S3 without compression after training finishes.
             enable_remote_debug (bool or PipelineVariable): Optional.
                 Specifies whether RemoteDebug is enabled for the training job
+            config_name (Optional[str]):
+                Name of the training configuration to apply to the Estimator. (Default: None).
             enable_session_tag_chaining (bool or PipelineVariable): Optional.
                 Specifies whether SessionTagChaining is enabled for the training job
 
@@ -592,6 +597,7 @@ class JumpStartEstimator(Estimator):
             disable_output_compression=disable_output_compression,
             enable_infra_check=enable_infra_check,
             enable_remote_debug=enable_remote_debug,
+            config_name=config_name,
             enable_session_tag_chaining=enable_session_tag_chaining,
         )
 
@@ -607,6 +613,8 @@ class JumpStartEstimator(Estimator):
         self.role = estimator_init_kwargs.role
         self.sagemaker_session = estimator_init_kwargs.sagemaker_session
         self._enable_network_isolation = estimator_init_kwargs.enable_network_isolation
+        self.config_name = estimator_init_kwargs.config_name
+        self.init_kwargs = estimator_init_kwargs.to_kwargs_dict(False)
 
         super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
 
@@ -682,6 +690,7 @@ class JumpStartEstimator(Estimator):
             tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             sagemaker_session=self.sagemaker_session,
+            config_name=self.config_name,
         )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
@@ -695,6 +704,7 @@ class JumpStartEstimator(Estimator):
         hub_arn: Optional[str] = None,
         sagemaker_session: session.Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
         model_channel_name: str = "model",
+        config_name: Optional[str] = None,
     ) -> "JumpStartEstimator":
         """Attach to an existing training job.
 
@@ -730,6 +740,8 @@ class JumpStartEstimator(Estimator):
                 model data will be downloaded (default: 'model'). If no channel
                 with the same name exists in the training job, this option will
                 be ignored.
+            config_name (str): Optional. Name of the training configuration to use
+                when attaching to the training job. (Default: None).
 
         Returns:
             Instance of the calling ``JumpStartEstimator`` Class with the attached
@@ -739,10 +751,9 @@ class JumpStartEstimator(Estimator):
             ValueError: if the model ID or version cannot be inferred from the training job.
 
         """
-
+        config_name = None
         if model_id is None:
-
-            model_id, model_version = get_model_id_version_from_training_job(
+            model_id, model_version, _, config_name = get_model_info_from_training_job(
                 training_job_name=training_job_name, sagemaker_session=sagemaker_session
             )
 
@@ -755,6 +766,9 @@ class JumpStartEstimator(Estimator):
             "tolerate_deprecated_model": True,  # model is already trained
         }
 
+        if config_name:
+            additional_kwargs.update({"config_name": config_name})
+
         model_specs = verify_model_region_and_return_specs(
             model_id=model_id,
             version=model_version,
@@ -764,6 +778,7 @@ class JumpStartEstimator(Estimator):
             tolerate_deprecated_model=True,  # model is already trained, so tolerate if deprecated
             tolerate_vulnerable_model=True,  # model is already trained, so tolerate if vulnerable
             sagemaker_session=sagemaker_session,
+            config_name=config_name,
         )
 
         # eula was already accepted if the model was successfully trained
@@ -813,6 +828,7 @@ class JumpStartEstimator(Estimator):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         use_compiled_model: bool = False,
+        inference_config_name: Optional[str] = None,
     ) -> PredictorBase:
         """Creates endpoint from training job.
 
@@ -1048,6 +1064,8 @@ class JumpStartEstimator(Estimator):
                 (Default: None).
             use_compiled_model (bool): Flag to select whether to use compiled
                 (optimized) model. (Default: False).
+            inference_config_name (Optional[str]): Name of the inference configuration to
+                be used in the model. (Default: None).
         """
         self.orig_predictor_cls = predictor_cls
 
@@ -1101,6 +1119,8 @@ class JumpStartEstimator(Estimator):
             git_config=git_config,
             use_compiled_model=use_compiled_model,
             training_instance_type=self.instance_type,
+            training_config_name=self.config_name,
+            inference_config_name=inference_config_name,
         )
 
         predictor = super(JumpStartEstimator, self).deploy(
@@ -1118,10 +1138,42 @@ class JumpStartEstimator(Estimator):
                 tolerate_deprecated_model=self.tolerate_deprecated_model,
                 tolerate_vulnerable_model=self.tolerate_vulnerable_model,
                 sagemaker_session=self.sagemaker_session,
+                config_name=estimator_deploy_kwargs.config_name,
             )
 
         # If a predictor class was passed, do not mutate predictor
         return predictor
+
+    def list_training_configs(self) -> List[JumpStartMetadataConfig]:
+        """Returns a list of configs associated with the estimator.
+
+        Raises:
+            ValueError: If the combination of arguments specified is not supported.
+            VulnerableJumpStartModelError: If any of the dependencies required by the script have
+                known security vulnerabilities.
+            DeprecatedJumpStartModelError: If the version of the model is deprecated.
+        """
+        configs_dict = get_jumpstart_configs(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            model_type=self.model_type,
+            region=self.region,
+            scope=JumpStartScriptScope.TRAINING,
+            sagemaker_session=self.sagemaker_session,
+        )
+        return list(configs_dict.values())
+
+    def set_training_config(self, config_name: str) -> None:
+        """Sets the config to apply to the model.
+
+        Args:
+            config_name (str): The name of the config.
+        """
+        self.__init__(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            config_name=config_name,
+        )
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

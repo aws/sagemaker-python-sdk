@@ -73,6 +73,8 @@ from sagemaker.utils import (
     format_tags,
     Tags,
     _resolve_routing_config,
+    _validate_new_tags,
+    remove_tag_with_key,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -166,6 +168,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         resources: Optional[ResourceRequirements] = None,
+        additional_model_data_sources: Optional[Dict[str, Any]] = None,
         model_reference_arn: Optional[str] = None,
     ):
         """Initialize an SageMaker ``Model``.
@@ -330,11 +333,14 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 for a model to be deployed to an endpoint. Only
                 EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
+            additional_model_data_sources (Optional[Dict[str, Any]]): Additional location
+                of SageMaker model data (default: None).
             model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
                 content (default: None).
 
         """
         self.model_data = model_data
+        self.additional_model_data_sources = additional_model_data_sources
         self.image_uri = image_uri
         self.predictor_cls = predictor_cls
         self.name = name
@@ -411,6 +417,23 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.response_types = None
         self.accept_eula = None
         self.model_reference_arn = model_reference_arn
+        self._tags: Optional[Tags] = None
+
+    def add_tags(self, tags: Tags) -> None:
+        """Add tags to this ``Model``
+
+        Args:
+            tags (Tags): Tags to add.
+        """
+        self._tags = _validate_new_tags(tags, self._tags)
+
+    def remove_tag_with_key(self, key: str) -> None:
+        """Remove a tag with the given key from the list of tags.
+
+        Args:
+            key (str): The key of the tag to remove.
+        """
+        self._tags = remove_tag_with_key(key, self._tags)
 
     @classmethod
     def attach(
@@ -526,7 +549,10 @@ class Model(ModelBase, InferenceRecommenderMixin):
             model_package_group_name = utils.base_name_from_image(
                 self.image_uri, default_base_name=ModelPackage.__name__
             )
-        if model_package_group_name is not None:
+        if (
+            model_package_group_name is not None
+            and model_type is not JumpStartModelType.PROPRIETARY
+        ):
             container_def = self.prepare_container_def(accept_eula=accept_eula)
             container_def = update_container_with_inference_params(
                 framework=framework,
@@ -700,6 +726,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             accept_eula=(
                 accept_eula if accept_eula is not None else getattr(self, "accept_eula", None)
             ),
+            additional_model_data_sources=self.additional_model_data_sources,
             model_reference_arn=(
                 model_reference_arn
                 if model_reference_arn is not None
@@ -1350,6 +1377,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         managed_instance_scaling: Optional[str] = None,
         inference_component_name=None,
         routing_config: Optional[Dict[str, Any]] = None,
+        model_reference_arn: Optional[str] = None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1456,6 +1484,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     {
                         "RoutingStrategy":  sagemaker.enums.RoutingStrategy.RANDOM
                     }
+            model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
+                content (default: None).
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1491,7 +1521,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             sagemaker_session=self.sagemaker_session,
         )
 
-        tags = format_tags(tags)
+        self.add_tags(tags)
+        tags = format_tags(self._tags)
 
         if (
             getattr(self.sagemaker_session, "settings", None) is not None
@@ -1669,7 +1700,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 accelerator_type=accelerator_type,
                 tags=tags,
                 serverless_inference_config=serverless_inference_config,
-                **kwargs,
+                accept_eula=accept_eula,
+                model_reference_arn=model_reference_arn,
             )
             serverless_inference_config_dict = (
                 serverless_inference_config._to_request_dict() if is_serverless else None
@@ -2441,32 +2473,55 @@ class ModelPackage(Model):
         desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
             ModelPackageName=self.model_package_arn
         )
+        if hasattr(model_card, "model_package_details"):
+            model_card.model_package_details = None
         update_model_card_req = model_card._create_request_args()
-        if update_model_card_req["ModelCardStatus"] is not None:
-            if (
-                desc_model_package["ModelCard"]["ModelCardStatus"]
-                == update_model_card_req["ModelCardStatus"]
-            ):
-                del update_model_card_req["ModelCardStatus"]
-
         if update_model_card_req.get("ModelCardName") is not None:
             del update_model_card_req["ModelCardName"]
-        if update_model_card_req.get("Content") is not None:
-            previous_content_hash = _hash_content_str(
-                desc_model_package["ModelCard"]["ModelCardContent"]
-            )
-            current_content_hash = _hash_content_str(update_model_card_req["Content"])
-            if (
-                previous_content_hash == current_content_hash
-                or update_model_card_req.get("Content") == "{}"
-                or update_model_card_req.get("Content") == "null"
-            ):
-                del update_model_card_req["Content"]
-            else:
-                update_model_card_req["ModelCardContent"] = update_model_card_req["Content"]
-                del update_model_card_req["Content"]
-        update_model_package_args = {
-            "ModelPackageArn": self.model_package_arn,
-            "ModelCard": update_model_card_req,
-        }
-        sagemaker_session.sagemaker_client.update_model_package(**update_model_package_args)
+        if update_model_card_req["Content"] is not None:
+            if "model_package_details" in update_model_card_req["Content"]:
+                update_model_card_req["Content"].pop("model_package_details", None)
+            update_model_card_req["ModelCardContent"] = update_model_card_req["Content"]
+            del update_model_card_req["Content"]
+
+        if "ModelCard" in desc_model_package:
+            if update_model_card_req["ModelCardStatus"] is not None:
+                if (
+                    desc_model_package["ModelCard"]["ModelCardStatus"]
+                    != update_model_card_req["ModelCardStatus"]
+                ):
+                    new_mc_mp_req = update_model_card_req
+                    del new_mc_mp_req["ModelCardContent"]
+                    update_model_package_args = {
+                        "ModelPackageArn": self.model_package_arn,
+                        "ModelCard": new_mc_mp_req,
+                    }
+                    sagemaker_session.sagemaker_client.update_model_package(
+                        **update_model_package_args
+                    )
+
+            if update_model_card_req.get("ModelCardContent") is not None:
+                previous_content_hash = _hash_content_str(
+                    desc_model_package["ModelCard"]["ModelCardContent"]
+                )
+                current_content_hash = _hash_content_str(update_model_card_req["ModelCardContent"])
+                if not (
+                    previous_content_hash == current_content_hash
+                    or update_model_card_req.get("ModelCardContent") == "{}"
+                    or update_model_card_req.get("ModelCardContent") == "null"
+                ):
+                    new_mc_mp_req = update_model_card_req
+                    del new_mc_mp_req["ModelCardStatus"]
+                    update_model_package_args = {
+                        "ModelPackageArn": self.model_package_arn,
+                        "ModelCard": new_mc_mp_req,
+                    }
+                    sagemaker_session.sagemaker_client.update_model_package(
+                        **update_model_package_args
+                    )
+        else:
+            update_model_package_args = {
+                "ModelPackageArn": self.model_package_arn,
+                "ModelCard": update_model_card_req,
+            }
+            sagemaker_session.sagemaker_client.update_model_package(**update_model_package_args)
