@@ -179,6 +179,8 @@ def test_deploy_accelerator_type(
         accelerator_type=ACCELERATOR_TYPE,
         tags=None,
         serverless_inference_config=None,
+        accept_eula=None,
+        model_reference_arn=None,
     )
     production_variant.assert_called_with(
         MODEL_NAME,
@@ -299,6 +301,8 @@ def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base,
         accelerator_type=None,
         tags=tags,
         serverless_inference_config=None,
+        accept_eula=None,
+        model_reference_arn=None,
     )
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=ENDPOINT_NAME,
@@ -502,6 +506,8 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         accelerator_type=None,
         tags=None,
         serverless_inference_config=serverless_inference_config,
+        accept_eula=None,
+        model_reference_arn=None,
     )
     production_variant.assert_called_with(
         MODEL_NAME,
