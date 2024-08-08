@@ -36,6 +36,8 @@ def _retrieve_resource_name_base(
     tolerate_deprecated_model: bool = False,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    scope: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
+    config_name: Optional[str] = None,
 ) -> bool:
     """Returns default resource name.
 
@@ -59,6 +61,7 @@ def _retrieve_resource_name_base(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config. (Default: None).
     Returns:
         str: the default resource name.
     """
@@ -71,12 +74,13 @@ def _retrieve_resource_name_base(
         model_id=model_id,
         version=model_version,
         hub_arn=hub_arn,
-        scope=JumpStartScriptScope.INFERENCE,
+        scope=scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         model_type=model_type,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     return model_specs.resource_name_base

@@ -1,5 +1,89 @@
 # Changelog
 
+## v2.228.0 (2024-08-06)
+
+### Features
+
+ * triton v24.05
+
+### Bug Fixes and Other Changes
+
+ * chore: telemetry for deployment configs
+ * censoring sensitive values from being logged
+ * update image_uri_configs  08-05-2024 07:17:38 PST
+ * enable uncompressed model artifacts upload to S3 for SAGEMAKER_ENDPOINT overwrite for TGI, TEI, MMS model servers
+ * ModelReference deployment for Alt Configs models
+ * Add optional typecheck for nullable parameters
+ * Update package metadata
+ * release TEI 1.4.0
+
+## v2.227.0 (2024-07-30)
+
+### Features
+
+ * added code scanning through CodeQL
+
+### Bug Fixes and Other Changes
+
+ * Fixed cpu isntance type for the estimator register test
+ * update image_uri_configs  07-29-2024 11:28:28 PST
+ * avoid AccessDenied error for a while on SageMaker Studio wtih do…
+ * SMP PT 2.3 Fix
+ * chore: pin framework version in serverless inference tests
+ * image uri in TGI 2.2.0 image
+ * explicitly access enum member values to avoid Python version related regression
+ * chore: add huggingface TGI 2.2.0 config
+ * update image_uri_configs  07-22-2024 11:53:54 PST
+ * update image_uri_configs  07-17-2024 07:17:38 PST
+ * update image_uri_configs  07-16-2024 07:17:45 PST
+ * add support for new regions
+
+## v2.226.1 (2024-07-17)
+
+## v2.226.0 (2024-07-12)
+
+### Features
+
+ * Curated hub improvements
+ * InferenceSpec support for MMS and testing
+
+### Bug Fixes and Other Changes
+
+ * ModelBuilder not passing HF_TOKEN to model.
+ * update image_uri_configs  07-10-2024 07:18:04 PST
+
+## v2.225.0 (2024-07-10)
+
+### Features
+
+ * model optimization
+
+### Bug Fixes and Other Changes
+
+ * fix integ test
+ * update uris for v1.1.1
+ * update image_uri_configs  07-04-2024 07:17:24 PST
+
+## v2.224.4 (2024-07-04)
+
+### Bug Fixes and Other Changes
+
+ * allow for inf spec and server override to be passed
+
+## v2.224.3 (2024-07-03)
+
+### Bug Fixes and Other Changes
+
+ * Upgrade local dependencies
+ * Improve docstrings for estimator tags
+
+## v2.224.2 (2024-06-27)
+
+### Bug Fixes and Other Changes
+
+ * Update DJLModel class for latest container releases
+ * list_models() for python3.8
+
 ## v2.224.1 (2024-06-21)
 
 ### Bug Fixes and Other Changes
