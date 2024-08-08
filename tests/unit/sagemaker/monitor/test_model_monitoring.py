@@ -1713,7 +1713,6 @@ def test_model_quality_monitor_invalid_dashboard_create(model_quality_monitor, s
             dashboard_name=EXISTING_DASHBOARD_NAME,
         )
 
-
 def test_model_quality_monitor_creation_failure(model_quality_monitor, sagemaker_session):
     sagemaker_session.sagemaker_client.create_monitoring_schedule = Mock(
         side_effect=Exception("400")
