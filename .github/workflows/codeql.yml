@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ "master" ]
   schedule:
-    - cron: '30 8 * * *'
+    - cron: '30 15 * * *'
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
