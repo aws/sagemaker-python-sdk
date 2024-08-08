@@ -2,7 +2,7 @@ name: Security Monitoring
 
 on:
   schedule:
-    - cron: '0 9 * * *'
+    - cron: '0 16 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.run_id }}
