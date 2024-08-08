@@ -3,10 +3,15 @@
 from __future__ import absolute_import
 
 import logging
-from fastapi import FastAPI, Request
 
 
 logger = logging.getLogger(__name__)
+
+try:
+    from fastapi import FastAPI, Request
+
+except ImportError:
+    logger.error("To enable in_process mode for Transformers install fastapi from HuggingFace hub")
 
 app = FastAPI(
     title="Transformers In Process Server",
