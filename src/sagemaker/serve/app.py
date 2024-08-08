@@ -1,10 +1,29 @@
 """FastAPI requests"""
 
 from __future__ import absolute_import
-
 import logging
 
+
 logger = logging.getLogger(__name__)
+
+
+try:
+    import uvicorn
+
+except ImportError:
+    logger.error("To enable in_process mode for Transformers install uvicorn from HuggingFace hub")
+
+
+try:
+    from transformers import pipeline
+
+    generator = pipeline("text-generation", model="gpt2")
+
+except ImportError:
+    logger.error(
+        "To enable in_process mode for Transformers install transformers from HuggingFace hub"
+    )
+
 
 try:
     from fastapi import FastAPI, Request
@@ -34,31 +53,13 @@ try:
         )
         return generated_text[0]["generated_text"]
 
+    @app.post("/post")
+    def post(payload: dict):
+        """Placeholder docstring"""
+        return payload
+
 except ImportError:
     logger.error("To enable in_process mode for Transformers install fastapi from HuggingFace hub")
-
-
-try:
-    from transformers import pipeline
-
-    generator = pipeline("text-generation", model="gpt2")
-
-except ImportError:
-    logger.error(
-        "To enable in_process mode for Transformers install transformers from HuggingFace hub"
-    )
-
-try:
-    import uvicorn
-
-except ImportError:
-    logger.error("To enable in_process mode for Transformers install uvicorn from HuggingFace hub")
-
-
-@app.post("/post")
-def post(payload: dict):
-    """Placeholder docstring"""
-    return payload
 
 
 async def main():
