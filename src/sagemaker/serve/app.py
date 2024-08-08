@@ -4,39 +4,38 @@ from __future__ import absolute_import
 
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 try:
     from fastapi import FastAPI, Request
 
+    app = FastAPI(
+        title="Transformers In Process Server",
+        version="1.0",
+        description="A simple server",
+    )
+
+    @app.get("/")
+    def read_root():
+        """Placeholder docstring"""
+        return {"Hello": "World"}
+
+    @app.get("/generate")
+    async def generate_text(prompt: Request):
+        """Placeholder docstring"""
+        logger.info("Generating Text....")
+
+        str_prompt = await prompt.json()
+
+        logger.info(str_prompt)
+
+        generated_text = generator(
+            str_prompt, max_length=30, num_return_sequences=5, truncation=True
+        )
+        return generated_text[0]["generated_text"]
+
 except ImportError:
     logger.error("To enable in_process mode for Transformers install fastapi from HuggingFace hub")
-
-app = FastAPI(
-    title="Transformers In Process Server",
-    version="1.0",
-    description="A simple server",
-)
-
-
-@app.get("/")
-def read_root():
-    """Placeholder docstring"""
-    return {"Hello": "World"}
-
-
-@app.get("/generate")
-async def generate_text(prompt: Request):
-    """Placeholder docstring"""
-    logger.info("Generating Text....")
-
-    str_prompt = await prompt.json()
-
-    logger.info(str_prompt)
-
-    generated_text = generator(str_prompt, max_length=30, num_return_sequences=5, truncation=True)
-    return generated_text[0]["generated_text"]
 
 
 try:
