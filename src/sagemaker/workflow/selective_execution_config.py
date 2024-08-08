@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Pipeline Parallelism Configuration"""
 from __future__ import absolute_import
-from typing import List
+from typing import List, Optional
 from sagemaker.workflow.entities import RequestType
 
 
@@ -25,8 +25,8 @@ class SelectiveExecutionConfig:
     def __init__(
         self,
         selected_steps: List[str],
-        source_pipeline_execution_arn: str = None,
         reference_latest_execution: bool = True,
+        source_pipeline_execution_arn: Optional[str] = None,
     ):
         """Create a `SelectiveExecutionConfig`.
 

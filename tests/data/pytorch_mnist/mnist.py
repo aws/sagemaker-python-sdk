@@ -57,7 +57,7 @@ def _get_train_data_loader(training_dir, is_distributed, batch_size, **kwargs):
         batch_size=batch_size,
         shuffle=train_sampler is None,
         sampler=train_sampler,
-        **kwargs
+        **kwargs,
     )
     return train_sampler, train_loader
 
@@ -75,7 +75,7 @@ def _get_test_data_loader(training_dir, **kwargs):
         ),
         batch_size=1000,
         shuffle=True,
-        **kwargs
+        **kwargs,
     )
 
 

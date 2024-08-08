@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from enum import Enum
-from typing import List
+from typing import List, Optional
 import attr
 
 from sagemaker.workflow.entities import Entity, DefaultEnumMeta, RequestType
@@ -133,8 +133,8 @@ class StepRetryPolicy(RetryPolicy):
         exception_types: List[StepExceptionTypeEnum],
         backoff_rate: float = 2.0,
         interval_seconds: int = 1,
-        max_attempts: int = None,
-        expire_after_mins: int = None,
+        max_attempts: Optional[int] = None,
+        expire_after_mins: Optional[int] = None,
     ):
         super().__init__(backoff_rate, interval_seconds, max_attempts, expire_after_mins)
         for exception_type in exception_types:
@@ -177,12 +177,12 @@ class SageMakerJobStepRetryPolicy(RetryPolicy):
 
     def __init__(
         self,
-        exception_types: List[SageMakerJobExceptionTypeEnum] = None,
-        failure_reason_types: List[SageMakerJobExceptionTypeEnum] = None,
+        exception_types: Optional[List[SageMakerJobExceptionTypeEnum]] = None,
+        failure_reason_types: Optional[List[SageMakerJobExceptionTypeEnum]] = None,
         backoff_rate: float = 2.0,
         interval_seconds: int = 1,
-        max_attempts: int = None,
-        expire_after_mins: int = None,
+        max_attempts: Optional[int] = None,
+        expire_after_mins: Optional[int] = None,
     ):
         super().__init__(backoff_rate, interval_seconds, max_attempts, expire_after_mins)
 

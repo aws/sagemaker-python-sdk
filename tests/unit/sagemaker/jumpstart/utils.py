@@ -12,9 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from typing import List, Optional
+from typing import List, Dict, Any, Optional
 import boto3
 
+from sagemaker.compute_resource_requirements import ResourceRequirements
 from sagemaker.jumpstart.cache import JumpStartModelsCache
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -27,6 +28,10 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartModelHeader,
+    JumpStartModelInitKwargs,
+    DeploymentConfigMetadata,
+    JumpStartModelDeployKwargs,
+    JumpStartBenchmarkStat,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import get_formatted_manifest
@@ -43,6 +48,8 @@ from tests.unit.sagemaker.jumpstart.constants import (
     SPECIAL_MODEL_SPECS_DICT,
     TRAINING_CONFIG_RANKINGS,
     TRAINING_CONFIGS,
+    DEPLOYMENT_CONFIGS,
+    INIT_KWARGS,
 )
 
 
@@ -233,6 +240,45 @@ def get_base_spec_with_prototype_configs(
     return JumpStartModelSpecs(spec)
 
 
+def get_base_spec_with_prototype_configs_with_missing_benchmarks(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+) -> JumpStartModelSpecs:
+    spec = copy.deepcopy(BASE_SPEC)
+    copy_inference_configs = copy.deepcopy(INFERENCE_CONFIGS)
+    copy_inference_configs["inference_configs"]["neuron-inference"]["benchmark_metrics"] = None
+
+    inference_configs = {**copy_inference_configs, **INFERENCE_CONFIG_RANKINGS}
+    training_configs = {**TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
+
+    spec.update(inference_configs)
+    spec.update(training_configs)
+
+    return JumpStartModelSpecs(spec)
+
+
+def get_prototype_spec_with_configs(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    hub_arn: str = None,
+    sagemaker_session: boto3.Session = None,
+) -> JumpStartModelSpecs:
+    spec = copy.deepcopy(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
+    inference_configs = {**INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    training_configs = {**TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
+
+    spec.update(inference_configs)
+    spec.update(training_configs)
+
+    return JumpStartModelSpecs(spec)
+
+
 def patched_retrieval_function(
     _modelCacheObj: JumpStartModelsCache,
     key: JumpStartCachedContentKey,
@@ -289,3 +335,104 @@ def overwrite_dictionary(
         base_dictionary[key] = value
 
     return base_dictionary
+
+
+def get_base_deployment_configs_with_acceleration_configs() -> List[Dict[str, Any]]:
+    configs = copy.deepcopy(DEPLOYMENT_CONFIGS)
+    configs[0]["AccelerationConfigs"] = [
+        {"Type": "Speculative-Decoding", "Enabled": True, "Spec": {"Version": "0.1"}}
+    ]
+    return configs
+
+
+def get_mock_init_kwargs(
+    model_id: str, config_name: Optional[str] = None
+) -> JumpStartModelInitKwargs:
+    kwargs = JumpStartModelInitKwargs(
+        model_id=model_id,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
+        model_data=INIT_KWARGS.get("model_data"),
+        image_uri=INIT_KWARGS.get("image_uri"),
+        instance_type=INIT_KWARGS.get("instance_type"),
+        env=INIT_KWARGS.get("env"),
+        resources=ResourceRequirements(),
+        config_name=config_name,
+    )
+    setattr(kwargs, "model_reference_arn", None)
+    setattr(kwargs, "hub_content_type", None)
+    return kwargs
+
+
+def get_base_deployment_configs_metadata(
+    omit_benchmark_metrics: bool = False,
+) -> List[DeploymentConfigMetadata]:
+    specs = (
+        get_base_spec_with_prototype_configs_with_missing_benchmarks()
+        if omit_benchmark_metrics
+        else get_base_spec_with_prototype_configs()
+    )
+    configs = []
+    for config_name in specs.inference_configs.config_rankings.get("overall").rankings:
+        jumpstart_config = specs.inference_configs.configs.get(config_name)
+        benchmark_metrics = jumpstart_config.benchmark_metrics
+
+        if benchmark_metrics:
+            for instance_type in benchmark_metrics:
+                benchmark_metrics[instance_type].append(
+                    JumpStartBenchmarkStat(
+                        {
+                            "name": "Instance Rate",
+                            "unit": "USD/Hrs",
+                            "value": "3.76",
+                            "concurrency": None,
+                        }
+                    )
+                )
+
+        configs.append(
+            DeploymentConfigMetadata(
+                config_name=config_name,
+                metadata_config=jumpstart_config,
+                init_kwargs=get_mock_init_kwargs(
+                    get_base_spec_with_prototype_configs().model_id, config_name
+                ),
+                deploy_kwargs=JumpStartModelDeployKwargs(
+                    model_id=get_base_spec_with_prototype_configs().model_id,
+                ),
+            )
+        )
+    return configs
+
+
+def get_base_deployment_configs(
+    omit_benchmark_metrics: bool = False,
+) -> List[Dict[str, Any]]:
+    configs = []
+    for config in get_base_deployment_configs_metadata(omit_benchmark_metrics):
+        config_json = config.to_json()
+        if config_json["BenchmarkMetrics"]:
+            config_json["BenchmarkMetrics"] = {
+                config.deployment_args.instance_type: config_json["BenchmarkMetrics"].get(
+                    config.deployment_args.instance_type
+                )
+            }
+        configs.append(config_json)
+    return configs
+
+
+def append_instance_stat_metrics(
+    metrics: Dict[str, List[JumpStartBenchmarkStat]]
+) -> Dict[str, List[JumpStartBenchmarkStat]]:
+    if metrics is not None:
+        for key in metrics:
+            metrics[key].append(
+                JumpStartBenchmarkStat(
+                    {
+                        "name": "Instance Rate",
+                        "value": "3.76",
+                        "unit": "USD/Hrs",
+                        "concurrency": None,
+                    }
+                )
+            )
+    return metrics

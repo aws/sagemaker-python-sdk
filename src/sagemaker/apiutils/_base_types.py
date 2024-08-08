@@ -123,7 +123,7 @@ class Record(ApiObject):
         boto_list_items_name,
         boto_next_token_name="NextToken",
         sagemaker_session=None,
-        **kwargs
+        **kwargs,
     ):
         """List objects from the SageMaker API."""
         sagemaker_session = sagemaker_session or _utils.default_session()
@@ -154,7 +154,7 @@ class Record(ApiObject):
         search_item_factory,
         boto_next_token_name="NextToken",
         sagemaker_session=None,
-        **kwargs
+        **kwargs,
     ):
         """Search for objects with the SageMaker API."""
         sagemaker_session = sagemaker_session or _utils.default_session()
