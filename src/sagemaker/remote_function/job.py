@@ -200,7 +200,8 @@ then
     fi
 
     printf "INFO: Invoking remote function with torchrun inside conda environment: $conda_env.\\n"
-    $conda_exe run -n $conda_env torchrun --nproc_per_node $NPROC_PER_NODE -m sagemaker.remote_function.invoke_function "$@"
+    $conda_exe run -n $conda_env torchrun --nproc_per_node $NPROC_PER_NODE \
+    -m sagemaker.remote_function.invoke_function "$@"
 else
     printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
     torchrun --nproc_per_node $NPROC_PER_NODE -m sagemaker.remote_function.invoke_function "$@"
