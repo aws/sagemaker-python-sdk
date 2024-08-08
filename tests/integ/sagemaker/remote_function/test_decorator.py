@@ -820,11 +820,11 @@ def test_decorator_auto_capture(sagemaker_session, auto_capture_test_container):
     subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT).decode("utf-8")
 
 def test_decorator_torchrun(
-        sagemaker_session,
-        dummy_container_without_error,
-        gpu_instance_type,
-        use_torchrun=True,
-        nproc_per_node=2,
+    sagemaker_session,
+    dummy_container_without_error,
+    gpu_instance_type,
+    use_torchrun=True,
+    nproc_per_node=2,
 ):
     @remote(
         role=ROLE,

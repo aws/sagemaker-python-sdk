@@ -1001,12 +1001,12 @@ class _Job:
 
 
 def _prepare_and_upload_runtime_scripts(
-        spark_config: SparkConfig,
-        s3_base_uri: str,
-        s3_kms_key: str,
-        sagemaker_session: Session,
-        use_torchrun: bool = False,
-        nproc_per_node: int = 1,
+    spark_config: SparkConfig,
+    s3_base_uri: str,
+    s3_kms_key: str,
+    sagemaker_session: Session,
+    use_torchrun: bool = False,
+    nproc_per_node: int = 1,
 ):
     """Copy runtime scripts to a folder and upload to S3.
 
