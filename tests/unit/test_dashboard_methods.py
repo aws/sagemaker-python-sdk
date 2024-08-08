@@ -261,7 +261,6 @@ def test_automatic_data_quality_dashboard_endpoint():
             ]
         ],
     }
-    
     assert dashboard.to_dict() == expected_dashboard
 
 
