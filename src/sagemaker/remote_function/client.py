@@ -58,6 +58,7 @@ _FINISHED = "FINISHED"
 
 logger = logging_config.get_logger()
 
+
 @_telemetry_emitter(feature=Feature.REMOTE_FUNCTION, func_name="remote_function.remote")
 def remote(
     _func=None,
