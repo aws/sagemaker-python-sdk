@@ -25,13 +25,14 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelInvocationException,
     SkipTuningComboException,
 )
+from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.tuning import (
     _serial_benchmark,
     _concurrent_benchmark,
     _more_performant,
     _pretty_print_results_tgi,
 )
-from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
+from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 from sagemaker.serve.model_server.djl_serving.utils import (
     _get_admissible_tensor_parallel_degrees,
     _get_default_tensor_parallel_degree,
@@ -90,11 +91,10 @@ class TGI(ABC):
         self.nb_instance_type = None
         self.ram_usage_model_load = None
         self.secret_key = None
-        self.jumpstart = None
         self.role_arn = None
 
     @abstractmethod
-    def _prepare_for_mode(self):
+    def _prepare_for_mode(self, *args, **kwargs):
         """Placeholder docstring"""
 
     @abstractmethod
@@ -202,18 +202,25 @@ class TGI(ABC):
             self.pysdk_model.role = kwargs.get("role")
             del kwargs["role"]
 
-        # set model_data to uncompressed s3 dict
-        self.pysdk_model.model_data, env_vars = self._prepare_for_mode()
-        self.env_vars.update(env_vars)
-        self.pysdk_model.env.update(self.env_vars)
+        if not _is_optimized(self.pysdk_model):
+            env_vars = {}
+            if str(Mode.LOCAL_CONTAINER) in self.modes:
+                # upload model artifacts to S3 if LOCAL_CONTAINER -> SAGEMAKER_ENDPOINT
+                self.pysdk_model.model_data, env_vars = self._prepare_for_mode(
+                    model_path=self.model_path, should_upload_artifacts=True
+                )
+            else:
+                _, env_vars = self._prepare_for_mode()
+
+            self.env_vars.update(env_vars)
+            self.pysdk_model.env.update(self.env_vars)
 
         # if the weights have been cached via local container mode -> set to offline
         if str(Mode.LOCAL_CONTAINER) in self.modes:
-            self.pysdk_model.env.update({"TRANSFORMERS_OFFLINE": "1"})
+            self.pysdk_model.env.update({"HF_HUB_OFFLINE": "1"})
         else:
             # if has not been built for local container we must use cache
             # that hosting has write access to.
-            self.pysdk_model.env["TRANSFORMERS_CACHE"] = "/tmp"
             self.pysdk_model.env["HF_HOME"] = "/tmp"
             self.pysdk_model.env["HUGGINGFACE_HUB_CACHE"] = "/tmp"
 
@@ -244,7 +251,8 @@ class TGI(ABC):
 
         predictor = self._original_deploy(*args, **kwargs)
 
-        self.pysdk_model.env.update({"TRANSFORMERS_OFFLINE": "0"})
+        if "HF_HUB_OFFLINE" in self.pysdk_model.env:
+            self.pysdk_model.env.update({"HF_HUB_OFFLINE": "0"})
 
         predictor.serializer = serializer
         predictor.deserializer = deserializer
@@ -474,4 +482,8 @@ class TGI(ABC):
 
         self.pysdk_model = self._build_for_hf_tgi()
         self.pysdk_model.tune = self._tune_for_hf_tgi
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
         return self.pysdk_model

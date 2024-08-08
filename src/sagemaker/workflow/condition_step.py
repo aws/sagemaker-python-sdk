@@ -20,7 +20,6 @@ from sagemaker.workflow.conditions import Condition
 
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.functions import JsonGet as NewJsonGet
-from sagemaker.workflow.step_outputs import StepOutput
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
@@ -41,11 +40,11 @@ class ConditionStep(Step):
         self,
         name: str,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
-        display_name: str = None,
-        description: str = None,
-        conditions: List[Condition] = None,
-        if_steps: List[Union[Step, StepCollection, StepOutput]] = None,
-        else_steps: List[Union[Step, StepCollection, StepOutput]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        conditions: Optional[List[Condition]] = None,
+        if_steps: Optional[List[Union[Step, StepCollection]]] = None,
+        else_steps: Optional[List[Union[Step, StepCollection]]] = None,
     ):
         """Construct a ConditionStep for pipelines to support conditional branching.
 

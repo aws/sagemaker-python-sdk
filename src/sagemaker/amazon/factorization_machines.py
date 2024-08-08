@@ -114,7 +114,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
         factors_init_scale: Optional[float] = None,
         factors_init_sigma: Optional[float] = None,
         factors_init_value: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ):
         """Factorization Machines is :class:`Estimator` for general-purpose supervised learning.
 
@@ -266,7 +266,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
 
@@ -332,7 +332,7 @@ class FactorizationMachinesModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for FactorizationMachinesModel class.
 
@@ -365,5 +365,5 @@ class FactorizationMachinesModel(Model):
             role,
             predictor_cls=FactorizationMachinesPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

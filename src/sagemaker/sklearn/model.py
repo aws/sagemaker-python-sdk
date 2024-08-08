@@ -93,7 +93,7 @@ class SKLearnModel(FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         predictor_cls: callable = SKLearnPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an SKLearnModel.
 
@@ -279,6 +279,7 @@ class SKLearnModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """Container definition with framework configuration set in model environment variables.
 
@@ -328,6 +329,7 @@ class SKLearnModel(FrameworkModel):
             model_data_uri,
             deploy_env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def serving_image_uri(self, region_name, instance_type, serverless_inference_config=None):

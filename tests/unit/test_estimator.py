@@ -266,6 +266,7 @@ class DummyFrameworkModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         return MODEL_CONTAINER_DEF
 
@@ -4401,7 +4402,7 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
-
+    model_card = {"ModelCardStatus": ModelCardStatusEnum.DRAFT, "ModelCardContent": "{}"}
     estimator.register(
         content_types=content_types,
         response_types=response_types,
@@ -4424,6 +4425,7 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
         "marketplace_cert": False,
         "sample_payload_url": sample_payload_url,
         "task": task,
+        "model_card": model_card,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -4453,6 +4455,7 @@ def test_register_inference_image(sagemaker_session):
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
+    model_card = {"ModelCardStatus": ModelCardStatusEnum.DRAFT, "ModelCardContent": "{}"}
 
     estimator.register(
         content_types=content_types,
@@ -4479,6 +4482,7 @@ def test_register_inference_image(sagemaker_session):
         "marketplace_cert": False,
         "sample_payload_url": sample_payload_url,
         "task": task,
+        "model_card": model_card,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -5256,6 +5260,7 @@ def test_all_framework_estimators_add_jumpstart_uri_tags(
             entry_point="inference.py",
             role=ROLE,
             tags=[{"Key": "blah", "Value": "yoyoma"}],
+            model_reference_arn=None,
         )
 
         assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [

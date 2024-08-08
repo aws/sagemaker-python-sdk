@@ -99,7 +99,7 @@ class MXNetModel(FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         predictor_cls: callable = MXNetPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an MXNetModel.
 
@@ -284,6 +284,7 @@ class MXNetModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """Return a container definition with framework configuration.
 
@@ -337,6 +338,7 @@ class MXNetModel(FrameworkModel):
             self.repacked_model_data or self.model_data,
             deploy_env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def serving_image_uri(
