@@ -5,9 +5,6 @@ from __future__ import absolute_import
 import logging
 import importlib.util
 import uvicorn
-import transformers  # noqa: F401 # pylint: disable=W0611
-
-from transformers import pipeline
 from fastapi import FastAPI, Request
 
 
@@ -39,7 +36,15 @@ async def generate_text(prompt: Request):
     return generated_text[0]["generated_text"]
 
 
-generator = pipeline("text-generation", model="gpt2")
+try:
+    from transformers import pipeline
+
+    generator = pipeline("text-generation", model="gpt2")
+
+except ImportError:
+    logger.error(
+        "To enable in process mode for Transformers install transformers from HuggingFace hub"
+    )
 
 
 @app.post("/post")
