@@ -36,6 +36,7 @@ from sagemaker.serve.builder.tf_serving_builder import TensorflowServing
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
 from sagemaker.serve.mode.local_container_mode import LocalContainerMode
+from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.builder.serve_settings import _ServeSettings
 from sagemaker.serve.builder.djl_builder import DJL
@@ -410,7 +411,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
             self.env_vars.update(env_vars_sagemaker)
             return self.s3_upload_path, env_vars_sagemaker
-        if self.mode == Mode.LOCAL_CONTAINER:
+        elif self.mode == Mode.LOCAL_CONTAINER:
             # init the LocalContainerMode object
             self.modes[str(Mode.LOCAL_CONTAINER)] = LocalContainerMode(
                 inference_spec=self.inference_spec,
@@ -422,9 +423,22 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
             self.modes[str(Mode.LOCAL_CONTAINER)].prepare()
             return None
+        elif self.mode == Mode.IN_PROCESS:
+            # init the InProcessMode object
+            self.modes[str(Mode.IN_PROCESS)] = InProcessMode(
+                inference_spec=self.inference_spec,
+                schema_builder=self.schema_builder,
+                session=self.sagemaker_session,
+                model_path=self.model_path,
+                env_vars=self.env_vars,
+                model_server=self.model_server,
+            )
+            self.modes[str(Mode.IN_PROCESS)].prepare()
+            return None
 
         raise ValueError(
-            "Please specify mode in: %s, %s" % (Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT)
+            "Please specify mode in: %s, %s, %s"
+            % (Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT, Mode.IN_PROCESS)
         )
 
     def _get_client_translators(self):
@@ -605,6 +619,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             self.pysdk_model.env.update(env_vars_sagemaker)
         elif overwrite_mode == Mode.LOCAL_CONTAINER:
             self.mode = self.pysdk_model.mode = Mode.LOCAL_CONTAINER
+            self._prepare_for_mode()
+        elif overwrite_mode == Mode.IN_PROCESS:
+            self.mode = self.pysdk_model.mode = Mode.IN_PROCESS
             self._prepare_for_mode()
         else:
             raise ValueError("Mode %s is not supported!" % overwrite_mode)
@@ -795,9 +812,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.dependencies.update({"requirements": mlflow_model_dependency_path})
 
     # Model Builder is a class to build the model for deployment.
-    # It supports two modes of deployment
+    # It supports two* modes of deployment
     # 1/ SageMaker Endpoint
     # 2/ Local launch with container
+    # 3/ In process mode with Transformers server in beta release
     def build(  # pylint: disable=R0911
         self,
         mode: Type[Mode] = None,
@@ -895,8 +913,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
     def _build_validations(self):
         """Validations needed for model server overrides, or auto-detection or fallback"""
-        if self.mode == Mode.IN_PROCESS:
-            raise ValueError("IN_PROCESS mode is not supported yet!")
+        if self.mode == Mode.IN_PROCESS and self.model_server is not ModelServer.MMS:
+            raise ValueError(
+                "IN_PROCESS mode is only supported for MMS/Transformers server in beta release."
+            )
 
         if self.inference_spec and self.model:
             raise ValueError("Can only set one of the following: model, inference_spec.")
