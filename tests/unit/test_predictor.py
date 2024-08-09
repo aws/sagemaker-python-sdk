@@ -65,7 +65,9 @@ def empty_sagemaker_session():
     return ims
 
 
-def test_predict_call_pass_through():
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+def test_predict_call_pass_through(mock_resolve_value_from_config):
+    mock_resolve_value_from_config.return_value = True
     sagemaker_session = empty_sagemaker_session()
     predictor = Predictor(ENDPOINT, sagemaker_session)
 
@@ -89,7 +91,9 @@ def test_predict_call_pass_through():
     assert result == RETURN_VALUE
 
 
-def test_predict_call_with_target_variant():
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+def test_predict_call_with_target_variant(mock_resolve_value_from_config):
+    mock_resolve_value_from_config.return_value = True
     sagemaker_session = empty_sagemaker_session()
     predictor = Predictor(ENDPOINT, sagemaker_session)
 
@@ -112,7 +116,9 @@ def test_predict_call_with_target_variant():
     assert result == RETURN_VALUE
 
 
-def test_predict_call_with_inference_id():
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+def test_predict_call_with_inference_id(mock_resolve_value_from_config):
+    mock_resolve_value_from_config.return_value = True
     sagemaker_session = empty_sagemaker_session()
     predictor = Predictor(ENDPOINT, sagemaker_session)
 
@@ -135,7 +141,9 @@ def test_predict_call_with_inference_id():
     assert result == RETURN_VALUE
 
 
-def test_multi_model_predict_call():
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+def test_multi_model_predict_call(mock_resolve_value_from_config):
+    mock_resolve_value_from_config.return_value = True
     sagemaker_session = empty_sagemaker_session()
     predictor = Predictor(ENDPOINT, sagemaker_session)
 
@@ -180,7 +188,9 @@ def json_sagemaker_session():
     return ims
 
 
-def test_predict_call_with_json():
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+def test_predict_call_with_json(mock_resolve_value_from_config):
+    mock_resolve_value_from_config.return_value = True
     sagemaker_session = json_sagemaker_session()
     predictor = Predictor(ENDPOINT, sagemaker_session, serializer=JSONSerializer())
 
@@ -222,8 +232,10 @@ def ret_csv_sagemaker_session():
     return ims
 
 
-def test_predict_call_with_csv():
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+def test_predict_call_with_csv(mock_resolve_value_from_config):
     sagemaker_session = ret_csv_sagemaker_session()
+    mock_resolve_value_from_config.return_value = True
     predictor = Predictor(
         ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=CSVDeserializer()
     )
@@ -245,8 +257,10 @@ def test_predict_call_with_csv():
     assert result == [["1", "2", "3"]]
 
 
-def test_predict_call_with_multiple_accept_types():
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+def test_predict_call_with_multiple_accept_types(mock_resolve_value_from_config):
     sagemaker_session = ret_csv_sagemaker_session()
+    mock_resolve_value_from_config.return_value = True
     predictor = Predictor(
         ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=PandasDeserializer()
     )
@@ -696,8 +710,10 @@ def test_setting_serializer_deserializer_atts_changes_content_accept_types():
     assert predictor.content_type == "text/csv"
 
 
-def test_custom_attributes():
+@patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+def test_custom_attributes(mock_resolve_value_from_config):
     sagemaker_session = empty_sagemaker_session()
+    mock_resolve_value_from_config.return_value = False
     predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
 
     sagemaker_session.sagemaker_runtime_client.invoke_endpoint = Mock(
