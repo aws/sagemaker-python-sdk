@@ -36,7 +36,10 @@ from sagemaker.serve.detector.image_detector import (
 )
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.optimize_utils import _is_optimized
-from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
+from sagemaker.serve.utils.predictors import (
+    TransformersLocalModePredictor,
+    TransformersInProcessModePredictor,
+)
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
@@ -47,6 +50,7 @@ from sagemaker.serve.builder.requirements_manager import RequirementsManager
 
 logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 1800
+LOCAL_MODES = [Mode.LOCAL_CONTAINER, Mode.IN_PROCESS]
 
 
 """Retrieves images for different libraries - Pytorch, TensorFlow from HuggingFace hub
@@ -228,6 +232,18 @@ class Transformers(ABC):
             )
             return predictor
 
+        if self.mode == Mode.IN_PROCESS:
+            timeout = kwargs.get("model_data_download_timeout")
+
+            predictor = TransformersInProcessModePredictor(
+                self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
+            )
+
+            self.modes[str(Mode.IN_PROCESS)].create_server(
+                predictor,
+            )
+            return predictor
+
         self._set_instance(kwargs)
 
         if "mode" in kwargs:
@@ -293,7 +309,7 @@ class Transformers(ABC):
 
         self.pysdk_model = self._create_transformers_model()
 
-        if self.mode == Mode.LOCAL_CONTAINER:
+        if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
 
         return self.pysdk_model
