@@ -1504,6 +1504,8 @@ def test_consistency_between_remote_and_step_decorator():
         "s3_kms_key",
         "s3_root_uri",
         "sagemaker_session",
+        "use_torchrun",
+        "nproc_per_node",
     ]
 
     step_args_to_ignore = ["_step", "name", "display_name", "description", "retry_policies"]

@@ -90,6 +90,8 @@ def remote(
     spark_config: SparkConfig = None,
     use_spot_instances=False,
     max_wait_time_in_seconds=None,
+    use_torchrun=False,
+    nproc_per_node=1,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -278,6 +280,12 @@ def remote(
         max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
           After this amount of time Amazon SageMaker will stop waiting for managed spot training
           job to complete. Defaults to ``None``.
+
+        use_torchrun (bool): Specifies whether to use torchrun for distributed training.
+          Defaults to ``False``.
+
+        nproc_per_node (int): Specifies the number of processes per node for distributed training.
+          Defaults to ``1``.
     """
 
     def _remote(func):
@@ -310,6 +318,8 @@ def remote(
             spark_config=spark_config,
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
+            use_torchrun=use_torchrun,
+            nproc_per_node=nproc_per_node,
         )
 
         @functools.wraps(func)
@@ -521,6 +531,8 @@ class RemoteExecutor(object):
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
+        use_torchrun=False,
+        nproc_per_node=1,
     ):
         """Constructor for RemoteExecutor
 
@@ -709,6 +721,12 @@ class RemoteExecutor(object):
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot training
               job to complete. Defaults to ``None``.
+
+            use_torchrun (bool): Specifies whether to use torchrun for distributed training.
+              Defaults to ``False``.
+
+            nproc_per_node (int): Specifies the number of processes per node.
+              Defaults to ``1``.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
@@ -749,6 +767,8 @@ class RemoteExecutor(object):
             spark_config=spark_config,
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
+            use_torchrun=use_torchrun,
+            nproc_per_node=nproc_per_node,
         )
 
         self._state_condition = threading.Condition()
