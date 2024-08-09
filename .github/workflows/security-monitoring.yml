@@ -86,7 +86,6 @@ jobs:
               }); 
               const activeSecretScanningAlerts = secretScanningAlerts.data.filter(alert => alert.state === 'open');
               core.setOutput('secret_scanning_alert_status', activeSecretScanningAlerts.length > 0 ? '1': '0');
-              console.log("Active Secret Scanning Alerts", activeSecretScanningAlerts);
             }
             await checkAlerts();
 
