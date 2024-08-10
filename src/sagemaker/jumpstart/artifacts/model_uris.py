@@ -89,12 +89,14 @@ def _retrieve_training_artifact_key(model_specs: JumpStartModelSpecs, instance_t
 def _retrieve_model_uri(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     model_scope: Optional[str] = None,
     instance_type: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
 ):
     """Retrieves the model artifact S3 URI for the model matching the given arguments.
 
@@ -105,6 +107,8 @@ def _retrieve_model_uri(
             the model artifact S3 URI.
         model_version (str): Version of the JumpStart model for which to retrieve the model
             artifact S3 URI.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         model_scope (str): The model type, i.e. what it is used for.
             Valid values: "training" and "inference".
         instance_type (str): The ML compute instance type for the specified scope. (Default: None).
@@ -120,6 +124,8 @@ def _retrieve_model_uri(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+
     Returns:
         str: the model artifact S3 URI for the corresponding model.
 
@@ -136,11 +142,13 @@ def _retrieve_model_uri(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=model_scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     model_artifact_key: str
@@ -149,6 +157,9 @@ def _retrieve_model_uri(
 
         is_prepacked = not model_specs.use_inference_script_uri()
 
+        if hub_arn:
+            model_artifact_uri = model_specs.hosting_artifact_uri
+            return model_artifact_uri
         model_artifact_key = (
             _retrieve_hosting_prepacked_artifact_key(model_specs, instance_type)
             if is_prepacked
@@ -179,9 +190,11 @@ def _model_supports_training_model_uri(
     model_id: str,
     model_version: str,
     region: Optional[str],
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
 ) -> bool:
     """Returns True if the model supports training with model uri field.
 
@@ -192,6 +205,8 @@ def _model_supports_training_model_uri(
             support status for model uri with training.
         region (Optional[str]): Region for which to retrieve the
             support status for model uri with training.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -203,6 +218,7 @@ def _model_supports_training_model_uri(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         bool: the support status for model uri with training.
     """
@@ -214,11 +230,13 @@ def _model_supports_training_model_uri(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.TRAINING,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
     )
 
     return model_specs.use_training_model_artifact()

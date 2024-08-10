@@ -30,12 +30,14 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     include_aws_sdk_env_vars: bool = True,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
     script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
+    config_name: Optional[str] = None,
 ) -> Dict[str, str]:
     """Retrieves the default container environment variables for the model matching the arguments.
 
@@ -46,6 +48,8 @@ def retrieve_default(
             retrieve the default environment variables. (Default: None).
         model_version (str): Optional. The version of the model for which to retrieve the
             default environment variables. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to
+            retrieve model details from. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -65,6 +69,7 @@ def retrieve_default(
             variables specific for the instance type.
         script (JumpStartScriptScope): The JumpStart script for which to retrieve environment
             variables.
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         dict: The variables to use for the model.
 
@@ -78,13 +83,15 @@ def retrieve_default(
         )
 
     return artifacts._retrieve_default_environment_variables(
-        model_id,
-        model_version,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
-        include_aws_sdk_env_vars,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        include_aws_sdk_env_vars=include_aws_sdk_env_vars,
         sagemaker_session=sagemaker_session,
         instance_type=instance_type,
         script=script,
+        config_name=config_name,
     )

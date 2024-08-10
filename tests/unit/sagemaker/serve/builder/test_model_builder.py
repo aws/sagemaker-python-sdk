@@ -17,8 +17,10 @@ import unittest
 from pathlib import Path
 from copy import deepcopy
 
+from sagemaker.serve import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_TRACKING_ARN
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.predictors import TensorflowServingLocalPredictor
@@ -44,16 +46,19 @@ INSTANCE_GPU_INFO = (2, 8)
 
 mock_image_uri = "abcd/efghijk"
 mock_1p_dlc_image_uri = "763104351884.dkr.ecr.us-east-1.amazonaws.com"
-mock_role_arn = "sample role arn"
+mock_role_arn = "arn:aws:iam::123456789012:role/SageMakerRole"
 mock_s3_model_data_url = "sample s3 data url"
 mock_secret_key = "mock_secret_key"
 mock_instance_type = "mock instance type"
 
-supported_model_server = {
+supported_model_servers = {
     ModelServer.TORCHSERVE,
     ModelServer.TRITON,
     ModelServer.DJL_SERVING,
     ModelServer.TENSORFLOW_SERVING,
+    ModelServer.MMS,
+    ModelServer.TGI,
+    ModelServer.TEI,
 }
 
 mock_session = MagicMock()
@@ -61,11 +66,11 @@ mock_session = MagicMock()
 
 class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    def test_validation_in_progress_mode_not_supported(self, mock_serveSettings):
-        builder = ModelBuilder()
+    def test_validation_in_progress_mode_supported(self, mock_serveSettings):
+        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE)
         self.assertRaisesRegex(
             Exception,
-            "IN_PROCESS mode is not supported yet!",
+            "IN_PROCESS mode is only supported for MMS/Transformers server in beta release.",
             builder.build,
             Mode.IN_PROCESS,
             mock_role_arn,
@@ -77,7 +82,7 @@ class TestModelBuilder(unittest.TestCase):
         builder = ModelBuilder(inference_spec="some value", model=Mock(spec=object))
         self.assertRaisesRegex(
             Exception,
-            "Cannot have both the Model and Inference spec in the builder",
+            "Can only set one of the following: model, inference_spec.",
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -90,7 +95,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertRaisesRegex(
             Exception,
             "%s is not supported yet! Supported model servers: %s"
-            % (builder.model_server, supported_model_server),
+            % (builder.model_server, supported_model_servers),
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -103,7 +108,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertRaisesRegex(
             Exception,
             "Model_server must be set when non-first-party image_uri is set. "
-            + "Supported model servers: %s" % supported_model_server,
+            + "Supported model servers: %s" % supported_model_servers,
             builder.build,
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
@@ -124,7 +129,125 @@ class TestModelBuilder(unittest.TestCase):
             mock_session,
         )
 
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_djl")
+    def test_model_server_override_djl_with_model(self, mock_build_for_djl, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.DJL_SERVING, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_djl.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_model_server_override_djl_without_model_or_mlflow(self, mock_serve_settings):
+        builder = ModelBuilder(
+            model_server=ModelServer.DJL_SERVING, model=None, inference_spec=None
+        )
+        self.assertRaisesRegex(
+            Exception,
+            "Missing required parameter `model` or 'ml_flow' path",
+            builder.build,
+            Mode.SAGEMAKER_ENDPOINT,
+            mock_role_arn,
+            mock_session,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_torchserve")
+    def test_model_server_override_torchserve_with_model(
+        self, mock_build_for_ts, mock_serve_settings
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    def test_model_server_override_torchserve_without_model_or_mlflow(self, mock_serve_settings):
+        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE)
+        self.assertRaisesRegex(
+            Exception,
+            "Missing required parameter `model` or 'ml_flow' path",
+            builder.build,
+            Mode.SAGEMAKER_ENDPOINT,
+            mock_role_arn,
+            mock_session,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_triton")
+    def test_model_server_override_triton_with_model(self, mock_build_for_ts, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TRITON, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tensorflow_serving")
+    def test_model_server_override_tensor_with_model(self, mock_build_for_ts, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TENSORFLOW_SERVING, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tei")
+    def test_model_server_override_tei_with_model(self, mock_build_for_ts, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TEI, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tgi")
+    def test_model_server_override_tgi_with_model(self, mock_build_for_ts, mock_serve_settings):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.TGI, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers")
+    def test_model_server_override_transformers_with_model(
+        self, mock_build_for_ts, mock_serve_settings
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder = ModelBuilder(model_server=ModelServer.MMS, model="gpt_llm_burt")
+        builder.build(sagemaker_session=mock_session)
+
+        mock_build_for_ts.assert_called_once()
+
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -143,6 +266,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -179,7 +303,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -229,6 +353,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.serve_settings, mock_setting_object)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -247,6 +375,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -282,7 +411,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -389,7 +518,7 @@ class TestModelBuilder(unittest.TestCase):
             if inference_spec == mock_inference_spec and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -431,6 +560,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(build_result.serve_settings, mock_setting_object)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -449,6 +582,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -485,7 +619,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -533,6 +667,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual("sample agent ModelBuilder", user_agent)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder.save_xgboost")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
@@ -553,6 +691,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
         mock_save_xgb,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_container.side_effect = lambda model, region, instance_type: (
@@ -589,7 +728,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -815,7 +954,7 @@ class TestModelBuilder(unittest.TestCase):
             if inference_spec == mock_inference_spec and model_server == ModelServer.TORCHSERVE
             else None
         )
-        mock_sagemaker_endpoint_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_sagemaker_endpoint_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -881,6 +1020,10 @@ class TestModelBuilder(unittest.TestCase):
         )
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
     @patch("sagemaker.serve.builder.model_builder.prepare_for_torchserve")
     @patch("sagemaker.serve.builder.model_builder.save_pkl")
@@ -901,6 +1044,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_save_pkl,
         mock_prepare_for_torchserve,
         mock_detect_fw_version,
+        mock_is_jumpstart_model_id,
     ):
         # setup mocks
         mock_detect_fw_version.return_value = framework, version
@@ -937,7 +1081,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_sageMakerEndpointMode.side_effect = lambda inference_spec, model_server: (
             mock_mode if inference_spec is None and model_server == ModelServer.TORCHSERVE else None
         )
-        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart: (  # noqa E501
+        mock_mode.prepare.side_effect = lambda model_path, secret_key, s3_model_data_url, sagemaker_session, image_uri, jumpstart, **kwargs: (  # noqa E501
             (
                 model_data,
                 ENV_VAR_PAIR,
@@ -1008,8 +1152,8 @@ class TestModelBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.tgi_builder.HuggingFaceModel")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1054,8 +1198,8 @@ class TestModelBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.tgi_builder.HuggingFaceModel")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1100,8 +1244,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._can_fit_on_single_gpu")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1138,51 +1282,11 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_can_fit_on_single_gpu.assert_called_once()
 
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_djl")
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._can_fit_on_single_gpu")
-    @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
-    @patch("sagemaker.model_uris.retrieve")
-    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    def test_build_is_deepspeed_model(
-        self,
-        mock_serveSettings,
-        mock_model_uris_retrieve,
-        mock_llm_utils_json,
-        mock_llm_utils_urllib,
-        mock_model_json,
-        mock_model_urllib,
-        mock_image_uris_retrieve,
-        mock_can_fit_on_single_gpu,
-        mock_build_for_djl,
-    ):
-        mock_setting_object = mock_serveSettings.return_value
-        mock_setting_object.role_arn = mock_role_arn
-        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
-
-        mock_model_uris_retrieve.side_effect = KeyError
-        mock_llm_utils_json.load.return_value = {"pipeline_tag": "text-classification"}
-        mock_llm_utils_urllib.request.Request.side_effect = Mock()
-
-        mock_model_json.load.return_value = {"some": "config"}
-        mock_model_urllib.request.Request.side_effect = Mock()
-
-        mock_image_uris_retrieve.return_value = "https://some-image-uri"
-        mock_can_fit_on_single_gpu.return_value = False
-
-        model_builder = ModelBuilder(model="stable-diffusion")
-        model_builder.build(sagemaker_session=mock_session)
-
-        mock_build_for_djl.assert_called_once()
-
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers")
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._can_fit_on_single_gpu")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1222,8 +1326,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._try_fetch_gpu_info")
     @patch("sagemaker.serve.builder.model_builder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1261,12 +1365,12 @@ class TestModelBuilder(unittest.TestCase):
 
         mock_build_for_transformers.assert_called_once()
 
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_djl", Mock())
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
     @patch("sagemaker.serve.builder.model_builder._get_gpu_info")
     @patch("sagemaker.serve.builder.model_builder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1310,8 +1414,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder._get_gpu_info_fallback")
     @patch("sagemaker.serve.builder.model_builder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1357,51 +1461,11 @@ class TestModelBuilder(unittest.TestCase):
         )
         self.assertEqual(model_builder._can_fit_on_single_gpu(), True)
 
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_djl")
-    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._can_fit_on_single_gpu")
-    @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
-    @patch("sagemaker.huggingface.llm_utils.urllib")
-    @patch("sagemaker.huggingface.llm_utils.json")
-    @patch("sagemaker.model_uris.retrieve")
-    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    def test_build_is_fast_transformers_model(
-        self,
-        mock_serveSettings,
-        mock_model_uris_retrieve,
-        mock_llm_utils_json,
-        mock_llm_utils_urllib,
-        mock_model_json,
-        mock_model_urllib,
-        mock_image_uris_retrieve,
-        mock_can_fit_on_single_gpu,
-        mock_build_for_djl,
-    ):
-        mock_setting_object = mock_serveSettings.return_value
-        mock_setting_object.role_arn = mock_role_arn
-        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
-
-        mock_model_uris_retrieve.side_effect = KeyError
-        mock_llm_utils_json.load.return_value = {"pipeline_tag": "text-classification"}
-        mock_llm_utils_urllib.request.Request.side_effect = Mock()
-
-        mock_model_json.load.return_value = {"some": "config"}
-        mock_model_urllib.request.Request.side_effect = Mock()
-
-        mock_image_uris_retrieve.return_value = "https://some-image-uri"
-        mock_can_fit_on_single_gpu.return_value = False
-
-        model_builder = ModelBuilder(model="gpt_neo")
-        model_builder.build(sagemaker_session=mock_session)
-
-        mock_build_for_djl.assert_called_once()
-
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers")
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._can_fit_on_single_gpu")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1440,8 +1504,8 @@ class TestModelBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tgi")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1478,8 +1542,8 @@ class TestModelBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_tei")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1517,8 +1581,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._try_fetch_gpu_info")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1556,8 +1620,8 @@ class TestModelBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers", Mock())
     @patch("sagemaker.serve.builder.model_builder._total_inference_model_size_mib")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1594,8 +1658,8 @@ class TestModelBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.tgi_builder.HuggingFaceModel")
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -1641,8 +1705,8 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(sample_outputs, model_builder.schema_builder.sample_output)
 
     @patch("sagemaker.image_uris.retrieve")
-    @patch("sagemaker.djl_inference.model.urllib")
-    @patch("sagemaker.djl_inference.model.json")
+    @patch("sagemaker.serve.utils.hf_utils.urllib")
+    @patch("sagemaker.serve.utils.hf_utils.json")
     @patch("sagemaker.huggingface.llm_utils.urllib")
     @patch("sagemaker.huggingface.llm_utils.json")
     @patch("sagemaker.model_uris.retrieve")
@@ -2181,6 +2245,10 @@ class TestModelBuilder(unittest.TestCase):
         assert isinstance(predictor, TensorflowServingLocalPredictor)
 
     @patch("os.makedirs", Mock())
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=False,
+    )
     @patch("sagemaker.serve.builder.tf_serving_builder.prepare_for_tf_serving")
     @patch("sagemaker.serve.builder.model_builder.S3Downloader.list")
     @patch("sagemaker.serve.builder.model_builder._detect_framework_and_version")
@@ -2209,6 +2277,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_detect_fw_version,
         mock_s3_downloader,
         mock_prepare_for_tf_serving,
+        mock_is_jumpstart_model_id,
     ):
         mock_s3_downloader.return_value = []
         mock_detect_container.return_value = mock_image_uri
@@ -2256,4 +2325,456 @@ class TestModelBuilder(unittest.TestCase):
             Mode.SAGEMAKER_ENDPOINT,
             mock_role_arn,
             mock_session,
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_build_for_djl")
+    @patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=False)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
+    def test_optimize(
+        self,
+        mock_send_telemetry,
+        mock_get_serve_setting,
+        mock_is_jumpstart_model_id,
+        mock_build_for_djl,
+        mock_prepare_for_mode,
+    ):
+        mock_sagemaker_session = Mock()
+
+        mock_settings = Mock()
+        mock_settings.telemetry_opt_out = False
+        mock_get_serve_setting.return_value = mock_settings
+
+        pysdk_model = Mock()
+        pysdk_model.env = {"key": "val"}
+        pysdk_model.add_tags.side_effect = lambda *arg, **kwargs: None
+
+        mock_build_for_djl.side_effect = lambda **kwargs: pysdk_model
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "S3Uri": "s3://uri",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            {"key": "val"},
+        )
+
+        builder = ModelBuilder(
+            schema_builder=SchemaBuilder(
+                sample_input={"inputs": "Hello", "parameters": {}},
+                sample_output=[{"generated_text": "Hello"}],
+            ),
+            model="meta-llama/Meta-Llama-3-8B",
+            sagemaker_session=mock_sagemaker_session,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={"CUSTOM_MODEL_PATH": "/tmp/modelbuilders/code"},
+        )
+        builder.pysdk_model = pysdk_model
+
+        job_name = "my-optimization-job"
+        instance_type = "ml.inf1.xlarge"
+        output_path = "s3://my-bucket/output"
+        quantization_config = {
+            "Image": "quantization-image-uri",
+            "OverrideEnvironment": {"ENV_VAR": "value"},
+        }
+        env_vars = {"Var1": "value", "Var2": "value"}
+        kms_key = "arn:aws:kms:us-west-2:123456789012:key/my-key-id"
+        max_runtime_in_sec = 3600
+        tags = [
+            {"Key": "Project", "Value": "my-project"},
+            {"Key": "Environment", "Value": "production"},
+        ]
+        vpc_config = {
+            "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+            "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+        }
+
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = lambda *args, **kwargs: {
+            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job",
+            "OptimizationJobName": "my-optimization-job",
+        }
+
+        builder.optimize(
+            instance_type=instance_type,
+            output_path=output_path,
+            role_arn=mock_role_arn,
+            job_name=job_name,
+            quantization_config=quantization_config,
+            env_vars=env_vars,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            tags=tags,
+            vpc_config=vpc_config,
+        )
+
+        self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
+        self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
+
+        mock_send_telemetry.assert_called_once()
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
+            OptimizationJobName="my-optimization-job",
+            DeploymentInstanceType="ml.inf1.xlarge",
+            RoleArn="arn:aws:iam::123456789012:role/SageMakerRole",
+            OptimizationEnvironment={"Var1": "value", "Var2": "value"},
+            ModelSource={"S3": {"S3Uri": "s3://uri"}},
+            OptimizationConfigs=[
+                {
+                    "ModelQuantizationConfig": {
+                        "Image": "quantization-image-uri",
+                        "OverrideEnvironment": {"ENV_VAR": "value"},
+                    }
+                }
+            ],
+            OutputConfig={
+                "S3OutputLocation": "s3://my-bucket/output",
+                "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/my-key-id",
+            },
+            StoppingCondition={"MaxRuntimeInSeconds": 3600},
+            Tags=[
+                {"Key": "Project", "Value": "my-project"},
+                {"Key": "Environment", "Value": "production"},
+            ],
+            VpcConfig={
+                "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+                "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+            },
+        )
+
+    def test_handle_mlflow_input_without_mlflow_model_path(self):
+        builder = ModelBuilder(model_metadata={})
+        assert not builder._has_mlflow_arguments()
+
+    @patch("importlib.util.find_spec")
+    @patch("mlflow.set_tracking_uri")
+    @patch("mlflow.get_run")
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_run_id(
+        self,
+        mock_validate,
+        mock_s3_downloader,
+        mock_initialize,
+        mock_check_mlflow_model,
+        mock_get_run,
+        mock_set_tracking_uri,
+        mock_find_spec,
+    ):
+        mock_find_spec.return_value = True
+        mock_run_info = Mock()
+        mock_run_info.info.artifact_uri = "s3://bucket/path"
+        mock_get_run.return_value = mock_run_info
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "runs:/runid/mlflow-path",
+                "MLFLOW_TRACKING_ARN": "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+            }
+        )
+        builder._handle_mlflow_input()
+        mock_initialize.assert_called_once_with(builder, "s3://bucket/path/mlflow-path")
+
+    @patch("importlib.util.find_spec")
+    @patch("mlflow.set_tracking_uri")
+    @patch("mlflow.MlflowClient.get_model_version")
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_registry_path_with_model_version(
+        self,
+        mock_validate,
+        mock_s3_downloader,
+        mock_initialize,
+        mock_check_mlflow_model,
+        mock_get_model_version,
+        mock_set_tracking_uri,
+        mock_find_spec,
+    ):
+        mock_find_spec.return_value = True
+        mock_registry_path = Mock()
+        mock_registry_path.source = "s3://bucket/path/"
+        mock_get_model_version.return_value = mock_registry_path
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "models:/model-name/1",
+                "MLFLOW_TRACKING_ARN": "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+            }
+        )
+        builder._handle_mlflow_input()
+        mock_initialize.assert_called_once_with(builder, "s3://bucket/path/")
+
+    @patch("importlib.util.find_spec")
+    @patch("mlflow.set_tracking_uri")
+    @patch("mlflow.MlflowClient.get_model_version_by_alias")
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_registry_path_with_model_alias(
+        self,
+        mock_validate,
+        mock_s3_downloader,
+        mock_initialize,
+        mock_check_mlflow_model,
+        mock_get_model_version_by_alias,
+        mock_set_tracking_uri,
+        mock_find_spec,
+    ):
+        mock_find_spec.return_value = True
+        mock_registry_path = Mock()
+        mock_registry_path.source = "s3://bucket/path"
+        mock_get_model_version_by_alias.return_value = mock_registry_path
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "models:/model-name@production",
+                "MLFLOW_TRACKING_ARN": "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+            }
+        )
+        builder._handle_mlflow_input()
+        mock_initialize.assert_called_once_with(builder, "s3://bucket/path/")
+
+    @patch("mlflow.MlflowClient.get_model_version")
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_registry_path_missing_tracking_server_arn(
+        self,
+        mock_validate,
+        mock_s3_downloader,
+        mock_initialize,
+        mock_check_mlflow_model,
+        mock_get_model_version,
+    ):
+        mock_registry_path = Mock()
+        mock_registry_path.source = "s3://bucket/path"
+        mock_get_model_version.return_value = mock_registry_path
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "models:/model-name/1",
+            }
+        )
+        self.assertRaisesRegex(
+            Exception,
+            "%s is not provided in ModelMetadata or through set_tracking_arn "
+            "but MLflow model path was provided." % MLFLOW_TRACKING_ARN,
+            builder._handle_mlflow_input,
+        )
+
+    @patch.object(ModelBuilder, "_mlflow_metadata_exists", autospec=True)
+    @patch.object(ModelBuilder, "_initialize_for_mlflow", autospec=True)
+    @patch("sagemaker.serve.builder.model_builder._download_s3_artifacts")
+    @patch("sagemaker.serve.builder.model_builder._validate_input_for_mlflow")
+    def test_handle_mlflow_input_model_package_arn(
+        self, mock_validate, mock_s3_downloader, mock_initialize, mock_check_mlflow_model
+    ):
+        mock_check_mlflow_model.return_value = True
+        mock_s3_downloader.return_value = ["s3://some_path/MLmodel"]
+        mock_model_package = {"SourceUri": "s3://bucket/path"}
+        mock_session.sagemaker_client.describe_model_package.return_value = mock_model_package
+
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "arn:aws:sagemaker:us-west-2:000000000000:model-package/test",
+                "MLFLOW_TRACKING_ARN": "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+            },
+            sagemaker_session=mock_session,
+        )
+        builder._handle_mlflow_input()
+        mock_initialize.assert_called_once_with(builder, "s3://bucket/path")
+
+    @patch("importlib.util.find_spec", Mock(return_value=True))
+    @patch("mlflow.set_tracking_uri")
+    def test_set_tracking_arn_success(self, mock_set_tracking_uri):
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "arn:aws:sagemaker:us-west-2:000000000000:model-package/test",
+            }
+        )
+        tracking_arn = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
+        builder.set_tracking_arn(tracking_arn)
+        mock_set_tracking_uri.assert_called_once_with(tracking_arn)
+        assert builder.model_metadata[MLFLOW_TRACKING_ARN] == tracking_arn
+
+    @patch("importlib.util.find_spec", Mock(return_value=False))
+    def test_set_tracking_arn_mlflow_not_installed(self):
+        builder = ModelBuilder(
+            model_metadata={
+                "MLFLOW_MODEL_PATH": "arn:aws:sagemaker:us-west-2:000000000000:model-package/test",
+            }
+        )
+        tracking_arn = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
+        self.assertRaisesRegex(
+            ImportError,
+            "Unable to import sagemaker_mlflow, check if sagemaker_mlflow is installed",
+            builder.set_tracking_arn,
+            tracking_arn,
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_local_mode(self, mock_get_serve_setting):
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b", mode=Mode.LOCAL_CONTAINER
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Model optimization is only supported in Sagemaker Endpoint Mode.",
+            lambda: model_builder.optimize(
+                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_exclusive_args(self, mock_get_serve_setting):
+        mock_sagemaker_session = Mock()
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Quantization config and compilation config are mutually exclusive.",
+            lambda: model_builder.optimize(
+                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+                compilation_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_for_hf_with_custom_s3_path(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-8B-Instruc"}
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_hf(
+            job_name="job_name-123",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(model_builder.env_vars["HF_TOKEN"], "token")
+        self.assertEqual(model_builder.role_arn, "role-arn")
+        self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
+        self.assertEqual(
+            out_put,
+            {
+                "OptimizationJobName": "job_name-123",
+                "DeploymentInstanceType": "ml.g5.2xlarge",
+                "RoleArn": "role-arn",
+                "ModelSource": {"S3": {"S3Uri": "s3://bucket/code/code/"}},
+                "OptimizationConfigs": [
+                    {"ModelQuantizationConfig": {"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}}
+                ],
+                "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
+            },
+        )
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.download_huggingface_model_metadata", autospec=True
+    )
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_for_hf_without_custom_s3_path(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+        mock_download_huggingface_model_metadata,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-8B-Instruc"}
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_hf(
+            job_name="job_name-123",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(model_builder.role_arn, "role-arn")
+        self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
+        self.assertEqual(
+            out_put,
+            {
+                "OptimizationJobName": "job_name-123",
+                "DeploymentInstanceType": "ml.g5.2xlarge",
+                "RoleArn": "role-arn",
+                "ModelSource": {"S3": {"S3Uri": "s3://bucket/code/code/"}},
+                "OptimizationConfigs": [
+                    {"ModelQuantizationConfig": {"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}}
+                ],
+                "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
+            },
         )

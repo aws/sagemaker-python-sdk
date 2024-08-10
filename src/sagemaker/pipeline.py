@@ -26,6 +26,10 @@ from sagemaker.config import (
 )
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.session import Session
 from sagemaker.utils import (
     name_from_image,
@@ -361,6 +365,7 @@ class PipelineModel(object):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -412,6 +417,8 @@ class PipelineModel(object):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
 
         Returns:
             If ``sagemaker_session`` is a ``PipelineSession`` instance, returns pipeline step
@@ -460,6 +467,7 @@ class PipelineModel(object):
             task=task,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
         )
 
         self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)

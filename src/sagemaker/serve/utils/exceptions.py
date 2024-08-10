@@ -1,4 +1,4 @@
-"""Placeholder Docstring"""
+"""Exceptions used across different model builder invocations"""
 
 from __future__ import absolute_import
 
@@ -16,6 +16,16 @@ class ModelBuilderException(Exception):
 
 class LocalDeepPingException(ModelBuilderException):
     """Raise when local model serving does not pass the deep ping check"""
+
+    fmt = "Error Message: {message}"
+    model_builder_error_code = 1
+
+    def __init__(self, message):
+        super().__init__(message=message)
+
+
+class InProcessDeepPingException(ModelBuilderException):
+    """Raise when in process model serving does not pass the deep ping check"""
 
     fmt = "Error Message: {message}"
     model_builder_error_code = 1

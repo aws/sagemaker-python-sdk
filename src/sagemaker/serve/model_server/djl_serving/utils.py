@@ -1,12 +1,8 @@
 """DJL ModelBuilder Utils"""
 
 from __future__ import absolute_import
-from urllib.error import HTTPError
 import math
 import logging
-from sagemaker.serve.utils.types import _DjlEngine
-from sagemaker.djl_inference import defaults
-from sagemaker.djl_inference.model import _get_model_config_properties_from_hf
 from sagemaker.serve.utils.local_hardware import _get_available_gpus
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 
@@ -15,50 +11,6 @@ logger = logging.getLogger(__name__)
 ATTENTION_HEAD_NAME_VARIENTS = ["n_head", "n_heads", "num_head", "num_heads", "num_attention_heads"]
 CHARS_PER_TOKEN = 4
 TOKENS_PER_WORD = 0.75
-
-
-def _auto_detect_engine(model_id: str, hf_hub_token: str) -> tuple:
-    """Placeholder docstring"""
-    try:
-        hf_model_config = _get_model_config_properties_from_hf(model_id, hf_hub_token)
-        model_type = hf_model_config.get("model_type")
-
-        if len(model_type) < 1:
-            logger.warning(
-                "Unable to detect the model architecture from provided model_id %s.\
-            Defaulting to HuggingFaceAccelerate."
-                % model_id
-            )
-            engine = _DjlEngine.HUGGINGFACE_ACCELERATE
-        elif model_type in defaults.DEEPSPEED_RECOMMENDED_ARCHITECTURES:
-            logger.info("Model architecture %s is recommended to be run on DeepSpeed." % model_type)
-            engine = _DjlEngine.DEEPSPEED
-        elif model_type in defaults.FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES:
-            logger.info(
-                "Model architecture %s is recommended to be run on FasterTransformer." % model_type
-            )
-            engine = _DjlEngine.FASTER_TRANSFORMER
-        else:
-            logger.info(
-                "Model architecture %s does not have a recommended engine. Defaulting to HuggingFaceAccelerate."
-                % model_type
-            )
-            engine = _DjlEngine.HUGGINGFACE_ACCELERATE
-    except HTTPError as e:
-        raise ValueError(
-            "The provided HuggingFace Model ID could not be accessed from HuggingFace Hub. %s",
-            str(e),
-        )
-    except ValueError as e:
-        raise e
-    except Exception as e:
-        logger.warning(
-            "Unable to detect the model's architecture: %s. Defaulting to HuggingFaceAccelerate."
-            % str(e)
-        )
-        engine = _DjlEngine.HUGGINGFACE_ACCELERATE
-
-    return (engine, hf_model_config)
 
 
 def _get_default_tensor_parallel_degree(hf_model_config: dict, gpu_count: int = None) -> int:
@@ -89,7 +41,7 @@ def _get_default_tensor_parallel_degree(hf_model_config: dict, gpu_count: int = 
 
 def _get_default_data_type() -> tuple:
     """Placeholder docstring"""
-    return "fp16"
+    return "bf16"
 
 
 def _get_default_batch_size() -> int:
@@ -144,22 +96,23 @@ def _get_default_max_tokens(sample_input, sample_output) -> tuple:
     return (max_total_tokens, max_new_tokens)
 
 
-def _set_serve_properties(hf_model_config: dict, schema_builder: SchemaBuilder) -> tuple:
+def _get_default_djl_configurations(
+    model_id: str, hf_model_config: dict, schema_builder: SchemaBuilder
+) -> tuple:
     """Placeholder docstring"""
     default_tensor_parallel_degree = _get_default_tensor_parallel_degree(hf_model_config)
+    if default_tensor_parallel_degree is None:
+        default_tensor_parallel_degree = "max"
     default_data_type = _get_default_data_type()
-    default_batch_size = _get_default_batch_size()
     default_max_tokens, default_max_new_tokens = _get_default_max_tokens(
         schema_builder.sample_input, schema_builder.sample_output
     )
 
-    return (
-        default_tensor_parallel_degree,
-        default_data_type,
-        default_batch_size,
-        default_max_tokens,
-        default_max_new_tokens,
-    )
+    env = {
+        "TENSOR_PARALLEL_DEGREE": str(default_tensor_parallel_degree),
+        "OPTION_DTYPE": default_data_type,
+    }
+    return (env, default_max_new_tokens)
 
 
 def _get_admissible_tensor_parallel_degrees(hf_model_config: dict) -> int:

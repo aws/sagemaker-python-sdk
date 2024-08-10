@@ -102,7 +102,9 @@ CONDA_YML_FILE_TEMPLATE = (
     "channels:\n"
     "  - defaults\n"
     "dependencies:\n"
-    "  - scipy=1.10.1\n"
+    "  - requests=2.32.3\n"
+    "  - charset-normalizer=3.3.2\n"
+    "  - scipy=1.13.1\n"
     "  - pip:\n"
     "    - /sagemaker-{sagemaker_version}.tar.gz\n"
     "prefix: /opt/conda/bin/conda\n"
@@ -278,7 +280,7 @@ def _generate_sagemaker_sdk_tar(destination_folder):
     """
     Run setup.py sdist to generate the PySDK tar file
     """
-    command = f"python3 setup.py egg_info --egg-base {destination_folder} sdist -d {destination_folder} -k --verbose"
+    command = f"python -m build --sdist -o {destination_folder}"
     print(f"Running command: {command}")
     result = subprocess.run(command, shell=True, check=True, capture_output=True)
     if result.returncode != 0:
