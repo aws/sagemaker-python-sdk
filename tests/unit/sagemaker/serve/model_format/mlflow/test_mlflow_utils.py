@@ -32,7 +32,6 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _get_framework_version_from_requirements,
     _get_deployment_flavor,
     _get_python_version_from_parsed_mlflow_model_file,
-    _mlflow_input_is_local_path,
     _download_s3_artifacts,
     _select_container_for_mlflow_model,
     _validate_input_for_mlflow,
@@ -195,17 +194,6 @@ def test_get_python_version_from_parsed_mlflow_model_file():
 
     with pytest.raises(ValueError, match=f"{MLFLOW_PYFUNC} cannot be found in MLmodel file."):
         _get_python_version_from_parsed_mlflow_model_file({})
-
-
-@patch("os.path.exists")
-def test_mlflow_input_is_local_path(mock_path_exists):
-    valid_path = "/path/to/mlflow_model"
-    mock_path_exists.side_effect = lambda path: path == valid_path
-
-    assert not _mlflow_input_is_local_path("s3://my_bucket/path/to/model")
-    assert not _mlflow_input_is_local_path("runs:/run-id/run/relative/path/to/model")
-    assert not _mlflow_input_is_local_path("/invalid/path")
-    assert _mlflow_input_is_local_path(valid_path)
 
 
 def test_download_s3_artifacts():

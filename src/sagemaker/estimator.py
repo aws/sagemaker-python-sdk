@@ -68,6 +68,7 @@ from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.interactive_apps import SupportedInteractiveAppTypes
 from sagemaker.interactive_apps.tensorboard import TensorBoardApp
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.model_card.model_card import ModelCard, TrainingDetails
 from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
@@ -274,7 +275,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
             tags (Optional[Tags]):
-                Tags for labeling a training job. For more, see
+                Tags for labeling a training job. These won't be propagated to Models,
+                Endpoints during :meth:`~sagemaker.estimator.EstimatorBase.deploy`. The
+                :meth:`~sagemaker.estimator.EstimatorBase.deploy` takes in a seperate
+                tags parameter. For more on tags, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             subnets (list[str] or list[PipelineVariable]): List of subnet ids. If not
                 specified training job will be created without VPC config.
@@ -1724,6 +1728,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         data_input_configuration=None,
         skip_model_validation=None,
         source_uri=None,
+        model_card=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1772,6 +1777,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             skip_model_validation (str): Indicates if you want to skip model validation.
                 Values can be "All" or "None" (default: None).
             source_uri (str): The URI of the source for the model package (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1791,8 +1798,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         else:
             if "model_kms_key" not in kwargs:
                 kwargs["model_kms_key"] = self.output_kms_key
-            model = self.create_model(image_uri=image_uri, **kwargs)
+            model = self.create_model(image_uri=image_uri, name=model_name, **kwargs)
         model.name = model_name
+        if self.model_data is not None and model_card is None:
+            training_details = TrainingDetails.from_model_s3_artifacts(
+                model_artifacts=[self.model_data], sagemaker_session=self.sagemaker_session
+            )
+            model_card = ModelCard(
+                name="estimator_card",
+                training_details=training_details,
+                sagemaker_session=self.sagemaker_session,
+            )
         return model.register(
             content_types,
             response_types,
@@ -1817,6 +1833,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
         )
 
     @property

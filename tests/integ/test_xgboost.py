@@ -121,11 +121,9 @@ def test_training_with_network_isolation(
         ]
 
 
-@pytest.mark.skip(reason="re:Invent keynote3 blocker. Revisit after release")
 def test_xgboost_serverless_inference(
     xgboost_training_job,
     sagemaker_session,
-    xgboost_latest_version,
 ):
     endpoint_name = unique_name_from_base("test-xgboost-deploy-model-serverless")
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -139,7 +137,7 @@ def test_xgboost_serverless_inference(
             model_data=model_data,
             role=ROLE,
             entry_point=os.path.join(DATA_DIR, "xgboost_abalone", "abalone.py"),
-            framework_version=xgboost_latest_version,
+            framework_version="1.5-1",
         )
 
         xgboost.deploy(

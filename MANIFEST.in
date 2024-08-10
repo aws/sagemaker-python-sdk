@@ -8,6 +8,7 @@ recursive-include requirements *
 include VERSION
 include LICENSE.txt
 include README.rst
+include hatch_build.py
 
 prune tests
 

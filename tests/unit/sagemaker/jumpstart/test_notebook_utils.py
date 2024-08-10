@@ -1,9 +1,12 @@
 from __future__ import absolute_import
-import json
+
 import datetime
+import json
 
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, ANY
+
+import boto3
 
 import pytest
 from sagemaker.jumpstart.constants import (
@@ -235,7 +238,7 @@ class ListJumpStartModels(TestCase):
             get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
         )
         patched_get_manifest.side_effect = (
-            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region)
         )
 
         manifest_length = len(get_prototype_manifest())
@@ -243,7 +246,7 @@ class ListJumpStartModels(TestCase):
         for val in vals:
             kwargs = {"filter": And(f"training_supported == {val}", "model_type is open_weights")}
             list_jumpstart_models(**kwargs)
-            assert patched_read_s3_file.call_count == manifest_length
+            assert patched_read_s3_file.call_count == 2 * manifest_length
             assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
@@ -251,7 +254,7 @@ class ListJumpStartModels(TestCase):
 
             kwargs = {"filter": And(f"training_supported != {val}", "model_type is open_weights")}
             list_jumpstart_models(**kwargs)
-            assert patched_read_s3_file.call_count == manifest_length
+            assert patched_read_s3_file.call_count == 2 * manifest_length
             assert patched_get_manifest.call_count == 2
 
             patched_get_manifest.reset_mock()
@@ -270,7 +273,7 @@ class ListJumpStartModels(TestCase):
             ("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
         ]
-        assert patched_read_s3_file.call_count == manifest_length
+        assert patched_read_s3_file.call_count == 2 * manifest_length
         assert patched_get_manifest.call_count == 2
 
         patched_get_manifest.reset_mock()
@@ -279,7 +282,7 @@ class ListJumpStartModels(TestCase):
         kwargs = {"filter": And(f"training_supported not in {vals}", "model_type is open_weights")}
         models = list_jumpstart_models(**kwargs)
         assert [] == models
-        assert patched_read_s3_file.call_count == manifest_length
+        assert patched_read_s3_file.call_count == 2 * manifest_length
         assert patched_get_manifest.call_count == 2
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -754,6 +757,9 @@ def test_get_model_url(
     patched_get_manifest.side_effect = (
         lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
     )
+    mock_client = boto3.client("s3")
+    region = "us-west-2"
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
     model_id, version = "xgboost-classification-model", "1.0.0"
     assert "https://xgboost.readthedocs.io/en/latest/" == get_model_url(model_id, version)
@@ -772,12 +778,14 @@ def test_get_model_url(
         **{key: value for key, value in kwargs.items() if key != "region"},
     )
 
-    get_model_url(model_id, version, region="us-west-2")
+    get_model_url(model_id, version, region="us-west-2", sagemaker_session=mock_session)
 
     patched_get_model_specs.assert_called_once_with(
         model_id=model_id,
         version=version,
         region="us-west-2",
-        s3_client=DEFAULT_JUMPSTART_SAGEMAKER_SESSION.s3_client,
+        s3_client=ANY,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
