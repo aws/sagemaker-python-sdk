@@ -395,8 +395,8 @@ class Transformers(ABC):
             save_pkl(code_path, (self.inference_spec, self.schema_builder))
             logger.info("PKL file saved to file: %s", code_path)
 
-            # if self.mode == Mode.IN_PROCESS:
-            #     self._create_conda_env()
+            if self.mode == Mode.IN_PROCESS:
+                self._create_conda_env()
 
             self._auto_detect_container()
 
