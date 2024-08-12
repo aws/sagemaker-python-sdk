@@ -421,6 +421,6 @@ class Transformers(ABC):
         """Creating conda environment by running commands"""
 
         try:
-            RequirementsManager().capture_and_install_dependencies(self)
+            RequirementsManager().capture_and_install_dependencies
         except subprocess.CalledProcessError:
             print("Failed to create and activate conda environment.")
