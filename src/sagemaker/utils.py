@@ -1462,6 +1462,7 @@ def volume_size_supported(instance_type: str) -> bool:
             and not family.startswith("g5")
             and not family.startswith("g6")
             and not family.startswith("p5")
+            and not family.startswith("trn1")
         )
     except Exception as e:
         raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")
