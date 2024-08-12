@@ -239,18 +239,6 @@ class _SageMakerContainer(object):
             # Continue even if rm sagemaker-local fails
             pass
 
-        # Remove sagemaker-local network, compose_command will fail if an existing 
-        # network is still around
-        remove_sagemaker_local = ["docker", "network", "rm", STUDIO_HOST_NAME]
-        remove_process = subprocess.Popen(
-            remove_sagemaker_local, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        try:
-            _stream_output(remove_process)
-        except RuntimeError:
-            # Continue even if rm sagemaker-local fails
-            pass
-
         compose_command = self._compose()
         process = subprocess.Popen(
             compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
