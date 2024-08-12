@@ -29,7 +29,7 @@ class TestRequirementsManager(unittest.TestCase):
     @patch(
         "sagemaker.serve.builder.requirements_manager.RequirementsManager._detect_conda_env_and_local_dependencies"
     )
-    def test_capture_and_install_dependencies(
+    def test_capture_and_install_dependencies_txt(
         self,
         mock_detect_conda_env_and_local_dependencies,
         mock_install_requirements_txt,
@@ -40,8 +40,7 @@ class TestRequirementsManager(unittest.TestCase):
         RequirementsManager().capture_and_install_dependencies()
         mock_install_requirements_txt.assert_called_once()
 
-        mock_detect_conda_env_and_local_dependencies.side_effect = lambda: ".yml"
-        RequirementsManager().capture_and_install_dependencies()
+        RequirementsManager().capture_and_install_dependencies("conda.yml")
         mock_update_conda_env_in_path.assert_called_once()
 
     @patch(
