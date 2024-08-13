@@ -9813,7 +9813,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "ComponentNames": ["variant1"],
                 "BenchmarkMetrics": {
                     "ml.g5.12xlarge": [
-                        {"Name": "latency", "Unit": "sec", "Value": "0.19", "Concurrency": "1"},
+                        {"name": "latency", "unit": "sec", "value": "0.19", "concurrency": "1"},
                     ]
                 },
             },
