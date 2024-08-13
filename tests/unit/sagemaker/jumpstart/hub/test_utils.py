@@ -264,7 +264,7 @@ def test_walk_and_apply_json():
             "CamelCaseObjectChildTwo": "value2",
         },
         "IgnoreMyChildren": {"ShouldNotBeTouchedOne": "const1", "ShouldNotBeTouchedTwo": "const2"},
-        "ShouldNotIgnoreMyChildren": {"NopeNope": "no"}
+        "ShouldNotIgnoreMyChildren": {"NopeNope": "no"},
     }
 
     result = parser_utils.walk_and_apply_json(
@@ -280,8 +280,9 @@ def test_walk_and_apply_json():
             "ShouldNotBeTouchedOne": "const1",
             "ShouldNotBeTouchedTwo": "const2",
         },
-        "should_not_ignore_my_children": { "nope_nope": "no"}
+        "should_not_ignore_my_children": {"nope_nope": "no"},
     }
+
 
 def test_walk_and_apply_json_no_stop():
     test_json = {
@@ -290,25 +291,15 @@ def test_walk_and_apply_json_no_stop():
             "CamelCaseObjectChildOne": "value1",
             "CamelCaseObjectChildTwo": "value2",
         },
-        "CamelCaseObjectListKey": {
-            "instance.ml.type.xlarge": [
-                {"ShouldChangeMe": "string"}
-            ]
-        }
+        "CamelCaseObjectListKey": {"instance.ml.type.xlarge": [{"ShouldChangeMe": "string"}]},
     }
 
-    result = parser_utils.walk_and_apply_json(
-        test_json, parser_utils.camel_to_snake
-    )
+    result = parser_utils.walk_and_apply_json(test_json, parser_utils.camel_to_snake)
     assert result == {
         "camel_case_key": "value",
         "camel_case_object_key": {
             "camel_case_object_child_one": "value1",
             "camel_case_object_child_two": "value2",
         },
-        "camel_case_object_list_key": {
-            "instance.ml.type.xlarge": [
-                { "should_change_me": "string" }
-            ]
-        },
+        "camel_case_object_list_key": {"instance.ml.type.xlarge": [{"should_change_me": "string"}]},
     }
