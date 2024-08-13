@@ -42,11 +42,7 @@ try:
     @app.get("/generate")
     async def generate_text(prompt: Request):
         """Placeholder docstring"""
-        logger.info("Generating Text....")
-
         str_prompt = await prompt.json()
-
-        logger.info(str_prompt)
 
         generated_text = generator(
             str_prompt, max_length=30, num_return_sequences=5, truncation=True
@@ -64,7 +60,6 @@ except ImportError:
 
 async def main():
     """Running server locally with uvicorn"""
-    logger.info("Running")
     config = uvicorn.Config(
         "sagemaker.serve.app:app",
         host="127.0.0.1",

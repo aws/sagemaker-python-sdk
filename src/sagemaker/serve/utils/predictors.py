@@ -227,9 +227,6 @@ class TransformersInProcessModePredictor(PredictorBase):
 
     def predict(self, data):
         """Placeholder docstring"""
-        logger.info("Entering predict to make a prediction on ")
-        logger.info(data)
-
         return self._mode_obj._invoke_multi_model_server_serving(
             self.serializer.serialize(data),
             self.content_type,
