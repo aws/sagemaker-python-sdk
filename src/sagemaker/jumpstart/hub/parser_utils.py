@@ -30,19 +30,19 @@ def snake_to_upper_camel(snake_case_string: str) -> str:
 
 
 def walk_and_apply_json(
-    json_obj: Dict[Any, Any], apply, stop_keys: Optional[List[str]] = []
+    json_obj: Dict[Any, Any], apply, stop_keys: Optional[List[str]] = None
 ) -> Dict[Any, Any]:
     """Recursively walks a json object and applies a given function to the keys.
 
-    stop_keys (Optional[list[str]]): List of field keys that should stop the application function. Any
-        children of these keys will not have the application function applied to them.
+    stop_keys (Optional[list[str]]): List of field keys that should stop the application function.
+        Any children of these keys will not have the application function applied to them.
     """
 
     def _walk_and_apply_json(json_obj, new):
         if isinstance(json_obj, dict) and isinstance(new, dict):
             for key, value in json_obj.items():
                 new_key = apply(key)
-                if new_key not in stop_keys:
+                if stop_keys and new_key not in stop_keys:
                     if isinstance(value, dict):
                         new[new_key] = {}
                         _walk_and_apply_json(value, new=new[new_key])
