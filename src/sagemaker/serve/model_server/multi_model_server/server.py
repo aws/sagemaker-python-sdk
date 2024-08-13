@@ -15,7 +15,6 @@ from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_pat
 from sagemaker.s3 import S3Uploader
 from sagemaker.local.utils import get_docker_host
 from sagemaker.serve.utils.optimize_utils import _is_s3_uri
-from sagemaker.serve.app import main
 
 MODE_DIR_BINDING = "/opt/ml/model/"
 _DEFAULT_ENV_VARS = {}
@@ -26,10 +25,15 @@ logger = logging.getLogger(__name__)
 class InProcessMultiModelServer:
     """In Process Mode Multi Model server instance"""
 
+    def __init__(self):
+        from sagemaker.serve.app import main
+
+        self._main = main
+
     def _start_serving(self):
         """Initializes the start of the server"""
         background_tasks = set()
-        task = asyncio.create_task(main())
+        task = asyncio.create_task(self._main())
         background_tasks.add(task)
         task.add_done_callback(background_tasks.discard)
 
