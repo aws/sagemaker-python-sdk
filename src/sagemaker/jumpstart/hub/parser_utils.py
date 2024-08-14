@@ -21,7 +21,7 @@ def camel_to_snake(camel_case_string: str) -> str:
     """Converts camelCaseString or UpperCamelCaseString to snake_case_string."""
     snake_case_string = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", camel_case_string)
     if "-" in snake_case_string:
-        #remove any hyphen from the string for accurate conversion.
+        # remove any hyphen from the string for accurate conversion.
         snake_case_string = snake_case_string.replace("-", "")
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake_case_string).lower()
 
@@ -43,7 +43,7 @@ def walk_and_apply_json(
     def _walk_and_apply_json(json_obj, new):
         if isinstance(json_obj, dict) and isinstance(new, dict):
             for key, value in json_obj.items():
-                new_key = apply(key)           
+                new_key = apply(key)
                 if (stop_keys and new_key not in stop_keys) or stop_keys is None:
                     if isinstance(value, dict):
                         new[new_key] = {}

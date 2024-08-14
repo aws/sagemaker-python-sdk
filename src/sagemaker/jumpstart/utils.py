@@ -1106,10 +1106,15 @@ def get_jumpstart_configs(
 
     if hub_arn:
         return (
-        {config_name: metadata_configs.configs[camel_to_snake(snake_to_upper_camel(config_name))] for config_name in config_names}
-        if metadata_configs
-        else {}
-    )
+            {
+                config_name: metadata_configs.configs[
+                    camel_to_snake(snake_to_upper_camel(config_name))
+                ]
+                for config_name in config_names
+            }
+            if metadata_configs
+            else {}
+        )
     return (
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
         if metadata_configs
