@@ -66,8 +66,6 @@ class InProcessMultiModelServer:
         b = b'"\\"Hello, I\'m a language model\\""'
         list = [a, b]
         writer.writelines(list)
-        logger.debug(writer.get_extra_info("peername"))
-        logger.debug(writer.transport)
 
         data = await reader.read()
         logger.info("Response from server")
@@ -82,8 +80,6 @@ class InProcessMultiModelServer:
             b"GET / HTTP/1.1\r\nHost: 127.0.0.1:9007\r\nUser-Agent: python-requests/2.32.3\r\nAccept-Encoding: gzip, ",
             "deflate, br\r\nAccept: */*\r\nConnection: keep-alive\r\n\r\n",
         )
-        logger.debug(writer.get_extra_info("peername"))
-        logger.debug(writer.transport)
 
         data = await reader.read()
         logger.info("Response from server")
