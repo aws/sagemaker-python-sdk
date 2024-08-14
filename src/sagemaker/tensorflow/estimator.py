@@ -176,7 +176,13 @@ class TensorFlow(Framework):
             logger.warning(
                 fw.python_deprecation_warning(self._framework_name, defaults.LATEST_PY2_VERSION)
             )
-        self.framework_version = framework_version
+        # TF training and inference versions do not have a one-to-one connection. This mismatch
+        # is accommodated by the underlying dictionary. The key of dictionary relates to the inference
+        # version and the value relates to training version.
+        training_inference_version_mismatch_dict = {"2.16.1": "2.16.2"}
+        self.framework_version = training_inference_version_mismatch_dict.get(
+            framework_version, framework_version
+        )
         self.py_version = py_version
         self.instance_type = instance_type
 
