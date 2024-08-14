@@ -1277,8 +1277,6 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
-        if self._is_hub_content:
-            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.model_id: str = json_obj.get("model_id")
         self.url: str = json_obj.get("url")
         self.version: str = json_obj.get("version")
