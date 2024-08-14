@@ -3547,6 +3547,7 @@ class Framework(EstimatorBase):
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
+        self.override_fw_version = None
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
@@ -3731,7 +3732,7 @@ class Framework(EstimatorBase):
         return image_uris.get_training_image_uri(
             region=region or self.sagemaker_session.boto_region_name,
             framework=self._framework_name,
-            framework_version=self.framework_version,  # pylint: disable=no-member
+            framework_version=self.override_fw_version or self.framework_version,  # pylint: disable=no-member
             py_version=self.py_version,  # pylint: disable=no-member
             image_uri=self.image_uri,
             distribution=getattr(self, "distribution", None),
