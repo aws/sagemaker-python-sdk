@@ -36,6 +36,7 @@ def walk_and_apply_json(
     json_obj: Dict[Any, Any], apply, stop_keys: Optional[List[str]] = ["metrics"]
 ) -> Dict[Any, Any]:
     """Recursively walks a json object and applies a given function to the keys.
+
     stop_keys (Optional[list[str]]): List of field keys that should stop the application function.
         Any children of these keys will not have the application function applied to them.
     """
