@@ -73,7 +73,7 @@ class InProcessMode(
             self._start_serving()
 
         time_limit = datetime.now() + timedelta(seconds=5)
-        while self._ping_container is not None:
+        while True:
             final_pull = datetime.now() > time_limit
 
             if final_pull:
