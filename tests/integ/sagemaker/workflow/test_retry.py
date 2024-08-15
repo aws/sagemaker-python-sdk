@@ -148,6 +148,7 @@ def test_model_registration_with_model_repack(
     role,
     pipeline_name,
     region_name,
+    pytorch_training_latest_version,
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
@@ -166,7 +167,7 @@ def test_model_registration_with_model_repack(
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
-        framework_version="1.5.0",
+        framework_version=pytorch_training_latest_version,
         py_version="py3",
         instance_count=instance_count,
         instance_type=instance_type,
