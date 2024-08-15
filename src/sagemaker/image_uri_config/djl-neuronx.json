@@ -2,6 +2,9 @@
     "scope": [
         "inference"
     ],
+    "version_aliases": {
+        "latest": "0.29.0"
+    },
     "versions": {
         "0.29.0": {
             "registries": {

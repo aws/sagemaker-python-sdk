@@ -43,7 +43,7 @@ class DJLModel(Model):
         self,
         model_id: Optional[str] = None,
         engine: Optional[str] = None,
-        djl_version: str = "0.28.0",
+        djl_version: str = "latest",
         djl_framework: Optional[str] = None,
         task: Optional[str] = None,
         dtype: Optional[str] = None,
