@@ -74,7 +74,6 @@ class InProcessServer:
             log_level="info",
             loop="asyncio",
             reload=True,
-            workers=3,
             use_colors=True,
         )
 
@@ -91,11 +90,7 @@ class InProcessServer:
 
     def stop_server(self):
         """Destroys the uvicorn server."""
-        if  self.is_running:
-            logger.info("Deleting server...")
-            # self._stop_event.set()
-            # self._thread.join()
-            logger.info("Server deleted.")
+        # TODO: Implement me.
 
     def _start_run_async_in_thread(self):
         loop = asyncio.new_event_loop()
@@ -104,6 +99,3 @@ class InProcessServer:
 
     async def _serve(self):
         await self.server.serve()
-
-    def is_running(self):
-        return self._thread is not None and self._thread.is_alive()

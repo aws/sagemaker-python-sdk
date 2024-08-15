@@ -2,9 +2,7 @@
 
 from __future__ import absolute_import
 
-import asyncio
 import json
-import threading
 
 import requests
 import logging
@@ -28,20 +26,9 @@ logger = logging.getLogger(__name__)
 class InProcessMultiModelServer:
     """In Process Mode Multi Model server instance"""
 
-    def __init__(self):
-        # from sagemaker.serve.app import InProcessServer
-        # self._in_process_server = InProcessServer
-        pass
-
-    # def run_async_in_thread(self):
-    #     loop = asyncio.new_event_loop()
-    #     asyncio.set_event_loop(loop)
-    #     loop.run_until_complete(self.main())
-
     def _start_serving(self):
         """Initializes the start of the server"""
         from sagemaker.serve.app import InProcessServer
-        # threading.Thread(target=self.run_async_in_thread, daemon=True).start()
         if hasattr(self, "inference_spec"):
             model_id = self.inference_spec.get_model()
         else:
@@ -58,7 +45,6 @@ class InProcessMultiModelServer:
         """Placeholder docstring"""
         try:
             response = requests.post(
-                # "http://127.0.0.1:9007/generate",
                 f"http://{self.server.host}:{self.server.port}/generate",
                 data=request,
                 headers={"Content-Type": content_type, "Accept": accept},
