@@ -10,7 +10,7 @@ import platform
 from pathlib import Path
 
 from sagemaker import Session, fw_utils
-from sagemaker.serve.utils.exceptions import LocalModelInvocationException
+from sagemaker.serve.utils.exceptions import InProcessDeepPingException
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_path_join
 from sagemaker.s3 import S3Uploader
@@ -69,7 +69,7 @@ class InProcessMultiModelServer:
             # pylint: disable=broad-except
         except Exception as e:
             if "422 Client Error: Unprocessable Entity for url" in str(e):
-                raise LocalModelInvocationException(str(e))
+                raise InProcessDeepPingException(str(e))
 
         return healthy, response
 
