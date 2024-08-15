@@ -1,7 +1,11 @@
 """FastAPI requests"""
 
 from __future__ import absolute_import
+
+import asyncio
 import logging
+import threading
+from typing import Optional
 
 
 logger = logging.getLogger(__name__)
@@ -9,67 +13,97 @@ logger = logging.getLogger(__name__)
 
 try:
     import uvicorn
-
 except ImportError:
-    logger.error("To enable in_process mode for Transformers install uvicorn from HuggingFace hub")
+    logger.error("Unable to import uvicorn, check if uvicorn is installed.")
 
 
 try:
     from transformers import pipeline
-
-    generator = pipeline("text-generation", model="gpt2")
-
 except ImportError:
     logger.error(
-        "To enable in_process mode for Transformers install transformers from HuggingFace hub"
+        "Unable to import transformers, check if transformers is installed."
     )
 
 
 try:
-    from fastapi import FastAPI, Request
-
-    app = FastAPI(
-        title="Transformers In Process Server",
-        version="1.0",
-        description="A simple server",
-    )
-
-    @app.get("/")
-    def read_root():
-        """Placeholder docstring"""
-        return {"Hello": "World"}
-
-    @app.get("/generate")
-    async def generate_text(prompt: Request):
-        """Placeholder docstring"""
-        str_prompt = await prompt.json()
-
-        generated_text = generator(
-            str_prompt, max_length=30, num_return_sequences=5, truncation=True
-        )
-        return generated_text[0]["generated_text"]
-
-    @app.post("/post")
-    def post(payload: dict):
-        """Placeholder docstring"""
-        return payload
-
+    from fastapi import FastAPI, Request, APIRouter
 except ImportError:
-    logger.error("To enable in_process mode for Transformers install fastapi from HuggingFace hub")
+    logger.error("Unable to import fastapi, check if fastapi is installed.")
 
 
-async def main():
-    """Running server locally with uvicorn"""
-    config = uvicorn.Config(
-        "sagemaker.serve.app:app",
-        host="127.0.0.1",
-        port=9007,
-        log_level="info",
-        loop="asyncio",
-        reload=True,
-        workers=3,
-        use_colors=True,
-    )
-    server = uvicorn.Server(config)
-    logger.info("Waiting for a connection...")
-    await server.serve()
+class InProcessServer:
+
+    def __init__(
+            self,
+            model_id: Optional[str] = None,
+            task: Optional[str] = None
+    ):
+        self._thread = None
+        self._loop = None
+        self._stop_event = asyncio.Event()
+        self._router = APIRouter()
+        self._model_id = model_id
+        self._task = task
+        self.server = None
+        self.port = None
+        self.host = None
+
+        self._generator = pipeline(task, model=model_id, device="cpu")
+
+        @self._router.post("/generate")
+        async def generate_text(prompt: Request):
+            """Placeholder docstring"""
+            str_prompt = await prompt.json()
+            str_prompt = str_prompt["inputs"] if "inputs" in str_prompt else str_prompt
+
+            generated_text = self._generator(
+                str_prompt, max_length=30, num_return_sequences=1, truncation=True
+            )
+            return generated_text
+
+        self._create_server()
+
+    def _create_server(self):
+        _app = FastAPI()
+        _app.include_router(self._router)
+
+        config = uvicorn.Config(
+            _app,
+            host="127.0.0.1",
+            port=9007,
+            log_level="info",
+            loop="asyncio",
+            reload=True,
+            workers=3,
+            use_colors=True,
+        )
+
+        self.server = uvicorn.Server(config)
+        self.host = config.host
+        self.port = config.port
+
+    def start_server(self):
+        """Starts the uvicorn server."""
+        if not (self._thread and self._thread.is_alive()):
+            logger.info("Waiting for a connection...")
+            self._thread = threading.Thread(target=self._start_run_async_in_thread, daemon=True)
+            self._thread.start()
+
+    def stop_server(self):
+        """Destroys the uvicorn server."""
+        if  self.is_running:
+            logger.info("Deleting server...")
+            # self._stop_event.set()
+            # self._thread.join()
+            logger.info("Server deleted.")
+
+    def _start_run_async_in_thread(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self._serve())
+
+    async def _serve(self):
+        await self.server.serve()
+
+    def is_running(self):
+        return self._thread is not None and self._thread.is_alive()
