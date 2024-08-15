@@ -198,7 +198,8 @@ def main(args):
 
         if args.current_host == args.hosts[0]:
             ckpt_manager.save()
-            net.save("/opt/ml/model/1", zipped=False)
+            net.save("/opt/ml/model/1.keras")
+        print("Saved model at /opt/ml/model/1.keras")
 
 
 if __name__ == "__main__":
