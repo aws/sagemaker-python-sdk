@@ -701,7 +701,7 @@ def test_tuning_tf(
         instance_count=1,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tensorflow_training_latest_version,
+        framework_version="2.14",
         py_version=tensorflow_training_latest_py_version,
     )
 
@@ -749,7 +749,7 @@ def test_tuning_tf_vpc_multi(
         entry_point=script_path,
         source_dir=resource_path,
         role="SageMakerRole",
-        framework_version=tensorflow_training_latest_version,
+        framework_version="2.14",
         py_version=tensorflow_training_latest_py_version,
         instance_count=instance_count,
         instance_type=instance_type,

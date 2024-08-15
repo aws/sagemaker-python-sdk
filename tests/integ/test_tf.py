@@ -278,7 +278,7 @@ def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instanc
         instance_count=2,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_version,
+        framework_version="2.14",
         py_version=py_version,
         distribution=PARAMETER_SERVER_DISTRIBUTION,
         disable_profiler=True,
