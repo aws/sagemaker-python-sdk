@@ -24,15 +24,17 @@ from sagemaker.jumpstart.types import (
     JumpStartModelInitKwargs,
 )
 
+KwargsType = Union[
+    JumpStartModelDeployKwargs,
+    JumpStartModelInitKwargs,
+    JumpStartEstimatorFitKwargs,
+    JumpStartEstimatorInitKwargs,
+    JumpStartEstimatorDeployKwargs,
+]
+
 
 def get_model_info_kwargs(
-    kwargs: Union[
-        JumpStartModelDeployKwargs,
-        JumpStartModelInitKwargs,
-        JumpStartEstimatorFitKwargs,
-        JumpStartEstimatorInitKwargs,
-        JumpStartEstimatorDeployKwargs,
-    ],
+    kwargs: KwargsType,
     include_config_name: bool = True,
 ) -> dict:
     """Returns a dictionary of model info kwargs to use with JumpStart APIs."""
@@ -53,15 +55,7 @@ def get_model_info_kwargs(
     return kwargs_dict
 
 
-def _set_temp_sagemaker_session_if_not_set(
-    kwargs: Union[
-        JumpStartModelDeployKwargs,
-        JumpStartModelInitKwargs,
-        JumpStartEstimatorFitKwargs,
-        JumpStartEstimatorInitKwargs,
-        JumpStartEstimatorDeployKwargs,
-    ]
-) -> Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs]:
+def _set_temp_sagemaker_session_if_not_set(kwargs: KwargsType) -> KwargsType:
     """Sets a temporary sagemaker session if one is not set.
 
     We need to create a default JS session (without custom user agent)
