@@ -198,7 +198,7 @@ def main(args):
 
         if args.current_host == args.hosts[0]:
             ckpt_manager.save()
-            net.save("/opt/ml/model/1.keras")
+            net.save("/opt/ml/model/1")
 
 
 if __name__ == "__main__":
