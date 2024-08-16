@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from distutils.version import Version
 import json
 import os
 import time
@@ -691,6 +692,9 @@ def test_tuning_tf(
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
 ):
+    if Version(tensorflow_training_latest_version) >= Version("2.16"):
+        pytest.skip("This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+                    "https://github.com/tensorflow/io/issues/2039")
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = "mnist.py"
 
