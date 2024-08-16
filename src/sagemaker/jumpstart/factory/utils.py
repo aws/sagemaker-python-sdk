@@ -33,24 +33,34 @@ KwargsType = Union[
 ]
 
 
-def get_model_info_kwargs(
+def get_model_info_default_kwargs(
     kwargs: KwargsType,
     include_config_name: bool = True,
+    include_model_version: bool = True,
+    include_tolerate_flags: bool = True,
 ) -> dict:
     """Returns a dictionary of model info kwargs to use with JumpStart APIs."""
 
     kwargs_dict = {
         "model_id": kwargs.model_id,
-        "model_version": kwargs.model_version,
         "hub_arn": kwargs.hub_arn,
         "region": kwargs.region,
-        "tolerate_deprecated_model": kwargs.tolerate_deprecated_model,
-        "tolerate_vulnerable_model": kwargs.tolerate_vulnerable_model,
         "sagemaker_session": kwargs.sagemaker_session,
         "model_type": kwargs.model_type,
     }
     if include_config_name:
         kwargs_dict.update({"config_name": kwargs.config_name})
+
+    if include_model_version:
+        kwargs_dict.update({"model_version": kwargs.model_version})
+
+    if include_tolerate_flags:
+        kwargs_dict.update(
+            {
+                "tolerate_deprecated_model": kwargs.tolerate_deprecated_model,
+                "tolerate_vulnerable_model": kwargs.tolerate_vulnerable_model,
+            }
+        )
 
     return kwargs_dict
 

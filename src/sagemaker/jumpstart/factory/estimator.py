@@ -31,7 +31,7 @@ from sagemaker.jumpstart.artifacts import (
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.jumpstart.factory.utils import (
     _set_temp_sagemaker_session_if_not_set,
-    get_model_info_kwargs,
+    get_model_info_default_kwargs,
 )
 from sagemaker.jumpstart.hub.utils import (
     construct_hub_model_arn_from_inputs,
@@ -209,14 +209,11 @@ def get_init_kwargs(
 
     estimator_init_kwargs = _set_temp_sagemaker_session_if_not_set(kwargs=estimator_init_kwargs)
     estimator_init_kwargs.specs = verify_model_region_and_return_specs(
-        model_id=estimator_init_kwargs.model_id,
-        version=estimator_init_kwargs.model_version,
-        hub_arn=estimator_init_kwargs.hub_arn,
+        **get_model_info_default_kwargs(
+            estimator_init_kwargs, include_model_version=False, include_tolerate_flags=False
+        ),
+        version=estimator_init_kwargs.model_version or "*",
         scope=JumpStartScriptScope.TRAINING,
-        region=estimator_init_kwargs.region,
-        sagemaker_session=estimator_init_kwargs.sagemaker_session,
-        model_type=estimator_init_kwargs.model_type,
-        config_name=estimator_init_kwargs.config_name,
         # We set these flags to True to retrieve the json specs.
         # Exceptions will be thrown later if these are not tolerated.
         tolerate_deprecated_model=True,
@@ -285,14 +282,11 @@ def get_fit_kwargs(
 
     estimator_fit_kwargs = _set_temp_sagemaker_session_if_not_set(kwargs=estimator_fit_kwargs)
     estimator_fit_kwargs.specs = verify_model_region_and_return_specs(
-        model_id=estimator_fit_kwargs.model_id,
-        version=estimator_fit_kwargs.model_version,
-        hub_arn=estimator_fit_kwargs.hub_arn,
+        **get_model_info_default_kwargs(
+            estimator_fit_kwargs, include_model_version=False, include_tolerate_flags=False
+        ),
+        version=estimator_fit_kwargs.model_version or "*",
         scope=JumpStartScriptScope.TRAINING,
-        region=estimator_fit_kwargs.region,
-        sagemaker_session=estimator_fit_kwargs.sagemaker_session,
-        model_type=estimator_fit_kwargs.model_type,
-        config_name=estimator_fit_kwargs.config_name,
         # We set these flags to True to retrieve the json specs.
         # Exceptions will be thrown later if these are not tolerated.
         tolerate_deprecated_model=True,
@@ -526,7 +520,7 @@ def _add_instance_type_and_count_to_kwargs(
     orig_instance_type = kwargs.instance_type
 
     kwargs.instance_type = kwargs.instance_type or instance_types.retrieve_default(
-        **get_model_info_kwargs(kwargs), scope=JumpStartScriptScope.TRAINING
+        **get_model_info_default_kwargs(kwargs), scope=JumpStartScriptScope.TRAINING
     )
 
     kwargs.instance_count = kwargs.instance_count or 1
@@ -571,7 +565,7 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
     """Sets image uri in kwargs based on default or override, returns full kwargs."""
 
     kwargs.image_uri = kwargs.image_uri or image_uris.retrieve(
-        **get_model_info_kwargs(kwargs),
+        **get_model_info_default_kwargs(kwargs),
         instance_type=kwargs.instance_type,
         framework=None,
         image_scope=JumpStartScriptScope.TRAINING,
@@ -600,17 +594,17 @@ def _add_model_reference_arn_to_kwargs(
 def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets model uri in kwargs based on default or override, returns full kwargs."""
 
-    if _model_supports_training_model_uri(**get_model_info_kwargs(kwargs)):
+    if _model_supports_training_model_uri(**get_model_info_default_kwargs(kwargs)):
         default_model_uri = model_uris.retrieve(
             model_scope=JumpStartScriptScope.TRAINING,
             instance_type=kwargs.instance_type,
-            **get_model_info_kwargs(kwargs),
+            **get_model_info_default_kwargs(kwargs),
         )
 
         if (
             kwargs.model_uri is not None
             and kwargs.model_uri != default_model_uri
-            and not _model_supports_incremental_training(**get_model_info_kwargs(kwargs))
+            and not _model_supports_incremental_training(**get_model_info_default_kwargs(kwargs))
         ):
             JUMPSTART_LOGGER.warning(
                 "'%s' does not support incremental training but is being trained with"
@@ -638,7 +632,7 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStart
     """Sets source dir in kwargs based on default or override, returns full kwargs."""
 
     kwargs.source_dir = kwargs.source_dir or script_uris.retrieve(
-        script_scope=JumpStartScriptScope.TRAINING, **get_model_info_kwargs(kwargs)
+        script_scope=JumpStartScriptScope.TRAINING, **get_model_info_default_kwargs(kwargs)
     )
 
     return kwargs
@@ -650,14 +644,14 @@ def _add_env_to_kwargs(
     """Sets environment in kwargs based on default or override, returns full kwargs."""
 
     extra_env_vars = environment_variables.retrieve_default(
-        **get_model_info_kwargs(kwargs),
+        **get_model_info_default_kwargs(kwargs),
         script=JumpStartScriptScope.TRAINING,
         instance_type=kwargs.instance_type,
         include_aws_sdk_env_vars=False,
     )
 
     model_package_artifact_uri = _retrieve_model_package_model_artifact_s3_uri(
-        **get_model_info_kwargs(kwargs),
+        **get_model_info_default_kwargs(kwargs),
         scope=JumpStartScriptScope.TRAINING,
     )
 
@@ -704,7 +698,7 @@ def _add_training_job_name_to_kwargs(
     """Sets resource name based on default or override, returns full kwargs."""
 
     default_training_job_name = _retrieve_resource_name_base(
-        **get_model_info_kwargs(kwargs),
+        **get_model_info_default_kwargs(kwargs),
         scope=JumpStartScriptScope.TRAINING,
     )
 
@@ -725,7 +719,7 @@ def _add_hyperparameters_to_kwargs(
     )
 
     default_hyperparameters = hyperparameters_utils.retrieve_default(
-        **get_model_info_kwargs(kwargs),
+        **get_model_info_default_kwargs(kwargs),
         instance_type=kwargs.instance_type,
     )
 
@@ -753,7 +747,7 @@ def _add_metric_definitions_to_kwargs(
 
     default_metric_definitions = (
         metric_definitions_utils.retrieve_default(
-            **get_model_info_kwargs(kwargs),
+            **get_model_info_default_kwargs(kwargs),
             instance_type=kwargs.instance_type,
         )
         or []
@@ -777,7 +771,7 @@ def _add_estimator_extra_kwargs(
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
     estimator_kwargs_to_add = _retrieve_estimator_init_kwargs(
-        **get_model_info_kwargs(kwargs), instance_type=kwargs.instance_type
+        **get_model_info_default_kwargs(kwargs), instance_type=kwargs.instance_type
     )
 
     for key, value in estimator_kwargs_to_add.items():
@@ -795,7 +789,7 @@ def _add_estimator_extra_kwargs(
 def _add_fit_extra_kwargs(kwargs: JumpStartEstimatorFitKwargs) -> JumpStartEstimatorFitKwargs:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
-    fit_kwargs_to_add = _retrieve_estimator_fit_kwargs(**get_model_info_kwargs(kwargs))
+    fit_kwargs_to_add = _retrieve_estimator_fit_kwargs(**get_model_info_default_kwargs(kwargs))
 
     for key, value in fit_kwargs_to_add.items():
         if getattr(kwargs, key) is None:
@@ -811,7 +805,7 @@ def _add_config_name_to_kwargs(
 
     kwargs.config_name = kwargs.config_name or get_top_ranked_config_name(
         scope=JumpStartScriptScope.TRAINING,
-        **get_model_info_kwargs(kwargs, include_config_name=False),
+        **get_model_info_default_kwargs(kwargs, include_config_name=False),
     )
 
     return kwargs
