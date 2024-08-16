@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from distutils.version import Version
 import json
 import os
 import time
@@ -20,6 +19,7 @@ import time
 import numpy as np
 import pytest
 from botocore.exceptions import ClientError
+from packaging.version import Version
 
 import tests.integ
 from sagemaker import KMeans, LDA, RandomCutForest, image_uris
@@ -741,6 +741,11 @@ def test_tuning_tf_vpc_multi(
     tensorflow_training_latest_py_version,
 ):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
+    if Version(tensorflow_training_latest_version) >= Version("2.16"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
     instance_type = cpu_instance_type
     instance_count = 2
 
