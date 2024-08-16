@@ -1,6 +1,7 @@
 """Module that defines the InProcessMode class"""
 
 from __future__ import absolute_import
+
 from pathlib import Path
 import logging
 from typing import Dict, Type
@@ -11,7 +12,7 @@ from sagemaker.base_predictor import PredictorBase
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.utils.exceptions import LocalDeepPingException
+from sagemaker.serve.utils.exceptions import InProcessDeepPingException
 from sagemaker.serve.model_server.multi_model_server.server import InProcessMultiModelServer
 from sagemaker.session import Session
 
@@ -46,7 +47,7 @@ class InProcessMode(
         self.session = session
         self.schema_builder = schema_builder
         self.model_server = model_server
-        self._ping_container = None
+        self._ping_local_server = None
 
     def load(self, model_path: str = None):
         """Loads model path, checks that path exists"""
@@ -69,22 +70,29 @@ class InProcessMode(
         logger.info("Waiting for model server %s to start up...", self.model_server)
 
         if self.model_server == ModelServer.MMS:
-            self._ping_container = self._multi_model_server_deep_ping
+            self._ping_local_server = self._multi_model_server_deep_ping
             self._start_serving()
 
-        time_limit = datetime.now() + timedelta(seconds=5)
-        while self._ping_container is not None:
-            final_pull = datetime.now() > time_limit
+        # allow some time for server to be ready.
+        time.sleep(1)
 
+        time_limit = datetime.now() + timedelta(seconds=5)
+        healthy = True
+        while True:
+            final_pull = datetime.now() > time_limit
             if final_pull:
                 break
 
-            time.sleep(10)
-
-            healthy, response = self._ping_container(predictor)
+            healthy, response = self._ping_local_server(predictor)
             if healthy:
                 logger.debug("Ping health check has passed. Returned %s", str(response))
                 break
 
+        time.sleep(1)
+
         if not healthy:
-            raise LocalDeepPingException(_PING_HEALTH_CHECK_FAIL_MSG)
+            raise InProcessDeepPingException(_PING_HEALTH_CHECK_FAIL_MSG)
+
+    def destroy_server(self):
+        """Placeholder docstring"""
+        self._stop_serving()

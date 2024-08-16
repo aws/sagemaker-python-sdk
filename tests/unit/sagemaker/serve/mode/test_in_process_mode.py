@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock
 from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve import SchemaBuilder
 from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.utils.exceptions import LocalDeepPingException
+from sagemaker.serve.utils.exceptions import InProcessDeepPingException
 
 
 mock_prompt = "Hello, I'm a language model,"
@@ -163,4 +163,4 @@ class TestInProcessMode(unittest.TestCase):
         in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
         in_process_mode._start_serving = mock_start_serving
 
-        self.assertRaises(LocalDeepPingException, in_process_mode.create_server, mock_predictor)
+        self.assertRaises(InProcessDeepPingException, in_process_mode.create_server, mock_predictor)
