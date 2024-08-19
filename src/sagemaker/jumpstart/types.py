@@ -1174,7 +1174,7 @@ class JumpStartConfigRanking(JumpStartDataHolderType):
             spec (Dict[str, Any]): Dictionary representation of training config ranking.
         """
         if is_hub_content:
-            spec = {camel_to_snake(key): val for key, val in spec.items()}
+            spec = walk_and_apply_json(spec, camel_to_snake)
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1400,7 +1400,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
 
         if self.training_supported:
             if self._is_hub_content:
-                self.training_ecr_uri: Optional[str] = json_obj["training_ecr_uri"]
+                self.training_ecr_uri: Optional[str] = json_obj.get("training_ecr_uri")
                 self._non_serializable_slots.append("training_ecr_specs")
             else:
                 self.training_ecr_specs: Optional[JumpStartECRSpecs] = (

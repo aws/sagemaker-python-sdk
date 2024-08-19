@@ -33,6 +33,7 @@ from sagemaker.config.config_schema import (
 
 from sagemaker.jumpstart import constants, enums
 from sagemaker.jumpstart import accessors
+from sagemaker.jumpstart.hub.parser_utils import camel_to_snake, snake_to_upper_camel
 from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
@@ -1103,6 +1104,17 @@ def get_jumpstart_configs(
             metadata_configs.config_rankings.get("overall").rankings if metadata_configs else []
         )
 
+    if hub_arn:
+        return (
+            {
+                config_name: metadata_configs.configs[
+                    camel_to_snake(snake_to_upper_camel(config_name))
+                ]
+                for config_name in config_names
+            }
+            if metadata_configs
+            else {}
+        )
     return (
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
         if metadata_configs

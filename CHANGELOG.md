@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.229.0 (2024-08-15)
+
+### Features
+
+ * Support for ModelBuilder In_Process Mode (1/2)
+ * Pulling in dependencies (in_process mode) using conda environment
+ * Add optional CodeArtifact login to FrameworkProcessing job script
+ * implemented security-monitoring to send metrics to CW #1510
+
+### Bug Fixes and Other Changes
+
+ * alt configs model deployment and training issues
+ * fix keras extension in integ test
+ * update image_uri_configs  08-13-2024 07:17:54 PST
+ * trn1 instance family does not support volume size
+ * Update model.py
+ * removed log statement
+ * update image_uri_configs  08-09-2024 07:18:00 PST
+ * Added torchrun compatibility for distributet training across multiple GPUs in a single node (single instance)
+ * BiasConfig type hint
+ * add model monitor image accounts for ap-southeast-5 and eu-central-2
+ * aligned UTC times with PST
+ * ensure hpt jobs inherit tags from config
+ * add JumpStart PDT and OSU regions
+ * chore(deps): bump certifi in /src/sagemaker/serve/utils
+ * Updates for DJL 0.29.0 release
+ * chore(deps): bump apache-airflow from 2.9.2 to 2.9.3 in /requirements/extras
+ * chore(deps): bump torch from 2.0.1 to 2.2.0 in /tests/data/serve_resources/mlflow/pytorch
+ * avoided printing stack trace and escaped input
+ * removing kwargs as this is breaking predictor_cls param for mode…
+
 ## v2.228.0 (2024-08-06)
 
 ### Features
