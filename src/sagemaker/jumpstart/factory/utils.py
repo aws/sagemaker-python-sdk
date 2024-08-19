@@ -13,7 +13,7 @@
 """This module stores JumpStart factory utilities."""
 
 from __future__ import absolute_import
-from typing import Union
+from typing import Tuple, Union
 
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.types import (
@@ -23,6 +23,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelDeployKwargs,
     JumpStartModelInitKwargs,
 )
+from sagemaker.session import Session
 
 KwargsType = Union[
     JumpStartModelDeployKwargs,
@@ -65,13 +66,14 @@ def get_model_info_default_kwargs(
     return kwargs_dict
 
 
-def _set_temp_sagemaker_session_if_not_set(kwargs: KwargsType) -> KwargsType:
-    """Sets a temporary sagemaker session if one is not set.
+def _set_temp_sagemaker_session_if_not_set(kwargs: KwargsType) -> Tuple[KwargsType, Session]:
+    """Sets a temporary sagemaker session if one is not set, and returns original session.
 
     We need to create a default JS session (without custom user agent)
     in order to retrieve config name info.
     """
 
+    orig_session = kwargs.sagemaker_session
     if kwargs.sagemaker_session is None:
         kwargs.sagemaker_session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-    return kwargs
+    return kwargs, orig_session

@@ -207,7 +207,9 @@ def get_init_kwargs(
         enable_session_tag_chaining=enable_session_tag_chaining,
     )
 
-    estimator_init_kwargs = _set_temp_sagemaker_session_if_not_set(kwargs=estimator_init_kwargs)
+    estimator_init_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(
+        kwargs=estimator_init_kwargs
+    )
     estimator_init_kwargs.specs = verify_model_region_and_return_specs(
         **get_model_info_default_kwargs(
             estimator_init_kwargs, include_model_version=False, include_tolerate_flags=False
@@ -223,7 +225,7 @@ def get_init_kwargs(
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(
-        estimator_init_kwargs
+        estimator_init_kwargs, orig_session
     )
     estimator_init_kwargs = _add_region_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_instance_type_and_count_to_kwargs(estimator_init_kwargs)
@@ -280,7 +282,7 @@ def get_fit_kwargs(
         config_name=config_name,
     )
 
-    estimator_fit_kwargs = _set_temp_sagemaker_session_if_not_set(kwargs=estimator_fit_kwargs)
+    estimator_fit_kwargs, _ = _set_temp_sagemaker_session_if_not_set(kwargs=estimator_fit_kwargs)
     estimator_fit_kwargs.specs = verify_model_region_and_return_specs(
         **get_model_info_default_kwargs(
             estimator_fit_kwargs, include_model_version=False, include_tolerate_flags=False
@@ -472,17 +474,14 @@ def _add_region_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
 
 
 def _add_sagemaker_session_with_custom_user_agent_to_kwargs(
-    kwargs: JumpStartKwargs,
+    kwargs: JumpStartKwargs, orig_session: Optional[Session]
 ) -> JumpStartKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
-    kwargs.sagemaker_session = (
-        kwargs.sagemaker_session
-        or get_default_jumpstart_session_with_user_agent_suffix(
-            model_id=kwargs.model_id,
-            model_version=kwargs.model_version,
-            config_name=None,
-            is_hub_content=kwargs.hub_arn is not None,
-        )
+    kwargs.sagemaker_session = orig_session or get_default_jumpstart_session_with_user_agent_suffix(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        config_name=None,
+        is_hub_content=kwargs.hub_arn is not None,
     )
     return kwargs
 

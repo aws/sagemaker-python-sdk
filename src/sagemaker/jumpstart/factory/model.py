@@ -161,18 +161,16 @@ def _add_region_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelIni
 
 
 def _add_sagemaker_session_with_custom_user_agent_to_kwargs(
-    kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs]
+    kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs],
+    orig_session: Optional[Session],
 ) -> JumpStartModelInitKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
 
-    kwargs.sagemaker_session = (
-        kwargs.sagemaker_session
-        or get_default_jumpstart_session_with_user_agent_suffix(
-            model_id=kwargs.model_id,
-            model_version=kwargs.model_version,
-            config_name=kwargs.config_name,
-            is_hub_content=kwargs.hub_arn is not None,
-        )
+    kwargs.sagemaker_session = orig_session or get_default_jumpstart_session_with_user_agent_suffix(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        config_name=kwargs.config_name,
+        is_hub_content=kwargs.hub_arn is not None,
     )
 
     return kwargs
@@ -686,7 +684,7 @@ def get_deploy_kwargs(
         config_name=config_name,
         routing_config=routing_config,
     )
-    deploy_kwargs = _set_temp_sagemaker_session_if_not_set(kwargs=deploy_kwargs)
+    deploy_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(kwargs=deploy_kwargs)
     deploy_kwargs.specs = verify_model_region_and_return_specs(
         **get_model_info_default_kwargs(
             deploy_kwargs, include_model_version=False, include_tolerate_flags=False
@@ -705,7 +703,9 @@ def get_deploy_kwargs(
 
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
 
-    deploy_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(kwargs=deploy_kwargs)
+    deploy_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(
+        kwargs=deploy_kwargs, orig_session=orig_session
+    )
 
     deploy_kwargs = _add_endpoint_name_to_kwargs(kwargs=deploy_kwargs)
 
@@ -890,7 +890,9 @@ def get_init_kwargs(
         config_name=config_name,
         additional_model_data_sources=additional_model_data_sources,
     )
-    model_init_kwargs = _set_temp_sagemaker_session_if_not_set(kwargs=model_init_kwargs)
+    model_init_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(
+        kwargs=model_init_kwargs
+    )
     model_init_kwargs.specs = verify_model_region_and_return_specs(
         **get_model_info_default_kwargs(
             model_init_kwargs, include_model_version=False, include_tolerate_flags=False
@@ -908,7 +910,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_config_name_to_init_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(
-        kwargs=model_init_kwargs
+        kwargs=model_init_kwargs, orig_session=orig_session
     )
     model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
 
