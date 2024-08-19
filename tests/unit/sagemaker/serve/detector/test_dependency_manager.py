@@ -26,7 +26,7 @@ DEPENDENCY_LIST = [
     "matplotlib<3.5.0",
     "scikit-learn>0.24.1",
     "Django!=4.0.0",
-    "attrs>=23.1.0,<24",
+    "attrs>=23.1.0,<25",
     "torch@https://download.pytorch.org/whl/cpu/torch-2.0.0%2Bcpu-cp310-cp310-linux_x86_64.whl",
     "# some comment",
     "boto3==1.26.*",
@@ -39,7 +39,7 @@ EXPECTED_DEPENDENCY_MAP = {
     "matplotlib": "<3.5.0",
     "scikit-learn": ">0.24.1",
     "Django": "!=4.0.0",
-    "attrs": ">=23.1.0,<24",
+    "attrs": ">=23.1.0,<25",
     "torch": "@https://download.pytorch.org/whl/cpu/torch-2.0.0%2Bcpu-cp310-cp310-linux_x86_64.whl",
     "boto3": "==1.26.*",
 }

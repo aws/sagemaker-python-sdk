@@ -15,7 +15,7 @@ stopit==1.1.2
 # Update tox.ini to have correct version of airflow constraints file
 apache-airflow==2.9.3
 apache-airflow-providers-amazon==7.2.1
-attrs>=23.1.0,<24
+attrs>=23.1.0,<25
 fabric==2.6.0
 requests==2.32.2
 sagemaker-experiments==0.1.35
