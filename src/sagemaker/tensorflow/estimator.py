@@ -177,9 +177,11 @@ class TensorFlow(Framework):
                 fw.python_deprecation_warning(self._framework_name, defaults.LATEST_PY2_VERSION)
             )
         self.framework_version = framework_version
-        self.override_fw_version = "2.16" if self.framework_version and "2.16" in self.framework_version else None
-        ## TODO: Revert
-        print(f"ABCD123 setting self.override_fw_version to {self.override_fw_version}")
+        if self.framework_version and "2.16" in self.framework_version:
+            self.override_fw_version="2.16"
+            ## TODO: Revert
+            print(f"ABCD123 setting self.override_fw_version to {self.override_fw_version}")
+
         # TF training and inference versions do not have a one-to-one connection. This mismatch
         # is accommodated by the underlying dictionary. The key of dictionary relates to the inference
         # version and the value relates to training version.
