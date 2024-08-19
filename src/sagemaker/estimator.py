@@ -3728,7 +3728,7 @@ class Framework(EstimatorBase):
             str: The URI of the Docker image.
         """
         ## TODO: Revert
-        print(f"ABCD1234 self.override_fw_version: {getattr(self, "override_fw_version", None)} and self.framework_version: {self.framework_version}")
+        print(f"""ABCD1234 self.override_fw_version: {getattr(self, "override_fw_version", None)} and self.framework_version: {self.framework_version}""")
 
         return image_uris.get_training_image_uri(
             region=region or self.sagemaker_session.boto_region_name,
