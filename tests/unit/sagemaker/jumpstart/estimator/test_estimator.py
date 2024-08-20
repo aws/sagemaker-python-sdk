@@ -1425,6 +1425,7 @@ class EstimatorTest(unittest.TestCase):
             sagemaker_session=sagemaker_session,
             config_name=None,
             hub_arn=None,
+            model_type=JumpStartModelType.OPEN_WEIGHTS,
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
@@ -1482,6 +1483,7 @@ class EstimatorTest(unittest.TestCase):
             sagemaker_session=sagemaker_session,
             config_name=None,
             hub_arn=None,
+            model_type=JumpStartModelType.OPEN_WEIGHTS,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
