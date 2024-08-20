@@ -243,7 +243,7 @@ def test_tensorflow_training_step_with_parameterized_code_input(
             "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
             "https://github.com/tensorflow/io/issues/2039"
         )
-    
+
     base_dir = os.path.join(DATA_DIR, "tensorflow_mnist")
     entry_point1 = "mnist_v2.py"
     entry_point2 = "mnist_dummy.py"

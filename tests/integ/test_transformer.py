@@ -561,7 +561,7 @@ def test_transform_tf_kms_network_isolation(
             "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
             "https://github.com/tensorflow/io/issues/2039"
         )
-    
+
     data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
 
     tf = TensorFlow(

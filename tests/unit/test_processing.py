@@ -509,7 +509,14 @@ def test_tensorflow_processor_with_required_parameters(
     else:
         tensorflow_image_uri = (
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:{}-cpu-{}"
-        ).format("2.16" if Version(tensorflow_training_version) in SpecifierSet("==2.16.*") else tensorflow_training_version, tensorflow_training_py_version)
+        ).format(
+            (
+                "2.16"
+                if Version(tensorflow_training_version) in SpecifierSet("==2.16.*")
+                else tensorflow_training_version
+            ),
+            tensorflow_training_py_version,
+        )
 
     expected_args["app_specification"]["ImageUri"] = tensorflow_image_uri
 
