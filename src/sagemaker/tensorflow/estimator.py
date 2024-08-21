@@ -177,10 +177,10 @@ class TensorFlow(Framework):
                 fw.python_deprecation_warning(self._framework_name, defaults.LATEST_PY2_VERSION)
             )
         self.framework_version = framework_version
-        if self.framework_version and "2.16" in self.framework_version:
-            self.override_fw_version = "2.16"
-            # TODO: Revert
-            print(f"ABCD123 setting self.override_fw_version to {self.override_fw_version}")
+        # if self.framework_version and "2.16" in self.framework_version:
+        #     self.override_fw_version = "2.16"
+        #     # TODO: Revert
+        #     print(f"ABCD123 setting self.override_fw_version to {self.override_fw_version}")
 
         self.py_version = py_version
         self.instance_type = instance_type
