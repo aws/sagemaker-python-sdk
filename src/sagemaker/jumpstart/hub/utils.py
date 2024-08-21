@@ -67,10 +67,11 @@ def construct_hub_arn_from_name(
     hub_name: str,
     region: Optional[str] = None,
     session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    account_id: Optional[str] = None,
 ) -> str:
     """Constructs a Hub arn from the Hub name using default Session values."""
 
-    account_id = session.account_id()
+    account_id = account_id or session.account_id()
     region = region or session.boto_region_name
     partition = aws_partition(region)
 
