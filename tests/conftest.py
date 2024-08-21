@@ -557,7 +557,7 @@ def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_lat
     Otherwise, this would simply be a single latest version.
     """
     if Version(tensorflow_training_latest_version) in SpecifierSet(">=2.16"):
-        return f"{tensorflow_training_latest_version.major}.{tensorflow_training_latest_version.minor}"
+        return f"{Version(tensorflow_training_latest_version).major}.{Version(tensorflow_training_latest_version).minor}"
     return str(
         min(
             Version(tensorflow_training_latest_version),
