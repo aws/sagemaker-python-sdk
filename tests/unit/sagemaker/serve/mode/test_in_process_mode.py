@@ -164,3 +164,26 @@ class TestInProcessMode(unittest.TestCase):
         in_process_mode._start_serving = mock_start_serving
 
         self.assertRaises(InProcessDeepPingException, in_process_mode.create_server, mock_predictor)
+
+    @patch(
+        "sagemaker.serve.model_server.multi_model_server.server.InProcessMultiModelServer._stop_serving"
+    )
+    @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
+    @patch("sagemaker.session.Session")
+    def test_destroy_server(
+        self,
+        mock_session,
+        mock_inference_spec,
+        mock_stop_serving,
+    ):
+        in_process_mode = InProcessMode(
+            model_server=ModelServer.MMS,
+            inference_spec=mock_inference_spec,
+            schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
+            session=mock_session,
+            model_path="model_path",
+        )
+
+        in_process_mode.destroy_server()
+
+        mock_stop_serving.assert_called()
