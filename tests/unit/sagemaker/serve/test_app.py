@@ -13,14 +13,22 @@
 from __future__ import absolute_import
 
 import unittest
+import pytest
 
 from unittest.mock import patch, Mock
 from sagemaker.serve.app import InProcessServer
+from tests.integ.sagemaker.serve.constants import (
+    PYTHON_VERSION_IS_NOT_310,
+)
 
 mock_model_id = "mock_model_id"
 
 
 class TestAppInProcessServer(unittest.TestCase):
+    @pytest.mark.skipif(
+        PYTHON_VERSION_IS_NOT_310,
+        reason="The goal of these tests are to test the serving components of our feature",
+    )
     @patch("sagemaker.serve.app.threading")
     @patch("sagemaker.serve.app.pipeline")
     def test_in_process_server_init(self, mock_pipeline, mock_threading):
@@ -30,6 +38,10 @@ class TestAppInProcessServer(unittest.TestCase):
         in_process_server = InProcessServer(model_id=mock_model_id)
         in_process_server._generator = mock_generator
 
+    @pytest.mark.skipif(
+        PYTHON_VERSION_IS_NOT_310,
+        reason="The goal of these test are to test the serving components of our feature",
+    )
     @patch("sagemaker.serve.app.logger")
     @patch("sagemaker.serve.app.threading")
     @patch("sagemaker.serve.app.pipeline")
@@ -47,6 +59,10 @@ class TestAppInProcessServer(unittest.TestCase):
         mock_logger.info.assert_called()
         mock_thread.start.assert_called()
 
+    @pytest.mark.skipif(
+        PYTHON_VERSION_IS_NOT_310,
+        reason="The goal of these test are to test the serving components of our feature",
+    )
     @patch("sagemaker.serve.app.asyncio")
     @patch("sagemaker.serve.app.pipeline")
     def test_start_run_async_in_thread(self, mock_pipeline, mock_asyncio):
