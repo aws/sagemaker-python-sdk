@@ -96,16 +96,17 @@ def _retrieve_default_training_metric_definitions(
         else []
     )
 
-    instance_specific_metric_name: str
-    for instance_specific_metric_definition in instance_specific_metric_definitions:
-        instance_specific_metric_name = instance_specific_metric_definition["Name"]
-        default_metric_definitions = list(
-            filter(
-                lambda metric_definition: metric_definition["Name"]
-                != instance_specific_metric_name,
-                default_metric_definitions,
+    if instance_specific_metric_definitions:
+        instance_specific_metric_name: str
+        for instance_specific_metric_definition in instance_specific_metric_definitions:
+            instance_specific_metric_name = instance_specific_metric_definition["Name"]
+            default_metric_definitions = list(
+                filter(
+                    lambda metric_definition: metric_definition["Name"]
+                    != instance_specific_metric_name,
+                    default_metric_definitions,
+                )
             )
-        )
-        default_metric_definitions.append(instance_specific_metric_definition)
+            default_metric_definitions.append(instance_specific_metric_definition)
 
     return default_metric_definitions

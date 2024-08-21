@@ -259,6 +259,7 @@ def _add_instance_type_to_kwargs(
         sagemaker_session=kwargs.sagemaker_session,
         model_type=kwargs.model_type,
         config_name=kwargs.config_name,
+        hub_arn=kwargs.hub_arn,
     )
 
     if specs.inference_configs and kwargs.config_name not in specs.inference_configs.configs:
@@ -780,6 +781,7 @@ def _add_config_name_to_deploy_kwargs(
             sagemaker_session=temp_session,
             model_type=kwargs.model_type,
             config_name=kwargs.config_name,
+            hub_arn=kwargs.hub_arn,
         )
         default_config_name = _select_inference_config_from_training_config(
             specs=specs, training_config_name=training_config_name

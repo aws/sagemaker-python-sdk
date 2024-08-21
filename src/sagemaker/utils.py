@@ -1457,11 +1457,11 @@ def volume_size_supported(instance_type: str) -> bool:
         # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc)
         # + g5 or g6 or p5 does not support attaching an EBS volume.
         family = parts[0]
-        return (
-            "d" not in family
-            and not family.startswith("g5")
-            and not family.startswith("g6")
-            and not family.startswith("p5")
+
+        unsupported_families = ["g5", "g6", "p5", "trn1"]
+
+        return "d" not in family and not any(
+            family.startswith(prefix) for prefix in unsupported_families
         )
     except Exception as e:
         raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")
