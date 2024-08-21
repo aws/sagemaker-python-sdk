@@ -18,8 +18,6 @@ import os
 
 from mock import patch, Mock, MagicMock
 from packaging import version
-from packaging.version import Version
-from packaging.specifiers import SpecifierSet
 import pytest
 
 from sagemaker.estimator import _TrainingJob
@@ -556,14 +554,9 @@ def test_fit_mwms(
 
     expected_train_args = _create_train_job(framework_version, py_version=py_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
-    if Version(framework_version) in SpecifierSet("==2.16.*"):
-        expected_train_args["image_uri"] = (
-            f"763104351884.dkr.ecr.{REGION}.amazonaws.com/tensorflow-training:2.16-cpu-{py_version}"
-        )
-    else:
-        expected_train_args["image_uri"] = (
-            f"763104351884.dkr.ecr.{REGION}.amazonaws.com/tensorflow-training:{framework_version}-cpu-{py_version}"
-        )
+    expected_train_args["image_uri"] = (
+        f"763104351884.dkr.ecr.{REGION}.amazonaws.com/tensorflow-training:{framework_version}-cpu-{py_version}"
+    )
     expected_train_args["job_name"] = f"tensorflow-training-{TIMESTAMP}"
     expected_train_args["hyperparameters"][TensorFlow.LAUNCH_MWMS_ENV_NAME] = json.dumps(True)
     expected_train_args["hyperparameters"]["sagemaker_job_name"] = json.dumps(

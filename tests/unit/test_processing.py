@@ -18,8 +18,6 @@ from textwrap import dedent
 import pytest
 from mock import Mock, patch, MagicMock
 from packaging import version
-from packaging.version import Version
-from packaging.specifiers import SpecifierSet
 
 from sagemaker import LocalSession
 from sagemaker.dataset_definition.inputs import (
@@ -509,14 +507,7 @@ def test_tensorflow_processor_with_required_parameters(
     else:
         tensorflow_image_uri = (
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:{}-cpu-{}"
-        ).format(
-            (
-                "2.16"
-                if Version(tensorflow_training_version) in SpecifierSet("==2.16.*")
-                else tensorflow_training_version
-            ),
-            tensorflow_training_py_version,
-        )
+        ).format(tensorflow_training_version, tensorflow_training_py_version)
 
     expected_args["app_specification"]["ImageUri"] = tensorflow_image_uri
 

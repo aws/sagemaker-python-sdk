@@ -3727,12 +3727,11 @@ class Framework(EstimatorBase):
         Returns:
             str: The URI of the Docker image.
         """
+
         return image_uris.get_training_image_uri(
             region=region or self.sagemaker_session.boto_region_name,
             framework=self._framework_name,
-            framework_version=getattr(
-                self, "override_fw_version", self.framework_version  # pylint: disable=no-member
-            ),
+            framework_version=self.framework_version,  # pylint: disable=no-member
             py_version=self.py_version,  # pylint: disable=no-member
             image_uri=self.image_uri,
             distribution=getattr(self, "distribution", None),
