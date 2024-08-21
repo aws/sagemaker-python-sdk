@@ -13,140 +13,63 @@
 from __future__ import absolute_import
 
 import unittest
+
 from unittest.mock import patch, Mock
+from sagemaker.serve.app import InProcessServer
 
-from sagemaker.serve.mode.in_process_mode import InProcessMode
-from sagemaker.serve import SchemaBuilder
-from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.utils.exceptions import InProcessDeepPingException
-
-
-mock_prompt = "Hello, I'm a language model,"
-mock_response = "Hello, I'm a language model, and I'm here to help you with your English."
-mock_sample_input = {"inputs": mock_prompt, "parameters": {}}
-mock_sample_output = [{"generated_text": mock_response}]
+mock_model_id = "mock_model_id"
 
 
 class TestAppInProcessServer(unittest.TestCase):
+    @patch("sagemaker.serve.app.threading")
+    @patch("sagemaker.serve.app.pipeline")
+    def test_in_process_server_init(self, mock_pipeline, mock_threading):
+        mock_generator = Mock()
+        mock_generator.side_effect = None
 
-    @patch("sagemaker.server.app.uvicorn")
-    def test_uvicorn_import(self, mock_uvicorn):
-        mock_uvicorn.return_value.exists.side_effect = lambda *args, **kwargs: False
-        self.assertRaises(ImportError, in_process_mode.load, "/tmp/model-builder/code/")
+        in_process_server = InProcessServer(model_id=mock_model_id)
+        in_process_server._generator = mock_generator
 
-    def test_transformers_import(self):
-        self.assertRaises(ImportError, in_process_mode.load, "/tmp/model-builder/code/")
+    @patch("sagemaker.serve.app.logger")
+    @patch("sagemaker.serve.app.threading")
+    @patch("sagemaker.serve.app.pipeline")
+    def test_start_server(self, mock_pipeline, mock_threading, mock_logger):
+        mock_generator = Mock()
+        mock_generator.side_effect = None
+        mock_thread = Mock()
+        mock_threading.Thread.return_value = mock_thread
 
-    def test_fastapi_import(self):
-        self.assertRaises(ImportError, in_process_mode.load, "/tmp/model-builder/code/")
+        in_process_server = InProcessServer(model_id=mock_model_id)
+        in_process_server._generator = mock_generator
 
+        in_process_server.start_server()
 
+        mock_logger.info.assert_called()
+        mock_thread.start.assert_called()
 
-    # @patch("sagemaker.serve.mode.in_process_mode.Path")
-    # @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
-    # @patch("sagemaker.session.Session")
-    # def test_load_ex(self, mock_session, mock_inference_spec, mock_path):
-    #     mock_path.return_value.exists.side_effect = lambda *args, **kwargs: False
-    #     mock_path.return_value.is_dir.side_effect = lambda *args, **kwargs: True
+    @patch("sagemaker.serve.app.asyncio")
+    @patch("sagemaker.serve.app.pipeline")
+    def test_start_run_async_in_thread(self, mock_pipeline, mock_asyncio):
+        mock_pipeline.side_effect = None
 
-    #     mock_inference_spec.load.side_effect = lambda *args, **kwargs: "Dummy load"
+        mock_loop = Mock()
+        mock_asyncio.new_event_loop.side_effect = lambda: mock_loop
 
-    #     mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
-    #     in_process_mode = InProcessMode(
-    #         model_server=ModelServer.MMS,
-    #         inference_spec=mock_inference_spec,
-    #         schema_builder=mock_schema_builder,
-    #         session=mock_session,
-    #         model_path="model_path",
-    #     )
+        in_process_server = InProcessServer(model_id=mock_model_id)
+        in_process_server._start_run_async_in_thread()
 
-    #     self.assertRaises(ValueError, in_process_mode.load, "/tmp/model-builder/code/")
+        mock_asyncio.set_event_loop.assert_called_once_with(mock_loop)
+        mock_loop.run_until_complete.assert_called()
 
-    #     mock_path.return_value.exists.side_effect = lambda *args, **kwargs: True
-    #     mock_path.return_value.is_dir.side_effect = lambda *args, **kwargs: False
+    @patch("sagemaker.serve.app.pipeline")
+    async def test_serve(self, mock_pipeline):
+        mock_pipeline.side_effect = None
 
-    #     mock_inference_spec.load.side_effect = lambda *args, **kwargs: "Dummy load"
-    #     mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
-    #     in_process_mode = InProcessMode(
-    #         model_server=ModelServer.MMS,
-    #         inference_spec=mock_inference_spec,
-    #         schema_builder=mock_schema_builder,
-    #         session=mock_session,
-    #         model_path="model_path",
-    #     )
+        mock_server = Mock()
 
-    #     self.assertRaises(ValueError, in_process_mode.load, "/tmp/model-builder/code/")
+        in_process_server = InProcessServer(model_id=mock_model_id)
+        in_process_server.server = mock_server
 
-    # @patch("sagemaker.serve.mode.in_process_mode.logger")
-    # @patch("sagemaker.base_predictor.PredictorBase")
-    # @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
-    # @patch("sagemaker.session.Session")
-    # def test_create_server_happy(
-    #     self, mock_session, mock_inference_spec, mock_predictor, mock_logger
-    # ):
-    #     mock_start_serving = Mock()
-    #     mock_start_serving.side_effect = lambda *args, **kwargs: (
-    #         True,
-    #         None,
-    #     )
+        await in_process_server._serve()
 
-    #     mock_response = "Fake response"
-    #     mock_multi_model_server_deep_ping = Mock()
-    #     mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
-    #         True,
-    #         mock_response,
-    #     )
-
-    #     in_process_mode = InProcessMode(
-    #         model_server=ModelServer.MMS,
-    #         inference_spec=mock_inference_spec,
-    #         schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
-    #         session=mock_session,
-    #         model_path="model_path",
-    #     )
-
-    #     in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
-    #     in_process_mode._start_serving = mock_start_serving
-
-    #     in_process_mode.create_server(predictor=mock_predictor)
-
-    #     mock_logger.info.assert_called_once_with(
-    #         "Waiting for model server %s to start up...", ModelServer.MMS
-    #     )
-    #     mock_logger.debug.assert_called_once_with(
-    #         "Ping health check has passed. Returned %s", str(mock_response)
-    #     )
-
-    # @patch("sagemaker.base_predictor.PredictorBase")
-    # @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
-    # @patch("sagemaker.session.Session")
-    # def test_create_server_ex(
-    #     self,
-    #     mock_session,
-    #     mock_inference_spec,
-    #     mock_predictor,
-    # ):
-    #     mock_start_serving = Mock()
-    #     mock_start_serving.side_effect = lambda *args, **kwargs: (
-    #         True,
-    #         None,
-    #     )
-
-    #     mock_multi_model_server_deep_ping = Mock()
-    #     mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
-    #         False,
-    #         None,
-    #     )
-
-    #     in_process_mode = InProcessMode(
-    #         model_server=ModelServer.MMS,
-    #         inference_spec=mock_inference_spec,
-    #         schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
-    #         session=mock_session,
-    #         model_path="model_path",
-    #     )
-
-    #     in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
-    #     in_process_mode._start_serving = mock_start_serving
-
-    #     self.assertRaises(InProcessDeepPingException, in_process_mode.create_server, mock_predictor)
+        mock_server.serve.assert_called()
