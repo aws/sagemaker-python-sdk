@@ -36,7 +36,7 @@ class RequirementsManager:
         Returns:
             file path of the existing or generated dependencies file
         """
-        _dependencies = dependencies or self._detect_conda_env_and_local_dependencies()
+        _dependencies = dependencies or self._detect_conda_env_and_local_dependencies
 
         # Dependencies specified as either req.txt or conda_env.yml
         if _dependencies.endswith(".txt"):

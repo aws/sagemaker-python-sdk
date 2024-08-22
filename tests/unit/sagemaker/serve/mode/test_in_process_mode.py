@@ -18,7 +18,7 @@ from unittest.mock import patch, Mock
 from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve import SchemaBuilder
 from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.utils.exceptions import LocalDeepPingException
+from sagemaker.serve.utils.exceptions import InProcessDeepPingException
 
 
 mock_prompt = "Hello, I'm a language model,"
@@ -98,6 +98,12 @@ class TestInProcessMode(unittest.TestCase):
     def test_create_server_happy(
         self, mock_session, mock_inference_spec, mock_predictor, mock_logger
     ):
+        mock_start_serving = Mock()
+        mock_start_serving.side_effect = lambda *args, **kwargs: (
+            True,
+            None,
+        )
+
         mock_response = "Fake response"
         mock_multi_model_server_deep_ping = Mock()
         mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
@@ -114,6 +120,7 @@ class TestInProcessMode(unittest.TestCase):
         )
 
         in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
+        in_process_mode._start_serving = mock_start_serving
 
         in_process_mode.create_server(predictor=mock_predictor)
 
@@ -133,6 +140,12 @@ class TestInProcessMode(unittest.TestCase):
         mock_inference_spec,
         mock_predictor,
     ):
+        mock_start_serving = Mock()
+        mock_start_serving.side_effect = lambda *args, **kwargs: (
+            True,
+            None,
+        )
+
         mock_multi_model_server_deep_ping = Mock()
         mock_multi_model_server_deep_ping.side_effect = lambda *args, **kwargs: (
             False,
@@ -148,5 +161,29 @@ class TestInProcessMode(unittest.TestCase):
         )
 
         in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
+        in_process_mode._start_serving = mock_start_serving
 
-        self.assertRaises(LocalDeepPingException, in_process_mode.create_server, mock_predictor)
+        self.assertRaises(InProcessDeepPingException, in_process_mode.create_server, mock_predictor)
+
+    @patch(
+        "sagemaker.serve.model_server.multi_model_server.server.InProcessMultiModelServer._stop_serving"
+    )
+    @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
+    @patch("sagemaker.session.Session")
+    def test_destroy_server(
+        self,
+        mock_session,
+        mock_inference_spec,
+        mock_stop_serving,
+    ):
+        in_process_mode = InProcessMode(
+            model_server=ModelServer.MMS,
+            inference_spec=mock_inference_spec,
+            schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
+            session=mock_session,
+            model_path="model_path",
+        )
+
+        in_process_mode.destroy_server()
+
+        mock_stop_serving.assert_called()
