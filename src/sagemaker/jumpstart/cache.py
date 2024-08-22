@@ -462,19 +462,24 @@ class JumpStartModelsCache:
             HubContentType.MODEL_REFERENCE,
         }:
 
-            hub_arn_extracted_info = hub_utils.get_info_from_hub_resource_arn(id_info)
+            hub_resource_arn_extracted_info = hub_utils.get_info_from_hub_resource_arn(id_info)
+            hub_arn = hub_utils.construct_hub_arn_from_name(
+                hub_name=hub_resource_arn_extracted_info.hub_name,
+                region=hub_resource_arn_extracted_info.region,
+                account_id=hub_resource_arn_extracted_info.account_id,
+            )
 
             model_version: str = hub_utils.get_hub_model_version(
-                hub_model_name=hub_arn_extracted_info.hub_content_name,
+                hub_model_name=hub_resource_arn_extracted_info.hub_content_name,
                 hub_model_type=data_type.value,
-                hub_name=hub_arn_extracted_info.hub_name,
+                hub_name=hub_arn,
                 sagemaker_session=self._sagemaker_session,
-                hub_model_version=hub_arn_extracted_info.hub_content_version,
+                hub_model_version=hub_resource_arn_extracted_info.hub_content_version,
             )
 
             hub_model_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=hub_arn_extracted_info.hub_name,
-                hub_content_name=hub_arn_extracted_info.hub_content_name,
+                hub_name=hub_arn,
+                hub_content_name=hub_resource_arn_extracted_info.hub_content_name,
                 hub_content_version=model_version,
                 hub_content_type=data_type.value,
             )

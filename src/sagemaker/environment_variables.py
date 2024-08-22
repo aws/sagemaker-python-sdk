@@ -20,7 +20,7 @@ from typing import Dict, Optional
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.enums import JumpStartModelType, JumpStartScriptScope
 from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ def retrieve_default(
     instance_type: Optional[str] = None,
     script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
     config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Dict[str, str]:
     """Retrieves the default container environment variables for the model matching the arguments.
 
@@ -70,6 +71,8 @@ def retrieve_default(
         script (JumpStartScriptScope): The JumpStart script for which to retrieve environment
             variables.
         config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         dict: The variables to use for the model.
 
@@ -94,4 +97,5 @@ def retrieve_default(
         instance_type=instance_type,
         script=script,
         config_name=config_name,
+        model_type=model_type,
     )

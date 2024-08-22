@@ -17,6 +17,7 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.enums import (
+    JumpStartModelType,
     JumpStartScriptScope,
     VariableScope,
 )
@@ -38,6 +39,7 @@ def _retrieve_default_hyperparameters(
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
     config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ):
     """Retrieves the training hyperparameters for the model matching the given arguments.
 
@@ -71,6 +73,8 @@ def _retrieve_default_hyperparameters(
         instance_type (str): An instance type to optionally supply in order to get hyperparameters
             specific for the instance type.
         config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         dict: the hyperparameters to use for the model.
     """
@@ -89,6 +93,7 @@ def _retrieve_default_hyperparameters(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         config_name=config_name,
+        model_type=model_type,
     )
 
     default_hyperparameters: Dict[str, str] = {}

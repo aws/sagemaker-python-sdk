@@ -17,6 +17,7 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.enums import (
+    JumpStartModelType,
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.utils import (
@@ -35,6 +36,7 @@ def _model_supports_incremental_training(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> bool:
     """Returns True if the model supports incremental training.
 
@@ -59,6 +61,8 @@ def _model_supports_incremental_training(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         bool: the support status for incremental training.
     """
@@ -77,6 +81,7 @@ def _model_supports_incremental_training(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         config_name=config_name,
+        model_type=model_type,
     )
 
     return model_specs.supports_incremental_training()
