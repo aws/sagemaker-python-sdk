@@ -12,9 +12,16 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from pathlib import PosixPath
+import platform
+import numpy as np
+
 from unittest import TestCase
 from unittest.mock import Mock, PropertyMock, patch, mock_open
 
+from sagemaker.serve.model_server.djl_serving.server import (
+    LocalDJLServing,
+)
 from sagemaker.serve.model_server.djl_serving.prepare import (
     _copy_jumpstart_artifacts,
     _create_dir_structure,
@@ -32,8 +39,54 @@ from tests.unit.sagemaker.serve.model_server.constants import (
 
 MOCK_DJL_JUMPSTART_GLOBED_RESOURCES = ["./config.json"]
 
+CPU_TF_IMAGE = (
+    "763104351884.dkr.ecr.us-east-1.amazonaws.com/"
+    "huggingface-pytorch-inference:2.0.0-transformers4.28.1-cpu-py310-ubuntu20.04"
+)
+MODEL_PATH = "model_path"
+MODEL_REPO = f"{MODEL_PATH}/1"
+ENV_VAR = {"KEY": "VALUE"}
+PAYLOAD = np.random.rand(3, 4).astype(dtype=np.float32)
+DTYPE = "TYPE_FP32"
+SECRET_KEY = "secret_key"
+INFER_RESPONSE = {"outputs": [{"name": "output_name"}]}
+
 
 class DjlPrepareTests(TestCase):
+    def test_start_invoke_destroy_local_djl_server(self):
+        mock_container = Mock()
+        mock_docker_client = Mock()
+        mock_docker_client.containers.run.return_value = mock_container
+
+        local_djl_server = LocalDJLServing()
+        mock_schema_builder = Mock()
+        mock_schema_builder.input_serializer.serialize.return_value = PAYLOAD
+        local_djl_server.schema_builder = mock_schema_builder
+
+        local_djl_server._start_serving(
+            client=mock_docker_client,
+            model_path=MODEL_PATH,
+            secret_key=SECRET_KEY,
+            env_vars=ENV_VAR,
+            image=CPU_TF_IMAGE,
+        )
+
+        mock_docker_client.containers.run.assert_called_once_with(
+            CPU_TF_IMAGE,
+            "serve",
+            network_mode="host",
+            detach=True,
+            auto_remove=True,
+            volumes={PosixPath("model_path/code"): {"bind": "/opt/ml/model/", "mode": "rw"}},
+            environment={
+                "KEY": "VALUE",
+                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
+                "LOCAL_PYTHON": platform.python_version(),
+            },
+        )
+
     @patch("sagemaker.serve.model_server.djl_serving.prepare._check_disk_space")
     @patch("sagemaker.serve.model_server.djl_serving.prepare._check_docker_disk_usage")
     @patch("sagemaker.serve.model_server.djl_serving.prepare.Path")
