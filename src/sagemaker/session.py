@@ -950,6 +950,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     }
         Returns:
             str: ARN of the training job, if it is created.
+
+        Raises:
+            - botocore.exceptions.ClientError: If Sagemaker throws an exception while creating
+            training job.
+            - ValueError: If both image_uri and algorithm are provided, or if neither is provided.
         """
         tags = _append_project_tags(format_tags(tags))
         tags = self._append_sagemaker_config_tags(
@@ -1033,9 +1038,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            logger.info("Creating training-job with name: %s", job_name)
-            logger.debug("train request: %s", json.dumps(request, indent=4))
-            self.sagemaker_client.create_training_job(**request)
+            try:
+                logger.info("Creating training-job with name: %s", job_name)
+                logger.debug("train request: %s", json.dumps(request, indent=4))
+                self.sagemaker_client.create_training_job(**request)
+            except Exception as e:
+                troubleshooting = (
+                    "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-python-sdk-troubleshooting.html"
+                    "#sagemaker-python-sdk-troubleshooting-create-training-job"
+                )
+                logger.error(
+                    "Please check the troubleshooting guide for common errors: %s", troubleshooting
+                )
+                raise e
 
         self._intercept_create_request(train_request, submit, self.train.__name__)
 
@@ -1342,6 +1357,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     remote_debug_config = {
                         "EnableRemoteDebug": True,
                     }
+
+        Returns:
+            str: ARN of training job
+
+        Raises:
+            - botocore.exceptions.ClientError: If Sagemaker throws an error while updating training
+            job.
+            - botocore.exceptions.ParamValidationError: If any request parameters are in an invalid
+            format.
         """
         # No injections from sagemaker_config because the UpdateTrainingJob API's resource_config
         # object accepts fewer parameters than the CreateTrainingJob API, and none that the
@@ -1356,9 +1380,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             resource_config=resource_config,
             remote_debug_config=remote_debug_config,
         )
-        logger.info("Updating training job with name %s", job_name)
-        logger.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
-        self.sagemaker_client.update_training_job(**update_training_job_request)
+        try:
+            logger.info("Updating training job with name %s", job_name)
+            logger.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
+            self.sagemaker_client.update_training_job(**update_training_job_request)
+        except botocore.exceptions.ParamValidationError as e:
+            troubleshooting = (
+                "Incorrect request parameter was provided. Check the API documentation: "
+                "https://docs.aws.amazon.com/sagemaker/latest/APIReference/"
+                "API_UpdateTrainingJob.html#API_UpdateTrainingJob_RequestParameters"
+            )
+            logger.error("%s", troubleshooting)
+            raise e
+        except botocore.exceptions.ClientError as e:
+            troubleshooting = (
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+                "sagemaker-python-sdk-troubleshooting.html"
+                "#sagemaker-python-sdk-troubleshooting-update-training-job"
+            )
+            logger.error(
+                "Please check the troubleshooting guide for common errors: %s", troubleshooting
+            )
+            raise e
 
     def _get_update_training_job_request(
         self,
@@ -1461,6 +1504,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+
+        Raises:
+            - botocore.exceptions.ClientError: If Sagemaker throws an error while creating
+            processing job.
         """
         tags = _append_project_tags(format_tags(tags))
         tags = self._append_sagemaker_config_tags(
@@ -1524,9 +1571,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            logger.info("Creating processing-job with name %s", job_name)
-            logger.debug("process request: %s", json.dumps(request, indent=4))
-            self.sagemaker_client.create_processing_job(**request)
+            try:
+                logger.info("Creating processing-job with name %s", job_name)
+                logger.debug("process request: %s", json.dumps(request, indent=4))
+                self.sagemaker_client.create_processing_job(**request)
+            except Exception as e:
+                troubleshooting = (
+                    "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+                    "sagemaker-python-sdk-troubleshooting.html"
+                    "#sagemaker-python-sdk-troubleshooting-create-processing-job"
+                )
+                logger.error(
+                    "Please check the troubleshooting guide for common errors: %s", troubleshooting
+                )
+                raise e
 
         self._intercept_create_request(process_request, submit, self.process.__name__)
 
@@ -4573,6 +4631,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` created.
+
+        Raises:
+            botocore.exceptions.ClientError: If Sagemaker throws an exception while creating
+            endpoint.
         """
         logger.info("Creating endpoint with name %s", endpoint_name)
 
@@ -4581,16 +4643,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
         )
+        try:
+            res = self.sagemaker_client.create_endpoint(
+                EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
+            )
+            if res:
+                self.endpoint_arn = res["EndpointArn"]
 
-        res = self.sagemaker_client.create_endpoint(
-            EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
-        )
-        if res:
-            self.endpoint_arn = res["EndpointArn"]
-
-        if wait:
-            self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
-        return endpoint_name
+            if wait:
+                self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
+            return endpoint_name
+        except Exception as e:
+            troubleshooting = (
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+                "sagemaker-python-sdk-troubleshooting.html"
+                "#sagemaker-python-sdk-troubleshooting-create-endpoint"
+            )
+            logger.error(
+                "Please check the troubleshooting guide for common errors: %s", troubleshooting
+            )
+            raise e
 
     def endpoint_in_service_or_not(self, endpoint_name: str):
         """Check whether an Amazon SageMaker ``Endpoint``` is in IN_SERVICE status.
@@ -4635,7 +4707,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: Name of the Amazon SageMaker ``Endpoint`` being updated.
 
         Raises:
-            ValueError: if the endpoint does not already exist
+            - ValueError: if the endpoint does not already exist
+            - botocore.exceptions.ClientError: If SageMaker throws an error while
+            creating endpoint config, describing endpoint or updating endpoint
         """
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
@@ -4645,15 +4719,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "existing endpoint name".format(endpoint_name)
             )
 
-        res = self.sagemaker_client.update_endpoint(
-            EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
-        )
-        if res:
-            self.endpoint_arn = res["EndpointArn"]
+        try:
 
-        if wait:
-            self.wait_for_endpoint(endpoint_name)
-        return endpoint_name
+            res = self.sagemaker_client.update_endpoint(
+                EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
+            )
+            if res:
+                self.endpoint_arn = res["EndpointArn"]
+
+            if wait:
+                self.wait_for_endpoint(endpoint_name)
+            return endpoint_name
+        except Exception as e:
+            troubleshooting = (
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+                "sagemaker-python-sdk-troubleshooting.html"
+                "#sagemaker-python-sdk-troubleshooting-update-endpoint"
+            )
+            logger.error(
+                "Please check the troubleshooting guide for common errors: %s", troubleshooting
+            )
+            raise e
 
     def is_inference_component_based_endpoint(self, endpoint_name):
         """Returns 'True' if endpoint is inference-component-based, 'False' otherwise.
@@ -4934,7 +5020,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return inference_component_name
 
     def delete_inference_component(self, inference_component_name: str, wait: bool = False):
-        """Deletes a InferenceComponent.
+        """Deletes an InferenceComponent.
 
         Args:
             inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``
@@ -8502,8 +8588,19 @@ def _check_job_status(job, desc, status_key_name):
     elif status != "Completed":
         reason = desc.get("FailureReason", "(No reason provided)")
         job_type = status_key_name.replace("JobStatus", " job")
-        message = "Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
-            job_type=job_type, job_name=job, status=status, reason=reason
+        troubleshooting = (
+            "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+            "sagemaker-python-sdk-troubleshooting.html"
+        )
+        message = (
+            "Error for {job_type} {job_name}: {status}. Reason: {reason}. "
+            "Check troubleshooting guide for common errors: {troubleshooting}"
+        ).format(
+            job_type=job_type,
+            job_name=job,
+            status=status,
+            reason=reason,
+            troubleshooting=troubleshooting,
         )
         if "CapacityError" in str(reason):
             raise exceptions.CapacityError(
