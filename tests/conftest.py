@@ -556,15 +556,18 @@ def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_lat
     Fixture exists as such, since TF training and TFS have different latest versions.
     Otherwise, this would simply be a single latest version.
     """
-    if Version(tensorflow_training_latest_version) in SpecifierSet(">=2.16"):
+    tensorflow_training_latest_version = Version(tensorflow_training_latest_version)
+    tensorflow_inference_latest_version = Version(tensorflow_inference_latest_version)
+
+    if tensorflow_training_latest_version in SpecifierSet(">=2.16"):
         return (
-            f"{Version(tensorflow_training_latest_version).major}"
-            f".{Version(tensorflow_training_latest_version).minor}"
+            f"{tensorflow_training_latest_version.major}"
+            f".{tensorflow_training_latest_version.minor}"
         )
     return str(
         min(
-            Version(tensorflow_training_latest_version),
-            Version(tensorflow_inference_latest_version),
+            tensorflow_training_latest_version,
+            tensorflow_inference_latest_version,
         )
     )
 
