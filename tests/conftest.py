@@ -559,18 +559,15 @@ def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_lat
     tensorflow_training_latest_version = Version(tensorflow_training_latest_version)
     tensorflow_inference_latest_version = Version(tensorflow_inference_latest_version)
 
-    if tensorflow_training_latest_version in SpecifierSet(
-        ">=2.16"
-    ) and tensorflow_inference_latest_version in SpecifierSet(">=2.16"):
-        return (
-            f"{tensorflow_training_latest_version.major}"
-            f".{tensorflow_training_latest_version.minor}"
-        )
-    return str(
-        min(
-            tensorflow_training_latest_version,
-            tensorflow_inference_latest_version,
-        )
+    return_version = min(
+        tensorflow_training_latest_version,
+        tensorflow_inference_latest_version,
+    )
+
+    return (
+        f"{return_version.major}.{return_version.minor}"
+        if return_version in SpecifierSet(">=2.16")
+        else str(return_version)
     )
 
 
