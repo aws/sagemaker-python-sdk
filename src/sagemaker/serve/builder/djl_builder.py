@@ -472,10 +472,10 @@ class DJL(ABC):
         if self.model:
             logger.info(
                 "Auto detect container url for the provided model and on instance %s",
-                self.instance_type,
+                self.nb_instance_type,
             )
             self.image_uri = auto_detect_container(
-                self.model, self.sagemaker_session.boto_region_name, self.instance_type
+                self.model, self.sagemaker_session.boto_region_name, self.nb_instance_type
             )
 
         elif self.inference_spec:
@@ -488,7 +488,7 @@ class DJL(ABC):
             self.image_uri = auto_detect_container(
                 self.inference_spec.load(self.model_path),
                 self.sagemaker_session.boto_region_name,
-                self.instance_type,
+                self.nb_instance_type,
             )
         else:
             raise ValueError(
