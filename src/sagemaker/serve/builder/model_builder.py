@@ -492,6 +492,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             env=self.env_vars,
             sagemaker_session=self.sagemaker_session,
             predictor_cls=self._get_predictor,
+            name=self.name,
         )
 
         # store the modes in the model so that we may

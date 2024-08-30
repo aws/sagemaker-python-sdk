@@ -51,6 +51,7 @@ class TensorflowServing(ABC):
         self.pysdk_model = None
         self.schema_builder = None
         self.env_vars = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -97,6 +98,7 @@ class TensorflowServing(ABC):
             env=self.env_vars,
             sagemaker_session=self.sagemaker_session,
             predictor_cls=self._get_tensorflow_predictor,
+            name=self.name,
         )
 
         self.pysdk_model.mode = self.mode

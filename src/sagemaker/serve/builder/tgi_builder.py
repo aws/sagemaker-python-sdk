@@ -92,6 +92,7 @@ class TGI(ABC):
         self.ram_usage_model_load = None
         self.secret_key = None
         self.role_arn = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self, *args, **kwargs):
@@ -142,6 +143,7 @@ class TGI(ABC):
             env=self.env_vars,
             role=self.role_arn,
             sagemaker_session=self.sagemaker_session,
+            name=self.name,
         )
 
         self._original_deploy = pysdk_model.deploy
