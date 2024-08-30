@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.231.0 (2024-08-30)
+
+### Features
+
+ * Add SageMaker Core to the dependency
+
+### Bug Fixes and Other Changes
+
+ * Disable test_mnist_async
+ * SMP v2.5
+ * update image_uri_configs  08-29-2024 07:17:59 PST
+
 ## v2.230.0 (2024-08-28)
 
 ### Features
