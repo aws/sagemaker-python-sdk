@@ -176,6 +176,39 @@ def scheduled_model_quality_monitor(
     return model_quality_monitor
 
 
+@pytest.fixture
+def scheduled_model_quality_monitor_with_dashboard(
+    sagemaker_session, model_quality_monitor, endpoint_name, ground_truth_input
+):
+    monitor_schedule_name = utils.unique_name_from_base("model-quality-monitor")
+    s3_uri_monitoring_output = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        endpoint_name,
+        monitor_schedule_name,
+        "monitor_output",
+    )
+    # To include attributes
+    endpoint_input = EndpointInput(
+        endpoint_name=endpoint_name,
+        destination=ENDPOINT_INPUT_LOCAL_PATH,
+        start_time_offset=START_TIME_OFFSET,
+        end_time_offset=END_TIME_OFFSET,
+        inference_attribute=INFERENCE_ATTRIBUTE,
+    )
+    model_quality_monitor.create_monitoring_schedule(
+        monitor_schedule_name=monitor_schedule_name,
+        endpoint_input=endpoint_input,
+        ground_truth_input=ground_truth_input,
+        problem_type=PROBLEM_TYPE,
+        output_s3_uri=s3_uri_monitoring_output,
+        schedule_cron_expression=CRON,
+        enable_cloudwatch_metrics=True,
+        enable_automatic_dashboards=True,
+    )
+    return model_quality_monitor
+
+
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
@@ -212,6 +245,65 @@ def test_model_quality_monitor(
     # update schedule
     monitor.update_monitoring_schedule(
         max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS, schedule_cron_expression=UPDATED_CRON
+    )
+    assert monitor.monitoring_schedule_name == monitoring_schedule_name
+    assert monitor.job_definition_name != job_definition_name
+    _verify_monitoring_schedule(
+        monitor=monitor, schedule_status="Scheduled", schedule_cron_expression=UPDATED_CRON
+    )
+    _verify_model_quality_job_description(
+        sagemaker_session=sagemaker_session,
+        monitor=monitor,
+        endpoint_name=endpoint_name,
+        ground_truth_input=ground_truth_input,
+        max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS,
+    )
+
+    # delete schedule
+    monitor.delete_monitoring_schedule()
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
+def test_model_quality_monitor_with_dashboard(
+    sagemaker_session,
+    scheduled_model_quality_monitor_with_dashboard,
+    endpoint_name,
+    ground_truth_input,
+):
+    monitor = scheduled_model_quality_monitor_with_dashboard
+    monitor._wait_for_schedule_changes_to_apply()
+
+    # stop it as soon as possible to avoid any execution
+    monitor.stop_monitoring_schedule()
+    _verify_monitoring_schedule(
+        monitor=monitor,
+        schedule_status="Stopped",
+    )
+    _verify_model_quality_job_description(
+        sagemaker_session=sagemaker_session,
+        monitor=monitor,
+        endpoint_name=endpoint_name,
+        ground_truth_input=ground_truth_input,
+    )
+
+    # attach to schedule
+    monitoring_schedule_name = monitor.monitoring_schedule_name
+    job_definition_name = monitor.job_definition_name
+    monitor = ModelQualityMonitor.attach(
+        monitor_schedule_name=monitor.monitoring_schedule_name,
+        sagemaker_session=sagemaker_session,
+    )
+    assert monitor.monitoring_schedule_name == monitoring_schedule_name
+    assert monitor.job_definition_name == job_definition_name
+
+    # update schedule
+    monitor.update_monitoring_schedule(
+        max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS,
+        schedule_cron_expression=UPDATED_CRON,
+        enable_automatic_dashboards=True,
     )
     assert monitor.monitoring_schedule_name == monitoring_schedule_name
     assert monitor.job_definition_name != job_definition_name

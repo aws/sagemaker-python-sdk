@@ -19,6 +19,7 @@ from typing import Union
 import sagemaker
 import pytest
 from mock import Mock, patch, MagicMock
+from botocore.exceptions import ClientError
 
 from sagemaker.model_monitor import (
     ModelMonitor,
@@ -464,11 +465,31 @@ MONITORING_ALERT_HISTORY_SUMMARY = {
     "AlertStatus": "Ok",
 }
 
+INVALID_DASHBOARD_NAME = "!@#$%^&*(){}?/[]"
+VALID_DASHBOARD_NAME = "dashboard_1"
+EXISTING_DASHBOARD_NAME = "dashboard_0"
+NEW_DASHBOARD_NAME = "dashboard_2"
+
+
+def mock_get_dashboard(DashboardName):
+    if DashboardName == EXISTING_DASHBOARD_NAME:
+        return {"DashboardName": DashboardName, "DashboardBody": "dummy_dashboard_body"}
+    raise ClientError(
+        error_response={
+            "Error": {},
+        },
+        operation_name=f"Dashboard '{DashboardName}' not found.",
+    )
+
 
 # TODO-reinvent-2019: Continue to flesh these out.
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
+    boto_mock_client = Mock(name="cloudwatch_client")
+    boto_mock_client.put_dashboard = Mock()
+    boto_mock.client = boto_mock_client
+
     session_mock = Mock(
         name="sagemaker_session",
         boto_session=boto_mock,
@@ -477,6 +498,9 @@ def sagemaker_session():
         local_mode=False,
         default_bucket_prefix=None,
     )
+
+    session_mock.boto_session.client("cloudwatch").get_dashboard = mock_get_dashboard
+
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session_mock.upload_data = Mock(
         name="upload_data", return_value="mocked_s3_uri_from_upload_data"
@@ -850,6 +874,30 @@ def test_data_quality_monitor(data_quality_monitor, sagemaker_session):
     )
 
 
+def test_data_quality_monitor_with_dashboard(data_quality_monitor, sagemaker_session):
+    # create schedule
+    _test_data_quality_monitor_create_schedule(
+        data_quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        constraints=CONSTRAINTS,
+        statistics=STATISTICS,
+        enable_cloudwatch_metrics=True,
+        enable_automatic_dashboard=True,
+    )
+
+    # update schedule
+    _test_data_quality_monitor_update_schedule(
+        data_quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+    # delete schedule
+    _test_data_quality_monitor_delete_schedule(
+        data_quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+
 def test_data_quality_batch_transform_monitor(data_quality_monitor, sagemaker_session):
     # create schedule
     _test_data_quality_batch_transform_monitor_create_schedule(
@@ -914,6 +962,43 @@ def test_data_quality_monitor_invalid_create(data_quality_monitor, sagemaker_ses
             sagemaker_session=sagemaker_session,
             constraints=CONSTRAINTS,
             statistics=STATISTICS,
+        )
+
+
+def test_data_quality_monitor_invalid_dashboard_create(data_quality_monitor, sagemaker_session):
+    # invalid: cannot create a monitoring schedule with an invalid dashboard name
+    with pytest.raises(ValueError):
+        _test_data_quality_monitor_create_schedule(
+            data_quality_monitor=data_quality_monitor,
+            sagemaker_session=sagemaker_session,
+            constraints=CONSTRAINTS,
+            enable_cloudwatch_metrics=True,
+            enable_automatic_dashboard=True,
+            dashboard_name=INVALID_DASHBOARD_NAME,
+        )
+
+    # invalid: cannot create a monitoring schedule when we set
+    # enable_automatic_dashboard to True but do not publish metrics
+    # to CW.
+    with pytest.raises(ValueError):
+        _test_data_quality_monitor_create_schedule(
+            data_quality_monitor=data_quality_monitor,
+            sagemaker_session=sagemaker_session,
+            constraints=CONSTRAINTS,
+            enable_cloudwatch_metrics=False,
+            enable_automatic_dashboard=True,
+            dashboard_name=VALID_DASHBOARD_NAME,
+        )
+
+    # invalid: cannot create a monitoring schedule with existing dashboard
+    with pytest.raises(ValueError):
+        _test_data_quality_monitor_create_schedule(
+            data_quality_monitor=data_quality_monitor,
+            sagemaker_session=sagemaker_session,
+            constraints=CONSTRAINTS,
+            enable_cloudwatch_metrics=True,
+            enable_automatic_dashboard=True,
+            dashboard_name=EXISTING_DASHBOARD_NAME,
         )
 
 
@@ -991,6 +1076,9 @@ def _test_data_quality_monitor_create_schedule(
     endpoint_input=EndpointInput(
         endpoint_name=ENDPOINT_NAME, destination=ENDPOINT_INPUT_LOCAL_PATH
     ),
+    enable_cloudwatch_metrics=True,
+    enable_automatic_dashboard=False,
+    dashboard_name=None,
 ):
     # for endpoint input
     data_quality_monitor.create_monitoring_schedule(
@@ -1002,6 +1090,9 @@ def _test_data_quality_monitor_create_schedule(
         statistics=statistics,
         monitor_schedule_name=SCHEDULE_NAME,
         schedule_cron_expression=CRON_HOURLY,
+        enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+        enable_automatic_dashboard=enable_automatic_dashboard,
+        dashboard_name=dashboard_name,
     )
 
     # validation
@@ -1030,6 +1121,9 @@ def _test_data_quality_batch_transform_monitor_create_schedule(
         destination=SCHEDULE_DESTINATION,
         dataset_format=MonitoringDatasetFormat.csv(header=False),
     ),
+    enable_cloudwatch_metrics=True,
+    enable_automatic_dashboard=False,
+    dashboard_name=None,
 ):
     # for batch transform input
     data_quality_monitor.create_monitoring_schedule(
@@ -1041,6 +1135,9 @@ def _test_data_quality_batch_transform_monitor_create_schedule(
         statistics=statistics,
         monitor_schedule_name=SCHEDULE_NAME,
         schedule_cron_expression=CRON_HOURLY,
+        enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+        enable_automatic_dashboard=enable_automatic_dashboard,
+        dashboard_name=dashboard_name,
     )
 
     # validation
@@ -1494,6 +1591,28 @@ def test_model_quality_monitor(model_quality_monitor, sagemaker_session):
     )
 
 
+def test_model_quality_monitor_with_dashboard(model_quality_monitor, sagemaker_session):
+    # create schedule
+    _test_model_quality_monitor_create_schedule(
+        model_quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        constraints=CONSTRAINTS,
+        enable_automatic_dashboard=True,
+        dashboard_name=NEW_DASHBOARD_NAME,
+    )
+
+    # update schedule
+    _test_model_quality_monitor_update_schedule(
+        model_quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+    _test_model_quality_monitor_delete_schedule(
+        model_quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+
 def test_model_quality_batch_transform_monitor(model_quality_monitor, sagemaker_session):
     # create schedule
     _test_model_quality_monitor_batch_transform_create_schedule(
@@ -1555,6 +1674,43 @@ def test_model_quality_monitor_invalid_create(model_quality_monitor, sagemaker_s
             model_quality_monitor=model_quality_monitor,
             sagemaker_session=sagemaker_session,
             constraints=CONSTRAINTS,
+        )
+
+
+def test_model_quality_monitor_invalid_dashboard_create(model_quality_monitor, sagemaker_session):
+    # invalid: cannot create a monitoring schedule with an invalid dashboard name
+    with pytest.raises(ValueError):
+        _test_model_quality_monitor_create_schedule(
+            model_quality_monitor=model_quality_monitor,
+            sagemaker_session=sagemaker_session,
+            constraints=CONSTRAINTS,
+            enable_cloudwatch_metrics=True,
+            enable_automatic_dashboard=True,
+            dashboard_name=INVALID_DASHBOARD_NAME,
+        )
+
+    # invalid: cannot create a monitoring schedule when we set
+    # enable_automatic_dashboard to True but do not publish metrics
+    # to CW.
+    with pytest.raises(ValueError):
+        _test_model_quality_monitor_create_schedule(
+            model_quality_monitor=model_quality_monitor,
+            sagemaker_session=sagemaker_session,
+            constraints=CONSTRAINTS,
+            enable_cloudwatch_metrics=False,
+            enable_automatic_dashboard=True,
+            dashboard_name=VALID_DASHBOARD_NAME,
+        )
+
+    # invalid: cannot create a monitoring schedule with existing dashboard
+    with pytest.raises(ValueError):
+        _test_model_quality_monitor_create_schedule(
+            model_quality_monitor=model_quality_monitor,
+            sagemaker_session=sagemaker_session,
+            constraints=CONSTRAINTS,
+            enable_cloudwatch_metrics=True,
+            enable_automatic_dashboard=True,
+            dashboard_name=EXISTING_DASHBOARD_NAME,
         )
 
 
@@ -1639,6 +1795,9 @@ def _test_model_quality_monitor_create_schedule(
         probability_attribute=PROBABILITY_ATTRIBUTE,
         probability_threshold_attribute=PROBABILITY_THRESHOLD_ATTRIBUTE,
     ),
+    enable_cloudwatch_metrics=True,
+    enable_automatic_dashboard=False,
+    dashboard_name=None,
 ):
     model_quality_monitor.create_monitoring_schedule(
         endpoint_input=endpoint_input,
@@ -1650,6 +1809,9 @@ def _test_model_quality_monitor_create_schedule(
         constraints=constraints,
         monitor_schedule_name=SCHEDULE_NAME,
         schedule_cron_expression=CRON_HOURLY,
+        enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+        enable_automatic_dashboard=enable_automatic_dashboard,
+        dashboard_name=dashboard_name,
     )
 
     # validation
