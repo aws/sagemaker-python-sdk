@@ -121,7 +121,6 @@ class JumpStart(ABC):
         self.is_compiled = False
         self.is_quantized = False
         self.speculative_decoding_draft_model_source = None
-        self.is_set_deployment_config = False
         self.deployment_config_name = None
 
     @abstractmethod
@@ -513,7 +512,6 @@ class JumpStart(ABC):
             raise Exception("Cannot set deployment config to an uninitialized model.")
 
         self.pysdk_model.set_deployment_config(config_name, instance_type)
-        is_set_deployment_config = True
         self.deployment_config_name = config_name
 
         self.instance_type = instance_type
