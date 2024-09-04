@@ -78,6 +78,7 @@ class TestDjlBuilder(unittest.TestCase):
     ):
         builder = ModelBuilder(
             model=mock_model_id,
+            name="mock_model_name",
             schema_builder=mock_schema_builder,
             mode=Mode.LOCAL_CONTAINER,
             model_server=ModelServer.DJL_SERVING,
@@ -89,6 +90,8 @@ class TestDjlBuilder(unittest.TestCase):
         builder._prepare_for_mode.side_effect = None
 
         model = builder.build()
+        assert model.name == "mock_model_name"
+
         builder.serve_settings.telemetry_opt_out = True
 
         assert isinstance(model, DJLModel)

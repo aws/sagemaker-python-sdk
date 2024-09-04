@@ -65,6 +65,7 @@ class TEI(ABC):
         self.ram_usage_model_load = None
         self.secret_key = None
         self.role_arn = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self, *args, **kwargs):
@@ -105,6 +106,7 @@ class TEI(ABC):
             env=self.env_vars,
             role=self.role_arn,
             sagemaker_session=self.sagemaker_session,
+            name=self.name,
         )
 
         logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)

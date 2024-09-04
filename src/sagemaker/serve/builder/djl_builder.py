@@ -92,6 +92,7 @@ class DJL(ABC):
         self.nb_instance_type = None
         self.ram_usage_model_load = None
         self.role_arn = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -130,6 +131,7 @@ class DJL(ABC):
             huggingface_hub_token=self.env_vars.get("HF_TOKEN"),
             image_config=self.image_config,
             vpc_config=self.vpc_config,
+            name=self.name,
         )
 
         if not self.image_uri:
