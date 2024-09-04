@@ -1,5 +1,33 @@
 # Changelog
 
+## v2.231.0 (2024-08-30)
+
+### Features
+
+ * Add SageMaker Core to the dependency
+
+### Bug Fixes and Other Changes
+
+ * Disable test_mnist_async
+ * SMP v2.5
+ * update image_uri_configs  08-29-2024 07:17:59 PST
+
+## v2.230.0 (2024-08-28)
+
+### Features
+
+ * FastAPI integration for In_Process Mode (2/2)
+
+### Bug Fixes and Other Changes
+
+ * chore: add HF LLM neuronx 0.0.24 image
+ * TF-2.16 test modification and handling
+ * fix test fail
+ * Add troubleshooting links to exceptions
+ * cross account private hub model fine-tuning
+ * chore: cleanup jumpstart factory
+ * disable failing integration tests
+
 ## v2.229.0 (2024-08-15)
 
 ### Features

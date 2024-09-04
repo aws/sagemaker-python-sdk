@@ -25,6 +25,9 @@ import re
 
 import pytest
 
+from packaging.version import Version
+from packaging.specifiers import SpecifierSet
+
 from sagemaker.model_card.model_card import ModelCard, ModelOverview, ModelPackageModelCard
 from sagemaker.model_card.schema_constraints import ModelCardStatusEnum
 import tests
@@ -1250,6 +1253,11 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
     pipeline_name,
     region_name,
 ):
+    if Version(tf_full_version) in SpecifierSet("==2.16.*"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
     base_dir = os.path.join(DATA_DIR, "tensorflow_mnist")
     entry_point = os.path.join(base_dir, "mnist_v2.py")
     input_path = sagemaker_session_for_pipeline.upload_data(

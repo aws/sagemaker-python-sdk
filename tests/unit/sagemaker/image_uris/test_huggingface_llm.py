@@ -55,6 +55,7 @@ HF_VERSIONS_MAPPING = {
         "0.0.21": "1.13.1-optimum0.0.21-neuronx-py310-ubuntu22.04",
         "0.0.22": "2.1.2-optimum0.0.22-neuronx-py310-ubuntu22.04",
         "0.0.23": "2.1.2-optimum0.0.23-neuronx-py310-ubuntu22.04",
+        "0.0.24": "2.1.2-optimum0.0.24-neuronx-py310-ubuntu22.04",
     },
 }
 

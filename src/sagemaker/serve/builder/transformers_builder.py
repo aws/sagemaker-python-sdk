@@ -89,6 +89,7 @@ class Transformers(ABC):
         self.schema_builder = None
         self.inference_spec = None
         self.shared_libs = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self, *args, **kwargs):
@@ -105,6 +106,7 @@ class Transformers(ABC):
                 env=self.env_vars,
                 role=self.role_arn,
                 sagemaker_session=self.sagemaker_session,
+                name=self.name,
             )
 
         logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)
@@ -421,6 +423,6 @@ class Transformers(ABC):
         """Creating conda environment by running commands"""
 
         try:
-            RequirementsManager().capture_and_install_dependencies(self)
+            RequirementsManager().capture_and_install_dependencies
         except subprocess.CalledProcessError:
             print("Failed to create and activate conda environment.")

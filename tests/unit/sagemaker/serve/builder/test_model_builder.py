@@ -317,7 +317,7 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls, name: (  # noqa E501
             mock_model_obj
             if image_uri == mock_image_uri
             and image_config == MOCK_IMAGE_CONFIG
@@ -326,6 +326,7 @@ class TestModelBuilder(unittest.TestCase):
             and role == mock_role_arn
             and env == ENV_VARS
             and sagemaker_session == mock_session
+            and "model-name-" in name
             else None
         )
 
@@ -425,13 +426,14 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls, name: (  # noqa E501
             mock_model_obj
             if image_uri == mock_1p_dlc_image_uri
             and model_data == model_data
             and role == mock_role_arn
             and env == ENV_VARS
             and sagemaker_session == mock_session
+            and "model-name-" in name
             else None
         )
 
@@ -532,13 +534,14 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls, name: (  # noqa E501
             mock_model_obj
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
             and env == ENV_VARS_INF_SPEC
             and sagemaker_session == mock_session
+            and "model-name-" in name
             else None
         )
 
@@ -633,13 +636,14 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls, name: (  # noqa E501
             mock_model_obj
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
             and env == ENV_VARS
             and sagemaker_session == mock_session
+            and "model-name-" in name
             else None
         )
 
@@ -742,13 +746,14 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls, name: (  # noqa E501
             mock_model_obj
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
             and env == ENV_VARS
             and sagemaker_session == mock_session
+            and "model-name-" in name
             else None
         )
 
@@ -847,13 +852,14 @@ class TestModelBuilder(unittest.TestCase):
         mock_mode.prepare.side_effect = lambda: None
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls, name: (  # noqa E501
             mock_model_obj
             if image_uri == mock_image_uri
             and model_data is None
             and role == mock_role_arn
             and env == {}
             and sagemaker_session == mock_session
+            and "model-name-" in name
             else None
         )
 
@@ -968,13 +974,14 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls, name: (  # noqa E501
             mock_model_obj
             if image_uri == mock_image_uri
             and model_data is None
             and role == mock_role_arn
             and env == {}
             and sagemaker_session == mock_session
+            and "model-name-" in name
             else None
         )
 
@@ -1119,13 +1126,14 @@ class TestModelBuilder(unittest.TestCase):
         )
 
         mock_model_obj = Mock()
-        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls: (  # noqa E501
+        mock_sdk_model.side_effect = lambda image_uri, image_config, vpc_config, model_data, role, env, sagemaker_session, predictor_cls, name: (  # noqa E501
             mock_model_obj
             if image_uri == mock_image_uri
             and model_data == model_data
             and role == mock_role_arn
             and env == ENV_VARS
             and sagemaker_session == mock_session
+            and "model-name-" in name
             else None
         )
 

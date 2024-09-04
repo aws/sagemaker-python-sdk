@@ -121,6 +121,7 @@ class JumpStart(ABC):
         self.is_compiled = False
         self.is_quantized = False
         self.speculative_decoding_draft_model_source = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self, **kwargs):
@@ -147,7 +148,10 @@ class JumpStart(ABC):
     def _create_pre_trained_js_model(self) -> Type[Model]:
         """Placeholder docstring"""
         pysdk_model = JumpStartModel(
-            self.model, vpc_config=self.vpc_config, sagemaker_session=self.sagemaker_session
+            self.model,
+            vpc_config=self.vpc_config,
+            sagemaker_session=self.sagemaker_session,
+            name=self.name,
         )
 
         self._original_deploy = pysdk_model.deploy
