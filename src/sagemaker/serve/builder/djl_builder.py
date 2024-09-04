@@ -13,7 +13,9 @@
 """Holds mixin logic to support deployment of Model ID"""
 from __future__ import absolute_import
 import logging
+import os
 from typing import Type
+from pathlib import Path
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 
@@ -46,7 +48,12 @@ from sagemaker.serve.utils.local_hardware import (
 )
 from sagemaker.serve.model_server.djl_serving.prepare import (
     _create_dir_structure,
+    prepare_for_djl,
 )
+from sagemaker.serve.detector.image_detector import (
+    auto_detect_container,
+)
+from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.predictors import DjlLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -92,6 +99,8 @@ class DJL(ABC):
         self.nb_instance_type = None
         self.ram_usage_model_load = None
         self.role_arn = None
+        self.inference_spec = None
+        self.shared_libs = None
 
     @abstractmethod
     def _prepare_for_mode(self):
@@ -247,17 +256,22 @@ class DJL(ABC):
 
         _create_dir_structure(self.model_path)
         if not hasattr(self, "pysdk_model"):
-            self.env_vars.update({"HF_MODEL_ID": self.model})
+            if self.inference_spec is not None:
+                self.env_vars.update({"HF_MODEL_ID": self.inference_spec.get_model()})
+            else:
+                self.env_vars.update({"HF_MODEL_ID": self.model})
+
             self.hf_model_config = _get_model_config_properties_from_hf(
-                self.model, self.env_vars.get("HF_TOKEN")
+                self.env_vars.get("HF_MODEL_ID"), self.env_vars.get("HF_TOKEN")
             )
             default_djl_configurations, _default_max_new_tokens = _get_default_djl_configurations(
-                self.model, self.hf_model_config, self.schema_builder
+                self.env_vars.get("HF_MODEL_ID"), self.hf_model_config, self.schema_builder
             )
             self.env_vars.update(default_djl_configurations)
             self.schema_builder.sample_input["parameters"][
                 "max_new_tokens"
             ] = _default_max_new_tokens
+
         self.pysdk_model = self._create_djl_model()
 
         if self.mode == Mode.LOCAL_CONTAINER:
@@ -445,10 +459,67 @@ class DJL(ABC):
 
         return self.pysdk_model
 
+    def _auto_detect_container(self):
+        """Set image_uri by detecting container via model name or inference spec"""
+        # Auto detect the container image uri
+        if self.image_uri:
+            logger.info(
+                "Skipping auto detection as the image uri is provided %s",
+                self.image_uri,
+            )
+            return
+
+        if self.model:
+            logger.info(
+                "Auto detect container url for the provided model and on instance %s",
+                self.nb_instance_type,
+            )
+            self.image_uri = auto_detect_container(
+                self.model, self.sagemaker_session.boto_region_name, self.nb_instance_type
+            )
+
+        elif self.inference_spec:
+            # TODO: this won't work for larger image.
+            # Fail and let the customer include the image uri
+            logger.warning(
+                "model_path provided with no image_uri. Attempting to autodetect the image\
+                    by loading the model using inference_spec.load()..."
+            )
+            self.image_uri = auto_detect_container(
+                self.inference_spec.load(self.model_path),
+                self.sagemaker_session.boto_region_name,
+                self.nb_instance_type,
+            )
+        else:
+            raise ValueError(
+                "Cannot detect and set image_uri. Please pass model or inference spec."
+            )
+
     def _build_for_djl(self):
-        """Placeholder docstring"""
+        """Checks if inference spec passed and builds DJL server accordingly"""
         self._validate_djl_serving_sample_data()
         self.secret_key = None
+        self.model_server = ModelServer.DJL_SERVING
+
+        if self.inference_spec:
+
+            os.makedirs(self.model_path, exist_ok=True)
+
+            code_path = Path(self.model_path).joinpath("code")
+
+            save_pkl(code_path, (self.inference_spec, self.schema_builder))
+            logger.info("PKL file saved to file: %s", code_path)
+
+            self._auto_detect_container()
+
+            self.secret_key = prepare_for_djl(
+                model_path=self.model_path,
+                shared_libs=self.shared_libs,
+                dependencies=self.dependencies,
+                session=self.sagemaker_session,
+                image_uri=self.image_uri,
+                inference_spec=self.inference_spec,
+            )
 
         self.pysdk_model = self._build_for_hf_djl()
         self.pysdk_model.tune = self._tune_for_hf_djl

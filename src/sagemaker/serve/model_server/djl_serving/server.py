@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import requests
 import logging
+import platform
 from pathlib import Path
 from docker.types import DeviceRequest
 from sagemaker import Session, fw_utils
@@ -28,13 +29,27 @@ logger = logging.getLogger(__name__)
 
 
 class LocalDJLServing:
-    """Placeholder docstring"""
+    """Local DJL server instance"""
 
     def _start_djl_serving(
-        self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
+        self,
+        client: object,
+        model_path: str,
+        secret_key: str,
+        env_vars: dict,
+        image: str,
     ):
-        """Placeholder docstring"""
-        updated_env_vars = _update_env_vars(env_vars)
+        """Initializes the start of the server"""
+        env = {
+            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+            "LOCAL_PYTHON": platform.python_version(),
+        }
+        if env_vars:
+            env_vars.update(env)
+        else:
+            env_vars = env
 
         self.container = client.containers.run(
             image,
@@ -50,11 +65,11 @@ class LocalDJLServing:
                     "mode": "rw",
                 },
             },
-            environment=updated_env_vars,
+            environment=env_vars,
         )
 
     def _invoke_djl_serving(self, request: object, content_type: str, accept: str):
-        """Placeholder docstring"""
+        """Invokes DJL server by hitting the docker host"""
         try:
             response = requests.post(
                 f"http://{get_docker_host()}:8080/predictions/model",
@@ -68,7 +83,7 @@ class LocalDJLServing:
             raise Exception("Unable to send request to the local container server %s", str(e))
 
     def _djl_deep_ping(self, predictor: PredictorBase):
-        """Placeholder docstring"""
+        """Deep ping in order to ensure prediction"""
         response = None
         try:
             response = predictor.predict(self.schema_builder.sample_input)
@@ -83,18 +98,19 @@ class LocalDJLServing:
 
 
 class SageMakerDjlServing:
-    """Placeholder docstring"""
+    """Sagemaker endpoint for DJL"""
 
     def _upload_djl_artifacts(
         self,
         model_path: str,
+        secret_key: str,
         sagemaker_session: Session,
         s3_model_data_url: str = None,
         image: str = None,
         env_vars: dict = None,
         should_upload_artifacts: bool = False,
     ):
-        """Placeholder docstring"""
+        """Uploads DJL server artifacts"""
         model_data_url = None
         if _is_s3_uri(model_path):
             model_data_url = model_path
@@ -135,11 +151,21 @@ class SageMakerDjlServing:
             else None
         )
 
+        if secret_key:
+            env_vars = {
+                "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
+                "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
+                "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
+                "LOCAL_PYTHON": platform.python_version(),
+            }
+
         return (model_data, _update_env_vars(env_vars))
 
 
 def _update_env_vars(env_vars: dict) -> dict:
-    """Placeholder docstring"""
+    """Updating environment variables"""
     updated_env_vars = {}
     updated_env_vars.update(_DEFAULT_ENV_VARS)
     if env_vars:
