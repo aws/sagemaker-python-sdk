@@ -164,7 +164,7 @@ def _capture_telemetry(func_name: str):
                 )
                 model_provider_value = SD_DRAFT_MODEL_SOURCE_TO_CODE[str(model_provider_enum)]
                 extra += f"&x-sdDraftModelSource={model_provider_value}"
-                
+
             if getattr(self, "deployment_config_name", False):
                 config_name_code = self.deployment_config_name.lower()
                 extra += f"&x-configName={config_name_code}"
