@@ -149,7 +149,7 @@ def test_model_registration_with_model_repack(
     pipeline_name,
     region_name,
     pytorch_training_latest_version,
-    pytorch_training_latest_py_version
+    pytorch_training_latest_py_version,
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
