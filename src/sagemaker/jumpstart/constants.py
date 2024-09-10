@@ -176,6 +176,12 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
         JumpStartLaunchedRegionInfo(
             region_name="cn-north-1",
             content_bucket="jumpstart-cache-prod-cn-north-1",
+            gated_content_bucket="jumpstart-private-cache-prod-cn-north-1",
+        ),
+        JumpStartLaunchedRegionInfo(
+            region_name="cn-northwest-1",
+            content_bucket="jumpstart-cache-prod-cn-northwest-1",
+            gated_content_bucket="jumpstart-private-cache-prod-cn-northwest-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="il-central-1",
