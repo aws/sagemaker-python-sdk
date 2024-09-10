@@ -27,9 +27,7 @@
                     "us-east-2": "211330385671",
                     "us-gov-west-1": "598674086554",
                     "us-west-1": "740489534195",
-                    "us-west-2": "306415355426",
-                    "us-isof-south-1": "411392592546",
-                    "us-isof-east-1": "579539705040"
+                    "us-west-2": "306415355426"
                 },
                 "repository": "sagemaker-clarify-processing"
             }
