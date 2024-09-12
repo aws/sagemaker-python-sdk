@@ -91,8 +91,8 @@ def skip_if_incompatible(gpu_instance_type, request):
     ],
 )
 @pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS,
-    reason="No P2 instances or low capacity in this region",
+    integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="No P3 instances or low capacity in this region",
 )
 def test_huggingface_pytorch(
     sagemaker_session,

@@ -30,8 +30,8 @@ ROLE = "SageMakerRole"
 
 @pytest.mark.release
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
-    reason="No P2 instances or low capacity in this region",
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="No P3 instances or low capacity in this region",
 )
 def test_framework_processing_job_with_deps(
     sagemaker_session,
@@ -64,8 +64,8 @@ def test_framework_processing_job_with_deps(
 
 @pytest.mark.release
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
-    reason="No P2 instances or low capacity in this region",
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="No P3 instances or low capacity in this region",
 )
 def test_huggingface_training(
     sagemaker_session,
