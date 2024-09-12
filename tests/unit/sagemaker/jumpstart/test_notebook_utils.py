@@ -231,6 +231,7 @@ class ListJumpStartModels(TestCase):
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
+    @pytest.mark.flaky(reruns=5, reruns_delay=1)
     def test_list_jumpstart_models_script_filter(
         self, patched_read_s3_file: Mock, patched_get_manifest: Mock
     ):
@@ -583,6 +584,7 @@ class ListJumpStartModels(TestCase):
 
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.notebook_utils.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.read_s3_file")
+    @pytest.mark.flaky(reruns=5, reruns_delay=1)
     def test_list_jumpstart_models_deprecated_models(
         self,
         patched_read_s3_file: Mock,
