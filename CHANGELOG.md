@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.232.0 (2024-09-12)
+
+### Features
+
+ * add deployment config name in modelbuilder telemetry
+ * add Clarify image URIs for us-isof
+
+### Bug Fixes and Other Changes
+
+ * chore: add flaky test markers & skip region with low P3 instance capacity
+ * update image_uri_configs  09-11-2024 11:54:11 PST
+ * update image_uri_configs  09-10-2024 07:18:01 PST
+ * [change] add us-gov and cn region repo accounts to djl and hugging face image metadata
+ * update image_uri_configs  09-06-2024 07:17:55 PST
+ * add us-gov region repo accounts to djl image metadata
+ * pass name from modelbuilder constructor to created model
+
 ## v2.231.0 (2024-08-30)
 
 ### Features
