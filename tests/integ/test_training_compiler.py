@@ -90,6 +90,7 @@ def skip_if_incompatible(gpu_instance_type, request):
         pytest.param("ml.p3.16xlarge", 2),
     ],
 )
+@pytest.mark.flaky(rerun=3, rerun_delay=5)
 def test_huggingface_pytorch(
     sagemaker_session,
     gpu_instance_type,

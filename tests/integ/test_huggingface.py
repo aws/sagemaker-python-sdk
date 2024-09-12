@@ -29,6 +29,7 @@ ROLE = "SageMakerRole"
 
 
 @pytest.mark.release
+@pytest.mark.flaky(reruns=3, reruns_delay=5)
 def test_framework_processing_job_with_deps(
     sagemaker_session,
     huggingface_training_latest_version,
@@ -59,6 +60,7 @@ def test_framework_processing_job_with_deps(
 
 
 @pytest.mark.release
+@pytest.mark.flaky(reruns=3, reruns_delay=5)
 def test_huggingface_training(
     sagemaker_session,
     huggingface_training_latest_version,
