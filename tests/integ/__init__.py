@@ -68,6 +68,7 @@ TRAINING_NO_P2_REGIONS = [
     "me-south-1",
     "sa-east-1",
     "us-west-1",
+    "eu-west-1",  # not enough capacity
 ]
 TRAINING_NO_P3_REGIONS = [
     "af-south-1",
