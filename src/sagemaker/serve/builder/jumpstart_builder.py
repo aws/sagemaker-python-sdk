@@ -718,20 +718,23 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
-        is_compilation = (not quantization_config) and (
-            (compilation_config is not None) or _is_inferentia_or_trainium(instance_type)
+        is_compilation = (compilation_config is not None) or _is_inferentia_or_trainium(
+            instance_type
         )
 
         pysdk_model_env_vars = dict()
         if is_compilation:
             pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
 
+        # optimization_config can contain configs for both quantization and compilation
         optimization_config, override_env = _extract_optimization_config_and_env(
             quantization_config, compilation_config
         )
-        if not optimization_config and is_compilation:
+        if (
+            not optimization_config or not optimization_config.get("ModelCompilationConfig")
+        ) and is_compilation:
             override_env = override_env or pysdk_model_env_vars
-            optimization_config = {
+            optimization_config["ModelCompilationConfig"] = {
                 "ModelCompilationConfig": {
                     "OverrideEnvironment": override_env,
                 }
@@ -766,7 +769,7 @@ class JumpStart(ABC):
             "OptimizationJobName": job_name,
             "ModelSource": model_source,
             "DeploymentInstanceType": self.instance_type,
-            "OptimizationConfigs": [optimization_config],
+            "OptimizationConfigs": [{k: v} for k, v in optimization_config.items()],
             "OutputConfig": output_config,
             "RoleArn": self.role_arn,
         }

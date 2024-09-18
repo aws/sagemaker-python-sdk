@@ -271,14 +271,25 @@ def _extract_optimization_config_and_env(
         Optional[Tuple[Optional[Dict], Optional[Dict]]]:
             The optimization config and environment variables.
     """
+    optimization_config = {}
+    quantization_override_env = {}
+    compilation_override_env = {}
+
     if quantization_config:
-        return {"ModelQuantizationConfig": quantization_config}, quantization_config.get(
-            "OverrideEnvironment"
-        )
+        optimization_config["ModelQuantizationConfig"] = quantization_config
+        quantization_override_env = quantization_config.get("OverrideEnvironment")
+
     if compilation_config:
-        return {"ModelCompilationConfig": compilation_config}, compilation_config.get(
-            "OverrideEnvironment"
-        )
+        optimization_config["ModelCompilationConfig"] = compilation_config
+        compilation_override_env = compilation_config.get("OverrideEnvironment")
+
+    # Return both dicts and environment variable if either is present
+    if optimization_config:
+        return optimization_config, {
+            **(quantization_override_env or {}),
+            **(compilation_override_env or {}),
+        }
+
     return None, None
 
 

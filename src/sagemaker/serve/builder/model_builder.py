@@ -1235,9 +1235,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.mode != Mode.SAGEMAKER_ENDPOINT:
             raise ValueError("Model optimization is only supported in Sagemaker Endpoint Mode.")
 
-        if quantization_config and compilation_config:
-            raise ValueError("Quantization config and compilation config are mutually exclusive.")
-
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
         self.instance_type = instance_type or self.instance_type
         self.role_arn = role_arn or self.role_arn
@@ -1345,7 +1342,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             optimization_config, override_env = _extract_optimization_config_and_env(
                 quantization_config, compilation_config
             )
-            create_optimization_job_args["OptimizationConfigs"] = [optimization_config]
+            create_optimization_job_args["OptimizationConfigs"] = [
+                {k: v} for k, v in optimization_config.items()
+            ]
             self.pysdk_model.env.update(override_env)
 
             output_config = {"S3OutputLocation": output_path}
