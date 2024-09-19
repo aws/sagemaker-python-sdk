@@ -1276,6 +1276,28 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
 
         if input_args:
+            optimization_instance_type = input_args["DeploymentInstanceType"]
+
+            # Compilation using TRTLLM and Llama-3.1 is currently not supported.
+            # TRTLLM is used by Neo if the following are provided:
+            #  1) a GPU instance type
+            #  2) compilation config
+            gpu_instance_families = ["g4", "g5", "p4d"]
+            is_gpu_instance = optimization_instance_type and any(
+                gpu_instance_family in optimization_instance_type
+                for gpu_instance_family in gpu_instance_families
+            )
+
+            # HF Model ID format = "meta-llama/Meta-Llama-3.1-8B"
+            # JS Model ID format = "meta-textgeneration-llama-3-1-8b"
+            llama_3_1_keywords = ["llama-3.1", "llama-3-1"]
+            is_llama_3_1 = self.model and any(
+                keyword in self.model.lower() for keyword in llama_3_1_keywords
+            )
+
+            if is_gpu_instance and self.model and is_llama_3_1 and self.is_compiled:
+                raise ValueError("Compilation is not supported for Llama-3.1 with a GPU instance.")
+
             self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
             job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
             return _generate_optimized_model(self.pysdk_model, job_status)

@@ -2840,3 +2840,54 @@ class TestModelBuilder(unittest.TestCase):
                 "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
             },
         )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_with_gpu_instance_and_llama_3_1_and_compilation(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-1-8B-Instruct"}
+
+        sample_input = {"inputs": "dummy prompt", "parameters": {}}
+
+        sample_output = [{"generated_text": "dummy response"}]
+
+        dummy_schema_builder = SchemaBuilder(sample_input, sample_output)
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-1-8B-Instruct",
+            schema_builder=dummy_schema_builder,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Compilation is not supported for Llama-3.1 with a GPU instance.",
+            lambda: model_builder.optimize(
+                job_name="job_name-123",
+                compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
+                output_path="s3://bucket/code/",
+            ),
+        )
