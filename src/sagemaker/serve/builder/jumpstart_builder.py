@@ -733,11 +733,17 @@ class JumpStart(ABC):
         if (
             not optimization_config or not optimization_config.get("ModelCompilationConfig")
         ) and is_compilation:
-            override_env = override_env or pysdk_model_env_vars
+            # Ensure optimization_config exists
+            if not optimization_config:
+                optimization_config = {}
+
+            # Fallback to default if override_env is None or empty
+            if not override_env:
+                override_env = pysdk_model_env_vars
+
+            # Update optimization_config with ModelCompilationConfig
             optimization_config["ModelCompilationConfig"] = {
-                "ModelCompilationConfig": {
-                    "OverrideEnvironment": override_env,
-                }
+                "OverrideEnvironment": override_env,
             }
 
         if speculative_decoding_config:
