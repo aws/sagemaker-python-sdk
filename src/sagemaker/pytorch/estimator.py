@@ -14,8 +14,13 @@
 from __future__ import absolute_import
 
 import logging
+import os
+import shutil
+import tempfile
 from typing import Union, Optional, Dict
+from urllib.request import urlretrieve
 
+from omegaconf import OmegaConf
 from packaging.version import Version
 
 from sagemaker.estimator import Framework, EstimatorBase
@@ -27,6 +32,7 @@ from sagemaker.fw_utils import (
     validate_distribution,
     profiler_config_deprecation_warning,
 )
+from sagemaker.git_utils import _run_clone_command
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.pytorch.training_compiler.config import TrainingCompilerConfig
@@ -44,9 +50,14 @@ class PyTorch(Framework):
     LAUNCH_TORCH_DISTRIBUTED_ENV_NAME = "sagemaker_torch_distributed_enabled"
     INSTANCE_TYPE_ENV_NAME = "sagemaker_instance_type"
 
+    # [TODO] Add image uris to image_uri_config/_.json and use image_uris.retrieve
+    # to retrieve the image uri below before GA.
+    SM_ADAPTER_REPO = "git@github.com:aws/private-sagemaker-training-adapter-for-nemo-staging.git"
+    SM_LAUNCHER_REPO = "git@github.com:aws/private-sagemaker-training-launcher-staging.git"
+
     def __init__(
         self,
-        entry_point: Union[str, PipelineVariable],
+        entry_point: Optional[Union[str, PipelineVariable]] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
@@ -54,6 +65,7 @@ class PyTorch(Framework):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         distribution: Optional[Dict] = None,
         compiler_config: Optional[TrainingCompilerConfig] = None,
+        training_recipe: Optional[str] = None,
         **kwargs,
     ):
         """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.
@@ -246,6 +258,10 @@ class PyTorch(Framework):
                 compiler_config (:class:`~sagemaker.pytorch.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 
+            training_recipe (str): Training recipe to use. This is a local file path,
+                                   a url to fetch, or a recipe provided by Saagemaker
+                                   training.
+
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
 
@@ -255,6 +271,26 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        if training_recipe is not None:
+            if entry_point is not None:
+                logger.warning("Argument entry_point will be ignored with training_recipe.")
+            if source_dir is not None:
+                logger.warning("Argument source_dir will be ignored with training_recipe.")
+            if hyperparameters is not None:
+                logger.warning("Argument hyperparameters will be ignored with training recipe.")
+            if distribution is not None:
+                logger.warning("Argument distribution will be ignored with training_recipe.")
+            args = self._setup_for_training_recipe(training_recipe, kwargs)
+            entry_point = args["entry_point"]
+            source_dir = args["source_dir"]
+            hyperparameters = args["hyperparameters"]
+            if image_uri is None:
+                image_uri = args["image_uri"]
+            distribution = args["distribution"]
+        elif entry_point is None:
+            raise ValueError(
+                "Argument entry_point must be set when training_recipe is not provided"
+            )
         validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
@@ -480,3 +516,128 @@ class PyTorch(Framework):
             )
 
         return init_params
+
+    @classmethod
+    def _setup_for_training_recipe(cls, training_recipe, kwargs):
+        """Performs training recipe specific setup and returns recipe specific args.
+
+        Updates kwargs and returns a dictionary of args to use for estimator
+        initialization and setup when using a training recipe. Updates the paths in
+        the recipe for Sagemaker Jobs environment.
+
+        Args:
+            training_recipe (str): A recipe which is a local file path, a url or a
+                                   sagemaker training recipe.
+            kwargs (dict): Dictionary of args used for estimator initializaiton.
+        Returns:
+            dict containing arg values for estimator initialization and setup.
+
+        """
+        cls.recipe_train_dir = tempfile.TemporaryDirectory(prefix="training_")
+        cls.recipe_launcher_dir = tempfile.TemporaryDirectory(prefix="launcher_")
+
+        adapter_repo = os.environ.get("training_adapter_git", None) or cls.SM_ADAPTER_REPO
+        _run_clone_command(adapter_repo, cls.recipe_train_dir.name)
+        source_dir = os.path.join(cls.recipe_train_dir.name, "scripts")
+
+        model_type_to_script = {"llama_v3": "llama_pretrain.py"}
+
+        args = {"source_dir": source_dir}
+        local_recipe_path = os.path.join(source_dir, "recipe.yaml")
+        if training_recipe.endswith(".yaml"):
+            if os.path.isfile(training_recipe):
+                shutil.copy(training_recipe, local_recipe_path)
+            else:
+                try:
+                    urlretrieve(training_recipe, local_recipe_path)
+                except Exception as e:
+                    raise ValueError(
+                        f"Could not fetch the provided recipe {training_recipe}: exception {str(e)}"
+                    )
+        else:
+            launcher_repo = os.environ.get("training_launcher_git", None) or cls.SM_LAUNCHER_REPO
+            _run_clone_command(launcher_repo, cls.recipe_launcher_dir.name)
+            recipe = os.path.join(
+                cls.recipe_launcher_dir.name,
+                "examples",
+                "recipes",
+                "training",
+                training_recipe + ".yaml",
+            )
+            if os.path.isfile(recipe):
+                shutil.copy(recipe, local_recipe_path)
+            else:
+                raise ValueError(f"Recipe {training_recipe} not found.")
+
+        recipe = OmegaConf.load(local_recipe_path)
+
+        if "model" not in recipe:
+            raise ValueError("Supplied recipe does not contain required field model.")
+        if "model_type" not in recipe["model"]:
+            raise ValueError("Supplied recipe does not contain required field model_type.")
+        model_type = recipe["model"]["model_type"]
+        if model_type not in model_type_to_script:
+            raise ValueError(f"Model type {model_type} not supported")
+        args["model_type"] = model_type
+        args["entry_point"] = model_type_to_script[model_type]
+        args["hyperparameters"] = {"config-path": ".", "config-name": "recipe.yaml"}
+
+        if "trainer" not in recipe:
+            raise ValueError("Supplied recipe does not contain required field trainer.")
+        if "instance_count" in kwargs and "num_nodes" in recipe["trainer"]:
+            logger.warning(
+                "Using instance_count argument to estimator to set number "
+                " of nodes. Ignoring trainer -> num_nodes in recipe."
+            )
+        if "instance_count" not in kwargs:
+            if "num_nodes" not in recipe["trainer"]:
+                raise ValueError(
+                    "Must set either instance_count argument for estimator or"
+                    "set trainer -> num_nodes in recipe."
+                )
+            kwargs["instance_count"] = recipe["trainer"]["num_nodes"]
+
+        if "accelerator" not in recipe["trainer"]:
+            raise ValueError(
+                "Supplied recipe does not contain required field trainer -> accelerator."
+            )
+        accelerator = recipe["trainer"]["accelerator"]
+        if accelerator == "gpu":
+            # [TODO] Add image uris to image_uri_config/_.json and use image_uris.retrieve
+            # to retrieve the image uri below before we go GA.
+            args["image_uri"] = (
+                "855988369404.dkr.ecr.us-west-2.amazonaws.com/chinmayee-dev:adaptor_sept9_v1"
+            )
+            smp_options = {
+                "enabled": True,
+                "parameters": {
+                    "placement_strategy": "cluster",
+                },
+            }
+            args["distribution"] = {
+                "smdistributed": {"modelparallel": smp_options},
+                "torch_distributed": {"enabled": True},
+            }
+        else:
+            raise ValueError(f"Accelerator type {accelerator} not yet supported.")
+
+        try:
+            recipe["run"]["results_dir"] = "/opt/ml/model/"
+            recipe["exp_manager"]["exp_dir"] = "/opt/ml/model/"
+            recipe["exp_manager"]["explicit_log_dir"] = "/opt/ml/output/tensorboard"
+            recipe["exp_manager"]["checkpoint_dir"] = "/opt/ml/checkpoints"
+            recipe["model"]["data"]["train_dir"] = ["/opt/ml/input/data/train"]
+            recipe["model"]["data"]["val_dir"] = ["/opt/ml/input/data/val"]
+        except KeyError as e:
+            raise RuntimeError(
+                f"Error when trying to update recipe for sagemaker jobs with key {str(e)}."
+            )
+
+        if "container" in recipe and not recipe["container"]:
+            logger.warning(
+                "Ignoring container from training_recipe. Use image_uri arg for estimator."
+            )
+
+        OmegaConf.save(config=recipe, f=local_recipe_path)
+
+        return args
