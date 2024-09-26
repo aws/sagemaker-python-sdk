@@ -293,8 +293,8 @@ class JumpStartModelsCache:
             raise KeyError(error_msg)
 
         error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
-        error_msg += f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models, "
-        error_msg += "or try another AWS region. "
+        error_msg += "Specify a different model ID or try a different AWS Region. "
+        error_msg += f"For a list of available models, see {MODEL_ID_LIST_WEB_URL}. "
 
         other_model_id_version = None
         if model_type == JumpStartModelType.OPEN_WEIGHTS:
