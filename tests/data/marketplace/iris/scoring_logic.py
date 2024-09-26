@@ -3,7 +3,7 @@ import json
 import logging
 import re
 from flask import Flask
-from flask import request
+from flask import request, escape
 from joblib import dump, load
 import numpy as np
 import os
@@ -73,37 +73,34 @@ def endpoint_ping():
 # Create a path for inference
 @app.route("/invocations", methods=["POST"])
 def endpoint_invocations():
-    try:
-        logger.info(f"Processing request: {request.headers}")
-        logger.debug(f"Payload: {request.headers}")
+    logger.info(f"Processing request: {request.headers}")
+    logger.debug(f"Payload: {request.headers}")
 
-        if request.content_type not in SUPPORTED_REQUEST_MIMETYPES:
-            logger.error(f"Unsupported Content-Type specified: {request.content_type}")
-            return f"Invalid Content-Type. Supported Content-Types: {', '.join(SUPPORTED_REQUEST_MIMETYPES)}"
-        elif request.content_type == "text/csv":
-            # Step 1: Decode payload into input format expected by model
-            data = request.get_data().decode("utf8")
-            # Step 2: Perform inference with the loaded model
-            predictions = model.predict_from_csv(data)
-        elif request.content_type == "application/json":
-            data = request.get_data().decode("utf8")
-            predictions = model.predict_from_json(data)
-        elif request.content_type == "application/jsonlines":
-            data = request.get_data().decode("utf8")
-            predictions = model.predict_from_jsonlines(data)
+    if request.content_type not in SUPPORTED_REQUEST_MIMETYPES:
+        logger.error(f"Unsupported Content-Type specified: {request.content_type}")
+        return f"Invalid Content-Type. Supported Content-Types: {', '.join(SUPPORTED_REQUEST_MIMETYPES)}"
+    elif request.content_type == "text/csv":
+        # Step 1: Decode payload into input format expected by model
+        data = request.get_data().decode("utf8")
+        # Step 2: Perform inference with the loaded model
+        predictions = model.predict_from_csv(data)
+    elif request.content_type == "application/json":
+        data = request.get_data().decode("utf8")
+        predictions = model.predict_from_json(data)
+    elif request.content_type == "application/jsonlines":
+        data = request.get_data().decode("utf8")
+        predictions = model.predict_from_jsonlines(data)
 
-        # Step 3: Process predictions into the specified response type (if specified)
-        response_mimetype = request.accept_mimetypes.best_match(
-            SUPPORTED_RESPONSE_MIMETYPES, default="application/json"
-        )
+    # Step 3: Process predictions into the specified response type (if specified)
+    response_mimetype = request.accept_mimetypes.best_match(
+        SUPPORTED_RESPONSE_MIMETYPES, default="application/json"
+    )
 
-        if response_mimetype == "text/csv":
-            response = "\n".join(predictions)
-        elif response_mimetype == "application/jsonlines":
-            response = "\n".join([json.dumps({"class": pred}) for pred in predictions])
-        elif response_mimetype == "application/json":
-            response = json.dumps({"predictions": [{"class": pred} for pred in predictions]})
+    if response_mimetype == "text/csv":
+        response = "\n".join(predictions)
+    elif response_mimetype == "application/jsonlines":
+        response = "\n".join([json.dumps({"class": pred}) for pred in predictions])
+    elif response_mimetype == "application/json":
+        response = json.dumps({"predictions": [{"class": pred} for pred in predictions]})
 
-        return response
-    except Exception as e:
-        return f"Error during model invocation: {str(e)} for input: {request.get_data()}"
+    return response

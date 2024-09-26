@@ -680,7 +680,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 (str): S3 object from boto session
             region (str): The region in which to create the bucket.
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
-
         """
         try:
             s3.meta.client.head_bucket(Bucket=bucket_name)
@@ -951,6 +950,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     }
         Returns:
             str: ARN of the training job, if it is created.
+
+        Raises:
+            - botocore.exceptions.ClientError: If Sagemaker throws an exception while creating
+            training job.
+            - ValueError: If both image_uri and algorithm are provided, or if neither is provided.
         """
         tags = _append_project_tags(format_tags(tags))
         tags = self._append_sagemaker_config_tags(
@@ -1034,9 +1038,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            logger.info("Creating training-job with name: %s", job_name)
-            logger.debug("train request: %s", json.dumps(request, indent=4))
-            self.sagemaker_client.create_training_job(**request)
+            try:
+                logger.info("Creating training-job with name: %s", job_name)
+                logger.debug("train request: %s", json.dumps(request, indent=4))
+                self.sagemaker_client.create_training_job(**request)
+            except Exception as e:
+                troubleshooting = (
+                    "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-python-sdk-troubleshooting.html"
+                    "#sagemaker-python-sdk-troubleshooting-create-training-job"
+                )
+                logger.error(
+                    "Please check the troubleshooting guide for common errors: %s", troubleshooting
+                )
+                raise e
 
         self._intercept_create_request(train_request, submit, self.train.__name__)
 
@@ -1343,6 +1357,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     remote_debug_config = {
                         "EnableRemoteDebug": True,
                     }
+
+        Returns:
+            str: ARN of training job
+
+        Raises:
+            - botocore.exceptions.ClientError: If Sagemaker throws an error while updating training
+            job.
+            - botocore.exceptions.ParamValidationError: If any request parameters are in an invalid
+            format.
         """
         # No injections from sagemaker_config because the UpdateTrainingJob API's resource_config
         # object accepts fewer parameters than the CreateTrainingJob API, and none that the
@@ -1357,9 +1380,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             resource_config=resource_config,
             remote_debug_config=remote_debug_config,
         )
-        logger.info("Updating training job with name %s", job_name)
-        logger.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
-        self.sagemaker_client.update_training_job(**update_training_job_request)
+        try:
+            logger.info("Updating training job with name %s", job_name)
+            logger.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
+            self.sagemaker_client.update_training_job(**update_training_job_request)
+        except botocore.exceptions.ParamValidationError as e:
+            troubleshooting = (
+                "Incorrect request parameter was provided. Check the API documentation: "
+                "https://docs.aws.amazon.com/sagemaker/latest/APIReference/"
+                "API_UpdateTrainingJob.html#API_UpdateTrainingJob_RequestParameters"
+            )
+            logger.error("%s", troubleshooting)
+            raise e
+        except botocore.exceptions.ClientError as e:
+            troubleshooting = (
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+                "sagemaker-python-sdk-troubleshooting.html"
+                "#sagemaker-python-sdk-troubleshooting-update-training-job"
+            )
+            logger.error(
+                "Please check the troubleshooting guide for common errors: %s", troubleshooting
+            )
+            raise e
 
     def _get_update_training_job_request(
         self,
@@ -1462,6 +1504,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+
+        Raises:
+            - botocore.exceptions.ClientError: If Sagemaker throws an error while creating
+            processing job.
         """
         tags = _append_project_tags(format_tags(tags))
         tags = self._append_sagemaker_config_tags(
@@ -1525,9 +1571,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            logger.info("Creating processing-job with name %s", job_name)
-            logger.debug("process request: %s", json.dumps(request, indent=4))
-            self.sagemaker_client.create_processing_job(**request)
+            try:
+                logger.info("Creating processing-job with name %s", job_name)
+                logger.debug("process request: %s", json.dumps(request, indent=4))
+                self.sagemaker_client.create_processing_job(**request)
+            except Exception as e:
+                troubleshooting = (
+                    "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+                    "sagemaker-python-sdk-troubleshooting.html"
+                    "#sagemaker-python-sdk-troubleshooting-create-processing-job"
+                )
+                logger.error(
+                    "Please check the troubleshooting guide for common errors: %s", troubleshooting
+                )
+                raise e
 
         self._intercept_create_request(process_request, submit, self.process.__name__)
 
@@ -2626,6 +2683,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
         _check_job_status(job, desc, "AutoMLJobStatus")
         return desc
 
+    def wait_for_optimization_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker Optimization job to complete.
+
+        Args:
+            job (str): Name of optimization job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeOptimizationJob`` API.
+
+        Raises:
+            exceptions.ResourceNotFound: If optimization job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If optimization job fails.
+        """
+        desc = _wait_until(lambda: _optimization_job_status(self.sagemaker_client, job), poll)
+        _check_job_status(job, desc, "OptimizationJobStatus")
+        return desc
+
     def logs_for_auto_ml_job(  # noqa: C901 - suppress complexity warning for this method
         self, job_name, wait=False, poll=10
     ):
@@ -3176,6 +3251,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["Autotune"] = {"Mode": "Enabled"}
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
+        )
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -3287,6 +3365,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["WarmStartConfig"] = warm_start_config
 
         tags = _append_project_tags(format_tags(tags))
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
+        )
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -4550,6 +4631,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` created.
+
+        Raises:
+            botocore.exceptions.ClientError: If Sagemaker throws an exception while creating
+            endpoint.
         """
         logger.info("Creating endpoint with name %s", endpoint_name)
 
@@ -4558,16 +4643,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
         )
+        try:
+            res = self.sagemaker_client.create_endpoint(
+                EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
+            )
+            if res:
+                self.endpoint_arn = res["EndpointArn"]
 
-        res = self.sagemaker_client.create_endpoint(
-            EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
-        )
-        if res:
-            self.endpoint_arn = res["EndpointArn"]
-
-        if wait:
-            self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
-        return endpoint_name
+            if wait:
+                self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
+            return endpoint_name
+        except Exception as e:
+            troubleshooting = (
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+                "sagemaker-python-sdk-troubleshooting.html"
+                "#sagemaker-python-sdk-troubleshooting-create-endpoint"
+            )
+            logger.error(
+                "Please check the troubleshooting guide for common errors: %s", troubleshooting
+            )
+            raise e
 
     def endpoint_in_service_or_not(self, endpoint_name: str):
         """Check whether an Amazon SageMaker ``Endpoint``` is in IN_SERVICE status.
@@ -4612,7 +4707,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: Name of the Amazon SageMaker ``Endpoint`` being updated.
 
         Raises:
-            ValueError: if the endpoint does not already exist
+            - ValueError: if the endpoint does not already exist
+            - botocore.exceptions.ClientError: If SageMaker throws an error while
+            creating endpoint config, describing endpoint or updating endpoint
         """
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
@@ -4622,15 +4719,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "existing endpoint name".format(endpoint_name)
             )
 
-        res = self.sagemaker_client.update_endpoint(
-            EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
-        )
-        if res:
-            self.endpoint_arn = res["EndpointArn"]
+        try:
 
-        if wait:
-            self.wait_for_endpoint(endpoint_name)
-        return endpoint_name
+            res = self.sagemaker_client.update_endpoint(
+                EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
+            )
+            if res:
+                self.endpoint_arn = res["EndpointArn"]
+
+            if wait:
+                self.wait_for_endpoint(endpoint_name)
+            return endpoint_name
+        except Exception as e:
+            troubleshooting = (
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+                "sagemaker-python-sdk-troubleshooting.html"
+                "#sagemaker-python-sdk-troubleshooting-update-endpoint"
+            )
+            logger.error(
+                "Please check the troubleshooting guide for common errors: %s", troubleshooting
+            )
+            raise e
 
     def is_inference_component_based_endpoint(self, endpoint_name):
         """Returns 'True' if endpoint is inference-component-based, 'False' otherwise.
@@ -4911,7 +5020,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return inference_component_name
 
     def delete_inference_component(self, inference_component_name: str, wait: bool = False):
-        """Deletes a InferenceComponent.
+        """Deletes an InferenceComponent.
 
         Args:
             inference_component_name (str): Name of the Amazon SageMaker ``InferenceComponent``
@@ -6744,6 +6853,323 @@ class Session(object):  # pylint: disable=too-many-public-methods
         _check_job_status(job_name, desc, "Status")
         return desc
 
+    def create_presigned_mlflow_tracking_server_url(
+        self,
+        tracking_server_name: str,
+        expires_in_seconds: int = None,
+        session_expiration_duration_in_seconds: int = None,
+    ) -> Dict[str, Any]:
+        """Creates a Presigned Url to acess the Mlflow UI.
+
+        Args:
+            tracking_server_name (str): Name of the Mlflow Tracking Server.
+            expires_in_seconds (int): Expiration duration of the URL.
+            session_expiration_duration_in_seconds (int): Session duration of the URL.
+        Returns:
+            (dict): Return value from the ``CreatePresignedMlflowTrackingServerUrl`` API.
+
+        """
+
+        create_presigned_url_args = {"TrackingServerName": tracking_server_name}
+        if expires_in_seconds is not None:
+            create_presigned_url_args["ExpiresInSeconds"] = expires_in_seconds
+
+        if session_expiration_duration_in_seconds is not None:
+            create_presigned_url_args["SessionExpirationDurationInSeconds"] = (
+                session_expiration_duration_in_seconds
+            )
+
+        return self.sagemaker_client.create_presigned_mlflow_tracking_server_url(
+            **create_presigned_url_args
+        )
+
+    def create_hub(
+        self,
+        hub_name: str,
+        hub_description: str,
+        hub_display_name: str = None,
+        hub_search_keywords: List[str] = None,
+        s3_storage_config: Dict[str, Any] = None,
+        tags: List[Dict[str, Any]] = None,
+    ) -> Dict[str, str]:
+        """Creates a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub to create.
+            hub_description (str): A description of the Hub.
+            hub_display_name (str): The display name of the Hub.
+            hub_search_keywords (list): The searchable keywords for the Hub.
+            s3_storage_config (S3StorageConfig): The Amazon S3 storage configuration for the Hub.
+            tags (list): Any tags to associate with the Hub.
+
+        Returns:
+            (dict): Return value from the ``CreateHub`` API.
+        """
+        request = {"HubName": hub_name, "HubDescription": hub_description}
+
+        if hub_display_name:
+            request["HubDisplayName"] = hub_display_name
+        else:
+            request["HubDisplayName"] = hub_name
+
+        if hub_search_keywords:
+            request["HubSearchKeywords"] = hub_search_keywords
+        if s3_storage_config:
+            request["S3StorageConfig"] = s3_storage_config
+        if tags:
+            request["Tags"] = tags
+
+        return self.sagemaker_client.create_hub(**request)
+
+    def describe_hub(self, hub_name: str) -> Dict[str, Any]:
+        """Describes a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the hub to describe.
+
+        Returns:
+            (dict): Return value for ``DescribeHub`` API
+        """
+        request = {"HubName": hub_name}
+
+        return self.sagemaker_client.describe_hub(**request)
+
+    def list_hubs(
+        self,
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        max_schema_version: str = None,
+        name_contains: str = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None,
+    ) -> Dict[str, Any]:
+        """Lists all existing SageMaker Hubs
+
+        Args:
+            creation_time_after (str): Only list HubContent that was created after
+                the time specified.
+            creation_time_before (str): Only list HubContent that was created
+                before the time specified.
+            max_results (int): The maximum amount of HubContent to list.
+            max_schema_version (str): The upper bound of the HubContentSchemaVersion.
+            name_contains (str): Only list HubContent if the name contains the specified string.
+            next_token (str): If the response to a previous ``ListHubContents`` request was
+                truncated, the response includes a ``NextToken``. To retrieve the next set of
+                hub content, use the token in the next request.
+            sort_by (str): Sort HubContent versions by either name or creation time.
+            sort_order (str): Sort Hubs by ascending or descending order.
+        Returns:
+            (dict): Return value for ``ListHubs`` API
+        """
+        request = {}
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if name_contains:
+            request["NameContains"] = name_contains
+        if next_token:
+            request["NextToken"] = next_token
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hubs(**request)
+
+    def list_hub_contents(
+        self,
+        hub_name: str,
+        hub_content_type: str,
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        max_schema_version: str = None,
+        name_contains: str = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None,
+    ) -> Dict[str, Any]:
+        """Lists the HubContents in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub to list the contents of.
+            hub_content_type (str): The type of the HubContent to list.
+            creation_time_after (str): Only list HubContent that was created after the
+                time specified.
+            creation_time_before (str): Only list HubContent that was created before the
+                time specified.
+            max_results (int): The maximum amount of HubContent to list.
+            max_schema_version (str): The upper bound of the HubContentSchemaVersion.
+            name_contains (str): Only list HubContent if the name contains the specified string.
+            next_token (str): If the response to a previous ``ListHubContents`` request was
+                truncated, the response includes a ``NextToken``. To retrieve the next set of
+                hub content, use the token in the next request.
+            sort_by (str): Sort HubContent versions by either name or creation time.
+            sort_order (str): Sort Hubs by ascending or descending order.
+        Returns:
+            (dict): Return value for ``ListHubContents`` API
+        """
+        request = {"HubName": hub_name, "HubContentType": hub_content_type}
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if name_contains:
+            request["NameContains"] = name_contains
+        if next_token:
+            request["NextToken"] = next_token
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hub_contents(**request)
+
+    def delete_hub(self, hub_name: str) -> None:
+        """Deletes a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the hub to delete.
+        """
+        request = {"HubName": hub_name}
+
+        return self.sagemaker_client.delete_hub(**request)
+
+    def create_hub_content_reference(
+        self,
+        hub_name: str,
+        source_hub_content_arn: str,
+        hub_content_name: str = None,
+        min_version: str = None,
+    ) -> Dict[str, str]:
+        """Creates a given HubContent reference in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub that you want to delete content in.
+            source_hub_content_arn (str): Hub content arn in the public/source Hub.
+            hub_content_name (str): The name of the reference that you want to add to the Hub.
+            min_version (str): A minimum version of the hub content to add to the Hub.
+
+        Returns:
+            (dict): Return value for ``CreateHubContentReference`` API
+        """
+
+        request = {"HubName": hub_name, "SageMakerPublicHubContentArn": source_hub_content_arn}
+
+        if hub_content_name:
+            request["HubContentName"] = hub_content_name
+        if min_version:
+            request["MinVersion"] = min_version
+
+        return self.sagemaker_client.create_hub_content_reference(**request)
+
+    def delete_hub_content_reference(
+        self, hub_name: str, hub_content_type: str, hub_content_name: str
+    ) -> None:
+        """Deletes a given HubContent reference in a SageMaker Hub
+
+        Args:
+            hub_name (str): The name of the Hub that you want to delete content in.
+            hub_content_type (str): The type of the content that you want to delete from a Hub.
+            hub_content_name (str): The name of the content that you want to delete from a Hub.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentType": hub_content_type,
+            "HubContentName": hub_content_name,
+        }
+
+        return self.sagemaker_client.delete_hub_content_reference(**request)
+
+    def describe_hub_content(
+        self,
+        hub_content_name: str,
+        hub_content_type: str,
+        hub_name: str,
+        hub_content_version: str = None,
+    ) -> Dict[str, Any]:
+        """Describes a HubContent in a SageMaker Hub
+
+        Args:
+            hub_content_name (str): The name of the HubContent to describe.
+            hub_content_type (str): The type of HubContent in the Hub.
+            hub_name (str): The name of the Hub that contains the HubContent to describe.
+            hub_content_version (str): The version of the HubContent to describe
+
+        Returns:
+            (dict): Return value for ``DescribeHubContent`` API
+        """
+        request = {
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+            "HubName": hub_name,
+        }
+        if hub_content_version:
+            request["HubContentVersion"] = hub_content_version
+
+        return self.sagemaker_client.describe_hub_content(**request)
+
+    def list_hub_content_versions(
+        self,
+        hub_name,
+        hub_content_type: str,
+        hub_content_name: str,
+        min_version: str = None,
+        max_schema_version: str = None,
+        creation_time_after: str = None,
+        creation_time_before: str = None,
+        max_results: int = None,
+        next_token: str = None,
+        sort_by: str = None,
+        sort_order: str = None,
+    ) -> Dict[str, Any]:
+        """List all versions of a HubContent in a SageMaker Hub
+
+        Args:
+            hub_content_name (str): The name of the HubContent to describe.
+            hub_content_type (str): The type of HubContent in the Hub.
+            hub_name (str): The name of the Hub that contains the HubContent to describe.
+
+        Returns:
+            (dict): Return value for ``DescribeHubContent`` API
+        """
+
+        request = {
+            "HubName": hub_name,
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+        }
+
+        if min_version:
+            request["MinVersion"] = min_version
+        if creation_time_after:
+            request["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            request["CreationTimeBefore"] = creation_time_before
+        if max_results:
+            request["MaxResults"] = max_results
+        if max_schema_version:
+            request["MaxSchemaVersion"] = max_schema_version
+        if next_token:
+            request["NextToken"] = next_token
+        if sort_by:
+            request["SortBy"] = sort_by
+        if sort_order:
+            request["SortOrder"] = sort_order
+
+        return self.sagemaker_client.list_hub_content_versions(**request)
+
 
 def get_model_package_args(
     content_types=None,
@@ -7193,6 +7619,8 @@ def container_def(
     container_mode=None,
     image_config=None,
     accept_eula=None,
+    additional_model_data_sources=None,
+    model_reference_arn=None,
 ):
     """Create a definition for executing a container as part of a SageMaker model.
 
@@ -7215,6 +7643,8 @@ def container_def(
             The `accept_eula` value must be explicitly defined as `True` in order to
             accept the end-user license agreement (EULA) that some
             models require. (Default: None).
+        additional_model_data_sources (PipelineVariable or dict): Additional location
+                of SageMaker model data (default: None).
 
     Returns:
         dict[str, str]: A complete container definition object usable with the CreateModel API if
@@ -7223,6 +7653,9 @@ def container_def(
     if env is None:
         env = {}
     c_def = {"Image": image_uri, "Environment": env}
+
+    if additional_model_data_sources:
+        c_def["AdditionalModelDataSources"] = additional_model_data_sources
 
     if isinstance(model_data_url, str) and (
         not (model_data_url.startswith("s3://") and model_data_url.endswith("tar.gz"))
@@ -7245,6 +7678,11 @@ def container_def(
             c_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"] = {
                 "AcceptEula": accept_eula
             }
+        if model_reference_arn:
+            c_def["ModelDataSource"]["S3DataSource"]["HubAccessConfig"] = {
+                "HubContentArn": model_reference_arn
+            }
+
     elif model_data_url is not None:
         c_def["ModelDataUrl"] = model_data_url
 
@@ -7659,6 +8097,31 @@ def _auto_ml_job_status(sagemaker_client, job_name):
     return desc
 
 
+def _optimization_job_status(sagemaker_client, job_name):
+    """Placeholder docstring"""
+    optimization_job_status_codes = {
+        "INPROGRESS": ".",
+        "COMPLETED": "!",
+        "FAILED": "*",
+        "STARTING": ".",
+        "STOPPING": "_",
+        "STOPPED": "s",
+    }
+    in_progress_statuses = ["INPROGRESS", "STARTING", "STOPPING"]
+
+    desc = sagemaker_client.describe_optimization_job(OptimizationJobName=job_name)
+    status = desc["OptimizationJobStatus"]
+
+    print(optimization_job_status_codes.get(status, "?"), end="")
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print("")
+    return desc
+
+
 def _create_model_package_status(sagemaker_client, model_package_name):
     """Placeholder docstring"""
     in_progress_statuses = ["InProgress", "Pending"]
@@ -7977,7 +8440,9 @@ def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
     """
     sagemaker_client = sagemaker_session.sagemaker_client
     request_end_time = time.time() + timeout if timeout else None
-    description = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    description = _wait_until(
+        lambda: sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    )
     print(secondary_training_status_message(description, None), end="")
 
     instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
@@ -8123,8 +8588,19 @@ def _check_job_status(job, desc, status_key_name):
     elif status != "Completed":
         reason = desc.get("FailureReason", "(No reason provided)")
         job_type = status_key_name.replace("JobStatus", " job")
-        message = "Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
-            job_type=job_type, job_name=job, status=status, reason=reason
+        troubleshooting = (
+            "https://docs.aws.amazon.com/sagemaker/latest/dg/"
+            "sagemaker-python-sdk-troubleshooting.html"
+        )
+        message = (
+            "Error for {job_type} {job_name}: {status}. Reason: {reason}. "
+            "Check troubleshooting guide for common errors: {troubleshooting}"
+        ).format(
+            job_type=job_type,
+            job_name=job,
+            status=status,
+            reason=reason,
+            troubleshooting=troubleshooting,
         )
         if "CapacityError" in str(reason):
             raise exceptions.CapacityError(

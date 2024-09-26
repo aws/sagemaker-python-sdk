@@ -50,7 +50,7 @@ class MXNet(Framework):
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         distribution: Optional[Dict[str, str]] = None,
-        **kwargs
+        **kwargs,
     ):
         """This ``Estimator`` executes an MXNet script in a managed MXNet execution environment.
 
@@ -222,7 +222,7 @@ class MXNet(Framework):
         source_dir=None,
         dependencies=None,
         image_uri=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
 
@@ -283,7 +283,7 @@ class MXNet(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
-            **kwargs
+            **kwargs,
         )
 
         if entry_point is None:

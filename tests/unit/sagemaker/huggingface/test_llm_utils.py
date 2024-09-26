@@ -15,7 +15,10 @@ from __future__ import absolute_import
 from unittest import TestCase
 from urllib.error import HTTPError
 from unittest.mock import Mock, patch
-from sagemaker.huggingface.llm_utils import get_huggingface_model_metadata
+from sagemaker.huggingface.llm_utils import (
+    get_huggingface_model_metadata,
+    download_huggingface_model_metadata,
+)
 
 MOCK_HF_ID = "mock_hf_id"
 MOCK_HF_HUB_TOKEN = "mock_hf_hub_token"
@@ -74,3 +77,25 @@ class LlmUtilsTests(TestCase):
             f"Did not find model metadata for the following HuggingFace Model ID {MOCK_HF_ID}"
         )
         self.assertEquals(expected_error_msg, str(context.exception))
+
+    @patch("huggingface_hub.snapshot_download")
+    def test_download_huggingface_model_metadata(self, mock_snapshot_download):
+        mock_snapshot_download.side_effect = None
+
+        download_huggingface_model_metadata(MOCK_HF_ID, "local_path", MOCK_HF_HUB_TOKEN)
+
+        mock_snapshot_download.assert_called_once_with(
+            repo_id=MOCK_HF_ID, local_dir="local_path", token=MOCK_HF_HUB_TOKEN
+        )
+
+    @patch("importlib.util.find_spec")
+    def test_download_huggingface_model_metadata_ex(self, mock_find_spec):
+        mock_find_spec.side_effect = lambda *args, **kwargs: False
+
+        self.assertRaisesRegex(
+            ImportError,
+            "Unable to import huggingface_hub, check if huggingface_hub is installed",
+            lambda: download_huggingface_model_metadata(
+                MOCK_HF_ID, "local_path", MOCK_HF_HUB_TOKEN
+            ),
+        )

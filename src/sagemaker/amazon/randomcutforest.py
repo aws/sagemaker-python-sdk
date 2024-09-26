@@ -60,7 +60,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         num_samples_per_tree: Optional[int] = None,
         num_trees: Optional[int] = None,
         eval_metrics: Optional[List] = None,
-        **kwargs
+        **kwargs,
     ):
         """An `Estimator` class implementing a Random Cut Forest.
 
@@ -144,7 +144,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -222,7 +222,7 @@ class RandomCutForestModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for RandomCutForestModel class.
 
@@ -255,5 +255,5 @@ class RandomCutForestModel(Model):
             role,
             predictor_cls=RandomCutForestPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

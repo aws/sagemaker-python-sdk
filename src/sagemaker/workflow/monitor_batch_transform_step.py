@@ -48,8 +48,8 @@ class MonitorBatchTransformStep(StepCollection):
         check_job_configuration: CheckJobConfig,
         monitor_before_transform: bool = False,
         fail_on_violation: Union[bool, PipelineVariable] = True,
-        supplied_baseline_statistics: Union[str, PipelineVariable] = None,
-        supplied_baseline_constraints: Union[str, PipelineVariable] = None,
+        supplied_baseline_statistics: Optional[Union[str, PipelineVariable]] = None,
+        supplied_baseline_constraints: Optional[Union[str, PipelineVariable]] = None,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
     ):

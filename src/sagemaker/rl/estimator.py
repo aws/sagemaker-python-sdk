@@ -84,7 +84,7 @@ class RLEstimator(Framework):
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Creates an RLEstimator for managed Reinforcement Learning (RL).
 
@@ -168,7 +168,7 @@ class RLEstimator(Framework):
             hyperparameters,
             image_uri=image_uri,
             metric_definitions=metric_definitions,
-            **kwargs
+            **kwargs,
         )
 
     def create_model(
@@ -178,7 +178,7 @@ class RLEstimator(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``RLEstimatorModel`` object that can be deployed to an Endpoint.
 

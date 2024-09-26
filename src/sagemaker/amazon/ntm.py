@@ -89,7 +89,7 @@ class NTM(AmazonAlgorithmEstimatorBase):
         clip_gradient: Optional[float] = None,
         weight_decay: Optional[float] = None,
         learning_rate: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ):
         """Neural Topic Model (NTM) is :class:`Estimator` used for unsupervised learning.
 
@@ -194,7 +194,7 @@ class NTM(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(  # pylint: disable=signature-differs
@@ -269,7 +269,7 @@ class NTMModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for NTMModel class.
 
@@ -302,5 +302,5 @@ class NTMModel(Model):
             role,
             predictor_cls=NTMPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

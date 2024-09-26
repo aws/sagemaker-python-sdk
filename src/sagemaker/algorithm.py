@@ -68,7 +68,7 @@ class AlgorithmEstimator(EstimatorBase):
         encrypt_inter_container_traffic: Union[bool, PipelineVariable] = False,
         use_spot_instances: Union[bool, PipelineVariable] = False,
         max_wait: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs  # pylint: disable=W0613
+        **kwargs,  # pylint: disable=W0613
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
 
@@ -157,6 +157,20 @@ class AlgorithmEstimator(EstimatorBase):
                 available (default: ``None``).
             **kwargs: Additional kwargs. This is unused. It's only added for AlgorithmEstimator
                 to ignore the irrelevant arguments.
+
+        Raises:
+            ValueError:
+            - If an AWS IAM Role is not provided.
+            - Bad value for instance type.
+            RuntimeError:
+            - When setting up custom VPC, both subnets and security_group_ids are not provided
+            - If instance_count > 1 (distributed training) with instance type local or local gpu
+            - If LocalSession is not used with instance type local or local gpu
+            - file:// output path used outside of local mode
+            botocore.exceptions.ClientError:
+            - algorithm arn is incorrect
+            - insufficient permission to access/ describe algorithm
+            - algorithm is in a different region
         """
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(
@@ -271,7 +285,7 @@ class AlgorithmEstimator(EstimatorBase):
         serializer=IdentitySerializer(),
         deserializer=BytesDeserializer(),
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
-        **kwargs
+        **kwargs,
     ):
         """Create a model to deploy.
 
@@ -325,7 +339,7 @@ class AlgorithmEstimator(EstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
             predictor_cls=predictor_cls,
-            **kwargs
+            **kwargs,
         )
 
     def transformer(

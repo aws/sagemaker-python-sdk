@@ -362,10 +362,10 @@ class ConfigurableRetryStep(Step):
         self,
         name: str,
         step_type: StepTypeEnum,
-        display_name: str = None,
-        description: str = None,
-        depends_on: Optional[List[Union[str, Step, "StepCollection", StepOutput]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         super().__init__(
             name=name,
@@ -404,14 +404,14 @@ class TrainingStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: _JobStepArguments = None,
-        estimator: EstimatorBase = None,
-        display_name: str = None,
-        description: str = None,
-        inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
-        cache_config: CacheConfig = None,
+        step_args: Optional[_JobStepArguments] = None,
+        estimator: Optional[EstimatorBase] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        inputs: Optional[Union[TrainingInput, dict, str, FileSystemInput]] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Construct a `TrainingStep`, given an `EstimatorBase` instance.
 
@@ -681,14 +681,14 @@ class TransformStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: _JobStepArguments = None,
-        transformer: Transformer = None,
-        inputs: TransformInput = None,
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
+        step_args: Optional[_JobStepArguments] = None,
+        transformer: Optional[Transformer] = None,
+        inputs: Optional[TransformInput] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Constructs a `TransformStep`, given a `Transformer` instance.
 
@@ -808,19 +808,19 @@ class ProcessingStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: _JobStepArguments = None,
-        processor: Processor = None,
-        display_name: str = None,
-        description: str = None,
-        inputs: List[ProcessingInput] = None,
-        outputs: List[ProcessingOutput] = None,
-        job_arguments: List[str] = None,
-        code: str = None,
-        property_files: List[PropertyFile] = None,
-        cache_config: CacheConfig = None,
+        step_args: Optional[_JobStepArguments] = None,
+        processor: Optional[Processor] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        inputs: Optional[List[ProcessingInput]] = None,
+        outputs: Optional[List[ProcessingOutput]] = None,
+        job_arguments: Optional[List[str]] = None,
+        code: Optional[str] = None,
+        property_files: Optional[List[PropertyFile]] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
-        retry_policies: List[RetryPolicy] = None,
-        kms_key=None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+        kms_key: Optional[str] = None,
     ):
         """Construct a `ProcessingStep`, given a `Processor` instance.
 
@@ -980,15 +980,15 @@ class TuningStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: _JobStepArguments = None,
-        tuner: HyperparameterTuner = None,
-        display_name: str = None,
-        description: str = None,
+        step_args: Optional[_JobStepArguments] = None,
+        tuner: Optional[HyperparameterTuner] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
         inputs=None,
-        job_arguments: List[str] = None,
-        cache_config: CacheConfig = None,
+        job_arguments: Optional[List[str]] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Construct a `TuningStep`, given a `HyperparameterTuner` instance.
 

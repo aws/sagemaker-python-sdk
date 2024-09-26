@@ -84,11 +84,11 @@ class LambdaStep(Step):
         self,
         name: str,
         lambda_func: Lambda,
-        display_name: str = None,
-        description: str = None,
-        inputs: dict = None,
-        outputs: List[LambdaOutput] = None,
-        cache_config: CacheConfig = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        inputs: Optional[dict] = None,
+        outputs: Optional[List[LambdaOutput]] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a LambdaStep.

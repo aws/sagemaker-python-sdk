@@ -15,6 +15,7 @@ import unittest
 import pytest
 import requests
 from unittest.mock import Mock, patch, MagicMock
+import boto3
 import sagemaker
 from sagemaker.telemetry.constants import Feature
 from sagemaker.telemetry.telemetry_logging import (
@@ -24,6 +25,7 @@ from sagemaker.telemetry.telemetry_logging import (
     _get_accountId,
     _requests_helper,
     _get_region_or_default,
+    _get_default_sagemaker_session,
     OS_NAME_VERSION,
     PYTHON_VERSION,
 )
@@ -282,3 +284,19 @@ class TestTelemetryLogging(unittest.TestCase):
             region = _get_region_or_default(mock_session)
             assert region == "us-west-2"
             assert "Error creating boto session" in str(exception)
+
+    @patch.object(boto3.Session, "region_name", "us-west-2")
+    def test_get_default_sagemaker_session(self):
+        sagemaker_session = _get_default_sagemaker_session()
+
+        assert isinstance(sagemaker_session, sagemaker.Session) is True
+        assert sagemaker_session.boto_session.region_name == "us-west-2"
+
+    @patch.object(boto3.Session, "region_name", None)
+    def test_get_default_sagemaker_session_with_no_region(self):
+        with self.assertRaises(ValueError) as context:
+            _get_default_sagemaker_session()
+
+        assert "Must setup local AWS configuration with a region supported by SageMaker." in str(
+            context.exception
+        )

@@ -67,7 +67,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
         algorithm_mode: Optional[str] = None,
         subtract_mean: Optional[bool] = None,
         extra_components: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         """A Principal Components Analysis (PCA)
 
@@ -155,7 +155,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -249,7 +249,7 @@ class PCAModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for PCAModel.
 
@@ -282,5 +282,5 @@ class PCAModel(Model):
             role,
             predictor_cls=PCAPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

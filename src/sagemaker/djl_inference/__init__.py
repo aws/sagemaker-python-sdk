@@ -13,8 +13,5 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.djl_inference.model import DJLPredictor  # noqa: F401
+from sagemaker.djl_inference.djl_predictor import DJLPredictor  # noqa: F401
 from sagemaker.djl_inference.model import DJLModel  # noqa: F401
-from sagemaker.djl_inference.model import DeepSpeedModel  # noqa: F401
-from sagemaker.djl_inference.model import HuggingFaceAccelerateModel  # noqa: F401
-from sagemaker.djl_inference.model import FasterTransformerModel  # noqa: F401

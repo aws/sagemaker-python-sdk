@@ -430,6 +430,8 @@ class Predictor(PredictorBase):
                 - If ``initial_instance_count``, ``instance_type``, or ``accelerator_type`` is
                   specified and either ``model_name`` is ``None`` or there are multiple models
                   associated with the endpoint.
+            botocore.exceptions.ClientError: If SageMaker throws an error while creating
+            endpoint config, describing endpoint or updating endpoint
         """
         production_variants = None
         current_model_names = self._get_model_names()

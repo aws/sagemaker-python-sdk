@@ -65,7 +65,6 @@ class TeiServerTests(TestCase):
             auto_remove=True,
             volumes={PosixPath("model_path/code"): {"bind": "/opt/ml/model/", "mode": "rw"}},
             environment={
-                "TRANSFORMERS_CACHE": "/opt/ml/model/",
                 "HF_HOME": "/opt/ml/model/",
                 "HUGGINGFACE_HUB_CACHE": "/opt/ml/model/",
                 "KEY": "VALUE",
@@ -135,6 +134,7 @@ class TeiServerTests(TestCase):
             sagemaker_session=mock_session,
             s3_model_data_url=S3_URI,
             image=TEI_IMAGE,
+            should_upload_artifacts=True,
         )
 
         mock_uploader.upload.assert_called_once()

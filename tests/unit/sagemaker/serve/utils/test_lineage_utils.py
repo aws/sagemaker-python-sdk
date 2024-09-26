@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 from unittest.mock import call
 
+import datetime
 import pytest
 from botocore.exceptions import ClientError
 from mock import Mock, patch
@@ -22,6 +23,7 @@ from sagemaker.lineage.artifact import ArtifactSummary, Artifact
 from sagemaker.lineage.query import LineageSourceEnum
 
 from sagemaker.serve.utils.lineage_constants import (
+    TRACKING_SERVER_CREATION_TIME_FORMAT,
     MLFLOW_RUN_ID,
     MLFLOW_MODEL_PACKAGE_PATH,
     MLFLOW_S3_PATH,
@@ -55,7 +57,7 @@ def test_load_artifact_by_source_uri(mock_artifact_list):
     mock_artifact_list.return_value = mock_artifacts
 
     result = _load_artifact_by_source_uri(
-        source_uri, LineageSourceEnum.MODEL_DATA.value, sagemaker_session
+        source_uri, sagemaker_session, artifact_type=LineageSourceEnum.MODEL_DATA.value
     )
 
     mock_artifact_list.assert_called_once_with(
@@ -77,7 +79,7 @@ def test_load_artifact_by_source_uri_no_match(mock_artifact_list):
     mock_artifact_list.return_value = mock_artifacts
 
     result = _load_artifact_by_source_uri(
-        source_uri, LineageSourceEnum.MODEL_DATA.value, sagemaker_session
+        source_uri, sagemaker_session, artifact_type=LineageSourceEnum.MODEL_DATA.value
     )
 
     mock_artifact_list.assert_called_once_with(
@@ -104,7 +106,7 @@ def test_poll_lineage_artifact_found(mock_load_artifact):
     assert result == mock_artifact
     mock_load_artifact.assert_has_calls(
         [
-            call(s3_uri, LineageSourceEnum.MODEL_DATA.value, sagemaker_session),
+            call(s3_uri, sagemaker_session, artifact_type=LineageSourceEnum.MODEL_DATA.value),
         ]
     )
 
@@ -130,7 +132,7 @@ def test_poll_lineage_artifact_not_found(mock_load_artifact):
 @pytest.mark.parametrize(
     "mlflow_model_path, expected_output",
     [
-        ("runs:/abc123", MLFLOW_RUN_ID),
+        ("runs:/abc123/my-model", MLFLOW_RUN_ID),
         ("models:/my-model/1", MLFLOW_REGISTRY_PATH),
         (
             "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model-package",
@@ -163,7 +165,8 @@ def test_get_mlflow_model_path_type_invalid():
 def test_create_mlflow_model_path_lineage_artifact_success(
     mock_artifact_create, mock_get_mlflow_path_type
 ):
-    mlflow_model_path = "runs:/Ab12Cd34"
+    mlflow_model_path = "runs:/Ab12Cd34/my-model"
+    mock_source_types = [dict(SourceIdType="Custom", Value="ModelBuilderInputModelData")]
     sagemaker_session = Mock(spec=Session)
     mock_artifact = Mock(spec=Artifact)
     mock_get_mlflow_path_type.return_value = "mlflow_run_id"
@@ -175,6 +178,7 @@ def test_create_mlflow_model_path_lineage_artifact_success(
     mock_get_mlflow_path_type.assert_called_once_with(mlflow_model_path)
     mock_artifact_create.assert_called_once_with(
         source_uri=mlflow_model_path,
+        source_types=mock_source_types,
         artifact_type=MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
         artifact_name="mlflow_run_id",
         properties={"model_builder_input_model_data_type": "mlflow_run_id"},
@@ -187,7 +191,7 @@ def test_create_mlflow_model_path_lineage_artifact_success(
 def test_create_mlflow_model_path_lineage_artifact_validation_exception(
     mock_artifact_create, mock_get_mlflow_path_type
 ):
-    mlflow_model_path = "runs:/Ab12Cd34"
+    mlflow_model_path = "runs:/Ab12Cd34/my-model"
     sagemaker_session = Mock(spec=Session)
     mock_get_mlflow_path_type.return_value = "mlflow_run_id"
     mock_artifact_create.side_effect = ClientError(
@@ -204,7 +208,7 @@ def test_create_mlflow_model_path_lineage_artifact_validation_exception(
 def test_create_mlflow_model_path_lineage_artifact_other_exception(
     mock_artifact_create, mock_get_mlflow_path_type
 ):
-    mlflow_model_path = "runs:/Ab12Cd34"
+    mlflow_model_path = "runs:/Ab12Cd34/my-model"
     sagemaker_session = Mock(spec=Session)
     mock_get_mlflow_path_type.return_value = "mlflow_run_id"
     mock_artifact_create.side_effect = ClientError(
@@ -220,18 +224,33 @@ def test_create_mlflow_model_path_lineage_artifact_other_exception(
 def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_existing(
     mock_load_artifact, mock_create_artifact
 ):
-    mlflow_model_path = "runs:/Ab12Cd34"
+    mlflow_model_path = "runs:/Ab12Cd34/my-model"
+    mock_tracking_server_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
+    )
+    mock_creation_time = datetime.datetime(2024, 5, 15, 0, 0, 0)
     sagemaker_session = Mock(spec=Session)
+    mock_sagemaker_client = Mock()
+    mock_describe_response = {"CreationTime": mock_creation_time}
+    mock_sagemaker_client.describe_mlflow_tracking_server.return_value = mock_describe_response
+    sagemaker_session.sagemaker_client = mock_sagemaker_client
+    mock_source_types_to_match = [
+        "ModelBuilderInputModelData",
+        mock_tracking_server_arn,
+        mock_creation_time.strftime(TRACKING_SERVER_CREATION_TIME_FORMAT),
+    ]
     mock_artifact_summary = Mock(spec=ArtifactSummary)
     mock_load_artifact.return_value = mock_artifact_summary
 
     result = _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
-        mlflow_model_path, sagemaker_session
+        mlflow_model_path, sagemaker_session, mock_tracking_server_arn
     )
 
     assert result == mock_artifact_summary
     mock_load_artifact.assert_called_once_with(
-        mlflow_model_path, MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE, sagemaker_session
+        mlflow_model_path,
+        sagemaker_session,
+        mock_source_types_to_match,
     )
     mock_create_artifact.assert_not_called()
 
@@ -241,21 +260,38 @@ def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_exi
 def test_retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact_create(
     mock_load_artifact, mock_create_artifact
 ):
-    mlflow_model_path = "runs:/Ab12Cd34"
+    mlflow_model_path = "runs:/Ab12Cd34/my-model"
+    mock_tracking_server_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
+    )
+    mock_creation_time = datetime.datetime(2024, 5, 15, 0, 0, 0)
     sagemaker_session = Mock(spec=Session)
+    mock_sagemaker_client = Mock()
+    mock_describe_response = {"CreationTime": mock_creation_time}
+    mock_sagemaker_client.describe_mlflow_tracking_server.return_value = mock_describe_response
+    sagemaker_session.sagemaker_client = mock_sagemaker_client
+    mock_source_types_to_match = [
+        "ModelBuilderInputModelData",
+        mock_tracking_server_arn,
+        mock_creation_time.strftime(TRACKING_SERVER_CREATION_TIME_FORMAT),
+    ]
     mock_artifact = Mock(spec=Artifact)
     mock_load_artifact.return_value = None
     mock_create_artifact.return_value = mock_artifact
 
     result = _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
-        mlflow_model_path, sagemaker_session
+        mlflow_model_path, sagemaker_session, mock_tracking_server_arn
     )
 
     assert result == mock_artifact
     mock_load_artifact.assert_called_once_with(
-        mlflow_model_path, MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE, sagemaker_session
+        mlflow_model_path,
+        sagemaker_session,
+        mock_source_types_to_match,
     )
-    mock_create_artifact.assert_called_once_with(mlflow_model_path, sagemaker_session)
+    mock_create_artifact.assert_called_once_with(
+        mlflow_model_path, sagemaker_session, mock_source_types_to_match
+    )
 
 
 @patch("sagemaker.lineage.association.Association.create")
@@ -320,7 +356,10 @@ def test_add_association_between_artifacts_other_exception(mock_association_crea
 def test_maintain_lineage_tracking_for_mlflow_model_success(
     mock_add_association, mock_retrieve_create_artifact, mock_poll_artifact
 ):
-    mlflow_model_path = "runs:/Ab12Cd34"
+    mlflow_model_path = "runs:/Ab12Cd34/my-model"
+    mock_tracking_server_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
+    )
     s3_upload_path = "s3://mybucket/path/to/model"
     sagemaker_session = Mock(spec=Session)
     mock_model_data_artifact = Mock(spec=ArtifactSummary)
@@ -329,7 +368,7 @@ def test_maintain_lineage_tracking_for_mlflow_model_success(
     mock_retrieve_create_artifact.return_value = mock_mlflow_model_artifact
 
     _maintain_lineage_tracking_for_mlflow_model(
-        mlflow_model_path, s3_upload_path, sagemaker_session
+        mlflow_model_path, s3_upload_path, sagemaker_session, mock_tracking_server_arn
     )
 
     mock_poll_artifact.assert_called_once_with(
@@ -338,7 +377,9 @@ def test_maintain_lineage_tracking_for_mlflow_model_success(
         sagemaker_session=sagemaker_session,
     )
     mock_retrieve_create_artifact.assert_called_once_with(
-        mlflow_model_path=mlflow_model_path, sagemaker_session=sagemaker_session
+        mlflow_model_path=mlflow_model_path,
+        tracking_server_arn=mock_tracking_server_arn,
+        sagemaker_session=sagemaker_session,
     )
     mock_add_association.assert_called_once_with(
         mlflow_model_path_artifact_arn=mock_mlflow_model_artifact.artifact_arn,
@@ -355,14 +396,17 @@ def test_maintain_lineage_tracking_for_mlflow_model_success(
 def test_maintain_lineage_tracking_for_mlflow_model_no_model_data_artifact(
     mock_add_association, mock_retrieve_create_artifact, mock_poll_artifact
 ):
-    mlflow_model_path = "runs:/Ab12Cd34"
+    mlflow_model_path = "runs:/Ab12Cd34/my-model"
+    mock_tracking_server_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test"
+    )
     s3_upload_path = "s3://mybucket/path/to/model"
     sagemaker_session = Mock(spec=Session)
     mock_poll_artifact.return_value = None
     mock_retrieve_create_artifact.return_value = None
 
     _maintain_lineage_tracking_for_mlflow_model(
-        mlflow_model_path, s3_upload_path, sagemaker_session
+        mlflow_model_path, s3_upload_path, sagemaker_session, mock_tracking_server_arn
     )
 
     mock_poll_artifact.assert_called_once_with(

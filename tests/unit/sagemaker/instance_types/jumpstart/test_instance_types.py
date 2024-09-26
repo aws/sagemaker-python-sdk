@@ -51,6 +51,8 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=mock_session,
+        hub_arn=None,
     )
 
     patched_get_model_specs.reset_mock()
@@ -70,6 +72,8 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -95,6 +99,8 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -122,6 +128,8 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()

@@ -68,6 +68,7 @@ from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.interactive_apps import SupportedInteractiveAppTypes
 from sagemaker.interactive_apps.tensorboard import TensorBoardApp
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.model_card.model_card import ModelCard, TrainingDetails
 from sagemaker.utils import instance_supports_kms
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
@@ -274,7 +275,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
             tags (Optional[Tags]):
-                Tags for labeling a training job. For more, see
+                Tags for labeling a training job. These won't be propagated to Models,
+                Endpoints during :meth:`~sagemaker.estimator.EstimatorBase.deploy`. The
+                :meth:`~sagemaker.estimator.EstimatorBase.deploy` takes in a seperate
+                tags parameter. For more on tags, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             subnets (list[str] or list[PipelineVariable]): List of subnet ids. If not
                 specified training job will be created without VPC config.
@@ -586,25 +590,36 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.dependencies = dependencies or []
         self.uploaded_code: Optional[UploadedCode] = None
 
-        # Check that the user properly sets both subnet and secutiry_groupe_ids
+        # Check that the user properly sets both subnet and security_group_ids
         if (
             subnets is not None
             and security_group_ids is None
             or security_group_ids is not None
             and subnets is None
         ):
+            troubleshooting = (
+                "Refer to this documentation on using custom VPC: "
+                "https://sagemaker.readthedocs.io/en/v2.24.0/overview.html"
+                "#secure-training-and-inference-with-vpc"
+            )
+            logger.error("Check troubleshooting guide for common errors: %s", troubleshooting)
+
             raise RuntimeError(
                 "When setting up custom VPC, both subnets and security_group_ids must be set"
             )
 
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
-                raise RuntimeError("Distributed Training in Local GPU is not supported")
+                raise RuntimeError(
+                    "Distributed Training in Local GPU is not supported."
+                    " Set instance_count to 1."
+                )
             self.sagemaker_session = sagemaker_session or LocalSession()
             if not isinstance(self.sagemaker_session, sagemaker.local.LocalSession):
                 raise RuntimeError(
                     "instance_type local or local_gpu is only supported with an"
-                    "instance of LocalSession"
+                    "instance of LocalSession. More details on local mode: "
+                    "https://sagemaker.readthedocs.io/en/stable/overview.html#local-mode"
                 )
         else:
             self.sagemaker_session = sagemaker_session or Session()
@@ -627,7 +642,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             and not is_pipeline_variable(output_path)
             and output_path.startswith("file://")
         ):
-            raise RuntimeError("file:// output paths are only supported in Local Mode")
+            raise RuntimeError(
+                "The 'file://' output paths are only supported when using Local Mode. "
+                "To resolve this issue, ensure you're running in Local Mode with a LocalSession, "
+                "or use an 's3://' output path for jobs running on SageMaker instances."
+            )
         self.output_path = output_path
         self.latest_training_job = None
         self.jobs = []
@@ -642,7 +661,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("An AWS IAM role is required to create an estimator.")
+            raise ValueError(
+                "An AWS IAM role is required to create an estimator. "
+                "Please provide a valid `role` argument with the ARN of an IAM role"
+                " that has the necessary SageMaker permissions."
+            )
+
         self.output_kms_key = resolve_value_from_config(
             output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
@@ -1794,8 +1818,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         else:
             if "model_kms_key" not in kwargs:
                 kwargs["model_kms_key"] = self.output_kms_key
-            model = self.create_model(image_uri=image_uri, **kwargs)
+            model = self.create_model(image_uri=image_uri, name=model_name, **kwargs)
         model.name = model_name
+        if self.model_data is not None and model_card is None:
+            training_details = TrainingDetails.from_model_s3_artifacts(
+                model_artifacts=[self.model_data], sagemaker_session=self.sagemaker_session
+            )
+            model_card = ModelCard(
+                name="estimator_card",
+                training_details=training_details,
+                sagemaker_session=self.sagemaker_session,
+            )
         return model.register(
             content_types,
             response_types,
@@ -1842,6 +1875,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if compression_type not in {"GZIP", "NONE"}:
                 raise ValueError(
                     f'Unrecognized training job output data compression type "{compression_type}"'
+                    '. Please specify either "GZIP" or "NONE" as valid options for '
+                    "the compression type."
                 )
             # model data is in uncompressed form NOTE SageMaker Hosting mandates presence of
             # trailing forward slash in S3 model data URI, so append one if necessary.

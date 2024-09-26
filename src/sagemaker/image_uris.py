@@ -22,6 +22,7 @@ from packaging.version import Version
 
 from sagemaker import utils
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
@@ -64,12 +65,15 @@ def retrieve(
     training_compiler_config=None,
     model_id=None,
     model_version=None,
+    hub_arn=None,
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
     sdk_version=None,
     inference_tool=None,
     serverless_inference_config=None,
     sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name=None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -104,6 +108,8 @@ def retrieve(
             (default: None).
         model_version (str): The version of the JumpStart model for which to retrieve the
             image URI (default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model specifications
             should be tolerated without an exception raised. If ``False``, raises an exception if
             the script used by this version of the model has dependencies with known security
@@ -123,6 +129,9 @@ def retrieve(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
@@ -149,6 +158,7 @@ def retrieve(
             model_id,
             model_version,
             image_scope,
+            hub_arn,
             framework,
             region,
             version,
@@ -162,6 +172,8 @@ def retrieve(
             tolerate_vulnerable_model,
             tolerate_deprecated_model,
             sagemaker_session=sagemaker_session,
+            config_name=config_name,
+            model_type=model_type,
         )
 
     if training_compiler_config and (framework in [HUGGING_FACE_FRAMEWORK, "pytorch"]):
@@ -686,6 +698,7 @@ def get_training_image_uri(
                         "p5" in instance_type
                         or "2.1" in framework_version
                         or "2.2" in framework_version
+                        or "2.3" in framework_version
                     ):
                         container_version = "cu121"
                     else:

@@ -167,10 +167,12 @@ def validate_hyperparameters(
     model_version: str,
     hyperparameters: Dict[str, Any],
     validation_mode: HyperparameterValidationMode = HyperparameterValidationMode.VALIDATE_PROVIDED,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     sagemaker_session: Optional[session.Session] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    config_name: Optional[str] = None,
 ) -> None:
     """Validate hyperparameters for JumpStart models.
 
@@ -193,6 +195,7 @@ def validate_hyperparameters(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
            (exception not raised). False if these models should raise an exception.
            (Default: False).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Raises:
         JumpStartHyperparametersError: If the hyperparameters are not formatted correctly,
@@ -213,11 +216,13 @@ def validate_hyperparameters(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         region=region,
         scope=JumpStartScriptScope.TRAINING,
         sagemaker_session=sagemaker_session,
         tolerate_deprecated_model=tolerate_deprecated_model,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
+        config_name=config_name,
     )
     hyperparameters_specs = model_specs.hyperparameters
 

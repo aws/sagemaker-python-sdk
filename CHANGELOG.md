@@ -1,5 +1,196 @@
 # Changelog
 
+## v2.232.1 (2024-09-19)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  09-17-2024 07:17:54 PST
+ * support latest container version in image_uris and DJLModel for lmi c…
+
+## v2.232.0 (2024-09-12)
+
+### Features
+
+ * add deployment config name in modelbuilder telemetry
+ * add Clarify image URIs for us-isof
+
+### Bug Fixes and Other Changes
+
+ * chore: add flaky test markers & skip region with low P3 instance capacity
+ * update image_uri_configs  09-11-2024 11:54:11 PST
+ * update image_uri_configs  09-10-2024 07:18:01 PST
+ * [change] add us-gov and cn region repo accounts to djl and hugging face image metadata
+ * update image_uri_configs  09-06-2024 07:17:55 PST
+ * add us-gov region repo accounts to djl image metadata
+ * pass name from modelbuilder constructor to created model
+
+## v2.231.0 (2024-08-30)
+
+### Features
+
+ * Add SageMaker Core to the dependency
+
+### Bug Fixes and Other Changes
+
+ * Disable test_mnist_async
+ * SMP v2.5
+ * update image_uri_configs  08-29-2024 07:17:59 PST
+
+## v2.230.0 (2024-08-28)
+
+### Features
+
+ * FastAPI integration for In_Process Mode (2/2)
+
+### Bug Fixes and Other Changes
+
+ * chore: add HF LLM neuronx 0.0.24 image
+ * TF-2.16 test modification and handling
+ * fix test fail
+ * Add troubleshooting links to exceptions
+ * cross account private hub model fine-tuning
+ * chore: cleanup jumpstart factory
+ * disable failing integration tests
+
+## v2.229.0 (2024-08-15)
+
+### Features
+
+ * Support for ModelBuilder In_Process Mode (1/2)
+ * Pulling in dependencies (in_process mode) using conda environment
+ * Add optional CodeArtifact login to FrameworkProcessing job script
+ * implemented security-monitoring to send metrics to CW #1510
+
+### Bug Fixes and Other Changes
+
+ * alt configs model deployment and training issues
+ * fix keras extension in integ test
+ * update image_uri_configs  08-13-2024 07:17:54 PST
+ * trn1 instance family does not support volume size
+ * Update model.py
+ * removed log statement
+ * update image_uri_configs  08-09-2024 07:18:00 PST
+ * Added torchrun compatibility for distributet training across multiple GPUs in a single node (single instance)
+ * BiasConfig type hint
+ * add model monitor image accounts for ap-southeast-5 and eu-central-2
+ * aligned UTC times with PST
+ * ensure hpt jobs inherit tags from config
+ * add JumpStart PDT and OSU regions
+ * chore(deps): bump certifi in /src/sagemaker/serve/utils
+ * Updates for DJL 0.29.0 release
+ * chore(deps): bump apache-airflow from 2.9.2 to 2.9.3 in /requirements/extras
+ * chore(deps): bump torch from 2.0.1 to 2.2.0 in /tests/data/serve_resources/mlflow/pytorch
+ * avoided printing stack trace and escaped input
+ * removing kwargs as this is breaking predictor_cls param for mode…
+
+## v2.228.0 (2024-08-06)
+
+### Features
+
+ * triton v24.05
+
+### Bug Fixes and Other Changes
+
+ * chore: telemetry for deployment configs
+ * censoring sensitive values from being logged
+ * update image_uri_configs  08-05-2024 07:17:38 PST
+ * enable uncompressed model artifacts upload to S3 for SAGEMAKER_ENDPOINT overwrite for TGI, TEI, MMS model servers
+ * ModelReference deployment for Alt Configs models
+ * Add optional typecheck for nullable parameters
+ * Update package metadata
+ * release TEI 1.4.0
+
+## v2.227.0 (2024-07-30)
+
+### Features
+
+ * added code scanning through CodeQL
+
+### Bug Fixes and Other Changes
+
+ * Fixed cpu isntance type for the estimator register test
+ * update image_uri_configs  07-29-2024 11:28:28 PST
+ * avoid AccessDenied error for a while on SageMaker Studio wtih do…
+ * SMP PT 2.3 Fix
+ * chore: pin framework version in serverless inference tests
+ * image uri in TGI 2.2.0 image
+ * explicitly access enum member values to avoid Python version related regression
+ * chore: add huggingface TGI 2.2.0 config
+ * update image_uri_configs  07-22-2024 11:53:54 PST
+ * update image_uri_configs  07-17-2024 07:17:38 PST
+ * update image_uri_configs  07-16-2024 07:17:45 PST
+ * add support for new regions
+
+## v2.226.1 (2024-07-17)
+
+## v2.226.0 (2024-07-12)
+
+### Features
+
+ * Curated hub improvements
+ * InferenceSpec support for MMS and testing
+
+### Bug Fixes and Other Changes
+
+ * ModelBuilder not passing HF_TOKEN to model.
+ * update image_uri_configs  07-10-2024 07:18:04 PST
+
+## v2.225.0 (2024-07-10)
+
+### Features
+
+ * model optimization
+
+### Bug Fixes and Other Changes
+
+ * fix integ test
+ * update uris for v1.1.1
+ * update image_uri_configs  07-04-2024 07:17:24 PST
+
+## v2.224.4 (2024-07-04)
+
+### Bug Fixes and Other Changes
+
+ * allow for inf spec and server override to be passed
+
+## v2.224.3 (2024-07-03)
+
+### Bug Fixes and Other Changes
+
+ * Upgrade local dependencies
+ * Improve docstrings for estimator tags
+
+## v2.224.2 (2024-06-27)
+
+### Bug Fixes and Other Changes
+
+ * Update DJLModel class for latest container releases
+ * list_models() for python3.8
+
+## v2.224.1 (2024-06-21)
+
+### Bug Fixes and Other Changes
+
+ * JumpStart CuratedHub Launch
+ * Update README.rst to show conda-forge version of SageMaker SDK
+ * Update tox.ini
+ * chore(deps): bump apache-airflow from 2.9.1 to 2.9.2 in /requirements/extras
+ * Model server override logic
+
+## v2.224.0 (2024-06-19)
+
+### Features
+
+ * JumpStartModel attach
+
+### Bug Fixes and Other Changes
+
+ * feat(sagemaker-mlflow): New features for SageMaker MLflow
+ * Upgrading to PT 2.3 for release
+ * chore: use ml.g5.2xlarge for integ test
+ * Enable telemetry logging for Remote function
+ * Fix Dependabot Issues - MLFlow Version
+
 ## v2.223.0 (2024-06-13)
 
 ### Features

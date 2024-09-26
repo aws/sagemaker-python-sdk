@@ -495,8 +495,8 @@ def test_jumpstart_cache_accepts_input_parameters():
     assert cache.get_manifest_file_s3_key() == manifest_file_key
     assert cache.get_region() == region
     assert cache.get_bucket() == bucket
-    assert cache._s3_cache._max_cache_items == max_s3_cache_items
-    assert cache._s3_cache._expiration_horizon == s3_cache_expiration_horizon
+    assert cache._content_cache._max_cache_items == max_s3_cache_items
+    assert cache._content_cache._expiration_horizon == s3_cache_expiration_horizon
     assert (
         cache._open_weight_model_id_manifest_key_cache._max_cache_items
         == max_semantic_version_cache_items
@@ -535,8 +535,8 @@ def test_jumpstart_proprietary_cache_accepts_input_parameters():
     )
     assert cache.get_region() == region
     assert cache.get_bucket() == bucket
-    assert cache._s3_cache._max_cache_items == max_s3_cache_items
-    assert cache._s3_cache._expiration_horizon == s3_cache_expiration_horizon
+    assert cache._content_cache._max_cache_items == max_s3_cache_items
+    assert cache._content_cache._expiration_horizon == s3_cache_expiration_horizon
     assert (
         cache._proprietary_model_id_manifest_key_cache._max_cache_items
         == max_semantic_version_cache_items
