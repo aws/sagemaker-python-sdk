@@ -199,7 +199,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         # patch versions, but end up hosting the model of same TF version. For eg., the upstream
         # TFS-2.12.0 release was a bad release and hence a new TFS-2.12.1 release was made to host
         # models from TF-2.12.0.
-        training_inference_version_mismatch_dict = {"2.12.0": "2.12.1"}
+        training_inference_version_mismatch_dict = {"2.12.0": "2.12.1", "2.16.2": "2.16.1"}
         self.inference_framework_version = training_inference_version_mismatch_dict.get(
             framework_version, framework_version
         )
@@ -397,6 +397,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """Prepare the container definition.
 
@@ -473,6 +474,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             model_data,
             env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def _get_container_env(self):

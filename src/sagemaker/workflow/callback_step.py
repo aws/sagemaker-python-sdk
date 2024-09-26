@@ -84,9 +84,9 @@ class CallbackStep(Step):
         sqs_queue_url: str,
         inputs: dict,
         outputs: List[CallbackOutput],
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a CallbackStep.

@@ -503,12 +503,12 @@ def _read_s3_json(session: Session, bucket: str, key: str):
             raise
 
     result = {}
-    if data["ContentType"] == "application/json" or data["ContentType"] == "binary/octet-stream":
+    content_types = ["application/json", "binary/octet-stream", "application/octet-stream"]
+    if data["ContentType"] in content_types:
         result = json.loads(data["Body"].read().decode("utf-8"))
     else:
         logger.warning(
-            "Invalid file type %s. application/json or binary/octet-stream is expected.",
-            data["ContentType"],
+            "Invalid file type %s. %s is expected.", data["ContentType"], ", ".join(content_types)
         )
 
     return result

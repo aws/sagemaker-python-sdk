@@ -17,6 +17,7 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.enums import (
+    JumpStartModelType,
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.utils import (
@@ -30,9 +31,12 @@ def _model_supports_incremental_training(
     model_id: str,
     model_version: str,
     region: Optional[str],
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> bool:
     """Returns True if the model supports incremental training.
 
@@ -43,6 +47,8 @@ def _model_supports_incremental_training(
             support status for incremental training.
         region (Optional[str]): Region for which to retrieve the
             support status for incremental training.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -54,6 +60,9 @@ def _model_supports_incremental_training(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         bool: the support status for incremental training.
     """
@@ -65,11 +74,14 @@ def _model_supports_incremental_training(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.TRAINING,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
+        model_type=model_type,
     )
 
     return model_specs.supports_incremental_training()

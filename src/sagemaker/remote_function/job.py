@@ -162,6 +162,52 @@ else
 fi
 """
 
+ENTRYPOINT_TORCHRUN_SCRIPT = f"""
+#!/bin/bash
+
+# Entry point for bootstrapping runtime environment and invoking remote function with torchrun
+
+set -eu
+
+PERSISTENT_CACHE_DIR=${{SAGEMAKER_MANAGED_WARMPOOL_CACHE_DIRECTORY:-/opt/ml/cache}}
+export CONDA_PKGS_DIRS=${{PERSISTENT_CACHE_DIR}}/sm_remotefunction_user_dependencies_cache/conda/pkgs
+printf "INFO: CONDA_PKGS_DIRS is set to '$CONDA_PKGS_DIRS'\\n"
+export PIP_CACHE_DIR=${{PERSISTENT_CACHE_DIR}}/sm_remotefunction_user_dependencies_cache/pip
+printf "INFO: PIP_CACHE_DIR is set to '$PIP_CACHE_DIR'\\n"
+
+
+printf "INFO: Bootstraping runtime environment.\\n"
+python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{BOOTSTRAP_SCRIPT_NAME} "$@"
+
+if [ -d {JOB_REMOTE_FUNCTION_WORKSPACE} ]
+then
+    if [ -f "remote_function_conda_env.txt" ]
+    then
+        cp remote_function_conda_env.txt {JOB_REMOTE_FUNCTION_WORKSPACE}/remote_function_conda_env.txt
+    fi
+    printf "INFO: Changing workspace to {JOB_REMOTE_FUNCTION_WORKSPACE}.\\n"
+    cd {JOB_REMOTE_FUNCTION_WORKSPACE}
+fi
+
+if [ -f "remote_function_conda_env.txt" ]
+then
+    conda_env=$(cat remote_function_conda_env.txt)
+
+    if which mamba >/dev/null; then
+        conda_exe="mamba"
+    else
+        conda_exe="conda"
+    fi
+
+    printf "INFO: Invoking remote function with torchrun inside conda environment: $conda_env.\\n"
+    $conda_exe run -n $conda_env torchrun --nproc_per_node $NPROC_PER_NODE \
+    -m sagemaker.remote_function.invoke_function "$@"
+else
+    printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
+    torchrun --nproc_per_node $NPROC_PER_NODE -m sagemaker.remote_function.invoke_function "$@"
+fi
+"""
+
 SPARK_ENTRYPOINT_SCRIPT = f"""
 #!/bin/bash
 
@@ -216,6 +262,8 @@ class _JobSettings:
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
+        use_torchrun=False,
+        nproc_per_node=1,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -555,6 +603,9 @@ class _JobSettings:
         tags = format_tags(tags)
         self.tags = self.sagemaker_session._append_sagemaker_config_tags(tags, REMOTE_FUNCTION_TAGS)
 
+        self.use_torchrun = use_torchrun
+        self.nproc_per_node = nproc_per_node
+
     @staticmethod
     def _get_default_image(session):
         """Return Studio notebook image, if in Studio env. Else, base python.
@@ -725,6 +776,8 @@ class _Job:
                 s3_base_uri=s3_base_uri,
                 hmac_key=hmac_key,
                 s3_kms_key=job_settings.s3_kms_key,
+                use_torchrun=job_settings.use_torchrun,
+                nproc_per_node=job_settings.nproc_per_node,
             )
             stored_function.save(func, *func_args, **func_kwargs)
         else:
@@ -737,6 +790,8 @@ class _Job:
                     step_name=step_compilation_context.step_name,
                     func_step_s3_dir=step_compilation_context.pipeline_build_time,
                 ),
+                use_torchrun=job_settings.use_torchrun,
+                nproc_per_node=job_settings.nproc_per_node,
             )
 
             stored_function.save_pipeline_step_function(serialized_data)
@@ -951,7 +1006,12 @@ class _Job:
 
 
 def _prepare_and_upload_runtime_scripts(
-    spark_config: SparkConfig, s3_base_uri: str, s3_kms_key: str, sagemaker_session: Session
+    spark_config: SparkConfig,
+    s3_base_uri: str,
+    s3_kms_key: str,
+    sagemaker_session: Session,
+    use_torchrun: bool = False,
+    nproc_per_node: int = 1,
 ):
     """Copy runtime scripts to a folder and upload to S3.
 
@@ -967,6 +1027,10 @@ def _prepare_and_upload_runtime_scripts(
         s3_kms_key (str): kms key used to encrypt the files uploaded to S3.
 
         sagemaker_session (str): SageMaker boto client session.
+
+        use_torchrun (bool): Whether to use torchrun or not.
+
+        nproc_per_node (int): Number of processes per node.
     """
 
     from sagemaker.workflow.utilities import load_step_compilation_context
@@ -987,6 +1051,10 @@ def _prepare_and_upload_runtime_scripts(
                 os.path.dirname(__file__), "runtime_environment", SPARK_APP_SCRIPT_NAME
             )
             shutil.copy2(spark_script_path, bootstrap_scripts)
+
+        if use_torchrun:
+            entry_point_script = ENTRYPOINT_TORCHRUN_SCRIPT
+            entry_point_script = entry_point_script.replace("$NPROC_PER_NODE", str(nproc_per_node))
 
         with open(entrypoint_script_path, "w", newline="\n") as file:
             file.writelines(entry_point_script)
@@ -1025,6 +1093,8 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
         s3_base_uri=s3_base_uri,
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=job_settings.sagemaker_session,
+        use_torchrun=job_settings.use_torchrun,
+        nproc_per_node=job_settings.nproc_per_node,
     )
 
     input_data_config = [

@@ -55,7 +55,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         data_location: Optional[str] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = False,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
@@ -91,7 +91,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             instance_count,
             instance_type,
             enable_network_isolation=enable_network_isolation,
-            **kwargs
+            **kwargs,
         )
 
         data_location = data_location or (

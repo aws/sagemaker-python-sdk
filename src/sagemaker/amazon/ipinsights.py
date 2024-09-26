@@ -75,7 +75,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         random_negative_sampling_rate: Optional[int] = None,
         shuffled_negative_sampling_rate: Optional[int] = None,
         weight_decay: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ):
         """This estimator is for IP Insights.
 
@@ -168,7 +168,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -235,7 +235,7 @@ class IPInsightsModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Creates object to get insights on S3 model data.
 
@@ -268,5 +268,5 @@ class IPInsightsModel(Model):
             role,
             predictor_cls=IPInsightsPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

@@ -21,18 +21,6 @@ class ModelServer(Enum):
     TEI = 7
 
 
-class _DjlEngine(Enum):
-    """An enum for Djl Engines"""
-
-    def __str__(self):
-        """Placeholder docstring"""
-        return str(self.name)
-
-    DEEPSPEED = 1
-    FASTER_TRANSFORMER = 2
-    HUGGINGFACE_ACCELERATE = 3
-
-
 class HardwareType(Enum):
     """An enum for hardware type"""
 
@@ -57,3 +45,25 @@ class ImageUriOption(Enum):
     CUSTOM_IMAGE = 1
     CUSTOM_1P_IMAGE = 2
     DEFAULT_IMAGE = 3
+
+
+class ModelHub(Enum):
+    """Enum type for model hub source"""
+
+    def __str__(self) -> str:
+        """Convert enum to string"""
+        return str(self.name)
+
+    JUMPSTART = 1
+    HUGGINGFACE = 2
+
+
+class SpeculativeDecodingDraftModelSource(Enum):
+    """Enum type for speculative decoding draft model source"""
+
+    def __str__(self) -> str:
+        """Convert enum to string"""
+        return str(self.name)
+
+    SAGEMAKER = 1
+    CUSTOM = 2

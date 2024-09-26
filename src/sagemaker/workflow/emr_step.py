@@ -161,9 +161,9 @@ class EMRStep(Step):
         cluster_id: str,
         step_config: EMRStepConfig,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
-        cache_config: CacheConfig = None,
-        cluster_config: Dict[str, Any] = None,
-        execution_role_arn: str = None,
+        cache_config: Optional[CacheConfig] = None,
+        cluster_config: Optional[Dict[str, Any]] = None,
+        execution_role_arn: Optional[str] = None,
     ):
         """Constructs an `EMRStep`.
 

@@ -20,7 +20,6 @@ from botocore.config import Config
 from sagemaker import image_uris, Session
 from sagemaker.dataset_definition.inputs import (
     DatasetDefinition,
-    RedshiftDatasetDefinition,
     AthenaDatasetDefinition,
     S3Input,
 )
@@ -767,25 +766,6 @@ def _get_processing_inputs_with_all_parameters(bucket):
             ),
         ),
         ProcessingInput(
-            input_name="redshift_dataset_definition",
-            app_managed=True,
-            dataset_definition=DatasetDefinition(
-                local_path="/opt/ml/processing/input/rdd",
-                data_distribution_type="FullyReplicated",
-                input_mode="File",
-                redshift_dataset_definition=RedshiftDatasetDefinition(
-                    cluster_id="integ-test-cluster-prod-us-west-2",
-                    database="dev",
-                    db_user="awsuser",
-                    query_string="SELECT * FROM shoes",
-                    cluster_role_arn="arn:aws:iam::037210630505:role/RedshiftClusterRole-prod-us-west-2",
-                    output_s3_uri=f"s3://{bucket}/rdd",
-                    output_format="CSV",
-                    output_compression="None",
-                ),
-            ),
-        ),
-        ProcessingInput(
             input_name="athena_dataset_definition",
             app_managed=True,
             dataset_definition=DatasetDefinition(
@@ -851,25 +831,6 @@ def _get_processing_job_inputs_and_outputs(bucket, output_kms_key):
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
                     "S3CompressionType": "None",
-                },
-            },
-            {
-                "InputName": "redshift_dataset_definition",
-                "AppManaged": True,
-                "DatasetDefinition": {
-                    "RedshiftDatasetDefinition": {
-                        "ClusterId": "integ-test-cluster-prod-us-west-2",
-                        "Database": "dev",
-                        "DbUser": "awsuser",
-                        "QueryString": "SELECT * FROM shoes",
-                        "ClusterRoleArn": "arn:aws:iam::037210630505:role/RedshiftClusterRole-prod-us-west-2",
-                        "OutputS3Uri": f"s3://{bucket}/rdd",
-                        "OutputFormat": "CSV",
-                        "OutputCompression": "None",
-                    },
-                    "LocalPath": "/opt/ml/processing/input/rdd",
-                    "DataDistributionType": "FullyReplicated",
-                    "InputMode": "File",
                 },
             },
             {

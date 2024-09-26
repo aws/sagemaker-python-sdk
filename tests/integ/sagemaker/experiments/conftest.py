@@ -155,7 +155,7 @@ _EXP_PLUS_SDK_TAR = "sagemaker-dev-1.0.tar.gz"
 @pytest.fixture(scope="module")
 def dev_sdk_tar():
     resource_dir = os.path.join(DATA_DIR, "experiment")
-    os.system("python setup.py sdist -k")
+    os.system("python -m build --sdist")
     sdist_path = max(glob.glob("dist/sagemaker-*"), key=os.path.getctime)
     sdk_file = os.path.join(resource_dir, _EXP_PLUS_SDK_TAR)
     shutil.copy(sdist_path, sdk_file)

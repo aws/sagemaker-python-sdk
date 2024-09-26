@@ -125,12 +125,12 @@ class QualityCheckStep(Step):
         skip_check: Union[bool, PipelineVariable] = False,
         fail_on_violation: Union[bool, PipelineVariable] = True,
         register_new_baseline: Union[bool, PipelineVariable] = False,
-        model_package_group_name: Union[str, PipelineVariable] = None,
-        supplied_baseline_statistics: Union[str, PipelineVariable] = None,
-        supplied_baseline_constraints: Union[str, PipelineVariable] = None,
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        supplied_baseline_statistics: Optional[Union[str, PipelineVariable]] = None,
+        supplied_baseline_constraints: Optional[Union[str, PipelineVariable]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a QualityCheckStep.

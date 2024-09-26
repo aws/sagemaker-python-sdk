@@ -535,6 +535,7 @@ def get_model_url(
     model_version: str,
     region: Optional[str] = None,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
 ) -> str:
     """Retrieve web url describing pretrained model.
 
@@ -563,5 +564,6 @@ def get_model_url(
         sagemaker_session=sagemaker_session,
         scope=JumpStartScriptScope.INFERENCE,
         model_type=model_type,
+        config_name=config_name,
     )
     return model_specs.url
