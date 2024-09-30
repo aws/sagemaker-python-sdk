@@ -420,3 +420,27 @@ def test_network_isolation(tfo, time, sagemaker_session):
         vpc_config=None,
         enable_network_isolation=True,
     )
+
+
+def test_pipeline_model_register(sagemaker_session):
+    sagemaker_session.create_model_package_from_containers = Mock(
+        name="create_model_package_from_containers",
+        return_value={
+            "ModelPackageArn": "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
+        },
+    )
+    framework_model = DummyFrameworkModel(sagemaker_session)
+    sparkml_model = SparkMLModel(
+        model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
+    )
+    model = PipelineModel(
+        models=[framework_model, sparkml_model],
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=True,
+    )
+    model_package = model.register()
+    assert (
+        model_package.model_package_arn
+        == "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
+    )
