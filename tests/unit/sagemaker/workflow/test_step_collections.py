@@ -1219,8 +1219,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator, sourc
             assert arguments == {
                 "AlgorithmSpecification": {
                     "TrainingInputMode": "File",
-                    "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/"
-                    + "sagemaker-scikit-learn:0.23-1-cpu-py3",
+                    "TrainingImage": MODEL_REPACKING_IMAGE_URI,
                 },
                 "ProfilerConfig": {"DisableProfiler": True},
                 "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
