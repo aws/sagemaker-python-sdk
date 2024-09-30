@@ -26,6 +26,7 @@ from sagemaker.config import (
 )
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model import ModelPackage
 from sagemaker.model_card import (
     ModelCard,
     ModelPackageModelCard,
@@ -470,7 +471,18 @@ class PipelineModel(object):
             model_card=model_card,
         )
 
-        self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)
+        model_package = self.sagemaker_session.create_model_package_from_containers(
+            **model_pkg_args
+        )
+
+        if model_package is not None and "ModelPackageArn" in model_package:
+            return ModelPackage(
+                role=self.role,
+                model_package_arn=model_package.get("ModelPackageArn"),
+                sagemaker_session=self.sagemaker_session,
+                predictor_cls=self.predictor_cls,
+            )
+        return None
 
     def transformer(
         self,
