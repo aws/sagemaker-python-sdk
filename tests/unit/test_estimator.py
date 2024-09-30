@@ -5922,3 +5922,38 @@ def test_estimator_get_app_url_fail(sagemaker_session):
         f.get_app_url("fake-app")
 
     assert "does not support URL retrieval." in str(error)
+
+
+@patch("sagemaker.estimator.log_sagemaker_job_to_mlflow")
+def test_forward_sagemaker_metrics(mock_log_to_mlflow, sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        enable_network_isolation=True,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+        ],
+    )
+
+    # Set environment variables restores to state after the test.
+    with patch.dict(os.environ, {"MLFLOW_TRACKING_URI": "test_uri"}):
+        f.fit("s3://mydata")
+
+    mock_log_to_mlflow.assert_called_once()
+
+
+@patch("sagemaker.estimator.log_sagemaker_job_to_mlflow")
+def test_no_forward_sagemaker_metrics(mock_log_to_mlflow, sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=False,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+        ],
+    )
+    with patch.dict(os.environ, {"MLFLOW_TRACKING_URI": "test_uri"}):
+        f.fit("s3://mydata")
+    mock_log_to_mlflow.assert_not_called()
