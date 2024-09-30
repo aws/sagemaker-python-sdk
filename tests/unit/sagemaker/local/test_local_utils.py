@@ -85,11 +85,11 @@ def test_move_to_destination_illegal_destination():
 
 
 @patch("sagemaker.local.utils.os.path")
-@patch("sagemaker.local.utils.copy_tree")
+@patch("sagemaker.local.utils.shutil.copytree")
 def test_recursive_copy(copy_tree, m_os_path):
     m_os_path.isdir.return_value = True
     sagemaker.local.utils.recursive_copy("source", "destination")
-    copy_tree.assert_called_with("source", "destination")
+    copy_tree.assert_called_with("source", "destination", dirs_exist_ok=True)
 
 
 @patch("sagemaker.local.utils.os")
