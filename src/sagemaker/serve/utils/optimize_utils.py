@@ -260,7 +260,7 @@ def _is_s3_uri(s3_uri: Optional[str]) -> bool:
 
 def _extract_optimization_config_and_env(
     quantization_config: Optional[Dict] = None, compilation_config: Optional[Dict] = None
-) -> Optional[Tuple[Optional[Dict], Optional[Dict]]]:
+) -> Optional[Tuple[Optional[Dict], Optional[Dict], Optional[Dict]]]:
     """Extracts optimization config and environment variables.
 
     Args:
@@ -272,25 +272,24 @@ def _extract_optimization_config_and_env(
             The optimization config and environment variables.
     """
     optimization_config = {}
-    quantization_override_env = {}
-    compilation_override_env = {}
+    quantization_override_env = (
+        quantization_config.get("OverrideEnvironment", {}) if quantization_config else None
+    )
+    compilation_override_env = (
+        compilation_config.get("OverrideEnvironment", {}) if compilation_config else None
+    )
 
-    if quantization_config:
+    if quantization_config is not None:
         optimization_config["ModelQuantizationConfig"] = quantization_config
-        quantization_override_env = quantization_config.get("OverrideEnvironment")
 
-    if compilation_config:
+    if compilation_config is not None:
         optimization_config["ModelCompilationConfig"] = compilation_config
-        compilation_override_env = compilation_config.get("OverrideEnvironment")
 
     # Return both dicts and environment variable if either is present
     if optimization_config:
-        return optimization_config, {
-            **(quantization_override_env or {}),
-            **(compilation_override_env or {}),
-        }
+        return optimization_config, quantization_override_env, compilation_override_env
 
-    return None, None
+    return None, None, None
 
 
 def _custom_speculative_decoding(

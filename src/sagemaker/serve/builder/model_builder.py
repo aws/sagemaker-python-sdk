@@ -1361,13 +1361,18 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             model_source = _generate_model_source(self.pysdk_model.model_data, False)
             create_optimization_job_args["ModelSource"] = model_source
 
-            optimization_config, override_env = _extract_optimization_config_and_env(
-                quantization_config, compilation_config
+            optimization_config, quantization_override_env, compilation_override_env = (
+                _extract_optimization_config_and_env(quantization_config, compilation_config)
             )
             create_optimization_job_args["OptimizationConfigs"] = [
                 {k: v} for k, v in optimization_config.items()
             ]
-            self.pysdk_model.env.update(override_env)
+            self.pysdk_model.env.update(
+                {
+                    **(quantization_override_env or {}),
+                    **(compilation_override_env or {}),
+                }
+            )
 
             output_config = {"S3OutputLocation": output_path}
             if kms_key:

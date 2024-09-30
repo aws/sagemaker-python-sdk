@@ -727,8 +727,8 @@ class JumpStart(ABC):
             pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
 
         # optimization_config can contain configs for both quantization and compilation
-        optimization_config, override_env = _extract_optimization_config_and_env(
-            quantization_config, compilation_config
+        optimization_config, quantization_override_env, compilation_override_env = (
+            _extract_optimization_config_and_env(quantization_config, compilation_config)
         )
         if (
             not optimization_config or not optimization_config.get("ModelCompilationConfig")
@@ -738,13 +738,16 @@ class JumpStart(ABC):
                 optimization_config = {}
 
             # Fallback to default if override_env is None or empty
-            if not override_env:
-                override_env = pysdk_model_env_vars
+            if not compilation_override_env:
+                compilation_override_env = pysdk_model_env_vars
 
             # Update optimization_config with ModelCompilationConfig
-            optimization_config["ModelCompilationConfig"] = {
-                "OverrideEnvironment": override_env,
-            }
+            override_compilation_config = (
+                {"OverrideEnvironment": compilation_override_env}
+                if compilation_override_env
+                else {}
+            )
+            optimization_config["ModelCompilationConfig"] = override_compilation_config
 
         if speculative_decoding_config:
             self._set_additional_model_source(speculative_decoding_config)
@@ -798,7 +801,13 @@ class JumpStart(ABC):
                     "AcceptEula": True
                 }
 
-        optimization_env_vars = _update_environment_variables(optimization_env_vars, override_env)
+        optimization_env_vars = _update_environment_variables(
+            optimization_env_vars,
+            {
+                **(quantization_override_env or {}),
+                **(compilation_override_env or {}),
+            },
+        )
         if optimization_env_vars:
             self.pysdk_model.env.update(optimization_env_vars)
         if quantization_config or is_compilation:
