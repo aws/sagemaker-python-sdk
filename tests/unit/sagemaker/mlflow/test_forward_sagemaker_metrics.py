@@ -11,12 +11,13 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+from __future__ import absolute_import
+from unittest.mock import patch, MagicMock, Mock
+import json
 import pytest
 from mlflow.entities import Metric, Param
-from unittest.mock import patch, MagicMock, Mock
 import requests
 
-import json
 
 from sagemaker.mlflow.forward_sagemaker_metrics import (
     encode,
@@ -161,10 +162,9 @@ def test_batch_items():
     assert batches == [[1, 2], [3, 4], [5]]
 
 
-@patch("mlflow.MlflowClient")
 @patch("os.getenv")
 @patch("requests.Session.request")
-def test_log_to_mlflow(mock_request, mock_getenv, mock_mlflow_client):
+def test_log_to_mlflow(mock_request, mock_getenv):
     # Set up return values for os.getenv calls
     def getenv_side_effect(arg, default=None):
         values = {
