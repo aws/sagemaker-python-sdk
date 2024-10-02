@@ -261,7 +261,7 @@ def test_is_s3_uri(s3_uri, expected):
 
 
 @pytest.mark.parametrize(
-    "quantization_config, compilation_config, expected_config, expected_env",
+    "quantization_config, compilation_config, expected_config, expected_quant_env, expected_compilation_env",
     [
         (
             None,
@@ -277,6 +277,7 @@ def test_is_s3_uri(s3_uri, expected):
                     }
                 },
             },
+            None,
             {
                 "OPTION_TENSOR_PARALLEL_DEGREE": "2",
             },
@@ -298,16 +299,22 @@ def test_is_s3_uri(s3_uri, expected):
             {
                 "OPTION_TENSOR_PARALLEL_DEGREE": "2",
             },
+            None,
         ),
-        (None, None, None, None),
+        (None, None, None, None, None),
     ],
 )
 def test_extract_optimization_config_and_env(
-    quantization_config, compilation_config, expected_config, expected_env
+    quantization_config,
+    compilation_config,
+    expected_config,
+    expected_quant_env,
+    expected_compilation_env,
 ):
     assert _extract_optimization_config_and_env(quantization_config, compilation_config) == (
         expected_config,
-        expected_env,
+        expected_quant_env,
+        expected_compilation_env,
     )
 
 
