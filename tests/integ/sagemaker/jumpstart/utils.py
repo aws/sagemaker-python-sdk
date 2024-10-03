@@ -32,6 +32,7 @@ from tests.integ.sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.jumpstart.hub.hub import Hub
 
 from sagemaker.session import Session
 
@@ -114,6 +115,16 @@ def get_tabular_data(data_filename: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 def download_file(local_download_path, s3_bucket, s3_key, s3_client) -> None:
     s3_client.download_file(s3_bucket, s3_key, local_download_path)
 
+def get_public_hub_model_arn(hub: Hub, model_id: str) -> str:
+    filter_value = f"model_id == {model_id}"
+    response = hub.list_sagemaker_public_hub_models(filter=filter_value)
+
+    models = response["hub_content_summaries"]
+    while response["next_token"]:
+        response = hub.list_sagemaker_public_hub_models(filter=filter_value, next_token=response["next_token"])
+        models.extend(response["hub_content_summaries"])
+
+    return models[0]['hub_content_arn']
 
 class EndpointInvoker:
     def __init__(

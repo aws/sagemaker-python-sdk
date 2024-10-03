@@ -37,8 +37,13 @@ TMP_DIRECTORY_PATH = os.path.join(
 
 ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID = "JUMPSTART_SDK_TEST_SUITE_ID"
 
+ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME = "JUMPSTART_SDK_TEST_HUB_NAME"
+
 JUMPSTART_TAG = "JumpStart-SDK-Integ-Test-Suite-Id"
 
+SM_JUMPSTART_PUBLIC_HUB_NAME = "SageMakerPublicHub"
+
+HUB_NAME_PREFIX = "PySDK-HubTest-"
 
 TRAINING_DATASET_MODEL_DICT = {
     ("huggingface-spc-bert-base-cased", "1.0.0"): ("training-datasets/QNLI-tiny/"),

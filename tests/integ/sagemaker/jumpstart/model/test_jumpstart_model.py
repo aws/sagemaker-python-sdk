@@ -56,6 +56,9 @@ GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS = {
 
 def test_non_prepacked_jumpstart_model(setup):
 
+    JUMPSTART_LOGGER.info("starting test")
+    JUMPSTART_LOGGER.info(f"get identity {get_sm_session().get_caller_identity_arn()}")
+
     model_id = "catboost-classification-model"
 
     model = JumpStartModel(
