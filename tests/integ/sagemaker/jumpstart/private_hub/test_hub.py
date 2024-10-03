@@ -23,7 +23,7 @@ def test_private_hub(setup, hub_instance):
     # Createhub
     create_hub_response = hub_instance.create(
         description="This is a Test Private Hub.",
-        display_name="malavhs Test hub",
+        display_name="PySDK integration tests Hub",
         search_keywords=["jumpstart-sdk-integ-test"],
     )
 
