@@ -19,19 +19,6 @@ from datetime import datetime
 from typing import Literal
 
 
-def _is_valid_ecr_image(image: str) -> bool:
-    """Check if the image is a valid ECR image URI.
-
-    Args:
-        image (str): The image URI sting to validate
-
-    Returns:
-        bool: True if the image is a valid ECR image URI, False otherwise
-    """
-    pattern = r"^\d{12}\.dkr\.ecr\.\w+-\d{1,2}\.amazonaws\.com\/[\w-]+(:[\w.-]+)?$"
-    return bool(re.match(pattern, image))
-
-
 def _is_valid_s3_uri(path: str, path_type: Literal["File", "Directory", "Any"] = "Any") -> bool:
     """Check if the path is a valid S3 URI.
 

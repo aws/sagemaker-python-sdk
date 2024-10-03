@@ -108,7 +108,7 @@ class ModelTrainer(BaseModel):
             The VPC configuration.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     session: Optional[Session] = None
     role: Optional[str] = None
@@ -274,19 +274,20 @@ class ModelTrainer(BaseModel):
         if input_data_channels:
             self.input_data_channels = input_data_channels
         if source_code_config:
+            self._validate_source_code_config(source_code_config)
             self.source_code_config = source_code_config
         if hyper_parameters:
             self.hyper_parameters = hyper_parameters
         if environment:
             self.environment = environment
 
-        input_data_config = self._get_input_data_config(self.input_data_channels)
+        input_data_config = []
+        if self.input_data_channels:
+            input_data_config = self._get_input_data_config(self.input_data_channels)
 
         container_entrypoint = None
         container_arguments = None
         if self.source_code_config:
-            if not input_data_config:
-                input_data_config = []
 
             # If source code is provided, create a channel for the source code
             # The source code will be mounted at /opt/ml/input/data/code in the container
@@ -397,9 +398,14 @@ class ModelTrainer(BaseModel):
             else:
                 raise ValueError(f"Not a valid S3 URI or local file path: {data_source}.")
         elif isinstance(data_source, S3DataSource):
-            channel = Channel(channel_name=channel_name, data_source=data_source)
+            channel = Channel(
+                channel_name=channel_name, data_source=DataSource(s3_data_source=data_source)
+            )
         elif isinstance(data_source, FileSystemDataSource):
-            channel = Channel(channel_name=channel_name, data_source=data_source)
+            channel = Channel(
+                channel_name=channel_name,
+                data_source=DataSource(file_system_data_source=data_source),
+            )
         return channel
 
     def _get_input_data_config(
