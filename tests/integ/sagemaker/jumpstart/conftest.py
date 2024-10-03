@@ -48,10 +48,13 @@ def _setup():
     test_hub_description = "PySDK Integ Test Private Hub"
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID: test_suit_id})
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME: test_hub_name})
-    hub = Hub(hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session())
+    hub = Hub(
+        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session()
+    )
     hub.create(description=test_hub_description)
     describe_hub_response = hub.describe()
     JUMPSTART_LOGGER.info(f"Describe Hub {describe_hub_response}")
+
 
 def _teardown():
     print("Tearing down...")
@@ -133,37 +136,34 @@ def _teardown():
 
     # delete private hubs
     _delete_hubs(sagemaker_session)
-    
+
 
 def _delete_hubs(sagemaker_session):
-    #list Hubs created by PySDK integration tests
+    # list Hubs created by PySDK integration tests
     list_hub_response = sagemaker_session.list_hubs(name_contains=HUB_NAME_PREFIX)
 
-    for hub in list_hub_response['HubSummaries']:
-        if hub['HubName'] != SM_JUMPSTART_PUBLIC_HUB_NAME:
-            #delete all hub contents first
-            _delete_hub_contents(sagemaker_session, hub['HubName'])
+    for hub in list_hub_response["HubSummaries"]:
+        if hub["HubName"] != SM_JUMPSTART_PUBLIC_HUB_NAME:
+            # delete all hub contents first
+            _delete_hub_contents(sagemaker_session, hub["HubName"])
             JUMPSTART_LOGGER.info(f"Deleting {hub['HubName']}")
-            sagemaker_session.delete_hub(hub['HubName'])
+            sagemaker_session.delete_hub(hub["HubName"])
 
 
 def _delete_hub_contents(sagemaker_session, test_hub_name):
-    #list hub_contents for the given hub
+    # list hub_contents for the given hub
     list_hub_content_response = sagemaker_session.list_hub_contents(
-        hub_name=test_hub_name, 
-        hub_content_type=HubContentType.MODEL_REFERENCE.value
+        hub_name=test_hub_name, hub_content_type=HubContentType.MODEL_REFERENCE.value
     )
     JUMPSTART_LOGGER.info(f"Listing HubContents {list_hub_content_response}")
 
-    #delete hub_contents for the given hub
-    for models in list_hub_content_response['HubContentSummaries']:
+    # delete hub_contents for the given hub
+    for models in list_hub_content_response["HubContentSummaries"]:
         sagemaker_session.delete_hub_content_reference(
-            hub_name=test_hub_name, 
+            hub_name=test_hub_name,
             hub_content_type=HubContentType.MODEL_REFERENCE.value,
-            hub_content_name=models['HubContentName']
+            hub_content_name=models["HubContentName"],
         )
-
-    
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -50,14 +50,16 @@ TEST_MODEL_IDS = {
     "catboost-regression-model",
 }
 
+
 @pytest.fixture(scope="module")
 def add_models():
     # Create Model References to test in Hub
-    hub_instance = Hub(hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session())
+    hub_instance = Hub(
+        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session()
+    )
     for model in TEST_MODEL_IDS:
-        hub_instance.create_model_reference(
-            model_arn = get_public_hub_model_arn(hub_instance, model)
-        )
+        hub_instance.create_model_reference(model_arn=get_public_hub_model_arn(hub_instance, model))
+
 
 def test_jumpstart_hub_model(setup, add_models):
 
@@ -70,13 +72,14 @@ def test_jumpstart_hub_model(setup, add_models):
         model_id=model_id,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
-        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
+        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
     )
 
     # uses ml.m5.4xlarge instance
     model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
+
 
 def test_jumpstart_hub_gated_model(setup, add_models):
 
@@ -86,7 +89,7 @@ def test_jumpstart_hub_gated_model(setup, add_models):
         model_id=model_id,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
-        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
+        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
     )
 
     # uses ml.g6.xlarge instance
@@ -104,6 +107,7 @@ def test_jumpstart_hub_gated_model(setup, add_models):
 
     assert response is not None
 
+
 def test_jumpstart_gated_model_inference_component_enabled(setup, add_models):
 
     model_id = "meta-textgeneration-llama-2-7b"
@@ -115,14 +119,14 @@ def test_jumpstart_gated_model_inference_component_enabled(setup, add_models):
     sagemaker_session = get_sm_session()
 
     hub_arn = generate_hub_arn_for_init_kwargs(
-                hub_name=hub_name, region=region, session=sagemaker_session
-            )
+        hub_name=hub_name, region=region, session=sagemaker_session
+    )
 
     model = JumpStartModel(
         model_id=model_id,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=sagemaker_session,
-        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
+        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
     )
 
     # uses ml.g5.2xlarge instance
@@ -136,7 +140,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup, add_models):
         endpoint_name=model.endpoint_name,
         sagemaker_session=sagemaker_session,
         tolerate_vulnerable_model=True,
-        hub_arn=hub_arn
+        hub_arn=hub_arn,
     )
 
     payload = {
@@ -149,12 +153,12 @@ def test_jumpstart_gated_model_inference_component_enabled(setup, add_models):
     assert response is not None
 
     model = JumpStartModel.attach(
-        predictor.endpoint_name, 
-        sagemaker_session=sagemaker_session, 
-        hub_name=hub_name)
+        predictor.endpoint_name, sagemaker_session=sagemaker_session, hub_name=hub_name
+    )
     assert model.model_id == model_id
     assert model.endpoint_name == predictor.endpoint_name
     assert model.inference_component_name == predictor.component_name
+
 
 def test_instatiating_model(setup, add_models):
 
@@ -166,10 +170,9 @@ def test_instatiating_model(setup, add_models):
         model_id=model_id,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
-        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
+        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
     )
 
     elapsed_time = time.perf_counter() - start_time
 
     assert elapsed_time <= MAX_INIT_TIME_SECONDS
-

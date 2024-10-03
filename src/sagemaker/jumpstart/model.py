@@ -1044,7 +1044,7 @@ class JumpStartModel(Model):
                 sagemaker_session=self.sagemaker_session,
                 region=self.region,
                 model_version=self.model_version,
-                hub_arn=self.hub_arn
+                hub_arn=self.hub_arn,
             )
 
             deployment_config_metadata = DeploymentConfigMetadata(
