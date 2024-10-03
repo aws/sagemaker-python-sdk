@@ -47,7 +47,7 @@ TEST_MODEL_IDS = {
 }
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def add_models():
     # Create Model References to test in Hub
     hub_instance = Hub(
