@@ -139,7 +139,9 @@ def _teardown():
 
 def _delete_hubs(sagemaker_session):
     # list Hubs created by PySDK integration tests
-    list_hub_response = sagemaker_session.list_hubs(name_contains=HUB_NAME_PREFIX)
+    list_hub_response = sagemaker_session.list_hubs(
+        name_contains=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
+    )
 
     for hub in list_hub_response["HubSummaries"]:
         if hub["HubName"] != SM_JUMPSTART_PUBLIC_HUB_NAME:
