@@ -69,8 +69,13 @@ class ImageSpec:
         self.config_name = config_name
         self.sagemaker_session = sagemaker_session
 
-    def get_image_uri(self):
+    def get_image_uri(
+        self, image_scope: Optional[str] = None, instance_type: Optional[str] = None
+    ) -> str:
         """Get image URI for a specific framework version."""
+
+        self.image_scope = image_scope or self.image_scope
+        self.instance_type = instance_type or self.instance_type
         return image_uris.retrieve(
             framework=self.framework_name,
             image_scope=self.image_scope,
