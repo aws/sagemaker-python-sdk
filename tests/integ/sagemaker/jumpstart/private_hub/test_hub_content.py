@@ -1,4 +1,3 @@
-import pytest
 import os
 from sagemaker.jumpstart.hub.hub import Hub
 
@@ -10,7 +9,6 @@ from tests.integ.sagemaker.jumpstart.utils import get_public_hub_model_arn
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME,
 )
-import tests
 
 
 def test_hub_model_reference(setup):

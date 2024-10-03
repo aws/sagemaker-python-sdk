@@ -30,7 +30,6 @@ from sagemaker.jumpstart.types import (
     HubContentType,
 )
 
-from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 
 from tests.integ.sagemaker.jumpstart.utils import (
     get_test_artifact_bucket,
@@ -46,14 +45,15 @@ def _setup():
     test_suit_id = get_test_suite_id()
     test_hub_name = f"{HUB_NAME_PREFIX}{test_suit_id}"
     test_hub_description = "PySDK Integ Test Private Hub"
+
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID: test_suit_id})
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME: test_hub_name})
+
+    # Create a private hub to use for the test session
     hub = Hub(
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session()
     )
     hub.create(description=test_hub_description)
-    describe_hub_response = hub.describe()
-    JUMPSTART_LOGGER.info(f"Describe Hub {describe_hub_response}")
 
 
 def _teardown():
@@ -62,7 +62,6 @@ def _teardown():
     test_cache_bucket = get_test_artifact_bucket()
 
     test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
-    test_hub_name = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
 
     boto3_session = boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
 
@@ -146,7 +145,6 @@ def _delete_hubs(sagemaker_session):
         if hub["HubName"] != SM_JUMPSTART_PUBLIC_HUB_NAME:
             # delete all hub contents first
             _delete_hub_contents(sagemaker_session, hub["HubName"])
-            JUMPSTART_LOGGER.info(f"Deleting {hub['HubName']}")
             sagemaker_session.delete_hub(hub["HubName"])
 
 
@@ -155,7 +153,6 @@ def _delete_hub_contents(sagemaker_session, test_hub_name):
     list_hub_content_response = sagemaker_session.list_hub_contents(
         hub_name=test_hub_name, hub_content_type=HubContentType.MODEL_REFERENCE.value
     )
-    JUMPSTART_LOGGER.info(f"Listing HubContents {list_hub_content_response}")
 
     # delete hub_contents for the given hub
     for models in list_hub_content_response["HubContentSummaries"]:

@@ -1,8 +1,5 @@
 import pytest
-import os
-from unittest.mock import MagicMock, patch
 from sagemaker.jumpstart.hub.hub import Hub
-from sagemaker.jumpstart.constants import JUMPSTART_LOGGER
 
 from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
