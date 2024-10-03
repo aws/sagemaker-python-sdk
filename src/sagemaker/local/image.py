@@ -30,7 +30,6 @@ import sys
 import tarfile
 import tempfile
 
-from distutils.spawn import find_executable
 from threading import Thread
 from typing import Dict, List
 from six.moves.urllib.parse import urlparse
@@ -170,7 +169,7 @@ class _SageMakerContainer(object):
             compose_cmd_prefix.extend(["docker", "compose"])
             return compose_cmd_prefix
 
-        if find_executable("docker-compose") is not None:
+        if shutil.which("docker-compose") is not None:
             logger.info("'Docker Compose' found using Docker Compose CLI.")
             compose_cmd_prefix.extend(["docker-compose"])
             return compose_cmd_prefix

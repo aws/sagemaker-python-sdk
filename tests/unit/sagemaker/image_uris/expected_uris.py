@@ -12,14 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-ALTERNATE_DOMAINS = {
-    "cn-north-1": "amazonaws.com.cn",
-    "cn-northwest-1": "amazonaws.com.cn",
-    "us-iso-east-1": "c2s.ic.gov",
-    "us-isob-east-1": "sc2s.sgov.gov",
-    "us-isof-south-1": "csp.hci.ic.gov",
-    "us-isof-east-1": "csp.hci.ic.gov",
-}
+from sagemaker.utils import ALTERNATE_DOMAINS
+
 DOMAIN = "amazonaws.com"
 IMAGE_URI_FORMAT = "{}.dkr.ecr.{}.{}/{}:{}"
 MONITOR_URI_FORMAT = "{}.dkr.ecr.{}.{}/sagemaker-model-monitor-analyzer"

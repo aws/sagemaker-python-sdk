@@ -26,13 +26,6 @@ import tempfile
 # is unpacked for inference, the custom entry point will be used.
 # Reference: https://docs.aws.amazon.com/sagemaker/latest/dg/amazon-sagemaker-toolkits.html
 
-# distutils.dir_util.copy_tree works way better than the half-baked
-# shutil.copytree which bombs on previously existing target dirs...
-# alas ... https://bugs.python.org/issue10948
-# we'll go ahead and use the copy_tree function anyways because this
-# repacking is some short-lived hackery, right??
-from distutils.dir_util import copy_tree
-
 
 def repack(inference_script, model_archive, dependencies=None, source_dir=None):  # pragma: no cover
     """Repack custom dependencies and code into an existing model TAR archive
@@ -92,7 +85,7 @@ def repack(inference_script, model_archive, dependencies=None, source_dir=None):
 
         # copy the "src" dir, which includes the previous training job's model and the
         # custom inference script, to the output of this training job
-        copy_tree(src_dir, "/opt/ml/model")
+        shutil.copytree(src_dir, "/opt/ml/model", dirs_exist_ok=True)
 
 
 if __name__ == "__main__":  # pragma: no cover
