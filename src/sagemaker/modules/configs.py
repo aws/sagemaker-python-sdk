@@ -10,7 +10,15 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Configuration classes."""
+"""This module provides the configuration classes used in `sagemaker.modules`.
+
+Some of these classes are re-exported from `sagemaker-core.shapes`. For convinence,
+users can import these classes directly from `sagemaker.modules.configs`.
+
+For more documentation on `sagemaker-core.shapes`, see:
+    - https://sagemaker-core.readthedocs.io/en/stable/#sagemaker-core-shapes
+"""
+
 from __future__ import absolute_import
 
 from typing import Optional
@@ -20,8 +28,8 @@ from sagemaker_core.shapes import (
     ResourceConfig,
     StoppingCondition,
     OutputDataConfig,
-    AlgorithmSpecification,
     Channel,
+    DataSource,
     S3DataSource,
     FileSystemDataSource,
     TrainingImageConfig,
@@ -33,8 +41,8 @@ __all__ = [
     "ResourceConfig",
     "StoppingCondition",
     "OutputDataConfig",
-    "AlgorithmSpecification",
     "Channel",
+    "DataSource",
     "S3DataSource",
     "FileSystemDataSource",
     "TrainingImageConfig",
@@ -62,7 +70,7 @@ class SourceCodeConfig(BaseModel):
             job container. If not specified, command must be provided.
     """
 
-    command: Optional[str]
-    source_dir: Optional[str]
-    requirements: Optional[str]
-    entry_script: Optional[str]
+    command: Optional[str] = None
+    source_dir: Optional[str] = None
+    requirements: Optional[str] = None
+    entry_script: Optional[str] = None
