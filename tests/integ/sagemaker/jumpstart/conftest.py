@@ -42,11 +42,11 @@ from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
 def _setup():
     print("Setting up...")
-    test_suit_id = get_test_suite_id()
-    test_hub_name = f"{HUB_NAME_PREFIX}{test_suit_id}"
+    test_suite_id = get_test_suite_id()
+    test_hub_name = f"{HUB_NAME_PREFIX}{test_suite_id}"
     test_hub_description = "PySDK Integ Test Private Hub"
 
-    os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID: test_suit_id})
+    os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID: test_suite_id})
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME: test_hub_name})
 
     # Create a private hub to use for the test session
