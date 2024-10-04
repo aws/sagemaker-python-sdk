@@ -107,6 +107,8 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
+from sagemaker.mlflow.forward_sagemaker_metrics import log_sagemaker_job_to_mlflow
+
 logger = logging.getLogger(__name__)
 
 
@@ -1366,8 +1368,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config)
         self.jobs.append(self.latest_training_job)
+        forward_to_mlflow_tracking_server = False
+        if os.environ.get("MLFLOW_TRACKING_URI") and self.enable_network_isolation():
+            wait = True
+            forward_to_mlflow_tracking_server = True
         if wait:
             self.latest_training_job.wait(logs=logs)
+        if forward_to_mlflow_tracking_server:
+            log_sagemaker_job_to_mlflow(self.latest_training_job.name)
 
     def _compilation_job_name(self):
         """Placeholder docstring"""
