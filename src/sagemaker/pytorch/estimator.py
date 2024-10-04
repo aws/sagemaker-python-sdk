@@ -54,6 +54,13 @@ class PyTorch(Framework):
     # to retrieve the image uri below before GA.
     SM_ADAPTER_REPO = "git@github.com:aws/private-sagemaker-training-adapter-for-nemo-staging.git"
     SM_LAUNCHER_REPO = "git@github.com:aws/private-sagemaker-training-launcher-staging.git"
+    SM_TRAINING_RECIPE_GPU_IMG = (
+        "855988369404.dkr.ecr.us-west-2.amazonaws.com/chinmayee-dev:adaptor_sept9_v1"
+    )
+    SM_NEURONX_DIST_REPO = "https://github.com/aws-neuron/neuronx-distributed-training.git"
+    SM_NEURONX_DIST_IMG = (
+        "855988369404.dkr.ecr.us-west-2.amazonaws.com/chinmayee-dev:neuron_sept26_v1"
+    )
 
     def __init__(
         self,
@@ -66,6 +73,7 @@ class PyTorch(Framework):
         distribution: Optional[Dict] = None,
         compiler_config: Optional[TrainingCompilerConfig] = None,
         training_recipe: Optional[str] = None,
+        recipe_overrides: Optional[Dict] = None,
         **kwargs,
     ):
         """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.
@@ -262,6 +270,9 @@ class PyTorch(Framework):
                                    a url to fetch, or a recipe provided by Saagemaker
                                    training.
 
+            recipe_overrides (Dict): Dictionary specifying key values to override in the
+                                     training_recipe.
+
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
 
@@ -280,12 +291,12 @@ class PyTorch(Framework):
                 logger.warning("Argument hyperparameters will be ignored with training recipe.")
             if distribution is not None:
                 logger.warning("Argument distribution will be ignored with training_recipe.")
-            args = self._setup_for_training_recipe(training_recipe, kwargs)
+            args = self._setup_for_training_recipe(training_recipe, recipe_overrides, kwargs)
             entry_point = args["entry_point"]
             source_dir = args["source_dir"]
             hyperparameters = args["hyperparameters"]
             if image_uri is None:
-                image_uri = args["image_uri"]
+                image_uri = args["default_image_uri"]
             distribution = args["distribution"]
         elif entry_point is None:
             raise ValueError(
@@ -518,7 +529,7 @@ class PyTorch(Framework):
         return init_params
 
     @classmethod
-    def _setup_for_training_recipe(cls, training_recipe, kwargs):
+    def _setup_for_training_recipe(cls, training_recipe, recipe_overrides, kwargs):
         """Performs training recipe specific setup and returns recipe specific args.
 
         Updates kwargs and returns a dictionary of args to use for estimator
@@ -528,28 +539,25 @@ class PyTorch(Framework):
         Args:
             training_recipe (str): A recipe which is a local file path, a url or a
                                    sagemaker training recipe.
+            recipe_overrides (Dict): Dictionary specifying key values to override in the
+                                     training_recipe.
             kwargs (dict): Dictionary of args used for estimator initializaiton.
         Returns:
             dict containing arg values for estimator initialization and setup.
 
         """
+        if recipe_overrides is None:
+            recipe_overrides = dict()
         cls.recipe_train_dir = tempfile.TemporaryDirectory(prefix="training_")
         cls.recipe_launcher_dir = tempfile.TemporaryDirectory(prefix="launcher_")
 
-        adapter_repo = os.environ.get("training_adapter_git", None) or cls.SM_ADAPTER_REPO
-        _run_clone_command(adapter_repo, cls.recipe_train_dir.name)
-        source_dir = os.path.join(cls.recipe_train_dir.name, "scripts")
-
-        model_type_to_script = {"llama_v3": "llama_pretrain.py"}
-
-        args = {"source_dir": source_dir}
-        local_recipe_path = os.path.join(source_dir, "recipe.yaml")
+        temp_local_recipe = tempfile.NamedTemporaryFile(prefix="recipe").name
         if training_recipe.endswith(".yaml"):
             if os.path.isfile(training_recipe):
-                shutil.copy(training_recipe, local_recipe_path)
+                shutil.copy(training_recipe, temp_local_recipe)
             else:
                 try:
-                    urlretrieve(training_recipe, local_recipe_path)
+                    urlretrieve(training_recipe, temp_local_recipe)
                 except Exception as e:
                     raise ValueError(
                         f"Could not fetch the provided recipe {training_recipe}: exception {str(e)}"
@@ -559,28 +567,27 @@ class PyTorch(Framework):
             _run_clone_command(launcher_repo, cls.recipe_launcher_dir.name)
             recipe = os.path.join(
                 cls.recipe_launcher_dir.name,
-                "examples",
+                "recipes-collection",
                 "recipes",
                 "training",
                 training_recipe + ".yaml",
             )
             if os.path.isfile(recipe):
-                shutil.copy(recipe, local_recipe_path)
+                shutil.copy(recipe, temp_local_recipe)
             else:
                 raise ValueError(f"Recipe {training_recipe} not found.")
 
-        recipe = OmegaConf.load(local_recipe_path)
+        recipe = OmegaConf.load(temp_local_recipe)
 
-        if "model" not in recipe:
-            raise ValueError("Supplied recipe does not contain required field model.")
-        if "model_type" not in recipe["model"]:
-            raise ValueError("Supplied recipe does not contain required field model_type.")
-        model_type = recipe["model"]["model_type"]
-        if model_type not in model_type_to_script:
-            raise ValueError(f"Model type {model_type} not supported")
-        args["model_type"] = model_type
-        args["entry_point"] = model_type_to_script[model_type]
-        args["hyperparameters"] = {"config-path": ".", "config-name": "recipe.yaml"}
+        if "instance_type" not in kwargs:
+            raise ValueError("Must pass instance type to estimator when using training recipes.")
+        instance_type = kwargs["instance_type"].split(".")[1]
+        if instance_type.startswith(("p", "g")):
+            device_type = "gpu"
+        elif instance_type.startswith("trn"):
+            device_type = "trainium"
+        else:
+            device_type = "cpu"
 
         if "trainer" not in recipe:
             raise ValueError("Supplied recipe does not contain required field trainer.")
@@ -597,17 +604,32 @@ class PyTorch(Framework):
                 )
             kwargs["instance_count"] = recipe["trainer"]["num_nodes"]
 
-        if "accelerator" not in recipe["trainer"]:
-            raise ValueError(
-                "Supplied recipe does not contain required field trainer -> accelerator."
+        args = dict()
+        # [TODO] Add image uris to image_uri_config/_.json and use image_uris.retrieve
+        # to retrieve the image uri below before we go GA.
+        if device_type == "gpu":
+            adapter_repo = os.environ.get("training_adapter_git", None) or cls.SM_ADAPTER_REPO
+            _run_clone_command(adapter_repo, cls.recipe_train_dir.name)
+
+            model_type_to_entry = {
+                "llama_v3": ("llama", "llama_pretrain.py"),
+                "mistral": ("mistral", "mistral_pretrain.py"),
+                "mixtral": ("mixtral", "mixtral_pretrain.py"),
+            }
+
+            if "model" not in recipe:
+                raise ValueError("Supplied recipe does not contain required field model.")
+            if "model_type" not in recipe["model"]:
+                raise ValueError("Supplied recipe does not contain required field model_type.")
+            model_type = recipe["model"]["model_type"]
+            if model_type not in model_type_to_entry:
+                raise ValueError(f"Model type {model_type} not supported")
+
+            args["source_dir"] = os.path.join(
+                cls.recipe_train_dir.name, "examples", model_type_to_entry[model_type][0]
             )
-        accelerator = recipe["trainer"]["accelerator"]
-        if accelerator == "gpu":
-            # [TODO] Add image uris to image_uri_config/_.json and use image_uris.retrieve
-            # to retrieve the image uri below before we go GA.
-            args["image_uri"] = (
-                "855988369404.dkr.ecr.us-west-2.amazonaws.com/chinmayee-dev:adaptor_sept9_v1"
-            )
+            args["entry_point"] = model_type_to_entry[model_type][1]
+            args["default_image_uri"] = cls.SM_TRAINING_RECIPE_GPU_IMG
             smp_options = {
                 "enabled": True,
                 "parameters": {
@@ -618,26 +640,29 @@ class PyTorch(Framework):
                 "smdistributed": {"modelparallel": smp_options},
                 "torch_distributed": {"enabled": True},
             }
+        elif device_type == "trainium":
+            _run_clone_command(cls.SM_NEURONX_DIST_REPO, cls.recipe_train_dir.name)
+            args["source_dir"] = os.path.join(cls.recipe_train_dir.name, "examples")
+            args["entry_point"] = "training_orchestrator.py"
+            args["default_image_uri"] = cls.SM_NEURONX_DIST_IMG
+            args["distribution"] = {
+                "torch_distributed": {"enabled": True},
+            }
         else:
-            raise ValueError(f"Accelerator type {accelerator} not yet supported.")
-
-        try:
-            recipe["run"]["results_dir"] = "/opt/ml/model/"
-            recipe["exp_manager"]["exp_dir"] = "/opt/ml/model/"
-            recipe["exp_manager"]["explicit_log_dir"] = "/opt/ml/output/tensorboard"
-            recipe["exp_manager"]["checkpoint_dir"] = "/opt/ml/checkpoints"
-            recipe["model"]["data"]["train_dir"] = ["/opt/ml/input/data/train"]
-            recipe["model"]["data"]["val_dir"] = ["/opt/ml/input/data/val"]
-        except KeyError as e:
-            raise RuntimeError(
-                f"Error when trying to update recipe for sagemaker jobs with key {str(e)}."
+            raise ValueError(
+                f"Devices of type {device_type} are not supported with training recipes."
             )
+
+        recipe_overrides.setdefault("run", dict())["results_dir"] = "/opt/ml/model"
+        recipe_overrides.setdefault("exp_manager", dict())["exp_dir"] = "/opt/ml/model/"
+        recipe = OmegaConf.merge(recipe, recipe_overrides)
 
         if "container" in recipe and not recipe["container"]:
             logger.warning(
                 "Ignoring container from training_recipe. Use image_uri arg for estimator."
             )
 
-        OmegaConf.save(config=recipe, f=local_recipe_path)
+        OmegaConf.save(config=recipe, f=os.path.join(args["source_dir"], "recipe.yaml"))
+        args["hyperparameters"] = {"config-path": ".", "config-name": "recipe.yaml"}
 
         return args
