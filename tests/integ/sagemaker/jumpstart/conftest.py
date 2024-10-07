@@ -34,6 +34,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_test_artifact_bucket,
     get_test_suite_id,
     get_sm_session,
+    with_exponential_backoff,
 )
 
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_MODEL_HUB_NAME
@@ -61,6 +62,8 @@ def _teardown():
     test_cache_bucket = get_test_artifact_bucket()
 
     test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
+
+    test_hub_name = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
 
     boto3_session = boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
 
@@ -133,35 +136,27 @@ def _teardown():
     bucket.objects.filter(Prefix=test_suite_id + "/").delete()
 
     # delete private hubs
-    _delete_hubs(sagemaker_session)
+    _delete_hubs(sagemaker_session, test_hub_name)
 
 
-def _delete_hubs(sagemaker_session):
-    # list Hubs created by PySDK integration tests
-    list_hub_response = sagemaker_session.list_hubs(
-        name_contains=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
-    )
-
-    for hub in list_hub_response["HubSummaries"]:
-        if hub["HubName"] != JUMPSTART_MODEL_HUB_NAME:
-            # delete all hub contents first
-            _delete_hub_contents(sagemaker_session, hub["HubName"])
-            sagemaker_session.delete_hub(hub["HubName"])
-
-
-def _delete_hub_contents(sagemaker_session, test_hub_name):
-    # list hub_contents for the given hub
+def _delete_hubs(sagemaker_session, hub_name):
+    # list and delete all hub contents first
     list_hub_content_response = sagemaker_session.list_hub_contents(
-        hub_name=test_hub_name, hub_content_type=HubContentType.MODEL_REFERENCE.value
+        hub_name=hub_name, hub_content_type=HubContentType.MODEL_REFERENCE.value
     )
+    for model in list_hub_content_response["HubContentSummaries"]:
+        _delete_hub_contents(sagemaker_session, hub_name, model)
 
-    # delete hub_contents for the given hub
-    for models in list_hub_content_response["HubContentSummaries"]:
-        sagemaker_session.delete_hub_content_reference(
-            hub_name=test_hub_name,
-            hub_content_type=HubContentType.MODEL_REFERENCE.value,
-            hub_content_name=models["HubContentName"],
-        )
+    sagemaker_session.delete_hub(hub_name)
+
+
+@with_exponential_backoff()
+def _delete_hub_contents(sagemaker_session, hub_name, model):
+    sagemaker_session.delete_hub_content_reference(
+        hub_name=hub_name,
+        hub_content_type=HubContentType.MODEL_REFERENCE.value,
+        hub_content_name=model["HubContentName"],
+    )
 
 
 @pytest.fixture(scope="session", autouse=True)
