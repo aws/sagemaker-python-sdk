@@ -21,7 +21,6 @@ from sagemaker.enums import EndpointType
 from sagemaker.jumpstart.hub.hub import Hub
 from sagemaker.jumpstart.hub.utils import generate_hub_arn_for_init_kwargs
 from sagemaker.predictor import retrieve_default
-from botocore.exceptions import ClientError
 
 import tests.integ
 

@@ -37,8 +37,6 @@ from tests.integ.sagemaker.jumpstart.utils import (
     with_exponential_backoff,
 )
 
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_MODEL_HUB_NAME
-
 
 def _setup():
     print("Setting up...")
