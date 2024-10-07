@@ -50,7 +50,10 @@ from sagemaker.modules.constants import (
     DEFAULT_CONTAINER_ARGUMENTS,
 )
 from sagemaker.modules.templates import TRAIN_SCRIPT_TEMPLATE
-from sagemaker.modules.image_spec import ImageSpec
+from sagemaker.modules.image_spec import (
+    ImageSpec,
+    ImageScope,
+)
 from sagemaker.modules import logger
 
 
@@ -157,7 +160,7 @@ class ModelTrainer(BaseModel):
                     )
                 if requirements:
                     if not _is_valid_path(
-                        f"{source_dir}/{entry_script}",
+                        f"{source_dir}/{requirements}",
                         path_type="File",
                     ):
                         raise ValueError(
@@ -195,7 +198,7 @@ class ModelTrainer(BaseModel):
                 self.base_name = f"{self.algorithm_name}-job"
             elif self.training_image:
                 if isinstance(self.training_image, ImageSpec):
-                    self.base_name = f"{self.training_image.framework_name}-job"
+                    self.base_name = f"{self.training_image.framework.value}-job"
                 else:
                     self.base_name = f"{_get_repo_name_from_image(self.training_image)}-job"
             logger.warning(f"Base name not provided. Using default name:\n{self.base_name}")
@@ -235,9 +238,11 @@ class ModelTrainer(BaseModel):
 
         if self.training_image:
             if isinstance(self.training_image, ImageSpec):
-                self.training_image = self.training_image.get_image_uri(
-                    image_scope="training", instance_type=self.resource_config.instance_type
+                self.training_image.update_image_spec(
+                    image_scope=ImageScope.TRAINING,
+                    instance_type=self.resource_config.instance_type,
                 )
+                self.training_image = self.training_image.retrieve()
             logger.info(f"Training image URI: {self.training_image}")
 
     def train(
