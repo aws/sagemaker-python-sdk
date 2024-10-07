@@ -447,6 +447,7 @@ class JumpStartModel(Model):
         return payloads.retrieve_example(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
             model_type=self.model_type,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,

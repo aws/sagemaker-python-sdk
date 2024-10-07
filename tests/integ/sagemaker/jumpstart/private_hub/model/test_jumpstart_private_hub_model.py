@@ -48,7 +48,7 @@ TEST_MODEL_IDS = {
 
 
 @pytest.fixture(scope="session")
-def add_models():
+def add_model_references():
     # Create Model References to test in Hub
     hub_instance = Hub(
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session()
@@ -57,27 +57,27 @@ def add_models():
         hub_instance.create_model_reference(model_arn=get_public_hub_model_arn(hub_instance, model))
 
 
-def test_jumpstart_hub_model(setup, add_models):
-
-    JUMPSTART_LOGGER.info("starting test")
-    JUMPSTART_LOGGER.info(f"get identity {get_sm_session().get_caller_identity_arn()}")
+def test_jumpstart_hub_model(setup, add_model_references):
 
     model_id = "catboost-classification-model"
 
+    sagemaker_session = get_sm_session()
+
     model = JumpStartModel(
         model_id=model_id,
-        role=get_sm_session().get_caller_identity_arn(),
-        sagemaker_session=get_sm_session(),
+        role=sagemaker_session.get_caller_identity_arn(),
+        sagemaker_session=sagemaker_session,
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
     )
 
-    # uses ml.m5.4xlarge instance
-    model.deploy(
+    predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
+    assert sagemaker_session.endpoint_in_service_or_not(predictor.endpoint_name)
 
-def test_jumpstart_hub_gated_model(setup, add_models):
+
+def test_jumpstart_hub_gated_model(setup, add_model_references):
 
     model_id = "meta-textgeneration-llama-3-2-1b"
 
@@ -88,23 +88,19 @@ def test_jumpstart_hub_gated_model(setup, add_models):
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
     )
 
-    # uses ml.g6.xlarge instance
     predictor = model.deploy(
         accept_eula=True,
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
-    payload = {
-        "inputs": "some-payload",
-        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
-    }
+    payload = model.retrieve_example_payload()
 
-    response = predictor.predict(payload, custom_attributes="accept_eula=true")
+    response = predictor.predict(payload)
 
     assert response is not None
 
 
-def test_jumpstart_gated_model_inference_component_enabled(setup, add_models):
+def test_jumpstart_gated_model_inference_component_enabled(setup, add_model_references):
 
     model_id = "meta-textgeneration-llama-2-7b"
 
@@ -125,7 +121,6 @@ def test_jumpstart_gated_model_inference_component_enabled(setup, add_models):
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
     )
 
-    # uses ml.g5.2xlarge instance
     model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         accept_eula=True,
@@ -139,10 +134,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup, add_models):
         hub_arn=hub_arn,
     )
 
-    payload = {
-        "inputs": "some-payload",
-        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
-    }
+    payload = model.retrieve_example_payload()
 
     response = predictor.predict(payload)
 
@@ -156,7 +148,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup, add_models):
     assert model.inference_component_name == predictor.component_name
 
 
-def test_instatiating_model(setup, add_models):
+def test_instantiating_model(setup, add_model_references):
 
     model_id = "catboost-regression-model"
 

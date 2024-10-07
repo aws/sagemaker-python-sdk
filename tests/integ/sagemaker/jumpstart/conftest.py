@@ -23,7 +23,6 @@ from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME,
     HUB_NAME_PREFIX,
     JUMPSTART_TAG,
-    SM_JUMPSTART_PUBLIC_HUB_NAME,
 )
 
 from sagemaker.jumpstart.types import (
@@ -37,7 +36,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
 )
 
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_MODEL_HUB_NAME
 
 
 def _setup():
@@ -144,7 +143,7 @@ def _delete_hubs(sagemaker_session):
     )
 
     for hub in list_hub_response["HubSummaries"]:
-        if hub["HubName"] != SM_JUMPSTART_PUBLIC_HUB_NAME:
+        if hub["HubName"] != JUMPSTART_MODEL_HUB_NAME:
             # delete all hub contents first
             _delete_hub_contents(sagemaker_session, hub["HubName"])
             sagemaker_session.delete_hub(hub["HubName"])

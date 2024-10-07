@@ -121,11 +121,6 @@ def get_public_hub_model_arn(hub: Hub, model_id: str) -> str:
     response = hub.list_sagemaker_public_hub_models(filter=filter_value)
 
     models = response["hub_content_summaries"]
-    while response["next_token"]:
-        response = hub.list_sagemaker_public_hub_models(
-            filter=filter_value, next_token=response["next_token"]
-        )
-        models.extend(response["hub_content_summaries"])
 
     return models[0]["hub_content_arn"]
 
