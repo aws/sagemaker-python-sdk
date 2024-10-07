@@ -16,6 +16,7 @@ import os
 import boto3
 import pytest
 from botocore.config import Config
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.hub.hub import Hub
 from sagemaker.session import Session
 from tests.integ.sagemaker.jumpstart.constants import (
