@@ -63,6 +63,8 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
 from sagemaker.s3 import S3Uploader
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +204,7 @@ class Processor(object):
             env, PROCESSING_JOB_ENVIRONMENT_PATH, sagemaker_session=self.sagemaker_session
         )
 
+    @_telemetry_emitter(Feature.PROCESSING, "processing.run")
     @runnable_by_pipeline
     def run(
         self,
@@ -617,6 +620,7 @@ class ScriptProcessor(Processor):
         )
         return RunArgs(code=code, inputs=inputs, outputs=outputs, arguments=arguments)
 
+    @_telemetry_emitter(Feature.PROCESSING, "processing.run")
     @runnable_by_pipeline
     def run(
         self,
