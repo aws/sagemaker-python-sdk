@@ -29,6 +29,10 @@ echo "/opt/ml/input/config/hyperparameters.json:"
 cat /opt/ml/input/config/hyperparameters.json
 echo
 
+echo "Setting up environment variables"
+python /opt/ml/input/data/sm_code/environment.py
+source /opt/ml/input/data/sm_code/sm_training.env
+
 python --version
 {working_dir}
 {install_requirements}
