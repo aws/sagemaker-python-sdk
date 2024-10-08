@@ -14,13 +14,15 @@
 from __future__ import absolute_import
 
 import logging
+import math
 import os
 import shutil
 import tempfile
 from typing import Union, Optional, Dict
 from urllib.request import urlretrieve
 
-from omegaconf import OmegaConf
+import omegaconf
+from omegaconf import OmegaConf, dictconfig
 from packaging.version import Version
 
 from sagemaker.estimator import Framework, EstimatorBase
@@ -40,6 +42,19 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
+
+
+def _try_resolve_recipe(recipe, key=None):
+    """Try to resolve recipe and return resolved recipe."""
+    if key is not None:
+        recipe = dictconfig.DictConfig({key: recipe})
+    try:
+        OmegaConf.resolve(recipe)
+    except omegaconf.errors.OmegaConfBaseException:
+        return None
+    if key is None:
+        return recipe
+    return recipe[key]
 
 
 class PyTorch(Framework):
@@ -551,7 +566,9 @@ class PyTorch(Framework):
         cls.recipe_train_dir = tempfile.TemporaryDirectory(prefix="training_")
         cls.recipe_launcher_dir = tempfile.TemporaryDirectory(prefix="launcher_")
 
-        temp_local_recipe = tempfile.NamedTemporaryFile(prefix="recipe").name
+        temp_local_recipe = tempfile.NamedTemporaryFile(
+            prefix="recipe_original", suffix=".yaml"
+        ).name
         if training_recipe.endswith(".yaml"):
             if os.path.isfile(training_recipe):
                 shutil.copy(training_recipe, temp_local_recipe)
@@ -567,7 +584,7 @@ class PyTorch(Framework):
             _run_clone_command(launcher_repo, cls.recipe_launcher_dir.name)
             recipe = os.path.join(
                 cls.recipe_launcher_dir.name,
-                "recipes-collection",
+                "recipes_collection",
                 "recipes",
                 "training",
                 training_recipe + ".yaml",
@@ -578,6 +595,7 @@ class PyTorch(Framework):
                 raise ValueError(f"Recipe {training_recipe} not found.")
 
         recipe = OmegaConf.load(temp_local_recipe)
+        os.unlink(temp_local_recipe)
 
         if "instance_type" not in kwargs:
             raise ValueError("Must pass instance type to estimator when using training recipes.")
@@ -662,7 +680,26 @@ class PyTorch(Framework):
                 "Ignoring container from training_recipe. Use image_uri arg for estimator."
             )
 
-        OmegaConf.save(config=recipe, f=os.path.join(args["source_dir"], "recipe.yaml"))
+        if not OmegaConf.has_resolver("multiply"):
+            OmegaConf.register_new_resolver("multiply", lambda x, y: x * y, replace=True)
+        if not OmegaConf.has_resolver("divide_ceil"):
+            OmegaConf.register_new_resolver(
+                "divide_ceil", lambda x, y: int(math.ceil(x / y)), replace=True
+            )
+        if not OmegaConf.has_resolver("divide_floor"):
+            OmegaConf.register_new_resolver(
+                "divide_floor", lambda x, y: int(math.floor(x / y)), replace=True
+            )
+        if not OmegaConf.has_resolver("add"):
+            OmegaConf.register_new_resolver("add", lambda *numbers: sum(numbers))
+        final_recipe = _try_resolve_recipe(recipe)
+        if final_recipe is None:
+            final_recipe = _try_resolve_recipe(recipe, "recipes")
+        if final_recipe is None:
+            final_recipe = _try_resolve_recipe(recipe, "training")
+        if final_recipe is None:
+            raise RuntimeError("Could not resolve provided recipe.")
+        OmegaConf.save(config=final_recipe, f=os.path.join(args["source_dir"], "recipe.yaml"))
         args["hyperparameters"] = {"config-path": ".", "config-name": "recipe.yaml"}
 
         return args
