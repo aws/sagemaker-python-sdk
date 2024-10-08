@@ -14,6 +14,8 @@ from __future__ import absolute_import
 import functools
 import json
 
+import random
+import time
 import uuid
 from typing import Any, Dict, List, Tuple
 import boto3
@@ -21,6 +23,7 @@ import pandas as pd
 import os
 
 from botocore.config import Config
+from botocore.exceptions import ClientError
 import pytest
 
 
@@ -32,6 +35,7 @@ from tests.integ.sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.jumpstart.hub.hub import Hub
 
 from sagemaker.session import Session
 
@@ -113,6 +117,41 @@ def get_tabular_data(data_filename: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 def download_file(local_download_path, s3_bucket, s3_key, s3_client) -> None:
     s3_client.download_file(s3_bucket, s3_key, local_download_path)
+
+
+def get_public_hub_model_arn(hub: Hub, model_id: str) -> str:
+    filter_value = f"model_id == {model_id}"
+    response = hub.list_sagemaker_public_hub_models(filter=filter_value)
+
+    models = response["hub_content_summaries"]
+
+    return models[0]["hub_content_arn"]
+
+
+def with_exponential_backoff(max_retries=5, initial_delay=1, max_delay=60):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except ClientError as e:
+                    if retries >= max_retries or e.response["Error"]["Code"] not in [
+                        "ThrottlingException",
+                        "TooManyRequestsException",
+                    ]:
+                        raise
+                    delay = min(initial_delay * (2**retries) + random.random(), max_delay)
+                    print(
+                        f"Retrying {func.__name__} in {delay:.2f} seconds... (Attempt {retries + 1}/{max_retries})"
+                    )
+                    time.sleep(delay)
+                    retries += 1
+
+        return wrapper
+
+    return decorator
 
 
 class EndpointInvoker:
