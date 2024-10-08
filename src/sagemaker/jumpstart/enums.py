@@ -82,6 +82,12 @@ class VariableTypes(str, Enum):
     BOOL = "bool"
 
 
+class HubContentCapability(str, Enum):
+    """Enum class for HubContent capabilities."""
+
+    BEDROCK_CONSOLE = "BEDROCK_CONSOLE"
+
+
 class JumpStartTag(str, Enum):
     """Enum class for tag keys to apply to JumpStart models."""
 
@@ -98,6 +104,8 @@ class JumpStartTag(str, Enum):
     TRAINING_CONFIG_NAME = "sagemaker-sdk:jumpstart-training-config-name"
 
     HUB_CONTENT_ARN = "sagemaker-sdk:hub-content-arn"
+
+    BEDROCK = "sagemaker-sdk:bedrock"
 
 
 class SerializerType(str, Enum):

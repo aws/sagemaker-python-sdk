@@ -54,17 +54,12 @@ def get_sm_session() -> Session:
 #     # boto3.set_stream_logger(name='botocore', level=logging.DEBUG)
 #     boto_session = boto3.Session(region_name="us-west-2")
 #     sagemaker = boto3.client(
-#         service_name="sagemaker-internal",
-#         endpoint_url="https://sagemaker.beta.us-west-2.ml-platform.aws.a2z.com",
-#     )
-#     sagemaker_runtime = boto3.client(
-#         service_name="runtime.maeve",
-#         endpoint_url="https://maeveruntime.beta.us-west-2.ml-platform.aws.a2z.com",
+#         service_name="sagemaker",
+#         endpoint_url="https://sagemaker.gamma.us-west-2.ml-platform.aws.a2z.com",
 #     )
 #     return Session(
 #         boto_session=boto_session,
 #         sagemaker_client=sagemaker,
-#         sagemaker_runtime_client=sagemaker_runtime,
 #     )
 
 

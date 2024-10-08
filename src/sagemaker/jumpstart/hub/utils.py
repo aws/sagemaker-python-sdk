@@ -14,7 +14,7 @@
 """This module contains utilities related to SageMaker JumpStart Hub."""
 from __future__ import absolute_import
 import re
-from typing import Optional
+from typing import Optional, List, Any
 from sagemaker.jumpstart.hub.types import S3ObjectLocation
 from sagemaker.s3_utils import parse_s3_url
 from sagemaker.session import Session
@@ -22,6 +22,8 @@ from sagemaker.utils import aws_partition
 from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
 from sagemaker.jumpstart import constants
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
+
+PROPRIETARY_VERSION_KEYWORD = "@marketplace-version:"
 
 
 def get_info_from_hub_resource_arn(
@@ -117,8 +119,8 @@ def generate_hub_arn_for_init_kwargs(
 
     hub_arn = None
     if hub_name:
-        if hub_name == constants.JUMPSTART_MODEL_HUB_NAME:
-            return None
+        # if hub_name == constants.JUMPSTART_MODEL_HUB_NAME:
+        #     return None
         match = re.match(constants.HUB_ARN_REGEX, hub_name)
         if match:
             hub_arn = hub_name
@@ -207,6 +209,24 @@ def get_hub_model_version(
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
 
+    open_weight_hub_content_version = _get_open_weight_hub_model_version(
+        hub_content_summaries, hub_model_version
+    )
+    if open_weight_hub_content_version:
+        return open_weight_hub_content_version
+
+    proprietary_hub_content_version = _get_proprietary_hub_model_version(
+        hub_content_summaries, hub_model_version
+    )
+    if proprietary_hub_content_version:
+        return proprietary_hub_content_version
+
+    raise KeyError(f"Could not find HubContent with specified version: {hub_model_version}")
+
+
+def _get_open_weight_hub_model_version(
+    hub_content_summaries: List[Any], hub_model_version: Optional[str] = None
+) -> Optional[str]:
     available_model_versions = [model.get("HubContentVersion") for model in hub_content_summaries]
 
     if hub_model_version == "*" or hub_model_version is None:
@@ -215,10 +235,41 @@ def get_hub_model_version(
     try:
         spec = SpecifierSet(f"=={hub_model_version}")
     except InvalidSpecifier:
-        raise KeyError(f"Bad semantic version: {hub_model_version}")
+        return None
     available_versions_filtered = list(spec.filter(available_model_versions))
     if not available_versions_filtered:
-        raise KeyError("Model version not available in the Hub")
+        return None
     hub_model_version = str(max(available_versions_filtered))
 
     return hub_model_version
+
+
+def _get_proprietary_hub_model_version(
+    hub_content_summaries: List[Any], proprietary_hub_model_version: str
+) -> Optional[str]:
+
+    for model in hub_content_summaries:
+        model_search_keywords = model.get("HubContentSearchKeywords", [])
+        if _hub_search_keywords_contains_proprietary_version(
+            model_search_keywords, proprietary_hub_model_version
+        ):
+            return model.get("HubContentVersion")
+
+    return None
+
+
+def _hub_search_keywords_contains_proprietary_version(
+    model_search_keywords: List[str], proprietary_hub_model_version: str
+) -> bool:
+    proprietary_version_keyword = next(
+        filter(lambda s: s.startswith(PROPRIETARY_VERSION_KEYWORD), model_search_keywords), None
+    )
+
+    if not proprietary_version_keyword:
+        return False
+
+    proprietary_version = proprietary_version_keyword.lstrip(PROPRIETARY_VERSION_KEYWORD)
+    if proprietary_version == proprietary_hub_model_version:
+        return True
+
+    return False

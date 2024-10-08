@@ -33,7 +33,7 @@ from sagemaker.config.config_schema import (
 
 from sagemaker.jumpstart import constants, enums
 from sagemaker.jumpstart import accessors
-from sagemaker.jumpstart.hub.parser_utils import camel_to_snake, snake_to_upper_camel
+from sagemaker.jumpstart.hub.parser_utils import pascal_to_snake, snake_to_upper_camel
 from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
@@ -451,6 +451,35 @@ def add_hub_content_arn_tags(
     )
     return tags
 
+def add_bedrock_store_tags(
+    tags: Optional[List[TagsDict]],
+    compatibility: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        compatibility,
+        enums.JumpStartTag.BEDROCK,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
+def add_bedrock_store_tags(
+    tags: Optional[List[TagsDict]],
+    compatibility: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        compatibility,
+        enums.JumpStartTag.BEDROCK,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
 
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
@@ -856,7 +885,10 @@ def validate_model_id_and_get_type(
     if not isinstance(model_id, str):
         return None
     if hub_arn:
-        return None
+        model_types = _validate_hub_service_model_id_and_get_type(
+            model_id, hub_arn, region, model_version, sagemaker_session
+        )
+        return model_types[0]  # Currently this function only supports one model type
 
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
@@ -879,6 +911,35 @@ def validate_model_id_and_get_type(
             return enums.JumpStartModelType.PROPRIETARY
         raise ValueError(f"Unsupported script for Proprietary models: {script}")
     return None
+
+
+def _validate_hub_service_model_id_and_get_type(
+    model_id: Optional[str],
+    hub_arn: str,
+    region: Optional[str] = None,
+    model_version: Optional[str] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> List[enums.JumpStartModelType]:
+    """Returns a list of JumpStartModelType based off the HubContent.
+
+    Only returns valid JumpStartModelType. Returns an empty array if none are found.
+    """
+    hub_model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        hub_arn=hub_arn,
+        sagemaker_session=sagemaker_session,
+    )
+
+    hub_content_model_types = []
+    for model_type in getattr(hub_model_specs, "model_types", []):
+        try:
+            hub_content_model_types.append(enums.JumpStartModelType[model_type])
+        except ValueError:
+            continue
+
+    return hub_content_model_types
 
 
 def _extract_value_from_list_of_tags(
@@ -1113,7 +1174,7 @@ def get_jumpstart_configs(
         return (
             {
                 config_name: metadata_configs.configs[
-                    camel_to_snake(snake_to_upper_camel(config_name))
+                    pascal_to_snake(snake_to_upper_camel(config_name))
                 ]
                 for config_name in config_names
             }
