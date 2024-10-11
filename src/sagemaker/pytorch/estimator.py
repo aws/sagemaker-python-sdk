@@ -596,6 +596,9 @@ class PyTorch(Framework):
 
         recipe = OmegaConf.load(temp_local_recipe)
         os.unlink(temp_local_recipe)
+        recipe_overrides.setdefault("run", dict())["results_dir"] = "/opt/ml/model"
+        recipe_overrides.setdefault("exp_manager", dict())["exp_dir"] = "/opt/ml/model/"
+        recipe = OmegaConf.merge(recipe, recipe_overrides)
 
         if "instance_type" not in kwargs:
             raise ValueError("Must pass instance type to estimator when using training recipes.")
@@ -670,10 +673,6 @@ class PyTorch(Framework):
             raise ValueError(
                 f"Devices of type {device_type} are not supported with training recipes."
             )
-
-        recipe_overrides.setdefault("run", dict())["results_dir"] = "/opt/ml/model"
-        recipe_overrides.setdefault("exp_manager", dict())["exp_dir"] = "/opt/ml/model/"
-        recipe = OmegaConf.merge(recipe, recipe_overrides)
 
         if "container" in recipe and not recipe["container"]:
             logger.warning(
