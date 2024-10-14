@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.232.2 (2024-10-03)
+
+### Bug Fixes and Other Changes
+
+ * Pass kwargs to HuggingFaceModel.deploy()
+ * improve logging and exception messages
+ * remove deprecated distutils
+ * update image_uri_configs  09-24-2024 07:18:00 PST
+
+## v2.232.1 (2024-09-19)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  09-17-2024 07:17:54 PST
+ * support latest container version in image_uris and DJLModel for lmi c…
+
 ## v2.232.0 (2024-09-12)
 
 ### Features

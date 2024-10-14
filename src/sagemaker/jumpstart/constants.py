@@ -222,8 +222,6 @@ NEO_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 
 JUMPSTART_MODEL_HUB_NAME = "SageMakerPublicHub"
 
-JUMPSTART_MODEL_HUB_NAME = "SageMakerPublicHub"
-
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
 JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY = "proprietary-sdk-manifest.json"
 

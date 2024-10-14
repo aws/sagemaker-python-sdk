@@ -50,7 +50,12 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config, TagsDict, get_instance_rate_per_hour
+from sagemaker.utils import (
+    resolve_value_from_config,
+    TagsDict,
+    get_instance_rate_per_hour,
+    get_domain_for_region,
+)
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.user_agent import get_user_agent_extra_suffix
 
@@ -553,7 +558,7 @@ def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
     return (
         f"Model '{model_specs.model_id}' requires accepting end-user license agreement (EULA). "
         f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
-        f"amazonaws.com{'.cn' if region.startswith('cn-') else ''}"
+        f"{get_domain_for_region(region)}"
         f"/{model_specs.hosting_eula_key} for terms of use."
     )
 

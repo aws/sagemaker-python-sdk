@@ -334,11 +334,7 @@ class HuggingFaceModel(FrameworkModel):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
-            endpoint_logging=kwargs.get("endpoint_logging", False),
-            endpoint_type=kwargs.get("endpoint_type", None),
-            resources=kwargs.get("resources", None),
-            managed_instance_scaling=kwargs.get("managed_instance_scaling", None),
-            routing_config=kwargs.get("routing_config", None),
+            **kwargs,
         )
 
     def register(

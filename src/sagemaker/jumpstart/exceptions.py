@@ -32,8 +32,8 @@ NO_AVAILABLE_RESOURCE_REQUIREMENT_RECOMMENDATION_ERROR_MSG = (
 )
 
 INVALID_MODEL_ID_ERROR_MSG = (
-    "Invalid model ID: '{model_id}'. Please visit "
-    f"{MODEL_ID_LIST_WEB_URL} for a list of valid model IDs. "
+    "Invalid model ID: '{model_id}'. Specify a different model ID or try a different AWS Region. "
+    f"For a list of available models, see {MODEL_ID_LIST_WEB_URL}. "
     "The module `sagemaker.jumpstart.notebook_utils` contains utilities for "
     "fetching model IDs. We recommend upgrading to the latest version of sagemaker "
     "to get access to the most models."

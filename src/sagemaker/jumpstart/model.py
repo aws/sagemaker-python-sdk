@@ -447,6 +447,7 @@ class JumpStartModel(Model):
         return payloads.retrieve_example(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
             model_type=self.model_type,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
@@ -1036,6 +1037,7 @@ class JumpStartModel(Model):
                 image_uri=image_uri,
                 region=self.region,
                 model_version=self.model_version,
+                hub_arn=self.hub_arn,
             )
             deploy_kwargs = get_deploy_kwargs(
                 model_id=self.model_id,
@@ -1043,6 +1045,7 @@ class JumpStartModel(Model):
                 sagemaker_session=self.sagemaker_session,
                 region=self.region,
                 model_version=self.model_version,
+                hub_arn=self.hub_arn,
             )
 
             deployment_config_metadata = DeploymentConfigMetadata(

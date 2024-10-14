@@ -205,8 +205,11 @@ def test_jumpstart_cache_get_header():
         )
     assert (
         "Unable to find model manifest for 'pytorch-ic-imagenet-inception-v3-classification-4' with "
-        "version '3.*'. Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
-        "for updated list of models. Consider using model ID 'pytorch-ic-imagenet-inception-v3-"
+        "version '3.*'. Specify a different model ID or try a different AWS Region. "
+        "For a list of available models, see "
+        "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html. "
+        "Consider using model ID "
+        "'pytorch-ic-imagenet-inception-v3-"
         "classification-4' with version '2.0.0'."
     ) in str(e.value)
 
@@ -214,8 +217,9 @@ def test_jumpstart_cache_get_header():
         cache.get_header(model_id="pytorch-ic-", semantic_version_str="*")
     assert (
         "Unable to find model manifest for 'pytorch-ic-' with version '*'. "
-        "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
-        "for updated list of models. "
+        "Specify a different model ID or try a different AWS Region. "
+        "For a list of available models, see "
+        "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html. "
         "Did you mean to use model ID 'pytorch-ic-imagenet-inception-v3-classification-4'?"
     ) in str(e.value)
 
@@ -223,8 +227,9 @@ def test_jumpstart_cache_get_header():
         cache.get_header(model_id="tensorflow-ic-", semantic_version_str="*")
     assert (
         "Unable to find model manifest for 'tensorflow-ic-' with version '*'. "
-        "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
-        "for updated list of models. "
+        "Specify a different model ID or try a different AWS Region. For a list "
+        "of available models, see "
+        "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html. "
         "Did you mean to use model ID 'tensorflow-ic-imagenet-inception-"
         "v3-classification-4'?"
     ) in str(e.value)
@@ -237,8 +242,9 @@ def test_jumpstart_cache_get_header():
         )
     assert (
         "Unable to find model manifest for 'ai21-summarize' with version '1.1.003'. "
-        "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html "
-        "for updated list of models. "
+        "Specify a different model ID or try a different AWS Region. "
+        "For a list of available models, see "
+        "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html. "
         "Did you mean to use model ID 'ai21-summarization'?"
     ) in str(e.value)
 
