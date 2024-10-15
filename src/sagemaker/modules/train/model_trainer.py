@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import os
 
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union, Dict, Any
 from pydantic import BaseModel, ConfigDict
 
 from sagemaker_core.resources import TrainingJob
@@ -93,6 +93,8 @@ class ModelTrainer(BaseModel):
         training_image (Optional[str]):
             The training image URI to use for the training job container.
             training_image cannot be specified if algorithm_name is specified.
+            For documentaion on sagemaker distributed images see:
+            https://docs.aws.amazon.com/sagemaker/latest/dg-ecr-paths/sagemaker-algo-docker-registry-paths.html
         training_input_mode (Optional[str]):
             The input mode for the training job. Valid values are "Pipe", "File", "FastFile".
             Defaults to "File".
@@ -101,7 +103,7 @@ class ModelTrainer(BaseModel):
             Docker registry for a training job.
         environment (Optional[Dict[str, str]]):
             The environment variables for the training job.
-        hyper_parameters (Optional[Dict[str, str]]):
+        hyper_parameters (Optional[Dict[str, Any]]):
             The hyperparameters for the training job.
         vpc_config: (Optional[VpcConfig]):
             The VPC configuration.
@@ -122,7 +124,7 @@ class ModelTrainer(BaseModel):
     training_input_mode: Optional[str] = "File"
     training_image_config: Optional[TrainingImageConfig] = None
     environment: Optional[Dict[str, str]] = None
-    hyper_parameters: Optional[Dict[str, str]] = None
+    hyper_parameters: Optional[Dict[str, Any]] = None
     vpc_config: Optional[VpcConfig] = None
 
     def _validate_training_image_and_algorithm_name(
@@ -173,10 +175,8 @@ class ModelTrainer(BaseModel):
                             + "Must be a valid file within the 'source_dir'.",
                         )
 
-    def __init__(self, **data):
-        """Set default values for session, role, base_name, and other interdependent fields."""
-        # Validate types with pydantic
-        super().__init__(**data)
+    def model_post_init(self, __context: Any):
+        """Post init method to perform custom validation and set default values."""
 
         self._validate_training_image_and_algorithm_name(self.training_image, self.algorithm_name)
         self._validate_source_code_config(self.source_code_config)
@@ -193,7 +193,7 @@ class ModelTrainer(BaseModel):
             if self.algorithm_name:
                 self.base_name = f"{self.algorithm_name}-job"
             elif self.training_image:
-                    self.base_name = f"{_get_repo_name_from_image(self.training_image)}-job"
+                self.base_name = f"{_get_repo_name_from_image(self.training_image)}-job"
             logger.warning(f"Base name not provided. Using default name:\n{self.base_name}")
 
         if self.resource_config is None:
@@ -229,15 +229,13 @@ class ModelTrainer(BaseModel):
                 f"OutputDataConfig not provided. Using default:\n{self.output_data_config}"
             )
 
+        # TODO: Autodetect which image to use if source_code_config is provided
         if self.training_image:
             logger.info(f"Training image URI: {self.training_image}")
 
     def train(
         self,
         input_data_channels: Optional[Union[List[Channel], Dict[str, DataSourceType]]] = None,
-        source_code_config: Optional[SourceCodeConfig] = None,
-        hyper_parameters: Optional[Dict[str, str]] = None,
-        environment: Optional[Dict[str, str]] = None,
         wait: bool = True,
         logs: bool = True,
     ):
@@ -249,13 +247,6 @@ class ModelTrainer(BaseModel):
                 Takes a list of Channel objects or a dictionary of channel names to DataSourceType.
                 DataSourceType can be an S3 URI string, local file path string,
                 S3DataSource object, or FileSystemDataSource object.
-            source_code_config (Optional[SourceCodeConfig]):
-                The source code configuration. This is used to configure the source code for
-                running the training job.
-            hyper_parameters (Optional[Dict[str, str]]):
-                The hyperparameters for the training job.
-            environment (Optional[Dict[str,str]]):
-                The environment variables for the training job.
             wait (Optional[bool]):
                 Whether to wait for the training job to complete before returning.
                 Defaults to True.
@@ -265,13 +256,6 @@ class ModelTrainer(BaseModel):
         """
         if input_data_channels:
             self.input_data_channels = input_data_channels
-        if source_code_config:
-            self._validate_source_code_config(source_code_config)
-            self.source_code_config = source_code_config
-        if hyper_parameters:
-            self.hyper_parameters = hyper_parameters
-        if environment:
-            self.environment = environment
 
         input_data_config = []
         if self.input_data_channels:
@@ -324,8 +308,8 @@ class ModelTrainer(BaseModel):
 
         # Unfortunately, API requires hyperparameters to be strings
         string_hyper_parameters = {}
-        if hyper_parameters:
-            for hyper_parameter, value in hyper_parameters.items():
+        if self.hyper_parameters:
+            for hyper_parameter, value in self.hyper_parameters.items():
                 string_hyper_parameters[hyper_parameter] = str(value)
 
         training_job = TrainingJob.create(

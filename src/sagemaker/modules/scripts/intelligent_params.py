@@ -1,3 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module is used to set intelligent parameters for all python files under the given path."""
+from __future__ import absolute_import
+
 import argparse
 import json
 import os
@@ -7,8 +22,8 @@ HYPERPARAMETERS_FILE_PATH = "/opt/ml/input/config/hyperparameters.json"
 
 
 def set_intelligent_params(path: str) -> None:
-    """
-    Set intelligent parameters for all python files under the given path.
+    """Set intelligent parameters for all python files under the given path.
+
     For python code with comment sm_hyper_param or sm_hp_{variable_name}, the value will be found in
         /opt/ml/input/config/hyperparameters.json, and this function will rewrite lines with these comments.
 
@@ -25,8 +40,7 @@ def set_intelligent_params(path: str) -> None:
 
 
 def rewrite_file(file_path: str, hyperparameters: dict) -> None:
-    """
-    Rewrite a single python file with intelligent parameters.
+    """Rewrite a single python file with intelligent parameters.
 
     Args:
         file_path (str): The file path to rewrite
@@ -41,8 +55,7 @@ def rewrite_file(file_path: str, hyperparameters: dict) -> None:
 
 
 def rewrite_line(line: str, hyperparameters: dict) -> None:
-    """
-    Rewrite a single line of python code with intelligent parameters.
+    """Rewrite a single line of python code with intelligent parameters.
 
     Args:
         line (str): The python code to rewrite
@@ -70,8 +83,7 @@ def rewrite_line(line: str, hyperparameters: dict) -> None:
 
 
 def get_parameter_value(variable: str, comment: str, hyperparameters: dict) -> None:
-    """
-    Get the parameter value by the variable name and comment.
+    """Get the parameter value by the variable name and comment.
 
     Args:
         variable (str): The variable name

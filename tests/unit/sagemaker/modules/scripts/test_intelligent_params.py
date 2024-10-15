@@ -1,3 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""Intelligent Parameter Tests."""
+from __future__ import absolute_import
+
 import os
 import pytest
 from sagemaker.modules.scripts.intelligent_params import (
@@ -20,7 +35,7 @@ def main(args):
     n_estimators = 10 # sm_hp_n_estimators
     state = "Not Started" # sm_hyper_param
     random_seed = 0.1 # sm_hyper_param
-    
+
     output_dir = "local/dir/" # sm_model_dir
     epochs = 5 # sm_hp_epochs
     input_data = [0, 0, 0] # sm_hp_list_value
@@ -46,7 +61,7 @@ def main(args):
     n_estimators = 3 # set by intelligent parameters
     state = "In Progress" # set by intelligent parameters
     random_seed = 0.1 # sm_hyper_param
-    
+
     output_dir = "/opt/ml/input" # set by intelligent parameters
     epochs = 4 # set by intelligent parameters
     input_data = [1, 2, 3] # set by intelligent parameters

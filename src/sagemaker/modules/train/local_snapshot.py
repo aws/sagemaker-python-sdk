@@ -11,6 +11,8 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utility function to capture local environment"""
+from __future__ import absolute_import
+
 import logging
 import subprocess
 import sys
@@ -77,8 +79,8 @@ def capture_local_environment(
     ecr_repo_name: Optional[str] = None,
     boto_session: Optional[boto3.Session] = None,
 ):
-    """
-    Capture all dependency packages installed in the local environment and build a docker image.
+    """Capture all dependency packages installed in the local environment and build a docker image.
+
     When using this utility method, the docker daemon must be active in the environment.
     Please note that this is an experimental feature. This utility function is not be able to
     detect the package compatability between platforms. It is also not able to detect dependency
@@ -209,8 +211,7 @@ def capture_local_environment(
 
 
 def _merge_environment_ymls(env_name: str, env_file1: str, env_file2: str, output_file: str):
-    """
-    Merge two environment.yml files and save to a new environment.yml file.
+    """Merge two environment.yml files and save to a new environment.yml file.
 
     Args:
         env_name (str): The name of the virtual environment to be activated in the image.
@@ -257,9 +258,7 @@ def _merge_environment_ymls(env_name: str, env_file1: str, env_file2: str, outpu
 def _merge_environment_yml_with_requirement_txt(
     env_name: str, env_file: str, req_txt: str, output_file: str
 ):
-    """
-    Merge an environment.yml file with a requirements.txt file and save to a new
-        environment.yml file.
+    """Merge an environment.yml file with a requirements.txt file.
 
     Args:
         env_name (str): The name of the virtual environment to be activated in the image.
@@ -302,8 +301,7 @@ def _merge_environment_yml_with_requirement_txt(
 
 
 def _push_image_to_ecr(image_name: str, ecr_repo_name: str, boto_session: Optional[boto3.Session]):
-    """
-    Push the docker image to AWS ECR.
+    """Push the docker image to AWS ECR.
 
     Args:
         image_name (str): The name of the docker image.
