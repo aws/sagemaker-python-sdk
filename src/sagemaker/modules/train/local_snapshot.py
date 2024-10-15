@@ -1,9 +1,23 @@
-import boto3
-import docker
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""Utility function to capture local environment"""
 import logging
 import subprocess
 import sys
 from typing import Optional
+
+import boto3
+import docker
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -66,38 +80,41 @@ def capture_local_environment(
     """
     Capture all dependency packages installed in the local environment and build a docker image.
     When using this utility method, the docker daemon must be active in the environment.
-    Please note that this is an experimental feature. This utility function is not be able to detect the package
-    compatability between platforms. It is also not able to detect dependency conflicts between the local environment
-    and the additional dependencies.
+    Please note that this is an experimental feature. This utility function is not be able to
+    detect the package compatability between platforms. It is also not able to detect dependency
+    conflicts between the local environment and the additional dependencies.
 
     Args:
         image_name (str): The name of the docker image.
-        env_name (str): The name of the virtual environment to be activated in the image, defaults to "saved_local_env".
+        env_name (str): The name of the virtual environment to be activated in the image,
+            defaults to "saved_local_env".
         package_manager (str): The package manager, must be one of "conda" or "pip".
-        deploy_to_ecr (bool): Whether to deploy the docker image to AWS ECR, defaults to False. If set to True, the AWS
-        credentials must be configured in the environment.
-        base_image_name (Optional[str]): If provided will be used as the base image, else the utility will evaluate
-            from local environment in following manner:
+        deploy_to_ecr (bool): Whether to deploy the docker image to AWS ECR, defaults to False.
+            If set to True, the AWS credentials must be configured in the environment.
+        base_image_name (Optional[str]): If provided will be used as the base image, else the
+            utility will evaluate from local environment in following manner:
                 1. If package manager is conda, it will use ubuntu:latest.
-                2. If package manager is pip, it is resolved to base python image with the same python version
-                    as the environment running the local code.
-        job_conda_env (Optional[str]): If set, the dependencies will be captured from this specific conda Env,
-            otherwise the dependencies will be the installed packages in the current active environment. This parameter
-            is only valid when the package manager is conda.
-        additional_dependencies (Optional[str]): Either the path to a dependencies file (conda environment.yml OR pip
-            requirements.txt file). Regardless of this setting utility will automatically generate the dependencies
-            file corresponding to the current active environment’s snapshot. In addition to this, additional dependencies
-            is configurable.
-        ecr_repo_name (Optional[str]): The AWS ECR repo to push the docker image. If not specified, it will use image_name as
-            the ECR repo name. This parameter is only valid when deploy_to_ecr is True.
-        boto_session (Optional[boto3.Session]): The boto3 session with AWS account info. If not provided, a new boto session
-            will be created.
+                2. If package manager is pip, it is resolved to base python image with the same
+                    python version as the environment running the local code.
+        job_conda_env (Optional[str]): If set, the dependencies will be captured from this specific
+            conda Env, otherwise the dependencies will be the installed packages in the current
+            active environment. This parameter is only valid when the package manager is conda.
+        additional_dependencies (Optional[str]): Either the path to a dependencies file (conda
+            environment.yml OR pip requirements.txt file). Regardless of this setting utility will
+            automatically generate the dependencies file corresponding to the current active
+            environment’s snapshot. In addition to this, additional dependencies is configurable.
+        ecr_repo_name (Optional[str]): The AWS ECR repo to push the docker image. If not specified,
+            it will use image_name as the ECR repo name. This parameter is only valid when
+            deploy_to_ecr is True.
+        boto_session (Optional[boto3.Session]): The boto3 session with AWS account info. If not
+            provided, a new boto session will be created.
 
     Exceptions:
         docker.errors.DockerException: Error while fetching server API version:
             The docker engine is not running in your environment.
-        docker.errors.BuildError: The docker failed to build the image. The most likely reason is: 1) Some packages are not
-            supported in the base image. 2) There are dependency conflicts between your local environment and additional dependencies.
+        docker.errors.BuildError: The docker failed to build the image. The most likely reason is:
+            1) Some packages are not supported in the base image. 2) There are dependency conflicts
+            between your local environment and additional dependencies.
         botocore.exceptions.ClientError: AWS credentials are not configured.
     """
 
@@ -118,7 +135,8 @@ def capture_local_environment(
                 ".yml"
             ) and not additional_dependencies.endswith(".txt"):
                 raise ValueError(
-                    "When package manager is conda, additional dependencies file must be a yml file or a txt file."
+                    "When package manager is conda, additional dependencies "
+                    "file must be a yml file or a txt file."
                 )
             if additional_dependencies.endswith(".yml"):
                 _merge_environment_ymls(
@@ -153,7 +171,7 @@ def capture_local_environment(
                 additional_requirements = f.read()
             with open(REQUIREMENT_TXT_PATH, "a") as f:
                 f.write(additional_requirements)
-                logger.info(f"Merged requirements file saved to {REQUIREMENT_TXT_PATH}")
+                logger.info("Merged requirements file saved to %s", REQUIREMENT_TXT_PATH)
 
             if not base_image_name:
                 version = sys.version_info
@@ -165,7 +183,8 @@ def capture_local_environment(
 
     else:
         raise ValueError(
-            "The provided package manager is not supported. Use conda or pip as the package manager."
+            "The provided package manager is not supported. "
+            "Use conda or pip as the package manager."
         )
 
     # Create the Dockerfile
@@ -173,7 +192,7 @@ def capture_local_environment(
         f.write(dockerfile_contents)
 
     client = docker.from_env()
-    image, logs = client.images.build(
+    _, logs = client.images.build(
         path="/tmp",
         dockerfile=DOCKERFILE_PATH,
         rm=True,
@@ -181,7 +200,7 @@ def capture_local_environment(
     )
     for log in logs:
         logger.info(log.get("stream", "").strip())
-    logger.info(f"Docker image {image_name} built successfully")
+    logger.info("Docker image %s built successfully", image_name)
 
     if deploy_to_ecr:
         if boto_session is None:
@@ -232,14 +251,15 @@ def _merge_environment_ymls(env_name: str, env_file1: str, env_file2: str, outpu
     with open(output_file, "w") as f:
         yaml.dump(merged_env, f, sort_keys=False)
 
-    logger.info(f"Merged environment file saved to '{output_file}'")
+    logger.info("Merged environment file saved to '%s'", output_file)
 
 
 def _merge_environment_yml_with_requirement_txt(
     env_name: str, env_file: str, req_txt: str, output_file: str
 ):
     """
-    Merge an environment.yml file with a requirements.txt file and save to a new environment.yml file.
+    Merge an environment.yml file with a requirements.txt file and save to a new
+        environment.yml file.
 
     Args:
         env_name (str): The name of the virtual environment to be activated in the image.
@@ -278,7 +298,7 @@ def _merge_environment_yml_with_requirement_txt(
     with open(output_file, "w") as f:
         yaml.dump(merged_env, f, sort_keys=False)
 
-    logger.info(f"Merged environment file saved to '{output_file}'")
+    logger.info("Merged environment file saved to '%s'", output_file)
 
 
 def _push_image_to_ecr(image_name: str, ecr_repo_name: str, boto_session: Optional[boto3.Session]):
@@ -317,4 +337,4 @@ def _push_image_to_ecr(image_name: str, ecr_repo_name: str, boto_session: Option
     docker_push_cmd = f"docker push {ecr_image_uri}"
     subprocess.run(docker_push_cmd, shell=True, check=True)
 
-    logger.info(f"Image {image_name} pushed to {ecr_image_uri}")
+    logger.info("Image %s pushed to %s", image_name, ecr_image_uri)
