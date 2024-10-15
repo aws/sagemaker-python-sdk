@@ -50,10 +50,6 @@ from sagemaker.modules.constants import (
     DEFAULT_CONTAINER_ARGUMENTS,
 )
 from sagemaker.modules.templates import TRAIN_SCRIPT_TEMPLATE
-from sagemaker.modules.image_spec import (
-    ImageSpec,
-    ImageScope,
-)
 from sagemaker.modules import logger
 
 
@@ -94,7 +90,7 @@ class ModelTrainer(BaseModel):
         algorithm_name (Optional[str]):
             The SageMaker marketplace algorithm name/arn to use for the training job.
             algorithm_name cannot be specified if training_image is specified.
-        training_image (Optional[Union[str, ImageSpec]]):
+        training_image (Optional[str]):
             The training image URI to use for the training job container.
             training_image cannot be specified if algorithm_name is specified.
         training_input_mode (Optional[str]):
@@ -122,7 +118,7 @@ class ModelTrainer(BaseModel):
     input_data_channels: Optional[Union[List[Channel], Dict[str, DataSourceType]]] = None
     source_code_config: Optional[SourceCodeConfig] = None
     algorithm_name: Optional[str] = None
-    training_image: Optional[Union[str, ImageSpec]] = None
+    training_image: Optional[str] = None
     training_input_mode: Optional[str] = "File"
     training_image_config: Optional[TrainingImageConfig] = None
     environment: Optional[Dict[str, str]] = None
@@ -197,9 +193,6 @@ class ModelTrainer(BaseModel):
             if self.algorithm_name:
                 self.base_name = f"{self.algorithm_name}-job"
             elif self.training_image:
-                if isinstance(self.training_image, ImageSpec):
-                    self.base_name = f"{self.training_image.framework.value}-job"
-                else:
                     self.base_name = f"{_get_repo_name_from_image(self.training_image)}-job"
             logger.warning(f"Base name not provided. Using default name:\n{self.base_name}")
 
@@ -237,12 +230,6 @@ class ModelTrainer(BaseModel):
             )
 
         if self.training_image:
-            if isinstance(self.training_image, ImageSpec):
-                self.training_image.update_image_spec(
-                    image_scope=ImageScope.TRAINING,
-                    instance_type=self.resource_config.instance_type,
-                )
-                self.training_image = self.training_image.retrieve()
             logger.info(f"Training image URI: {self.training_image}")
 
     def train(
