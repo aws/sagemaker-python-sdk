@@ -11,37 +11,10 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from pytorch_model_def import get_model
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
-
-
-def parse_args():
-    """
-    Parse arguments passed from the SageMaker API
-    to the container
-    """
-
-    parser = argparse.ArgumentParser()
-
-    # Hyperparameters sent by the client are passed as command-line arguments to the script
-    parser.add_argument("--epochs", type=int, default=os.environ.get("SM_HP_EPOCHS", 1))
-    parser.add_argument("--batch_size", type=int, default=os.environ.get("SM_HP_BATCH_SIZE", 64))
-    parser.add_argument(
-        "--learning_rate", type=float, default=os.environ.get("SM_HP_LEARNING_RATE", 0.1)
-    )
-
-    # Data directories
-    parser.add_argument(
-        "--train", type=str, default=os.environ.get("SM_CHANNEL_TRAIN", "data/train")
-    )
-    parser.add_argument("--test", type=str, default=os.environ.get("SM_CHANNEL_TEST", "data/test"))
-
-    # Model directory: we will use the default set by SageMaker, /opt/ml/model/
-    parser.add_argument("--model_dir", type=str, default=os.environ.get("SM_MODEL_DIR"))
-
-    return parser.parse_known_args()
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 def get_train_data(train_dir):
@@ -107,25 +80,33 @@ def train():
     """
     Train the PyTorch model
     """
+    # Directories: train, test and model
+    train_dir = os.path.join(current_dir, "data/train")
+    test_dir = os.path.join(current_dir, "data/test")
+    model_dir = os.environ.get("SM_MODEL_DIR", os.path.join(current_dir, "data/model"))
 
-    x_train, y_train = get_train_data(args.train)
-    x_test, y_test = get_test_data(args.test)
+    # Load the training and testing data
+    x_train, y_train = get_train_data(train_dir)
+    x_test, y_test = get_test_data(test_dir)
     train_ds = TensorDataset(x_train, y_train)
 
-    batch_size = args.batch_size
-    epochs = args.epochs
-    learning_rate = args.learning_rate
+    # Training parameters - used to configure the training loop
+    batch_size = 64
+    epochs = 1
+    learning_rate = 0.1
     logger.info(
         "batch_size = {}, epochs = {}, learning rate = {}".format(batch_size, epochs, learning_rate)
     )
 
     train_dl = DataLoader(train_ds, batch_size, shuffle=True)
 
+    # Define the model, loss function and optimizer
     model = get_model()
     model = model.to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
+    # Train the model
     for epoch in range(epochs):
         for x_train_batch, y_train_batch in train_dl:
             y = model(x_train_batch.float())
@@ -136,31 +117,30 @@ def train():
         epoch += 1
         logger.info(f"epoch: {epoch} -> loss: {loss}")
 
-    # evalutate on test set
+    # Test the model
     with torch.no_grad():
         y = model(x_test.float()).flatten()
         mse = ((y - y_test) ** 2).sum() / y_test.shape[0]
     print("\nTest MSE:", mse.numpy())
 
-    torch.save(model.state_dict(), args.model_dir + "/model.pth")
-    # PyTorch requires that the inference script must
-    # be in the .tar.gz model file and Step Functions SDK doesn't do this.
-    inference_code_path = args.model_dir + "/code/"
+    # Save the model
+    os.makedirs(model_dir, exist_ok=True)
+    torch.save(model.state_dict(), model_dir + "/model.pth")
+    inference_code_path = model_dir + "/code/"
 
     if not os.path.exists(inference_code_path):
         os.mkdir(inference_code_path)
         logger.info("Created a folder at {}!".format(inference_code_path))
 
-    code_dir = os.environ.get("SM_CHANNEL_CODE")
+    code_dir = os.environ.get("SM_CHANNEL_CODE", current_dir)
     shutil.copy(os.path.join(code_dir, "custom_script.py"), inference_code_path)
     shutil.copy(os.path.join(code_dir, "pytorch_model_def.py"), inference_code_path)
     logger.info("Saving models files to {}".format(inference_code_path))
 
 
 if __name__ == "__main__":
-    print("Running in the training container ...\n")
+    print("Running the training job ...\n")
 
-    args, _ = parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train()

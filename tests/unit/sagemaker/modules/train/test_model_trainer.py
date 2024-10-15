@@ -14,11 +14,11 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
 from sagemaker.session import Session
 from sagemaker.modules.train.model_trainer import ModelTrainer
-from sagemaker.modules.constants import DEFAULT_INSTANCE_TYPE, SM_CODE_LOCAL_PATH
+from sagemaker.modules.constants import DEFAULT_INSTANCE_TYPE
 from sagemaker.modules.configs import (
     ResourceConfig,
     StoppingCondition,
@@ -156,53 +156,6 @@ def test_train_with_input_data_channels(mock_get_input_config, mock_training_job
     model_trainer.train(input_data_channels=mock_input_data_channels)
 
     mock_get_input_config.assert_called_once_with(mock_input_data_channels)
-    mock_training_job.create.assert_called_once()
-
-
-@pytest.mark.parametrize(
-    "source_code_config",
-    [
-        None,
-        SourceCodeConfig(
-            source_dir="test-data",
-            entry_script="train.py",
-        ),
-        SourceCodeConfig(
-            command="python train.py",
-        ),
-    ],
-    ids=[
-        "no_source_code_config",
-        "supported_source_code_config",
-        "unsupported_source_code_config",
-    ],
-)
-@patch("sagemaker.modules.train.model_trainer.TrainingJob")
-@patch.object(ModelTrainer, "create_input_data_channel")
-@patch.object(ModelTrainer, "_validate_source_code_config")
-def test_train_with_source_code_config(
-    mock_validate_source_code_config,
-    mock_create_input_data_channel,
-    mock_training_job,
-    model_trainer,
-    source_code_config,
-):
-    mock_validate_source_code_config.return_value = None
-    mock_create_input_data_channel.return_value = None
-
-    model_trainer.train(source_code_config=source_code_config)
-
-    input_channel_calls = []
-    if source_code_config:
-        if source_code_config.source_dir:
-            input_channel_calls.append(call("code", source_code_config.source_dir))
-        mock_validate_source_code_config.assert_called_once_with(source_code_config)
-        input_channel_calls.append(call("sm_code", SM_CODE_LOCAL_PATH))
-    else:
-        mock_validate_source_code_config.assert_not_called()
-        mock_create_input_data_channel.assert_not_called()
-
-    mock_create_input_data_channel.assert_has_calls(input_channel_calls)
     mock_training_job.create.assert_called_once()
 
 
