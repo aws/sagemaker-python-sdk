@@ -419,30 +419,6 @@ def test_jumpstart_session_with_config_name():
 
 
 # Currently JumpStartModel does not pull from HubService for the Public Hub.
-# def test_bedrock_store_model_tags_from_hub_service(setup):
-
-#     model_id = "huggingface-llm-gemma-2b-instruct"
-
-#     model = JumpStartModel(
-#         model_id=model_id,
-#         hub_name="SageMakerPublicHub",
-#         role=get_sm_session().get_caller_identity_arn(),
-#         sagemaker_session=get_sm_session(),
-#     )
-
-#     predictor = model.deploy(
-#         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
-#         accept_eula=True,
-#     )
-
-# endpoint_arn = (
-#     f"arn:aws:sagemaker:{get_sm_session().boto_region_name}:"
-#     f"{get_sm_session().account_id()}:endpoint/{predictor.endpoint_name}"
-# )
-#     tags = get_sm_session().list_tags(endpoint_arn)
-#     expected_tag = {"Key": "sagemaker-sdk:bedrock", "Value": "compatible"}
-#     assert expected_tag in tags
-
 # def test_proprietary_from_hub_service(setup):
 
 # model_id = "upstage-solar-mini-chat"
