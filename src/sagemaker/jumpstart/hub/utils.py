@@ -119,8 +119,8 @@ def generate_hub_arn_for_init_kwargs(
 
     hub_arn = None
     if hub_name:
-        # if hub_name == constants.JUMPSTART_MODEL_HUB_NAME:
-        #     return None
+        if hub_name == constants.JUMPSTART_MODEL_HUB_NAME:
+            return None
         match = re.match(constants.HUB_ARN_REGEX, hub_name)
         if match:
             hub_arn = hub_name
