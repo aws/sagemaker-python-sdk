@@ -89,6 +89,7 @@ BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
 KEEP_ALIVE_PERIOD_IN_SECONDS = 1800
+TRAINING_PLAN = "arn:aws:sagemaker:us-west-2:336:training-plan/test_training_plan"
 ACCELERATOR_TYPE = "ml.eia.medium"
 ROLE = "DummyRole"
 IMAGE_URI = "fakeimage"
@@ -859,6 +860,23 @@ def test_framework_with_keep_alive_period(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["resource_config"]["KeepAlivePeriodInSeconds"] == KEEP_ALIVE_PERIOD_IN_SECONDS
+
+
+def test_framework_with_training_plan(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        training_plan=TRAINING_PLAN,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["TrainingPlanArn"] == TRAINING_PLAN
 
 
 def test_framework_with_both_training_repository_config(sagemaker_session):

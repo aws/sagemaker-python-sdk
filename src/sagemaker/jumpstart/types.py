@@ -2406,6 +2406,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "hub_content_type",
         "model_reference_arn",
         "specs",
+        "training_plan",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2479,6 +2480,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
+        training_plan: Optional[Union[str, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2541,6 +2543,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_remote_debug = enable_remote_debug
         self.config_name = config_name
         self.enable_session_tag_chaining = enable_session_tag_chaining
+        self.training_plan = training_plan
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
