@@ -65,7 +65,7 @@ class HuggingFace(Framework):
 
         Args:
             py_version (str): Python version you want to use for executing your model training
-                code. Defaults to ``None``. Required unless ``image_uri`` is provided.  If
+                code. If ``image_uri`` is provided, it can be set to ``None``.  If
                 using PyTorch, the current supported version is ``py36``. If using TensorFlow,
                 the current supported version is ``py37``.
             entry_point (str or PipelineVariable): Path (absolute or relative) to the Python source
