@@ -150,6 +150,40 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         assert "Could not find model" in str(exception.value)
 
 
+@pytest.mark.release
+def test_inference_pipeline_model_register(sagemaker_session):
+    sparkml_data_path = os.path.join(DATA_DIR, "sparkml_model")
+    endpoint_name = unique_name_from_base("test-inference-pipeline-deploy")
+    sparkml_model_data = sagemaker_session.upload_data(
+        path=os.path.join(sparkml_data_path, "mleap_model.tar.gz"),
+        key_prefix="integ-test-data/sparkml/model",
+    )
+
+    sparkml_model = SparkMLModel(
+        model_data=sparkml_model_data,
+        env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
+        sagemaker_session=sagemaker_session,
+    )
+
+    model = PipelineModel(
+        models=[sparkml_model],
+        role="SageMakerRole",
+        sagemaker_session=sagemaker_session,
+        name=endpoint_name,
+    )
+    model_package_group_name = unique_name_from_base("pipeline-model-package")
+    model_package = model.register(model_package_group_name=model_package_group_name)
+    assert model_package.model_package_arn is not None
+
+    sagemaker_session.sagemaker_client.delete_model_package(
+        ModelPackageName=model_package.model_package_arn
+    )
+
+    sagemaker_session.sagemaker_client.delete_model_package_group(
+        ModelPackageGroupName=model_package_group_name
+    )
+
+
 @pytest.mark.slow_test
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_inference_pipeline_model_deploy_and_update_endpoint(
