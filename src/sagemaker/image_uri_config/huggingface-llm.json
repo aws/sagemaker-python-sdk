@@ -722,7 +722,7 @@
             },
             "2.3.1": {
                 "py_versions": [
-                    "py310"
+                    "py311"
                 ],
                 "registries": {
                     "af-south-1": "626614931356",
