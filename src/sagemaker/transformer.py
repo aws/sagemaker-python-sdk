@@ -231,9 +231,6 @@ class Transformer(object):
             batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
                 specifies the configurations related to the batch data capture for the transform job
                 (default: ``None``).
-            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
-                specifies the configurations related to the batch data capture for the transform job
-                (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
                 (default: ``True``).
             logs (bool): Whether to show the logs produced by the job.
