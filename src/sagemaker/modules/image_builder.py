@@ -10,10 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Utility function to capture local environment"""
+"""Utility functions to build docker image"""
 from __future__ import absolute_import
 
 import logging
+import os
+import shutil
 import subprocess
 import sys
 from typing import Optional
@@ -24,12 +26,12 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-REQUIREMENT_TXT_PATH = "/tmp/requirements.txt"
-ENVIRONMENT_YML_PATH = "/tmp/environment.yml"
+REQUIREMENT_TXT_PATH = "/tmp/{image_name}/requirements.txt"
+ENVIRONMENT_YML_PATH = "/tmp/{image_name}/environment.yml"
 DOCKERFILE_PATH = "/tmp/Dockerfile"
 
 CONDA_DOCKERFILE_TEMPLATE = """
-FROM {base_image_name}
+FROM {base_image}
 ADD environment.yml .
 
 # Install prerequisites for conda
@@ -55,17 +57,109 @@ RUN conda run -n {env_name}
 """
 
 PIP_DOCKERFILE_TEMPLATE = """
-FROM {base_image_name}
+FROM {base_image}
+
+# Install the latest Python3 if the base image doesn't have python pre-installed
+RUN python --version || {{ \
+        apt-get update; \
+        apt-get install -y python3-full python3-pip; \
+    }}
+
 ADD requirements.txt .
 
 # Create a virtual environment
-RUN python -m venv {env_name}
+RUN python3 -m venv {env_name}
 
 # Activate the virtual environment
-RUN . {env_name}/bin/activate
+ENV PATH="{env_name}/bin:$PATH"
 
 RUN pip install --no-cache-dir -r requirements.txt
 """
+
+BASE_IMAGE_TEMPLATE = """
+FROM {base_image}
+"""
+
+
+def build_image(
+    image_name: str = "sm-custom-image",
+    env_name: str = "sm_custom_env",
+    deploy_to_ecr: bool = False,
+    base_image: Optional[str] = "ubuntu:latest",
+    dependency_file: Optional[str] = None,
+    ecr_repo_name: Optional[str] = None,
+    boto_session: Optional[boto3.Session] = None,
+    region: Optional[str] = None,
+) -> Optional[str]:
+    """WARNING: This function is expremental and not intended for production use.
+
+    Build a docker image with the given base image and dependencies.
+
+    When using this utility method, the docker daemon must be active in the environment.
+
+    Args:
+        image_name (str): The name of the docker image.
+        env_name (str): The name of the virtual environment to be activated in the image,
+            defaults to "sm_custom_env".
+        deploy_to_ecr (bool): Whether to deploy the docker image to AWS ECR, defaults to False.
+            If set to True, the AWS credentials must be configured in the environment.
+        base_image (Optional[str]): The base Docker image, can be an AWS ECR image URI, defaults
+            to ubuntu:latest.
+        dependency_file (Optional[str]): Either the path to a dependencies file (conda
+            environment.yml OR pip requirements.txt file).
+        ecr_repo_name (Optional[str]): The AWS ECR repo to push the docker image. If not specified,
+            it will use image_name as the ECR repo name. This parameter is only valid when
+            deploy_to_ecr is True.
+        boto_session (Optional[boto3.Session]): The boto3 session with AWS account info. If not
+            provided, a new boto session will be created.
+        region (Optional[str]): The AWS region.
+
+    Returns:
+        Optional[str]: If deploy_to_ecr set to True, return the AWS ECR uri of the image.
+
+    Exceptions:
+        docker.errors.DockerException: Error while fetching server API version:
+            The docker engine is not running in your environment.
+        docker.errors.BuildError: The docker failed to build the image. The most likely reason is:
+            1) Some packages are not supported in the base image.
+        botocore.exceptions.ClientError: AWS credentials are not configured.
+    """
+    if ".dkr.ecr." in base_image:
+        # If the base image is on AWS ECR, need to authenticate first
+        _docker_ecr_login(boto_session, region)
+
+    path = f"/tmp/{image_name}"
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.mkdir(path)
+    environment_yml_path = ENVIRONMENT_YML_PATH.format(image_name=image_name)
+    requirement_txt_path = REQUIREMENT_TXT_PATH.format(image_name=image_name)
+
+    if dependency_file:
+        if dependency_file.endswith(".yml"):
+            shutil.copy(dependency_file, environment_yml_path)
+            dockerfile_contents = CONDA_DOCKERFILE_TEMPLATE.format(
+                base_image=base_image,
+                env_name=env_name,
+            )
+        elif dependency_file.endswith(".txt"):
+            shutil.copy(dependency_file, requirement_txt_path)
+            dockerfile_contents = PIP_DOCKERFILE_TEMPLATE.format(
+                base_image=base_image,
+                env_name=env_name,
+            )
+        else:
+            raise ValueError(
+                "The dependency file must be a conda "
+                "environment.yml file or a pip requirements.txt file."
+            )
+    else:
+        dockerfile_contents = BASE_IMAGE_TEMPLATE.format(base_image=base_image)
+
+    _build_docker_image(image_name, dockerfile_contents)
+    if deploy_to_ecr:
+        return _push_image_to_ecr(image_name, ecr_repo_name, boto_session, region)
+    return None
 
 
 def capture_local_environment(
@@ -73,13 +167,16 @@ def capture_local_environment(
     env_name: str = "saved_local_env",
     package_manager: str = "pip",
     deploy_to_ecr: bool = False,
-    base_image_name: Optional[str] = None,
+    base_image: Optional[str] = None,
     job_conda_env: Optional[str] = None,
     additional_dependencies: Optional[str] = None,
     ecr_repo_name: Optional[str] = None,
     boto_session: Optional[boto3.Session] = None,
-):
-    """Capture all dependency packages installed in the local environment and build a docker image.
+    region: Optional[str] = None,
+) -> Optional[str]:
+    """WARNING: This function is expremental and not intended for production use.
+
+    Capture all dependency packages installed in the local environment and build a docker image.
 
     When using this utility method, the docker daemon must be active in the environment.
     Please note that this is an experimental feature. This utility function is not be able to
@@ -93,8 +190,8 @@ def capture_local_environment(
         package_manager (str): The package manager, must be one of "conda" or "pip".
         deploy_to_ecr (bool): Whether to deploy the docker image to AWS ECR, defaults to False.
             If set to True, the AWS credentials must be configured in the environment.
-        base_image_name (Optional[str]): If provided will be used as the base image, else the
-            utility will evaluate from local environment in following manner:
+        base_image (Optional[str]): If provided will be used as the base image, can be an AWS ECR
+            image URI, else the utility will evaluate from local environment in following manner:
                 1. If package manager is conda, it will use ubuntu:latest.
                 2. If package manager is pip, it is resolved to base python image with the same
                     python version as the environment running the local code.
@@ -104,12 +201,16 @@ def capture_local_environment(
         additional_dependencies (Optional[str]): Either the path to a dependencies file (conda
             environment.yml OR pip requirements.txt file). Regardless of this setting utility will
             automatically generate the dependencies file corresponding to the current active
-            environment’s snapshot. In addition to this, additional dependencies is configurable.
+            environment's snapshot. In addition to this, additional dependencies is configurable.
         ecr_repo_name (Optional[str]): The AWS ECR repo to push the docker image. If not specified,
             it will use image_name as the ECR repo name. This parameter is only valid when
             deploy_to_ecr is True.
         boto_session (Optional[boto3.Session]): The boto3 session with AWS account info. If not
             provided, a new boto session will be created.
+        region (Optional[str]): The AWS region.
+
+    Returns:
+        Optional[str]: If deploy_to_ecr set to True, return the AWS ECR uri of the image.
 
     Exceptions:
         docker.errors.DockerException: Error while fetching server API version:
@@ -119,17 +220,23 @@ def capture_local_environment(
             between your local environment and additional dependencies.
         botocore.exceptions.ClientError: AWS credentials are not configured.
     """
+    path = f"/tmp/{image_name}"
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.mkdir(path)
+    environment_yml_path = ENVIRONMENT_YML_PATH.format(image_name=image_name)
+    requirement_txt_path = REQUIREMENT_TXT_PATH.format(image_name=image_name)
 
     if package_manager == "conda":
         if job_conda_env:
             subprocess.run(
-                f"conda env export -n {job_conda_env} > {ENVIRONMENT_YML_PATH} --no-builds",
+                f"conda env export -n {job_conda_env} > {environment_yml_path} --no-builds",
                 shell=True,
                 check=True,
             )
         else:
             subprocess.run(
-                f"conda env export > {ENVIRONMENT_YML_PATH} --no-builds", shell=True, check=True
+                f"conda env export > {environment_yml_path} --no-builds", shell=True, check=True
             )
 
         if additional_dependencies:
@@ -143,26 +250,29 @@ def capture_local_environment(
             if additional_dependencies.endswith(".yml"):
                 _merge_environment_ymls(
                     env_name,
-                    ENVIRONMENT_YML_PATH,
+                    environment_yml_path,
                     additional_dependencies,
-                    ENVIRONMENT_YML_PATH,
+                    environment_yml_path,
                 )
             elif additional_dependencies.endswith(".txt"):
                 _merge_environment_yml_with_requirement_txt(
                     env_name,
-                    ENVIRONMENT_YML_PATH,
+                    environment_yml_path,
                     additional_dependencies,
-                    ENVIRONMENT_YML_PATH,
+                    environment_yml_path,
                 )
 
-        if not base_image_name:
-            base_image_name = "ubuntu:latest"
+        if not base_image:
+            base_image = "ubuntu:latest"
+        elif ".dkr.ecr." in base_image:
+            # If the base image is on AWS ECR, need to authenticate first
+            _docker_ecr_login(boto_session, region)
         dockerfile_contents = CONDA_DOCKERFILE_TEMPLATE.format(
-            base_image_name=base_image_name,
+            base_image=base_image,
             env_name=env_name,
         )
     elif package_manager == "pip":
-        subprocess.run(f"pip list --format=freeze > {REQUIREMENT_TXT_PATH}", shell=True, check=True)
+        subprocess.run(f"pip list --format=freeze > {requirement_txt_path}", shell=True, check=True)
 
         if additional_dependencies:
             if not additional_dependencies.endswith(".txt"):
@@ -171,15 +281,15 @@ def capture_local_environment(
                 )
             with open(additional_dependencies, "r") as f:
                 additional_requirements = f.read()
-            with open(REQUIREMENT_TXT_PATH, "a") as f:
+            with open(requirement_txt_path, "a") as f:
                 f.write(additional_requirements)
-                logger.info("Merged requirements file saved to %s", REQUIREMENT_TXT_PATH)
+                logger.info("Merged requirements file saved to %s", requirement_txt_path)
 
-            if not base_image_name:
+            if not base_image:
                 version = sys.version_info
-                base_image_name = f"python:{version.major}.{version.minor}.{version.micro}"
+                base_image = f"python:{version.major}.{version.minor}.{version.micro}"
             dockerfile_contents = PIP_DOCKERFILE_TEMPLATE.format(
-                base_image_name=base_image_name,
+                base_image=base_image,
                 env_name=env_name,
             )
 
@@ -189,25 +299,11 @@ def capture_local_environment(
             "Use conda or pip as the package manager."
         )
 
-    # Create the Dockerfile
-    with open(DOCKERFILE_PATH, "w") as f:
-        f.write(dockerfile_contents)
-
-    client = docker.from_env()
-    _, logs = client.images.build(
-        path="/tmp",
-        dockerfile=DOCKERFILE_PATH,
-        rm=True,
-        tag=image_name,
-    )
-    for log in logs:
-        logger.info(log.get("stream", "").strip())
-    logger.info("Docker image %s built successfully", image_name)
+    _build_docker_image(image_name, dockerfile_contents)
 
     if deploy_to_ecr:
-        if boto_session is None:
-            boto_session = boto3.Session()
-        _push_image_to_ecr(image_name, ecr_repo_name, boto_session)
+        return _push_image_to_ecr(image_name, ecr_repo_name, boto_session, region)
+    return None
 
 
 def _merge_environment_ymls(env_name: str, env_file1: str, env_file2: str, output_file: str):
@@ -300,16 +396,68 @@ def _merge_environment_yml_with_requirement_txt(
     logger.info("Merged environment file saved to '%s'", output_file)
 
 
-def _push_image_to_ecr(image_name: str, ecr_repo_name: str, boto_session: Optional[boto3.Session]):
+def _build_docker_image(image_name: str, dockerfile_contents: str):
+    """Build the Docker image locally.
+
+    Args:
+        image_name (str): The name of the docker image.
+        dockerfile_contents (str): The content of Dockerfile.
+    """
+    # Create the Dockerfile
+    with open(DOCKERFILE_PATH, "w") as f:
+        f.write(dockerfile_contents)
+
+    client = docker.from_env()
+    _, logs = client.images.build(
+        path=f"/tmp/{image_name}",
+        dockerfile=DOCKERFILE_PATH,
+        rm=True,
+        tag=image_name,
+    )
+    for log in logs:
+        logger.info(log.get("stream", "").strip())
+    logger.info("Docker image %s built successfully", image_name)
+
+
+def _docker_ecr_login(boto_session: Optional[boto3.Session], region: Optional[str]):
+    """Authenticate Docker with AWS ECR credentials
+
+    Args:
+        boto_session (Optional[boto3.Session]): The boto3 session with AWS account info. If not
+            provided, a new boto session will be created.
+        region (Optional[str]): The AWS region.
+    """
+    if boto_session is None:
+        boto_session = boto3.Session(region_name=region)
+    region = boto_session.region_name or "us-west-2"
+    aws_account_id = boto_session.client("sts", region_name=region).get_caller_identity()["Account"]
+    docker_login_cmd = (
+        f"aws ecr get-login-password --region {region} "
+        f"| docker login --username AWS --password-stdin {aws_account_id}.dkr.ecr.{region}.amazonaws.com"
+    )
+    subprocess.run(docker_login_cmd, shell=True, check=True)
+
+
+def _push_image_to_ecr(
+    image_name: str,
+    ecr_repo_name: str,
+    boto_session: Optional[boto3.Session],
+    region: Optional[str],
+):
     """Push the docker image to AWS ECR.
 
     Args:
         image_name (str): The name of the docker image.
         ecr_repo_name (str): The AWS ECR repo to push the docker image.
+        boto_session (Optional[boto3.Session]): The boto3 session with AWS account info. If not
+            provided, a new boto session will be created.
+        region (Optional[str]): The AWS region.
     """
-    region = boto_session.region_name
+    if boto_session is None:
+        boto_session = boto3.Session(region_name=region)
+    region = boto_session.region_name or "us-west-2"
     aws_account_id = boto_session.client("sts", region_name=region).get_caller_identity()["Account"]
-    ecr_client = boto3.client("ecr")
+    ecr_client = boto_session.client("ecr", region_name=region)
 
     # Authenticate Docker with ECR
     registry_url = f"{aws_account_id}.dkr.ecr.{region}.amazonaws.com"
@@ -336,3 +484,5 @@ def _push_image_to_ecr(image_name: str, ecr_repo_name: str, boto_session: Option
     subprocess.run(docker_push_cmd, shell=True, check=True)
 
     logger.info("Image %s pushed to %s", image_name, ecr_image_uri)
+
+    return ecr_image_uri
