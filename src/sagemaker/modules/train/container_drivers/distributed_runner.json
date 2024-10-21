@@ -1,0 +1,1 @@
+{"mpi_additional_options": ["-x", "MASTER_ADDR=algo-1", "-x", "MASTER_PORT=7777"], "_type": "mpi"}
