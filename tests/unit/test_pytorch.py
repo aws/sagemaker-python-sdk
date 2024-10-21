@@ -902,7 +902,6 @@ def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
 
     assert pytorch.source_dir == os.path.join(pytorch.recipe_train_dir.name, "examples", model)
     assert pytorch.entry_point == f"{model}_pretrain.py"
-    assert pytorch.image_uri == pytorch.SM_TRAINING_RECIPE_GPU_IMG
     expected_distribution = {
         "torch_distributed": {
             "enabled": True,
@@ -982,7 +981,6 @@ def test_training_recipe_for_trainium(sagemaker_session):
 
     assert pytorch.source_dir == os.path.join(pytorch.recipe_train_dir.name, "examples")
     assert pytorch.entry_point == "training_orchestrator.py"
-    assert pytorch.image_uri == pytorch.SM_NEURONX_DIST_IMG
     expected_distribution = {
         "torch_distributed": {
             "enabled": True,

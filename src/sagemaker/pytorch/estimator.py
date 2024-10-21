@@ -13,6 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+import json
 import logging
 import math
 import os
@@ -35,9 +36,11 @@ from sagemaker.fw_utils import (
     profiler_config_deprecation_warning,
 )
 from sagemaker.git_utils import _run_clone_command
+from sagemaker.image_uris import retrieve
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.pytorch.training_compiler.config import TrainingCompilerConfig
+from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 
@@ -67,15 +70,6 @@ class PyTorch(Framework):
 
     # [TODO] Add image uris to image_uri_config/_.json and use image_uris.retrieve
     # to retrieve the image uri below before GA.
-    SM_ADAPTER_REPO = "git@github.com:aws/private-sagemaker-training-adapter-for-nemo-staging.git"
-    SM_LAUNCHER_REPO = "git@github.com:aws/private-sagemaker-training-launcher-staging.git"
-    SM_TRAINING_RECIPE_GPU_IMG = (
-        "855988369404.dkr.ecr.us-west-2.amazonaws.com/chinmayee-dev:adaptor_sept9_v1"
-    )
-    SM_NEURONX_DIST_REPO = "https://github.com/aws-neuron/neuronx-distributed-training.git"
-    SM_NEURONX_DIST_IMG = (
-        "855988369404.dkr.ecr.us-west-2.amazonaws.com/chinmayee-dev:neuron_sept26_v1"
-    )
 
     def __init__(
         self,
@@ -561,6 +555,16 @@ class PyTorch(Framework):
             dict containing arg values for estimator initialization and setup.
 
         """
+        if kwargs.get("sagemaker_session") is not None:
+            region_name = kwargs.get("sagemaker_session").boto_region_name
+        else:
+            region_name = Session().boto_region_name
+        training_recipes_cfg_filename = os.path.join(
+            os.path.dirname(__file__), "training_recipes.json"
+        )
+        with open(training_recipes_cfg_filename) as training_recipes_cfg_file:
+            training_recipes_cfg = json.load(training_recipes_cfg_file)
+
         if recipe_overrides is None:
             recipe_overrides = dict()
         cls.recipe_train_dir = tempfile.TemporaryDirectory(prefix="training_")
@@ -580,7 +584,9 @@ class PyTorch(Framework):
                         f"Could not fetch the provided recipe {training_recipe}: exception {str(e)}"
                     )
         else:
-            launcher_repo = os.environ.get("training_launcher_git", None) or cls.SM_LAUNCHER_REPO
+            launcher_repo = os.environ.get(
+                "training_launcher_git", None
+            ) or training_recipes_cfg.get("launcher_repo")
             _run_clone_command(launcher_repo, cls.recipe_launcher_dir.name)
             recipe = os.path.join(
                 cls.recipe_launcher_dir.name,
@@ -629,7 +635,9 @@ class PyTorch(Framework):
         # [TODO] Add image uris to image_uri_config/_.json and use image_uris.retrieve
         # to retrieve the image uri below before we go GA.
         if device_type == "gpu":
-            adapter_repo = os.environ.get("training_adapter_git", None) or cls.SM_ADAPTER_REPO
+            adapter_repo = os.environ.get("training_adapter_git", None) or training_recipes_cfg.get(
+                "adapter_repo"
+            )
             _run_clone_command(adapter_repo, cls.recipe_train_dir.name)
 
             model_type_to_entry = {
@@ -650,7 +658,17 @@ class PyTorch(Framework):
                 cls.recipe_train_dir.name, "examples", model_type_to_entry[model_type][0]
             )
             args["entry_point"] = model_type_to_entry[model_type][1]
-            args["default_image_uri"] = cls.SM_TRAINING_RECIPE_GPU_IMG
+            gpu_image_cfg = training_recipes_cfg.get("gpu_image")
+            if isinstance(gpu_image_cfg, str):
+                args["default_image_uri"] = gpu_image_cfg
+            else:
+                args["default_image_uri"] = retrieve(
+                    gpu_image_cfg.get("framework"),
+                    region=region_name,
+                    version=gpu_image_cfg.get("version"),
+                    image_scope="training",
+                    **gpu_image_cfg.get("additional_args"),
+                )
             smp_options = {
                 "enabled": True,
                 "parameters": {
@@ -662,10 +680,22 @@ class PyTorch(Framework):
                 "torch_distributed": {"enabled": True},
             }
         elif device_type == "trainium":
-            _run_clone_command(cls.SM_NEURONX_DIST_REPO, cls.recipe_train_dir.name)
+            _run_clone_command(
+                training_recipes_cfg.get("neuron_dist_repo"), cls.recipe_train_dir.name
+            )
             args["source_dir"] = os.path.join(cls.recipe_train_dir.name, "examples")
             args["entry_point"] = "training_orchestrator.py"
-            args["default_image_uri"] = cls.SM_NEURONX_DIST_IMG
+            neuron_image_cfg = training_recipes_cfg.get("neuron_image")
+            if isinstance(neuron_image_cfg, str):
+                args["default_image_uri"] = neuron_image_cfg
+            else:
+                args["default_image_uri"] = retrieve(
+                    neuron_image_cfg.get("framework"),
+                    region=region_name,
+                    version=neuron_image_cfg.get("version"),
+                    image_scope="training",
+                    **neuron_image_cfg.get("additional_args"),
+                )
             args["distribution"] = {
                 "torch_distributed": {"enabled": True},
             }
