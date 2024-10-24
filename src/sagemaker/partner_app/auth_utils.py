@@ -25,7 +25,7 @@ from botocore.awsrequest import AWSRequest
 HEADER_CONNECTION = "Connection"
 HEADER_X_AMZ_TARGET = "X-Amz-Target"
 HEADER_AUTHORIZATION = "Authorization"
-HEADER_MLAPP_SM_APP_SERVER_ARN = "X-Mlapp-Sm-App-Server-Arn"
+HEADER_PARTNER_APP_SERVER_ARN = "X-SageMaker-Partner-App-Server-Arn"
 HEADER_PARTNER_APP_AUTHORIZATION = "X-Amz-Partner-App-Authorization"
 HEADER_X_AMZ_CONTENT_SHA_256 = "X-Amz-Content-SHA256"
 CALL_PARTNER_APP_API_ACTION = "SageMaker.CallPartnerAppApi"
@@ -59,7 +59,7 @@ class PartnerAppAuthUtils:
             headers[HEADER_PARTNER_APP_AUTHORIZATION] = headers[HEADER_AUTHORIZATION]
 
         # App Arn
-        headers[HEADER_MLAPP_SM_APP_SERVER_ARN] = app_arn
+        headers[HEADER_PARTNER_APP_SERVER_ARN] = app_arn
 
         # IAM Action
         headers[HEADER_X_AMZ_TARGET] = CALL_PARTNER_APP_API_ACTION
@@ -74,9 +74,7 @@ class PartnerAppAuthUtils:
             del headers[HEADER_CONNECTION]
 
         # Spaces are encoded as %20
-        # TODO - confirm the motivation
-        if method in ("GET", "DEL"):
-            url = url.replace("+", "%20")
+        url = url.replace("+", "%20")
 
         # Calculate SigV4 header
         aws_request = AWSRequest(

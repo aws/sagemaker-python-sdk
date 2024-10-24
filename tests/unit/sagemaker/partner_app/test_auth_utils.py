@@ -17,7 +17,7 @@ class TestPartnerAppAuthUtils(unittest.TestCase):
     def setUp(self):
         self.sigv4_mock = Mock(spec=SigV4Auth)
         self.app_arn = "arn:aws:sagemaker:us-west-2:123456789012:partner-app/abc123"
-        self.url = "https://partner-app-abc123.us-west-2.amazonaws.com"
+        self.url = "https://partner-app-abc123.us-west-2.amazonaws.com?fileName=Jupyter+interactive"
         self.method = "POST"
         self.headers = {"Authorization": "API_KEY", "Connection": "conn"}
         self.body = b'{"key": "value"}'  # Byte type body for hashing
@@ -32,7 +32,7 @@ class TestPartnerAppAuthUtils(unittest.TestCase):
         expected_sign_headers = {
             "Authorization": "API_KEY",
             "X-Amz-Partner-App-Authorization": "API_KEY",
-            "X-Mlapp-Sm-App-Server-Arn": self.app_arn,
+            "X-SageMaker-Partner-App-Server-Arn": self.app_arn,
             "X-Amz-Target": "SageMaker.CallPartnerAppApi",
             "X-Amz-Content-SHA256": expected_hash,
         }
@@ -45,8 +45,8 @@ class TestPartnerAppAuthUtils(unittest.TestCase):
             self.sigv4_mock, self.app_arn, self.url, self.method, self.headers, self.body
         )
 
-        # Assert X-Mlapp-Sm-App-Server-Arn header is correct
-        self.assertEqual(signed_headers["X-Mlapp-Sm-App-Server-Arn"], self.app_arn)
+        # Assert X-SageMaker-Partner-App-Server-Arn header is correct
+        self.assertEqual(signed_headers["X-SageMaker-Partner-App-Server-Arn"], self.app_arn)
 
         # Assert the Authorization header was moved to X-Amz-Partner-App-Authorization
         self.assertIn("X-Amz-Partner-App-Authorization", signed_headers)
@@ -57,10 +57,11 @@ class TestPartnerAppAuthUtils(unittest.TestCase):
         # Assert the Connection header is reserved
         self.assertEqual(signed_headers["Connection"], "conn")
 
+        expected_canonical_url = self.url.replace("+", "%20")
         # Assert AWSRequestMock was called
         AWSRequestMock.assert_called_once_with(
             method=self.method,
-            url=self.url,
+            url=expected_canonical_url,
             headers=expected_sign_headers,
             data=self.body,
         )
