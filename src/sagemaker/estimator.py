@@ -106,6 +106,8 @@ from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 from sagemaker.mlflow.forward_sagemaker_metrics import log_sagemaker_job_to_mlflow
 
@@ -1298,6 +1300,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             )
         return None
 
+    @_telemetry_emitter(Feature.ESTIMATOR, "sagemaker.estimator.fit")
     @runnable_by_pipeline
     def fit(
         self,
@@ -1559,6 +1562,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """
         self.sagemaker_session.logs_for_job(self.latest_training_job.name, wait=True)
 
+    @_telemetry_emitter(Feature.ESTIMATOR, "sagemaker.estimator.deploy")
     def deploy(
         self,
         initial_instance_count=None,

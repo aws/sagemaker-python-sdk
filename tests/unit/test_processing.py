@@ -16,8 +16,9 @@ import copy
 from textwrap import dedent
 
 import pytest
-from mock import Mock, patch, MagicMock
+from mock import Mock, patch, MagicMock, mock_open
 from packaging import version
+import json
 
 from sagemaker import LocalSession
 from sagemaker.dataset_definition.inputs import (
@@ -47,6 +48,7 @@ from sagemaker.fw_utils import UploadedCode
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.user_agent import process_studio_metadata_file
 from tests.unit import SAGEMAKER_CONFIG_PROCESSING_JOB
 
 BUCKET_NAME = "mybucket"
@@ -134,6 +136,19 @@ def uploaded_code(
     return UploadedCode(s3_prefix=s3_prefix, script_name=script_name)
 
 
+@pytest.fixture(autouse=True)
+def mock_process_studio_metadata_file(request, tmp_path):
+    if "no_mock_studio_metadata" in request.keywords:
+        yield process_studio_metadata_file
+    else:
+        studio_file = tmp_path / "resource-metadata.json"
+        studio_file.write_text(json.dumps({"AppType": "TestAppType"}))
+
+        with patch("os.path.exists", return_value=True):
+            with patch("sagemaker.user_agent.open", mock_open(read_data=studio_file.read_text())):
+                yield process_studio_metadata_file
+
+
 @patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
@@ -209,6 +224,7 @@ def test_sklearn_with_all_parameters(
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
+@pytest.mark.no_mock_studio_metadata
 def test_local_mode_disables_local_code_by_default():
     processor = Processor(
         image_uri="",
@@ -282,7 +298,11 @@ def test_sklearn_with_all_parameters_via_run_args(
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters_via_run_args_called_twice(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+    exists_mock,
+    isfile_mock,
+    botocore_resolver,
+    sklearn_version,
+    sagemaker_session,
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
