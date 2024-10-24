@@ -107,7 +107,6 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
-from sagemaker.mlflow.forward_sagemaker_metrics import log_sagemaker_job_to_mlflow
 
 logger = logging.getLogger(__name__)
 
@@ -1374,8 +1373,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             forward_to_mlflow_tracking_server = True
         if wait:
             self.latest_training_job.wait(logs=logs)
-        if forward_to_mlflow_tracking_server:
-            log_sagemaker_job_to_mlflow(self.latest_training_job.name)
+        try:
+            if forward_to_mlflow_tracking_server:
+                from sagemaker.mlflow.forward_sagemaker_metrics import log_sagemaker_job_to_mlflow
+
+                log_sagemaker_job_to_mlflow(self.latest_training_job.name)
+        except ImportError:
+            if forward_to_mlflow_tracking_server:
+                raise ValueError("Unable to import mlflow, check if sagemaker-mlflow is installed")
 
     def _compilation_job_name(self):
         """Placeholder docstring"""
