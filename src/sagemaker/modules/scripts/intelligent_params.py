@@ -24,15 +24,16 @@ HYPERPARAMETERS_FILE_PATH = "/opt/ml/input/config/hyperparameters.json"
 def set_intelligent_params(path: str) -> None:
     """Set intelligent parameters for all python files under the given path.
 
-    For python code with comment sm_hyper_param or sm_hp_{variable_name}, the value will be found in
-        /opt/ml/input/config/hyperparameters.json, and this function will rewrite lines with these comments.
+    For python code with comment sm_hyper_param or sm_hp_{variable_name},
+        the value will be found in /opt/ml/input/config/hyperparameters.json,
+        and this function will rewrite lines with these comments.
 
     Args:
         path (str): The folder path to set intellingent parameters
     """
     with open(HYPERPARAMETERS_FILE_PATH, "r") as f:
         hyperparameters = json.load(f)
-    for root, dirs, files in os.walk(path):
+    for root, dirs, files in os.walk(path):  # pylint: disable=W0612
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
@@ -48,7 +49,7 @@ def rewrite_file(file_path: str, hyperparameters: dict) -> None:
     """
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
-    for i in range(len(lines)):
+    for i in range(len(lines)):  # pylint: disable=C0200
         lines[i] = rewrite_line(lines[i], hyperparameters)
     with open(file_path, "w", encoding="utf-8") as f:
         f.writelines(lines)
