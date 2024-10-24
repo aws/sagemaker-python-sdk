@@ -52,28 +52,28 @@ SAGEMAKER_TRITONSERVER_FRAMEWORK = "sagemaker-tritonserver"
 
 @override_pipeline_parameter_var
 def retrieve(
-        framework,
-        region,
-        version=None,
-        py_version=None,
-        instance_type=None,
-        accelerator_type=None,
-        image_scope=None,
-        container_version=None,
-        distribution=None,
-        base_framework_version=None,
-        training_compiler_config=None,
-        model_id=None,
-        model_version=None,
-        hub_arn=None,
-        tolerate_vulnerable_model=False,
-        tolerate_deprecated_model=False,
-        sdk_version=None,
-        inference_tool=None,
-        serverless_inference_config=None,
-        sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-        config_name=None,
-        model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    framework,
+    region,
+    version=None,
+    py_version=None,
+    instance_type=None,
+    accelerator_type=None,
+    image_scope=None,
+    container_version=None,
+    distribution=None,
+    base_framework_version=None,
+    training_compiler_config=None,
+    model_id=None,
+    model_version=None,
+    hub_arn=None,
+    tolerate_vulnerable_model=False,
+    tolerate_deprecated_model=False,
+    sdk_version=None,
+    inference_tool=None,
+    serverless_inference_config=None,
+    sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name=None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -250,10 +250,10 @@ def retrieve(
             if config.get("version_aliases").get(original_version):
                 _version = config.get("version_aliases")[original_version]
             if (
-                    config.get("versions", {})
-                            .get(_version, {})
-                            .get("version_aliases", {})
-                            .get(base_framework_version, {})
+                config.get("versions", {})
+                .get(_version, {})
+                .get("version_aliases", {})
+                .get(base_framework_version, {})
             ):
                 _base_framework_version = config.get("versions")[_version]["version_aliases"][
                     base_framework_version
@@ -290,16 +290,16 @@ def retrieve(
 
 
 def _get_image_tag(
-        container_version,
-        distribution,
-        final_image_scope,
-        framework,
-        inference_tool,
-        instance_type,
-        processor,
-        py_version,
-        tag_prefix,
-        version,
+    container_version,
+    distribution,
+    final_image_scope,
+    framework,
+    inference_tool,
+    instance_type,
+    processor,
+    py_version,
+    tag_prefix,
+    version,
 ):
     """Return image tag based on framework, container, and compute configuration(s)."""
     instance_type_family = utils.get_instance_type_family(instance_type)
@@ -311,8 +311,8 @@ def _get_image_tag(
                 "instance type",
             )
         if (
-                instance_type_family in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
-                or final_image_scope == INFERENCE_GRAVITON
+            instance_type_family in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+            or final_image_scope == INFERENCE_GRAVITON
         ):
             version_to_arm64_tag_mapping = {
                 "xgboost": {
@@ -330,7 +330,7 @@ def _get_image_tag(
         tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
 
         if instance_type is not None and _should_auto_select_container_version(
-                instance_type, distribution
+            instance_type, distribution
         ):
             container_versions = {
                 "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
@@ -398,7 +398,7 @@ def _validate_instance_deprecation(framework, instance_type, version):
     """Check if instance type is deprecated for a certain framework with a certain version"""
     if utils.get_instance_type_family(instance_type) == "p2":
         if (framework == "pytorch" and Version(version) >= Version("1.13")) or (
-                framework == "tensorflow" and Version(version) >= Version("2.12")
+            framework == "tensorflow" and Version(version) >= Version("2.12")
         ):
             raise ValueError(
                 "P2 instances have been deprecated for sagemaker jobs starting PyTorch 1.13 and TensorFlow 2.12"
@@ -411,17 +411,17 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
     """Validate if framework is supported for the instance_type"""
     # Validate for Trainium allowed frameworks
     if (
-            instance_type is not None
-            and "trn" in instance_type
-            and framework not in TRAINIUM_ALLOWED_FRAMEWORKS
+        instance_type is not None
+        and "trn" in instance_type
+        and framework not in TRAINIUM_ALLOWED_FRAMEWORKS
     ):
         _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework", "Trainium")
 
     # Validate for Graviton allowed frameowrks
     if (
-            instance_type is not None
-            and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
-            and framework not in GRAVITON_ALLOWED_FRAMEWORKS
+        instance_type is not None
+        and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and framework not in GRAVITON_ALLOWED_FRAMEWORKS
     ):
         _validate_framework(framework, GRAVITON_ALLOWED_FRAMEWORKS, "framework", "Graviton")
 
@@ -436,8 +436,8 @@ def config_for_framework(framework):
 def _get_final_image_scope(framework, instance_type, image_scope):
     """Return final image scope based on provided framework and instance type."""
     if (
-            framework in GRAVITON_ALLOWED_FRAMEWORKS
-            and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        framework in GRAVITON_ALLOWED_FRAMEWORKS
+        and utils.get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
     ):
         return INFERENCE_GRAVITON
     if image_scope is None and framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
@@ -635,16 +635,16 @@ def _format_tag(tag_prefix, processor, py_version, container_version, inference_
 
 @override_pipeline_parameter_var
 def get_training_image_uri(
-        region,
-        framework,
-        framework_version=None,
-        py_version=None,
-        image_uri=None,
-        distribution=None,
-        compiler_config=None,
-        tensorflow_version=None,
-        pytorch_version=None,
-        instance_type=None,
+    region,
+    framework,
+    framework_version=None,
+    py_version=None,
+    image_uri=None,
+    distribution=None,
+    compiler_config=None,
+    tensorflow_version=None,
+    pytorch_version=None,
+    instance_type=None,
 ) -> str:
     """Retrieves the image URI for training.
 
@@ -748,26 +748,28 @@ def get_base_python_image_uri(region, py_version="310") -> str:
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo_and_tag)
 
 
-def get_latest_container_image(framework: str,
-                               image_scope: Optional[str] = None,
-                               instance_type: Optional[str] = None,
-                               py_version: Optional[str] = None,
-                               region: str = "us-west-2",
-                               version: Optional[str] = None,
-                               accelerator_type=None,
-                               container_version=None,
-                               distribution=None,
-                               base_framework_version=None,
-                               training_compiler_config=None,
-                               model_id=None,
-                               model_version=None,
-                               hub_arn=None,
-                               sdk_version=None,
-                               inference_tool=None,
-                               serverless_inference_config=None,
-                               config_name=None,
-                               ) -> Tuple[str, str]:
+def get_latest_container_image(
+    framework: str,
+    image_scope: Optional[str] = None,
+    instance_type: Optional[str] = None,
+    py_version: Optional[str] = None,
+    region: str = "us-west-2",
+    version: Optional[str] = None,
+    accelerator_type=None,
+    container_version=None,
+    distribution=None,
+    base_framework_version=None,
+    training_compiler_config=None,
+    model_id=None,
+    model_version=None,
+    hub_arn=None,
+    sdk_version=None,
+    inference_tool=None,
+    serverless_inference_config=None,
+    config_name=None,
+) -> Tuple[str, str]:
     """Retrieves the latest container image URI
+
     Args:
         framework (str): The name of the framework or algorithm.
         image_scope (str): The image type, i.e. what it is used for.
@@ -818,31 +820,34 @@ def get_latest_container_image(framework: str,
 
     if not version:
         version = _fetch_latest_version_from_config(framework_config, image_scope)
-    image_uri = retrieve(framework=framework,
-                         region=region,
-                         version=version,
-                         instance_type=instance_type,
-                         py_version=py_version,
-                         accelerator_type=accelerator_type,
-                         image_scope=image_scope,
-                         container_version=container_version,
-                         distribution=distribution,
-                         base_framework_version=base_framework_version,
-                         training_compiler_config=training_compiler_config,
-                         model_id=model_id,
-                         model_version=model_version,
-                         hub_arn=hub_arn,
-                         sdk_version=sdk_version,
-                         inference_tool=inference_tool,
-                         serverless_inference_config=serverless_inference_config,
-                         config_name=config_name
-                         )
+    image_uri = retrieve(
+        framework=framework,
+        region=region,
+        version=version,
+        instance_type=instance_type,
+        py_version=py_version,
+        accelerator_type=accelerator_type,
+        image_scope=image_scope,
+        container_version=container_version,
+        distribution=distribution,
+        base_framework_version=base_framework_version,
+        training_compiler_config=training_compiler_config,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        sdk_version=sdk_version,
+        inference_tool=inference_tool,
+        serverless_inference_config=serverless_inference_config,
+        config_name=config_name,
+    )
     return image_uri, version
 
 
-def _fetch_latest_version_from_config(framework_config: dict,
-                                      image_scope: Optional[str] = None) -> Optional[str]:
-    """ Helper function to fetch the latest version as a string from a framework's config
+def _fetch_latest_version_from_config(
+    framework_config: dict, image_scope: Optional[str] = None
+) -> Optional[str]:
+    """Helper function to fetch the latest version as a string from a framework's config
+
     Args:
         framework_config (dict): A framework config dict.
         image_scope (str): Scope of the image, eg: training, inference
@@ -863,8 +868,11 @@ def _fetch_latest_version_from_config(framework_config: dict,
         bottom_version = versions[-1]
         if top_version == "latest" or bottom_version == "latest":
             return None
-    elif (image_scope is not None and image_scope in framework_config
-          and "versions" in framework_config[image_scope]):
+    elif (
+        image_scope is not None
+        and image_scope in framework_config
+        and "versions" in framework_config[image_scope]
+    ):
         versions = list(framework_config[image_scope]["versions"].keys())
         top_version = versions[0]
         bottom_version = versions[-1]

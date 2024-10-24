@@ -28,10 +28,6 @@ from torch.distributed.fsdp.wrap import (
 import functools
 
 
-# Initialize the distributed environment
-dist.init_process_group(backend="nccl")
-
-
 def parse_arge():
     """Parse the arguments."""
     parser = argparse.ArgumentParser()
@@ -195,7 +191,8 @@ def training_function(args):
 
     HfFolder.save_token(args.access_token)
 
-    dataset = load_from_disk(args.dataset_path)
+    print(f"Loading dataset from {args.dataset_path}")
+    dataset = load_from_disk(f"file://{args.dataset_path}")
 
     dist.barrier()
 
@@ -360,11 +357,31 @@ def training_function(args):
 
 def main():
     args, _ = parse_arge()
-    args.local_rank = int(os.environ["LOCAL_RANK"])
-    args.rank = int(os.environ["RANK"])
-    args.world_size = int(os.environ["WORLD_SIZE"])
+
+    if "LOCAL_RANK" in os.environ:
+        # Environment variables set by torch.distributed.launch or torchrun
+        LOCAL_RANK = int(os.environ["LOCAL_RANK"])
+        WORLD_SIZE = int(os.environ["WORLD_SIZE"])
+        WORLD_RANK = int(os.environ["RANK"])
+    elif "OMPI_COMM_WORLD_LOCAL_RANK" in os.environ:
+        # Environment variables set by mpirun
+        LOCAL_RANK = int(os.environ["OMPI_COMM_WORLD_LOCAL_RANK"])
+        WORLD_SIZE = int(os.environ["OMPI_COMM_WORLD_SIZE"])
+        WORLD_RANK = int(os.environ["OMPI_COMM_WORLD_RANK"])
+    else:
+        import sys
+
+        sys.exit("Can't find the evironment variables for local rank")
+
+    args.local_rank = LOCAL_RANK
+    args.rank = WORLD_RANK
+    args.world_size = WORLD_SIZE
 
     print(f"Running with args: {args}")
+    # Initialize the distributed environment
+    dist.init_process_group(
+        backend="nccl", init_method="env://", rank=args.rank, world_size=args.world_size
+    )
     training_function(args)
 
 

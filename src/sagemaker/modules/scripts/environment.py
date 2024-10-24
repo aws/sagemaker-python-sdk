@@ -26,7 +26,7 @@ SM_LOG_LEVEL = os.environ.get("SM_LOG_LEVEL", 20)
 logger = logging.getLogger(__name__)
 console_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler(console_handler)
-logger.setLevel(SM_LOG_LEVEL)
+logger.setLevel(int(SM_LOG_LEVEL))
 
 SM_MODEL_DIR = "/opt/ml/model"
 
@@ -85,7 +85,7 @@ def num_neurons():
         neuron_cores = 0
         for item in j:
             neuron_cores += item.get("nc_count", 0)
-        logger.info(f"Found {neuron_cores} neurons on this instance")
+        logger.info("Found %s neurons on this instance", neuron_cores)
         return neuron_cores
     except OSError:
         logger.info("No Neurons detected (normal if no neurons installed)")
@@ -96,9 +96,8 @@ def num_neurons():
                 msg = e.output.decode("utf-8").partition("error=")[2]
                 logger.info(
                     "No Neurons detected (normal if no neurons installed). \
-                            If neuron installed then {}".format(
-                        msg
-                    )
+                    If neuron installed then %s",
+                    msg,
                 )
             except AttributeError:
                 logger.info("No Neurons detected (normal if no neurons installed)")
@@ -109,11 +108,10 @@ def num_neurons():
 
 
 def set_env(
-    resource_config: Dict[str, Any] = {},
-    input_data_config: Dict[str, Any] = {},
-    hyperparameters_config: Dict[str, Any] = {},
+    resource_config: Dict[str, Any],
+    input_data_config: Dict[str, Any],
+    hyperparameters_config: Dict[str, Any],
     output_file: str = "sm_training.env",
-    write_to_etc: bool = False,
 ):
     """Set environment variables for the training job container.
 
@@ -122,7 +120,6 @@ def set_env(
         input_data_config (Dict[str, Any]): Input data configuration for the training job.
         hyperparameters_config (Dict[str, Any]): Hyperparameters configuration for the training job.
         output_file (str): Output file to write the environment variables.
-        write_to_etc (bool): Whether to write the environment variables to /etc/environment.
     """
     # Constants
     env_vars = {
@@ -151,10 +148,12 @@ def set_env(
 
     # Host Variables
     current_host = resource_config["current_host"]
+    current_instance_type = resource_config["current_instance_type"]
     hosts = resource_config["hosts"]
     sorted_hosts = sorted(hosts)
 
     env_vars["SM_CURRENT_HOST"] = current_host
+    env_vars["SM_CURRENT_INSTANCE_TYPE"] = current_instance_type
     env_vars["SM_HOSTS"] = sorted_hosts
     env_vars["SM_NETWORK_INTERFACE_NAME"] = resource_config["network_interface_name"]
     env_vars["SM_HOST_COUNT"] = len(sorted_hosts)
@@ -174,6 +173,7 @@ def set_env(
             channel: env_vars[f"SM_CHANNEL_{channel.upper()}"] for channel in channels
         },
         "current_host": env_vars["SM_CURRENT_HOST"],
+        "current_instance_type": env_vars["SM_CURRENT_INSTANCE_TYPE"],
         "hosts": env_vars["SM_HOSTS"],
         "master_addr": env_vars["SM_MASTER_ADDR"],
         "master_port": env_vars["SM_MASTER_PORT"],
@@ -204,17 +204,9 @@ def set_env(
             else:
                 f.write(f"export {key}='{value}'\n")
 
-    # Need to write to /etc/environment for MPI to work
-    if write_to_etc:
-        with open("/etc/environment", "a") as f:
-            for key, value in env_vars.items():
-                if isinstance(value, (list, dict)):
-                    f.write(f"{key}='{json.dumps(value)}'\n")
-                else:
-                    f.write(f"{key}='{value}'\n")
 
-
-if __name__ == "__main__":
+def main():
+    """Main function to set the environment variables for the training job container."""
     with open(RESOURCE_CONFIG, "r") as f:
         resource_config = json.load(f)
     with open(INPUT_DATA_CONFIG, "r") as f:
@@ -227,5 +219,8 @@ if __name__ == "__main__":
         input_data_config=input_data_config,
         hyperparameters_config=hyperparameters_config,
         output_file=ENV_OUTPUT_FILE,
-        write_to_etc=True,
     )
+
+
+if __name__ == "__main__":
+    main()
