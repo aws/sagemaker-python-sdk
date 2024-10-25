@@ -219,10 +219,18 @@ def get_hub_model_version(
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
 
+<<<<<<< HEAD
+=======
+    marketplace_hub_content_version = _get_hub_model_version_for_marketplace_version(
+        hub_content_summaries, hub_model_version
+    )
+
+>>>>>>> ff3eae05 (feat: Adding Bedrock Store model support for HubService (#1539))
     try:
         return _get_hub_model_version_for_open_weight_version(
             hub_content_summaries, hub_model_version
         )
+<<<<<<< HEAD
     except KeyError:
         marketplace_hub_content_version = _get_hub_model_version_for_marketplace_version(
             hub_content_summaries, hub_model_version
@@ -230,6 +238,12 @@ def get_hub_model_version(
         if marketplace_hub_content_version:
             return marketplace_hub_content_version
         raise
+=======
+    except KeyError as e:
+        if marketplace_hub_content_version:
+            return marketplace_hub_content_version
+        raise e
+>>>>>>> ff3eae05 (feat: Adding Bedrock Store model support for HubService (#1539))
 
 
 def _get_hub_model_version_for_open_weight_version(
