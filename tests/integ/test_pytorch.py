@@ -94,6 +94,7 @@ def fixture_training_job_with_latest_inference_version(
         pytorch.fit({"training": _upload_training_data(pytorch)})
         return pytorch.latest_training_job.name
 
+
 @pytest.mark.skip(
     reason="The test is temporarily disabled because it's causing errors with 2.4.0 pytorch version. \
 Please run that manually before the proper fix."
@@ -126,6 +127,7 @@ def test_framework_processing_job_with_deps(
             wait=True,
         )
 
+
 @pytest.mark.skip(
     reason="The test is temporarily disabled because it's causing errors with 2.4.0 pytorch version. \
 Please run that manually before the proper fix."
@@ -148,6 +150,7 @@ def test_fit_deploy(
         output = predictor.predict(data)
 
         assert output.shape == (batch_size, 10)
+
 
 @pytest.mark.skip(
     reason="The test is temporarily disabled because it's causing errors with 2.4.0 pytorch version. \
@@ -178,6 +181,7 @@ def test_local_fit_deploy(
         assert output.shape == (batch_size, 10)
     finally:
         predictor.delete_endpoint()
+
 
 @pytest.mark.skip(
     reason="The test is temporarily disabled because it's causing errors with 2.4.0 pytorch version. \
@@ -213,6 +217,7 @@ def test_deploy_model(
 
         assert output.shape == (batch_size, 10)
 
+
 @pytest.mark.skip(
     reason="The test is temporarily disabled because it's causing errors with 2.4.0 pytorch version. \
 Please run that manually before the proper fix."
@@ -242,6 +247,7 @@ def test_deploy_packed_model_with_entry_point_name(
         output = predictor.predict(data)
 
         assert output.shape == (batch_size, 10)
+
 
 @pytest.mark.skip(
     reason="The test is temporarily disabled because it's causing errors with 2.4.0 pytorch version. \
