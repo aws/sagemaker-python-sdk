@@ -268,7 +268,7 @@ def test_walk_and_apply_json():
     }
 
     result = parser_utils.walk_and_apply_json(
-        test_json, parser_utils.camel_to_snake, ["ignore_my_children"]
+        test_json, parser_utils.pascal_to_snake, ["ignore_my_children"]
     )
     assert result == {
         "camel_case_key": "value",
@@ -294,7 +294,7 @@ def test_walk_and_apply_json_no_stop():
         "CamelCaseObjectListKey": {"instance.ml.type.xlarge": [{"ShouldChangeMe": "string"}]},
     }
 
-    result = parser_utils.walk_and_apply_json(test_json, parser_utils.camel_to_snake)
+    result = parser_utils.walk_and_apply_json(test_json, parser_utils.pascal_to_snake)
     assert result == {
         "camel_case_key": "value",
         "camel_case_object_key": {

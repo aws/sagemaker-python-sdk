@@ -27,7 +27,7 @@ from sagemaker.jumpstart.hub.interfaces import (
     HubModelDocument,
 )
 from sagemaker.jumpstart.hub.parser_utils import (
-    camel_to_snake,
+    pascal_to_snake,
     snake_to_upper_camel,
     walk_and_apply_json,
 )
@@ -86,7 +86,7 @@ def get_model_spec_arg_keys(
         arg_keys = []
 
     if naming_convention == NamingConventionType.SNAKE_CASE:
-        arg_keys = [camel_to_snake(key) for key in arg_keys]
+        arg_keys = [pascal_to_snake(key) for key in arg_keys]
     elif naming_convention == NamingConventionType.UPPER_CAMEL_CASE:
         return arg_keys
     else:
@@ -207,7 +207,7 @@ def make_model_specs_from_describe_hub_content_response(
     default_payloads: Dict[str, Any] = {}
     if hub_model_document.default_payloads is not None:
         for alias, payload in hub_model_document.default_payloads.items():
-            default_payloads[alias] = walk_and_apply_json(payload.to_json(), camel_to_snake)
+            default_payloads[alias] = walk_and_apply_json(payload.to_json(), pascal_to_snake)
         specs["default_payloads"] = default_payloads
     specs["gated_bucket"] = hub_model_document.gated_bucket
     specs["inference_volume_size"] = hub_model_document.inference_volume_size
