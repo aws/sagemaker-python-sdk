@@ -219,18 +219,17 @@ def get_hub_model_version(
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
 
-    marketplace_hub_content_version = _get_hub_model_version_for_marketplace_version(
-        hub_content_summaries, hub_model_version
-    )
-
     try:
         return _get_hub_model_version_for_open_weight_version(
             hub_content_summaries, hub_model_version
         )
     except KeyError as e:
+        marketplace_hub_content_version = _get_hub_model_version_for_marketplace_version(
+            hub_content_summaries, hub_model_version
+        )
         if marketplace_hub_content_version:
             return marketplace_hub_content_version
-        raise e
+        raise
 
 
 def _get_hub_model_version_for_open_weight_version(
