@@ -41,7 +41,7 @@ from sagemaker.jumpstart.hub.utils import (
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
-from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType, HubContentCapability
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.types import (
     HubContentType,
     JumpStartModelDeployKwargs,
