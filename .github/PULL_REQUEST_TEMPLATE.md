@@ -22,5 +22,6 @@ _Put an `x` in the boxes that apply. You can also fill these out after creating 
 - [ ] I have added unit and/or integration tests as appropriate to ensure backward compatibility of the changes
 - [ ] I have checked that my tests are not configured for a specific region or account (if appropriate)
 - [ ] I have used [`unique_name_from_base`](https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/utils.py#L77) to create resource names in integ tests (if appropriate)
+- [ ] If adding any dependency in requirements.txt files, I have spell checked and ensured they exist in PyPi
 
 By submitting this pull request, I confirm that my contribution is made under the terms of the Apache 2.0 license.
