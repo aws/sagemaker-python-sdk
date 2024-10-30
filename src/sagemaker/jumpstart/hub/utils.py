@@ -223,7 +223,7 @@ def get_hub_model_version(
         return _get_hub_model_version_for_open_weight_version(
             hub_content_summaries, hub_model_version
         )
-    except KeyError as e:
+    except KeyError:
         marketplace_hub_content_version = _get_hub_model_version_for_marketplace_version(
             hub_content_summaries, hub_model_version
         )
