@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import pytest
-from sagemaker.jumpstart.hub.parser_utils import pascal_to_snake
+from sagemaker.jumpstart.hub.parser_utils import camel_to_snake
 
 REGION = "us-east-1"
 ACCOUNT_ID = "123456789123"
@@ -31,4 +31,4 @@ HUB_NAME = "mock-hub-name"
     ],
 )
 def test_parse_(input_string, expected):
-    assert expected == pascal_to_snake(input_string)
+    assert expected == camel_to_snake(input_string)
