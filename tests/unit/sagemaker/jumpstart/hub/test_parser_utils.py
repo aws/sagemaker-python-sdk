@@ -17,6 +17,8 @@ from sagemaker.jumpstart.hub.parsers import make_model_specs_from_describe_hub_c
 from sagemaker.jumpstart.hub.interfaces import HubModelDocument
 from tests.unit.sagemaker.jumpstart.constants import HUB_MODEL_DOCUMENT_DICTS
 from unittest.mock import MagicMock
+from sagemaker.jumpstart.types import HubContentType
+
 
 REGION = "us-east-1"
 ACCOUNT_ID = "123456789123"
@@ -41,6 +43,7 @@ def test_parse_(input_string, expected):
 def test_make_model_specs_from_describe_hub_content_response():
     mock_describe_response = MagicMock()
     region = "us-west-2"
+    mock_describe_response.hub_content_type = HubContentType.MODEL
     mock_describe_response.get_hub_region.return_value = region
     mock_describe_response.hub_content_version = "1.0.0"
     json_obj = HUB_MODEL_DOCUMENT_DICTS["huggingface-llm-gemma-2b-instruct"]
