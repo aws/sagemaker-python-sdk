@@ -37,7 +37,7 @@ HUB_NAME = "mock-hub-name"
         ("123StartWithNumber", "123_start_with_number"),
     ],
 )
-def test_parse_camelCase(input_string, expected):
+def test_parse_camelCase(input_string, expected)
     assert expected == camel_to_snake(input_string)
 
 
