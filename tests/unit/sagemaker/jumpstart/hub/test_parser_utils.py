@@ -28,6 +28,7 @@ HUB_NAME = "mock-hub-name"
 @pytest.mark.parametrize(
     "input_string, expected",
     [
+        ("camelCase", "camel_case"),
         ("PascalCase", "pascal_case"),
         ("already_snake", "already_snake"),
         ("", ""),
