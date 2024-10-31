@@ -863,7 +863,9 @@ def validate_model_id_and_get_type(
             model_version=model_version,
             sagemaker_session=sagemaker_session,
         )
-        return model_types[0]  # Currently this function only supports one model type
+        return (
+            model_types[0] if model_types else None
+        )  # Currently this function only supports one model type
 
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
@@ -908,8 +910,8 @@ def _validate_hub_service_model_id_and_get_type(
     )
 
     hub_content_model_types = []
-    model_types_field = getattr(hub_model_specs, "model_types", [])
-    model_types = model_types_field if model_types_field is not None else []
+    model_types_field: Optional[List[str]] = getattr(hub_model_specs, "model_types", [])
+    model_types = model_types_field if model_types_field else []
     for model_type in model_types:
         try:
             hub_content_model_types.append(enums.JumpStartModelType[model_type])

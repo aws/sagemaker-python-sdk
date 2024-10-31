@@ -98,12 +98,14 @@ def _test_proprietary_model(input_version, expected_version, sagemaker_session):
 
 
 @pytest.mark.parametrize(
-    "get_model_specs_response, expected, expected_exception, expected_message",
+    "get_model_specs_attr, get_model_specs_response, expected, expected_exception, expected_message",
     [
-        (None, [], None, None),
-        ([], [], None, None),
-        (["OPEN_WEIGHTS"], [JumpStartModelType.OPEN_WEIGHTS], None, None),
+        (False, None, [], None, None),
+        (True, None, [], None, None),
+        (True, [], [], None, None),
+        (True, ["OPEN_WEIGHTS"], [JumpStartModelType.OPEN_WEIGHTS], None, None),
         (
+            True,
             ["OPEN_WEIGHTS", "PROPRIETARY"],
             [JumpStartModelType.OPEN_WEIGHTS, JumpStartModelType.PROPRIETARY],
             None,
@@ -113,10 +115,15 @@ def _test_proprietary_model(input_version, expected_version, sagemaker_session):
 )
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_validate_hub_service_model_id_and_get_type(
-    mock_get_model_specs, get_model_specs_response, expected, expected_exception, expected_message
+    mock_get_model_specs,
+    get_model_specs_attr,
+    get_model_specs_response,
+    expected,
+    expected_exception,
+    expected_message,
 ):
     mock_object = MagicMock()
-    if get_model_specs_response:
+    if get_model_specs_attr:
         mock_object.model_types = get_model_specs_response
     mock_get_model_specs.return_value = mock_object
 
