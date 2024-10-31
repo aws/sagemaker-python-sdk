@@ -908,7 +908,9 @@ def _validate_hub_service_model_id_and_get_type(
     )
 
     hub_content_model_types = []
-    for model_type in getattr(hub_model_specs, "model_types", []):
+    model_types_field = getattr(hub_model_specs, "model_types", [])
+    model_types = model_types_field if model_types_field is not None else []
+    for model_type in model_types:
         try:
             hub_content_model_types.append(enums.JumpStartModelType[model_type])
         except ValueError:
