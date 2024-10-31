@@ -856,7 +856,16 @@ def validate_model_id_and_get_type(
     if not isinstance(model_id, str):
         return None
     if hub_arn:
-        return None
+        model_types = _validate_hub_service_model_id_and_get_type(
+            model_id=model_id,
+            hub_arn=hub_arn,
+            region=region,
+            model_version=model_version,
+            sagemaker_session=sagemaker_session,
+        )
+        return (
+            model_types[0] if model_types else None
+        )  # Currently this function only supports one model type
 
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
@@ -879,6 +888,37 @@ def validate_model_id_and_get_type(
             return enums.JumpStartModelType.PROPRIETARY
         raise ValueError(f"Unsupported script for Proprietary models: {script}")
     return None
+
+
+def _validate_hub_service_model_id_and_get_type(
+    model_id: Optional[str],
+    hub_arn: str,
+    region: Optional[str] = None,
+    model_version: Optional[str] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> List[enums.JumpStartModelType]:
+    """Returns a list of JumpStartModelType based off the HubContent.
+
+    Only returns valid JumpStartModelType. Returns an empty array if none are found.
+    """
+    hub_model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        hub_arn=hub_arn,
+        sagemaker_session=sagemaker_session,
+    )
+
+    hub_content_model_types = []
+    model_types_field: Optional[List[str]] = getattr(hub_model_specs, "model_types", [])
+    model_types = model_types_field if model_types_field else []
+    for model_type in model_types:
+        try:
+            hub_content_model_types.append(enums.JumpStartModelType[model_type])
+        except ValueError:
+            continue
+
+    return hub_content_model_types
 
 
 def _extract_value_from_list_of_tags(
