@@ -16,15 +16,21 @@ import os
 
 DEFAULT_INSTANCE_TYPE = "ml.m5.xlarge"
 
-SOURCE_CODE_CONTAINER_PATH = "/opt/ml/input/data/code"
-
+SM_CODE = "sm_code"
 SM_CODE_CONTAINER_PATH = "/opt/ml/input/data/sm_code"
-SM_CODE_LOCAL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
-TRAIN_SCRIPT = "train.sh"
+
+SM_DRIVERS = "sm_drivers"
+SM_DRIVERS_CONTAINER_PATH = "/opt/ml/input/data/sm_drivers"
+SM_DRIVERS_LOCAL_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "train/container_drivers"
+)
+
+SOURCE_CODE_CONFIG_JSON = "sourcecodeconfig.json"
+TRAIN_SCRIPT = "sm_train.sh"
 
 DEFAULT_CONTAINER_ENTRYPOINT = ["/bin/bash"]
 DEFAULT_CONTAINER_ARGUMENTS = [
     "-c",
-    f"chmod +x {SM_CODE_CONTAINER_PATH}/{TRAIN_SCRIPT} "
-    + f"&& {SM_CODE_CONTAINER_PATH}/{TRAIN_SCRIPT}",
+    f"chmod +x {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT} "
+    + f"&& {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT}",
 ]

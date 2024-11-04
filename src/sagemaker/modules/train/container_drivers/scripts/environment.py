@@ -45,10 +45,10 @@ RESOURCE_CONFIG = f"{SM_INPUT_CONFIG_DIR}/resourceconfig.json"
 INPUT_DATA_CONFIG = f"{SM_INPUT_CONFIG_DIR}/inputdataconfig.json"
 HYPERPARAMETERS_CONFIG = f"{SM_INPUT_CONFIG_DIR}/hyperparameters.json"
 
-ENV_OUTPUT_FILE = "sm_training.env"
+ENV_OUTPUT_FILE = "/opt/ml/input/data/sm_drivers/scripts/sm_training.env"
 
 
-def num_cpus():
+def num_cpus() -> int:
     """Return the number of CPUs available in the current container.
 
     Returns:
@@ -57,7 +57,7 @@ def num_cpus():
     return multiprocessing.cpu_count()
 
 
-def num_gpus():
+def num_gpus() -> int:
     """Return the number of GPUs available in the current container.
 
     Returns:
@@ -72,7 +72,7 @@ def num_gpus():
         return 0
 
 
-def num_neurons():
+def num_neurons() -> int:
     """Return the number of neuron cores available in the current container.
 
     Returns:
@@ -111,7 +111,7 @@ def set_env(
     resource_config: Dict[str, Any],
     input_data_config: Dict[str, Any],
     hyperparameters_config: Dict[str, Any],
-    output_file: str = "sm_training.env",
+    output_file: str = ENV_OUTPUT_FILE,
 ):
     """Set environment variables for the training job container.
 
@@ -192,12 +192,7 @@ def set_env(
         "output_data_dir": env_vars["SM_OUTPUT_DATA_DIR"],
         "resource_config": env_vars["SM_RESOURCE_CONFIG"],
     }
-    try:
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-    except NameError:
-        # Fallback to current working directory
-        cur_dir = os.getcwd()
-    with open(os.path.join(cur_dir, output_file), "w") as f:
+    with open(output_file, "w") as f:
         for key, value in env_vars.items():
             if isinstance(value, (list, dict)):
                 f.write(f"export {key}='{json.dumps(value)}'\n")
