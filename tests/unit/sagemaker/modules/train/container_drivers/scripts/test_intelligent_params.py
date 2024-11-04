@@ -10,12 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Intelligent Parameter Tests."""
+"""Intelligent Parameter Unit Tests."""
 from __future__ import absolute_import
 
 import os
 import pytest
-from sagemaker.modules.scripts.intelligent_params import (
+from sagemaker.modules.train.container_drivers.scripts.intelligent_params import (
     rewrite_file,
     rewrite_line,
 )

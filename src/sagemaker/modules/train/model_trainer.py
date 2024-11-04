@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import os
+import json
 
 from typing import Optional, List, Union, Dict, Any
 from pydantic import BaseModel, ConfigDict
@@ -22,17 +23,21 @@ from sagemaker_core.resources import TrainingJob
 from sagemaker_core.shapes import AlgorithmSpecification
 
 from sagemaker import get_execution_role, Session
+from sagemaker.fw_utils import validate_mp_config
 from sagemaker.modules.configs import (
     ResourceConfig,
     StoppingCondition,
     OutputDataConfig,
     SourceCodeConfig,
+    MPIDistributionConfig,
+    TorchDistributionConfig,
     TrainingImageConfig,
     Channel,
     DataSource,
     S3DataSource,
     FileSystemDataSource,
     VpcConfig,
+    SMDistributedSettings,
 )
 from sagemaker.modules.utils import (
     _get_repo_name_from_image,
@@ -43,13 +48,21 @@ from sagemaker.modules.utils import (
 from sagemaker.modules.types import DataSourceType
 from sagemaker.modules.constants import (
     DEFAULT_INSTANCE_TYPE,
-    SOURCE_CODE_CONTAINER_PATH,
-    SM_CODE_LOCAL_PATH,
+    SM_CODE,
+    SM_CODE_CONTAINER_PATH,
+    SM_DRIVERS,
+    SM_DRIVERS_LOCAL_PATH,
     TRAIN_SCRIPT,
     DEFAULT_CONTAINER_ENTRYPOINT,
     DEFAULT_CONTAINER_ARGUMENTS,
+    SOURCE_CODE_CONFIG_JSON,
 )
-from sagemaker.modules.templates import TRAIN_SCRIPT_TEMPLATE
+from sagemaker.modules.templates import (
+    TRAIN_SCRIPT_TEMPLATE,
+    EXECUTE_BASE_COMMANDS,
+    EXECUTE_MPI_DRIVER,
+    EXECUTE_PYTORCH_DRIVER,
+)
 from sagemaker.modules import logger
 
 
@@ -87,6 +100,12 @@ class ModelTrainer(BaseModel):
         source_code_config (Optional[SourceCodeConfig]):
             The source code configuration. This is used to configure the source code for
             running the training job.
+        distribution_config (Optional[Union[
+            MPIDistributionConfig, TorchDistributionConfig
+        ]]):
+            The distribution settings for the training job. This is used to configure
+            a distributed training job. If specifed, a `source_code_config` must also
+            be provided.
         algorithm_name (Optional[str]):
             The SageMaker marketplace algorithm name/arn to use for the training job.
             algorithm_name cannot be specified if training_image is specified.
@@ -119,6 +138,7 @@ class ModelTrainer(BaseModel):
     output_data_config: Optional[OutputDataConfig] = None
     input_data_channels: Optional[Union[List[Channel], Dict[str, DataSourceType]]] = None
     source_code_config: Optional[SourceCodeConfig] = None
+    distribution_config: Optional[Union[MPIDistributionConfig, TorchDistributionConfig]] = None
     algorithm_name: Optional[str] = None
     training_image: Optional[str] = None
     training_input_mode: Optional[str] = "File"
@@ -140,6 +160,36 @@ class ModelTrainer(BaseModel):
                 "Only one of 'training_image' or 'algorithm_name' must be provided.",
             )
 
+    # TODO: Move to use pydantic model validators
+    def _validate_sm_distributed_settings(
+        self, sm_distributed_settings: Optional[SMDistributedSettings]
+    ):
+        """Validate the SM distributed settings."""
+        if (
+            sm_distributed_settings.enable_dataparallel
+            and sm_distributed_settings.enable_modelparallel
+        ):
+            raise ValueError(
+                "Both 'enable_dataparallel' and 'enable_modelparallel' cannot be True."
+            )
+        if sm_distributed_settings.modelparallel_parameters:
+            validate_mp_config(sm_distributed_settings.modelparallel_parameters)
+
+    def _validate_distribution_config(
+        self,
+        source_code_config: Optional[SourceCodeConfig],
+        distribution_config: Optional[Union[MPIDistributionConfig, TorchDistributionConfig]],
+    ):
+        """Validate the distribution configuration."""
+        if distribution_config and not source_code_config.entry_script:
+            raise ValueError(
+                "Must provide 'entry_script' if 'distribution' "
+                + "is provided in 'source_code_config'.",
+            )
+        if distribution_config and distribution_config.smdistributed_settings:
+            self._validate_sm_distributed_settings(distribution_config.smdistributed_settings)
+
+    # TODO: Move to use pydantic model validators
     def _validate_source_code_config(self, source_code_config: Optional[SourceCodeConfig]):
         """Validate the source code configuration."""
         if source_code_config:
@@ -177,9 +227,9 @@ class ModelTrainer(BaseModel):
 
     def model_post_init(self, __context: Any):
         """Post init method to perform custom validation and set default values."""
-
         self._validate_training_image_and_algorithm_name(self.training_image, self.algorithm_name)
         self._validate_source_code_config(self.source_code_config)
+        self._validate_distribution_config(self.source_code_config, self.distribution_config)
 
         if self.session is None:
             self.session = Session()
@@ -261,33 +311,45 @@ class ModelTrainer(BaseModel):
         if self.input_data_channels:
             input_data_config = self._get_input_data_config(self.input_data_channels)
 
+        # Unfortunately, API requires hyperparameters to be strings
+        string_hyper_parameters = {}
+        if self.hyper_parameters:
+            for hyper_parameter, value in self.hyper_parameters.items():
+                if isinstance(value, (dict, list)):
+                    string_hyper_parameters[hyper_parameter] = json.dumps(value)
+                else:
+                    string_hyper_parameters[hyper_parameter] = str(value)
+
         container_entrypoint = None
         container_arguments = None
         if self.source_code_config:
 
             # If source code is provided, create a channel for the source code
             # The source code will be mounted at /opt/ml/input/data/code in the container
-            # and set as the working directory
-            working_dir = ""
             if self.source_code_config.source_dir:
                 source_code_channel = self.create_input_data_channel(
-                    "code", self.source_code_config.source_dir
+                    SM_CODE, self.source_code_config.source_dir
                 )
                 input_data_config.append(source_code_channel)
-                working_dir = SOURCE_CODE_CONTAINER_PATH
 
-            # Get the commands to execute in the training job container
-            # and prepare the train.sh script
-            commands = self._get_script_mode_command(self.source_code_config)
             self._prepare_train_script(
-                command=commands,
-                requirements=self.source_code_config.requirements,
-                working_dir=working_dir,
+                source_code_config=self.source_code_config,
             )
+            if self.distribution_config:
+                smd_modelparallel_parameters = getattr(
+                    self.distribution_config.smdistributed_settings,
+                    "modelparallel_parameters",
+                    None,
+                )
+                if smd_modelparallel_parameters:
+                    string_hyper_parameters["mp_parameters"] = json.dumps(
+                        smd_modelparallel_parameters
+                    )
+            self._write_source_code_config_json(self.source_code_config)
 
-            # Create an input channel for scripts packaged by the sdk
-            sm_scripts_channel = self.create_input_data_channel("sm_code", SM_CODE_LOCAL_PATH)
-            input_data_config.append(sm_scripts_channel)
+            # Create an input channel for drivers packaged by the sdk
+            sm_drivers_channel = self.create_input_data_channel(SM_DRIVERS, SM_DRIVERS_LOCAL_PATH)
+            input_data_config.append(sm_drivers_channel)
 
             # If source_code_config is provided, we will always use
             # the default container entrypoint and arguments
@@ -305,12 +367,6 @@ class ModelTrainer(BaseModel):
             container_entrypoint=container_entrypoint,
             container_arguments=container_arguments,
         )
-
-        # Unfortunately, API requires hyperparameters to be strings
-        string_hyper_parameters = {}
-        if self.hyper_parameters:
-            for hyper_parameter, value in self.hyper_parameters.items():
-                string_hyper_parameters[hyper_parameter] = str(value)
 
         training_job = TrainingJob.create(
             session=self.session.boto_session,
@@ -406,64 +462,79 @@ class ModelTrainer(BaseModel):
             for channel_name, data_source in input_data_channels.items()
         ]
 
-    def _get_script_mode_command(self, source_code_config: SourceCodeConfig) -> str:
-        """Get the command to execute in the training job container for script mode.
+    def _write_source_code_config_json(self, source_code_config: SourceCodeConfig):
+        """Write the source code configuration to a JSON file."""
+        file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, SOURCE_CODE_CONFIG_JSON)
+        with open(file_path, "w") as f:
+            f.write(source_code_config.model_dump_json())
+
+    def _prepare_train_script(
+        self,
+        source_code_config: SourceCodeConfig,
+        distribution_config: Optional[Union[MPIDistributionConfig, TorchDistributionConfig]] = None,
+    ):
+        """Prepare the training script to be executed in the training job container.
 
         Args:
             source_code_config (SourceCodeConfig): The source code configuration.
         """
+
+        base_command = ""
         if source_code_config.command:
             if source_code_config.entry_script:
                 logger.warning(
                     "Both 'command' and 'entry_script' are provided in the SourceCodeConfig. "
                     + "Defaulting to 'command'."
                 )
-            commands = source_code_config.command.split()
-            return " ".join(commands)
+            base_command = source_code_config.command.split()
+            base_command = " ".join(base_command)
 
-        assert (
+        if (
             source_code_config.entry_script
-        ), "Either 'command' or 'entry_script' must be provided."
+            and not source_code_config.command
+            and not source_code_config.distribution
+        ):
+            if source_code_config.entry_script.endswith(".py"):
+                base_command = f"$SM_PYTHON_CMD {source_code_config.entry_script}"
+            elif source_code_config.entry_script.endswith(".sh"):
+                base_command = (
+                    f"chmod +x {source_code_config.entry_script} && "
+                    f"bash {source_code_config.entry_script}"
+                )
+            else:
+                raise ValueError(
+                    f"Unsupported entry script: {source_code_config.entry_script}."
+                    + "Only .py and .sh scripts are supported."
+                )
 
-        if source_code_config.entry_script.endswith(".py"):
-            return f"python {source_code_config.entry_script}"
-        if source_code_config.entry_script.endswith(".sh"):
-            return (
-                f"chmod +x {source_code_config.entry_script} && "
-                f"bash {source_code_config.entry_script}"
-            )
-
-        raise ValueError(
-            f"Unsupported entry script: {source_code_config.entry_script}."
-            + "Only .py and .sh scripts are supported."
-        )
-
-    def _prepare_train_script(
-        self, command: str, requirements: Optional[str], working_dir: Optional[str]
-    ):
-        """Prepare the training script to be executed in the training job container.
-
-        Args:
-            command (str): The command to execute in the training job container.
-            requirements (str): The path to the requirements file within the source code directory.
-            working_dir (str): The working directory for the training job container
-        """
         install_requirements = ""
-        if requirements:
+        if source_code_config.requirements:
             install_requirements = "echo 'Installing requirements'\n"
-            install_requirements = f"pip install -r {requirements}"
+            install_requirements = f"$SM_PIP_CMD install -r {source_code_config.requirements}"
 
-        if working_dir:
-            working_dir = f"cd {working_dir}"
+        working_dir = ""
+        if source_code_config.source_dir:
+            working_dir = f"cd {SM_CODE_CONTAINER_PATH}"
+
+        if base_command:
+            execute_driver = EXECUTE_BASE_COMMANDS.format(base_command=base_command)
+        elif distribution_config:
+            distribution_type = distribution_config._distribution_type
+            if distribution_type == "mpi":
+                execute_driver = EXECUTE_MPI_DRIVER
+            elif distribution_type == "torch_distributed":
+                execute_driver = EXECUTE_PYTORCH_DRIVER
+            else:
+                raise ValueError(f"Unsupported distribution type: {distribution_type}.")
 
         train_script = TRAIN_SCRIPT_TEMPLATE.format(
             working_dir=working_dir,
             install_requirements=install_requirements,
-            command=command,
+            execute_driver=execute_driver,
         )
 
-        os.makedirs(SM_CODE_LOCAL_PATH, exist_ok=True)
-        with open(os.path.join(SM_CODE_LOCAL_PATH, TRAIN_SCRIPT), "w") as f:
+        os.makedirs(SM_DRIVERS_LOCAL_PATH, exist_ok=True)
+        with open(os.path.join(SM_DRIVERS_LOCAL_PATH, TRAIN_SCRIPT), "w") as f:
             f.write(train_script)
 
     def get_training_image_uri(self) -> str:

@@ -13,9 +13,57 @@
 """Templates module."""
 from __future__ import absolute_import
 
+EXECUTE_BASE_COMMANDS = """
+CMD="{base_command}"
+echo "Running command: $CMD"
+eval $CMD
+"""
+
+EXECUTE_PYTORCH_DRIVER = """
+echo "Running PyTorch training driver"
+$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/pytorch_driver.py
+"""
+
+EXECUTE_MPI_DRIVER = """
+echo "Running MPI training driver"
+$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/mpi_driver.py
+"""
+
 TRAIN_SCRIPT_TEMPLATE = """
 #!/bin/bash
+set -e
 echo "Starting training script"
+
+handle_error() {{
+    EXIT_STATUS=$?
+    echo "An error occurred with exit code $EXIT_STATUS"
+    if [ ! -s /opt/ml/output/failure ]; then
+        echo "Training Execution failed. For more details, see CloudWatch logs at 'aws/sagemaker/TrainingJobs'.
+TrainingJob - $TRAINING_JOB_NAME" >> /opt/ml/output/failure
+    fi
+    exit $EXIT_STATUS
+}}
+
+check_python() {{
+    if command -v python3 &>/dev/null; then
+        SM_PYTHON_CMD="python3"
+        SM_PIP_CMD="pip3"
+        echo "Found python3"
+    elif command -v python &>/dev/null; then
+        SM_PYTHON_CMD="python"
+        SM_PIP_CMD="pip"
+        echo "Found python"
+    else
+        echo "Python may not be installed"
+        return 1
+    fi
+}}
+
+trap 'handle_error' ERR
+
+check_python
+
+$SM_PYTHON_CMD --version
 
 echo "/opt/ml/input/config/resourceconfig.json:"
 cat /opt/ml/input/config/resourceconfig.json
@@ -29,27 +77,17 @@ echo "/opt/ml/input/config/hyperparameters.json:"
 cat /opt/ml/input/config/hyperparameters.json
 echo
 
-echo "Setting up environment variables"
-python /opt/ml/input/data/sm_code/environment.py
-source /opt/ml/input/data/sm_code/sm_training.env
+echo "/opt/ml/input/data/sm_drivers/sourcecodeconfig.json"
+cat /opt/ml/input/data/sm_drivers/sourcecodeconfig.json
+echo
 
-python --version
+echo "Setting up environment variables"
+$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/scripts/environment.py
+source /opt/ml/input/data/sm_drivers/scripts/sm_training.env
+
 {working_dir}
 {install_requirements}
-CMD="{command}"
-echo "Running command: $CMD"
-eval $CMD
-EXIT_STATUS=$?
+{execute_driver}
 
-if [ $EXIT_STATUS -ne 0 ]; then
-    echo "Command failed with exit status $EXIT_STATUS"
-    if [ ! -s /opt/ml/output/failure ]; then
-        echo "Command failed with exit code $EXIT_STATUS.
-For more details, see CloudWatch logs at 'aws/sagemaker/TrainingJobs'.
-TrainingJob - $TRAINING_JOB_NAME" >> /opt/ml/output/failure
-    fi
-    exit $EXIT_STATUS
-else
-    echo "Command succeeded"
-fi
+echo "Training Container Execution Completed"
 """

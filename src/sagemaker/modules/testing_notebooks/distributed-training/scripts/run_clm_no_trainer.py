@@ -190,7 +190,6 @@ def training_function(args):
     from huggingface_hub.hf_api import HfFolder
 
     HfFolder.save_token(args.access_token)
-
     print(f"Loading dataset from {args.dataset_path}")
     dataset = load_from_disk(f"file://{args.dataset_path}")
 
