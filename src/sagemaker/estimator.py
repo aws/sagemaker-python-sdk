@@ -107,6 +107,8 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
+from sagemaker.mlflow.forward_sagemaker_metrics import log_sagemaker_job_to_mlflow
+
 logger = logging.getLogger(__name__)
 
 
@@ -590,25 +592,36 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.dependencies = dependencies or []
         self.uploaded_code: Optional[UploadedCode] = None
 
-        # Check that the user properly sets both subnet and secutiry_groupe_ids
+        # Check that the user properly sets both subnet and security_group_ids
         if (
             subnets is not None
             and security_group_ids is None
             or security_group_ids is not None
             and subnets is None
         ):
+            troubleshooting = (
+                "Refer to this documentation on using custom VPC: "
+                "https://sagemaker.readthedocs.io/en/v2.24.0/overview.html"
+                "#secure-training-and-inference-with-vpc"
+            )
+            logger.error("Check troubleshooting guide for common errors: %s", troubleshooting)
+
             raise RuntimeError(
                 "When setting up custom VPC, both subnets and security_group_ids must be set"
             )
 
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
-                raise RuntimeError("Distributed Training in Local GPU is not supported")
+                raise RuntimeError(
+                    "Distributed Training in Local GPU is not supported."
+                    " Set instance_count to 1."
+                )
             self.sagemaker_session = sagemaker_session or LocalSession()
             if not isinstance(self.sagemaker_session, sagemaker.local.LocalSession):
                 raise RuntimeError(
                     "instance_type local or local_gpu is only supported with an"
-                    "instance of LocalSession"
+                    "instance of LocalSession. More details on local mode: "
+                    "https://sagemaker.readthedocs.io/en/stable/overview.html#local-mode"
                 )
         else:
             self.sagemaker_session = sagemaker_session or Session()
@@ -631,7 +644,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             and not is_pipeline_variable(output_path)
             and output_path.startswith("file://")
         ):
-            raise RuntimeError("file:// output paths are only supported in Local Mode")
+            raise RuntimeError(
+                "The 'file://' output paths are only supported when using Local Mode. "
+                "To resolve this issue, ensure you're running in Local Mode with a LocalSession, "
+                "or use an 's3://' output path for jobs running on SageMaker instances."
+            )
         self.output_path = output_path
         self.latest_training_job = None
         self.jobs = []
@@ -646,7 +663,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("An AWS IAM role is required to create an estimator.")
+            raise ValueError(
+                "An AWS IAM role is required to create an estimator. "
+                "Please provide a valid `role` argument with the ARN of an IAM role"
+                " that has the necessary SageMaker permissions."
+            )
+
         self.output_kms_key = resolve_value_from_config(
             output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
@@ -1346,8 +1368,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config)
         self.jobs.append(self.latest_training_job)
+        forward_to_mlflow_tracking_server = False
+        if os.environ.get("MLFLOW_TRACKING_URI") and self.enable_network_isolation():
+            wait = True
+            forward_to_mlflow_tracking_server = True
         if wait:
             self.latest_training_job.wait(logs=logs)
+        if forward_to_mlflow_tracking_server:
+            log_sagemaker_job_to_mlflow(self.latest_training_job.name)
 
     def _compilation_job_name(self):
         """Placeholder docstring"""
@@ -1855,6 +1883,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if compression_type not in {"GZIP", "NONE"}:
                 raise ValueError(
                     f'Unrecognized training job output data compression type "{compression_type}"'
+                    '. Please specify either "GZIP" or "NONE" as valid options for '
+                    "the compression type."
                 )
             # model data is in uncompressed form NOTE SageMaker Hosting mandates presence of
             # trailing forward slash in S3 model data URI, so append one if necessary.

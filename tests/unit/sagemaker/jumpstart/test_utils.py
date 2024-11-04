@@ -2150,3 +2150,21 @@ def test_has_instance_rate_stat(stats, expected):
 def test_deployment_config_response_data(data, expected):
     out = utils.deployment_config_response_data(data)
     assert out == expected
+
+
+class TestGetEulaMessage(TestCase):
+    mock_model_specs = Mock(model_id="some-model-id", hosting_eula_key="some-eula-key")
+
+    def test_get_domain_for_region(self):
+        self.assertEqual(
+            utils.get_eula_message(self.mock_model_specs, "us-west-2"),
+            "Model 'some-model-id' requires accepting end-user license agreement (EULA). See"
+            " https://jumpstart-cache-prod-us-west-2.s3.us-west-2.amazonaws.com/some-eula-key "
+            "for terms of use.",
+        )
+        self.assertEqual(
+            utils.get_eula_message(self.mock_model_specs, "cn-north-1"),
+            "Model 'some-model-id' requires accepting end-user license agreement (EULA). See"
+            " https://jumpstart-cache-prod-cn-north-1.s3.cn-north-1.amazonaws.com.cn/some-eula-key "
+            "for terms of use.",
+        )

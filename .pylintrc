@@ -310,7 +310,7 @@ ignore-mixin-members=yes
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis. It
 # supports qualified module names, as well as Unix pattern matching.
-ignored-modules=distutils
+ignored-modules=
 
 # List of class names for which member attributes should not be checked (useful
 # for classes with dynamically set attributes). This supports the use of
@@ -384,7 +384,7 @@ max-returns=6
 max-branches=12
 
 # Maximum number of statements in function / method body
-max-statements=100
+max-statements=105
 
 # Maximum number of parents for a class (see R0901).
 max-parents=7

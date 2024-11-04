@@ -71,6 +71,11 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             neo_content_bucket="sagemaker-sd-models-prod-eu-central-1",
         ),
         JumpStartLaunchedRegionInfo(
+            region_name="eu-central-2",
+            content_bucket="jumpstart-cache-prod-eu-central-2",
+            gated_content_bucket="jumpstart-private-cache-prod-eu-central-2",
+        ),
+        JumpStartLaunchedRegionInfo(
             region_name="eu-north-1",
             content_bucket="jumpstart-cache-prod-eu-north-1",
             gated_content_bucket="jumpstart-private-cache-prod-eu-north-1",
@@ -176,6 +181,12 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
         JumpStartLaunchedRegionInfo(
             region_name="cn-north-1",
             content_bucket="jumpstart-cache-prod-cn-north-1",
+            gated_content_bucket="jumpstart-private-cache-prod-cn-north-1",
+        ),
+        JumpStartLaunchedRegionInfo(
+            region_name="cn-northwest-1",
+            content_bucket="jumpstart-cache-prod-cn-northwest-1",
+            gated_content_bucket="jumpstart-private-cache-prod-cn-northwest-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="il-central-1",
@@ -213,8 +224,6 @@ JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET = JUMPSTART_BUCKET_NAME_SET.union(
 
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 NEO_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
-
-JUMPSTART_MODEL_HUB_NAME = "SageMakerPublicHub"
 
 JUMPSTART_MODEL_HUB_NAME = "SageMakerPublicHub"
 

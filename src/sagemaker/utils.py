@@ -52,6 +52,15 @@ from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 from sagemaker.workflow.entities import PipelineVariable
 
+ALTERNATE_DOMAINS = {
+    "cn-north-1": "amazonaws.com.cn",
+    "cn-northwest-1": "amazonaws.com.cn",
+    "us-iso-east-1": "c2s.ic.gov",
+    "us-isob-east-1": "sc2s.sgov.gov",
+    "us-isof-south-1": "csp.hci.ic.gov",
+    "us-isof-east-1": "csp.hci.ic.gov",
+}
+
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MODEL_PACKAGE_ARN_PATTERN = (
     r"arn:aws([a-z\-]*)?:sagemaker:([a-z0-9\-]*):([0-9]{12}):model-package/(.*)"
@@ -1457,11 +1466,11 @@ def volume_size_supported(instance_type: str) -> bool:
         # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc)
         # + g5 or g6 or p5 does not support attaching an EBS volume.
         family = parts[0]
-        return (
-            "d" not in family
-            and not family.startswith("g5")
-            and not family.startswith("g6")
-            and not family.startswith("p5")
+
+        unsupported_families = ["g5", "g6", "p5", "trn1"]
+
+        return "d" not in family and not any(
+            family.startswith(prefix) for prefix in unsupported_families
         )
     except Exception as e:
         raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")
@@ -1905,3 +1914,12 @@ def remove_tag_with_key(key: str, tags: Optional[Tags]) -> Optional[Tags]:
     if len(updated_tags) == 1:
         return updated_tags[0]
     return updated_tags
+
+
+def get_domain_for_region(region: str) -> str:
+    """Returns the domain for the given region.
+
+    Args:
+        region (str): AWS region name.
+    """
+    return ALTERNATE_DOMAINS.get(region, "amazonaws.com")

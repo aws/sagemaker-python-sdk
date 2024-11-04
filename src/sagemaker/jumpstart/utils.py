@@ -33,6 +33,7 @@ from sagemaker.config.config_schema import (
 
 from sagemaker.jumpstart import constants, enums
 from sagemaker.jumpstart import accessors
+from sagemaker.jumpstart.hub.parser_utils import camel_to_snake, snake_to_upper_camel
 from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
@@ -49,7 +50,12 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config, TagsDict, get_instance_rate_per_hour
+from sagemaker.utils import (
+    resolve_value_from_config,
+    TagsDict,
+    get_instance_rate_per_hour,
+    get_domain_for_region,
+)
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.user_agent import get_user_agent_extra_suffix
 
@@ -552,7 +558,7 @@ def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
     return (
         f"Model '{model_specs.model_id}' requires accepting end-user license agreement (EULA). "
         f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
-        f"amazonaws.com{'.cn' if region.startswith('cn-') else ''}"
+        f"{get_domain_for_region(region)}"
         f"/{model_specs.hosting_eula_key} for terms of use."
     )
 
@@ -850,7 +856,16 @@ def validate_model_id_and_get_type(
     if not isinstance(model_id, str):
         return None
     if hub_arn:
-        return None
+        model_types = _validate_hub_service_model_id_and_get_type(
+            model_id=model_id,
+            hub_arn=hub_arn,
+            region=region,
+            model_version=model_version,
+            sagemaker_session=sagemaker_session,
+        )
+        return (
+            model_types[0] if model_types else None
+        )  # Currently this function only supports one model type
 
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
@@ -873,6 +888,37 @@ def validate_model_id_and_get_type(
             return enums.JumpStartModelType.PROPRIETARY
         raise ValueError(f"Unsupported script for Proprietary models: {script}")
     return None
+
+
+def _validate_hub_service_model_id_and_get_type(
+    model_id: Optional[str],
+    hub_arn: str,
+    region: Optional[str] = None,
+    model_version: Optional[str] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> List[enums.JumpStartModelType]:
+    """Returns a list of JumpStartModelType based off the HubContent.
+
+    Only returns valid JumpStartModelType. Returns an empty array if none are found.
+    """
+    hub_model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        hub_arn=hub_arn,
+        sagemaker_session=sagemaker_session,
+    )
+
+    hub_content_model_types = []
+    model_types_field: Optional[List[str]] = getattr(hub_model_specs, "model_types", [])
+    model_types = model_types_field if model_types_field else []
+    for model_type in model_types:
+        try:
+            hub_content_model_types.append(enums.JumpStartModelType[model_type])
+        except ValueError:
+            continue
+
+    return hub_content_model_types
 
 
 def _extract_value_from_list_of_tags(
@@ -1103,6 +1149,17 @@ def get_jumpstart_configs(
             metadata_configs.config_rankings.get("overall").rankings if metadata_configs else []
         )
 
+    if hub_arn:
+        return (
+            {
+                config_name: metadata_configs.configs[
+                    camel_to_snake(snake_to_upper_camel(config_name))
+                ]
+                for config_name in config_names
+            }
+            if metadata_configs
+            else {}
+        )
     return (
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
         if metadata_configs

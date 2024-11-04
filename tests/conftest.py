@@ -22,6 +22,7 @@ import tests.integ
 
 from botocore.config import Config
 from packaging.version import Version
+from packaging.specifiers import SpecifierSet
 
 from sagemaker import Session, image_uris, utils, get_execution_role
 from sagemaker.local import LocalSession
@@ -555,11 +556,18 @@ def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_lat
     Fixture exists as such, since TF training and TFS have different latest versions.
     Otherwise, this would simply be a single latest version.
     """
-    return str(
-        min(
-            Version(tensorflow_training_latest_version),
-            Version(tensorflow_inference_latest_version),
-        )
+    tensorflow_training_latest_version = Version(tensorflow_training_latest_version)
+    tensorflow_inference_latest_version = Version(tensorflow_inference_latest_version)
+
+    return_version = min(
+        tensorflow_training_latest_version,
+        tensorflow_inference_latest_version,
+    )
+
+    return (
+        f"{return_version.major}.{return_version.minor}"
+        if return_version in SpecifierSet(">=2.16")
+        else str(return_version)
     )
 
 

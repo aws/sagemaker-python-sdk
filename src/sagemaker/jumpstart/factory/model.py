@@ -29,7 +29,6 @@ from sagemaker.jumpstart.artifacts import (
 )
 from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.jumpstart.constants import (
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
@@ -61,6 +60,10 @@ from sagemaker.jumpstart.utils import (
     verify_model_region_and_return_specs,
 )
 
+from sagemaker.jumpstart.factory.utils import (
+    _set_temp_sagemaker_session_if_not_set,
+    get_model_info_default_kwargs,
+)
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.base_predictor import Predictor
 from sagemaker import accept_types, content_types, serializers, deserializers
@@ -158,18 +161,16 @@ def _add_region_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelIni
 
 
 def _add_sagemaker_session_with_custom_user_agent_to_kwargs(
-    kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs]
+    kwargs: Union[JumpStartModelInitKwargs, JumpStartModelDeployKwargs],
+    orig_session: Optional[Session],
 ) -> JumpStartModelInitKwargs:
     """Sets session in kwargs based on default or override, returns full kwargs."""
 
-    kwargs.sagemaker_session = (
-        kwargs.sagemaker_session
-        or get_default_jumpstart_session_with_user_agent_suffix(
-            model_id=kwargs.model_id,
-            model_version=kwargs.model_version,
-            config_name=kwargs.config_name,
-            is_hub_content=kwargs.hub_arn is not None,
-        )
+    kwargs.sagemaker_session = orig_session or get_default_jumpstart_session_with_user_agent_suffix(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        config_name=kwargs.config_name,
+        is_hub_content=kwargs.hub_arn is not None,
     )
 
     return kwargs
@@ -196,17 +197,7 @@ def _add_model_version_to_kwargs(
     kwargs.model_version = kwargs.model_version or "*"
 
     if kwargs.hub_arn:
-        hub_content_version = verify_model_region_and_return_specs(
-            model_id=kwargs.model_id,
-            version=kwargs.model_version,
-            hub_arn=kwargs.hub_arn,
-            scope=JumpStartScriptScope.INFERENCE,
-            region=kwargs.region,
-            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-            sagemaker_session=kwargs.sagemaker_session,
-            model_type=kwargs.model_type,
-        ).version
+        hub_content_version = kwargs.specs.version
         kwargs.model_version = hub_content_version
 
     return kwargs
@@ -230,17 +221,9 @@ def _add_instance_type_to_kwargs(
 
     orig_instance_type = kwargs.instance_type
     kwargs.instance_type = kwargs.instance_type or instance_types.retrieve_default(
-        region=kwargs.region,
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
+        **get_model_info_default_kwargs(kwargs),
         scope=JumpStartScriptScope.INFERENCE,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
         training_instance_type=kwargs.training_instance_type,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
     )
 
     if not disable_instance_type_logging and orig_instance_type is None:
@@ -249,17 +232,7 @@ def _add_instance_type_to_kwargs(
             kwargs.instance_type,
         )
 
-    specs = verify_model_region_and_return_specs(
-        model_id=kwargs.model_id,
-        version=kwargs.model_version,
-        scope=JumpStartScriptScope.INFERENCE,
-        region=kwargs.region,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
-    )
+    specs = kwargs.specs
 
     if specs.inference_configs and kwargs.config_name not in specs.inference_configs.configs:
         return kwargs
@@ -289,17 +262,10 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
         return kwargs
 
     kwargs.image_uri = kwargs.image_uri or image_uris.retrieve(
-        region=kwargs.region,
+        **get_model_info_default_kwargs(kwargs),
         framework=None,
         image_scope=JumpStartScriptScope.INFERENCE,
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
         instance_type=kwargs.instance_type,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        config_name=kwargs.config_name,
     )
 
     return kwargs
@@ -310,17 +276,7 @@ def _add_model_reference_arn_to_kwargs(
 ) -> JumpStartModelInitKwargs:
     """Sets Model Reference ARN if the hub content type is Model Reference, returns full kwargs."""
 
-    hub_content_type = verify_model_region_and_return_specs(
-        model_id=kwargs.model_id,
-        version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        scope=JumpStartScriptScope.INFERENCE,
-        region=kwargs.region,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-    ).hub_content_type
+    hub_content_type = kwargs.specs.hub_content_type
     kwargs.hub_content_type = hub_content_type if kwargs.hub_arn else None
 
     if hub_content_type == HubContentType.MODEL_REFERENCE:
@@ -339,17 +295,11 @@ def _add_model_data_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
         kwargs.model_data = None
         return kwargs
 
+    model_info_kwargs = get_model_info_default_kwargs(kwargs)
     model_data: Union[str, dict] = kwargs.model_data or model_uris.retrieve(
+        **model_info_kwargs,
         model_scope=JumpStartScriptScope.INFERENCE,
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        region=kwargs.region,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
         instance_type=kwargs.instance_type,
-        config_name=kwargs.config_name,
     )
 
     if isinstance(model_data, str) and model_data.startswith("s3://") and model_data.endswith("/"):
@@ -383,26 +333,9 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
 
     source_dir = kwargs.source_dir
 
-    if _model_supports_inference_script_uri(
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        region=kwargs.region,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        config_name=kwargs.config_name,
-    ):
+    if _model_supports_inference_script_uri(**get_model_info_default_kwargs(kwargs)):
         source_dir = source_dir or script_uris.retrieve(
-            script_scope=JumpStartScriptScope.INFERENCE,
-            model_id=kwargs.model_id,
-            model_version=kwargs.model_version,
-            hub_arn=kwargs.hub_arn,
-            region=kwargs.region,
-            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-            sagemaker_session=kwargs.sagemaker_session,
-            config_name=kwargs.config_name,
+            **get_model_info_default_kwargs(kwargs), script_scope=JumpStartScriptScope.INFERENCE
         )
 
     kwargs.source_dir = source_dir
@@ -419,16 +352,7 @@ def _add_entry_point_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
 
     entry_point = kwargs.entry_point
 
-    if _model_supports_inference_script_uri(
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        region=kwargs.region,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        config_name=kwargs.config_name,
-    ):
+    if _model_supports_inference_script_uri(**get_model_info_default_kwargs(kwargs)):
 
         entry_point = entry_point or INFERENCE_ENTRY_POINT_SCRIPT_NAME
 
@@ -450,17 +374,10 @@ def _add_env_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKw
         env = {}
 
     extra_env_vars = environment_variables.retrieve_default(
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        region=kwargs.region,
+        **get_model_info_default_kwargs(kwargs),
         include_aws_sdk_env_vars=False,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
         script=JumpStartScriptScope.INFERENCE,
         instance_type=kwargs.instance_type,
-        config_name=kwargs.config_name,
     )
 
     for key, value in extra_env_vars.items():
@@ -482,17 +399,9 @@ def _add_model_package_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSt
     """Sets model package arn based on default or override, returns full kwargs."""
 
     model_package_arn = kwargs.model_package_arn or _retrieve_model_package_arn(
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
+        **get_model_info_default_kwargs(kwargs),
         instance_type=kwargs.instance_type,
         scope=JumpStartScriptScope.INFERENCE,
-        region=kwargs.region,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
     )
 
     kwargs.model_package_arn = model_package_arn
@@ -502,17 +411,7 @@ def _add_model_package_arn_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSt
 def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
-    model_kwargs_to_add = _retrieve_model_init_kwargs(
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        region=kwargs.region,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
-    )
+    model_kwargs_to_add = _retrieve_model_init_kwargs(**get_model_info_default_kwargs(kwargs))
 
     for key, value in model_kwargs_to_add.items():
         if getattr(kwargs, key) is None:
@@ -540,17 +439,7 @@ def _add_endpoint_name_to_kwargs(
 ) -> JumpStartModelDeployKwargs:
     """Sets resource name based on default or override, returns full kwargs."""
 
-    default_endpoint_name = _retrieve_resource_name_base(
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        region=kwargs.region,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
-    )
+    default_endpoint_name = _retrieve_resource_name_base(**get_model_info_default_kwargs(kwargs))
 
     kwargs.endpoint_name = kwargs.endpoint_name or (
         name_from_base(default_endpoint_name) if default_endpoint_name is not None else None
@@ -564,17 +453,7 @@ def _add_model_name_to_kwargs(
 ) -> JumpStartModelInitKwargs:
     """Sets resource name based on default or override, returns full kwargs."""
 
-    default_model_name = _retrieve_resource_name_base(
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        region=kwargs.region,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
-    )
+    default_model_name = _retrieve_resource_name_base(**get_model_info_default_kwargs(kwargs))
 
     kwargs.name = kwargs.name or (
         name_from_base(default_model_name) if default_model_name is not None else None
@@ -586,18 +465,7 @@ def _add_model_name_to_kwargs(
 def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
     """Sets tags based on default or override, returns full kwargs."""
 
-    full_model_version = verify_model_region_and_return_specs(
-        model_id=kwargs.model_id,
-        version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        scope=JumpStartScriptScope.INFERENCE,
-        region=kwargs.region,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
-    ).version
+    full_model_version = kwargs.specs.version
 
     if kwargs.sagemaker_session.settings.include_jumpstart_tags:
         kwargs.tags = add_jumpstart_model_info_tags(
@@ -627,16 +495,7 @@ def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
     deploy_kwargs_to_add = _retrieve_model_deploy_kwargs(
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
-        instance_type=kwargs.instance_type,
-        region=kwargs.region,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
+        **get_model_info_default_kwargs(kwargs), instance_type=kwargs.instance_type
     )
 
     for key, value in deploy_kwargs_to_add.items():
@@ -650,17 +509,9 @@ def _add_resources_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
     """Sets the resource requirements based on the default or an override. Returns full kwargs."""
 
     kwargs.resources = kwargs.resources or resource_requirements.retrieve_default(
-        region=kwargs.region,
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        hub_arn=kwargs.hub_arn,
+        **get_model_info_default_kwargs(kwargs),
         scope=JumpStartScriptScope.INFERENCE,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
         instance_type=kwargs.instance_type,
-        config_name=kwargs.config_name,
     )
 
     return kwargs
@@ -693,20 +544,9 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
         ValueError: If the instance_type is not supported with the current config.
     """
 
-    # we need to create a default JS session (without custom user agent)
-    # in order to retrieve config name info
-    temp_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-
     kwargs.config_name = kwargs.config_name or get_top_ranked_config_name(
-        region=kwargs.region,
-        model_id=kwargs.model_id,
-        model_version=kwargs.model_version,
-        sagemaker_session=temp_session,
+        **get_model_info_default_kwargs(kwargs, include_config_name=False),
         scope=JumpStartScriptScope.INFERENCE,
-        model_type=kwargs.model_type,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        hub_arn=kwargs.hub_arn,
     )
 
     if kwargs.config_name is None:
@@ -720,18 +560,7 @@ def _add_additional_model_data_sources_to_kwargs(
 ) -> JumpStartModelInitKwargs:
     """Sets default additional model data sources to init kwargs"""
 
-    specs = verify_model_region_and_return_specs(
-        model_id=kwargs.model_id,
-        version=kwargs.model_version,
-        scope=JumpStartScriptScope.INFERENCE,
-        region=kwargs.region,
-        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-        sagemaker_session=kwargs.sagemaker_session,
-        model_type=kwargs.model_type,
-        config_name=kwargs.config_name,
-        hub_arn=kwargs.hub_arn,
-    )
+    specs = kwargs.specs
     # Append speculative decoding data source from metadata
     speculative_decoding_data_sources = specs.get_speculative_decoding_s3_data_sources()
     for data_source in speculative_decoding_data_sources:
@@ -764,38 +593,17 @@ def _add_config_name_to_deploy_kwargs(
         ValueError: If the instance_type is not supported with the current config.
     """
 
-    # we need to create a default JS session (without custom user agent)
-    # in order to retrieve config name info
-    temp_session = kwargs.sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
-
     if training_config_name:
 
-        specs = verify_model_region_and_return_specs(
-            model_id=kwargs.model_id,
-            version=kwargs.model_version,
-            scope=JumpStartScriptScope.INFERENCE,
-            region=kwargs.region,
-            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-            sagemaker_session=temp_session,
-            model_type=kwargs.model_type,
-            config_name=kwargs.config_name,
-        )
+        specs = kwargs.specs
         default_config_name = _select_inference_config_from_training_config(
             specs=specs, training_config_name=training_config_name
         )
 
     else:
-        default_config_name = get_top_ranked_config_name(
-            region=kwargs.region,
-            model_id=kwargs.model_id,
-            model_version=kwargs.model_version,
-            sagemaker_session=temp_session,
+        default_config_name = kwargs.config_name or get_top_ranked_config_name(
+            **get_model_info_default_kwargs(kwargs, include_config_name=False),
             scope=JumpStartScriptScope.INFERENCE,
-            model_type=kwargs.model_type,
-            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
-            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
-            hub_arn=kwargs.hub_arn,
         )
 
     kwargs.config_name = kwargs.config_name or default_config_name
@@ -876,6 +684,18 @@ def get_deploy_kwargs(
         config_name=config_name,
         routing_config=routing_config,
     )
+    deploy_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(kwargs=deploy_kwargs)
+    deploy_kwargs.specs = verify_model_region_and_return_specs(
+        **get_model_info_default_kwargs(
+            deploy_kwargs, include_model_version=False, include_tolerate_flags=False
+        ),
+        version=deploy_kwargs.model_version or "*",
+        scope=JumpStartScriptScope.INFERENCE,
+        # We set these flags to True to retrieve the json specs.
+        # Exceptions will be thrown later if these are not tolerated.
+        tolerate_deprecated_model=True,
+        tolerate_vulnerable_model=True,
+    )
 
     deploy_kwargs = _add_config_name_to_deploy_kwargs(
         kwargs=deploy_kwargs, training_config_name=training_config_name
@@ -883,7 +703,9 @@ def get_deploy_kwargs(
 
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
 
-    deploy_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(kwargs=deploy_kwargs)
+    deploy_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(
+        kwargs=deploy_kwargs, orig_session=orig_session
+    )
 
     deploy_kwargs = _add_endpoint_name_to_kwargs(kwargs=deploy_kwargs)
 
@@ -943,6 +765,7 @@ def get_register_kwargs(
     register_kwargs = JumpStartModelRegisterKwargs(
         model_id=model_id,
         model_version=model_version,
+        config_name=config_name,
         hub_arn=hub_arn,
         model_type=model_type,
         region=region,
@@ -975,24 +798,25 @@ def get_register_kwargs(
         accept_eula=accept_eula,
     )
 
-    model_specs = verify_model_region_and_return_specs(
-        model_id=model_id,
-        version=model_version,
-        hub_arn=hub_arn,
-        model_type=model_type,
-        region=region,
+    register_kwargs.specs = verify_model_region_and_return_specs(
+        **get_model_info_default_kwargs(
+            register_kwargs, include_model_version=False, include_tolerate_flags=False
+        ),
+        version=register_kwargs.model_version or "*",
         scope=JumpStartScriptScope.INFERENCE,
-        sagemaker_session=sagemaker_session,
-        tolerate_deprecated_model=tolerate_deprecated_model,
-        tolerate_vulnerable_model=tolerate_vulnerable_model,
-        config_name=config_name,
+        # We set these flags to True to retrieve the json specs.
+        # Exceptions will be thrown later if these are not tolerated.
+        tolerate_deprecated_model=True,
+        tolerate_vulnerable_model=True,
     )
 
     register_kwargs.content_types = (
-        register_kwargs.content_types or model_specs.predictor_specs.supported_content_types
+        register_kwargs.content_types
+        or register_kwargs.specs.predictor_specs.supported_content_types
     )
     register_kwargs.response_types = (
-        register_kwargs.response_types or model_specs.predictor_specs.supported_accept_types
+        register_kwargs.response_types
+        or register_kwargs.specs.predictor_specs.supported_accept_types
     )
 
     return register_kwargs
@@ -1066,13 +890,27 @@ def get_init_kwargs(
         config_name=config_name,
         additional_model_data_sources=additional_model_data_sources,
     )
+    model_init_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(
+        kwargs=model_init_kwargs
+    )
+    model_init_kwargs.specs = verify_model_region_and_return_specs(
+        **get_model_info_default_kwargs(
+            model_init_kwargs, include_model_version=False, include_tolerate_flags=False
+        ),
+        version=model_init_kwargs.model_version or "*",
+        scope=JumpStartScriptScope.INFERENCE,
+        # We set these flags to True to retrieve the json specs.
+        # Exceptions will be thrown later if these are not tolerated.
+        tolerate_deprecated_model=True,
+        tolerate_vulnerable_model=True,
+    )
 
     model_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_config_name_to_init_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(
-        kwargs=model_init_kwargs
+        kwargs=model_init_kwargs, orig_session=orig_session
     )
     model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
 

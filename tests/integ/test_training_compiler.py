@@ -90,6 +90,10 @@ def skip_if_incompatible(gpu_instance_type, request):
         pytest.param("ml.p3.16xlarge", 2),
     ],
 )
+@pytest.mark.skipif(
+    integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="No P3 instances or low capacity in this region",
+)
 def test_huggingface_pytorch(
     sagemaker_session,
     gpu_instance_type,

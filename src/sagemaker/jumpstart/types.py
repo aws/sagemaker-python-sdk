@@ -1174,7 +1174,7 @@ class JumpStartConfigRanking(JumpStartDataHolderType):
             spec (Dict[str, Any]): Dictionary representation of training config ranking.
         """
         if is_hub_content:
-            spec = {camel_to_snake(key): val for key, val in spec.items()}
+            spec = walk_and_apply_json(spec, camel_to_snake)
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1200,6 +1200,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "url",
         "version",
         "min_sdk_version",
+        "model_types",
+        "capabilities",
         "incremental_training_supported",
         "hosting_ecr_specs",
         "hosting_ecr_uri",
@@ -1287,6 +1289,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             json_obj.get("incremental_training_supported", False)
         )
         if self._is_hub_content:
+            self.capabilities: Optional[List[str]] = json_obj.get("capabilities")
+            self.model_types: Optional[List[str]] = json_obj.get("model_types")
             self.hosting_ecr_uri: Optional[str] = json_obj.get("hosting_ecr_uri")
             self._non_serializable_slots.append("hosting_ecr_specs")
         else:
@@ -1400,7 +1404,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
 
         if self.training_supported:
             if self._is_hub_content:
-                self.training_ecr_uri: Optional[str] = json_obj["training_ecr_uri"]
+                self.training_ecr_uri: Optional[str] = json_obj.get("training_ecr_uri")
                 self._non_serializable_slots.append("training_ecr_specs")
             else:
                 self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
@@ -2055,14 +2059,20 @@ class JumpStartCachedContentValue(JumpStartDataHolderType):
 class JumpStartKwargs(JumpStartDataHolderType):
     """Data class for JumpStart object kwargs."""
 
+    BASE_SERIALIZATION_EXCLUSION_SET: Set[str] = ["specs"]
     SERIALIZATION_EXCLUSION_SET: Set[str] = set()
 
     def to_kwargs_dict(self, exclude_keys: bool = True):
         """Serializes object to dictionary to be used for kwargs for method arguments."""
         kwargs_dict = {}
         for field in self.__slots__:
-            if exclude_keys and field not in self.SERIALIZATION_EXCLUSION_SET or not exclude_keys:
-                att_value = getattr(self, field)
+            if (
+                exclude_keys
+                and field
+                not in self.SERIALIZATION_EXCLUSION_SET.union(self.BASE_SERIALIZATION_EXCLUSION_SET)
+                or not exclude_keys
+            ):
+                att_value = getattr(self, field, None)
                 if att_value is not None:
                     kwargs_dict[field] = getattr(self, field)
         return kwargs_dict
@@ -2104,6 +2114,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "additional_model_data_sources",
         "hub_content_type",
         "model_reference_arn",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2226,6 +2237,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "endpoint_type",
         "config_name",
         "routing_config",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2379,6 +2391,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "enable_session_tag_chaining",
         "hub_content_type",
         "model_reference_arn",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2534,6 +2547,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "sagemaker_session",
         "config_name",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2628,6 +2642,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "model_name",
         "use_compiled_model",
         "config_name",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2767,6 +2782,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "config_name",
         "model_card",
         "accept_eula",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {

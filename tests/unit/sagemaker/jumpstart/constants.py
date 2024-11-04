@@ -9178,6 +9178,7 @@ HUB_MODEL_DOCUMENT_DICTS = {
         "TrainingArtifactS3DataType": "S3Prefix",
         "TrainingArtifactCompressionType": "None",
         "TrainingArtifactUri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+        "ModelTypes": ["OPEN_WEIGHTS", "PROPRIETARY"],
         "Hyperparameters": [
             {
                 "Name": "peft_type",

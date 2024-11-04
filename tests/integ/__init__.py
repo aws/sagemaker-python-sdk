@@ -87,6 +87,7 @@ TRAINING_NO_P3_REGIONS = [
     "ap-south-1",
     "ap-northeast-2",  # it has p3, but not enough
     "us-east-2",  # it has p3, but not enough
+    "eu-west-1",  # it has p3, but not enough
 ]
 
 # EI is currently only supported in the following regions

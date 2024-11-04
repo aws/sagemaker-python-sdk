@@ -53,6 +53,8 @@ GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS = {
     "ap-southeast-2",
 }
 
+TEST_HUB_WITH_REFERENCE = "mock-hub-name"
+
 
 def test_non_prepacked_jumpstart_model(setup):
 
@@ -229,7 +231,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
 
 
 @mock.patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning")
-def test_instatiating_model(mock_warning_logger, setup):
+def test_instantiating_model(mock_warning_logger, setup):
 
     model_id = "catboost-regression-model"
 

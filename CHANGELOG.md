@@ -1,5 +1,120 @@
 # Changelog
 
+## v2.232.3 (2024-10-30)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  10-29-2024 07:17:56 PST
+ * Skip pytorch tests incompatible with latest version 2.4.0
+ * adding eu-central-2 bucket info to JS constants
+ * update image_uri_configs  10-23-2024 11:26:03 PST
+ * update image_uri_configs  10-17-2024 07:17:55 PST
+ * update image_uri_configs  10-03-2024 07:17:59 PST
+ * update image_uri_configs  09-27-2024 07:18:01 PST
+ * modified pull request template
+ * fixing typo in dependecy setup
+ * release: huggingface tgi neuronx 0.0.25 image
+ * Revert "update cloudpickle version to >=2.2.1 in pyproject.toml (#4899)"
+ * update cloudpickle version to >=2.2.1 in pyproject.toml
+ * update cloudpickle version to >=2.2.1
+ * chore(deps): bump pyspark from 3.3.1 to 3.3.2 in /requirements/extras
+ * changes for PT 2.4 currency upgrade
+ * chore: add lmi image config in me-central-1
+ * tests: Implement integration tests covering JumpStart PrivateHub workflows
+ * Use Miniforge to replace MambaForge
+
+## v2.232.2 (2024-10-03)
+
+### Bug Fixes and Other Changes
+
+ * Pass kwargs to HuggingFaceModel.deploy()
+ * improve logging and exception messages
+ * remove deprecated distutils
+ * update image_uri_configs  09-24-2024 07:18:00 PST
+
+## v2.232.1 (2024-09-19)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  09-17-2024 07:17:54 PST
+ * support latest container version in image_uris and DJLModel for lmi c…
+
+## v2.232.0 (2024-09-12)
+
+### Features
+
+ * add deployment config name in modelbuilder telemetry
+ * add Clarify image URIs for us-isof
+
+### Bug Fixes and Other Changes
+
+ * chore: add flaky test markers & skip region with low P3 instance capacity
+ * update image_uri_configs  09-11-2024 11:54:11 PST
+ * update image_uri_configs  09-10-2024 07:18:01 PST
+ * [change] add us-gov and cn region repo accounts to djl and hugging face image metadata
+ * update image_uri_configs  09-06-2024 07:17:55 PST
+ * add us-gov region repo accounts to djl image metadata
+ * pass name from modelbuilder constructor to created model
+
+## v2.231.0 (2024-08-30)
+
+### Features
+
+ * Add SageMaker Core to the dependency
+
+### Bug Fixes and Other Changes
+
+ * Disable test_mnist_async
+ * SMP v2.5
+ * update image_uri_configs  08-29-2024 07:17:59 PST
+
+## v2.230.0 (2024-08-28)
+
+### Features
+
+ * FastAPI integration for In_Process Mode (2/2)
+
+### Bug Fixes and Other Changes
+
+ * chore: add HF LLM neuronx 0.0.24 image
+ * TF-2.16 test modification and handling
+ * fix test fail
+ * Add troubleshooting links to exceptions
+ * cross account private hub model fine-tuning
+ * chore: cleanup jumpstart factory
+ * disable failing integration tests
+
+## v2.229.0 (2024-08-15)
+
+### Features
+
+ * Support for ModelBuilder In_Process Mode (1/2)
+ * Pulling in dependencies (in_process mode) using conda environment
+ * Add optional CodeArtifact login to FrameworkProcessing job script
+ * implemented security-monitoring to send metrics to CW #1510
+
+### Bug Fixes and Other Changes
+
+ * alt configs model deployment and training issues
+ * fix keras extension in integ test
+ * update image_uri_configs  08-13-2024 07:17:54 PST
+ * trn1 instance family does not support volume size
+ * Update model.py
+ * removed log statement
+ * update image_uri_configs  08-09-2024 07:18:00 PST
+ * Added torchrun compatibility for distributet training across multiple GPUs in a single node (single instance)
+ * BiasConfig type hint
+ * add model monitor image accounts for ap-southeast-5 and eu-central-2
+ * aligned UTC times with PST
+ * ensure hpt jobs inherit tags from config
+ * add JumpStart PDT and OSU regions
+ * chore(deps): bump certifi in /src/sagemaker/serve/utils
+ * Updates for DJL 0.29.0 release
+ * chore(deps): bump apache-airflow from 2.9.2 to 2.9.3 in /requirements/extras
+ * chore(deps): bump torch from 2.0.1 to 2.2.0 in /tests/data/serve_resources/mlflow/pytorch
+ * avoided printing stack trace and escaped input
+ * removing kwargs as this is breaking predictor_cls param for mode…
+
 ## v2.228.0 (2024-08-06)
 
 ### Features
