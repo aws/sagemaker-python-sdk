@@ -592,7 +592,6 @@ class PyTorch(Framework):
                 cls.recipe_launcher_dir.name,
                 "recipes_collection",
                 "recipes",
-                "training",
                 training_recipe + ".yaml",
             )
             if os.path.isfile(recipe):
@@ -602,8 +601,6 @@ class PyTorch(Framework):
 
         recipe = OmegaConf.load(temp_local_recipe)
         os.unlink(temp_local_recipe)
-        recipe_overrides.setdefault("run", dict())["results_dir"] = "/opt/ml/model"
-        recipe_overrides.setdefault("exp_manager", dict())["exp_dir"] = "/opt/ml/model/"
         recipe = OmegaConf.merge(recipe, recipe_overrides)
 
         if "instance_type" not in kwargs:

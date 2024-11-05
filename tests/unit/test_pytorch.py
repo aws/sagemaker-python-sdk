@@ -839,6 +839,9 @@ def test_training_recipe_for_cpu(sagemaker_session):
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
+        "run": {
+            "results_dir": "/opt/ml/model",
+        },
         "exp_manager": {
             "explicit_log_dir": "/opt/ml/output/tensorboard",
             "checkpoint_dir": "/opt/ml/checkpoints",
@@ -860,7 +863,7 @@ def test_training_recipe_for_cpu(sagemaker_session):
             instance_type=INSTANCE_TYPE,
             base_job_name="job",
             container_log_level=container_log_level,
-            training_recipe="llama/hf_llama3_8b_seq8192_gpu",
+            training_recipe="training/llama/hf_llama3_8b_seq8192_gpu",
             recipe_overrides=recipe_overrides,
         )
 
@@ -877,6 +880,9 @@ def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
+        "run": {
+            "results_dir": "/opt/ml/model",
+        },
         "exp_manager": {
             "explicit_log_dir": "/opt/ml/output",
             "checkpoint_dir": "/opt/ml/checkpoints",
@@ -896,7 +902,7 @@ def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
         instance_type=INSTANCE_TYPE_GPU,
         base_job_name="job",
         container_log_level=container_log_level,
-        training_recipe=f"{model}/{recipe}",
+        training_recipe=f"training/{model}/{recipe}",
         recipe_overrides=recipe_overrides,
     )
 
@@ -922,6 +928,9 @@ def test_training_recipe_with_override(sagemaker_session):
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
+        "run": {
+            "results_dir": "/opt/ml/model",
+        },
         "exp_manager": {
             "explicit_log_dir": "/opt/ml/output",
             "checkpoint_dir": "/opt/ml/checkpoints",
@@ -943,7 +952,7 @@ def test_training_recipe_with_override(sagemaker_session):
         instance_type=INSTANCE_TYPE_GPU,
         base_job_name="job",
         container_log_level=container_log_level,
-        training_recipe="llama/hf_llama3_8b_seq8192_gpu",
+        training_recipe="training/llama/hf_llama3_8b_seq8192_gpu",
         recipe_overrides=recipe_overrides,
     )
 
@@ -956,6 +965,9 @@ def test_training_recipe_for_trainium(sagemaker_session):
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
+        "run": {
+            "results_dir": "/opt/ml/model",
+        },
         "exp_manager": {
             "explicit_log_dir": "/opt/ml/output",
         },
