@@ -28,6 +28,7 @@ HUB_NAME = "mock-hub-name"
 @pytest.mark.parametrize(
     "input_string, expected",
     [
+        ("camelCase", "camel_case"),
         ("PascalCase", "pascal_case"),
         ("already_snake", "already_snake"),
         ("", ""),
@@ -36,7 +37,7 @@ HUB_NAME = "mock-hub-name"
         ("123StartWithNumber", "123_start_with_number"),
     ],
 )
-def test_parse_(input_string, expected):
+def test_parse_camelCase(input_string, expected):
     assert expected == camel_to_snake(input_string)
 
 

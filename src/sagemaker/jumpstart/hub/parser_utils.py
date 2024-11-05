@@ -19,9 +19,9 @@ from typing import Any, Dict, List, Optional
 
 
 def camel_to_snake(camel_case_string: str) -> str:
-    """Converts PascalCase to snake_case_string using a regex.
+    """Converts camelCase to snake_case_string using a regex.
 
-    This regex cannot handle whitespace ("PascalString TwoWords")
+    This regex cannot handle whitespace ("camelString TwoWords")
     """
     return re.sub(r"(?<!^)(?=[A-Z])", "_", camel_case_string).lower()
 
