@@ -75,6 +75,7 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker import resource_requirements
 from sagemaker.enums import EndpointType
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 
 def get_default_predictor(
@@ -756,6 +757,7 @@ def get_register_kwargs(
     data_input_configuration: Optional[str] = None,
     skip_model_validation: Optional[str] = None,
     source_uri: Optional[str] = None,
+    model_life_cycle: Optional[ModelLifeCycle] = None,
     config_name: Optional[str] = None,
     model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
     accept_eula: Optional[bool] = None,
@@ -794,6 +796,7 @@ def get_register_kwargs(
         data_input_configuration=data_input_configuration,
         skip_model_validation=skip_model_validation,
         source_uri=source_uri,
+        model_life_cycle=model_life_cycle,
         model_card=model_card,
         accept_eula=accept_eula,
     )
