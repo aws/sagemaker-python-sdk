@@ -16,7 +16,9 @@ from __future__ import absolute_import
 import re
 import os
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Any
+
+from sagemaker_core.shapes import Unassigned
 
 
 def _is_valid_s3_uri(path: str, path_type: Literal["File", "Directory", "Any"] = "Any") -> bool:
@@ -107,3 +109,11 @@ def _get_repo_name_from_image(image: str) -> str:
         str: The repository name
     """
     return image.split("/")[-1].split(":")[0]
+
+
+def convert_unassigned_to_none(instance) -> Any:
+    """Convert Unassigned values to None for any instance."""
+    for name, value in instance.__dict__.items():
+        if isinstance(value, Unassigned):
+            setattr(instance, name, None)
+    return instance
