@@ -17,27 +17,41 @@ import os
 import json
 
 from typing import Optional, List, Union, Dict, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 
 from sagemaker_core.resources import TrainingJob
 from sagemaker_core.shapes import AlgorithmSpecification
 
-from sagemaker import get_execution_role, Session
 from sagemaker.fw_utils import validate_mp_config
+from sagemaker import get_execution_role, Session
 from sagemaker.modules.configs import (
-    ResourceConfig,
+    ComputeConfig,
     StoppingCondition,
+    RetryStrategy,
     OutputDataConfig,
     SourceCodeConfig,
     MPIDistributionConfig,
     TorchDistributionConfig,
+    SMDistributedSettings,
     TrainingImageConfig,
     Channel,
     DataSource,
     S3DataSource,
     FileSystemDataSource,
-    VpcConfig,
-    SMDistributedSettings,
+    NetworkingConfig,
+    Tag,
+    MetricDefinition,
+    DebugHookConfig,
+    DebugRuleConfiguration,
+    ExperimentConfig,
+    InfraCheckConfig,
+    ProfilerConfig,
+    ProfilerRuleConfiguration,
+    RemoteDebugConfig,
+    SessionChainingConfig,
+    TensorBoardOutputConfig,
+    CheckpointConfig,
+    InputData,
 )
 from sagemaker.modules.utils import (
     _get_repo_name_from_image,
@@ -69,6 +83,22 @@ from sagemaker.modules import logger
 class ModelTrainer(BaseModel):
     """Class that trains a model using AWS SageMaker.
 
+    Example:
+    ```python
+    from sagemaker.modules.train import ModelTrainer
+    from sagemaker.modules.configs import SourceCodeConfig, ComputeConfig, InputDataSource
+
+    source_code_config = SourceCodeConfig(source_dir="source", entry_script="train.py")
+    training_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-training-image"
+    model_trainer = ModelTrainer(
+        training_image=training_image,
+        source_code_config=source_code_config,
+    )
+
+    train_data = InputData(channel_name="train", data_source="s3://bucket/train")
+    model_trainer.train(input_data_config=[train_data])
+    ```
+
     Attributes:
         session (Optiona(Session)):
             The SageMaker session.
@@ -76,27 +106,10 @@ class ModelTrainer(BaseModel):
         role (Optional(str)):
             The IAM role ARN for the training job.
             If not specified, the default SageMaker execution role will be used.
-        base_name (Optional[str]):
+        base_job_name (Optional[str]):
             The base name for the training job.
             If not specified, a default name will be generated using the algorithm name
             or training image.
-        resource_config (Optional[ResourceConfig]):
-            The resource configuration. This is used to specify the compute resources for
-            the training job.
-            If not specified, will default to 1 instance of ml.m5.xlarge.
-        stopping_condition (Optional[StoppingCondition]):
-            The stopping condition. This is used to specify the different stopping
-            conditions for the training job.
-            If not specified, will default to 1 hour max run time.
-        output_data_config (Optional[OutputDataConfig]):
-            The output data configuration. This is used to specify the output data location
-            for the training job.
-            If not specified, will default to s3://<default_bucket>/<base_name>/output/.
-        input_data_channels (Optional[Union[List[Channel], Dict[str, DataSourceType]]]):
-            The input data channels for the training job.
-            Takes a list of Channel objects or a dictionary of channel names to DataSourceType.
-            DataSourceType can be an S3 URI string, local file path string,
-            S3DataSource object, or FileSystemDataSource object.
         source_code_config (Optional[SourceCodeConfig]):
             The source code configuration. This is used to configure the source code for
             running the training job.
@@ -106,46 +119,90 @@ class ModelTrainer(BaseModel):
             The distribution settings for the training job. This is used to configure
             a distributed training job. If specifed, a `source_code_config` must also
             be provided.
+        compute_config (Optional[ComputeConfig]):
+            The compute configuration. This is used to specify the compute resources for
+            the training job. If not specified, will default to 1 instance of ml.m5.xlarge.
+        networking_config (Optional[NetworkingConfig]):
+            The networking configuration. This is used to specify the networking settings
+            for the training job.
+        stopping_condition (Optional[StoppingCondition]):
+            The stopping condition. This is used to specify the different stopping
+            conditions for the training job.
+            If not specified, will default to 1 hour max run time.
         algorithm_name (Optional[str]):
             The SageMaker marketplace algorithm name/arn to use for the training job.
             algorithm_name cannot be specified if training_image is specified.
         training_image (Optional[str]):
             The training image URI to use for the training job container.
             training_image cannot be specified if algorithm_name is specified.
-            For documentaion on sagemaker distributed images see:
-            https://docs.aws.amazon.com/sagemaker/latest/dg-ecr-paths/sagemaker-algo-docker-registry-paths.html
+            To find available sagemaker distributed images,
+            see: https://docs.aws.amazon.com/sagemaker/latest/dg-ecr-paths/sagemaker-algo-docker-registry-paths
+        training_image_config (Optional[TrainingImageConfig]):
+            Training image Config. This is the configuration to use an image from a private
+            Docker registry for a traininob.
+        output_data_config (Optional[OutputDataConfig]):
+            The output data configuration. This is used to specify the output data location
+            for the training job.
+            If not specified, will default to `s3://<default_bucket>/<base_job_name>/output/`.
+        input_data_config (Optional[List[Union[Channel, InputData]]]):
+            The input data config for the training job.
+            Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
+            string, local file path string, S3DataSource object, or FileSystemDataSource object.
+        checkpoint_config (Optional[CheckpointConfig]):
+            Contains information about the output location for managed spot training checkpoint
+            data.
         training_input_mode (Optional[str]):
             The input mode for the training job. Valid values are "Pipe", "File", "FastFile".
             Defaults to "File".
-        training_image_config (Optional[TrainingImageConfig]:
-            Training image Config. This is the configuration to use an image from a private
-            Docker registry for a training job.
         environment (Optional[Dict[str, str]]):
             The environment variables for the training job.
-        hyper_parameters (Optional[Dict[str, Any]]):
+        hyperparameters (Optional[Dict[str, Any]]):
             The hyperparameters for the training job.
-        vpc_config: (Optional[VpcConfig]):
-            The VPC configuration.
+        tags (Optional[List[Tag]]):
+            An array of key-value pairs. You can use tags to categorize your AWS resources
+            in different ways, for example, by purpose, owner, or environment.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     session: Optional[Session] = None
     role: Optional[str] = None
-    base_name: Optional[str] = None
-    resource_config: Optional[ResourceConfig] = None
-    stopping_condition: Optional[StoppingCondition] = None
-    output_data_config: Optional[OutputDataConfig] = None
-    input_data_channels: Optional[Union[List[Channel], Dict[str, DataSourceType]]] = None
+    base_job_name: Optional[str] = None
     source_code_config: Optional[SourceCodeConfig] = None
     distribution_config: Optional[Union[MPIDistributionConfig, TorchDistributionConfig]] = None
-    algorithm_name: Optional[str] = None
+    compute_config: Optional[ComputeConfig] = None
+    networking_config: Optional[NetworkingConfig] = None
+    stopping_condition: Optional[StoppingCondition] = None
     training_image: Optional[str] = None
-    training_input_mode: Optional[str] = "File"
     training_image_config: Optional[TrainingImageConfig] = None
+    algorithm_name: Optional[str] = None
+    output_data_config: Optional[OutputDataConfig] = None
+    input_data_config: Optional[List[Union[Channel, InputData]]] = None
+    checkpoint_config: Optional[CheckpointConfig] = None
+    training_input_mode: Optional[str] = "File"
     environment: Optional[Dict[str, str]] = None
-    hyper_parameters: Optional[Dict[str, Any]] = None
-    vpc_config: Optional[VpcConfig] = None
+    hyperparameters: Optional[Dict[str, Any]] = None
+    tags: Optional[List[Tag]] = None
+
+    # Metrics settings
+    _enable_sage_maker_metrics_time_series: Optional[bool] = PrivateAttr(default=False)
+    _metric_definitions: Optional[List[MetricDefinition]] = PrivateAttr(default=None)
+
+    # Debugger settings
+    _debug_hook_config: Optional[DebugHookConfig] = PrivateAttr(default=None)
+    _debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = PrivateAttr(default=None)
+    _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
+    _profiler_config: Optional[ProfilerConfig] = PrivateAttr(default=None)
+    _profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = PrivateAttr(
+        default=None
+    )
+    _tensor_board_output_config: Optional[TensorBoardOutputConfig] = PrivateAttr(default=None)
+
+    # Additional settings
+    _retry_strategy: Optional[RetryStrategy] = PrivateAttr(default=None)
+    _experiment_config: Optional[ExperimentConfig] = PrivateAttr(default=None)
+    _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
+    _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
 
     def _validate_training_image_and_algorithm_name(
         self, training_image: Optional[str], algorithm_name: Optional[str]
@@ -239,23 +296,20 @@ class ModelTrainer(BaseModel):
             self.role = get_execution_role()
             logger.warning(f"Role not provided. Using default role:\n{self.role}")
 
-        if self.base_name is None:
+        if self.base_job_name is None:
             if self.algorithm_name:
-                self.base_name = f"{self.algorithm_name}-job"
+                self.base_job_name = f"{self.algorithm_name}-job"
             elif self.training_image:
-                self.base_name = f"{_get_repo_name_from_image(self.training_image)}-job"
-            logger.warning(f"Base name not provided. Using default name:\n{self.base_name}")
+                self.base_job_name = f"{_get_repo_name_from_image(self.training_image)}-job"
+            logger.warning(f"Base name not provided. Using default name:\n{self.base_job_name}")
 
-        if self.resource_config is None:
-            self.resource_config = ResourceConfig(
-                volume_size_in_gb=30,
-                instance_count=1,
+        if self.compute_config is None:
+            self.compute_config = ComputeConfig(
                 instance_type=DEFAULT_INSTANCE_TYPE,
-                volume_kms_key_id=None,
-                keep_alive_period_in_seconds=None,
-                instance_groups=None,
+                instance_count=1,
+                volume_size_in_gb=30,
             )
-            logger.warning(f"ResourceConfig not provided. Using default:\n{self.resource_config}")
+            logger.warning(f"ComputeConfig not provided. Using default:\n{self.compute_config}")
 
         if self.stopping_condition is None:
             self.stopping_condition = StoppingCondition(
@@ -269,10 +323,10 @@ class ModelTrainer(BaseModel):
 
         if self.output_data_config is None:
             session = self.session
-            base_name = self.base_name
+            base_job_name = self.base_job_name
             self.output_data_config = OutputDataConfig(
-                s3_output_path=f"s3://{session.default_bucket()}/{base_name}/output",
-                compression_type="NONE",
+                s3_output_path=f"s3://{session.default_bucket()}/{base_job_name}",
+                compression_type="GZIP",
                 kms_key_id=None,
             )
             logger.warning(
@@ -283,17 +337,18 @@ class ModelTrainer(BaseModel):
         if self.training_image:
             logger.info(f"Training image URI: {self.training_image}")
 
+    @validate_call
     def train(
         self,
-        input_data_channels: Optional[Union[List[Channel], Dict[str, DataSourceType]]] = None,
+        input_data_config: Optional[List[Union[Channel, InputData]]] = None,
         wait: bool = True,
         logs: bool = True,
     ):
         """Train a model using AWS SageMaker.
 
         Args:
-            input_data_channels (Optional[Union[List[Channel], Dict[str, DataSourceType]]]):
-                The input data channels for the training job.
+            input_data_config (Optional[Union[List[Channel], Dict[str, DataSourceType]]]):
+                The input data config for the training job.
                 Takes a list of Channel objects or a dictionary of channel names to DataSourceType.
                 DataSourceType can be an S3 URI string, local file path string,
                 S3DataSource object, or FileSystemDataSource object.
@@ -304,21 +359,17 @@ class ModelTrainer(BaseModel):
                 Whether to display the training container logs while training.
                 Defaults to True.
         """
-        if input_data_channels:
-            self.input_data_channels = input_data_channels
+        if input_data_config:
+            self.input_data_config = input_data_config
 
         input_data_config = []
-        if self.input_data_channels:
-            input_data_config = self._get_input_data_config(self.input_data_channels)
+        if self.input_data_config:
+            input_data_config = self._get_input_data_config(self.input_data_config)
 
-        # Unfortunately, API requires hyperparameters to be strings
         string_hyper_parameters = {}
-        if self.hyper_parameters:
-            for hyper_parameter, value in self.hyper_parameters.items():
-                if isinstance(value, (dict, list)):
-                    string_hyper_parameters[hyper_parameter] = json.dumps(value)
-                else:
-                    string_hyper_parameters[hyper_parameter] = str(value)
+        if self.hyperparameters:
+            for hyper_parameter, value in self.hyperparameters.items():
+                string_hyper_parameters[hyper_parameter] = str(value)
 
         container_entrypoint = None
         container_arguments = None
@@ -366,20 +417,48 @@ class ModelTrainer(BaseModel):
             training_image_config=self.training_image_config,
             container_entrypoint=container_entrypoint,
             container_arguments=container_arguments,
+            metric_definitions=self._metric_definitions,
+            enable_sage_maker_metrics_time_series=self._enable_sage_maker_metrics_time_series,
         )
 
+        resource_config = self.compute_config._to_resource_config()
+        vpc_config = self.networking_config._to_vpc_config() if self.networking_config else None
+
         training_job = TrainingJob.create(
+            training_job_name=_get_unique_name(self.base_job_name),
+            algorithm_specification=algorithm_specification,
+            hyper_parameters=string_hyper_parameters,
+            input_data_config=input_data_config,
+            resource_config=resource_config,
+            vpc_config=vpc_config,
+            # Public Instance Attributes
             session=self.session.boto_session,
             role_arn=self.role,
-            training_job_name=_get_unique_name(self.base_name),
-            algorithm_specification=algorithm_specification,
-            resource_config=self.resource_config,
+            tags=self.tags,
             stopping_condition=self.stopping_condition,
-            input_data_config=input_data_config,
             output_data_config=self.output_data_config,
+            checkpoint_config=self.checkpoint_config,
             environment=self.environment,
-            hyper_parameters=string_hyper_parameters,
-            vpc_config=self.vpc_config,
+            enable_managed_spot_training=self.compute_config.enable_managed_spot_training,
+            enable_inter_container_traffic_encryption=(
+                self.networking_config.enable_inter_container_traffic_encryption
+                if self.networking_config
+                else None
+            ),
+            enable_network_isolation=(
+                self.networking_config.enable_network_isolation if self.networking_config else None
+            ),
+            # Private Instance Attributes
+            debug_hook_config=self._debug_hook_config,
+            debug_rule_configurations=self._debug_rule_configurations,
+            remote_debug_config=self._remote_debug_config,
+            profiler_config=self._profiler_config,
+            profiler_rule_configurations=self._profiler_rule_configurations,
+            tensor_board_output_config=self._tensor_board_output_config,
+            retry_strategy=self._retry_strategy,
+            experiment_config=self._experiment_config,
+            infra_check_config=self._infra_check_config,
+            session_chaining_config=self._session_chaining_config,
         )
 
         if wait:
@@ -414,7 +493,7 @@ class ModelTrainer(BaseModel):
                 s3_uri = self.session.upload_data(
                     path=data_source,
                     bucket=self.session.default_bucket(),
-                    key_prefix=f"{self.base_name}/input/{channel_name}",
+                    key_prefix=f"{self.base_job_name}/input/{channel_name}",
                 )
                 channel = Channel(
                     channel_name=channel_name,
@@ -441,26 +520,34 @@ class ModelTrainer(BaseModel):
         return channel
 
     def _get_input_data_config(
-        self, input_data_channels: Optional[Union[List[Channel], Dict[str, DataSourceType]]]
+        self, input_data_channels: Optional[List[Union[Channel, InputData]]]
     ) -> List[Channel]:
         """Get the input data configuration for the training job.
 
         Args:
-            input_data_channels (Optional[Union[List[Channel], Dict[str, DataSourceType]]]):
-                The input data channels for the training job.
-                Takes a list of Channel objects or a dictionary of channel names to DataSourceType.
-                DataSourceType can be an S3 URI string, local file path string,
-                S3DataSource object, or FileSystemDataSource object.
+            input_data_channels (Optional[List[Union[Channel, InputData]]]):
+                The input data config for the training job.
+                Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
+                string, local file path string, S3DataSource object, or FileSystemDataSource object.
         """
         if input_data_channels is None:
             return []
 
-        if isinstance(input_data_channels, list):
-            return input_data_channels
-        return [
-            self.create_input_data_channel(channel_name, data_source)
-            for channel_name, data_source in input_data_channels.items()
-        ]
+        channels = []
+        for input_data in input_data_channels:
+            if isinstance(input_data, Channel):
+                channels.append(input)
+            elif isinstance(input_data, InputData):
+                channel = self.create_input_data_channel(
+                    input_data.channel_name, input_data.data_source
+                )
+                channels.append(channel)
+            else:
+                raise ValueError(
+                    f"Invalid input data channel: {input_data}. "
+                    + "Must be a Channel or InputDataSource."
+                )
+        return channels
 
     def _write_source_code_config_json(self, source_code_config: SourceCodeConfig):
         """Write the source code configuration to a JSON file."""
@@ -492,7 +579,7 @@ class ModelTrainer(BaseModel):
         if (
             source_code_config.entry_script
             and not source_code_config.command
-            and not source_code_config.distribution
+            and not distribution_config
         ):
             if source_code_config.entry_script.endswith(".py"):
                 base_command = f"$SM_PYTHON_CMD {source_code_config.entry_script}"
@@ -537,6 +624,134 @@ class ModelTrainer(BaseModel):
         with open(os.path.join(SM_DRIVERS_LOCAL_PATH, TRAIN_SCRIPT), "w") as f:
             f.write(train_script)
 
-    def get_training_image_uri(self) -> str:
-        """Get the training image URI for the training job."""
-        return self.training_image
+    def with_metric_settings(
+        self,
+        enable_sage_maker_metrics_time_series: bool = True,
+        metric_definitions: Optional[List[MetricDefinition]] = None,
+    ) -> "ModelTrainer":
+        """Set the metrics configuration for the training job.
+
+        Example:
+        ```python
+        model_trainer = ModelTrainer(...).with_metric_settings(
+            enable_sage_maker_metrics_time_series=True,
+            metric_definitions=[
+                MetricDefinition(
+                    name="loss",
+                    regex="Loss: (.*?),",
+                ),
+                MetricDefinition(
+                    name="accuracy",
+                    regex="Accuracy: (.*?),",
+                ),
+            ]
+        )
+        ```
+
+        Args:
+            enable_sage_maker_metrics_time_series (Optional[bool]):
+                Whether to enable SageMaker metrics time series. Defaults to True.
+            metric_definitions (Optional[List[MetricDefinition]]):
+                A list of metric definition objects. Each object specifies
+                the metric name and regular expressions used to parse algorithm logs.
+                SageMaker publishes each metric to Amazon CloudWatch.
+        """
+        self._enable_sage_maker_metrics_time_series = enable_sage_maker_metrics_time_series
+        self._metric_definitions = metric_definitions
+        return self
+
+    def with_debugger_settings(
+        self,
+        debug_hook_config: Optional[DebugHookConfig] = None,
+        debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = None,
+        remote_debug_config: Optional[RemoteDebugConfig] = None,
+        profiler_config: Optional[ProfilerConfig] = None,
+        profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = None,
+        tensor_board_output_config: Optional[TensorBoardOutputConfig] = None,
+    ) -> "ModelTrainer":
+        """Set the configuration for settings related to Amazon SageMaker Debugger.
+
+        Example:
+        ```python
+        model_trainer = ModelTrainer(...).with_debugger_settings(
+            debug_hook_config=DebugHookConfig(
+                s3_output_path="s3://bucket/path",
+                collection_configurations=[
+                    CollectionConfiguration(
+                        collection_name="some_collection",
+                        collection_parameters={
+                            "include_regex": ".*",
+                        }
+                    )
+                ]
+            )
+        )
+        ```
+
+        Args:
+            debug_hook_config (Optional[DebugHookConfig]):
+                Configuration information for the Amazon SageMaker Debugger hook parameters,
+                metric and tensor collections, and storage paths.
+                To learn more see: https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-createtrainingjob-api.html
+            debug_rule_configurations (Optional[List[DebugRuleConfiguration]]):
+                Configuration information for Amazon SageMaker Debugger rules for debugging
+                output ensors.
+            remote_debug_config (Optional[RemoteDebugConfig]):
+                Configuration for remote debugging. To learn more see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/train-remote-debugging.html
+            profiler_config (ProfilerConfig):
+                Configuration information for Amazon SageMaker Debugger system monitoring,
+                framework profiling, and storage paths.
+            profiler_rule_configurations (List[ProfilerRuleConfiguration]):
+                Configuration information for Amazon SageMaker Debugger rules for profiling
+                system and framework metrics.
+            tensor_board_output_config (Optional[TensorBoardOutputConfig]):
+                Configuration of storage locations for the Amazon SageMaker Debugger TensorBoard
+                output data.
+        """
+        self._debug_hook_config = debug_hook_config
+        self._debug_rule_configurations = debug_rule_configurations
+        self._remote_debug_config = remote_debug_config
+        self._profiler_config = profiler_config
+        self._profiler_rule_configurations = profiler_rule_configurations
+        self._tensor_board_output_config = tensor_board_output_config
+        return self
+
+    def with_additional_settings(
+        self,
+        retry_strategy: Optional[RetryStrategy] = None,
+        experiment_config: Optional[ExperimentConfig] = None,
+        infra_check_config: Optional[InfraCheckConfig] = None,
+        session_chaining_config: Optional[SessionChainingConfig] = None,
+    ) -> "ModelTrainer":
+        """Set any additional settings for the training job.
+
+        Example:
+        ```python
+        model_trainer = ModelTrainer(...).with_additional_settings(
+            experiment_config=ExperimentConfig(
+                experiment_name="my-experiment",
+                trial_name="my-trial",
+            )
+        )
+        ```
+
+        Args:
+            retry_strategy (Optional[RetryStrategy]):
+                The number of times to retry the job when the job fails due to an
+                `InternalServerError`.
+            experiment_config (Optional[ExperimentConfig]):
+                Configuration information for the Amazon SageMaker Experiment.
+                Associates a SageMaker job as a trial component with an experiment and trial
+            infra_check_config (Optional[InfraCheckConfig]):
+                Contains information about the infrastructure health check configuration for the
+                training job.
+            session_chaining_config (Optional[SessionChainingConfig]):
+                Contains information about attribute-based access control (ABAC) for the training
+                job.
+        """
+        self._retry_strategy = retry_strategy
+        self._experiment_config = experiment_config
+        self._infra_check_config = infra_check_config
+        self._session_chaining_config = session_chaining_config
+        return self
