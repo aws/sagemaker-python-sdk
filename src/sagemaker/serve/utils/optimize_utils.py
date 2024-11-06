@@ -259,13 +259,15 @@ def _is_s3_uri(s3_uri: Optional[str]) -> bool:
 
 
 def _extract_optimization_config_and_env(
-    quantization_config: Optional[Dict] = None, compilation_config: Optional[Dict] = None
+    quantization_config: Optional[Dict] = None, compilation_config: Optional[Dict] = None,
+    sharding_config: Optional[Dict] = None
 ) -> Optional[Tuple[Optional[Dict], Optional[Dict]]]:
     """Extracts optimization config and environment variables.
 
     Args:
         quantization_config (Optional[Dict]): The quantization config.
         compilation_config (Optional[Dict]): The compilation config.
+        sharding_config (Optional[Dict]): The sharding config.
 
     Returns:
         Optional[Tuple[Optional[Dict], Optional[Dict]]]:
@@ -277,6 +279,10 @@ def _extract_optimization_config_and_env(
         )
     if compilation_config:
         return {"ModelCompilationConfig": compilation_config}, compilation_config.get(
+            "OverrideEnvironment"
+        )
+    if sharding_config:
+        return {"ModelShardingConfig": sharding_config}, sharding_config.get(
             "OverrideEnvironment"
         )
     return None, None

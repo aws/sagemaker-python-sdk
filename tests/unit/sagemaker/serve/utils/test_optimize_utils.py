@@ -261,7 +261,7 @@ def test_is_s3_uri(s3_uri, expected):
 
 
 @pytest.mark.parametrize(
-    "quantization_config, compilation_config, expected_config, expected_env",
+    "quantization_config, compilation_config, sharding_config, expected_config, expected_env",
     [
         (
             None,
@@ -270,6 +270,7 @@ def test_is_s3_uri(s3_uri, expected):
                     "OPTION_TENSOR_PARALLEL_DEGREE": "2",
                 }
             },
+            None,
             {
                 "ModelCompilationConfig": {
                     "OverrideEnvironment": {
@@ -288,6 +289,7 @@ def test_is_s3_uri(s3_uri, expected):
                 }
             },
             None,
+            None,
             {
                 "ModelQuantizationConfig": {
                     "OverrideEnvironment": {
@@ -299,7 +301,26 @@ def test_is_s3_uri(s3_uri, expected):
                 "OPTION_TENSOR_PARALLEL_DEGREE": "2",
             },
         ),
-        (None, None, None, None),
+        (
+            None,
+            None,
+            {
+                "OverrideEnvironment": {
+                    "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                }
+            },
+            {
+                "ModelShardingConfig": {
+                    "OverrideEnvironment": {
+                        "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                    }
+                },
+            },
+            {
+                "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+            },
+        ),
+        (None, None, None, None, None),
     ],
 )
 def test_extract_optimization_config_and_env(
