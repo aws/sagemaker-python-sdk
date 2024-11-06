@@ -48,7 +48,6 @@ dependencies = [
   "PyYAML~=6.0",
   "requests",
   "sagemaker-core>=1.0.0,<2.0.0",
-  "sagemaker-mlflow",
   "schema",
   "smdebug_rulesconfig==1.0.1",
   "tblib>=1.7.0,<4",

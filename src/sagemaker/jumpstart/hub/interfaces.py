@@ -451,12 +451,14 @@ class NotebookLocationUris(HubDataHolderType):
 class HubModelDocument(HubDataHolderType):
     """Data class for model type HubContentDocument from session.describe_hub_content()."""
 
-    SCHEMA_VERSION = "2.2.0"
+    SCHEMA_VERSION = "2.3.0"
 
     __slots__ = [
         "url",
         "min_sdk_version",
         "training_supported",
+        "model_types",
+        "capabilities",
         "incremental_training_supported",
         "dynamic_container_deployment_supported",
         "hosting_ecr_uri",
@@ -469,6 +471,7 @@ class HubModelDocument(HubDataHolderType):
         "hosting_use_script_uri",
         "hosting_eula_uri",
         "hosting_model_package_arn",
+        "model_subscription_link",
         "inference_configs",
         "inference_config_components",
         "inference_config_rankings",
@@ -549,18 +552,22 @@ class HubModelDocument(HubDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of hub model document.
         """
-        self.url: str = json_obj["Url"]
-        self.min_sdk_version: str = json_obj["MinSdkVersion"]
-        self.hosting_ecr_uri: Optional[str] = json_obj["HostingEcrUri"]
-        self.hosting_artifact_uri = json_obj["HostingArtifactUri"]
-        self.hosting_script_uri = json_obj["HostingScriptUri"]
-        self.inference_dependencies: List[str] = json_obj["InferenceDependencies"]
+        self.url: str = json_obj.get("Url")
+        self.min_sdk_version: str = json_obj.get("MinSdkVersion")
+        self.hosting_ecr_uri: Optional[str] = json_obj.get("HostingEcrUri")
+        self.hosting_artifact_uri = json_obj.get("HostingArtifactUri")
+        self.hosting_script_uri = json_obj.get("HostingScriptUri")
+        self.inference_dependencies: List[str] = json_obj.get("InferenceDependencies")
         self.inference_environment_variables: List[JumpStartEnvironmentVariable] = [
             JumpStartEnvironmentVariable(env_variable, is_hub_content=True)
-            for env_variable in json_obj["InferenceEnvironmentVariables"]
+            for env_variable in json_obj.get("InferenceEnvironmentVariables", [])
         ]
-        self.training_supported: bool = bool(json_obj["TrainingSupported"])
-        self.incremental_training_supported: bool = bool(json_obj["IncrementalTrainingSupported"])
+        self.model_types: Optional[List[str]] = json_obj.get("ModelTypes")
+        self.capabilities: Optional[List[str]] = json_obj.get("Capabilities")
+        self.training_supported: bool = bool(json_obj.get("TrainingSupported"))
+        self.incremental_training_supported: bool = bool(
+            json_obj.get("IncrementalTrainingSupported")
+        )
         self.dynamic_container_deployment_supported: Optional[bool] = (
             bool(json_obj.get("DynamicContainerDeploymentSupported"))
             if json_obj.get("DynamicContainerDeploymentSupported")
@@ -585,6 +592,8 @@ class HubModelDocument(HubDataHolderType):
         )
         self.hosting_eula_uri: Optional[str] = json_obj.get("HostingEulaUri")
         self.hosting_model_package_arn: Optional[str] = json_obj.get("HostingModelPackageArn")
+
+        self.model_subscription_link: Optional[str] = json_obj.get("ModelSubscriptionLink")
 
         self.inference_config_rankings = self._get_config_rankings(json_obj)
         self.inference_config_components = self._get_config_components(json_obj)

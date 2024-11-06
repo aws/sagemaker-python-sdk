@@ -19,12 +19,11 @@ from typing import Any, Dict, List, Optional
 
 
 def camel_to_snake(camel_case_string: str) -> str:
-    """Converts camelCaseString or UpperCamelCaseString to snake_case_string."""
-    snake_case_string = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", camel_case_string)
-    if "-" in snake_case_string:
-        # remove any hyphen from the string for accurate conversion.
-        snake_case_string = snake_case_string.replace("-", "")
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake_case_string).lower()
+    """Converts camelCase to snake_case_string using a regex.
+
+    This regex cannot handle whitespace ("camelString TwoWords")
+    """
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", camel_case_string).lower()
 
 
 def snake_to_upper_camel(snake_case_string: str) -> str:

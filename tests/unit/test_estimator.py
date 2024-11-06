@@ -5924,7 +5924,7 @@ def test_estimator_get_app_url_fail(sagemaker_session):
     assert "does not support URL retrieval." in str(error)
 
 
-@patch("sagemaker.estimator.log_sagemaker_job_to_mlflow")
+@patch("sagemaker.mlflow.forward_sagemaker_metrics.log_sagemaker_job_to_mlflow")
 def test_forward_sagemaker_metrics(mock_log_to_mlflow, sagemaker_session):
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -5943,7 +5943,7 @@ def test_forward_sagemaker_metrics(mock_log_to_mlflow, sagemaker_session):
     mock_log_to_mlflow.assert_called_once()
 
 
-@patch("sagemaker.estimator.log_sagemaker_job_to_mlflow")
+@patch("sagemaker.mlflow.forward_sagemaker_metrics.log_sagemaker_job_to_mlflow")
 def test_no_forward_sagemaker_metrics(mock_log_to_mlflow, sagemaker_session):
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
