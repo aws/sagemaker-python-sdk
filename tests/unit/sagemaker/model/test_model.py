@@ -960,6 +960,56 @@ def test_all_framework_models_inference_component_based_endpoint_deploy_path(
 
 
 @patch("sagemaker.utils.repack_model")
+@patch("sagemaker.fw_utils.tar_and_upload_dir")
+def test_sharded_model_force_inference_component_based_endpoint_deploy_path(
+    repack_model, tar_and_uload_dir, sagemaker_session
+):
+    framework_model_classes_to_kwargs = {
+        HuggingFaceModel: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+        },
+    }
+
+    sagemaker_session.settings = SessionSettings(include_jumpstart_tags=False)
+
+    source_dir = "s3://blah/blah/blah"
+    for framework_model_class, kwargs in framework_model_classes_to_kwargs.items():
+        test_sharded_model = framework_model_class(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_data=source_dir,
+            **kwargs,
+        )
+        test_sharded_model._is_sharded_model = True
+        test_sharded_model.deploy(
+            instance_type="ml.m2.xlarge",
+            initial_instance_count=INSTANCE_COUNT,
+            endpoint_type=EndpointType.MODEL_BASED,
+            resources=ResourceRequirements(
+                requests={
+                    "num_accelerators": 1,
+                    "memory": 8192,
+                    "copies": 1,
+                },
+                limits={},
+            ),
+        )
+
+        # Verified inference component based endpoint and inference component creation
+        # path
+        sagemaker_session.endpoint_in_service_or_not.assert_called_once()
+        sagemaker_session.create_model.assert_called_once()
+        sagemaker_session.create_inference_component.assert_called_once()
+
+        sagemaker_session.create_inference_component.reset_mock()
+        sagemaker_session.endpoint_in_service_or_not.reset_mock()
+        sagemaker_session.create_model.reset_mock()
+
+
+@patch("sagemaker.utils.repack_model")
 def test_repack_code_location_with_key_prefix(repack_model, sagemaker_session):
 
     code_location = "s3://my-bucket/code/location/"

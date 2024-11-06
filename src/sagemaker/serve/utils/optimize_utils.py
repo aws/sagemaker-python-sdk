@@ -361,16 +361,19 @@ def _is_s3_uri(s3_uri: Optional[str]) -> bool:
 
 
 def _extract_optimization_config_and_env(
-    quantization_config: Optional[Dict] = None, compilation_config: Optional[Dict] = None
-) -> Optional[Tuple[Optional[Dict], Optional[Dict], Optional[Dict]]]:
+    quantization_config: Optional[Dict] = None,
+    compilation_config: Optional[Dict] = None,
+    sharding_config: Optional[Dict] = None,
+) -> Optional[Tuple[Optional[Dict], Optional[Dict], Optional[Dict], Optional[Dict]]]:
     """Extracts optimization config and environment variables.
 
     Args:
         quantization_config (Optional[Dict]): The quantization config.
         compilation_config (Optional[Dict]): The compilation config.
+        sharding_config (Optional[Dict]): The sharding config.
 
     Returns:
-        Optional[Tuple[Optional[Dict], Optional[Dict], Optional[Dict]]]:
+        Optional[Tuple[Optional[Dict], Optional[Dict], Optional[Dict], Optional[Dict]]]:
             The optimization config and environment variables.
     """
     optimization_config = {}
@@ -380,6 +383,7 @@ def _extract_optimization_config_and_env(
     compilation_override_env = (
         compilation_config.get("OverrideEnvironment") if compilation_config else None
     )
+    sharding_override_env = sharding_config.get("OverrideEnvironment") if sharding_config else None
 
     if quantization_config is not None:
         optimization_config["ModelQuantizationConfig"] = quantization_config
@@ -387,12 +391,19 @@ def _extract_optimization_config_and_env(
     if compilation_config is not None:
         optimization_config["ModelCompilationConfig"] = compilation_config
 
+    if sharding_config is not None:
+        optimization_config["ModelShardingConfig"] = sharding_config
+
     # Return optimization config dict and environment variables if either is present
     if optimization_config:
-        return optimization_config, quantization_override_env, compilation_override_env
+        return (
+            optimization_config,
+            quantization_override_env,
+            compilation_override_env,
+            sharding_override_env,
+        )
 
-    return None, None, None
-
+    return None, None, None, None
 
 def _custom_speculative_decoding(
     model: Model,
