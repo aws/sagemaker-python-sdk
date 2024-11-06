@@ -2393,7 +2393,7 @@ class ModelPackage(Model):
         self,
         model_life_cycle: ModelLifeCycle,
     ):
-        """ModelLifeCycle to be set for the model package
+        """Modellifecycle to be set for the model package
 
         Args:
             model_life_cycle (ModelLifeCycle): The current state of model package in its life cycle
