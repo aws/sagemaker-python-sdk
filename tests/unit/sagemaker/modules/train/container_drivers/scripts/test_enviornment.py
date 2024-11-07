@@ -14,10 +14,18 @@
 from __future__ import absolute_import
 
 import os
+import io
+import logging
 
 from unittest.mock import patch
 
-from sagemaker.modules.train.container_drivers.scripts.environment import set_env
+from sagemaker.modules.train.container_drivers.scripts.environment import (
+    set_env,
+    log_key_value,
+    log_env_variables,
+    mask_sensitive_info,
+    HIDDEN_VALUE,
+)
 
 RESOURCE_CONFIG = dict(
     current_host="algo-1",
@@ -127,6 +135,39 @@ def test_set_env(mock_num_cpus, mock_num_gpus, mock_num_neurons):
             assert env_file == expected_env
         os.remove(OUTPUT_FILE)
         assert not os.path.exists(OUTPUT_FILE)
+
+
+@patch.dict(os.environ, {"SECRET_TOKEN": "122345678", "CLEAR_DATA": "123456789"}, clear=True)
+def test_log_env_variables():
+    log_stream = io.StringIO()
+    handler = logging.StreamHandler(log_stream)
+
+    logger = logging.getLogger("sagemaker.modules.train.container_drivers.scripts.environment")
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+    env_vars = {
+        "SM_MODEL_DIR": "/opt/ml/model",
+        "SM_INPUT_DIR": "/opt/ml/input",
+        "SM_HPS": {"batch_size": 32, "learning_rate": 0.001, "access_token": "123456789"},
+        "SM_HP_BATCH_SIZE": 32,
+        "SM_HP_LEARNING_RATE": 0.001,
+        "SM_HP_ACCESS_TOKEN": "123456789",
+    }
+    log_env_variables(env_vars_dict=env_vars)
+
+    log_output = log_stream.getvalue()
+
+    assert f"SECRET_TOKEN={HIDDEN_VALUE}" in log_output
+    assert "CLEAR_DATA=123456789" in log_output
+    assert "SM_MODEL_DIR=/opt/ml/model" in log_output
+    assert (
+        f'SM_HPS={{"batch_size": 32, "learning_rate": 0.001, "access_token": "{HIDDEN_VALUE}"}}'
+        in log_output
+    )
+    assert "SM_HP_BATCH_SIZE=32" in log_output
+    assert "SM_HP_LEARNING_RATE=0.001" in log_output
+    assert f"SM_HP_ACCESS_TOKEN={HIDDEN_VALUE}" in log_output
 
 
 def _remove_extra_lines(string):
