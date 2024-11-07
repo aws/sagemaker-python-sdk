@@ -73,10 +73,6 @@ echo "/opt/ml/input/config/inputdataconfig.json:"
 cat /opt/ml/input/config/inputdataconfig.json
 echo
 
-echo "/opt/ml/input/config/hyperparameters.json:"
-cat /opt/ml/input/config/hyperparameters.json
-echo
-
 echo "/opt/ml/input/data/sm_drivers/sourcecodeconfig.json"
 cat /opt/ml/input/data/sm_drivers/sourcecodeconfig.json
 echo

@@ -47,6 +47,9 @@ HYPERPARAMETERS_CONFIG = f"{SM_INPUT_CONFIG_DIR}/hyperparameters.json"
 
 ENV_OUTPUT_FILE = "/opt/ml/input/data/sm_drivers/scripts/sm_training.env"
 
+SENSITIVE_KEYWORDS = ["SECRET", "PASSWORD", "KEY", "TOKEN", "PRIVATE", "CREDS", "CREDENTIALS"]
+HIDDEN_VALUE = "******"
+
 
 def num_cpus() -> int:
     """Return the number of CPUs available in the current container.
@@ -198,6 +201,50 @@ def set_env(
                 f.write(f"export {key}='{json.dumps(value)}'\n")
             else:
                 f.write(f"export {key}='{value}'\n")
+
+    logger.info("Environment Variables:")
+    log_env_variables(env_vars_dict=env_vars)
+
+
+def mask_sensitive_info(data):
+    """Recursively mask sensitive information in a dictionary."""
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, dict):
+                data[k] = mask_sensitive_info(v)
+            elif isinstance(v, str) and any(
+                keyword.lower() in k.lower() for keyword in SENSITIVE_KEYWORDS
+            ):
+                data[k] = HIDDEN_VALUE
+    return data
+
+
+def log_key_value(key: str, value: str):
+    """Log a key-value pair, masking sensitive values if necessary."""
+    if any(keyword.lower() in key.lower() for keyword in SENSITIVE_KEYWORDS):
+        logger.info("%s=%s", key, HIDDEN_VALUE)
+    elif isinstance(value, dict):
+        masked_value = mask_sensitive_info(value)
+        logger.info("%s=%s", key, json.dumps(masked_value))
+    else:
+        try:
+            decoded_value = json.loads(value)
+            if isinstance(decoded_value, dict):
+                masked_value = mask_sensitive_info(decoded_value)
+                logger.info("%s=%s", key, json.dumps(masked_value))
+            else:
+                logger.info("%s=%s", key, decoded_value)
+        except (json.JSONDecodeError, TypeError):
+            logger.info("%s=%s", key, value)
+
+
+def log_env_variables(env_vars_dict: Dict[str, Any]):
+    """Log Environment Variables from the environment and an env_vars_dict."""
+    for key, value in os.environ.items():
+        log_key_value(key, value)
+
+    for key, value in env_vars_dict.items():
+        log_key_value(key, value)
 
 
 def main():
