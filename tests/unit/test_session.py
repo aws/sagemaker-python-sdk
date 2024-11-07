@@ -5360,6 +5360,11 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
             },
         },
     }
+    model_life_cycle = {
+        "Stage": "Development",
+        "StageStatus": "In-Progress",
+        "StageDescription": "Sending for Staging Verification",
+    }
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -5379,6 +5384,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         task=task,
         skip_model_validation=skip_model_validation,
         model_card=model_card,
+        model_life_cycle=model_life_cycle,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -5401,6 +5407,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "Task": task,
         "SkipModelValidation": skip_model_validation,
         "ModelCard": model_card,
+        "ModelLifeCycle": model_life_cycle,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 

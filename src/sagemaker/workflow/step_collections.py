@@ -98,6 +98,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
         skip_model_validation=None,
         source_uri=None,
         model_card=None,
+        model_life_cycle=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -158,6 +159,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             source_uri (str): The URI of the source for the model package (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super().__init__(name=name, depends_on=depends_on)
@@ -297,6 +299,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            model_life_cycle=model_life_cycle,
             **kwargs,
         )
         if not repack_model:

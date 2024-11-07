@@ -32,6 +32,7 @@ from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.utils import format_tags
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +240,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -292,6 +294,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -333,6 +336,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
 
     def deploy(

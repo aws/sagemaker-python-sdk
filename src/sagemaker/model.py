@@ -90,6 +90,7 @@ from sagemaker.session import (
     get_add_model_package_inference_args,
     get_update_model_package_inference_args,
 )
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 # Setting LOGGER for backward compatibility, in case users import it...
 logger = LOGGER = logging.getLogger("sagemaker")
@@ -473,6 +474,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
         accept_eula: Optional[bool] = None,
         model_type: Optional[JumpStartModelType] = None,
     ):
@@ -528,6 +530,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance or pipeline step arguments
@@ -597,6 +600,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -2384,6 +2388,23 @@ class ModelPackage(Model):
         }
         sagemaker_session = self.sagemaker_session or sagemaker.Session()
         sagemaker_session.sagemaker_client.update_model_package(**update_source_uri_args)
+
+    def update_model_life_cycle(
+        self,
+        model_life_cycle: ModelLifeCycle,
+    ):
+        """Modellifecycle to be set for the model package
+
+        Args:
+            model_life_cycle (ModelLifeCycle): The current state of model package in its life cycle
+
+        """
+        update_model_life_cycle_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "ModelLifeCycle": model_life_cycle,
+        }
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        sagemaker_session.sagemaker_client.update_model_package(**update_model_life_cycle_args)
 
     def remove_customer_metadata_properties(
         self, customer_metadata_properties_to_remove: List[str]
