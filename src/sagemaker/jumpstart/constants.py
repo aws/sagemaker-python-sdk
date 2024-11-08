@@ -138,6 +138,11 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             neo_content_bucket="sagemaker-sd-models-prod-ap-southeast-3",
         ),
         JumpStartLaunchedRegionInfo(
+            region_name="ap-southeast-5",
+            content_bucket="jumpstart-cache-prod-ap-southeast-5",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-5",
+        ),
+        JumpStartLaunchedRegionInfo(
             region_name="eu-west-2",
             content_bucket="jumpstart-cache-prod-eu-west-2",
             gated_content_bucket="jumpstart-private-cache-prod-eu-west-2",
