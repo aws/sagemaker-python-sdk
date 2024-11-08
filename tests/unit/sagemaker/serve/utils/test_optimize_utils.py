@@ -31,6 +31,11 @@ from sagemaker.serve.utils.optimize_utils import (
     _is_optimized,
     _custom_speculative_decoding,
     _is_inferentia_or_trainium,
+    _is_draft_model_gated,
+)
+from tests.unit.sagemaker.serve.constants import (
+    GATED_DRAFT_MODEL_CONFIG,
+    NON_GATED_DRAFT_MODEL_CONFIG,
 )
 
 mock_optimization_job_output = {
@@ -258,6 +263,17 @@ def test_generate_additional_model_data_sources():
 )
 def test_is_s3_uri(s3_uri, expected):
     assert _is_s3_uri(s3_uri) == expected
+
+
+@pytest.mark.parametrize(
+    "draft_model_config, expected",
+    [
+        (GATED_DRAFT_MODEL_CONFIG, NON_GATED_DRAFT_MODEL_CONFIG),
+        (True, False),
+    ],
+)
+def test_is_draft_model_gated(draft_model_config, expected):
+    assert _is_draft_model_gated(draft_model_config, expected)
 
 
 @pytest.mark.parametrize(

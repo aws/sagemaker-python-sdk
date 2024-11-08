@@ -165,3 +165,105 @@ DEPLOYMENT_CONFIGS = [
         },
     },
 ]
+OPTIMIZED_DEPLOYMENT_CONFIG_WITH_GATED_DRAFT_MODEL = {
+    "DeploymentConfigName": "lmi-optimized",
+    "DeploymentArgs": {
+        "ImageUri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+        "djl-inference:0.29.0-lmi11.0.0-cu124",
+        "ModelData": {
+            "S3DataSource": {
+                "S3Uri": "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/"
+                "meta-textgeneration-llama-3-1-70b/artifacts/inference-prepack/v2.0.0/",
+                "S3DataType": "S3Prefix",
+                "CompressionType": "None",
+            }
+        },
+        "ModelPackageArn": None,
+        "Environment": {
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "ENDPOINT_SERVER_TIMEOUT": "3600",
+            "MODEL_CACHE_ROOT": "/opt/ml/model",
+            "SAGEMAKER_ENV": "1",
+            "HF_MODEL_ID": "/opt/ml/model",
+            "OPTION_SPECULATIVE_DRAFT_MODEL": "/opt/ml/additional-model-data-sources/draft_model",
+            "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        },
+        "InstanceType": "ml.g6.2xlarge",
+        "ComputeResourceRequirements": {
+            "MinMemoryRequiredInMb": 131072,
+            "NumberOfAcceleratorDevicesRequired": 1,
+        },
+        "ModelDataDownloadTimeout": 1200,
+        "ContainerStartupHealthCheckTimeout": 1200,
+        "AdditionalDataSources": {
+            "speculative_decoding": [
+                {
+                    "channel_name": "draft_model",
+                    "provider": {"name": "JumpStart", "classification": "gated"},
+                    "artifact_version": "v1",
+                    "hosting_eula_key": "fmhMetadata/eula/llama3_2Eula.txt",
+                    "s3_data_source": {
+                        "s3_uri": "meta-textgeneration/meta-textgeneration-llama-3-2-1b/artifacts/"
+                        "inference-prepack/v1.0.0/",
+                        "compression_type": "None",
+                        "s3_data_type": "S3Prefix",
+                    },
+                }
+            ]
+        },
+    },
+    "AccelerationConfigs": [
+        {
+            "type": "Compilation",
+            "enabled": False,
+            "diy_workflow_overrides": {
+                "gpu-lmi-trt": {
+                    "enabled": False,
+                    "reason": "TRT-LLM 0.11.0 in LMI v11 does not support llama 3.1",
+                }
+            },
+        },
+        {
+            "type": "Speculative-Decoding",
+            "enabled": True,
+            "diy_workflow_overrides": {
+                "gpu-lmi-trt": {
+                    "enabled": False,
+                    "reason": "LMI v11 does not support Speculative Decoding for TRT",
+                }
+            },
+        },
+        {
+            "type": "Quantization",
+            "enabled": False,
+            "diy_workflow_overrides": {
+                "gpu-lmi-trt": {
+                    "enabled": False,
+                    "reason": "TRT-LLM 0.11.0 in LMI v11 does not support llama 3.1",
+                }
+            },
+        },
+    ],
+    "BenchmarkMetrics": {"ml.g6.2xlarge": None},
+}
+GATED_DRAFT_MODEL_CONFIG = {
+    "channel_name": "draft_model",
+    "provider": {"name": "JumpStart", "classification": "gated"},
+    "artifact_version": "v1",
+    "hosting_eula_key": "fmhMetadata/eula/llama3_2Eula.txt",
+    "s3_data_source": {
+        "s3_uri": "meta-textgeneration/meta-textgeneration-llama-3-2-1b/artifacts/"
+        "inference-prepack/v1.0.0/",
+        "compression_type": "None",
+        "s3_data_type": "S3Prefix",
+    },
+}
+NON_GATED_DRAFT_MODEL_CONFIG = {
+    "channel_name": "draft_model",
+    "s3_data_source": {
+        "compression_type": "None",
+        "s3_data_type": "S3Prefix",
+        "s3_uri": "s3://sagemaker-sd-models-beta-us-west-2/"
+        "sagemaker-speculative-decoding-llama3-small-v3/",
+    },
+}

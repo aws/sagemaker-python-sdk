@@ -172,6 +172,60 @@ def _extract_speculative_draft_model_provider(
     return "sagemaker"
 
 
+def _extract_additional_model_data_source_s3_uri(
+    additional_model_data_source: Optional[Dict] = None,
+) -> Optional[str]:
+    """Extracts model data source s3 uri from a model data source in Pascal case.
+
+    Args:
+        additional_model_data_source (Optional[Dict]): A model data source.
+
+    Returns:
+        str: S3 uri of the model resources.
+    """
+    if (
+        additional_model_data_source is None
+        or additional_model_data_source.get("S3DataSource", None) is None
+    ):
+        return None
+
+    return additional_model_data_source.get("S3DataSource").get("S3Uri", None)
+
+
+def _extract_deployment_config_additional_model_data_source_s3_uri(
+    additional_model_data_source: Optional[Dict] = None,
+) -> Optional[str]:
+    """Extracts model data source s3 uri from a model data source in snake case.
+
+    Args:
+        additional_model_data_source (Optional[Dict]): A model data source.
+
+    Returns:
+        str: S3 uri of the model resources.
+    """
+    if (
+        additional_model_data_source is None
+        or additional_model_data_source.get("s3_data_source", None) is None
+    ):
+        return None
+
+    return additional_model_data_source.get("s3_data_source").get("s3_uri", None)
+
+
+def _is_draft_model_gated(
+    draft_model_config: Optional[Dict] = None,
+) -> bool:
+    """Extracts model gated-ness from draft model data source.
+
+    Args:
+        draft_model_config (Optional[Dict]): A model data source.
+
+    Returns:
+        bool: Whether the draft model is gated or not.
+    """
+    return draft_model_config.get("hosting_eula_key", None)
+
+
 def _extracts_and_validates_speculative_model_source(
     speculative_decoding_config: Dict,
 ) -> str:
@@ -289,7 +343,7 @@ def _extract_optimization_config_and_env(
     if optimization_config:
         return optimization_config, quantization_override_env, compilation_override_env
 
-    return None, None, None
+    return {}, None, None
 
 
 def _custom_speculative_decoding(
@@ -310,6 +364,8 @@ def _custom_speculative_decoding(
             speculative_decoding_config
         )
 
+        accept_eula = speculative_decoding_config.get("AcceptEula", False)
+
         if _is_s3_uri(additional_model_source):
             channel_name = _generate_channel_name(model.additional_model_data_sources)
             speculative_draft_model = f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}"
@@ -326,3 +382,78 @@ def _custom_speculative_decoding(
         )
 
     return model
+
+
+def _validate_and_set_eula_for_draft_model_sources(
+    pysdk_model: Model,
+    accept_eula: bool = False,
+):
+    """Validates whether the EULA has been accepted for gated additional draft model sources.
+
+    If accepted, updates the model data source's model access config.
+
+    Args:
+        pysdk_model (Model): The model whose additional model data sources to check.
+        accept_eula (bool): EULA acceptance for the draft model.
+    """
+    if not pysdk_model:
+        return
+
+    deployment_config_draft_model_sources = (
+        pysdk_model.deployment_config.get("DeploymentArgs", {})
+        .get("AdditionalDataSources", {})
+        .get("speculative_decoding", [])
+        if pysdk_model.deployment_config
+        else None
+    )
+    pysdk_model_additional_model_sources = pysdk_model.additional_model_data_sources
+
+    if not deployment_config_draft_model_sources or not pysdk_model_additional_model_sources:
+        return
+
+    # Gated/ungated classification is only available through deployment_config.
+    # Thus we must check each draft model in the deployment_config and see if it is set
+    # as an additional model data source on the PySDK model itself.
+    model_access_config_updated = False
+    for source in deployment_config_draft_model_sources:
+        if source.get("channel_name") != "draft_model":
+            continue
+
+        if not _is_draft_model_gated(source):
+            continue
+
+        deployment_config_draft_model_source_s3_uri = (
+            _extract_deployment_config_additional_model_data_source_s3_uri(source)
+        )
+
+        # If EULA is accepted, proceed with modifying the draft model data source
+        for additional_source in pysdk_model_additional_model_sources:
+            if additional_source.get("ChannelName") != "draft_model":
+                continue
+
+            # Verify the pysdk model source and deployment config model source match
+            pysdk_model_source_s3_uri = _extract_additional_model_data_source_s3_uri(
+                additional_source
+            )
+            if deployment_config_draft_model_source_s3_uri not in pysdk_model_source_s3_uri:
+                continue
+
+            if not accept_eula:
+                raise ValueError(
+                    "Gated draft model requires accepting end-user license agreement (EULA)."
+                )
+
+            # Set ModelAccessConfig.AcceptEula to True
+            updated_source = additional_source.copy()
+            updated_source["S3DataSource"]["ModelAccessConfig"] = {"AcceptEula": True}
+
+            index = pysdk_model.additional_model_data_sources.index(additional_source)
+            pysdk_model.additional_model_data_sources[index] = updated_source
+
+            model_access_config_updated = True
+            break
+
+        if model_access_config_updated:
+            break
+
+    return

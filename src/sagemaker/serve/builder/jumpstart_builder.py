@@ -48,6 +48,7 @@ from sagemaker.serve.utils.optimize_utils import (
     _custom_speculative_decoding,
     SPECULATIVE_DRAFT_MODEL,
     _is_inferentia_or_trainium,
+    _validate_and_set_eula_for_draft_model_sources,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -733,10 +734,6 @@ class JumpStart(ABC):
         if (
             not optimization_config or not optimization_config.get("ModelCompilationConfig")
         ) and is_compilation:
-            # Ensure optimization_config exists
-            if not optimization_config:
-                optimization_config = {}
-
             # Fallback to default if override_env is None or empty
             if not compilation_override_env:
                 compilation_override_env = pysdk_model_env_vars
@@ -866,6 +863,11 @@ class JumpStart(ABC):
                         raise ValueError(
                             "Cannot find deployment config compatible for optimization job."
                         )
+
+                _validate_and_set_eula_for_draft_model_sources(
+                    pysdk_model=self.pysdk_model,
+                    accept_eula=speculative_decoding_config.get("AcceptEula"),
+                )
 
                 self.pysdk_model.env.update(
                     {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}"}

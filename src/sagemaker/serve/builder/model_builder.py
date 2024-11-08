@@ -99,6 +99,7 @@ from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
 from sagemaker.utils import Tags
+from sagemaker.serve.utils.optimize_utils import _validate_and_set_eula_for_draft_model_sources
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import (
     get_huggingface_model_metadata,
@@ -588,6 +589,21 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                     instance_type=instance_type,
                     model_server=self.model_server,
                 )
+
+            if self.deployment_config:
+                accept_draft_model_eula = kwargs.get("accept_draft_model_eula", False)
+                try:
+                    _validate_and_set_eula_for_draft_model_sources(
+                        pysdk_model=self,
+                        accept_eula=accept_draft_model_eula,
+                    )
+                except ValueError as e:
+                    logger.error(
+                        "This deployment tried to use a gated draft model but the EULA was not "
+                        "accepted. Please review the EULA, set accept_draft_model_eula to True, "
+                        "and try again."
+                    )
+                    raise e
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
