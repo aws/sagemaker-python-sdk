@@ -1083,7 +1083,7 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
 
     SERIALIZATION_EXCLUSION_SET: Set[str] = set()
 
-    __slots__ = ["channel_name", "s3_data_source"]
+    __slots__ = ["channel_name", "s3_data_source", "hosting_eula_key"]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a AdditionalModelDataSource object.
@@ -1101,6 +1101,7 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
         """
         self.channel_name: str = json_obj["channel_name"]
         self.s3_data_source: S3DataSource = S3DataSource(json_obj["s3_data_source"])
+        self.hosting_eula_key: str = json_obj.get("hosting_eula_key")
 
     def to_json(self, exclude_keys=True) -> Dict[str, Any]:
         """Returns json representation of AdditionalModelDataSource object."""
@@ -2116,6 +2117,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "hub_content_type",
         "model_reference_arn",
         "specs",
+        "accept_draft_model_eula",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2131,6 +2133,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "training_instance_type",
         "config_name",
         "hub_content_type",
+        "accept_draft_model_eula",
     }
 
     def __init__(
@@ -2165,6 +2168,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         resources: Optional[ResourceRequirements] = None,
         config_name: Optional[str] = None,
         additional_model_data_sources: Optional[Dict[str, Any]] = None,
+        accept_draft_model_eula: Optional[bool] = False
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -2198,6 +2202,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.resources = resources
         self.config_name = config_name
         self.additional_model_data_sources = additional_model_data_sources
+        self.accept_draft_model_eula = accept_draft_model_eula
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):

@@ -111,6 +111,7 @@ class JumpStartModel(Model):
         resources: Optional[ResourceRequirements] = None,
         config_name: Optional[str] = None,
         additional_model_data_sources: Optional[Dict[str, Any]] = None,
+        accept_draft_model_eula: Optional[bool] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -301,6 +302,10 @@ class JumpStartModel(Model):
                 optionally applied to the model.
             additional_model_data_sources (Optional[Dict[str, Any]]): Additional location
                 of SageMaker model data (default: None).
+            accept_draft_model_eula (bool): For draft models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_draft_model_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -360,6 +365,7 @@ class JumpStartModel(Model):
             resources=resources,
             config_name=config_name,
             additional_model_data_sources=additional_model_data_sources,
+            accept_draft_model_eula=accept_draft_model_eula
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -456,7 +462,9 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
         )
 
-    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
+    def set_deployment_config(
+        self, config_name: str, instance_type: str, accept_draft_model_eula: Optional[bool] = False
+    ) -> None:
         """Sets the deployment config to apply to the model.
 
         Args:
@@ -466,6 +474,8 @@ class JumpStartModel(Model):
             instance_type (str):
                 The instance_type that the model will use after setting
                 the config.
+            accept_draft_model_eula (Optional[bool]):
+                If the config selected comes with a gated additional model data source.
         """
         self.__init__(
             model_id=self.model_id,
@@ -474,6 +484,7 @@ class JumpStartModel(Model):
             config_name=config_name,
             sagemaker_session=self.sagemaker_session,
             role=self.role,
+            accept_draft_model_eula=accept_draft_model_eula,
         )
 
     @property
@@ -540,12 +551,16 @@ class JumpStartModel(Model):
         inferred_model_id = inferred_model_version = inferred_inference_component_name = None
 
         if inference_component_name is None or model_id is None or model_version is None:
-            inferred_model_id, inferred_model_version, inferred_inference_component_name, _, _ = (
-                get_model_info_from_endpoint(
-                    endpoint_name=endpoint_name,
-                    inference_component_name=inference_component_name,
-                    sagemaker_session=sagemaker_session,
-                )
+            (
+                inferred_model_id,
+                inferred_model_version,
+                inferred_inference_component_name,
+                _,
+                _,
+            ) = get_model_info_from_endpoint(
+                endpoint_name=endpoint_name,
+                inference_component_name=inference_component_name,
+                sagemaker_session=sagemaker_session,
             )
 
         model_id = model_id or inferred_model_id
@@ -1016,10 +1031,11 @@ class JumpStartModel(Model):
                 )
 
             if metadata_config.benchmark_metrics:
-                err, metadata_config.benchmark_metrics = (
-                    add_instance_rate_stats_to_benchmark_metrics(
-                        self.region, metadata_config.benchmark_metrics
-                    )
+                (
+                    err,
+                    metadata_config.benchmark_metrics,
+                ) = add_instance_rate_stats_to_benchmark_metrics(
+                    self.region, metadata_config.benchmark_metrics
                 )
 
             config_components = metadata_config.config_components.get(config_name)
@@ -1042,6 +1058,7 @@ class JumpStartModel(Model):
                 region=self.region,
                 model_version=self.model_version,
                 hub_arn=self.hub_arn,
+                accept_draft_model_eula=True,
             )
             deploy_kwargs = get_deploy_kwargs(
                 model_id=self.model_id,
