@@ -9,23 +9,25 @@ information to effectively respond to your bug report or contribution.
 
 ## Table of Contents
 
-* [Report Bugs/Feature Requests](#report-bugsfeature-requests)
-* [Contribute via Pull Requests (PRs)](#contribute-via-pull-requests-prs)
-  * [Set up Your Development Environment *[Optional, but Recommended]*](#set-up-your-development-environment-optional-but-recommended)
-  * [Pull Down the Code](#pull-down-the-code)
-  * [Run the Unit Tests](#run-the-unit-tests)
-  * [Run the Integration Tests](#run-the-integration-tests)
-  * [Make and Test Your Change](#make-and-test-your-change)
-  * [Commit Your Change](#commit-your-change)
-  * [Send a Pull Request](#send-a-pull-request)
-* [Documentation Guidelines](#documentation-guidelines)
-  * [Overviews](#overviews)
-  * [API References (docstrings)](#api-references-docstrings)
-  * [Build and Test Documentation](#build-and-test-documentation)
-* [Find Contributions to Work On](#find-contributions-to-work-on)
-* [Code of Conduct](#code-of-conduct)
-* [Security Issue Notifications](#security-issue-notifications)
-* [Licensing](#licensing)
+- [Contributing Guidelines](#contributing-guidelines)
+  - [Table of Contents](#table-of-contents)
+  - [Report Bugs/Feature Requests](#report-bugsfeature-requests)
+  - [Contribute via Pull Requests (PRs)](#contribute-via-pull-requests-prs)
+    - [Set up Your Development Environment *\[Optional, but Recommended\]*](#set-up-your-development-environment-optional-but-recommended)
+    - [Pull Down the Code](#pull-down-the-code)
+    - [Run the Unit Tests](#run-the-unit-tests)
+    - [Run the Integration Tests](#run-the-integration-tests)
+    - [Make and Test Your Change](#make-and-test-your-change)
+    - [Commit Your Change](#commit-your-change)
+    - [Send a Pull Request](#send-a-pull-request)
+  - [Documentation Guidelines](#documentation-guidelines)
+    - [Overviews](#overviews)
+    - [API References (docstrings)](#api-references-docstrings)
+    - [Build and Test Documentation](#build-and-test-documentation)
+  - [Find Contributions to Work On](#find-contributions-to-work-on)
+  - [Code of Conduct](#code-of-conduct)
+  - [Security Issue Notifications](#security-issue-notifications)
+  - [Licensing](#licensing)
 
 ## Report Bugs/Feature Requests
 
@@ -76,7 +78,7 @@ Before sending us a pull request, please ensure that:
 1. Install tox using `pip install tox`
 1. Install coverage using `pip install .[test]`
 1. cd into the sagemaker-python-sdk folder: `cd sagemaker-python-sdk` or `cd /environment/sagemaker-python-sdk`
-1. Run the following tox command and verify that all code checks and unit tests pass: `tox tests/unit`
+1. Run the following tox command and verify that all code checks and unit tests pass: `tox -- tests/unit`
 1. You can also run a single test with the following command: `tox -e py310 -- -s -vv <path_to_file><file_name>::<test_function_name>`
 1. You can run coverage via runcvoerage env : `tox -e runcoverage -- tests/unit` or `tox -e py310 -- tests/unit --cov=sagemaker --cov-append --cov-report xml`
   * Note that the coverage test will fail if you only run a single test, so make sure to surround the command with `export IGNORE_COVERAGE=-` and `unset IGNORE_COVERAGE`
