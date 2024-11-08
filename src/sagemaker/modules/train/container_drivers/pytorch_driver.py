@@ -20,6 +20,7 @@ from typing import List, Tuple
 from utils import (
     logger,
     read_source_code_config_json,
+    read_distribution_json,
     get_process_count,
     get_python_executable,
     SM_EFA_NCCL_INSTANCES,
@@ -62,8 +63,9 @@ def setup_env():
 def create_commands():
     """Create the Torch Distributed command to execute"""
     source_code_config = read_source_code_config_json()
+    distribution = read_distribution_json()
 
-    process_count = get_process_count(source_code_config)
+    process_count = get_process_count(distribution)
     host_count = int(os.environ["SM_HOST_COUNT"])
 
     torch_cmd = []

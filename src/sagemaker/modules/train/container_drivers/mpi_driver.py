@@ -19,6 +19,7 @@ import json
 from utils import (
     logger,
     read_source_code_config_json,
+    read_distribution_json,
     get_process_count,
     execute_commands,
     write_failure_file,
@@ -55,7 +56,7 @@ def main():
 
     """
     source_code_config = read_source_code_config_json()
-    distribution = source_code_config.get("distribution", {})
+    distribution = read_distribution_json()
     sm_distributed_settings = distribution.get("smdistributed_settings", {})
 
     sm_current_host = os.environ["SM_CURRENT_HOST"]
@@ -73,7 +74,7 @@ def main():
 
         host_list = json.loads(os.environ["SM_HOSTS"])
         host_count = int(os.environ["SM_HOST_COUNT"])
-        process_count = get_process_count(source_code_config)
+        process_count = get_process_count(distribution)
 
         if process_count > 1:
             host_list = ["{}:{}".format(host, process_count) for host in host_list]
