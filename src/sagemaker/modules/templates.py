@@ -77,6 +77,10 @@ echo "/opt/ml/input/data/sm_drivers/sourcecodeconfig.json"
 cat /opt/ml/input/data/sm_drivers/sourcecodeconfig.json
 echo
 
+echo "/opt/ml/input/data/sm_drivers/distribution.json"
+cat /opt/ml/input/data/sm_drivers/distribution.json
+echo
+
 echo "Setting up environment variables"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/scripts/environment.py
 source /opt/ml/input/data/sm_drivers/scripts/sm_training.env

@@ -26,6 +26,7 @@ SM_DRIVERS_LOCAL_PATH = os.path.join(
 )
 
 SOURCE_CODE_CONFIG_JSON = "sourcecodeconfig.json"
+DISTRIBUTION_JSON = "distribution.json"
 TRAIN_SCRIPT = "sm_train.sh"
 
 DEFAULT_CONTAINER_ENTRYPOINT = ["/bin/bash"]

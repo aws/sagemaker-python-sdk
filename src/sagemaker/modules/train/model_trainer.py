@@ -70,6 +70,7 @@ from sagemaker.modules.constants import (
     DEFAULT_CONTAINER_ENTRYPOINT,
     DEFAULT_CONTAINER_ARGUMENTS,
     SOURCE_CODE_CONFIG_JSON,
+    DISTRIBUTION_JSON,
 )
 from sagemaker.modules.templates import (
     TRAIN_SCRIPT_TEMPLATE,
@@ -385,6 +386,7 @@ class ModelTrainer(BaseModel):
 
             self._prepare_train_script(
                 source_code_config=self.source_code_config,
+                distribution_config=self.distribution_config,
             )
             if self.distribution_config:
                 smd_modelparallel_parameters = getattr(
@@ -397,6 +399,8 @@ class ModelTrainer(BaseModel):
                         smd_modelparallel_parameters
                     )
             self._write_source_code_config_json(self.source_code_config)
+            if self.distribution_config:
+                self._write_distribution_config_json(self.distribution_config)
 
             # Create an input channel for drivers packaged by the sdk
             sm_drivers_channel = self.create_input_data_channel(SM_DRIVERS, SM_DRIVERS_LOCAL_PATH)
@@ -554,6 +558,14 @@ class ModelTrainer(BaseModel):
         file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, SOURCE_CODE_CONFIG_JSON)
         with open(file_path, "w") as f:
             f.write(source_code_config.model_dump_json())
+
+    def _write_distribution_config_json(
+        self, distribution: Union[MPIDistributionConfig, TorchDistributionConfig]
+    ):
+        """Write the distribution configuration to a JSON file."""
+        file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, DISTRIBUTION_JSON)
+        with open(file_path, "w") as f:
+            f.write(distribution.model_dump_json())
 
     def _prepare_train_script(
         self,

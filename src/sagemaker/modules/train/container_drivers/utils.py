@@ -36,8 +36,9 @@ For more details, see CloudWatch logs at 'aws/sagemaker/TrainingJobs'.
 TrainingJob - {os.environ['TRAINING_JOB_NAME']}
 """
 
-USER_CODE_PATH = "/opt/ml/input/data/code"
-SOURCE_CODE_CONFIG_JSON = "/opt/ml/input/data/sm_code/sourcecodeconfig.json"
+USER_CODE_PATH = "/opt/ml/input/data/sm_code"
+SOURCE_CODE_CONFIG_JSON = "/opt/ml/input/data/sm_drivers/sourcecodeconfig.json"
+DISTRIBUTION_JSON = "/opt/ml/input/data/sm_drivers/distribution.json"
 
 SM_EFA_NCCL_INSTANCES = [
     "ml.g4dn.8xlarge",
@@ -67,19 +68,25 @@ def write_failure_file(message: str = DEFAULT_FAILURE_MESSAGE):
 def read_source_code_config_json(source_code_config_file: Dict[str, Any] = SOURCE_CODE_CONFIG_JSON):
     """Read the source code config json file."""
     with open(source_code_config_file, "r") as f:
-        distribution_config = json.load(f)
-    return distribution_config
+        source_code_config_json = json.load(f)
+    return source_code_config_json
 
 
-def get_process_count(source_code_config: Dict[str, Any]) -> int:
+def read_distribution_json(distribution_file: Dict[str, Any] = DISTRIBUTION_JSON):
+    """Read the distribution json file."""
+    with open(distribution_file, "r") as f:
+        distribution_json = json.load(f)
+    return distribution_json
+
+
+def get_process_count(distribution: Dict[str, Any]) -> int:
     """Get the number of processes to run on each node in the training job."""
-    if source_code_config.get("distribution", {}).get("process_count_per_node") is not None:
-        return int(source_code_config["distribution"]["process_count_per_node"])
-    if os.environ.get("SM_NUM_GPUS") is not None:
-        return int(os.environ["SM_NUM_GPUS"])
-    if os.environ.get("SM_NUM_NEURONS") is not None:
-        return int(os.environ["SM_NUM_NEURONS"])
-    return 1  # Default to 1 process per node
+    return (
+        int(distribution.get("process_count_per_node", 0))
+        or int(os.environ.get("SM_NUM_GPUS", 0))
+        or int(os.environ.get("SM_NUM_NEURONS", 0))
+        or 1
+    )
 
 
 def get_python_executable() -> str:
