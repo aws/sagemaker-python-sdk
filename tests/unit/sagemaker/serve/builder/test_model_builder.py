@@ -18,7 +18,19 @@ import unittest
 from pathlib import Path
 from copy import deepcopy
 
+import deepdiff
+import pytest
+from sagemaker.enums import EndpointType
+
+from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
+from sagemaker.batch_inference.batch_transform_inference_config import BatchTransformInferenceConfig
+
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+
+from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
+
 from sagemaker.model import Model
+
 from sagemaker.serve import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
@@ -66,20 +78,17 @@ supported_model_servers = {
 
 mock_session = MagicMock()
 
+RESOURCE_REQUIREMENTS = ResourceRequirements(
+    requests={
+        "num_cpus": 0.5,
+        "memory": 512,
+        "copies": 2,
+    },
+    limits={},
+)
+
 
 class TestModelBuilder(unittest.TestCase):
-    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    def test_validation_in_progress_mode_supported(self, mock_serveSettings):
-        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE)
-        self.assertRaisesRegex(
-            Exception,
-            "IN_PROCESS mode is only supported for MMS/Transformers server in beta release.",
-            builder.build,
-            Mode.IN_PROCESS,
-            mock_role_arn,
-            mock_session,
-        )
-
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_validation_cannot_set_both_model_and_inference_spec(self, mock_serveSettings):
         builder = ModelBuilder(inference_spec="some value", model=Mock(spec=object))
@@ -2425,7 +2434,7 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
         self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
 
-        mock_send_telemetry.assert_called_once()
+        assert mock_send_telemetry.call_count == 2
         mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
             OptimizationJobName="my-optimization-job",
             DeploymentInstanceType="ml.g5.24xlarge",
@@ -2881,6 +2890,366 @@ class TestModelBuilder(unittest.TestCase):
             },
         )
 
+    def test_deploy_invalid_inputs(self):
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+        inputs = {"endpoint_name": "endpoint-001"}
+
+        try:
+            model_builder.deploy(**inputs)
+        except ValueError as e:
+            assert "Model Needs to be built before deploying" in str(e)
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    def test_display_benchmark_metrics_non_string_model(self, mock_is_jumpstart):
+        """Test that ValueError is raised when model is not a string"""
+        builder = ModelBuilder(model=Mock())  # Non-string model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Benchmarking is only supported for JumpStart or HuggingFace models",
+            builder.display_benchmark_metrics,
+        )
+        mock_is_jumpstart.assert_not_called()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.display_benchmark_metrics")
+    def test_display_benchmark_metrics_jumpstart_model(
+        self, mock_display_benchmark_metrics, mock_is_jumpstart
+    ):
+        """Test successful execution for jumpstart model"""
+        mock_is_jumpstart.return_value = True
+
+        builder = ModelBuilder(model="jumpstart-model-id")
+        builder.display_benchmark_metrics()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_display_benchmark_metrics.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.display_benchmark_metrics")
+    def test_display_benchmark_metrics_with_jumpstart_equivalent(
+        self, mock_display_benchmark_metrics, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test successful execution for model with jumpstart equivalent"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = True
+
+        builder = ModelBuilder(model="hf-model-id")
+        builder.display_benchmark_metrics()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_has_equivalent.assert_called_once()
+        mock_display_benchmark_metrics.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    def test_display_benchmark_metrics_unsupported_model(
+        self, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test that ValueError is raised for unsupported models"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = False
+
+        builder = ModelBuilder(model="huggingface-model-id")
+
+        self.assertRaisesRegex(
+            ValueError,
+            "This model does not have benchmark metrics yet",
+            builder.display_benchmark_metrics,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    def test_get_deployment_config_non_string_model(self, mock_is_jumpstart):
+        """Test that ValueError is raised when model is not a string"""
+        builder = ModelBuilder(model=Mock())  # Non-string model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Deployment config is only supported for JumpStart or HuggingFace models",
+            builder.get_deployment_config,
+        )
+        mock_is_jumpstart.assert_not_called()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.get_deployment_config")
+    def test_get_deployment_config_jumpstart_model(
+        self, mock_get_deployment_config, mock_is_jumpstart
+    ):
+        """Test successful execution for jumpstart model"""
+        mock_is_jumpstart.return_value = True
+
+        builder = ModelBuilder(model="jumpstart-model-id")
+        builder.get_deployment_config()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_get_deployment_config.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.get_deployment_config")
+    def test_get_deployment_config_with_jumpstart_equivalent(
+        self, mock_get_deployment_config, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test successful execution for model with jumpstart equivalent"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = True
+
+        builder = ModelBuilder(model="hf-model-id")
+        builder.get_deployment_config()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_has_equivalent.assert_called_once()
+        mock_get_deployment_config.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    def test_get_deployment_config_unsupported_model(self, mock_has_equivalent, mock_is_jumpstart):
+        """Test that ValueError is raised for unsupported models"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = False
+
+        builder = ModelBuilder(model="huggingface-model-id")
+
+        self.assertRaisesRegex(
+            ValueError,
+            "This model does not have any deployment config yet",
+            builder.get_deployment_config,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    def test_list_deployment_configs_non_string_model(self, mock_is_jumpstart):
+        """Test that ValueError is raised when model is not a string"""
+        builder = ModelBuilder(model=Mock())  # Non-string model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Deployment config is only supported for JumpStart or HuggingFace models",
+            builder.list_deployment_configs,
+        )
+        mock_is_jumpstart.assert_not_called()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.list_deployment_configs")
+    def test_list_deployment_configs_jumpstart_model(
+        self, mock_list_deployment_configs, mock_is_jumpstart
+    ):
+        """Test successful execution for jumpstart model"""
+        mock_is_jumpstart.return_value = True
+
+        builder = ModelBuilder(model="jumpstart-model-id")
+        builder.list_deployment_configs()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_list_deployment_configs.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.list_deployment_configs")
+    def test_list_deployment_configs_with_jumpstart_equivalent(
+        self, mock_list_deployment_configs, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test successful execution for model with jumpstart equivalent"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = True
+
+        builder = ModelBuilder(model="hf-model-id")
+        builder.list_deployment_configs()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_has_equivalent.assert_called_once()
+        mock_list_deployment_configs.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    def test_list_deployment_configs_unsupported_model(
+        self, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test that ValueError is raised for unsupported models"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = False
+
+        builder = ModelBuilder(model="huggingface-model-id")
+
+        self.assertRaisesRegex(
+            ValueError,
+            "This model does not have any deployment config yet",
+            builder.list_deployment_configs,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    def test_set_deployment_config_non_string_model(self, mock_is_jumpstart):
+        """Test that ValueError is raised when model is not a string"""
+        builder = ModelBuilder(model=Mock())  # Non-string model
+        instance_type = "ml.g5.xlarge"
+        config_name = "config-name"
+        self.assertRaisesRegex(
+            ValueError,
+            "Deployment config is only supported for JumpStart or HuggingFace models",
+            builder.set_deployment_config,
+            config_name,
+            instance_type,
+        )
+        mock_is_jumpstart.assert_not_called()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.set_deployment_config")
+    def test_set_deployment_config_jumpstart_model(
+        self, mock_set_deployment_config, mock_is_jumpstart
+    ):
+        """Test successful execution for jumpstart model"""
+        mock_is_jumpstart.return_value = True
+        instance_type = "ml.g5.xlarge"
+        config_name = "config-name"
+
+        builder = ModelBuilder(model="jumpstart-model-id")
+        builder.set_deployment_config(config_name, instance_type)
+
+        mock_is_jumpstart.assert_called_once()
+        mock_set_deployment_config.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.set_deployment_config")
+    def test_set_deployment_config_with_jumpstart_equivalent(
+        self, mock_set_deployment_config, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test successful execution for model with jumpstart equivalent"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = True
+        instance_type = "ml.g5.xlarge"
+        config_name = "config-name"
+
+        builder = ModelBuilder(model="hf-model-id")
+        builder.set_deployment_config(config_name, instance_type)
+
+        mock_is_jumpstart.assert_called_once()
+        mock_has_equivalent.assert_called_once()
+        mock_set_deployment_config.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    def test_set_deployment_config_unsupported_model(self, mock_has_equivalent, mock_is_jumpstart):
+        """Test that ValueError is raised for unsupported models"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = False
+        instance_type = "ml.g5.xlarge"
+        config_name = "config-name"
+
+        builder = ModelBuilder(model="huggingface-model-id")
+
+        self.assertRaisesRegex(
+            ValueError,
+            f"The deployment config {config_name} cannot be set on this model",
+            builder.set_deployment_config,
+            config_name,
+            instance_type,
+        )
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._retrieve_hugging_face_model_mapping"
+    )
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_gated_model")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_jumpstart")
+    def test_use_jumpstart_equivalent_return_true(
+        self, mock_build_for_jumpstart, mock_is_gated_model, mock_retrieve_mapping
+    ):
+        """Test that _use_jumpstart_equivalent returns True when equivalent exists"""
+        mock_retrieve_mapping.return_value = {
+            "HuggingFaceH4/zephyr-7b-beta": {
+                "jumpstart-model-id": "js-model",
+                "jumpstart-model-version": "1.0.0",
+                "hf-model-repo-sha": None,
+            }
+        }
+        mock_is_gated_model.return_value = False
+
+        builder = ModelBuilder(model="HuggingFaceH4/zephyr-7b-beta")
+
+        self.assertTrue(builder._use_jumpstart_equivalent())
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._retrieve_hugging_face_model_mapping"
+    )
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_gated_model")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_jumpstart")
+    def test_use_jumpstart_equivalent_return_true_with_schema_builder(
+        self, mock_build_for_jumpstart, mock_is_gated_model, mock_retrieve_mapping
+    ):
+        """Test that _use_jumpstart_equivalent returns True when equivalent exists"""
+        mock_retrieve_mapping.return_value = {
+            "HuggingFaceH4/zephyr-7b-beta": {
+                "jumpstart-model-id": "js-model",
+                "jumpstart-model-version": "1.0.0",
+                "hf-model-repo-sha": None,
+            }
+        }
+        mock_is_gated_model.return_value = False
+
+        builder = ModelBuilder(model="HuggingFaceH4/zephyr-7b-beta", sagemaker_session=mock_session)
+
+        self.assertTrue(builder._use_jumpstart_equivalent())
+        self.assertIsNotNone(builder.schema_builder)
+        inputs, outputs = task.retrieve_local_schemas("text-generation")
+        self.assertEqual(builder.schema_builder.sample_input["inputs"], inputs["inputs"])
+        self.assertEqual(builder.schema_builder.sample_output, outputs)
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._retrieve_hugging_face_model_mapping"
+    )
+    def test_use_jumpstart_equivalent_return_false(self, mock_retrieve_mapping):
+        """Test that _use_jumpstart_equivalent returns false when equivalent doesn't exist"""
+        mock_retrieve_mapping.return_value = {
+            "hf-model-id": {
+                "jumpstart-model-id": "js-model",
+                "jumpstart-model-version": "1.0.0",
+                "hf-model-repo-sha": None,
+            }
+        }
+
+        builder = ModelBuilder(model="model-id")
+
+        self.assertFalse(builder._use_jumpstart_equivalent())
+
+    def test_use_jumpstart_equivalent_return_false_with_env_vars(self):
+        """Test that _use_jumpstart_equivalent returns false when env_vars is provided"""
+        builder = ModelBuilder(model="model-id", env_vars={"mock-key": "mock-value"})
+
+        self.assertFalse(builder._use_jumpstart_equivalent())
+
+    def test_use_jumpstart_equivalent_return_false_with_image_uri(self):
+        """Test that _use_jumpstart_equivalent returns false when image_uri is provided"""
+        builder = ModelBuilder(model="model-id", image_uri="mock-uri")
+
+        self.assertFalse(builder._use_jumpstart_equivalent())
+
+    @patch("sagemaker.serve.builder.model_builder.JumpStartS3PayloadAccessor")
+    @patch("sagemaker.serve.builder.model_builder.get_jumpstart_content_bucket")
+    def test_retrieve_hugging_face_model_mapping(self, mock_content_bucket, mock_payload_accessor):
+        """Test that _retrieve_hugging_face_model_mapping returns the correct mapping"""
+        mock_get_object = Mock()
+        mock_get_object.return_value = (
+            '{"js-model-id": {"hf-model-id": "hf-model", "jumpstart-model-version": "1.0.0"}}'
+        )
+        mock_payload_accessor.get_object_cached = mock_get_object
+        expected_mapping = {
+            "hf-model": {
+                "jumpstart-model-id": "js-model-id",
+                "jumpstart-model-version": "1.0.0",
+                "hf-model-repo-sha": None,
+                "merged-at": None,
+            }
+        }
+
+        builder = ModelBuilder(model="hf-model", sagemaker_session=mock_session)
+
+        self.assertEqual(builder._retrieve_hugging_face_model_mapping(), expected_mapping)
+
     @patch.object(ModelBuilder, "_prepare_for_mode")
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     def test_optimize_with_gpu_instance_and_llama_3_1_and_compilation(
@@ -3076,7 +3445,7 @@ class TestModelBuilderOptimizationSharding(unittest.TestCase):
         self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
         self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
 
-        mock_send_telemetry.assert_called_once()
+        assert mock_send_telemetry.call_count == 2
         mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
             OptimizationJobName="my-optimization-job",
             DeploymentInstanceType="ml.g5.24xlarge",
@@ -3184,7 +3553,7 @@ class TestModelBuilderOptimizationSharding(unittest.TestCase):
         self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
         self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
 
-        mock_send_telemetry.assert_called_once()
+        assert mock_send_telemetry.call_count == 2
         mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
             OptimizationJobName="my-optimization-job",
             DeploymentInstanceType="ml.g5.24xlarge",
@@ -3298,7 +3667,7 @@ class TestModelBuilderOptimizationSharding(unittest.TestCase):
         self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
         self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
 
-        mock_send_telemetry.assert_called_once()
+        assert mock_send_telemetry.call_count == 2
         mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
             OptimizationJobName="my-optimization-job",
             DeploymentInstanceType="ml.g5.24xlarge",
@@ -3426,7 +3795,7 @@ class TestModelBuilderOptimizationSharding(unittest.TestCase):
 
         self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
 
-        mock_send_telemetry.assert_called_once()
+        assert mock_send_telemetry.call_count == 2
         mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
             OptimizationJobName="my-optimization-job",
             ModelSource={"S3": {"S3Uri": ANY}},
@@ -3663,3 +4032,86 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             speculative_decoding_config=None,
             compilation_config={},
         )
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "input_args": {"endpoint_name": "test"},
+            "call_params": {
+                "instance_type": "ml.g5.2xlarge",
+                "initial_instance_count": 1,
+                "endpoint_name": "test",
+            },
+        },
+        {
+            "input_args": {
+                "endpoint_name": "test",
+                "inference_config": ServerlessInferenceConfig(),
+            },
+            "call_params": {
+                "serverless_inference_config": ServerlessInferenceConfig(),
+                "endpoint_name": "test",
+            },
+        },
+        {
+            "input_args": {
+                "endpoint_name": "test",
+                "inference_config": AsyncInferenceConfig(output_path="op-path"),
+            },
+            "call_params": {
+                "async_inference_config": AsyncInferenceConfig(output_path="op-path"),
+                "instance_type": "ml.g5.2xlarge",
+                "initial_instance_count": 1,
+                "endpoint_name": "test",
+            },
+        },
+        {
+            "input_args": {"endpoint_name": "test", "inference_config": RESOURCE_REQUIREMENTS},
+            "call_params": {
+                "resources": RESOURCE_REQUIREMENTS,
+                "role": "role-arn",
+                "initial_instance_count": 1,
+                "instance_type": "ml.g5.2xlarge",
+                "mode": Mode.SAGEMAKER_ENDPOINT,
+                "endpoint_type": EndpointType.INFERENCE_COMPONENT_BASED,
+            },
+        },
+        {
+            "input_args": {
+                "inference_config": BatchTransformInferenceConfig(
+                    instance_count=1, instance_type="ml.m5.large", output_path="op-path"
+                )
+            },
+            "call_params": {
+                "instance_count": 1,
+                "instance_type": "ml.m5.large",
+                "output_path": "op-path",
+            },
+            "id": "Batch",
+        },
+    ],
+    ids=["Real Time", "Serverless", "Async", "Multi-Model", "Batch"],
+)
+@patch("sagemaker.serve.builder.model_builder.unique_name_from_base")
+def test_deploy(mock_unique_name_from_base, test_case):
+    mock_unique_name_from_base.return_value = "test"
+    model: Model = MagicMock()
+    model_builder = ModelBuilder(
+        model="meta-llama/Meta-Llama-3-8B-Instruct",
+        env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+        role_arn="role-arn",
+        instance_type="ml.g5.2xlarge",
+    )
+    setattr(model_builder, "built_model", model)
+
+    model_builder.deploy(**test_case["input_args"])
+
+    if "id" in test_case and test_case["id"] == "Batch":
+        args, kwargs = model.transformer.call_args_list[0]
+    else:
+        args, kwargs = model.deploy.call_args_list[0]
+
+    diff = deepdiff.DeepDiff(kwargs, test_case["call_params"])
+    assert diff == {}

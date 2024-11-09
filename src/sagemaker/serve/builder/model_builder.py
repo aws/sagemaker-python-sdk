@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import importlib.util
+import json
 import uuid
 from typing import Any, Type, List, Dict, Optional, Union
 from dataclasses import dataclass, field
@@ -24,6 +25,8 @@ import re
 from pathlib import Path
 
 from sagemaker.enums import Tag
+from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.s3 import S3Downloader
 
 from sagemaker import Session
@@ -879,7 +882,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         if isinstance(self.model, str):
             model_task = None
-            if self._is_jumpstart_model_id():
+            if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
                 self.model_hub = ModelHub.JUMPSTART
                 return self._build_for_jumpstart()
             self.model_hub = ModelHub.HUGGINGFACE
@@ -1514,3 +1517,122 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             should_upload_artifacts=True,
         )
         self.pysdk_model.env.update(env)
+
+    def display_benchmark_metrics(self, **kwargs):
+        """Display Markdown Benchmark Metrics for deployment configs."""
+        if not isinstance(self.model, str):
+            raise ValueError("Benchmarking is only supported for JumpStart or HuggingFace models")
+        if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+            return super().display_benchmark_metrics(**kwargs)
+        else:
+            raise ValueError("This model does not have benchmark metrics yet")
+
+    def get_deployment_config(self) -> Optional[Dict[str, Any]]:
+        """Gets the deployment config to apply to the model.
+
+        Returns:
+            Optional[Dict[str, Any]]: Deployment config to apply to this model.
+        """
+        if not isinstance(self.model, str):
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
+        if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+            return super().get_deployment_config()
+        else:
+            raise ValueError("This model does not have any deployment config yet")
+
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for the model in the current region.
+
+        Returns:
+            List[Dict[str, Any]]: A list of deployment configs.
+        """
+        if not isinstance(self.model, str):
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
+        if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+            return super().list_deployment_configs()
+        else:
+            raise ValueError("This model does not have any deployment config yet")
+
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
+        """Sets the deployment config to apply to the model.
+
+        Args:
+            config_name (str):
+                The name of the deployment config to apply to the model.
+                Call list_deployment_configs to see the list of config names.
+            instance_type (str):
+                The instance_type that the model will use after setting
+                the config.
+        """
+        if not isinstance(self.model, str):
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
+        if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+            logger.warning(
+                "If there are existing deployment configurations, "
+                "they will be overwritten by the config %s",
+                config_name,
+            )
+            return super().set_deployment_config(config_name, instance_type)
+        else:
+            raise ValueError(f"The deployment config {config_name} cannot be set on this model")
+
+    def _use_jumpstart_equivalent(self):
+        """Check if the HuggingFace model has a JumpStart equivalent.
+
+        Replace it with the equivalent if there's one
+        """
+        if not hasattr(self, "_has_jumpstart_equivalent"):
+            self._jumpstart_mapping = self._retrieve_hugging_face_model_mapping()
+            self._has_jumpstart_equivalent = self.model in self._jumpstart_mapping
+        if self._has_jumpstart_equivalent:
+            huggingface_model_id = self.model
+            jumpstart_model_id = self._jumpstart_mapping[huggingface_model_id]["jumpstart-model-id"]
+            self.model = jumpstart_model_id
+            merged_date = self._jumpstart_mapping[huggingface_model_id].get("merged-at")
+            self._build_for_jumpstart()
+            compare_model_diff_message = (
+                "If you want to identify the differences between the two, "
+                "please use model_uris.retrieve() to retrieve the model "
+                "artifact S3 URI and compare them."
+            )
+            logger.warning(  # pylint: disable=logging-fstring-interpolation
+                "Please note that for this model we are using the JumpStart's"
+                f'local copy "{jumpstart_model_id}" '
+                f'of the HuggingFace model "{huggingface_model_id}" you chose. '
+                "We strive to keep our local copy synced with the HF model hub closely. "
+                "This model was synced "
+                f"{f'on {merged_date}' if merged_date else 'before 11/04/2024'}. "
+                f"{compare_model_diff_message if not self._is_gated_model() else ''}"
+            )
+            return True
+        return False
+
+    def _retrieve_hugging_face_model_mapping(self):
+        """Retrieve the HuggingFace/JumpStart model mapping and preprocess it."""
+        converted_mapping = {}
+        region = self.sagemaker_session.boto_region_name
+        try:
+            mapping_json_object = JumpStartS3PayloadAccessor.get_object_cached(
+                bucket=get_jumpstart_content_bucket(region),
+                key="hf_model_id_map_cache.json",
+                region=region,
+                s3_client=self.sagemaker_session.s3_client,
+            )
+            mapping = json.loads(mapping_json_object)
+        except Exception:  # pylint: disable=broad-except
+            return converted_mapping
+
+        for k, v in mapping.items():
+            converted_mapping[v["hf-model-id"]] = {
+                "jumpstart-model-id": k,
+                "jumpstart-model-version": v["jumpstart-model-version"],
+                "merged-at": v.get("merged-at"),
+                "hf-model-repo-sha": v.get("hf-model-repo-sha"),
+            }
+        return converted_mapping
