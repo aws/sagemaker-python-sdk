@@ -48,7 +48,6 @@ from sagemaker.serve.utils.optimize_utils import (
     _custom_speculative_decoding,
     SPECULATIVE_DRAFT_MODEL,
     _is_inferentia_or_trainium,
-    _validate_and_set_eula_for_draft_model_sources,
     _jumpstart_speculative_decoding,
 )
 from sagemaker.serve.utils.predictors import (
@@ -837,9 +836,7 @@ class JumpStart(ABC):
         return "private" in s3_uri
 
     def _set_additional_model_source(
-        self,
-        speculative_decoding_config: Optional[Dict[str, Any]] = None,
-        accept_eula: Optional[bool] = None,
+        self, speculative_decoding_config: Optional[Dict[str, Any]] = None
     ) -> None:
         """Set Additional Model Source to ``this`` model.
 
@@ -849,6 +846,7 @@ class JumpStart(ABC):
         """
         if speculative_decoding_config:
             model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
+            accept_draft_model_eula = speculative_decoding_config.get("AcceptEula", False)
 
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
 
@@ -865,19 +863,21 @@ class JumpStart(ABC):
                         speculative_decoding_config
                     )
                     if deployment_config:
-                        self.pysdk_model.set_deployment_config(
-                            config_name=deployment_config.get("DeploymentConfigName"),
-                            instance_type=deployment_config.get("InstanceType"),
-                        )
+                        try:
+                            self.pysdk_model.set_deployment_config(
+                                config_name=deployment_config.get("DeploymentConfigName"),
+                                instance_type=deployment_config.get("InstanceType"),
+                                accept_draft_model_eula=accept_draft_model_eula,
+                            )
+                        except ValueError as e:
+                            raise ValueError(
+                                f"{e} If using speculative_decoding_config, "
+                                "accept the EULA by setting `AcceptEula`=True."
+                            )
                     else:
                         raise ValueError(
                             "Cannot find deployment config compatible for optimization job."
                         )
-
-                    _validate_and_set_eula_for_draft_model_sources(
-                        pysdk_model=self.pysdk_model,
-                        accept_eula=speculative_decoding_config.get("AcceptEula"),
-                    )
 
                 self.pysdk_model.env.update(
                     {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
@@ -893,7 +893,7 @@ class JumpStart(ABC):
                 )
             else:
                 self.pysdk_model = _custom_speculative_decoding(
-                    self.pysdk_model, speculative_decoding_config, accept_eula
+                    self.pysdk_model, speculative_decoding_config, accept_draft_model_eula
                 )
 
     def _find_compatible_deployment_config(

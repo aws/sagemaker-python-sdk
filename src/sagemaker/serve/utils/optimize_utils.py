@@ -428,7 +428,7 @@ def _jumpstart_speculative_decoding(
                     model_specs=model_specs, region=sagemaker_session.boto_region_name
                 )
                 raise ValueError(
-                    f"{eula_message} Please set `AcceptEula` to True in "
+                    f"{eula_message} Set `AcceptEula`=True in "
                     f"speculative_decoding_config once acknowledged."
                 )
             js_bucket = accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
@@ -446,78 +446,3 @@ def _jumpstart_speculative_decoding(
         model.add_tags(
             {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "jumpstart"},
         )
-
-
-def _validate_and_set_eula_for_draft_model_sources(
-    pysdk_model: Model,
-    accept_eula: bool = False,
-):
-    """Validates whether the EULA has been accepted for gated additional draft model sources.
-
-    If accepted, updates the model data source's model access config.
-
-    Args:
-        pysdk_model (Model): The model whose additional model data sources to check.
-        accept_eula (bool): EULA acceptance for the draft model.
-    """
-    if not pysdk_model:
-        return
-
-    deployment_config_draft_model_sources = (
-        pysdk_model.deployment_config.get("DeploymentArgs", {})
-        .get("AdditionalDataSources", {})
-        .get("speculative_decoding", [])
-        if pysdk_model.deployment_config
-        else None
-    )
-    pysdk_model_additional_model_sources = pysdk_model.additional_model_data_sources
-
-    if not deployment_config_draft_model_sources or not pysdk_model_additional_model_sources:
-        return
-
-    # Gated/ungated classification is only available through deployment_config.
-    # Thus we must check each draft model in the deployment_config and see if it is set
-    # as an additional model data source on the PySDK model itself.
-    model_access_config_updated = False
-    for source in deployment_config_draft_model_sources:
-        if source.get("channel_name") != "draft_model":
-            continue
-
-        if not _is_draft_model_gated(source):
-            continue
-
-        deployment_config_draft_model_source_s3_uri = (
-            _extract_deployment_config_additional_model_data_source_s3_uri(source)
-        )
-
-        # If EULA is accepted, proceed with modifying the draft model data source
-        for additional_source in pysdk_model_additional_model_sources:
-            if additional_source.get("ChannelName") != "draft_model":
-                continue
-
-            # Verify the pysdk model source and deployment config model source match
-            pysdk_model_source_s3_uri = _extract_additional_model_data_source_s3_uri(
-                additional_source
-            )
-            if deployment_config_draft_model_source_s3_uri not in pysdk_model_source_s3_uri:
-                continue
-
-            if not accept_eula:
-                raise ValueError(
-                    "Gated draft model requires accepting end-user license agreement (EULA)."
-                )
-
-            # Set ModelAccessConfig.AcceptEula to True
-            updated_source = additional_source.copy()
-            updated_source["S3DataSource"]["ModelAccessConfig"] = {"AcceptEula": True}
-
-            index = pysdk_model.additional_model_data_sources.index(additional_source)
-            pysdk_model.additional_model_data_sources[index] = updated_source
-
-            model_access_config_updated = True
-            break
-
-        if model_access_config_updated:
-            break
-
-    return
