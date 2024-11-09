@@ -49,6 +49,7 @@ from sagemaker.serve.utils.optimize_utils import (
     SPECULATIVE_DRAFT_MODEL,
     _is_inferentia_or_trainium,
     _validate_and_set_eula_for_draft_model_sources,
+    _jumpstart_speculative_decoding,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -503,7 +504,7 @@ class JumpStart(ABC):
         )
 
     def set_deployment_config(
-            self, config_name: str, instance_type: str, accept_draft_model_eula: Optional[bool] = False
+        self, config_name: str, instance_type: str, accept_draft_model_eula: Optional[bool] = False
     ) -> None:
         """Sets the deployment config to apply to the model.
 
@@ -735,6 +736,10 @@ class JumpStart(ABC):
         optimization_config, quantization_override_env, compilation_override_env = (
             _extract_optimization_config_and_env(quantization_config, compilation_config)
         )
+
+        if not optimization_config:
+            optimization_config = {}
+
         if (
             not optimization_config or not optimization_config.get("ModelCompilationConfig")
         ) and is_compilation:
@@ -844,6 +849,7 @@ class JumpStart(ABC):
         """
         if speculative_decoding_config:
             model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
+
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
 
             if model_provider == "sagemaker":
@@ -868,16 +874,22 @@ class JumpStart(ABC):
                             "Cannot find deployment config compatible for optimization job."
                         )
 
-                _validate_and_set_eula_for_draft_model_sources(
-                    pysdk_model=self.pysdk_model,
-                    accept_eula=speculative_decoding_config.get("AcceptEula"),
-                )
+                    _validate_and_set_eula_for_draft_model_sources(
+                        pysdk_model=self.pysdk_model,
+                        accept_eula=speculative_decoding_config.get("AcceptEula"),
+                    )
 
                 self.pysdk_model.env.update(
-                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}"}
+                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
                 )
                 self.pysdk_model.add_tags(
                     {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
+                )
+            elif model_provider == "jumpstart":
+                _jumpstart_speculative_decoding(
+                    model=self.pysdk_model,
+                    speculative_decoding_config=speculative_decoding_config,
+                    sagemaker_session=self.sagemaker_session,
                 )
             else:
                 self.pysdk_model = _custom_speculative_decoding(

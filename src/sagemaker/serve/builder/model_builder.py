@@ -76,6 +76,7 @@ from sagemaker.serve.utils.optimize_utils import (
     _is_s3_uri,
     _custom_speculative_decoding,
     _extract_speculative_draft_model_provider,
+    _jumpstart_speculative_decoding,
 )
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
@@ -99,7 +100,6 @@ from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
 from sagemaker.utils import Tags
-from sagemaker.serve.utils.optimize_utils import _validate_and_set_eula_for_draft_model_sources
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import (
     get_huggingface_model_metadata,
@@ -589,21 +589,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                     instance_type=instance_type,
                     model_server=self.model_server,
                 )
-
-            if self.deployment_config:
-                accept_draft_model_eula = kwargs.get("accept_draft_model_eula", False)
-                try:
-                    _validate_and_set_eula_for_draft_model_sources(
-                        pysdk_model=self,
-                        accept_eula=accept_draft_model_eula,
-                    )
-                except ValueError as e:
-                    logger.error(
-                        "This deployment tried to use a gated draft model but the EULA was not "
-                        "accepted. Please review the EULA, set accept_draft_model_eula to True, "
-                        "and try again."
-                    )
-                    raise e
 
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
@@ -1358,9 +1343,17 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Optional[Dict[str, Any]]: Model optimization job input arguments.
         """
-        self.pysdk_model = _custom_speculative_decoding(
-            self.pysdk_model, speculative_decoding_config, False
-        )
+        if speculative_decoding_config:
+            if speculative_decoding_config.get("ModelProvider", "") == "JumpStart":
+                _jumpstart_speculative_decoding(
+                    model=self.pysdk_model,
+                    speculative_decoding_config=speculative_decoding_config,
+                    sagemaker_session=self.sagemaker_session,
+                )
+            else:
+                self.pysdk_model = _custom_speculative_decoding(
+                    self.pysdk_model, speculative_decoding_config, False
+                )
 
         if quantization_config or compilation_config:
             create_optimization_job_args = {
