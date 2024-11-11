@@ -1,1 +1,0 @@
-{"source_dir": "distributed-training/scripts", "requirements": "requirements.txt", "entry_script": "run_clm_no_trainer.py"}
