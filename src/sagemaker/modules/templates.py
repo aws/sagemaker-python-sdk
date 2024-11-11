@@ -19,13 +19,13 @@ echo "Running command: $CMD"
 eval $CMD
 """
 
-EXECUTE_PYTORCH_DRIVER = """
-echo "Running PyTorch training driver"
-$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/pytorch_driver.py
+EXEUCTE_TORCHRUN_DRIVER = """
+echo "Running Torchrun driver"
+$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/torchrun_driver.py
 """
 
 EXECUTE_MPI_DRIVER = """
-echo "Running MPI training driver"
+echo "Running MPI driver"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/mpi_driver.py
 """
 
@@ -73,12 +73,12 @@ echo "/opt/ml/input/config/inputdataconfig.json:"
 cat /opt/ml/input/config/inputdataconfig.json
 echo
 
-echo "/opt/ml/input/data/sm_drivers/sourcecodeconfig.json"
-cat /opt/ml/input/data/sm_drivers/sourcecodeconfig.json
+echo "/opt/ml/input/data/sm_drivers/sourcecode.json"
+cat /opt/ml/input/data/sm_drivers/sourcecode.json
 echo
 
-echo "/opt/ml/input/data/sm_drivers/distribution.json"
-cat /opt/ml/input/data/sm_drivers/distribution.json
+echo "/opt/ml/input/data/sm_drivers/distributed_runner.json"
+cat /opt/ml/input/data/sm_drivers/distributed_runner.json
 echo
 
 echo "Setting up environment variables"

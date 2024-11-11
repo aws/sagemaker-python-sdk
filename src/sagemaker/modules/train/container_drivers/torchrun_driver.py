@@ -10,17 +10,18 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module is the entry point for the PyTorch driver script."""
+"""This module is the entry point for the Torchrun driver script."""
 from __future__ import absolute_import
 
 import os
+import sys
 
 from typing import List, Tuple
 
 from utils import (
     logger,
-    read_source_code_config_json,
-    read_distribution_json,
+    read_source_code_json,
+    read_distributed_runner_json,
     get_process_count,
     get_python_executable,
     SM_EFA_NCCL_INSTANCES,
@@ -62,8 +63,8 @@ def setup_env():
 
 def create_commands():
     """Create the Torch Distributed command to execute"""
-    source_code_config = read_source_code_config_json()
-    distribution = read_distribution_json()
+    source_code = read_source_code_json()
+    distribution = read_distributed_runner_json()
 
     process_count = get_process_count(distribution)
     host_count = int(os.environ["SM_HOST_COUNT"])
@@ -90,7 +91,7 @@ def create_commands():
             ]
         )
 
-    torch_cmd.extend([os.path.join(USER_CODE_PATH, source_code_config["entry_script"])])
+    torch_cmd.extend([os.path.join(USER_CODE_PATH, source_code["entry_script"])])
     return torch_cmd
 
 
@@ -113,6 +114,7 @@ def main():
     exit_code, traceback = execute_commands(torch_cmd)
     if exit_code != 0:
         write_failure_file(traceback)
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":

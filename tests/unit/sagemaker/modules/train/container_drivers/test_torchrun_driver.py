@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Pytorch Driver Unit Tests."""
+"""Torchrun Driver Unit Tests."""
 from __future__ import absolute_import
 
 import os
@@ -20,45 +20,38 @@ from unittest.mock import patch, MagicMock
 
 sys.modules["utils"] = MagicMock()
 
-from sagemaker.modules.train.container_drivers import pytorch_driver  # noqa: E402
+from sagemaker.modules.train.container_drivers import torchrun_driver  # noqa: E402
 
-DUMMY_SOURCE_CODE_CONFIG = {
+DUMMY_SOURCE_CODE = {
+    "source_code": "source_code",
     "entry_script": "script.py",
-    "distribution": {
-        "process_count_per_node": 2,
-        "sm_distributed_settings": {
-            "enable_dataparallel": True,
-        },
-        "mpi_additional_options": [
-            "-x",
-            "AWS_REGION",
-        ],
-    },
 }
 
+DUMMY_DISTRIBUTED_RUNNER = {"_type": "torchrun", "process_count_per_node": 2}
+
 
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.get_python_executable",
+    "sagemaker.modules.train.container_drivers.torchrun_driver.get_python_executable",
     return_value="python3",
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.pytorch_version", return_value=(2, 0)
+    "sagemaker.modules.train.container_drivers.torchrun_driver.pytorch_version", return_value=(2, 0)
 )
 def test_get_base_pytorch_command_torchrun(mock_pytorch_version, mock_get_python_executable):
-    assert pytorch_driver.get_base_pytorch_command() == ["torchrun"]
+    assert torchrun_driver.get_base_pytorch_command() == ["torchrun"]
 
 
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.get_python_executable",
+    "sagemaker.modules.train.container_drivers.torchrun_driver.get_python_executable",
     return_value="python3",
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.pytorch_version", return_value=(1, 8)
+    "sagemaker.modules.train.container_drivers.torchrun_driver.pytorch_version", return_value=(1, 8)
 )
 def test_get_base_pytorch_command_torch_distributed_launch(
     mock_pytorch_version, mock_get_python_executable
 ):
-    assert pytorch_driver.get_base_pytorch_command() == (
+    assert torchrun_driver.get_base_pytorch_command() == (
         ["python3", "-m", "torch.distributed.launch"]
     )
 
@@ -72,23 +65,30 @@ def test_get_base_pytorch_command_torch_distributed_launch(
     },
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.USER_CODE_PATH",
+    "sagemaker.modules.train.container_drivers.torchrun_driver.USER_CODE_PATH",
     "/opt/ml/input/data/code",
 )
-@patch("sagemaker.modules.train.container_drivers.pytorch_driver.get_process_count", return_value=2)
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.pytorch_version", return_value=(2, 0)
+    "sagemaker.modules.train.container_drivers.torchrun_driver.get_process_count", return_value=2
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.get_base_pytorch_command",
+    "sagemaker.modules.train.container_drivers.torchrun_driver.pytorch_version", return_value=(2, 0)
+)
+@patch(
+    "sagemaker.modules.train.container_drivers.torchrun_driver.get_base_pytorch_command",
     return_value=["torchrun"],
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.read_source_code_config_json",
-    return_value=DUMMY_SOURCE_CODE_CONFIG,
+    "sagemaker.modules.train.container_drivers.torchrun_driver.read_source_code_json",
+    return_value=DUMMY_SOURCE_CODE,
+)
+@patch(
+    "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_runner_json",
+    return_value=DUMMY_DISTRIBUTED_RUNNER,
 )
 def test_create_commands_single_node(
-    mock_read_source_code_config_json,
+    mock_read_distributed_runner_json,
+    mock_read_source_code_json,
     mock_get_base_pytorch_command,
     mock_pytorch_version,
     mock_get_process_count,
@@ -100,7 +100,7 @@ def test_create_commands_single_node(
         "/opt/ml/input/data/code/script.py",
     ]
 
-    command = pytorch_driver.create_commands()
+    command = torchrun_driver.create_commands()
     assert command == expected_command
 
 
@@ -116,23 +116,30 @@ def test_create_commands_single_node(
     },
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.USER_CODE_PATH",
+    "sagemaker.modules.train.container_drivers.torchrun_driver.USER_CODE_PATH",
     "/opt/ml/input/data/code",
 )
-@patch("sagemaker.modules.train.container_drivers.pytorch_driver.get_process_count", return_value=2)
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.pytorch_version", return_value=(2, 0)
+    "sagemaker.modules.train.container_drivers.torchrun_driver.get_process_count", return_value=2
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.get_base_pytorch_command",
+    "sagemaker.modules.train.container_drivers.torchrun_driver.pytorch_version", return_value=(2, 0)
+)
+@patch(
+    "sagemaker.modules.train.container_drivers.torchrun_driver.get_base_pytorch_command",
     return_value=["torchrun"],
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.pytorch_driver.read_source_code_config_json",
-    return_value=DUMMY_SOURCE_CODE_CONFIG,
+    "sagemaker.modules.train.container_drivers.torchrun_driver.read_source_code_json",
+    return_value=DUMMY_SOURCE_CODE,
+)
+@patch(
+    "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_runner_json",
+    return_value=DUMMY_DISTRIBUTED_RUNNER,
 )
 def test_create_commands_multi_node(
-    mock_read_source_code_config_json,
+    mock_read_distributed_runner_json,
+    mock_read_source_code_json,
     mock_get_base_pytorch_command,
     mock_pytorch_version,
     mock_get_process_count,
@@ -147,5 +154,5 @@ def test_create_commands_multi_node(
         "/opt/ml/input/data/code/script.py",
     ]
 
-    command = pytorch_driver.create_commands()
+    command = torchrun_driver.create_commands()
     assert command == expected_command

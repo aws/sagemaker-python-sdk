@@ -16,7 +16,6 @@ from __future__ import absolute_import
 import os
 import time
 import subprocess
-import json
 
 from typing import List
 
@@ -29,7 +28,7 @@ DEFAULT_SSH_PORT = 22
 def _write_status_file(host: str, status_file: str) -> bool:
     """Write the status file to the provided host."""
     try:
-        logger.info(f"Start writing mpirun finished status to {host}")
+        logger.info("Writing finished status file (%s) to %s", status_file, host)
         subprocess.run(
             ["ssh", host, "touch", f"{status_file}"],
             capture_output=True,
@@ -188,8 +187,6 @@ def get_mpirun_command(
     host_count: int,
     host_list: List[str],
     num_processes: int,
-    smdataparallel_enabled: bool,
-    smmodelparallel_enabled: bool,
     additional_options: List[str],
     entry_script_path: str,
 ):
@@ -257,37 +254,6 @@ def get_mpirun_command(
     ]:
         if credential in os.environ:
             mpirun_command.extend(["-x", credential])
-
-    if smdataparallel_enabled:
-        if host_count == 1:
-            smdataparallel_flag = "SMDATAPARALLEL_USE_HOMOGENEOUS=1"
-            mpirun_command.extend(["-x", smdataparallel_flag])
-        else:
-            smdataparallel_flag = "SMDATAPARALLEL_USE_SINGLENODE=1"
-            smdataparallel_server_port = 7592
-            smdataparallel_server_addr = "algo-1"
-
-            mpirun_command.extend(["-x", smdataparallel_flag])
-            mpirun_command.extend(
-                [
-                    "-x",
-                    f"SMDATAPARALLEL_SERVER_ADDR={smdataparallel_server_addr}",
-                    "-x",
-                    f"SMDATAPARALLEL_SERVER_PORT={smdataparallel_server_port}",
-                    "-x",
-                    f"SAGEMAKER_INSTANCE_TYPE={instance_type}",
-                ]
-            )
-
-        if validate_smddprun():
-            mpirun_command.extend(["smddprun"])
-
-    if smmodelparallel_enabled:
-        mp_parameters = json.loads(os.environ.get("SM_HP_MP_PARAMETERS", "{}"))
-        ddp_dist_backend = mp_parameters.get("ddp_dist_backend", "auto")
-        if ddp_dist_backend == "auto":
-            if validate_smddpmprun():
-                mpirun_command.extend(["smddpmprun", "-i", instance_type, "--allow-bypass"])
 
     mpirun_command.extend([get_python_executable()])
     mpirun_command.extend(["-m", "mpi4py", entry_script_path])

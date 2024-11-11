@@ -16,3 +16,7 @@ from __future__ import absolute_import
 from sagemaker_core.main.utils import logger as sagemaker_core_logger
 
 logger = sagemaker_core_logger
+
+from sagemaker.modules.train.model_trainer import (  # noqa: F401 E402 # pylint: disable=C0413
+    ModelTrainer,
+)

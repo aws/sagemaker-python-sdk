@@ -13,18 +13,26 @@
 """ModelTrainer Tests."""
 from __future__ import absolute_import
 
+import json
+import os
 import pytest
 from unittest.mock import patch, MagicMock
 
 from sagemaker.session import Session
 from sagemaker.modules.train.model_trainer import ModelTrainer
-from sagemaker.modules.constants import DEFAULT_INSTANCE_TYPE
+from sagemaker.modules.constants import (
+    DEFAULT_INSTANCE_TYPE,
+    SM_DRIVERS_LOCAL_PATH,
+    DISTRIBUTED_RUNNER_JSON,
+    SOURCE_CODE_JSON,
+    TRAIN_SCRIPT,
+)
 from sagemaker.modules.configs import (
-    ComputeConfig,
+    Compute,
     StoppingCondition,
     RetryStrategy,
     OutputDataConfig,
-    SourceCodeConfig,
+    SourceCode,
     S3DataSource,
     FileSystemDataSource,
     MetricDefinition,
@@ -39,13 +47,15 @@ from sagemaker.modules.configs import (
     SessionChainingConfig,
     InputData,
 )
+from sagemaker.modules.distributed import Torchrun, TorchrunSMP, MPI
+from sagemaker.modules.templates import EXEUCTE_TORCHRUN_DRIVER, EXECUTE_MPI_DRIVER
 from tests.unit import DATA_DIR
 
 DEFAULT_BASE_NAME = "dummy-image-job"
 DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest"
 DEFAULT_BUCKET = "sagemaker-us-west-2-000000000000"
 DEFAULT_ROLE = "arn:aws:iam::000000000000:role/test-role"
-DEFAULT_COMPUTE_CONFIG = ComputeConfig(instance_type=DEFAULT_INSTANCE_TYPE, instance_count=1)
+DEFAULT_COMPUTE_CONFIG = Compute(instance_type=DEFAULT_INSTANCE_TYPE, instance_count=1)
 DEFAULT_OUTPUT_DATA_CONFIG = OutputDataConfig(
     s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}",
     compression_type="GZIP",
@@ -56,11 +66,11 @@ DEFAULT_STOPPING_CONDITION = StoppingCondition(
     max_pending_time_in_seconds=None,
     max_wait_time_in_seconds=None,
 )
-DEFAULT_SOURCE_CODE_CONFIG = SourceCodeConfig(
-    source_dir="test-data",
-    entry_point="train.py",
+DEFAULT_SOURCE_CODE = SourceCode(
+    source_dir=f"{DATA_DIR}/modules/script_mode",
+    entry_script="custom_script.py",
 )
-UNSUPPORTED_SOURCE_CODE_CONFIG = SourceCodeConfig(
+UNSUPPORTED_SOURCE_CODE = SourceCode(
     entry_script="train.py",
 )
 
@@ -80,7 +90,7 @@ def model_trainer():
     trainer = ModelTrainer(
         training_image=DEFAULT_IMAGE,
         role=DEFAULT_ROLE,
-        compute_config=DEFAULT_COMPUTE_CONFIG,
+        compute=DEFAULT_COMPUTE_CONFIG,
         stopping_condition=DEFAULT_STOPPING_CONDITION,
         output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
     )
@@ -110,14 +120,14 @@ def model_trainer():
         {
             "init_params": {
                 "training_image": DEFAULT_IMAGE,
-                "source_code_config": UNSUPPORTED_SOURCE_CODE_CONFIG,
+                "source_code": UNSUPPORTED_SOURCE_CODE,
             },
             "should_throw": True,
         },
         {
             "init_params": {
                 "training_image": DEFAULT_IMAGE,
-                "source_code_config": DEFAULT_SOURCE_CODE_CONFIG,
+                "source_code": DEFAULT_SOURCE_CODE,
             },
             "should_throw": False,
         },
@@ -126,8 +136,8 @@ def model_trainer():
         "no_params",
         "training_image_and_algorithm_name",
         "only_training_image",
-        "unsupported_source_code_config",
-        "supported_source_code_config",
+        "unsupported_source_code",
+        "supported_source_code",
     ],
 )
 def test_model_trainer_param_validation(test_case, modules_session):
@@ -138,7 +148,7 @@ def test_model_trainer_param_validation(test_case, modules_session):
         trainer = ModelTrainer(**test_case["init_params"], session=modules_session)
         assert trainer is not None
         assert trainer.training_image == DEFAULT_IMAGE
-        assert trainer.compute_config == DEFAULT_COMPUTE_CONFIG
+        assert trainer.compute == DEFAULT_COMPUTE_CONFIG
         assert trainer.output_data_config == DEFAULT_OUTPUT_DATA_CONFIG
         assert trainer.stopping_condition == DEFAULT_STOPPING_CONDITION
         assert trainer.base_job_name == DEFAULT_BASE_NAME
@@ -282,9 +292,6 @@ def test_debugger_settings(mock_training_job, modules_session):
         rule_evaluator_image=image_uri,
         rule_parameters={"parameter": "value"},
     )
-    remote_debug_config = RemoteDebugConfig(
-        enable_remote_debug=True,
-    )
     profiler_config = ProfilerConfig(s3_output_path="s3://dummy-bucket/dummy-prefix")
     profiler_rule_config = ProfilerRuleConfiguration(
         rule_configuration_name="rule-name",
@@ -301,7 +308,6 @@ def test_debugger_settings(mock_training_job, modules_session):
     ).with_debugger_settings(
         debug_hook_config=debug_hook_config,
         debug_rule_configurations=debug_rule_config,
-        remote_debug_config=remote_debug_config,
         profiler_config=profiler_config,
         profiler_rule_configurations=profiler_rule_config,
         tensor_board_output_config=tensor_board_output_config,
@@ -309,7 +315,6 @@ def test_debugger_settings(mock_training_job, modules_session):
 
     assert model_trainer._debug_hook_config == debug_hook_config
     assert model_trainer._debug_rule_configurations == debug_rule_config
-    assert model_trainer._remote_debug_config == remote_debug_config
     assert model_trainer._profiler_config == profiler_config
     assert model_trainer._profiler_rule_configurations == profiler_rule_config
     assert model_trainer._tensor_board_output_config == tensor_board_output_config
@@ -323,9 +328,6 @@ def test_debugger_settings(mock_training_job, modules_session):
         assert (
             mock_training_job.create.call_args.kwargs["debug_rule_configurations"]
             == debug_rule_config
-        )
-        assert (
-            mock_training_job.create.call_args.kwargs["remote_debug_config"] == remote_debug_config
         )
         assert mock_training_job.create.call_args.kwargs["profiler_config"] == profiler_config
         assert (
@@ -346,7 +348,9 @@ def test_additional_settings(mock_training_job, modules_session):
     retry_strategy = RetryStrategy(
         maximum_retry_attempts=3,
     )
-
+    remote_debug_config = RemoteDebugConfig(
+        enable_remote_debug=True,
+    )
     experiment_config = ExperimentConfig(
         experiment_name="experiment-name",
         trial_name="trial-name",
@@ -364,6 +368,7 @@ def test_additional_settings(mock_training_job, modules_session):
     ).with_additional_settings(
         retry_strategy=retry_strategy,
         experiment_config=experiment_config,
+        remote_debug_config=remote_debug_config,
         infra_check_config=infra_check_config,
         session_chaining_config=session_chaining_config,
     )
@@ -372,6 +377,7 @@ def test_additional_settings(mock_training_job, modules_session):
     assert model_trainer._experiment_config == experiment_config
     assert model_trainer._infra_check_config == infra_check_config
     assert model_trainer._session_chaining_config == session_chaining_config
+    assert model_trainer._remote_debug_config == remote_debug_config
 
     with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
         mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
@@ -385,4 +391,94 @@ def test_additional_settings(mock_training_job, modules_session):
         assert (
             mock_training_job.create.call_args.kwargs["session_chaining_config"]
             == session_chaining_config
+        )
+        assert (
+            mock_training_job.create.call_args.kwargs["remote_debug_config"] == remote_debug_config
+        )
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "source_code": DEFAULT_SOURCE_CODE,
+            "distributed_runner": Torchrun(),
+            "expected_template": EXEUCTE_TORCHRUN_DRIVER,
+            "expected_hyperparameters": {},
+        },
+        {
+            "source_code": DEFAULT_SOURCE_CODE,
+            "distributed_runner": TorchrunSMP(
+                hybrid_shard_degree=3,
+                sm_activation_offloading=True,
+                allow_empty_shards=True,
+                tensor_parallel_degree=5,
+            ),
+            "expected_template": EXEUCTE_TORCHRUN_DRIVER,
+            "expected_hyperparameters": {
+                "mp_parameters": json.dumps(
+                    {
+                        "hybrid_shard_degree": 3,
+                        "sm_activation_offloading": True,
+                        "allow_empty_shards": True,
+                        "tensor_parallel_degree": 5,
+                    }
+                ),
+            },
+        },
+        {
+            "source_code": DEFAULT_SOURCE_CODE,
+            "distributed_runner": MPI(
+                custom_mpi_options=["-x", "VAR1", "-x", "VAR2"],
+            ),
+            "expected_template": EXECUTE_MPI_DRIVER,
+            "expected_hyperparameters": {},
+        },
+    ],
+    ids=[
+        "torchrun",
+        "torchrun_smp",
+        "mpi",
+    ],
+)
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_train_with_distributed_runner(mock_training_job, test_case, modules_session):
+    modules_session.upload_data.return_value = (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/test"
+    )
+
+    expected_train_script_path = f"{SM_DRIVERS_LOCAL_PATH}/{TRAIN_SCRIPT}"
+    expected_runner_json_path = f"{SM_DRIVERS_LOCAL_PATH}/{DISTRIBUTED_RUNNER_JSON}"
+    expected_source_code_json_path = f"{SM_DRIVERS_LOCAL_PATH}/{SOURCE_CODE_JSON}"
+
+    model_trainer = ModelTrainer(
+        session=modules_session,
+        training_image=DEFAULT_IMAGE,
+        source_code=test_case["source_code"],
+        distributed_runner=test_case["distributed_runner"],
+    )
+
+    model_trainer.train()
+    mock_training_job.create.assert_called_once()
+    assert mock_training_job.create.call_args.kwargs["hyper_parameters"] == (
+        test_case["expected_hyperparameters"]
+    )
+
+    assert os.path.exists(expected_train_script_path)
+    with open(expected_train_script_path, "r") as f:
+        train_script_content = f.read()
+        assert test_case["expected_template"] in train_script_content
+
+    assert os.path.exists(expected_runner_json_path)
+    with open(expected_runner_json_path, "r") as f:
+        runner_json_content = f.read()
+        assert test_case["distributed_runner"].model_dump(exclude_none=True) == (
+            json.loads(runner_json_content)
+        )
+
+    assert os.path.exists(expected_source_code_json_path)
+    with open(expected_source_code_json_path, "r") as f:
+        source_code_json_content = f.read()
+        assert test_case["source_code"].model_dump(exclude_none=True) == (
+            json.loads(source_code_json_content)
         )

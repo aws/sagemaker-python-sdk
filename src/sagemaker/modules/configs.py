@@ -21,7 +21,7 @@ For more documentation on `sagemaker_core.shapes`, see:
 
 from __future__ import absolute_import
 
-from typing import Optional, Union, Dict, Any, List
+from typing import Optional, Union
 from pydantic import BaseModel, model_validator
 
 import sagemaker_core.shapes as shapes
@@ -54,15 +54,10 @@ from sagemaker_core.shapes import (
     CheckpointConfig,
 )
 
-from sagemaker.modules import logger
 from sagemaker.modules.utils import convert_unassigned_to_none
 
 __all__ = [
-    "SourceCodeConfig",
-    "TorchDistributionConfig",
-    "MPIDistributionConfig",
-    "SMDistributedSettings",
-    "DistributionConfig",
+    "SourceCode",
     "StoppingCondition",
     "RetryStrategy",
     "OutputDataConfig",
@@ -87,107 +82,16 @@ __all__ = [
     "InstanceGroup",
     "TensorBoardOutputConfig",
     "CheckpointConfig",
-    "ComputeConfig",
-    "NetworkingConfig",
+    "Compute",
+    "Networking",
     "InputData",
 ]
 
 
-class SMDistributedSettings(BaseModel):
-    """SMDistributedSettings.
+class SourceCode(BaseModel):
+    """SourceCode.
 
-    The SMDistributedSettings is used to configure distributed training when
-        using the smdistributed library.
-
-    Attributes:
-        enable_dataparallel (Optional[bool]):
-            Whether to enable data parallelism.
-        enable_modelparallel (Optional[bool]):
-            Whether to enable model parallelism.
-        modelparallel_parameters (Optional[Dict[str, Any]]):
-            The parameters for model parallelism.
-    """
-
-    enable_dataparallel: Optional[bool] = False
-    enable_modelparallel: Optional[bool] = False
-    modelparallel_parameters: Optional[Dict[str, Any]] = None
-
-
-class DistributionConfig(BaseModel):
-    """Base class for distribution configurations."""
-
-    _distribution_type: str
-
-
-class TorchDistributionConfig(DistributionConfig):
-    """TorchDistributionConfig.
-
-    The TorchDistributionConfig uses `torchrun` or `torch.distributed.launch` in the backend to
-    launch distributed training.
-
-    SMDistributed Library Information:
-        - `TorchDistributionConfig` can be used for SMModelParallel V2.
-        - For SMDataParallel or SMModelParallel V1, it is recommended to use the
-            `MPIDistributionConfig.`
-
-
-    Attributes:
-        smdistributed_settings (Optional[SMDistributedSettings]):
-            The settings for smdistributed library.
-        process_count_per_node (int):
-            The number of processes to run on each node in the training job.
-            Will default to the number of CPUs or GPUs available in the container.
-    """
-
-    _distribution_type: str = "torch_distributed"
-
-    smdistributed_settings: Optional[SMDistributedSettings] = None
-    process_count_per_node: Optional[int] = None
-
-    @model_validator(mode="after")
-    def _validate_model(cls, model):  # pylint: disable=E0213
-        """Validate the model."""
-        if (
-            getattr(model, "smddistributed_settings", None)
-            and model.smddistributed_settings.enable_dataparallel
-        ):
-            logger.warning(
-                "For smdistributed data parallelism, it is recommended to use "
-                + "MPIDistributionConfig."
-            )
-        return model
-
-
-class MPIDistributionConfig(DistributionConfig):
-    """MPIDistributionConfig.
-
-    The MPIDistributionConfig uses `mpirun` in the backend to launch distributed training.
-
-    SMDistributed Library Information:
-        - `MPIDistributionConfig` can be used for SMDataParallel and SMModelParallel V1.
-        - For SMModelParallel V2, it is recommended to use the `TorchDistributionConfig`.
-
-    Attributes:
-        smdistributed_settings (Optional[SMDistributedSettings]):
-            The settings for smdistributed library.
-        process_count_per_node (int):
-            The number of processes to run on each node in the training job.
-            Will default to the number of CPUs or GPUs available in the container.
-        mpi_additional_options (Optional[str]):
-            The custom MPI options to use for the training job.
-    """
-
-    _distribution_type: str = "mpi"
-
-    smdistributed_settings: Optional[SMDistributedSettings] = None
-    process_count_per_node: Optional[int] = None
-    mpi_additional_options: Optional[List[str]] = None
-
-
-class SourceCodeConfig(BaseModel):
-    """SourceCodeConfig.
-
-    This config allows the user to specify the source code location, dependencies,
+    The SourceCode class allows the user to specify the source code location, dependencies,
     entry script, or commands to be executed in the training job container.
 
     Attributes:
@@ -210,10 +114,10 @@ class SourceCodeConfig(BaseModel):
     command: Optional[str] = None
 
 
-class ComputeConfig(shapes.ResourceConfig):
-    """ComputeConfig.
+class Compute(shapes.ResourceConfig):
+    """Compute.
 
-    The ComputeConfig is a subclass of `sagemaker_core.shapes.ResourceConfig`
+    The Compute class is a subclass of `sagemaker_core.shapes.ResourceConfig`
     and allows the user to specify the compute resources for the training job.
 
     Attributes:
@@ -245,7 +149,7 @@ class ComputeConfig(shapes.ResourceConfig):
     enable_managed_spot_training: Optional[bool] = None
 
     @model_validator(mode="after")
-    def _model_validator(self) -> "ComputeConfig":
+    def _model_validator(self) -> "Compute":
         """Convert Unassigned values to None."""
         return convert_unassigned_to_none(self)
 
@@ -259,10 +163,10 @@ class ComputeConfig(shapes.ResourceConfig):
         return shapes.ResourceConfig(**filtered_dict)
 
 
-class NetworkingConfig(shapes.VpcConfig):
-    """NetworkingConfig.
+class Networking(shapes.VpcConfig):
+    """Networking.
 
-    The NetworkingConifg is a subclass of `sagemaker_core.shapes.VpcConfig ` and
+    The Networking class is a subclass of `sagemaker_core.shapes.VpcConfig ` and
     allows the user to specify the networking configuration for the training job.
 
     Attributes:
@@ -290,7 +194,7 @@ class NetworkingConfig(shapes.VpcConfig):
     enable_inter_container_traffic_encryption: Optional[bool] = None
 
     @model_validator(mode="after")
-    def _model_validator(self) -> "NetworkingConfig":
+    def _model_validator(self) -> "Networking":
         """Convert Unassigned values to None."""
         return convert_unassigned_to_none(self)
 

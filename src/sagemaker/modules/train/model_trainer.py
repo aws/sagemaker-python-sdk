@@ -22,23 +22,19 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 from sagemaker_core.resources import TrainingJob
 from sagemaker_core.shapes import AlgorithmSpecification
 
-from sagemaker.fw_utils import validate_mp_config
 from sagemaker import get_execution_role, Session
 from sagemaker.modules.configs import (
-    ComputeConfig,
+    Compute,
     StoppingCondition,
     RetryStrategy,
     OutputDataConfig,
-    SourceCodeConfig,
-    MPIDistributionConfig,
-    TorchDistributionConfig,
-    SMDistributedSettings,
+    SourceCode,
     TrainingImageConfig,
     Channel,
     DataSource,
     S3DataSource,
     FileSystemDataSource,
-    NetworkingConfig,
+    Networking,
     Tag,
     MetricDefinition,
     DebugHookConfig,
@@ -52,6 +48,10 @@ from sagemaker.modules.configs import (
     TensorBoardOutputConfig,
     CheckpointConfig,
     InputData,
+)
+from sagemaker.modules.distributed import (
+    DistributedRunner,
+    TorchrunSMP,
 )
 from sagemaker.modules.utils import (
     _get_repo_name_from_image,
@@ -69,14 +69,14 @@ from sagemaker.modules.constants import (
     TRAIN_SCRIPT,
     DEFAULT_CONTAINER_ENTRYPOINT,
     DEFAULT_CONTAINER_ARGUMENTS,
-    SOURCE_CODE_CONFIG_JSON,
-    DISTRIBUTION_JSON,
+    SOURCE_CODE_JSON,
+    DISTRIBUTED_RUNNER_JSON,
 )
 from sagemaker.modules.templates import (
     TRAIN_SCRIPT_TEMPLATE,
     EXECUTE_BASE_COMMANDS,
     EXECUTE_MPI_DRIVER,
-    EXECUTE_PYTORCH_DRIVER,
+    EXEUCTE_TORCHRUN_DRIVER,
 )
 from sagemaker.modules import logger
 
@@ -87,13 +87,13 @@ class ModelTrainer(BaseModel):
     Example:
     ```python
     from sagemaker.modules.train import ModelTrainer
-    from sagemaker.modules.configs import SourceCodeConfig, ComputeConfig, InputDataSource
+    from sagemaker.modules.configs import SourceCode, Compute, InputData
 
-    source_code_config = SourceCodeConfig(source_dir="source", entry_script="train.py")
+    source_code = SourceCode(source_dir="source", entry_script="train.py")
     training_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-training-image"
     model_trainer = ModelTrainer(
         training_image=training_image,
-        source_code_config=source_code_config,
+        source_code=source_code,
     )
 
     train_data = InputData(channel_name="train", data_source="s3://bucket/train")
@@ -111,19 +111,17 @@ class ModelTrainer(BaseModel):
             The base name for the training job.
             If not specified, a default name will be generated using the algorithm name
             or training image.
-        source_code_config (Optional[SourceCodeConfig]):
+        source_code (Optional[SourceCode]):
             The source code configuration. This is used to configure the source code for
             running the training job.
-        distribution_config (Optional[Union[
-            MPIDistributionConfig, TorchDistributionConfig
-        ]]):
-            The distribution settings for the training job. This is used to configure
-            a distributed training job. If specifed, a `source_code_config` must also
+        distributed_runner (Optional[DistributedRunner]):
+            The distributed runner for the training job. This is used to configure
+            a distributed training job. If specifed, `source_code` must also
             be provided.
-        compute_config (Optional[ComputeConfig]):
+        compute (Optional[Compute]):
             The compute configuration. This is used to specify the compute resources for
             the training job. If not specified, will default to 1 instance of ml.m5.xlarge.
-        networking_config (Optional[NetworkingConfig]):
+        networking (Optional[Networking]):
             The networking configuration. This is used to specify the networking settings
             for the training job.
         stopping_condition (Optional[StoppingCondition]):
@@ -169,10 +167,10 @@ class ModelTrainer(BaseModel):
     session: Optional[Session] = None
     role: Optional[str] = None
     base_job_name: Optional[str] = None
-    source_code_config: Optional[SourceCodeConfig] = None
-    distribution_config: Optional[Union[MPIDistributionConfig, TorchDistributionConfig]] = None
-    compute_config: Optional[ComputeConfig] = None
-    networking_config: Optional[NetworkingConfig] = None
+    source_code: Optional[SourceCode] = None
+    distributed_runner: Optional[DistributedRunner] = None
+    compute: Optional[Compute] = None
+    networking: Optional[Networking] = None
     stopping_condition: Optional[StoppingCondition] = None
     training_image: Optional[str] = None
     training_image_config: Optional[TrainingImageConfig] = None
@@ -192,7 +190,6 @@ class ModelTrainer(BaseModel):
     # Debugger settings
     _debug_hook_config: Optional[DebugHookConfig] = PrivateAttr(default=None)
     _debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = PrivateAttr(default=None)
-    _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
     _profiler_config: Optional[ProfilerConfig] = PrivateAttr(default=None)
     _profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = PrivateAttr(
         default=None
@@ -204,6 +201,7 @@ class ModelTrainer(BaseModel):
     _experiment_config: Optional[ExperimentConfig] = PrivateAttr(default=None)
     _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
     _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
+    _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
 
     def _validate_training_image_and_algorithm_name(
         self, training_image: Optional[str], algorithm_name: Optional[str]
@@ -218,46 +216,28 @@ class ModelTrainer(BaseModel):
                 "Only one of 'training_image' or 'algorithm_name' must be provided.",
             )
 
-    # TODO: Move to use pydantic model validators
-    def _validate_sm_distributed_settings(
-        self, sm_distributed_settings: Optional[SMDistributedSettings]
-    ):
-        """Validate the SM distributed settings."""
-        if (
-            sm_distributed_settings.enable_dataparallel
-            and sm_distributed_settings.enable_modelparallel
-        ):
-            raise ValueError(
-                "Both 'enable_dataparallel' and 'enable_modelparallel' cannot be True."
-            )
-        if sm_distributed_settings.modelparallel_parameters:
-            validate_mp_config(sm_distributed_settings.modelparallel_parameters)
-
-    def _validate_distribution_config(
+    def _validate_distributed_runner(
         self,
-        source_code_config: Optional[SourceCodeConfig],
-        distribution_config: Optional[Union[MPIDistributionConfig, TorchDistributionConfig]],
+        source_code: Optional[SourceCode],
+        distributed_runner: Optional[DistributedRunner],
     ):
         """Validate the distribution configuration."""
-        if distribution_config and not source_code_config.entry_script:
+        if distributed_runner and not source_code.entry_script:
             raise ValueError(
-                "Must provide 'entry_script' if 'distribution' "
-                + "is provided in 'source_code_config'.",
+                "Must provide 'entry_script' if 'distribution' " + "is provided in 'source_code'.",
             )
-        if distribution_config and distribution_config.smdistributed_settings:
-            self._validate_sm_distributed_settings(distribution_config.smdistributed_settings)
 
     # TODO: Move to use pydantic model validators
-    def _validate_source_code_config(self, source_code_config: Optional[SourceCodeConfig]):
+    def _validate_source_code(self, source_code: Optional[SourceCode]):
         """Validate the source code configuration."""
-        if source_code_config:
-            if source_code_config.requirements or source_code_config.entry_script:
-                source_dir = source_code_config.source_dir
-                requirements = source_code_config.requirements
-                entry_script = source_code_config.entry_script
+        if source_code:
+            if source_code.requirements or source_code.entry_script:
+                source_dir = source_code.source_dir
+                requirements = source_code.requirements
+                entry_script = source_code.entry_script
                 if not source_dir:
                     raise ValueError(
-                        "If 'requirements' or 'entry_script' is provided in 'source_code_config', "
+                        "If 'requirements' or 'entry_script' is provided in 'source_code', "
                         + "'source_dir' must also be provided.",
                     )
                 if not _is_valid_path(source_dir, path_type="Directory"):
@@ -286,8 +266,8 @@ class ModelTrainer(BaseModel):
     def model_post_init(self, __context: Any):
         """Post init method to perform custom validation and set default values."""
         self._validate_training_image_and_algorithm_name(self.training_image, self.algorithm_name)
-        self._validate_source_code_config(self.source_code_config)
-        self._validate_distribution_config(self.source_code_config, self.distribution_config)
+        self._validate_source_code(self.source_code)
+        self._validate_distributed_runner(self.source_code, self.distributed_runner)
 
         if self.session is None:
             self.session = Session()
@@ -304,13 +284,13 @@ class ModelTrainer(BaseModel):
                 self.base_job_name = f"{_get_repo_name_from_image(self.training_image)}-job"
             logger.warning(f"Base name not provided. Using default name:\n{self.base_job_name}")
 
-        if self.compute_config is None:
-            self.compute_config = ComputeConfig(
+        if self.compute is None:
+            self.compute = Compute(
                 instance_type=DEFAULT_INSTANCE_TYPE,
                 instance_count=1,
                 volume_size_in_gb=30,
             )
-            logger.warning(f"ComputeConfig not provided. Using default:\n{self.compute_config}")
+            logger.warning(f"Compute not provided. Using default:\n{self.compute}")
 
         if self.stopping_condition is None:
             self.stopping_condition = StoppingCondition(
@@ -334,7 +314,7 @@ class ModelTrainer(BaseModel):
                 f"OutputDataConfig not provided. Using default:\n{self.output_data_config}"
             )
 
-        # TODO: Autodetect which image to use if source_code_config is provided
+        # TODO: Autodetect which image to use if source_code is provided
         if self.training_image:
             logger.info(f"Training image URI: {self.training_image}")
 
@@ -342,8 +322,8 @@ class ModelTrainer(BaseModel):
     def train(
         self,
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
-        wait: bool = True,
-        logs: bool = True,
+        wait: Optional[bool] = True,
+        logs: Optional[bool] = True,
     ):
         """Train a model using AWS SageMaker.
 
@@ -374,43 +354,35 @@ class ModelTrainer(BaseModel):
 
         container_entrypoint = None
         container_arguments = None
-        if self.source_code_config:
+        if self.source_code:
 
             # If source code is provided, create a channel for the source code
-            # The source code will be mounted at /opt/ml/input/data/code in the container
-            if self.source_code_config.source_dir:
+            # The source code will be mounted at /opt/ml/input/data/sm_code in the container
+            if self.source_code.source_dir:
                 source_code_channel = self.create_input_data_channel(
-                    SM_CODE, self.source_code_config.source_dir
+                    SM_CODE, self.source_code.source_dir
                 )
                 input_data_config.append(source_code_channel)
 
             self._prepare_train_script(
-                source_code_config=self.source_code_config,
-                distribution_config=self.distribution_config,
+                source_code=self.source_code, distributed_runner=self.distributed_runner
             )
-            if self.distribution_config:
-                smd_modelparallel_parameters = getattr(
-                    self.distribution_config.smdistributed_settings,
-                    "modelparallel_parameters",
-                    None,
-                )
-                if smd_modelparallel_parameters:
-                    string_hyper_parameters["mp_parameters"] = json.dumps(
-                        smd_modelparallel_parameters
-                    )
-            self._write_source_code_config_json(self.source_code_config)
-            if self.distribution_config:
-                self._write_distribution_config_json(self.distribution_config)
+            if isinstance(self.distributed_runner, TorchrunSMP):
+                mp_parameters = self.distributed_runner._to_mp_parameters_dict()
+                string_hyper_parameters["mp_parameters"] = json.dumps(mp_parameters)
+
+            self._write_source_code_json(self.source_code)
+            self._write_distributed_runner_json(self.distributed_runner)
 
             # Create an input channel for drivers packaged by the sdk
             sm_drivers_channel = self.create_input_data_channel(SM_DRIVERS, SM_DRIVERS_LOCAL_PATH)
             input_data_config.append(sm_drivers_channel)
 
-            # If source_code_config is provided, we will always use
+            # If source_code is provided, we will always use
             # the default container entrypoint and arguments
-            # to execute the train.sh script.
-            # Any commands generated from the source_code_config will be
-            # executed from the train.sh script.
+            # to execute the sm_train.sh script.
+            # Any commands generated from the source_code will be
+            # executed from the sm_train.sh script.
             container_entrypoint = DEFAULT_CONTAINER_ENTRYPOINT
             container_arguments = DEFAULT_CONTAINER_ARGUMENTS
 
@@ -425,8 +397,8 @@ class ModelTrainer(BaseModel):
             enable_sage_maker_metrics_time_series=self._enable_sage_maker_metrics_time_series,
         )
 
-        resource_config = self.compute_config._to_resource_config()
-        vpc_config = self.networking_config._to_vpc_config() if self.networking_config else None
+        resource_config = self.compute._to_resource_config()
+        vpc_config = self.networking._to_vpc_config() if self.networking else None
 
         training_job = TrainingJob.create(
             training_job_name=_get_unique_name(self.base_job_name),
@@ -443,14 +415,14 @@ class ModelTrainer(BaseModel):
             output_data_config=self.output_data_config,
             checkpoint_config=self.checkpoint_config,
             environment=self.environment,
-            enable_managed_spot_training=self.compute_config.enable_managed_spot_training,
+            enable_managed_spot_training=self.compute.enable_managed_spot_training,
             enable_inter_container_traffic_encryption=(
-                self.networking_config.enable_inter_container_traffic_encryption
-                if self.networking_config
+                self.networking.enable_inter_container_traffic_encryption
+                if self.networking
                 else None
             ),
             enable_network_isolation=(
-                self.networking_config.enable_network_isolation if self.networking_config else None
+                self.networking.enable_network_isolation if self.networking else None
             ),
             # Private Instance Attributes
             debug_hook_config=self._debug_hook_config,
@@ -553,76 +525,73 @@ class ModelTrainer(BaseModel):
                 )
         return channels
 
-    def _write_source_code_config_json(self, source_code_config: SourceCodeConfig):
+    def _write_source_code_json(self, source_code: SourceCode):
         """Write the source code configuration to a JSON file."""
-        file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, SOURCE_CODE_CONFIG_JSON)
+        file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, SOURCE_CODE_JSON)
         with open(file_path, "w") as f:
-            f.write(source_code_config.model_dump_json())
+            dump = source_code.model_dump(exclude_none=True) if source_code else {}
+            f.write(json.dumps(dump))
 
-    def _write_distribution_config_json(
-        self, distribution: Union[MPIDistributionConfig, TorchDistributionConfig]
+    def _write_distributed_runner_json(
+        self, distributed_runner: Optional[DistributedRunner] = None
     ):
-        """Write the distribution configuration to a JSON file."""
-        file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, DISTRIBUTION_JSON)
+        """Write the distributed runner configuration to a JSON file."""
+        file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, DISTRIBUTED_RUNNER_JSON)
         with open(file_path, "w") as f:
-            f.write(distribution.model_dump_json())
+            dump = distributed_runner.model_dump(exclude_none=True) if distributed_runner else {}
+            f.write(json.dumps(dump))
 
     def _prepare_train_script(
         self,
-        source_code_config: SourceCodeConfig,
-        distribution_config: Optional[Union[MPIDistributionConfig, TorchDistributionConfig]] = None,
+        source_code: SourceCode,
+        distributed_runner: Optional[DistributedRunner] = None,
     ):
         """Prepare the training script to be executed in the training job container.
 
         Args:
-            source_code_config (SourceCodeConfig): The source code configuration.
+            source_code (SourceCodeConfig): The source code configuration.
         """
 
         base_command = ""
-        if source_code_config.command:
-            if source_code_config.entry_script:
+        if source_code.command:
+            if source_code.entry_script:
                 logger.warning(
                     "Both 'command' and 'entry_script' are provided in the SourceCodeConfig. "
                     + "Defaulting to 'command'."
                 )
-            base_command = source_code_config.command.split()
+            base_command = source_code.command.split()
             base_command = " ".join(base_command)
 
-        if (
-            source_code_config.entry_script
-            and not source_code_config.command
-            and not distribution_config
-        ):
-            if source_code_config.entry_script.endswith(".py"):
-                base_command = f"$SM_PYTHON_CMD {source_code_config.entry_script}"
-            elif source_code_config.entry_script.endswith(".sh"):
+        if source_code.entry_script and not source_code.command and not distributed_runner:
+            if source_code.entry_script.endswith(".py"):
+                base_command = f"$SM_PYTHON_CMD {source_code.entry_script}"
+            elif source_code.entry_script.endswith(".sh"):
                 base_command = (
-                    f"chmod +x {source_code_config.entry_script} && "
-                    f"bash {source_code_config.entry_script}"
+                    f"chmod +x {source_code.entry_script} && " f"bash {source_code.entry_script}"
                 )
             else:
                 raise ValueError(
-                    f"Unsupported entry script: {source_code_config.entry_script}."
+                    f"Unsupported entry script: {source_code.entry_script}."
                     + "Only .py and .sh scripts are supported."
                 )
 
         install_requirements = ""
-        if source_code_config.requirements:
+        if source_code.requirements:
             install_requirements = "echo 'Installing requirements'\n"
-            install_requirements = f"$SM_PIP_CMD install -r {source_code_config.requirements}"
+            install_requirements = f"$SM_PIP_CMD install -r {source_code.requirements}"
 
         working_dir = ""
-        if source_code_config.source_dir:
+        if source_code.source_dir:
             working_dir = f"cd {SM_CODE_CONTAINER_PATH}"
 
         if base_command:
             execute_driver = EXECUTE_BASE_COMMANDS.format(base_command=base_command)
-        elif distribution_config:
-            distribution_type = distribution_config._distribution_type
+        elif distributed_runner:
+            distribution_type = distributed_runner._type
             if distribution_type == "mpi":
                 execute_driver = EXECUTE_MPI_DRIVER
-            elif distribution_type == "torch_distributed":
-                execute_driver = EXECUTE_PYTORCH_DRIVER
+            elif distribution_type == "torchrun":
+                execute_driver = EXEUCTE_TORCHRUN_DRIVER
             else:
                 raise ValueError(f"Unsupported distribution type: {distribution_type}.")
 
@@ -676,7 +645,6 @@ class ModelTrainer(BaseModel):
         self,
         debug_hook_config: Optional[DebugHookConfig] = None,
         debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = None,
-        remote_debug_config: Optional[RemoteDebugConfig] = None,
         profiler_config: Optional[ProfilerConfig] = None,
         profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = None,
         tensor_board_output_config: Optional[TensorBoardOutputConfig] = None,
@@ -708,9 +676,6 @@ class ModelTrainer(BaseModel):
             debug_rule_configurations (Optional[List[DebugRuleConfiguration]]):
                 Configuration information for Amazon SageMaker Debugger rules for debugging
                 output ensors.
-            remote_debug_config (Optional[RemoteDebugConfig]):
-                Configuration for remote debugging. To learn more see:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/train-remote-debugging.html
             profiler_config (ProfilerConfig):
                 Configuration information for Amazon SageMaker Debugger system monitoring,
                 framework profiling, and storage paths.
@@ -723,7 +688,6 @@ class ModelTrainer(BaseModel):
         """
         self._debug_hook_config = debug_hook_config
         self._debug_rule_configurations = debug_rule_configurations
-        self._remote_debug_config = remote_debug_config
         self._profiler_config = profiler_config
         self._profiler_rule_configurations = profiler_rule_configurations
         self._tensor_board_output_config = tensor_board_output_config
@@ -735,6 +699,7 @@ class ModelTrainer(BaseModel):
         experiment_config: Optional[ExperimentConfig] = None,
         infra_check_config: Optional[InfraCheckConfig] = None,
         session_chaining_config: Optional[SessionChainingConfig] = None,
+        remote_debug_config: Optional[RemoteDebugConfig] = None,
     ) -> "ModelTrainer":
         """Set any additional settings for the training job.
 
@@ -761,9 +726,13 @@ class ModelTrainer(BaseModel):
             session_chaining_config (Optional[SessionChainingConfig]):
                 Contains information about attribute-based access control (ABAC) for the training
                 job.
+            remote_debug_config (Optional[RemoteDebugConfig]):
+                Configuration for remote debugging through AWS Systems Manager. To learn more see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/train-remote-debugging.html
         """
         self._retry_strategy = retry_strategy
         self._experiment_config = experiment_config
         self._infra_check_config = infra_check_config
         self._session_chaining_config = session_chaining_config
+        self._remote_debug_config = remote_debug_config
         return self
