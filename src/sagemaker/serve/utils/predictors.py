@@ -212,8 +212,8 @@ class TransformersLocalModePredictor(PredictorBase):
         self._mode_obj.destroy_server()
 
 
-class TransformersInProcessModePredictor(PredictorBase):
-    """Lightweight Transformers predictor for in process mode deployment"""
+class InProcessModePredictor(PredictorBase):
+    """Lightweight predictor for in process mode deployment"""
 
     def __init__(
         self,
@@ -227,7 +227,7 @@ class TransformersInProcessModePredictor(PredictorBase):
 
     def predict(self, data):
         """Placeholder docstring"""
-        return self._mode_obj._invoke_multi_model_server_serving(
+        return self._mode_obj._invoke_serving(
             self.serializer.serialize(data),
             self.content_type,
             self.deserializer.ACCEPT[0],

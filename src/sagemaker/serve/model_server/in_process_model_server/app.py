@@ -3,10 +3,13 @@
 from __future__ import absolute_import
 
 import asyncio
+import io
 import logging
 import threading
 from typing import Optional
 
+from sagemaker.serve.spec.inference_spec import InferenceSpec
+from sagemaker.serve.builder.schema_builder import SchemaBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -18,44 +21,43 @@ except ImportError:
 
 
 try:
-    from transformers import pipeline
-except ImportError:
-    logger.error("Unable to import transformers, check if transformers is installed.")
-
-
-try:
     from fastapi import FastAPI, Request, APIRouter
 except ImportError:
     logger.error("Unable to import fastapi, check if fastapi is installed.")
 
 
 class InProcessServer:
-    """Placeholder docstring"""
+    """Generic In-Process Server for Serving Models using InferenceSpec"""
 
-    def __init__(self, model_id: Optional[str] = None, task: Optional[str] = None):
+    def __init__(
+        self,
+        inference_spec: Optional[InferenceSpec] = None,
+        schema_builder: Optional[SchemaBuilder] = None,
+    ):
         self._thread = None
         self._loop = None
         self._stop_event = asyncio.Event()
         self._router = APIRouter()
-        self._model_id = model_id
-        self._task = task
         self.server = None
         self.port = None
         self.host = None
-        # TODO: Pick up device automatically.
-        self._generator = pipeline(task, model=model_id, device="cpu")
+        self.inference_spec = inference_spec
+        self.schema_builder = schema_builder
+        self._load_model = self.inference_spec.load(model_dir=None)
 
-        # pylint: disable=unused-variable
-        @self._router.post("/generate")
-        async def generate_text(prompt: Request):
-            """Placeholder docstring"""
-            str_prompt = await prompt.json()
-            str_prompt = str_prompt["inputs"] if "inputs" in str_prompt else str_prompt
+        @self._router.post("/invoke")
+        async def invoke(request: Request):
+            """Generate text based on the provided prompt"""
 
-            generated_text = self._generator(
-                str_prompt, max_length=30, num_return_sequences=1, truncation=True
+            request_header = request.headers
+            request_body = await request.body()
+            content_type = request_header.get("Content-Type", None)
+            input_data = schema_builder.input_deserializer.deserialize(
+                io.BytesIO(request_body), content_type[0]
             )
-            return generated_text
+            logger.debug(f"Received request: {input_data}")
+            response = self.inference_spec.invoke(input_data, self._load_model)
+            return response
 
         self._create_server()
 
