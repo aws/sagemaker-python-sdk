@@ -81,7 +81,7 @@ from sagemaker.serve.utils.optimize_utils import (
     _extract_speculative_draft_model_provider,
     _jumpstart_speculative_decoding,
 )
-from sagemaker.serve.utils.predictors import _get_local_mode_predictor
+from sagemaker.serve.utils.predictors import _get_local_mode_predictor, InProcessModePredictor
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
     _get_gpu_info_fallback,
@@ -566,6 +566,18 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if mode and mode != self.mode:
             self._overwrite_mode_in_deploy(overwrite_mode=mode)
 
+        if self.mode == Mode.IN_PROCESS:
+            serializer, deserializer = self._get_client_translators()
+
+            predictor = InProcessModePredictor(
+                self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
+            )
+
+            self.modes[str(Mode.IN_PROCESS)].create_server(
+                predictor,
+            )
+            return predictor
+
         if self.mode == Mode.LOCAL_CONTAINER:
             serializer, deserializer = self._get_client_translators()
             predictor = _get_local_mode_predictor(
@@ -919,11 +931,16 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
     def _build_validations(self):
         """Validations needed for model server overrides, or auto-detection or fallback"""
-        if self.mode == Mode.IN_PROCESS and self.model_server is not ModelServer.MMS:
+        if (
+            self.mode == Mode.IN_PROCESS
+            and self.model_server is not ModelServer.MMS
+            and self.model_server is not ModelServer.DJL_SERVING
+            and self.model_server is not ModelServer.TORCHSERVE
+        ):
             raise ValueError(
-                "IN_PROCESS mode is only supported for MMS/Transformers server in beta release."
+                "IN_PROCESS mode is only supported for the following servers "
+                "in beta release: MMS/Transformers, TORCHSERVE, DJL_SERVING server"
             )
-
         if self.inference_spec and self.model:
             raise ValueError("Can only set one of the following: model, inference_spec.")
 

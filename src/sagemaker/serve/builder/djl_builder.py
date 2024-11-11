@@ -47,7 +47,7 @@ from sagemaker.serve.utils.local_hardware import (
 from sagemaker.serve.model_server.djl_serving.prepare import (
     _create_dir_structure,
 )
-from sagemaker.serve.utils.predictors import DjlLocalModePredictor
+from sagemaker.serve.utils.predictors import InProcessModePredictor, DjlLocalModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
@@ -55,6 +55,7 @@ from sagemaker.djl_inference.model import DJLModel
 from sagemaker.base_predictor import PredictorBase
 
 logger = logging.getLogger(__name__)
+LOCAL_MODES = [Mode.LOCAL_CONTAINER, Mode.IN_PROCESS]
 
 # Match JumpStart DJL entrypoint format
 _CODE_FOLDER = "code"
@@ -77,6 +78,7 @@ class DJL(ABC):
         self.mode = None
         self.model_server = None
         self.image_uri = None
+        self.inference_spec = None
         self._is_custom_image_uri = False
         self.image_config = None
         self.vpc_config = None
@@ -96,11 +98,11 @@ class DJL(ABC):
 
     @abstractmethod
     def _prepare_for_mode(self):
-        """Placeholder docstring"""
+        """Abstract method"""
 
     @abstractmethod
     def _get_client_translators(self):
-        """Placeholder docstring"""
+        """Abstract method"""
 
     def _is_djl(self):
         """Placeholder docstring"""
@@ -146,7 +148,7 @@ class DJL(ABC):
 
     @_capture_telemetry("djl.deploy")
     def _djl_model_builder_deploy_wrapper(self, *args, **kwargs) -> Type[PredictorBase]:
-        """Placeholder docstring"""
+        """Returns predictor depending on local mode or endpoint mode"""
         timeout = kwargs.get("model_data_download_timeout")
         if timeout:
             self.env_vars.update({"MODEL_LOADING_TIMEOUT": str(timeout)})
@@ -189,6 +191,18 @@ class DJL(ABC):
 
         serializer = self.schema_builder.input_serializer
         deserializer = self.schema_builder._output_deserializer
+
+        if self.mode == Mode.IN_PROCESS:
+
+            predictor = InProcessModePredictor(
+                self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
+            )
+
+            self.modes[str(Mode.IN_PROCESS)].create_server(
+                predictor,
+            )
+            return predictor
+
         if self.mode == Mode.LOCAL_CONTAINER:
             timeout = kwargs.get("model_data_download_timeout")
 
@@ -249,9 +263,15 @@ class DJL(ABC):
 
         _create_dir_structure(self.model_path)
         if not hasattr(self, "pysdk_model"):
-            self.env_vars.update({"HF_MODEL_ID": self.model})
+            if self.inference_spec is not None:
+                self.env_vars.update({"HF_MODEL_ID": self.inference_spec.get_model()})
+            else:
+                self.env_vars.update({"HF_MODEL_ID": self.model})
+
+            logger.info(self.env_vars)
+
             self.hf_model_config = _get_model_config_properties_from_hf(
-                self.model, self.env_vars.get("HF_TOKEN")
+                self.env_vars.get("HF_MODEL_ID"), self.env_vars.get("HF_TOKEN")
             )
             default_djl_configurations, _default_max_new_tokens = _get_default_djl_configurations(
                 self.model, self.hf_model_config, self.schema_builder
@@ -260,9 +280,10 @@ class DJL(ABC):
             self.schema_builder.sample_input["parameters"][
                 "max_new_tokens"
             ] = _default_max_new_tokens
+
         self.pysdk_model = self._create_djl_model()
 
-        if self.mode == Mode.LOCAL_CONTAINER:
+        if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
 
         return self.pysdk_model
@@ -451,7 +472,6 @@ class DJL(ABC):
         """Placeholder docstring"""
         self._validate_djl_serving_sample_data()
         self.secret_key = None
-
         self.pysdk_model = self._build_for_hf_djl()
         self.pysdk_model.tune = self._tune_for_hf_djl
         if self.role_arn:

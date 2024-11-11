@@ -13,20 +13,15 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.utils.exceptions import InProcessDeepPingException
-from sagemaker.serve.model_server.multi_model_server.server import InProcessMultiModelServer
+from sagemaker.serve.model_server.in_process_model_server.in_process_server import InProcessServing
 from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
 
-_PING_HEALTH_CHECK_FAIL_MSG = (
-    "Ping health check did not pass. "
-    + "Please increase container_timeout_seconds or review your inference code."
-)
+_PING_HEALTH_CHECK_FAIL_MSG = "Ping health check did not pass. Please review your inference code."
 
 
-class InProcessMode(
-    InProcessMultiModelServer,
-):
+class InProcessMode(InProcessServing):
     """A class that holds methods to deploy model to a container in process environment"""
 
     def __init__(
@@ -70,7 +65,13 @@ class InProcessMode(
         logger.info("Waiting for model server %s to start up...", self.model_server)
 
         if self.model_server == ModelServer.MMS:
-            self._ping_local_server = self._multi_model_server_deep_ping
+            self._ping_local_server = self._deep_ping
+            self._start_serving()
+        elif self.model_server == ModelServer.DJL_SERVING:
+            self._ping_local_server = self._deep_ping
+            self._start_serving()
+        elif self.model_server == ModelServer.TORCHSERVE:
+            self._ping_local_server = self._deep_ping
             self._start_serving()
 
         # allow some time for server to be ready.

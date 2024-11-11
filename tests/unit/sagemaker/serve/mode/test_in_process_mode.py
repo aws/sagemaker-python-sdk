@@ -32,7 +32,7 @@ class TestInProcessMode(unittest.TestCase):
     @patch("sagemaker.serve.mode.in_process_mode.Path")
     @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
     @patch("sagemaker.session.Session")
-    def test_load_happy(self, mock_session, mock_inference_spec, mock_path):
+    def test_load_happy_transformers(self, mock_session, mock_inference_spec, mock_path):
         mock_path.return_value.exists.side_effect = lambda *args, **kwargs: True
         mock_path.return_value.is_dir.side_effect = lambda *args, **kwargs: True
 
@@ -41,6 +41,33 @@ class TestInProcessMode(unittest.TestCase):
         mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
         in_process_mode = InProcessMode(
             model_server=ModelServer.MMS,
+            inference_spec=mock_inference_spec,
+            schema_builder=mock_schema_builder,
+            session=mock_session,
+            model_path="model_path",
+            env_vars={"key": "val"},
+        )
+
+        res = in_process_mode.load(model_path="/tmp/model-builder/code/")
+
+        self.assertEqual(res, "Dummy load")
+        self.assertEqual(in_process_mode.inference_spec, mock_inference_spec)
+        self.assertEqual(in_process_mode.schema_builder, mock_schema_builder)
+        self.assertEqual(in_process_mode.model_path, "model_path")
+        self.assertEqual(in_process_mode.env_vars, {"key": "val"})
+
+    @patch("sagemaker.serve.mode.in_process_mode.Path")
+    @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
+    @patch("sagemaker.session.Session")
+    def test_load_happy_djl_serving(self, mock_session, mock_inference_spec, mock_path):
+        mock_path.return_value.exists.side_effect = lambda *args, **kwargs: True
+        mock_path.return_value.is_dir.side_effect = lambda *args, **kwargs: True
+
+        mock_inference_spec.load.side_effect = lambda *args, **kwargs: "Dummy load"
+
+        mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
+        in_process_mode = InProcessMode(
+            model_server=ModelServer.DJL_SERVING,
             inference_spec=mock_inference_spec,
             schema_builder=mock_schema_builder,
             session=mock_session,
@@ -119,7 +146,7 @@ class TestInProcessMode(unittest.TestCase):
             model_path="model_path",
         )
 
-        in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
+        in_process_mode._deep_ping = mock_multi_model_server_deep_ping
         in_process_mode._start_serving = mock_start_serving
 
         in_process_mode.create_server(predictor=mock_predictor)
@@ -160,13 +187,13 @@ class TestInProcessMode(unittest.TestCase):
             model_path="model_path",
         )
 
-        in_process_mode._multi_model_server_deep_ping = mock_multi_model_server_deep_ping
+        in_process_mode._deep_ping = mock_multi_model_server_deep_ping
         in_process_mode._start_serving = mock_start_serving
 
         self.assertRaises(InProcessDeepPingException, in_process_mode.create_server, mock_predictor)
 
     @patch(
-        "sagemaker.serve.model_server.multi_model_server.server.InProcessMultiModelServer._stop_serving"
+        "sagemaker.serve.model_server.in_process_model_server.in_process_server.InProcessServing._stop_serving"
     )
     @patch("sagemaker.serve.spec.inference_spec.InferenceSpec")
     @patch("sagemaker.session.Session")
@@ -177,7 +204,7 @@ class TestInProcessMode(unittest.TestCase):
         mock_stop_serving,
     ):
         in_process_mode = InProcessMode(
-            model_server=ModelServer.MMS,
+            model_server=ModelServer.DJL_SERVING,
             inference_spec=mock_inference_spec,
             schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
             session=mock_session,
