@@ -49,6 +49,8 @@ from sagemaker.serve.utils.optimize_utils import (
     SPECULATIVE_DRAFT_MODEL,
     _is_inferentia_or_trainium,
     _jumpstart_speculative_decoding,
+    _deployment_config_contains_draft_model,
+    _is_draft_model_jumpstart_provided,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -850,7 +852,7 @@ class JumpStart(ABC):
 
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
 
-            if model_provider == "sagemaker":
+            if model_provider in ["sagemaker", "auto"]:
                 additional_model_data_sources = (
                     self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
                         "AdditionalDataSources"
@@ -863,6 +865,15 @@ class JumpStart(ABC):
                         speculative_decoding_config
                     )
                     if deployment_config:
+                        if model_provider == "sagemaker" and _is_draft_model_jumpstart_provided(
+                            deployment_config
+                        ):
+                            raise ValueError(
+                                "No `Sagemaker` provided draft model was found for "
+                                f"{self.model}. Try setting `ModelProvider` "
+                                "to `Auto` instead."
+                            )
+
                         try:
                             self.pysdk_model.set_deployment_config(
                                 config_name=deployment_config.get("DeploymentConfigName"),
@@ -878,12 +889,21 @@ class JumpStart(ABC):
                         raise ValueError(
                             "Cannot find deployment config compatible for optimization job."
                         )
+                else:
+                    if model_provider == "sagemaker" and _is_draft_model_jumpstart_provided(
+                        self.pysdk_model.deployment_config
+                    ):
+                        raise ValueError(
+                            "No `Sagemaker` provided draft model was found for "
+                            f"{self.model}. Try setting `ModelProvider` "
+                            "to `Auto` instead."
+                        )
 
                 self.pysdk_model.env.update(
                     {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
                 )
                 self.pysdk_model.add_tags(
-                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
+                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": model_provider},
                 )
             elif model_provider == "jumpstart":
                 _jumpstart_speculative_decoding(
@@ -911,15 +931,17 @@ class JumpStart(ABC):
         for deployment_config in self.pysdk_model.list_deployment_configs():
             image_uri = deployment_config.get("deployment_config", {}).get("ImageUri")
 
-            if _is_image_compatible_with_optimization_job(image_uri):
+            if _is_image_compatible_with_optimization_job(
+                image_uri
+            ) and _deployment_config_contains_draft_model(deployment_config):
                 if (
-                    model_provider == "sagemaker"
+                    model_provider in ["sagemaker", "auto"]
                     and deployment_config.get("DeploymentArgs", {}).get("AdditionalDataSources")
                 ) or model_provider == "custom":
                     return deployment_config
 
         # There's no matching config from jumpstart to add sagemaker draft model location
-        if model_provider == "sagemaker":
+        if model_provider in ["sagemaker", "auto"]:
             return None
 
         # fall back to the default jumpstart model deployment config for optimization job

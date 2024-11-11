@@ -60,6 +60,47 @@ def _is_image_compatible_with_optimization_job(image_uri: Optional[str]) -> bool
     return "djl-inference:" in image_uri and ("-lmi" in image_uri or "-neuronx-" in image_uri)
 
 
+def _deployment_config_contains_draft_model(deployment_config: Optional[Dict]) -> bool:
+    """Checks whether a deployment config contains a speculative decoding draft model.
+
+    Args:
+        deployment_config (Dict): The deployment config to check.
+
+    Returns:
+        bool: Whether the deployment config contains a draft model or not.
+    """
+    if deployment_config is None:
+        return False
+    deployment_args = deployment_config.get("DeploymentArgs", {})
+    additional_data_sources = deployment_args.get("AdditionalDataSources")
+    if not additional_data_sources:
+        return False
+    return additional_data_sources.get("speculative_decoding", False)
+
+
+def _is_draft_model_jumpstart_provided(deployment_config: Optional[Dict]) -> bool:
+    """Checks whether a deployment config's draft model is provided by JumpStart.
+
+    Args:
+        deployment_config (Dict): The deployment config to check.
+
+    Returns:
+        bool: Whether the draft model is provided by JumpStart or not.
+    """
+    if deployment_config is None:
+        return False
+
+    additional_model_data_sources = deployment_config.get("DeploymentArgs", {}).get(
+        "AdditionalDataSources"
+    )
+    for source in additional_model_data_sources.get("speculative_decoding", []):
+        if source["channel_name"] == "draft_model":
+            if source.get("provider", {}).get("name") == "JumpStart":
+                return True
+            continue
+    return False
+
+
 def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -> Model:
     """Generates a new optimization model.
 
@@ -166,15 +207,18 @@ def _extract_speculative_draft_model_provider(
     if speculative_decoding_config is None:
         return None
 
-    if speculative_decoding_config.get("ModelProvider") == "JumpStart":
+    if speculative_decoding_config.get("ModelProvider").lower() == "jumpstart":
         return "jumpstart"
 
     if speculative_decoding_config.get(
         "ModelProvider"
-    ) == "Custom" or speculative_decoding_config.get("ModelSource"):
+    ).lower() == "custom" or speculative_decoding_config.get("ModelSource"):
         return "custom"
 
-    return "sagemaker"
+    if speculative_decoding_config.get("ModelProvider").lower() == "sagemaker":
+        return "sagemaker"
+
+    return "auto"
 
 
 def _extract_additional_model_data_source_s3_uri(

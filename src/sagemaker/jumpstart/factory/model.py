@@ -564,10 +564,7 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
 
 
 def _apply_accept_eula_on_model_data_source(
-    model_data_source: Dict[str, Any],
-    model_id: str,
-    region: str,
-    accept_eula: bool
+    model_data_source: Dict[str, Any], model_id: str, region: str, accept_eula: bool
 ):
     """Sets AcceptEula to True for gated speculative decoding models"""
 
@@ -586,7 +583,8 @@ def _apply_accept_eula_on_model_data_source(
                 f"'{model_id}' that requires accepting end-user license agreement (EULA). "
                 f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
                 f"{get_domain_for_region(region)}"
-                f"/{hosting_eula_key} for terms of use. Please set `accept_eula=True` once acknowledged."
+                f"/{hosting_eula_key} for terms of use. Please set `accept_draft_model_eula=True` "
+                f"once acknowledged."
             )
         )
 
@@ -608,7 +606,10 @@ def _add_additional_model_data_sources_to_kwargs(
         [
             camel_case_to_pascal_case(
                 _apply_accept_eula_on_model_data_source(
-                    data_source.to_json(), kwargs.model_id, kwargs.region, kwargs.accept_draft_model_eula,
+                    data_source.to_json(),
+                    kwargs.model_id,
+                    kwargs.region,
+                    kwargs.accept_draft_model_eula,
                 )
             )
             for data_source in speculative_decoding_data_sources
