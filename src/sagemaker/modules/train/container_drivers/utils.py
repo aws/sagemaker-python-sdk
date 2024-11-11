@@ -37,8 +37,9 @@ TrainingJob - {os.environ['TRAINING_JOB_NAME']}
 """
 
 USER_CODE_PATH = "/opt/ml/input/data/sm_code"
-SOURCE_CODE_CONFIG_JSON = "/opt/ml/input/data/sm_drivers/sourcecodeconfig.json"
-DISTRIBUTION_JSON = "/opt/ml/input/data/sm_drivers/distribution.json"
+SOURCE_CODE_JSON = "/opt/ml/input/data/sm_drivers/sourcecode.json"
+DISTRIBUTED_RUNNER_JSON = "/opt/ml/input/data/sm_drivers/distributed_runner.json"
+
 
 SM_EFA_NCCL_INSTANCES = [
     "ml.g4dn.8xlarge",
@@ -65,24 +66,30 @@ def write_failure_file(message: str = DEFAULT_FAILURE_MESSAGE):
             f.write(message)
 
 
-def read_source_code_config_json(source_code_config_file: Dict[str, Any] = SOURCE_CODE_CONFIG_JSON):
+def read_source_code_json(source_code_json: Dict[str, Any] = SOURCE_CODE_JSON):
     """Read the source code config json file."""
-    with open(source_code_config_file, "r") as f:
-        source_code_config_json = json.load(f)
-    return source_code_config_json
+    try:
+        with open(source_code_json, "r") as f:
+            source_code_dict = json.load(f) or {}
+    except FileNotFoundError:
+        source_code_dict = {}
+    return source_code_dict
 
 
-def read_distribution_json(distribution_file: Dict[str, Any] = DISTRIBUTION_JSON):
-    """Read the distribution json file."""
-    with open(distribution_file, "r") as f:
-        distribution_json = json.load(f)
-    return distribution_json
+def read_distributed_runner_json(distributed_json: Dict[str, Any] = DISTRIBUTED_RUNNER_JSON):
+    """Read the distribution config json file."""
+    try:
+        with open(distributed_json, "r") as f:
+            distributed_runner_dict = json.load(f) or {}
+    except FileNotFoundError:
+        distributed_runner_dict = {}
+    return distributed_runner_dict
 
 
-def get_process_count(distribution: Dict[str, Any]) -> int:
+def get_process_count(distributed_runner_dict: Dict[str, Any]) -> int:
     """Get the number of processes to run on each node in the training job."""
     return (
-        int(distribution.get("process_count_per_node", 0))
+        int(distributed_runner_dict.get("process_count_per_node", 0))
         or int(os.environ.get("SM_NUM_GPUS", 0))
         or int(os.environ.get("SM_NUM_NEURONS", 0))
         or 1

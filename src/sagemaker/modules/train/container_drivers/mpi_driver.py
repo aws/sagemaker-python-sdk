@@ -14,12 +14,13 @@
 from __future__ import absolute_import
 
 import os
+import sys
 import json
 
 from utils import (
     logger,
-    read_source_code_config_json,
-    read_distribution_json,
+    read_source_code_json,
+    read_distributed_runner_json,
     get_process_count,
     execute_commands,
     write_failure_file,
@@ -55,9 +56,8 @@ def main():
     5. Exit
 
     """
-    source_code_config = read_source_code_config_json()
-    distribution = read_distribution_json()
-    sm_distributed_settings = distribution.get("smdistributed_settings", {})
+    source_code = read_source_code_json()
+    distribution = read_distributed_runner_json()
 
     sm_current_host = os.environ["SM_CURRENT_HOST"]
     sm_hosts = json.loads(os.environ["SM_HOSTS"])
@@ -83,18 +83,17 @@ def main():
             host_count=host_count,
             host_list=host_list,
             num_processes=process_count,
-            smdataparallel_enabled=sm_distributed_settings.get("enable_dataparallel", False),
-            smmodelparallel_enabled=sm_distributed_settings.get("enable_modelparallel", False),
             additional_options=distribution.get("mpi_additional_options", []),
-            entry_script_path=os.path.join(USER_CODE_PATH, source_code_config["entry_script"]),
+            entry_script_path=os.path.join(USER_CODE_PATH, source_code["entry_script"]),
         )
 
         logger.info(f"Executing command: {mpi_command}")
         exit_code, error_traceback = execute_commands(mpi_command)
+        write_status_file_to_workers(worker_hosts)
+
         if exit_code != 0:
             write_failure_file(error_traceback)
-
-        write_status_file_to_workers(worker_hosts)
+            sys.exit(exit_code)
 
 
 if __name__ == "__main__":
