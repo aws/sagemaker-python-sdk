@@ -17,6 +17,7 @@ import re
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker_core.shapes import ModelAccessConfig as CoreModelAccessConfig
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.utils import (
     S3_PREFIX,
@@ -2117,7 +2118,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "hub_content_type",
         "model_reference_arn",
         "specs",
-        "accept_draft_model_eula",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2133,7 +2133,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "training_instance_type",
         "config_name",
         "hub_content_type",
-        "accept_draft_model_eula",
     }
 
     def __init__(
@@ -2168,7 +2167,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         resources: Optional[ResourceRequirements] = None,
         config_name: Optional[str] = None,
         additional_model_data_sources: Optional[Dict[str, Any]] = None,
-        accept_draft_model_eula: Optional[bool] = False
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -2202,7 +2200,6 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.resources = resources
         self.config_name = config_name
         self.additional_model_data_sources = additional_model_data_sources
-        self.accept_draft_model_eula = accept_draft_model_eula
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -2244,6 +2241,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "config_name",
         "routing_config",
         "specs",
+        "model_access_configs"
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2257,6 +2255,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "sagemaker_session",
         "training_instance_type",
         "config_name",
+        "model_access_configs"
     }
 
     def __init__(
@@ -2295,6 +2294,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_type: Optional[EndpointType] = None,
         config_name: Optional[str] = None,
         routing_config: Optional[Dict[str, Any]] = None,
+        model_access_configs: Optional[List[CoreModelAccessConfig]] = None
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -2332,6 +2332,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_type = endpoint_type
         self.config_name = config_name
         self.routing_config = routing_config
+        self.model_access_configs = model_access_configs
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):

@@ -505,7 +505,7 @@ class JumpStart(ABC):
         )
 
     def set_deployment_config(
-        self, config_name: str, instance_type: str, accept_draft_model_eula: Optional[bool] = False
+        self, config_name: str, instance_type: str
     ) -> None:
         """Sets the deployment config to apply to the model.
 
@@ -522,7 +522,7 @@ class JumpStart(ABC):
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
             raise Exception("Cannot set deployment config to an uninitialized model.")
 
-        self.pysdk_model.set_deployment_config(config_name, instance_type, accept_draft_model_eula)
+        self.pysdk_model.set_deployment_config(config_name, instance_type)
         self.deployment_config_name = config_name
 
         self.instance_type = instance_type

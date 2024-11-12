@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
 
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import payloads
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -51,6 +52,7 @@ from sagemaker.jumpstart.utils import (
     add_instance_rate_stats_to_benchmark_metrics,
     deployment_config_response_data,
     _deployment_config_lru_cache,
+    _add_model_access_configs_to_model_data_sources,
 )
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -111,7 +113,6 @@ class JumpStartModel(Model):
         resources: Optional[ResourceRequirements] = None,
         config_name: Optional[str] = None,
         additional_model_data_sources: Optional[Dict[str, Any]] = None,
-        accept_draft_model_eula: Optional[bool] = None,
     ):
         """Initializes a ``JumpStartModel``.
 
@@ -302,10 +303,6 @@ class JumpStartModel(Model):
                 optionally applied to the model.
             additional_model_data_sources (Optional[Dict[str, Any]]): Additional location
                 of SageMaker model data (default: None).
-            accept_draft_model_eula (bool): For draft models that require a Model Access Config, specify True or
-                False to indicate whether model terms of use have been accepted.
-                The `accept_draft_model_eula` value must be explicitly defined as `True` in order to
-                accept the end-user license agreement (EULA) that some
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
         """
@@ -365,7 +362,6 @@ class JumpStartModel(Model):
             resources=resources,
             config_name=config_name,
             additional_model_data_sources=additional_model_data_sources,
-            accept_draft_model_eula=accept_draft_model_eula
         )
 
         self.orig_predictor_cls = predictor_cls
@@ -463,7 +459,7 @@ class JumpStartModel(Model):
         )
 
     def set_deployment_config(
-        self, config_name: str, instance_type: str, accept_draft_model_eula: Optional[bool] = False
+        self, config_name: str, instance_type: str
     ) -> None:
         """Sets the deployment config to apply to the model.
 
@@ -483,8 +479,7 @@ class JumpStartModel(Model):
             instance_type=instance_type,
             config_name=config_name,
             sagemaker_session=self.sagemaker_session,
-            role=self.role,
-            accept_draft_model_eula=accept_draft_model_eula,
+            role=self.role
         )
 
     @property
@@ -674,6 +669,7 @@ class JumpStartModel(Model):
         managed_instance_scaling: Optional[str] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         routing_config: Optional[Dict[str, Any]] = None,
+        model_access_configs: Optional[List[ModelAccessConfig]] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -770,6 +766,11 @@ class JumpStartModel(Model):
                 (Default: EndpointType.MODEL_BASED).
             routing_config (Optional[Dict]): Settings the control how the endpoint routes
                 incoming traffic to the instances that the endpoint hosts.
+            model_access_configs (Optional[List[ModelAccessConfig]]): For models that require Model Access Configs,
+                provide one or multiple ModelAccessConfig objects to indicate whether model terms of use have been accepted.
+                The `AcceptEula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some.
+                (Default: None)
 
         Raises:
             MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.
@@ -810,6 +811,7 @@ class JumpStartModel(Model):
             model_type=self.model_type,
             config_name=self.config_name,
             routing_config=routing_config,
+            model_access_configs=model_access_configs,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY
@@ -818,6 +820,13 @@ class JumpStartModel(Model):
             raise ValueError(
                 f"{EndpointType.INFERENCE_COMPONENT_BASED} is not supported for Proprietary models."
             )
+
+        self.additional_model_data_sources = _add_model_access_configs_to_model_data_sources(
+            self.additional_model_data_sources,
+            deploy_kwargs.model_access_configs,
+            deploy_kwargs.model_id,
+            deploy_kwargs.region,
+        )
 
         try:
             predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
@@ -1058,7 +1067,6 @@ class JumpStartModel(Model):
                 region=self.region,
                 model_version=self.model_version,
                 hub_arn=self.hub_arn,
-                accept_draft_model_eula=True,
             )
             deploy_kwargs = get_deploy_kwargs(
                 model_id=self.model_id,

@@ -16,6 +16,7 @@ import json
 
 
 from typing import Any, Dict, List, Optional, Union
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import environment_variables, image_uris, instance_types, model_uris, script_uris
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -58,7 +59,6 @@ from sagemaker.jumpstart.utils import (
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
-    get_jumpstart_content_bucket,
 )
 
 from sagemaker.jumpstart.factory.utils import (
@@ -563,37 +563,6 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
     return kwargs
 
 
-def _apply_accept_eula_on_model_data_source(
-    model_data_source: Dict[str, Any], model_id: str, region: str, accept_eula: bool
-):
-    """Sets AcceptEula to True for gated speculative decoding models"""
-
-    mutable_model_data_source = model_data_source.copy()
-
-    hosting_eula_key = mutable_model_data_source.get("hosting_eula_key")
-    del mutable_model_data_source["hosting_eula_key"]
-
-    if not hosting_eula_key:
-        return mutable_model_data_source
-
-    if not accept_eula:
-        raise ValueError(
-            (
-                f"The set deployment config comes optimized with an additional model data source "
-                f"'{model_id}' that requires accepting end-user license agreement (EULA). "
-                f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
-                f"{get_domain_for_region(region)}"
-                f"/{hosting_eula_key} for terms of use. Please set `accept_draft_model_eula=True` "
-                f"once acknowledged."
-            )
-        )
-
-    mutable_model_data_source["s3_data_source"]["model_access_config"] = {
-        "accept_eula": accept_eula
-    }
-    return mutable_model_data_source
-
-
 def _add_additional_model_data_sources_to_kwargs(
     kwargs: JumpStartModelInitKwargs,
 ) -> JumpStartModelInitKwargs:
@@ -606,14 +575,7 @@ def _add_additional_model_data_sources_to_kwargs(
         data_source.s3_data_source.set_bucket(get_neo_content_bucket(region=kwargs.region))
     api_shape_additional_model_data_sources = (
         [
-            camel_case_to_pascal_case(
-                _apply_accept_eula_on_model_data_source(
-                    data_source.to_json(),
-                    kwargs.model_id,
-                    kwargs.region,
-                    kwargs.accept_draft_model_eula,
-                )
-            )
+            camel_case_to_pascal_case(data_source.to_json())
             for data_source in speculative_decoding_data_sources
         ]
         if specs.get_speculative_decoding_s3_data_sources()
@@ -693,6 +655,7 @@ def get_deploy_kwargs(
     training_config_name: Optional[str] = None,
     config_name: Optional[str] = None,
     routing_config: Optional[Dict[str, Any]] = None,
+    model_access_configs: Optional[List[ModelAccessConfig]] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
@@ -729,6 +692,7 @@ def get_deploy_kwargs(
         resources=resources,
         config_name=config_name,
         routing_config=routing_config,
+        model_access_configs=model_access_configs,
     )
     deploy_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(kwargs=deploy_kwargs)
     deploy_kwargs.specs = verify_model_region_and_return_specs(
@@ -903,7 +867,6 @@ def get_init_kwargs(
     resources: Optional[ResourceRequirements] = None,
     config_name: Optional[str] = None,
     additional_model_data_sources: Optional[Dict[str, Any]] = None,
-    accept_draft_model_eula: Optional[bool] = None,
 ) -> JumpStartModelInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Model` object."""
 
@@ -938,7 +901,6 @@ def get_init_kwargs(
         resources=resources,
         config_name=config_name,
         additional_model_data_sources=additional_model_data_sources,
-        accept_draft_model_eula=accept_draft_model_eula,
     )
     model_init_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(
         kwargs=model_init_kwargs

@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+
 from copy import copy
 import logging
 import os
@@ -22,6 +23,7 @@ import boto3
 from botocore.exceptions import ClientError
 from packaging.version import Version
 import botocore
+from sagemaker_core.shapes import ModelAccessConfig
 import sagemaker
 from sagemaker.config.config_schema import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
@@ -55,6 +57,7 @@ from sagemaker.utils import (
     TagsDict,
     get_instance_rate_per_hour,
     get_domain_for_region,
+    camel_case_to_pascal_case,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.user_agent import get_user_agent_extra_suffix
@@ -555,11 +558,17 @@ def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
     """Returns EULA message to display if one is available, else empty string."""
     if model_specs.hosting_eula_key is None:
         return ""
+    return format_eula_message_from_specs(
+        model_id=model_specs.model_id, region=region, hosting_eula_key=model_specs.hosting_eula_key
+    )
+
+
+def format_eula_message_from_specs(model_id: str, region: str, hosting_eula_key: str):
     return (
-        f"Model '{model_specs.model_id}' requires accepting end-user license agreement (EULA). "
+        f"Model '{model_id}' requires accepting end-user license agreement (EULA). "
         f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
         f"{get_domain_for_region(region)}"
-        f"/{model_specs.hosting_eula_key} for terms of use."
+        f"/{hosting_eula_key} for terms of use."
     )
 
 
@@ -1525,3 +1534,41 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
     if _func is None:
         return wrapper_cache
     return wrapper_cache(_func)
+
+
+def _add_model_access_configs_to_model_data_sources(
+    model_data_sources: List[Dict[str, any]],
+    model_access_configs: List[ModelAccessConfig],
+    model_id: str,
+    region: str,
+):
+    """Sets AcceptEula to True for gated speculative decoding models"""
+
+    if not model_data_sources:
+        return model_data_sources
+
+    acked_model_data_sources = []
+    acked_model_access_configs = 0
+    for model_data_source in model_data_sources:
+        hosting_eula_key = model_data_source.pop("HostingEulaKey", None)
+        if hosting_eula_key:
+            if not model_access_configs or acked_model_access_configs == len(model_access_configs):
+                eula_message_template = "{model_source}{base_eula_message}{model_access_configs_message}"
+                raise ValueError(eula_message_template.format(
+                    model_source="Draft " if model_data_source.get("ChannelName") else "",
+                    base_eula_message=format_eula_message_from_specs(
+                        model_id=model_id, region=region, hosting_eula_key=hosting_eula_key
+                    ),
+                    model_access_configs_message=(
+                        " Please add a ModelAccessConfig with AcceptEula=True"
+                        " to model_access_configs to acknowledge the EULA."
+                    )
+                ))
+            acked_model_data_source = model_data_source.copy()
+            acked_model_data_source["S3DataSource"]["ModelAccessConfig"] = (
+                camel_case_to_pascal_case(model_access_configs[acked_model_access_configs].model_dump())
+            )
+            acked_model_data_sources.append(acked_model_data_source)
+        else:
+            acked_model_data_sources.append(model_data_source)
+    return acked_model_data_sources
