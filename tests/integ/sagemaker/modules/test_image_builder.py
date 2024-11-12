@@ -15,24 +15,33 @@ from __future__ import absolute_import
 
 import os
 
-from sagemaker.modules.image_builder import build_image
+from sagemaker.modules.image_builder import build_image_from_base, build_image_from_dockerfile
 
 
 def test_build_public_image_locally():
-    build_image(image_name="python_310", base_image="python:3.10")
+    build_image_from_base(image_name="python_310", base_image="python:3.10")
 
 
 def test_build_with_dependency_file():
     dependency_file_path = os.getcwd() + "/tests/integ/sagemaker/modules/requirements.txt"
-    build_image(image_name="ubuntu_with_dependencies", dependency_file=dependency_file_path)
+    build_image_from_base(
+        image_name="ubuntu_with_dependencies", dependency_file=dependency_file_path
+    )
 
 
 def test_build_image_and_push_to_ecr():
     dependency_file_path = os.getcwd() + "/tests/integ/sagemaker/modules/environment.yml"
-    build_image(
+    build_image_from_base(
         image_name="ecr_test_image",
         dependency_file=dependency_file_path,
         base_image="debian",
         deploy_to_ecr=True,
         ecr_repo_name="image_builder_integ_test",
+    )
+
+
+def test_build_image_from_dockerfile():
+    dockerfile_path = os.getcwd() + "/tests/integ/sagemaker/modules/Dockerfile"
+    build_image_from_dockerfile(
+        image_name="image_from_dockerfile", dockerfile=dockerfile_path, deploy_to_ecr=True
     )
