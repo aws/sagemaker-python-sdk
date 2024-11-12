@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,47 +13,66 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-import platform
-import sys
+import json
+import os
 
 import importlib_metadata
 
+SDK_PREFIX = "AWS-SageMaker-Python-SDK"
+STUDIO_PREFIX = "AWS-SageMaker-Studio"
+NOTEBOOK_PREFIX = "AWS-SageMaker-Notebook-Instance"
+
+NOTEBOOK_METADATA_FILE = "/etc/opt/ml/sagemaker-notebook-instance-version.txt"
+STUDIO_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
+
 SDK_VERSION = importlib_metadata.version("sagemaker")
-OS_NAME = platform.system() or "UnresolvedOS"
-OS_VERSION = platform.release() or "UnresolvedOSVersion"
-OS_NAME_VERSION = "{}/{}".format(OS_NAME, OS_VERSION)
-PYTHON_VERSION = "Python/{}.{}.{}".format(
-    sys.version_info.major, sys.version_info.minor, sys.version_info.micro
-)
 
 
-def determine_prefix(user_agent=""):
-    """Placeholder docstring"""
-    prefix = "AWS-SageMaker-Python-SDK/{}".format(SDK_VERSION)
+def process_notebook_metadata_file():
+    """Check if the platform is SageMaker Notebook, if yes, return the InstanceType
 
-    if PYTHON_VERSION not in user_agent:
-        prefix = "{} {}".format(prefix, PYTHON_VERSION)
+    Returns:
+        str: The InstanceType of the SageMaker Notebook if it exists, otherwise None
+    """
+    if os.path.exists(NOTEBOOK_METADATA_FILE):
+        with open(NOTEBOOK_METADATA_FILE, "r") as sagemaker_nbi_file:
+            return sagemaker_nbi_file.read().strip()
 
-    if OS_NAME_VERSION not in user_agent:
-        prefix = "{} {}".format(prefix, OS_NAME_VERSION)
-
-    try:
-        with open("/etc/opt/ml/sagemaker-notebook-instance-version.txt") as sagemaker_nbi_file:
-            prefix = "{} AWS-SageMaker-Notebook-Instance/{}".format(
-                prefix, sagemaker_nbi_file.read().strip()
-            )
-    except IOError:
-        # This file isn't expected to always exist, and we DO want to silently ignore failures.
-        pass
-
-    return prefix
+    return None
 
 
-def prepend_user_agent(client):
-    """Placeholder docstring"""
-    prefix = determine_prefix(client._client_config.user_agent)
+def process_studio_metadata_file():
+    """Check if the platform is SageMaker Studio, if yes, return the AppType
 
-    if client._client_config.user_agent is None:
-        client._client_config.user_agent = prefix
-    else:
-        client._client_config.user_agent = "{} {}".format(prefix, client._client_config.user_agent)
+    Returns:
+        str: The AppType of the SageMaker Studio if it exists, otherwise None
+    """
+    if os.path.exists(STUDIO_METADATA_FILE):
+        with open(STUDIO_METADATA_FILE, "r") as sagemaker_studio_file:
+            metadata = json.load(sagemaker_studio_file)
+            return metadata.get("AppType")
+
+    return None
+
+
+def get_user_agent_extra_suffix():
+    """Get the user agent extra suffix string specific to SageMaker Python SDK
+
+    Adhers to new boto recommended User-Agent 2.0 header format
+
+    Returns:
+        str: The user agent extra suffix string to be appended
+    """
+    suffix = "lib/{}#{}".format(SDK_PREFIX, SDK_VERSION)
+
+    # Get the notebook instance type and prepend it to the user agent string if exists
+    notebook_instance_type = process_notebook_metadata_file()
+    if notebook_instance_type:
+        suffix = "{} md/{}#{}".format(suffix, NOTEBOOK_PREFIX, notebook_instance_type)
+
+    # Get the studio app type and prepend it to the user agent string if exists
+    studio_app_type = process_studio_metadata_file()
+    if studio_app_type:
+        suffix = "{} md/{}#{}".format(suffix, STUDIO_PREFIX, studio_app_type)
+
+    return suffix

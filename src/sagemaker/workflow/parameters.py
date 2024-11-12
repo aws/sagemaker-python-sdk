@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,6 +24,7 @@ from sagemaker.workflow.entities import (
     Entity,
     PrimitiveType,
     RequestType,
+    PipelineVariable,
 )
 
 
@@ -48,13 +49,13 @@ class ParameterTypeEnum(Enum, metaclass=DefaultEnumMeta):
 
 
 @attr.s
-class Parameter(Entity):
+class Parameter(PipelineVariable, Entity):
     """Pipeline parameter for workflow.
 
     Attributes:
         name (str): The name of the parameter.
         parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (PrimitiveType): The default Python value of the parameter.
+        default_value (PrimitiveType): The default value of the parameter.
     """
 
     name: str = attr.ib(factory=str)
@@ -89,6 +90,32 @@ class Parameter(Entity):
         """The 'Get' expression dict for a `Parameter`."""
         return Parameter._expr(self.name)
 
+    @property
+    def _pickleable(self):
+        """The pickleable object that can be passed to a remote function invocation."""
+
+        from sagemaker.remote_function.core.pipeline_variables import (
+            _ParameterString,
+            _ParameterInteger,
+            _ParameterBoolean,
+            _ParameterFloat,
+        )
+
+        if self.parameter_type == ParameterTypeEnum.STRING:
+            return _ParameterString(self.name)
+        if self.parameter_type == ParameterTypeEnum.INTEGER:
+            return _ParameterInteger(self.name)
+        if self.parameter_type == ParameterTypeEnum.BOOLEAN:
+            return _ParameterBoolean(self.name)
+        if self.parameter_type == ParameterTypeEnum.FLOAT:
+            return _ParameterFloat(self.name)
+        raise ValueError(f"Unsupported parameter type: {self.parameter_type}")
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return []
+
     @classmethod
     def _expr(cls, name):
         """An internal classmethod for the 'Get' expression dict for a `Parameter`.
@@ -97,29 +124,6 @@ class Parameter(Entity):
             name (str): The name of the parameter.
         """
         return {"Get": f"Parameters.{name}"}
-
-    @classmethod
-    def _implicit_value(cls, value, python_type, args, kwargs):
-        """Determine the implicit value from the arguments.
-
-        The implicit value of the instance should be the default_value if present.
-
-        Args:
-            value: The default implicit value.
-            python_type: The Python type the implicit value should be.
-            args: The list of positional arguments.
-            kwargs: The dict of keyword arguments.
-
-        Returns:
-            The implicit value that should be used.
-        """
-        if len(args) == 2:
-            value = args[1] or value
-        elif kwargs:
-            value = kwargs.get("default_value", value)
-        cls._check_default_value_type(value, python_type)
-
-        return value
 
     @classmethod
     def _check_default_value_type(cls, value, python_type):
@@ -142,20 +146,19 @@ class Parameter(Entity):
 ParameterBoolean = partial(Parameter, parameter_type=ParameterTypeEnum.BOOLEAN)
 
 
-class ParameterString(Parameter, str):
-    """Pipeline string parameter for workflow."""
-
-    def __new__(cls, *args, **kwargs):  # pylint: disable=unused-argument
-        """Subclass str"""
-        val = cls._implicit_value("", str, args, kwargs)
-        return str.__new__(cls, val)
+class ParameterString(Parameter):
+    """String parameter for pipelines."""
 
     def __init__(self, name: str, default_value: str = None, enum_values: List[str] = None):
         """Create a pipeline string parameter.
 
         Args:
             name (str): The name of the parameter.
-            default_value (str): The default Python value of the parameter. Defaults to None.
+            default_value (str): The default value of the parameter.
+                The default value could be overridden at start of an execution.
+                If not set or it is set to None, a value must be provided
+                at the start of the execution.
+            enum_values (List[str]): Enum values for this parameter.
         """
         super(ParameterString, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.STRING, default_value=default_value
@@ -166,6 +169,13 @@ class ParameterString(Parameter, str):
         """Hash function for parameter types"""
         return hash(tuple(self.to_request()))
 
+    def to_string(self) -> PipelineVariable:
+        """Prompt the pipeline to convert the pipeline variable to String in runtime
+
+        As ParameterString is treated as String in runtime, no extra actions are needed.
+        """
+        return self
+
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
         request_dict = super(ParameterString, self).to_request()
@@ -174,40 +184,36 @@ class ParameterString(Parameter, str):
         return request_dict
 
 
-class ParameterInteger(Parameter, int):
-    """Pipeline string parameter for workflow."""
-
-    def __new__(cls, *args, **kwargs):
-        """Subclass int"""
-        val = cls._implicit_value(0, int, args, kwargs)
-        return int.__new__(cls, val)
+class ParameterInteger(Parameter):
+    """Integer parameter for pipelines."""
 
     def __init__(self, name: str, default_value: int = None):
         """Create a pipeline integer parameter.
 
         Args:
             name (str): The name of the parameter.
-            default_value (int): The default Python value of the parameter.
+            default_value (int): The default value of the parameter.
+                The default value could be overridden at start of an execution.
+                If not set or it is set to None, a value must be provided
+                at the start of the execution.
         """
         super(ParameterInteger, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.INTEGER, default_value=default_value
         )
 
 
-class ParameterFloat(Parameter, float):
-    """Pipeline float parameter for workflow."""
-
-    def __new__(cls, *args, **kwargs):
-        """Subclass float"""
-        val = cls._implicit_value(0.0, float, args, kwargs)
-        return float.__new__(cls, val)
+class ParameterFloat(Parameter):
+    """Float parameter for pipelines."""
 
     def __init__(self, name: str, default_value: float = None):
         """Create a pipeline float parameter.
 
         Args:
             name (str): The name of the parameter.
-            default_value (float): The default Python value of the parameter.
+            default_value (float): The default value of the parameter.
+                The default value could be overridden at start of an execution.
+                If not set or it is set to None, a value must be provided
+                at the start of the execution.
         """
         super(ParameterFloat, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.FLOAT, default_value=default_value

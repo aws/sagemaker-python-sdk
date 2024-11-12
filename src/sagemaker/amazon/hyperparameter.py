@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,6 +14,8 @@
 from __future__ import absolute_import
 
 import json
+
+from sagemaker.workflow import is_pipeline_variable
 
 
 class Hyperparameter(object):
@@ -98,8 +100,14 @@ class Hyperparameter(object):
         """
         if "_hyperparameters" not in dir(obj):
             return {}
-        return {
-            k: json.dumps(v) if isinstance(v, list) else str(v)
-            for k, v in obj._hyperparameters.items()
-            if v is not None
-        }
+        hps = {}
+        for k, v in obj._hyperparameters.items():
+            if v is not None:
+                if isinstance(v, list):
+                    v = json.dumps(v)
+                elif is_pipeline_variable(v):
+                    v = v.to_string()
+                else:
+                    v = str(v)
+                hps[k] = v
+        return hps

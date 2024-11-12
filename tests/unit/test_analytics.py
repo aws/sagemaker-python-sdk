@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,6 +24,7 @@ from sagemaker.analytics import (
     HyperparameterTuningJobAnalytics,
     TrainingJobAnalytics,
 )
+from sagemaker.session_settings import SessionSettings
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -47,6 +48,8 @@ def create_sagemaker_session(
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(

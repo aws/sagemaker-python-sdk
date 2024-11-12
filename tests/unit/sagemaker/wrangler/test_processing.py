@@ -1,4 +1,4 @@
-#  Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  #
 #  Licensed under the Apache License, Version 2.0 (the "License"). You
 #  may not use this file except in compliance with the License. A copy of
@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 from mock import Mock, MagicMock
+from sagemaker.session_settings import SessionSettings
 
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.processing import ProcessingInput
@@ -22,7 +23,7 @@ ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 REGION = "us-west-2"
 DATA_WRANGLER_RECIPE_SOURCE = "s3://data_wrangler_flows/flow-26-18-43-16-0b48ac2e.flow"
 DATA_WRANGLER_CONTAINER_URI = (
-    "174368400705.dkr.ecr.us-west-2.amazonaws.com/sagemaker-data-wrangler-container:1.x"
+    "174368400705.dkr.ecr.us-west-2.amazonaws.com/sagemaker-data-wrangler-container:3.x"
 )
 MOCK_S3_URI = "s3://mock_data/mock.csv"
 
@@ -36,8 +37,13 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     session_mock.expand_role.return_value = ROLE
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
     return session_mock
 
 

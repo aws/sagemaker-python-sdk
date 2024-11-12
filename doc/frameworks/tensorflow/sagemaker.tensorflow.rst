@@ -10,6 +10,14 @@ TensorFlow Estimator
     :undoc-members:
     :show-inheritance:
 
+TensorFlow Training Compiler Configuration
+------------------------------------------
+
+.. autoclass:: sagemaker.tensorflow.TrainingCompilerConfig
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 TensorFlow Serving Model
 ------------------------
 
@@ -22,6 +30,15 @@ TensorFlow Serving Predictor
 ----------------------------
 
 .. autoclass:: sagemaker.tensorflow.model.TensorFlowPredictor
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+TensorFlow Processor
+--------------------
+
+.. autoclass:: sagemaker.tensorflow.processing.TensorFlowProcessor
     :members:
     :undoc-members:
     :show-inheritance:

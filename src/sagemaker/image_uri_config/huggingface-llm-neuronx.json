@@ -1,0 +1,340 @@
+{
+    "inference": {
+        "processors": [
+            "inf2"
+        ],
+        "version_aliases": {
+            "0.0": "0.0.25"
+        },
+        "versions": {
+            "0.0.16": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "1.13.1-optimum0.0.16",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.17": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "1.13.1-optimum0.0.17",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.18": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "1.13.1-optimum0.0.18",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.19": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "1.13.1-optimum0.0.19",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.20": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "1.13.1-optimum0.0.20",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.21": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "1.13.1-optimum0.0.21",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.22": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "2.1.2-optimum0.0.22",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.23": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "2.1.2-optimum0.0.23",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.24": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "2.1.2-optimum0.0.24",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            },
+            "0.0.25": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-south-2": "772153158452",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "ap-southeast-4": "457447274322",
+                    "cn-north-1": "727897471807",
+                    "cn-northwest-1": "727897471807",
+                    "eu-central-1": "763104351884",
+                    "eu-central-2": "380420809688",
+                    "eu-south-2": "503227376785",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "il-central-1": "780543022126",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-gov-east-1": "446045086412",
+                    "us-gov-west-1": "442386744353",
+                    "us-west-2": "763104351884",
+                    "ca-west-1": "204538143572"
+                },
+                "tag_prefix": "2.1.2-optimum0.0.25",
+                "repository": "huggingface-pytorch-tgi-inference",
+                "container_version": {
+                    "inf2": "ubuntu22.04"
+                }
+            }
+        }
+    }
+}

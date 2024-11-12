@@ -1,4 +1,4 @@
-# Copyright 2018-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -71,8 +71,8 @@ def model_fn(model_dir):
     logger.info("model_fn")
     neopytorch.config(model_dir=model_dir, neo_runtime=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # The compiled model is saved as "compiled.pt"
-    model = torch.jit.load(os.path.join(model_dir, "compiled.pt"), map_location=device)
+    # The compiled model is saved as "model.pth" or "model.pt"
+    model = torch.jit.load(os.path.join(model_dir, "model.pt"), map_location=device)
 
     # It is recommended to run warm-up inference during model load
     sample_input_path = os.path.join(model_dir, "sample_input.pkl")

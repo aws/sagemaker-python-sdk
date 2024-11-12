@@ -2,7 +2,7 @@
 build
 src/*.egg-info
 .cache
-.coverage
+.coverage*
 sagemaker_venv*
 *.egg-info
 .tox
@@ -28,3 +28,10 @@ venv/
 .docker/
 env/
 .vscode/
+**/tmp
+.python-version
+*.html
+**/_repack_script_launcher.sh
+tests/data/**/_repack_model.py
+tests/data/experiment/sagemaker-dev-1.0.tar.gz
+src/sagemaker/serve/tmp_workspace

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Union, Optional
+
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
@@ -22,7 +24,9 @@ from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.serializers import CSVSerializer
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class IPInsights(AmazonAlgorithmEstimatorBase):
@@ -32,46 +36,46 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
     as user IDs or account numbers.
     """
 
-    repo_name = "ipinsights"
-    repo_version = 1
-    MINI_BATCH_SIZE = 10000
+    repo_name: str = "ipinsights"
+    repo_version: str = "1"
+    MINI_BATCH_SIZE: int = 10000
 
-    num_entity_vectors = hp(
+    num_entity_vectors: hp = hp(
         "num_entity_vectors", (ge(1), le(250000000)), "An integer in [1, 250000000]", int
     )
-    vector_dim = hp("vector_dim", (ge(4), le(4096)), "An integer in [4, 4096]", int)
+    vector_dim: hp = hp("vector_dim", (ge(4), le(4096)), "An integer in [4, 4096]", int)
 
-    batch_metrics_publish_interval = hp(
+    batch_metrics_publish_interval: hp = hp(
         "batch_metrics_publish_interval", (ge(1)), "An integer greater than 0", int
     )
-    epochs = hp("epochs", (ge(1)), "An integer greater than 0", int)
-    learning_rate = hp("learning_rate", (ge(1e-6), le(10.0)), "A float in [1e-6, 10.0]", float)
-    num_ip_encoder_layers = hp(
+    epochs: hp = hp("epochs", (ge(1)), "An integer greater than 0", int)
+    learning_rate: hp = hp("learning_rate", (ge(1e-6), le(10.0)), "A float in [1e-6, 10.0]", float)
+    num_ip_encoder_layers: hp = hp(
         "num_ip_encoder_layers", (ge(0), le(100)), "An integer in [0, 100]", int
     )
-    random_negative_sampling_rate = hp(
+    random_negative_sampling_rate: hp = hp(
         "random_negative_sampling_rate", (ge(0), le(500)), "An integer in [0, 500]", int
     )
-    shuffled_negative_sampling_rate = hp(
+    shuffled_negative_sampling_rate: hp = hp(
         "shuffled_negative_sampling_rate", (ge(0), le(500)), "An integer in [0, 500]", int
     )
-    weight_decay = hp("weight_decay", (ge(0.0), le(10.0)), "A float in [0.0, 10.0]", float)
+    weight_decay: hp = hp("weight_decay", (ge(0.0), le(10.0)), "A float in [0.0, 10.0]", float)
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        num_entity_vectors=None,
-        vector_dim=None,
-        batch_metrics_publish_interval=None,
-        epochs=None,
-        learning_rate=None,
-        num_ip_encoder_layers=None,
-        random_negative_sampling_rate=None,
-        shuffled_negative_sampling_rate=None,
-        weight_decay=None,
-        **kwargs
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_entity_vectors: Optional[int] = None,
+        vector_dim: Optional[int] = None,
+        batch_metrics_publish_interval: Optional[int] = None,
+        epochs: Optional[int] = None,
+        learning_rate: Optional[float] = None,
+        num_ip_encoder_layers: Optional[int] = None,
+        random_negative_sampling_rate: Optional[int] = None,
+        shuffled_negative_sampling_rate: Optional[int] = None,
+        weight_decay: Optional[float] = None,
+        **kwargs,
     ):
         """This estimator is for IP Insights.
 
@@ -102,9 +106,9 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.m5.xlarge'.
             num_entity_vectors (int): Required. The number of embeddings to
                 train for entities accessing online resources. We recommend 2x
@@ -164,7 +168,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -192,6 +196,7 @@ class IPInsightsPredictor(Predictor):
         sagemaker_session=None,
         serializer=CSVSerializer(),
         deserializer=JSONDeserializer(),
+        component_name=None,
     ):
         """Creates object to be used to get dot product of entity nad IP address.
 
@@ -206,12 +211,15 @@ class IPInsightsPredictor(Predictor):
                 serializes input data to text/csv.
             deserializer (callable): Optional. Default parses JSON responses
                 using ``json.load(...)``.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding the predictor.
         """
         super(IPInsightsPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -222,11 +230,17 @@ class IPInsightsModel(Model):
     Predictor that calculates anomaly scores for data points.
     """
 
-    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        **kwargs,
+    ):
         """Creates object to get insights on S3 model data.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -246,11 +260,13 @@ class IPInsightsModel(Model):
             sagemaker_session.boto_region_name,
             version=IPInsights.repo_version,
         )
+        pop_out_unused_kwarg("predictor_cls", kwargs, IPInsightsPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(IPInsightsModel, self).__init__(
             image_uri,
             model_data,
             role,
             predictor_cls=IPInsightsPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

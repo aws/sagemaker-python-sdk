@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Union, Optional
+
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
@@ -21,7 +23,9 @@ from sagemaker.amazon.validation import gt, isin
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class PCA(AmazonAlgorithmEstimatorBase):
@@ -31,22 +35,24 @@ class PCA(AmazonAlgorithmEstimatorBase):
     retain as much information as possible.
     """
 
-    repo_name = "pca"
-    repo_version = 1
+    repo_name: str = "pca"
+    repo_version: str = "1"
 
-    DEFAULT_MINI_BATCH_SIZE = 500
+    DEFAULT_MINI_BATCH_SIZE: int = 500
 
-    num_components = hp("num_components", gt(0), "Value must be an integer greater than zero", int)
-    algorithm_mode = hp(
+    num_components: hp = hp(
+        "num_components", gt(0), "Value must be an integer greater than zero", int
+    )
+    algorithm_mode: hp = hp(
         "algorithm_mode",
         isin("regular", "randomized"),
         'Value must be one of "regular" and "randomized"',
         str,
     )
-    subtract_mean = hp(
+    subtract_mean: hp = hp(
         name="subtract_mean", validation_message="Value must be a boolean", data_type=bool
     )
-    extra_components = hp(
+    extra_components: hp = hp(
         name="extra_components",
         validation_message="Value must be an integer greater than or equal to 0, or -1.",
         data_type=int,
@@ -54,14 +60,14 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        num_components=None,
-        algorithm_mode=None,
-        subtract_mean=None,
-        extra_components=None,
-        **kwargs
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_components: Optional[int] = None,
+        algorithm_mode: Optional[str] = None,
+        subtract_mean: Optional[bool] = None,
+        extra_components: Optional[int] = None,
+        **kwargs,
     ):
         """A Principal Components Analysis (PCA)
 
@@ -103,9 +109,9 @@ class PCA(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_components (int): The number of principal components. Must be
                 greater than zero.
@@ -149,7 +155,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -175,10 +181,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
             num_records = records.num_records
 
         # mini_batch_size is a required parameter
-        default_mini_batch_size = min(
-            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count))
-        )
-        use_mini_batch_size = mini_batch_size or default_mini_batch_size
+        use_mini_batch_size = mini_batch_size or self._get_default_mini_batch_size(num_records)
 
         super(PCA, self)._prepare_for_training(
             records=records, mini_batch_size=use_mini_batch_size, job_name=job_name
@@ -207,6 +210,7 @@ class PCAPredictor(Predictor):
         sagemaker_session=None,
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
+        component_name=None,
     ):
         """Initialization for PCAPredictor.
 
@@ -221,12 +225,15 @@ class PCAPredictor(Predictor):
                 serializes input data to x-recordio-protobuf format.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses responses from x-recordio-protobuf format.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(PCAPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -237,11 +244,17 @@ class PCAModel(Model):
     Predictor that transforms vectors to a lower-dimensional representation.
     """
 
-    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        **kwargs,
+    ):
         """Initialization for PCAModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -261,11 +274,13 @@ class PCAModel(Model):
             sagemaker_session.boto_region_name,
             version=PCA.repo_version,
         )
+        pop_out_unused_kwarg("predictor_cls", kwargs, PCAPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(PCAModel, self).__init__(
             image_uri,
             model_data,
             role,
             predictor_cls=PCAPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

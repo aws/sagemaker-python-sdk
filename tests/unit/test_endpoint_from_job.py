@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,6 +23,13 @@ INSTANCE_TYPE = "ml.c4.xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 IMAGE = "myimage"
 S3_MODEL_ARTIFACTS = "s3://mybucket/mymodel"
+S3_MODEL_SRC_COMPRESSED = {
+    "S3DataSource": {
+        "S3Uri": S3_MODEL_ARTIFACTS,
+        "S3DataType": "S3Object",
+        "CompressionType": "Gzip",
+    }
+}
 TRAIN_ROLE = "mytrainrole"
 VPC_CONFIG = {"Subnets": ["subnet-foo"], "SecurityGroupIds": ["sg-foo"]}
 TRAINING_JOB_RESPONSE = {
@@ -68,7 +75,7 @@ def test_all_defaults_no_existing_entities(sagemaker_session):
 
     expected_args = original_args.copy()
     expected_args.pop("job_name")
-    expected_args["model_s3_location"] = S3_MODEL_ARTIFACTS
+    expected_args["model_s3_location"] = S3_MODEL_SRC_COMPRESSED
     expected_args["image_uri"] = IMAGE
     expected_args["role"] = TRAIN_ROLE
     expected_args["name"] = JOB_NAME
@@ -100,7 +107,7 @@ def test_no_defaults_no_existing_entities(sagemaker_session):
 
     expected_args = original_args.copy()
     expected_args.pop("job_name")
-    expected_args["model_s3_location"] = S3_MODEL_ARTIFACTS
+    expected_args["model_s3_location"] = S3_MODEL_SRC_COMPRESSED
     expected_args["model_vpc_config"] = expected_args.pop("vpc_config_override")
     expected_args["data_capture_config"] = None
     sagemaker_session.endpoint_from_model_data.assert_called_once_with(**expected_args)

@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,21 +20,40 @@ a SageMaker estimator to initiate a training job.
 """
 from __future__ import absolute_import
 
-import time
-
 from abc import ABC
+
+from typing import Union, Optional, List, Dict
 
 import attr
 
 import smdebug_rulesconfig as rule_configs
 
 from sagemaker import image_uris
-from sagemaker.utils import build_dict
+from sagemaker.utils import build_dict, name_from_base
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.debugger.profiler_constants import (
+    DETAIL_PROF_PROCESSING_DEFAULT_INSTANCE_TYPE,
+    DETAIL_PROF_PROCESSING_DEFAULT_VOLUME_SIZE,
+)
 
 framework_name = "debugger"
+detailed_framework_name = "detailed-profiler"
+DEBUGGER_FLAG = "USE_SMDEBUG"
 
 
-def get_rule_container_image_uri(region):
+class DetailedProfilerProcessingJobConfig:
+    """ProfilerRule like class.
+
+    Serves as a vehicle to pass info through to the processing instance.
+
+    """
+
+    def __init__(self):
+        self.rule_name = self.__class__.__name__
+        self.rule_parameters = {"rule_to_invoke": "DetailedProfilerProcessing"}
+
+
+def get_rule_container_image_uri(name, region):
     """Return the Debugger rule image URI for the given AWS Region.
 
     For a full list of rule image URIs,
@@ -48,19 +67,28 @@ def get_rule_container_image_uri(region):
         str: Formatted image URI for the given AWS Region and the rule container type.
 
     """
+    if name is not None and name.startswith("DetailedProfilerProcessingJobConfig"):
+        # should have the format like "123456789012.dkr.ecr.us-west-2.amazonaws.com/detailed-profiler-processing:latest"
+        return image_uris.retrieve(detailed_framework_name, region)
+
     return image_uris.retrieve(framework_name, region)
 
 
-def get_default_profiler_rule():
-    """Return the default built-in profiler rule with a unique name.
+def get_default_profiler_processing_job(instance_type=None, volume_size_in_gb=None):
+    """Return the default profiler processing job (a rule) with a unique name.
 
     Returns:
         sagemaker.debugger.ProfilerRule: The instance of the built-in ProfilerRule.
 
     """
-    default_rule = rule_configs.ProfilerReport()
-    custom_name = f"{default_rule.rule_name}-{int(time.time())}"
-    return ProfilerRule.sagemaker(default_rule, name=custom_name)
+    default_rule = DetailedProfilerProcessingJobConfig()
+    custom_name = name_from_base(default_rule.rule_name)
+    return ProfilerRule.sagemaker(
+        default_rule,
+        name=custom_name,
+        instance_type=instance_type,
+        volume_size_in_gb=volume_size_in_gb,
+    )
 
 
 @attr.s
@@ -310,17 +338,17 @@ class Rule(RuleBase):
     @classmethod
     def custom(
         cls,
-        name,
-        image_uri,
-        instance_type,
-        volume_size_in_gb,
-        source=None,
-        rule_to_invoke=None,
-        container_local_output_path=None,
-        s3_output_path=None,
-        other_trials_s3_input_paths=None,
-        rule_parameters=None,
-        collections_to_save=None,
+        name: str,
+        image_uri: Union[str, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        volume_size_in_gb: Union[int, PipelineVariable],
+        source: Optional[str] = None,
+        rule_to_invoke: Optional[Union[str, PipelineVariable]] = None,
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+        s3_output_path: Optional[Union[str, PipelineVariable]] = None,
+        other_trials_s3_input_paths: Optional[List[Union[str, PipelineVariable]]] = None,
+        rule_parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        collections_to_save: Optional[List["CollectionConfig"]] = None,
         actions=None,
     ):
         """Initialize a ``Rule`` object for a *custom* debugging rule.
@@ -334,25 +362,29 @@ class Rule(RuleBase):
 
         Args:
             name (str): Required. The name of the debugger rule.
-            image_uri (str): Required. The URI of the image to be used by the debugger rule.
-            instance_type (str): Required. Type of EC2 instance to use, for example,
-                'ml.c4.xlarge'.
-            volume_size_in_gb (int): Required. Size in GB of the EBS volume
-                to use for storing data.
+            image_uri (str or PipelineVariable): Required. The URI of the image to
+                be used by the debugger rule.
+            instance_type (str or PipelineVariable): Required. Type of EC2 instance to use,
+                for example, 'ml.c4.xlarge'.
+            volume_size_in_gb (int or PipelineVariable): Required. Size in GB of the
+                EBS volume to use for storing data.
             source (str): Optional. A source file containing a rule to invoke. If provided,
                 you must also provide rule_to_invoke. This can either be an S3 uri or
                 a local path.
-            rule_to_invoke (str): Optional. The name of the rule to invoke within the source.
-                If provided, you must also provide source.
-            container_local_output_path (str): Optional. The local path in the container.
-            s3_output_path (str): Optional. The location in Amazon S3 to store the output tensors.
+            rule_to_invoke (str or PipelineVariable): Optional. The name of the rule to
+                invoke within the source. If provided, you must also provide source.
+            container_local_output_path (str or PipelineVariable): Optional. The local path
+                in the container.
+            s3_output_path (str or PipelineVariable): Optional. The location in Amazon S3
+                to store the output tensors.
                 The default Debugger output path for debugging data is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
                 For example,
                 s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/debug-output/.
-            other_trials_s3_input_paths ([str]): Optional. The Amazon S3 input paths
-                of other trials to use the SimilarAcrossRuns rule.
-            rule_parameters (dict): Optional. A dictionary of parameters for the rule.
+            other_trials_s3_input_paths (list[str] or list[PipelineVariable]: Optional.
+                The Amazon S3 input paths of other trials to use the SimilarAcrossRuns rule.
+            rule_parameters (dict[str, str] or dict[str, PipelineVariable]): Optional.
+                A dictionary of parameters for the rule.
             collections_to_save ([sagemaker.debugger.CollectionConfig]): Optional. A list
                 of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved.
 
@@ -474,6 +506,8 @@ class ProfilerRule(RuleBase):
         name=None,
         container_local_output_path=None,
         s3_output_path=None,
+        instance_type=None,
+        volume_size_in_gb=None,
     ):
         """Initialize a ``ProfilerRule`` object for a *built-in* profiling rule.
 
@@ -502,13 +536,19 @@ class ProfilerRule(RuleBase):
             The instance of the built-in ProfilerRule.
 
         """
+        used_name = name or base_config.rule_name
+        if used_name.startswith("DetailedProfilerProcessingJobConfig"):
+            if volume_size_in_gb is None:
+                volume_size_in_gb = DETAIL_PROF_PROCESSING_DEFAULT_VOLUME_SIZE
+            if instance_type is None:
+                instance_type = DETAIL_PROF_PROCESSING_DEFAULT_INSTANCE_TYPE
         return cls(
-            name=name or base_config.rule_name,
+            name=used_name,
             image_uri="DEFAULT_RULE_EVALUATOR_IMAGE",
-            instance_type=None,
+            instance_type=instance_type,
             container_local_output_path=container_local_output_path,
             s3_output_path=s3_output_path,
-            volume_size_in_gb=None,
+            volume_size_in_gb=volume_size_in_gb,
             rule_parameters=base_config.rule_parameters,
         )
 
@@ -609,21 +649,23 @@ class DebuggerHookConfig(object):
 
     def __init__(
         self,
-        s3_output_path=None,
-        container_local_output_path=None,
-        hook_parameters=None,
-        collection_configs=None,
+        s3_output_path: Optional[Union[str, PipelineVariable]] = None,
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+        hook_parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        collection_configs: Optional[List["CollectionConfig"]] = None,
     ):
         """Initialize the DebuggerHookConfig instance.
 
         Args:
-            s3_output_path (str): Optional. The location in Amazon S3 to store the output tensors.
-                The default Debugger output path is created under the
+            s3_output_path (str or PipelineVariable): Optional. The location in Amazon S3 to
+                store the output tensors. The default Debugger output path is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
                 For example,
                 s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/debug-output/.
-            container_local_output_path (str): Optional. The local path in the container.
-            hook_parameters (dict): Optional. A dictionary of parameters.
+            container_local_output_path (str or PipelineVariable): Optional. The local path
+                in the container.
+            hook_parameters (dict[str, str] or dict[str, PipelineVariable]): Optional.
+                A dictionary of parameters.
             collection_configs ([sagemaker.debugger.CollectionConfig]): Required. A list
                 of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved
                 at the **s3_output_path**.
@@ -678,12 +720,18 @@ class DebuggerHookConfig(object):
 class TensorBoardOutputConfig(object):
     """Create a tensor ouput configuration object for debugging visualizations on TensorBoard."""
 
-    def __init__(self, s3_output_path, container_local_output_path=None):
+    def __init__(
+        self,
+        s3_output_path: Union[str, PipelineVariable],
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+    ):
         """Initialize the TensorBoardOutputConfig instance.
 
         Args:
-            s3_output_path (str): Optional. The location in Amazon S3 to store the output.
-            container_local_output_path (str): Optional. The local path in the container.
+            s3_output_path (str or PipelineVariable): Optional. The location in Amazon S3
+                to store the output.
+            container_local_output_path (str or PipelineVariable): Optional. The local path
+                in the container.
 
         """
         self.s3_output_path = s3_output_path
@@ -707,13 +755,17 @@ class TensorBoardOutputConfig(object):
 class CollectionConfig(object):
     """Creates tensor collections for SageMaker Debugger."""
 
-    def __init__(self, name, parameters=None):
+    def __init__(
+        self,
+        name: Union[str, PipelineVariable],
+        parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    ):
         """Constructor for collection configuration.
 
         Args:
-            name (str): Required. The name of the collection configuration.
-            parameters (dict): Optional. The parameters for the collection
-                configuration.
+            name (str or PipelineVariable): Required. The name of the collection configuration.
+            parameters (dict[str, str] or dict[str, PipelineVariable]): Optional. The parameters
+                for the collection configuration.
 
         **Example of creating a CollectionConfig object:**
 

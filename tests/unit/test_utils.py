@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,19 +14,56 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+import logging
 import shutil
 import tarfile
 from datetime import datetime
 import os
 import re
 import time
+import json
+from unittest import TestCase
 
 from boto3 import exceptions
 import botocore
 import pytest
-from mock import call, patch, Mock, MagicMock
+from mock import call, patch, Mock, MagicMock, PropertyMock
 
 import sagemaker
+from sagemaker.enums import RoutingStrategy
+from sagemaker.experiments._run_context import _RunContext
+from sagemaker.session_settings import SessionSettings
+from sagemaker.utils import (
+    camel_case_to_pascal_case,
+    deep_override_dict,
+    flatten_dict,
+    get_domain_for_region,
+    get_instance_type_family,
+    retry_with_backoff,
+    check_and_get_run_experiment_config,
+    get_sagemaker_config_value,
+    resolve_value_from_config,
+    resolve_class_attribute_from_config,
+    resolve_nested_dict_value_from_config,
+    unflatten_dict,
+    update_list_of_dicts_with_values_from_config,
+    volume_size_supported,
+    _get_resolved_path,
+    _is_bad_path,
+    _is_bad_link,
+    custom_extractall_tarfile,
+    can_model_package_source_uri_autopopulate,
+    get_instance_rate_per_hour,
+    extract_instance_rate_per_hour,
+    _resolve_routing_config,
+    tag_exists,
+    _validate_new_tags,
+    remove_tag_with_key,
+)
+from src.sagemaker.config.config_utils import _log_sagemaker_config_single_substitution
+from tests.unit.sagemaker.workflow.helpers import CustomStep
+from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
 BUCKET_WITHOUT_WRITING_PERMISSION = "s3://bucket-without-writing-permission"
 
@@ -35,7 +72,6 @@ BUCKET_NAME = "some_bucket"
 
 
 def test_get_config_value():
-
     config = {"local": {"region_name": "us-west-2", "port": "123"}, "other": {"key": 1}}
 
     assert sagemaker.utils.get_config_value("local.region_name", config) == "us-west-2"
@@ -48,9 +84,330 @@ def test_get_config_value():
     assert sagemaker.utils.get_config_value("other.key", None) is None
 
 
+def test_get_nested_value():
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4": {"nest5a": "value", "nest5b": None}}}},
+    }
+
+    # happy cases: keys and values exist
+    assert sagemaker.utils.get_nested_value(dictionary, ["local", "region_name"]) == "us-west-2"
+    assert sagemaker.utils.get_nested_value(dictionary, ["local"]) == {
+        "region_name": "us-west-2",
+        "port": "123",
+    }
+    assert (
+        sagemaker.utils.get_nested_value(dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a"])
+        == "value"
+    )
+
+    # edge cases: non-existing keys
+    assert sagemaker.utils.get_nested_value(dictionary, ["local", "new_depth_1_key"]) is None
+    assert sagemaker.utils.get_nested_value(dictionary, ["new_depth_0_key"]) is None
+    assert (
+        sagemaker.utils.get_nested_value(dictionary, ["new_depth_0_key", "new_depth_1_key"]) is None
+    )
+    assert (
+        sagemaker.utils.get_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5b", "does_not", "exist"]
+        )
+        is None
+    )
+
+    # edge case: specified nested_keys contradict structure of dict
+    with pytest.raises(ValueError):
+        sagemaker.utils.get_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a", "does_not", "exist"]
+        )
+
+    # edge cases: non-actionable inputs
+    assert sagemaker.utils.get_nested_value(None, ["other", "key"]) is None
+    assert sagemaker.utils.get_nested_value("not_a_dict", ["other", "key"]) is None
+    assert sagemaker.utils.get_nested_value(dictionary, None) is None
+    assert sagemaker.utils.get_nested_value(dictionary, []) is None
+
+
+@patch("jsonschema.validate")
+def test_update_list_of_dicts_with_values_from_config(mock_json_schema_validation):
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        }
+    ]
+    # Using short form for sagemaker_session
+    ss = MagicMock(settings=SessionSettings())
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    config_path = "DUMMY.CONFIG.PATH"
+    # happy case - both inputs and config have same number of elements
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [{"a": 1, "b": 2, "c": 3}]
+    # Case where Input has more entries compared to Config
+    input_list = [
+        {"a": 1, "b": 2},
+        {"a": 5, "b": 6},
+    ]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        }
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "b": 6},
+    ]
+    # Case where Config has more entries when compared to the input
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {"a": 5, "b": 6},
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [{"a": 1, "b": 2, "c": 3}]
+    # Testing required parameters. If required parameters are not present, don't do the merge
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, required_key_paths=["d"], sagemaker_session=ss
+    )
+    # since 'd' is not there , merge shouldn't have happened
+    assert input_list == [{"a": 1, "b": 2}]
+    # Testing required parameters. If required parameters are present, do the merge
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "b": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, required_key_paths=["c"], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "b": 8, "c": 6},
+    ]
+    # Testing union parameters: If both parameters are present don't do the merge
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,  # c is present in the original list and d is present in this list.
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["c", "d"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6},  # merge didn't happen
+    ]
+    # Testing union parameters: Happy case
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["c", "e"], ["d", "e"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6, "d": 8},
+    ]
+    # Same happy case with different order of items in union_key_paths
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["d", "e"], ["c", "e"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6, "d": 8},
+    ]
+    # Testing the combination of union parameter and required parameter. i.e. A parameter is both
+    # required and part of Union.
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list,
+        config_path,
+        required_key_paths=["e"],
+        union_key_paths=[["d", "e"], ["c", "e"]],
+        sagemaker_session=ss,
+    )
+    # No merge should happen since 'e' is not present, even though union is obeyed.
+    assert input_list == [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    # Same test but the required parameter is present.
+    input_list = [{"a": 1, "e": 2}, {"a": 5, "e": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "f": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "g": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list,
+        config_path,
+        required_key_paths=["e"],
+        union_key_paths=[["d", "e"], ["c", "e"]],
+        sagemaker_session=ss,
+    )
+    assert input_list == [
+        {"a": 1, "e": 2, "f": 3},
+        {"a": 5, "e": 6, "g": 8},
+    ]
+
+
+def test_set_nested_value():
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4": {"nest5a": "value", "nest5b": None}}}},
+        "existing_depth_0_key": None,
+    }
+    dictionary_copy = copy.deepcopy(dictionary)
+
+    # happy cases: change existing values
+    dictionary_copy["local"]["region_name"] = "region1"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["local", "region_name"], "region1")
+        == dictionary_copy
+    )
+
+    dictionary_copy["existing_depth_0_key"] = {"new_key": "new_value"}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["existing_depth_0_key"], {"new_key": "new_value"}
+        )
+        == dictionary_copy
+    )
+
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = "value2"
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a"], "value2"
+        )
+        == dictionary_copy
+    )
+
+    # happy cases: add new keys and values
+    dictionary_copy["local"]["new_depth_1_key"] = "value"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["local", "new_depth_1_key"], "value")
+        == dictionary_copy
+    )
+
+    dictionary_copy["new_depth_0_key"] = "value"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["new_depth_0_key"], "value")
+        == dictionary_copy
+    )
+
+    dictionary_copy["new_depth_0_key_2"] = {"new_depth_1_key_2": "value"}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["new_depth_0_key_2", "new_depth_1_key_2"], "value"
+        )
+        == dictionary_copy
+    )
+
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5b"] = {"does_not": {"exist": "value"}}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5b", "does_not", "exist"], "value"
+        )
+        == dictionary_copy
+    )
+
+    # edge case: overwrite non-dict value
+    dictionary["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = "value2"
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = {"does_not": {"exist": "value"}}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a", "does_not", "exist"], "value"
+        )
+        == dictionary_copy
+    )
+
+    # edge case: dict does not exist
+    assert sagemaker.utils.set_nested_value(None, ["other", "key"], "value") == {
+        "other": {"key": "value"}
+    }
+
+    # edge cases: non-actionable inputs
+    dictionary_copy_2 = copy.deepcopy(dictionary)
+    assert sagemaker.utils.set_nested_value("not_a_dict", ["other", "key"], "value") == "not_a_dict"
+    assert sagemaker.utils.set_nested_value(dictionary, None, "value") == dictionary_copy_2
+    assert sagemaker.utils.set_nested_value(dictionary, [], "value") == dictionary_copy_2
+
+
 def test_get_short_version():
-    assert sagemaker.utils.get_short_version("1.13.1") == "1.13"
-    assert sagemaker.utils.get_short_version("1.13") == "1.13"
+    assert sagemaker.utils.get_short_version("2.2.0") == "2.2"
+    assert sagemaker.utils.get_short_version("2.2") == "2.2"
+    assert sagemaker.utils.get_short_version("2.1.0") == "2.1"
+    assert sagemaker.utils.get_short_version("2.1") == "2.1"
+    assert sagemaker.utils.get_short_version("2.0.1") == "2.0"
+    assert sagemaker.utils.get_short_version("2.0.0") == "2.0"
+    assert sagemaker.utils.get_short_version("2.0") == "2.0"
 
 
 def test_deferred_error():
@@ -80,20 +437,74 @@ def test_name_from_image(base_name_from_image, name_from_base):
     name_from_base.assert_called_with(base_name_from_image.return_value, max_length=max_length)
 
 
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        (
+            CustomStep(name="test-custom-step").properties.OutputDataConfig.S3OutputPath,
+            None,
+            "base_name",
+        ),
+        (
+            CustomStep(name="test-custom-step").properties.OutputDataConfig.S3OutputPath,
+            "whatever",
+            "whatever",
+        ),
+        (ParameterString(name="image_uri"), None, "base_name"),
+        (ParameterString(name="image_uri"), "whatever", "whatever"),
+        (
+            ParameterString(
+                name="image_uri",
+                default_value="922956235488.dkr.ecr.us-west-2.amazonaws.com/analyzer",
+            ),
+            None,
+            "analyzer",
+        ),
+        (
+            ParameterString(
+                name="image_uri",
+                default_value="922956235488.dkr.ecr.us-west-2.amazonaws.com/analyzer",
+            ),
+            "whatever",
+            "analyzer",
+        ),
+    ],
+)
+def test_base_name_from_image_with_pipeline_param(inputs):
+    image, default_base_name, expected = inputs
+    assert expected == sagemaker.utils.base_name_from_image(
+        image=image, default_base_name=default_base_name
+    )
+
+
 @patch("sagemaker.utils.sagemaker_timestamp")
 def test_name_from_base(sagemaker_timestamp):
     sagemaker.utils.name_from_base(NAME, short=False)
-    assert sagemaker_timestamp.called_once
+    sagemaker_timestamp.assert_called_once
 
 
 @patch("sagemaker.utils.sagemaker_short_timestamp")
 def test_name_from_base_short(sagemaker_short_timestamp):
     sagemaker.utils.name_from_base(NAME, short=True)
-    assert sagemaker_short_timestamp.called_once
+    sagemaker_short_timestamp.assert_called_once
 
 
 def test_unique_name_from_base():
     assert re.match(r"base-\d{10}-[a-f0-9]{4}", sagemaker.utils.unique_name_from_base("base"))
+
+
+def test_unique_name_from_base_uuid4():
+    assert re.match(
+        r"base-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+        sagemaker.utils.unique_name_from_base_uuid4("base"),
+    )
+
+
+def test_unique_name_from_base_uuid4_truncated():
+    assert re.match(
+        r"a-really-long-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+        sagemaker.utils.unique_name_from_base_uuid4("a-really-long-base-name", max_length=50),
+    )
 
 
 def test_unique_name_from_base_truncated():
@@ -202,6 +613,37 @@ def test_secondary_training_status_message_prev_missing():
     assert (
         sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {})
         == expected
+    )
+
+
+SAMPLE_DATA_CONFIG = {"us-west-2": "sagemaker-hosted-datasets", "default": "sagemaker-sample-files"}
+
+
+def test_notebooks_data_config_if_region_not_present():
+    sample_data_config = json.dumps(SAMPLE_DATA_CONFIG)
+
+    boto_mock = MagicMock(name="boto_session", region_name="ap-northeast-1")
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+    session.read_s3_file = Mock(return_value=sample_data_config)
+    assert (
+        sagemaker.utils.S3DataConfig(
+            session, "example-notebooks-data-config", "config/data_config.json"
+        ).get_data_bucket()
+        == "sagemaker-sample-files"
+    )
+
+
+def test_notebooks_data_config_if_region_present():
+    sample_data_config = json.dumps(SAMPLE_DATA_CONFIG)
+
+    boto_mock = MagicMock(name="boto_session", region_name="us-west-2")
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+    session.read_s3_file = Mock(return_value=sample_data_config)
+    assert (
+        sagemaker.utils.S3DataConfig(
+            session, "example-notebooks-data-config", "config/data_config.json"
+        ).get_data_bucket()
+        == "sagemaker-hosted-datasets"
     )
 
 
@@ -351,7 +793,6 @@ def tmp(tmpdir):
 
 
 def test_repack_model_without_source_dir(tmp, fake_s3):
-
     create_file_tree(
         tmp,
         [
@@ -390,9 +831,15 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
         "/code/inference.py",
     }
 
+    extra_args = {"ServerSideEncryption": "aws:kms"}
+    object_mock = fake_s3.object_mock
+    _, _, kwargs = object_mock.mock_calls[0]
+
+    assert "ExtraArgs" in kwargs
+    assert kwargs["ExtraArgs"] == extra_args
+
 
 def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake_s3):
-
     create_file_tree(
         tmp,
         [
@@ -415,15 +862,22 @@ def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake
             "s3://fake/location",
             "s3://destination-bucket/model.tar.gz",
             fake_s3.sagemaker_session,
+            kms_key="kms_key",
         )
     finally:
         os.chdir(cwd)
 
     assert list_tar_files(fake_s3.fake_upload_path, tmp) == {"/code/inference.py", "/model"}
 
+    extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": "kms_key"}
+    object_mock = fake_s3.object_mock
+    _, _, kwargs = object_mock.mock_calls[0]
+
+    assert "ExtraArgs" in kwargs
+    assert kwargs["ExtraArgs"] == extra_args
+
 
 def test_repack_model_from_s3_to_s3(tmp, fake_s3):
-
     create_file_tree(
         tmp,
         [
@@ -434,6 +888,7 @@ def test_repack_model_from_s3_to_s3(tmp, fake_s3):
     )
 
     fake_s3.tar_and_upload("model-dir", "s3://fake/location")
+    fake_s3.sagemaker_session.settings = SessionSettings(encrypt_repacked_artifacts=False)
 
     sagemaker.utils.repack_model(
         "inference.py",
@@ -450,6 +905,11 @@ def test_repack_model_from_s3_to_s3(tmp, fake_s3):
         "/model",
     }
 
+    object_mock = fake_s3.object_mock
+    _, _, kwargs = object_mock.mock_calls[0]
+    assert "ExtraArgs" in kwargs
+    assert kwargs["ExtraArgs"] is None
+
 
 def test_repack_model_from_file_to_file(tmp):
     create_file_tree(tmp, ["model", "dependencies/a", "source-dir/inference.py"])
@@ -457,7 +917,7 @@ def test_repack_model_from_file_to_file(tmp):
     model_tar_path = os.path.join(tmp, "model.tar.gz")
     sagemaker.utils.create_tar_file([os.path.join(tmp, "model")], model_tar_path)
 
-    sagemaker_session = MagicMock()
+    sagemaker_session = MagicMock(settings=SessionSettings())
 
     file_mode_path = "file://%s" % model_tar_path
     destination_path = "file://%s" % os.path.join(tmp, "repacked-model.tar.gz")
@@ -507,7 +967,7 @@ def test_repack_model_from_file_to_folder(tmp):
         [],
         file_mode_path,
         "file://%s/repacked-model.tar.gz" % tmp,
-        MagicMock(),
+        MagicMock(settings=SessionSettings()),
     )
 
     assert list_tar_files("file://%s/repacked-model.tar.gz" % tmp, tmp) == {
@@ -578,9 +1038,10 @@ def test_repack_model_with_same_inference_file_name(tmp, fake_s3):
 class FakeS3(object):
     def __init__(self, tmp):
         self.tmp = tmp
-        self.sagemaker_session = MagicMock()
+        self.sagemaker_session = MagicMock(settings=SessionSettings())
         self.location_map = {}
         self.current_bucket = None
+        self.object_mock = MagicMock()
 
         self.sagemaker_session.boto_session.resource().Bucket().download_file.side_effect = (
             self.download_file
@@ -606,6 +1067,7 @@ class FakeS3(object):
 
     def mock_s3_upload(self):
         dst = os.path.join(self.tmp, "dst")
+        object_mock = self.object_mock
 
         class MockS3Object(object):
             def __init__(self, bucket, key):
@@ -616,6 +1078,7 @@ class FakeS3(object):
                 if self.bucket in BUCKET_WITHOUT_WRITING_PERMISSION:
                     raise exceptions.S3UploadFailedError()
                 shutil.copy2(target, dst)
+                object_mock.upload_file(target, **kwargs)
 
         self.sagemaker_session.boto_session.resource().Object = MockS3Object
         return dst
@@ -632,7 +1095,7 @@ def list_tar_files(tar_ball, tmp):
     os.mkdir(startpath)
 
     with tarfile.open(name=tar_ball, mode="r:gz") as t:
-        t.extractall(path=startpath)
+        custom_extractall_tarfile(t, startpath)
 
     def walk():
         for root, dirs, files in os.walk(startpath):
@@ -653,10 +1116,1131 @@ def test_sts_regional_endpoint():
     assert endpoint == "https://sts.us-iso-east-1.c2s.ic.gov"
     assert botocore.utils.is_valid_endpoint_url(endpoint)
 
+    endpoint = sagemaker.utils.sts_regional_endpoint("us-isob-east-1")
+    assert endpoint == "https://sts.us-isob-east-1.sc2s.sgov.gov"
+    assert botocore.utils.is_valid_endpoint_url(endpoint)
+
 
 def test_partition_by_region():
-    assert sagemaker.utils._aws_partition("us-west-2") == "aws"
-    assert sagemaker.utils._aws_partition("cn-north-1") == "aws-cn"
-    assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
-    assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
-    assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
+    assert sagemaker.utils.aws_partition("us-west-2") == "aws"
+    assert sagemaker.utils.aws_partition("cn-north-1") == "aws-cn"
+    assert sagemaker.utils.aws_partition("us-gov-east-1") == "aws-us-gov"
+    assert sagemaker.utils.aws_partition("us-iso-east-1") == "aws-iso"
+    assert sagemaker.utils.aws_partition("us-isob-east-1") == "aws-iso-b"
+
+
+def test_pop_out_unused_kwarg():
+    # The given arg_name is in kwargs
+    kwargs = dict(arg1=1, arg2=2)
+    sagemaker.utils.pop_out_unused_kwarg("arg1", kwargs)
+    assert "arg1" not in kwargs
+
+    # The given arg_name is not in kwargs
+    kwargs = dict(arg1=1, arg2=2)
+    sagemaker.utils.pop_out_unused_kwarg("arg3", kwargs)
+    assert len(kwargs) == 2
+
+
+def test_to_string():
+    var = 1
+    assert sagemaker.utils.to_string(var) == "1"
+
+    var = ParameterInteger(name="MyInt")
+    assert sagemaker.utils.to_string(var).expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [{"Get": "Parameters.MyInt"}],
+        },
+    }
+
+
+@patch("time.sleep", return_value=None)
+def test_start_waiting(patched_sleep, capfd):
+    waiting_time = 1
+    sagemaker.utils._start_waiting(waiting_time)
+    out, _ = capfd.readouterr()
+
+    assert "." * sagemaker.utils.WAITING_DOT_NUMBER in out
+
+
+@patch("time.sleep", return_value=None)
+def test_retry_with_backoff(patched_sleep):
+    callable_func = Mock()
+
+    # Invalid input
+    with pytest.raises(ValueError) as value_err:
+        retry_with_backoff(callable_func, 0)
+    assert "The num_attempts must be >= 1" in str(value_err)
+    callable_func.assert_not_called()
+
+    # All retries fail
+    run_err_msg = "Test Retry Error"
+    callable_func.side_effect = RuntimeError(run_err_msg)
+    with pytest.raises(RuntimeError) as run_err:
+        retry_with_backoff(callable_func, 2)
+    assert run_err_msg in str(run_err)
+
+    # One retry passes
+    func_return_val = "Test Return"
+    callable_func.side_effect = [RuntimeError(run_err_msg), func_return_val]
+    assert retry_with_backoff(callable_func, 2) == func_return_val
+
+    # when retry on specific error, fail for other error on 1st try
+    func_return_val = "Test Return"
+    response = {"Error": {"Code": "ValidationException", "Message": "Could not find entity."}}
+    error = botocore.exceptions.ClientError(error_response=response, operation_name="foo")
+    callable_func.side_effect = [error, func_return_val]
+    with pytest.raises(botocore.exceptions.ClientError) as run_err:
+        retry_with_backoff(callable_func, 2, botocore_client_error_code="AccessDeniedException")
+    assert "ValidationException" in str(run_err)
+
+    # when retry on specific error, One retry passes
+    func_return_val = "Test Return"
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Access denied."}}
+    error = botocore.exceptions.ClientError(error_response=response, operation_name="foo")
+    callable_func.side_effect = [error, func_return_val]
+    assert (
+        retry_with_backoff(callable_func, 2, botocore_client_error_code="AccessDeniedException")
+        == func_return_val
+    )
+
+    # No retry
+    callable_func.side_effect = None
+    callable_func.return_value = func_return_val
+    assert retry_with_backoff(callable_func, 2) == func_return_val
+
+
+def test_resolve_value_from_config():
+    mock_config_logger = Mock()
+
+    mock_info_logger = Mock()
+    mock_config_logger.info = mock_info_logger
+    # using a shorter name for inside the test
+    sagemaker_session = MagicMock()
+    sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
+    config_key_path = "SageMaker.EndpointConfig.KmsKeyId"
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}}}
+    )
+    sagemaker_config = {
+        "SchemaVersion": "1.0",
+        "SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}},
+    }
+
+    # direct_input should be respected
+    assert (
+        resolve_value_from_config("INPUT", config_key_path, "DEFAULT_VALUE", sagemaker_session)
+        == "INPUT"
+    )
+
+    assert resolve_value_from_config("INPUT", config_key_path, None, sagemaker_session) == "INPUT"
+
+    assert (
+        resolve_value_from_config("INPUT", "SageMaker.EndpointConfig.Tags", None, sagemaker_session)
+        == "INPUT"
+    )
+
+    # Config or default values should be returned if no direct_input
+    assert (
+        resolve_value_from_config(None, None, "DEFAULT_VALUE", sagemaker_session) == "DEFAULT_VALUE"
+    )
+
+    assert (
+        resolve_value_from_config(
+            None, "SageMaker.EndpointConfig.Tags", "DEFAULT_VALUE", sagemaker_session
+        )
+        == "DEFAULT_VALUE"
+    )
+
+    assert (
+        resolve_value_from_config(None, config_key_path, "DEFAULT_VALUE", sagemaker_session)
+        == "CONFIG_VALUE"
+    )
+
+    assert resolve_value_from_config(None, None, None, sagemaker_session) is None
+
+    # Config value from sagemaker_config should be returned
+    # if no direct_input and sagemaker_session is None
+    assert (
+        resolve_value_from_config(None, config_key_path, None, None, sagemaker_config)
+        == "CONFIG_VALUE"
+    )
+
+    # Different falsy direct_inputs
+    assert resolve_value_from_config("", config_key_path, None, sagemaker_session) == ""
+
+    assert resolve_value_from_config([], config_key_path, None, sagemaker_session) == []
+
+    assert resolve_value_from_config(False, config_key_path, None, sagemaker_session) is False
+
+    assert resolve_value_from_config({}, config_key_path, None, sagemaker_session) == {}
+
+    # Different falsy config_values
+    sagemaker_session.sagemaker_config.update({"SageMaker": {"EndpointConfig": {"KmsKeyId": ""}}})
+    assert resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
+
+    mock_info_logger.reset_mock()
+
+
+class TestLogSagemakerConfig(TestCase):
+
+    def test_sensitive_info_masking(self):
+        logger = logging.getLogger("sagemaker.config")
+        logger.setLevel(logging.DEBUG)
+
+        stream_handler = logging.StreamHandler()
+        logger.addHandler(stream_handler)
+
+        # source value is None
+        with self.assertLogs(logger, level="DEBUG") as log:
+            _log_sagemaker_config_single_substitution(
+                None, {"apiKey": "topsecretkey"}, "config/path"
+            )
+
+        self.assertIn("config value that will be used = {'apiKey': '***'}", log.output[0])
+
+        # source value is None and config_value == source_value
+        with self.assertLogs(logger, level="DEBUG") as log:
+            _log_sagemaker_config_single_substitution(
+                {"secretword": "topsecretword"}, {"secretword": "topsecretword"}, "config/path"
+            )
+
+        self.assertIn("Skipped value", log.output[0])
+        self.assertIn("source value that will be used = {'secretword': '***'}", log.output[0])
+        self.assertIn("config value = {'secretword': '***'}", log.output[0])
+
+        # source value is not None and config_value != source_value
+        with self.assertLogs(logger, level="DEBUG") as log:
+            _log_sagemaker_config_single_substitution(
+                {"password": "supersecretpassword"}, {"apiKey": "topsecretkey"}, "config/path"
+            )
+
+        self.assertIn("Skipped value", log.output[0])
+        self.assertIn("source value that will be used = {'password': '***'}", log.output[0])
+        self.assertIn("config value = {'apiKey': '***'}", log.output[0])
+
+    def test_non_sensitive_info_masking(self):
+        logger = logging.getLogger("sagemaker.config")
+        logger.setLevel(logging.DEBUG)
+
+        stream_handler = logging.StreamHandler()
+        logger.addHandler(stream_handler)
+
+        # source value is None
+        with self.assertLogs(logger, level="DEBUG") as log:
+            _log_sagemaker_config_single_substitution(
+                None, {"username": "randomvalue"}, "config/path"
+            )
+
+        self.assertIn("config value that will be used = {'username': 'randomvalue'}", log.output[0])
+
+        # source value is not None and config_value == source_value
+        with self.assertLogs(logger, level="DEBUG") as log:
+            _log_sagemaker_config_single_substitution(
+                {"nonsensitivevalue": "randomvalue"},
+                {"nonsensitivevalue": "randomvalue"},
+                "config/path",
+            )
+
+        self.assertIn("Skipped value", log.output[0])
+        self.assertIn(
+            "source value that will be used = {'nonsensitivevalue': 'randomvalue'}", log.output[0]
+        )
+        self.assertIn("config value = {'nonsensitivevalue': 'randomvalue'}", log.output[0])
+
+        # source value is not None and config_value != source_value
+        with self.assertLogs(logger, level="DEBUG") as log:
+            _log_sagemaker_config_single_substitution(
+                {"username": "nonsensitiveinfo"},
+                {"configvalue": "nonsensitivevalue"},
+                "config/path/non_sensitive",
+            )
+
+        self.assertIn("Skipped value", log.output[0])
+        self.assertIn(
+            "source value that will be used = {'username': 'nonsensitiveinfo'}", log.output[0]
+        )
+        self.assertIn("config value = {'configvalue': 'nonsensitivevalue'}", log.output[0])
+
+
+def test_get_sagemaker_config_value():
+    mock_config_logger = Mock()
+
+    mock_info_logger = Mock()
+    mock_config_logger.info = mock_info_logger
+    # using a shorter name for inside the test
+    sagemaker_session = MagicMock()
+    sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
+    config_key_path = "SageMaker.EndpointConfig.KmsKeyId"
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}}}
+    )
+    sagemaker_config = {
+        "SchemaVersion": "1.0",
+        "SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}},
+    }
+
+    # Tests that the function returns the correct value when the key exists in the sagemaker_session configuration.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=sagemaker_session, key=config_key_path, sagemaker_config=None
+        )
+        == "CONFIG_VALUE"
+    )
+
+    # Tests that the function correctly uses the sagemaker_config to get value for the requested
+    # config_key_path when sagemaker_session is None.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=None, key=config_key_path, sagemaker_config=sagemaker_config
+        )
+        == "CONFIG_VALUE"
+    )
+
+    # Tests that the function returns None when the key does not exist in the configuration.
+    invalid_key = "inavlid_key"
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=sagemaker_session, key=invalid_key, sagemaker_config=sagemaker_config
+        )
+        is None
+    )
+
+    # Tests that the function returns None when sagemaker_session and sagemaker_config are None.
+    assert (
+        get_sagemaker_config_value(
+            sagemaker_session=None, key=config_key_path, sagemaker_config=None
+        )
+        is None
+    )
+
+
+@patch("jsonschema.validate")
+@pytest.mark.parametrize(
+    "existing_value, config_value, default_value",
+    [
+        ("EXISTING_VALUE", "CONFIG_VALUE", "DEFAULT_VALUE"),
+        (False, True, False),
+        (False, False, True),
+        (0, 1, 2),
+    ],
+)
+def test_resolve_class_attribute_from_config(
+    mock_validate, existing_value, config_value, default_value
+):
+    # using a shorter name for inside the test
+    ss = MagicMock(settings=SessionSettings())
+
+    class TestClass(object):
+        def __init__(self, test_attribute=None, extra=None):
+            self.test_attribute = test_attribute
+            # the presence of an extra value that is set to None by default helps make sure a brand new
+            # TestClass object is being created only in the right scenarios
+            self.extra_attribute = extra
+
+        def __eq__(self, other):
+            if isinstance(other, self.__class__):
+                return self.__dict__ == other.__dict__
+            else:
+                return False
+
+    dummy_config_path = "DUMMY.CONFIG.PATH"
+
+    # with an existing config value
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": config_value}}}
+
+    # instance exists and has value; config has value
+    test_instance = TestClass(test_attribute=existing_value, extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=existing_value, extra="EXTRA_VALUE")
+
+    # instance exists but doesnt have value; config has value
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=config_value, extra="EXTRA_VALUE")
+
+    # instance doesnt exist; config has value
+    test_instance = None
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=config_value, extra=None)
+
+    # wrong attribute used
+    test_instance = TestClass()
+    with pytest.raises(TypeError):
+        resolve_class_attribute_from_config(
+            TestClass, test_instance, "other_attribute", dummy_config_path, sagemaker_session=ss
+        )
+
+    # instance doesnt exist; clazz doesnt exist
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            None, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # instance doesnt exist; clazz isnt a class
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            "CLASS", test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # without an existing config value
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"SOMEOTHERPATH": config_value}}}
+    # instance exists but doesnt have value; config doesnt have value
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=None, extra="EXTRA_VALUE")
+
+    # instance exists but doesnt have value; config doesnt have value; default_value passed in
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass,
+        test_instance,
+        "test_attribute",
+        dummy_config_path,
+        default_value=default_value,
+        sagemaker_session=ss,
+    ) == TestClass(test_attribute=default_value, extra="EXTRA_VALUE")
+
+    # instance doesnt exist; config doesnt have value
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # instance doesnt exist; config doesnt have value; default_value passed in
+    test_instance = None
+    assert resolve_class_attribute_from_config(
+        TestClass,
+        test_instance,
+        "test_attribute",
+        dummy_config_path,
+        default_value=default_value,
+        sagemaker_session=ss,
+    ) == TestClass(test_attribute=default_value, extra=None)
+
+
+@patch("jsonschema.validate")
+def test_resolve_nested_dict_value_from_config(mock_validate):
+    # using a shorter name for inside the test
+    ss = MagicMock(settings=SessionSettings())
+
+    dummy_config_path = "DUMMY.CONFIG.PATH"
+    # happy cases: return existing dict with existing values
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"region_name": "us-west-2", "port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "us-west-2", "port": "123"}}
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"region_name": "us-west-2", "port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value=None,
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "us-west-2", "port": "123"}}
+
+    # happy case: return dict with config_value when it wasnt set in dict or was None
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": "CONFIG_VALUE"}}}
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "CONFIG_VALUE", "port": "123"}}
+    assert resolve_nested_dict_value_from_config(
+        {}, ["local", "region_name"], dummy_config_path, default_value=None, sagemaker_session=ss
+    ) == {"local": {"region_name": "CONFIG_VALUE"}}
+    assert resolve_nested_dict_value_from_config(
+        None, ["local", "region_name"], dummy_config_path, default_value=None, sagemaker_session=ss
+    ) == {"local": {"region_name": "CONFIG_VALUE"}}
+    assert resolve_nested_dict_value_from_config(
+        {
+            "local": {"region_name": "us-west-2", "port": "123"},
+            "other": {"key": 1},
+            "nest1": {"nest2": {"nest3": {"nest4a": "value", "nest4b": None}}},
+        },
+        ["nest1", "nest2", "nest3", "nest4b", "does_not", "exist"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {
+            "nest2": {
+                "nest3": {"nest4a": "value", "nest4b": {"does_not": {"exist": "CONFIG_VALUE"}}}
+            }
+        },
+    }
+
+    # edge case: doesnt overwrite non-None and non-dict values
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4a": "value", "nest4b": None}}},
+    }
+    dictionary_copy = copy.deepcopy(dictionary)
+    assert (
+        resolve_nested_dict_value_from_config(
+            dictionary,
+            ["nest1", "nest2", "nest3", "nest4a", "does_not", "exist"],
+            dummy_config_path,
+            default_value="DEFAULT_VALUE",
+            sagemaker_session=ss,
+        )
+        == dictionary_copy
+    )
+    assert (
+        resolve_nested_dict_value_from_config(
+            dictionary,
+            ["other", "key"],
+            dummy_config_path,
+            default_value="DEFAULT_VALUE",
+            sagemaker_session=ss,
+        )
+        == dictionary_copy
+    )
+
+    # without an existing config value
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"ANOTHER_PATH": "CONFIG_VALUE"}}}
+
+    # happy case: return dict with default_value when it wasnt set in dict and in config
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "DEFAULT_VALUE", "port": "123"}}
+
+    # happy case: return dict as-is when value wasnt set in dict, in config, and as default
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value=None,
+        sagemaker_session=ss,
+    ) == {"local": {"port": "123"}}
+    assert (
+        resolve_nested_dict_value_from_config(
+            {},
+            ["local", "region_name"],
+            dummy_config_path,
+            default_value=None,
+            sagemaker_session=ss,
+        )
+        == {}
+    )
+    assert (
+        resolve_nested_dict_value_from_config(
+            None,
+            ["local", "region_name"],
+            dummy_config_path,
+            default_value=None,
+            sagemaker_session=ss,
+        )
+        is None
+    )
+
+
+def test_check_and_get_run_experiment_config():
+    supplied_exp_cfg = {"ExperimentName": "my-supplied-exp-name", "RunName": "my-supplied-run-name"}
+    run_exp_cfg = {"ExperimentName": "my-run-exp-name", "RunName": "my-run-run-name"}
+
+    # No user supplied exp config and no current Run
+    assert not _RunContext.get_current_run()
+    exp_cfg1 = check_and_get_run_experiment_config(None)
+    assert exp_cfg1 is None
+
+    # With user supplied exp config and no current Run
+    assert not _RunContext.get_current_run()
+    exp_cfg2 = check_and_get_run_experiment_config(supplied_exp_cfg)
+    assert exp_cfg2 == supplied_exp_cfg
+
+    run = Mock()
+    type(run).experiment_config = PropertyMock(return_value=run_exp_cfg)
+    _RunContext.add_run_object(run)
+
+    try:
+        # No user supplied exp config and with current Run
+        assert _RunContext.get_current_run().experiment_config == run_exp_cfg
+        exp_cfg3 = check_and_get_run_experiment_config(None)
+        assert exp_cfg3 == run_exp_cfg
+
+        # With user supplied exp config and current Run
+        assert _RunContext.get_current_run().experiment_config == run_exp_cfg
+        exp_cfg4 = check_and_get_run_experiment_config(supplied_exp_cfg)
+        assert exp_cfg4 == supplied_exp_cfg
+    finally:
+        # Clean up the global static variable in case it affects other tests
+        _RunContext.drop_current_run()
+
+
+def test_stringify_object():
+    class MyTestClass:
+        def __init__(self):
+            self.blah = "blah"
+            self.wtafigo = "eiifccreeeiuclkftdvttufbkhirtvvbhrieclghjiru"
+            self.none_field = None
+            self.dict_field = {"my": "dict"}
+            self.list_field = ["1", 2, 3.0]
+            self.list_dict_field = [{"hello": {"world": {"hello"}}}]
+
+    stringified_class = (
+        b"MyTestClass: {'blah': 'blah', 'wtafigo': 'eiifccreeeiuc"
+        b"lkftdvttufbkhirtvvbhrieclghjiru', 'dict_field': {'my': 'dict'}, 'list_field'"
+        b": ['1', 2, 3.0], 'list_dict_field': [{'hello': {'world': {'hello'}}}]}"
+    )
+
+    assert sagemaker.utils.stringify_object(MyTestClass()).encode() == stringified_class
+
+
+class TestVolumeSizeSupported(TestCase):
+    def test_volume_size_supported(self):
+        instances_that_support_volume_size = [
+            "ml.inf1.xlarge",
+            "ml.inf1.2xlarge",
+            "ml.inf1.6xlarge",
+            "ml.inf1.24xlarge",
+            "ml.inf2.xlarge",
+            "ml.inf2.8xlarge",
+            "ml.inf2.24xlarge",
+            "ml.inf2.48xlarge",
+            "ml.m5.large",
+            "ml.m5.xlarge",
+            "ml.m5.2xlarge",
+            "ml.m5.4xlarge",
+            "ml.m5.8xlarge",
+            "ml.m5.12xlarge",
+            "ml.m5.16xlarge",
+            "ml.m5.24xlarge",
+            "ml.m5.metal",
+            "ml.c5.large",
+            "ml.c5.xlarge",
+            "ml.c5.2xlarge",
+            "ml.c5.4xlarge",
+            "ml.c5.9xlarge",
+            "ml.c5.12xlarge",
+            "ml.c5.18xlarge",
+            "ml.c5.24xlarge",
+            "ml.c5.metal",
+            "ml.p3.2xlarge",
+            "ml.p3.8xlarge",
+            "ml.p3.16xlarge",
+            "inf1.xlarge",
+            "inf1.2xlarge",
+            "inf1.6xlarge",
+            "inf1.24xlarge",
+            "inf2.xlarge",
+            "inf2.8xlarge",
+            "inf2.24xlarge",
+            "inf2.48xlarge",
+            "m5.large",
+            "m5.xlarge",
+            "m5.2xlarge",
+            "m5.4xlarge",
+            "m5.8xlarge",
+            "m5.12xlarge",
+            "m5.16xlarge",
+            "m5.24xlarge",
+            "m5.metal",
+            "c5.large",
+            "c5.xlarge",
+            "c5.2xlarge",
+            "c5.4xlarge",
+            "c5.9xlarge",
+            "c5.12xlarge",
+            "c5.18xlarge",
+            "c5.24xlarge",
+            "c5.metal",
+            "p3.2xlarge",
+            "p3.8xlarge",
+            "p3.16xlarge",
+        ]
+
+        for instance in instances_that_support_volume_size:
+            self.assertTrue(volume_size_supported(instance))
+
+    def test_volume_size_not_supported(self):
+        instances_that_dont_support_volume_size = [
+            "ml.p4d.xlarge",
+            "ml.p4d.2xlarge",
+            "ml.p4d.4xlarge",
+            "ml.p4d.8xlarge",
+            "ml.p4de.xlarge",
+            "ml.p4de.2xlarge",
+            "ml.p4de.4xlarge",
+            "ml.p4de.8xlarge",
+            "ml.g4dn.xlarge",
+            "ml.g4dn.2xlarge",
+            "ml.g4dn.4xlarge",
+            "ml.g4dn.8xlarge",
+            "ml.g5.xlarge",
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
+            "p4d.xlarge",
+            "p4d.2xlarge",
+            "p4d.4xlarge",
+            "p4d.8xlarge",
+            "p4de.xlarge",
+            "p4de.2xlarge",
+            "p4de.4xlarge",
+            "p4de.8xlarge",
+            "g4dn.xlarge",
+            "g4dn.2xlarge",
+            "g4dn.4xlarge",
+            "g4dn.8xlarge",
+            "g5.xlarge",
+            "g5.2xlarge",
+            "g5.4xlarge",
+            "g5.8xlarge",
+            "local",
+            "local_gpu",
+            ParameterString(name="InstanceType", default_value="ml.m4.xlarge"),
+            "ml.trn1.32xlarge",
+            "ml.trn1n.32xlarge",
+        ]
+
+        for instance in instances_that_dont_support_volume_size:
+            self.assertFalse(volume_size_supported(instance))
+
+    def test_volume_size_badly_formatted(self):
+        with pytest.raises(ValueError):
+            volume_size_supported("blah")
+
+        with pytest.raises(ValueError):
+            volume_size_supported(float("inf"))
+
+        with pytest.raises(ValueError):
+            volume_size_supported("p2")
+
+        with pytest.raises(ValueError):
+            volume_size_supported({})
+
+    def test_instance_family_from_full_instance_type(self):
+
+        instance_type_to_family_test_dict = {
+            "ml.p3.xlarge": "p3",
+            "ml.inf1.4xlarge": "inf1",
+            "ml.afbsadjfbasfb.sdkjfnsa": "afbsadjfbasfb",
+            "ml_fdsfsdf.xlarge": "fdsfsdf",
+            "ml_c2.4xlarge": "c2",
+            "sdfasfdda": "",
+            "local": "",
+            "c2.xlarge": "",
+            "": "",
+        }
+
+        for instance_type, family in instance_type_to_family_test_dict.items():
+            self.assertEqual(family, get_instance_type_family(instance_type))
+
+
+@pytest.fixture
+def mock_custom_tarfile():
+    class MockTarfile:
+        def __init__(self, data_filter=False):
+            self.data_filter = data_filter
+
+        def extractall(self, path, members=None, filter=None):
+            assert path == "/extract/path"
+            if members is not None:
+                assert next(members).name == "file.txt"
+
+    return MockTarfile
+
+
+def test_get_resolved_path():
+    assert _get_resolved_path("path/to/file") == os.path.normpath(
+        os.path.realpath(os.path.abspath("path/to/file"))
+    )
+
+
+@pytest.mark.parametrize("file_path, base, expected", [("file.txt", "/path/to/base", False)])
+def test_is_bad_path(file_path, base, expected):
+    assert _is_bad_path(file_path, base) == expected
+
+
+@pytest.mark.parametrize(
+    "link_name, base, expected", [("link_to_file.txt", "/path/to/base", False)]
+)
+def test_is_bad_link(link_name, base, expected):
+    dummy_info = tarfile.TarInfo(name="dummy.txt")
+    dummy_info.linkname = link_name
+    assert _is_bad_link(dummy_info, base) == expected
+
+
+@pytest.mark.parametrize(
+    "data_filter, expected_extract_path", [(True, "/extract/path"), (False, "/extract/path")]
+)
+def test_custom_extractall_tarfile(mock_custom_tarfile, data_filter, expected_extract_path):
+    tar = mock_custom_tarfile(data_filter)
+    custom_extractall_tarfile(tar, "/extract/path")
+
+
+def test_can_model_package_source_uri_autopopulate():
+    test_data = [
+        ("arn:aws:sagemaker:us-west-2:012345678912:model-package/dummy-mpg/1", True),
+        ("arn:aws:sagemaker:us-west-2:012345678912:model-package/dummy-mp", True),
+        ("arn:aws:sagemaker:us-west-2:012345678912:model/dummy-model", True),
+        ("https://path/to/model", False),
+        ("/home/path/to/model", False),
+    ]
+    for source_uri, expected in test_data:
+        assert can_model_package_source_uri_autopopulate(source_uri) == expected
+
+
+class TestDeepMergeDict(TestCase):
+    def test_flatten_dict_basic(self):
+        nested_dict = {"a": 1, "b": {"x": 2, "y": {"p": 3, "q": 4}}, "c": 5}
+        flattened_dict = {
+            ("a",): 1,
+            ("b", "x"): 2,
+            ("b", "y", "p"): 3,
+            ("b", "y", "q"): 4,
+            ("c",): 5,
+        }
+        self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
+        self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
+
+    def test_flatten_dict_empty(self):
+        nested_dict = {}
+        flattened_dict = {}
+        self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
+        self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
+
+    def test_flatten_dict_no_nested(self):
+        nested_dict = {"a": 1, "b": 2, "c": 3}
+        flattened_dict = {("a",): 1, ("b",): 2, ("c",): 3}
+        self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
+        self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
+
+    def test_flatten_dict_with_various_types(self):
+        nested_dict = {"a": [1, 2, 3], "b": {"x": None, "y": {"p": [], "q": ""}}, "c": 9}
+        flattened_dict = {
+            ("a",): [1, 2, 3],
+            ("b", "x"): None,
+            ("b", "y", "p"): [],
+            ("b", "y", "q"): "",
+            ("c",): 9,
+        }
+        self.assertDictEqual(flatten_dict(nested_dict), flattened_dict)
+        self.assertDictEqual(unflatten_dict(flattened_dict), nested_dict)
+
+    def test_deep_override_dict(self):
+        dict1 = {"a": 1, "b": {"x": 2, "y": 3}}
+        dict2 = {"b": {"y": 4, "z": 5}, "c": 6}
+        expected_merged = {"a": 1, "b": {"x": 2, "y": 4, "z": 5}, "c": 6}
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
+    def test_deep_override_empty(self):
+        dict1 = {}
+        dict2 = {"a": 1, "b": {"c": 2}}
+        expected_merged = {"a": 1, "b": {"c": 2}}
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
+    def test_deep_override_nested_lists(self):
+        dict1 = {"a": [1, 2], "b": {"c": [3, 4]}}
+        dict2 = {"a": [5], "b": {"c": [6, 7], "d": [8]}}
+        expected_merged = {"a": [5], "b": {"c": [6, 7], "d": [8]}}
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
+    def test_deep_override_nested_lists_overriding_none(self):
+        dict1 = {"a": [{"c": "d"}, {"e": "f"}], "t": None}
+        dict2 = {
+            "a": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"],
+            "t": {"g": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"]},
+        }
+        expected_merged = {
+            "a": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"],
+            "t": {"g": [{"1": "2"}, {"3": "4"}, {"5": "6"}, "7"]},
+        }
+        self.assertDictEqual(deep_override_dict(dict1, dict2), expected_merged)
+
+    def test_deep_override_skip_keys(self):
+        dict1 = {"a": 1, "b": {"x": 2, "y": 3}, "c": [4, 5]}
+        dict2 = {
+            "b": {"x": 20, "z": 30},
+            "d": {"w": 40},
+        }
+        expected_result = {"a": 1, "b": {"x": 20, "y": 3, "z": 30}, "c": [4, 5]}
+
+        self.assertEqual(deep_override_dict(dict1, dict2, skip_keys=["c", "d"]), expected_result)
+
+
+@pytest.mark.parametrize(
+    "instance, region, amazon_sagemaker_price_result, expected",
+    [
+        (
+            "ml.t4g.nano",
+            "us-west-2",
+            {
+                "PriceList": [
+                    {
+                        "terms": {
+                            "OnDemand": {
+                                "3WK7G7WSYVS3K492.JRTCKXETXF": {
+                                    "priceDimensions": {
+                                        "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7": {
+                                            "unit": "Hrs",
+                                            "endRange": "Inf",
+                                            "description": "$0.9 per Unused Reservation Linux p2.xlarge Instance Hour",
+                                            "appliesTo": [],
+                                            "rateCode": "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7",
+                                            "beginRange": "0",
+                                            "pricePerUnit": {"USD": "0.9000000000"},
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    }
+                ]
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.9"},
+        ),
+        (
+            "ml.t4g.nano",
+            "eu-central-1",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "af-south-1",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
+        ),
+        (
+            "ml.t4g.nano",
+            "ap-northeast-2",
+            {
+                "PriceList": [
+                    '{"terms": {"OnDemand": {"22VNQ3N6GZGZMXYM.JRTCKXETXF": {"priceDimensions":{'
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7": {"unit": "Hrs", "endRange": "Inf", "description": '
+                    '"$0.0083 per'
+                    "On"
+                    'Demand Ubuntu Pro t4g.nano Instance Hour", "appliesTo": [], "rateCode": '
+                    '"22VNQ3N6GZGZMXYM.JRTCKXETXF.6YS6EN2CT7", "beginRange": "0", "pricePerUnit":{"USD": '
+                    '"0.0083000000"}}},'
+                    '"sku": "22VNQ3N6GZGZMXYM", "effectiveDate": "2024-04-01T00:00:00Z", "offerTermCode": "JRTCKXETXF",'
+                    '"termAttributes": {}}}}}'
+                ]
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.008"},
+        ),
+    ],
+)
+@patch("boto3.client")
+def test_get_instance_rate_per_hour(
+    mock_client, instance, region, amazon_sagemaker_price_result, expected
+):
+
+    mock_client.return_value.get_products.side_effect = (
+        lambda *args, **kwargs: amazon_sagemaker_price_result
+    )
+    instance_rate = get_instance_rate_per_hour(instance_type=instance, region=region)
+
+    assert instance_rate == expected
+
+
+@pytest.mark.parametrize(
+    "price_data, expected_result",
+    [
+        (None, None),
+        (
+            {
+                "terms": {
+                    "OnDemand": {
+                        "3WK7G7WSYVS3K492.JRTCKXETXF": {
+                            "priceDimensions": {
+                                "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7": {
+                                    "unit": "Hrs",
+                                    "endRange": "Inf",
+                                    "description": "$0.9 per Unused Reservation Linux p2.xlarge Instance Hour",
+                                    "appliesTo": [],
+                                    "rateCode": "3WK7G7WSYVS3K492.JRTCKXETXF.6YS6EN2CT7",
+                                    "beginRange": "0",
+                                    "pricePerUnit": {"USD": "0.9000000000"},
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            {"name": "On-demand Instance Rate", "unit": "USD/Hr", "value": "0.9"},
+        ),
+    ],
+)
+def test_extract_instance_rate_per_hour(price_data, expected_result):
+    out = extract_instance_rate_per_hour(price_data)
+
+    assert out == expected_result
+
+
+@pytest.mark.parametrize(
+    "routing_config, expected",
+    [
+        ({"RoutingStrategy": RoutingStrategy.RANDOM}, {"RoutingStrategy": "RANDOM"}),
+        ({"RoutingStrategy": "RANDOM"}, {"RoutingStrategy": "RANDOM"}),
+        (
+            {"RoutingStrategy": RoutingStrategy.LEAST_OUTSTANDING_REQUESTS},
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+        ),
+        (
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+            {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+        ),
+        ({"RoutingStrategy": None}, None),
+        (None, None),
+    ],
+)
+def test_resolve_routing_config(routing_config, expected):
+    res = _resolve_routing_config(routing_config)
+
+    assert res == expected
+
+
+def test_resolve_routing_config_ex():
+    pytest.raises(ValueError, lambda: _resolve_routing_config({"RoutingStrategy": "Invalid"}))
+
+
+class TestConvertToPascalCase(TestCase):
+    def test_simple_dict(self):
+        input_dict = {"first_name": "John", "last_name": "Doe"}
+        expected_output = {"FirstName": "John", "LastName": "Doe"}
+        self.assertEqual(camel_case_to_pascal_case(input_dict), expected_output)
+
+    def camel_case_to_pascal_case_nested(self):
+        input_dict = {
+            "model_name": "my-model",
+            "primary_container": {
+                "image": "my-docker-image:latest",
+                "model_data_url": "s3://my-bucket/model.tar.gz",
+                "environment": {"env_var_1": "value1", "env_var_2": "value2"},
+            },
+            "execution_role_arn": "arn:aws:iam::123456789012:role/my-sagemaker-role",
+            "tags": [
+                {"key": "project", "value": "my-project"},
+                {"key": "environment", "value": "development"},
+            ],
+        }
+        expected_output = {
+            "ModelName": "my-model",
+            "PrimaryContainer": {
+                "Image": "my-docker-image:latest",
+                "ModelDataUrl": "s3://my-bucket/model.tar.gz",
+                "Environment": {"EnvVar1": "value1", "EnvVar2": "value2"},
+            },
+            "ExecutionRoleArn": "arn:aws:iam::123456789012:role/my-sagemaker-role",
+            "Tags": [
+                {"Key": "project", "Value": "my-project"},
+                {"Key": "environment", "Value": "development"},
+            ],
+        }
+        self.assertEqual(camel_case_to_pascal_case(input_dict), expected_output)
+
+    def test_empty_input(self):
+        self.assertEqual(camel_case_to_pascal_case({}), {})
+
+
+class TestTags(TestCase):
+    def test_tag_exists(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        self.assertTrue(tag_exists({"Key": "project", "Value": "my-project"}, curr_tags=curr_tags))
+
+    def test_does_not_tag_exists(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        self.assertFalse(
+            tag_exists({"Key": "project-2", "Value": "my-project-2"}, curr_tags=curr_tags)
+        )
+
+    def test_add_tags(self):
+        curr_tags = [{"Key": "project", "Value": "my-project"}]
+        new_tag = {"Key": "project-2", "Value": "my-project-2"}
+        expected = [
+            {"Key": "project", "Value": "my-project"},
+            {"Key": "project-2", "Value": "my-project-2"},
+        ]
+
+        self.assertEqual(_validate_new_tags(new_tag, curr_tags), expected)
+
+    def test_new_add_tags(self):
+        new_tag = {"Key": "project-2", "Value": "my-project-2"}
+
+        self.assertEqual(_validate_new_tags(new_tag, None), new_tag)
+
+    def test_remove_existing_tag(self):
+        original_tags = [
+            {"Key": "Tag1", "Value": "Value1"},
+            {"Key": "Tag2", "Value": "Value2"},
+            {"Key": "Tag3", "Value": "Value3"},
+        ]
+        expected_output = [{"Key": "Tag1", "Value": "Value1"}, {"Key": "Tag3", "Value": "Value3"}]
+        self.assertEqual(remove_tag_with_key("Tag2", original_tags), expected_output)
+
+    def test_remove_non_existent_tag(self):
+        original_tags = [
+            {"Key": "Tag1", "Value": "Value1"},
+            {"Key": "Tag2", "Value": "Value2"},
+            {"Key": "Tag3", "Value": "Value3"},
+        ]
+        self.assertEqual(remove_tag_with_key("NonExistentTag", original_tags), original_tags)
+
+    def test_remove_only_tag(self):
+        original_tags = [{"Key": "Tag1", "Value": "Value1"}]
+        self.assertIsNone(remove_tag_with_key("Tag1", original_tags))
+
+
+class TestGetDomainForRegion(TestCase):
+    def test_get_domain_for_region(self):
+        self.assertEqual(get_domain_for_region("us-west-2"), "amazonaws.com")
+        self.assertEqual(get_domain_for_region("eu-west-1"), "amazonaws.com")
+        self.assertEqual(get_domain_for_region("ap-northeast-1"), "amazonaws.com")
+        self.assertEqual(get_domain_for_region("us-gov-west-1"), "amazonaws.com")
+        self.assertEqual(get_domain_for_region("cn-northwest-1"), "amazonaws.com.cn")
+        self.assertEqual(get_domain_for_region("us-iso-east-1"), "c2s.ic.gov")
+        self.assertEqual(get_domain_for_region("us-isob-east-1"), "sc2s.sgov.gov")
+        self.assertEqual(get_domain_for_region("invalid-region"), "amazonaws.com")

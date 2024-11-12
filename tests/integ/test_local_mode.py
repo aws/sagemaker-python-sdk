@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import sys
 import tarfile
 
 import boto3
@@ -23,13 +24,34 @@ import tempfile
 import stopit
 
 import tests.integ.lock as lock
+from sagemaker.remote_function import remote
+from sagemaker.workflow.step_outputs import get_step
+from tests.integ.sagemaker.conftest import _build_container, DOCKERFILE_TEMPLATE
+from sagemaker.config import SESSION_DEFAULT_S3_BUCKET_PATH
+from sagemaker.utils import resolve_value_from_config
+from sagemaker.workflow.function_step import step
 from tests.integ import DATA_DIR
+from mock import Mock, ANY
 
 from sagemaker import image_uris
 
+from sagemaker.model import Model
+from sagemaker.transformer import Transformer
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
-
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.steps import TrainingStep, ProcessingStep, TransformStep
+from sagemaker.workflow.model_step import ModelStep
+from sagemaker.workflow.parameters import ParameterInteger, ParameterString
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.fail_step import FailStep
+from sagemaker.workflow.conditions import (
+    ConditionLessThanOrEqualTo,
+    ConditionGreaterThan,
+    ConditionEquals,
+)
+from sagemaker.workflow.functions import JsonGet, PropertyFile, Join
+from sagemaker.workflow.pipeline_context import LocalPipelineSession
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
 
@@ -37,6 +59,7 @@ from sagemaker.mxnet import MXNet
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_local_mode_lock")
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
 DEFAULT_REGION = "us-west-2"
+ROLE = "SageMakerRole"
 
 
 class LocalNoS3Session(LocalSession):
@@ -45,7 +68,7 @@ class LocalNoS3Session(LocalSession):
     """
 
     def __init__(self):
-        super(LocalSession, self).__init__()
+        super(LocalNoS3Session, self).__init__()
 
     def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs):
         self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
@@ -56,6 +79,48 @@ class LocalNoS3Session(LocalSession):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
+
+        self.sagemaker_config = kwargs.get("sagemaker_config", None)
+
+        # after sagemaker_config initialization, update self._default_bucket_name_override if needed
+        self._default_bucket_name_override = resolve_value_from_config(
+            direct_input=self._default_bucket_name_override,
+            config_path=SESSION_DEFAULT_S3_BUCKET_PATH,
+            sagemaker_session=self,
+        )
+
+
+class LocalPipelineNoS3Session(LocalPipelineSession):
+    """
+    This Session sets  local_code: True regardless of any config file settings
+    """
+
+    def __init__(self):
+        super(LocalPipelineNoS3Session, self).__init__()
+
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs):
+        self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
+        if self.config is None:
+            self.config = {"local": {"local_code": True, "region_name": DEFAULT_REGION}}
+
+        self._region_name = DEFAULT_REGION
+        self.sagemaker_client = LocalSagemakerClient(self)
+        self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+        self.local_mode = True
+
+        self.sagemaker_config = kwargs.get("sagemaker_config", None)
+
+        # after sagemaker_config initialization, update self._default_bucket_name_override if needed
+        self._default_bucket_name_override = resolve_value_from_config(
+            direct_input=self._default_bucket_name_override,
+            config_path=SESSION_DEFAULT_S3_BUCKET_PATH,
+            sagemaker_session=self,
+        )
+
+
+@pytest.fixture(scope="module")
+def sagemaker_local_session_no_local_code(boto_session):
+    return LocalSession(boto_session=boto_session, disable_local_code=True)
 
 
 @pytest.fixture(scope="module")
@@ -84,7 +149,7 @@ def mxnet_model(
 
         mx = MXNet(
             entry_point=script_path,
-            role="SageMakerRole",
+            role=ROLE,
             instance_count=1,
             instance_type="local",
             output_path=output_path,
@@ -155,7 +220,7 @@ def test_mxnet_local_mode(
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         py_version=mxnet_training_latest_py_version,
         instance_count=1,
         instance_type="local",
@@ -191,7 +256,7 @@ def test_mxnet_distributed_local_mode(
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         py_version=mxnet_training_latest_py_version,
         instance_count=2,
         instance_type="local",
@@ -216,15 +281,22 @@ def test_mxnet_local_data_local_script(
 ):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
+    local_no_s3_session = LocalNoS3Session()
+    local_no_s3_session.boto_session.resource = Mock(
+        side_effect=local_no_s3_session.boto_session.resource
+    )
+    local_no_s3_session.boto_session.client = Mock(
+        side_effect=local_no_s3_session.boto_session.client
+    )
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=1,
         instance_type="local",
         framework_version=mxnet_training_latest_version,
         py_version=mxnet_training_latest_py_version,
-        sagemaker_session=LocalNoS3Session(),
+        sagemaker_session=local_no_s3_session,
     )
 
     train_input = "file://" + os.path.join(data_path, "train")
@@ -238,8 +310,35 @@ def test_mxnet_local_data_local_script(
             predictor = mx.deploy(1, "local", endpoint_name=endpoint_name)
             data = numpy.zeros(shape=(1, 1, 28, 28))
             predictor.predict(data)
+            # check if no boto_session s3 calls were made
+            with pytest.raises(AssertionError):
+                local_no_s3_session.boto_session.resource.assert_called_with("s3", region_name=ANY)
+            with pytest.raises(AssertionError):
+                local_no_s3_session.boto_session.client.assert_called_with("s3", region_name=ANY)
         finally:
             predictor.delete_endpoint()
+
+
+@pytest.mark.local_mode
+def test_mxnet_local_training_env(mxnet_training_latest_version, mxnet_training_latest_py_version):
+    data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+    script_path = os.path.join(data_path, "check_env.py")
+
+    mx = MXNet(
+        entry_point=script_path,
+        role=ROLE,
+        instance_count=1,
+        instance_type="local",
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_training_latest_py_version,
+        sagemaker_session=LocalNoS3Session(),
+        environment={"MYVAR": "HELLO_WORLD"},
+    )
+
+    train_input = "file://" + os.path.join(data_path, "train")
+    test_input = "file://" + os.path.join(data_path, "test")
+
+    mx.fit({"train": train_input, "test": test_input})
 
 
 @pytest.mark.local_mode
@@ -250,7 +349,7 @@ def test_mxnet_training_failure(
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         framework_version=mxnet_training_latest_version,
         py_version=mxnet_training_latest_py_version,
         instance_count=1,
@@ -276,16 +375,17 @@ def test_local_transform_mxnet(
     cpu_instance_type,
 ):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
-    script_path = os.path.join(data_path, "mnist.py")
+    script_path = os.path.join(data_path, "check_env.py")
 
     mx = MXNet(
         entry_point=script_path,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=1,
         instance_type="local",
         framework_version=mxnet_inference_latest_version,
         py_version=mxnet_inference_latest_py_version,
         sagemaker_session=sagemaker_local_session,
+        environment={"MYVAR": "HELLO_WORLD"},
     )
 
     train_input = mx.sagemaker_session.upload_data(
@@ -322,17 +422,17 @@ def test_local_transform_mxnet(
 
 
 @pytest.mark.local_mode
-def test_local_processing_sklearn(sagemaker_local_session, sklearn_latest_version):
+def test_local_processing_sklearn(sagemaker_local_session_no_local_code, sklearn_latest_version):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
-        role="SageMakerRole",
+        role=ROLE,
         instance_type="local",
         instance_count=1,
         command=["python3"],
-        sagemaker_session=sagemaker_local_session,
+        sagemaker_session=sagemaker_local_session_no_local_code,
     )
 
     sklearn_processor.run(
@@ -359,7 +459,7 @@ def test_local_processing_script_processor(sagemaker_local_session, sklearn_imag
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     script_processor = ScriptProcessor(
-        role="SageMakerRole",
+        role=ROLE,
         image_uri=sklearn_image_uri,
         command=["python3"],
         instance_count=1,
@@ -422,3 +522,488 @@ def test_local_processing_script_processor(sagemaker_local_session, sklearn_imag
     assert job_description["AppSpecification"]["ImageUri"] == sklearn_image_uri
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_processing_step(sklearn_latest_version, local_pipeline_session):
+    string_container_arg = ParameterString(name="ProcessingContainerArg", default_value="foo")
+    sklearn_processor = SKLearnProcessor(
+        framework_version=sklearn_latest_version,
+        role=ROLE,
+        instance_type="local",
+        instance_count=1,
+        command=["python3"],
+        sagemaker_session=local_pipeline_session,
+    )
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+    processing_args = sklearn_processor.run(
+        code=script_path,
+        inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
+        arguments=["--container_arg", string_container_arg],
+    )
+    processing_step = ProcessingStep(
+        name="sklearn_processor_local_pipeline", step_args=processing_args
+    )
+    pipeline = Pipeline(
+        name="local_pipeline_processing",
+        steps=[processing_step],
+        sagemaker_session=local_pipeline_session,
+        parameters=[string_container_arg],
+    )
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert pipeline_execution_describe_result["PipelineArn"] == "local_pipeline_processing"
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 1
+    assert (
+        pipeline_execution_list_steps_result["PipelineExecutionSteps"][0]["StepName"]
+        == "sklearn_processor_local_pipeline"
+    )
+    assert (
+        pipeline_execution_list_steps_result["PipelineExecutionSteps"][0]["StepStatus"]
+        == "Succeeded"
+    )
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_training_and_transform_steps(
+    mxnet_training_latest_version,
+    mxnet_inference_latest_version,
+    mxnet_training_latest_py_version,
+    tmpdir,
+):
+    session = LocalPipelineNoS3Session()
+    instance_count = ParameterInteger(name="InstanceCountParam")
+    data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+    script_path = os.path.join(data_path, "check_env.py")
+    output_path = "file://%s" % (str(tmpdir))
+
+    # define Estimator
+    mx = MXNet(
+        entry_point=script_path,
+        role=ROLE,
+        instance_count=instance_count,
+        instance_type="local",
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_training_latest_py_version,
+        sagemaker_session=session,
+        output_path=output_path,
+        environment={"MYVAR": "HELLO_WORLD"},
+    )
+
+    # define training step
+    train_input = "file://" + os.path.join(data_path, "train")
+    test_input = "file://" + os.path.join(data_path, "test")
+    training_args = mx.fit({"train": train_input, "test": test_input})
+    training_step = TrainingStep(name="mxnet_mnist_training", step_args=training_args)
+
+    # define model
+    inference_image_uri = image_uris.retrieve(
+        framework="mxnet",
+        region=DEFAULT_REGION,
+        version=mxnet_inference_latest_version,
+        instance_type="local",
+        image_scope="inference",
+    )
+    model = Model(
+        image_uri=inference_image_uri,
+        model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=session,
+        role=ROLE,
+    )
+
+    # define create model step
+    model_step_args = model.create(instance_type="local", accelerator_type="local")
+    model_step = ModelStep(name="mxnet_mnist_model", step_args=model_step_args)
+
+    # define transformer
+    transformer = Transformer(
+        model_name=model_step.properties.ModelName,
+        instance_type="local",
+        instance_count=instance_count,
+        output_path=output_path,
+        assemble_with="Line",
+        max_payload=1,
+        strategy="SingleRecord",
+        sagemaker_session=session,
+    )
+
+    # define transform step
+    transform_input = "file://" + os.path.join(data_path, "transform")
+    transform_args = transformer.transform(
+        transform_input, content_type="text/csv", split_type="Line"
+    )
+    transform_step = TransformStep(name="mxnet_mnist_transform", step_args=transform_args)
+
+    pipeline = Pipeline(
+        name="local_pipeline_training_transform",
+        parameters=[instance_count],
+        steps=[training_step, model_step, transform_step],
+        sagemaker_session=session,
+    )
+
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start(parameters={"InstanceCountParam": 1})
+
+    assert os.path.exists(os.path.join(str(tmpdir), "model.tar.gz"))
+    assert os.path.exists(os.path.join(str(tmpdir), "data.csv.out"))
+
+    pipeline_execution_describe_result = execution.describe()
+    assert pipeline_execution_describe_result["PipelineArn"] == "local_pipeline_training_transform"
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 3
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_eval_cond_fail_steps(sklearn_image_uri, local_pipeline_session):
+    processor = ScriptProcessor(
+        image_uri=sklearn_image_uri,
+        role=ROLE,
+        instance_count=1,
+        instance_type="local",
+        sagemaker_session=local_pipeline_session,
+        command=["python3"],
+    )
+
+    evaluation_report = PropertyFile(
+        name="EvaluationReport", output_name="evaluation", path="evaluation.json"
+    )
+
+    base_dir = os.path.join(DATA_DIR, "mxnet_mnist")
+    mx_mnist_model_data = os.path.join(base_dir, "model.tar.gz")
+    test_input = os.path.join(base_dir, "test")
+
+    eval_step = ProcessingStep(
+        name="mxnet_mnist_eval",
+        processor=processor,
+        inputs=[
+            ProcessingInput(
+                source=mx_mnist_model_data,
+                destination="/opt/ml/processing/model",
+            ),
+            ProcessingInput(
+                source=test_input,
+                destination="/opt/ml/processing/test",
+            ),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="evaluation", source="/opt/ml/processing/evaluation"),
+        ],
+        code=os.path.join(base_dir, "code/evaluation.py"),
+        property_files=[evaluation_report],
+    )
+
+    f1_score = JsonGet(
+        step_name=eval_step.name,
+        property_file=evaluation_report,
+        json_path="metrics.f1.value",
+    )
+
+    fail_step = FailStep(
+        name="mxnet_mnist_fail", error_message=Join(on=":", values=["F1 score too low", f1_score])
+    )
+
+    cond_lte = ConditionLessThanOrEqualTo(
+        left=f1_score,
+        right=0.8,
+    )
+    cond_step = ConditionStep(
+        name="mxnet_mnist_condition",
+        conditions=[cond_lte],
+        if_steps=[fail_step],
+        else_steps=[],
+    )
+
+    pipeline = Pipeline(
+        name="local_pipeline_training_transform",
+        steps=[eval_step, cond_step],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert pipeline_execution_describe_result["PipelineArn"] == "local_pipeline_training_transform"
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Failed"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 3
+    for exe_step in pipeline_execution_list_steps_result["PipelineExecutionSteps"]:
+        if exe_step["StepName"] == "mxnet_mnist_eval":
+            assert exe_step["StepStatus"] == "Succeeded"
+        elif exe_step["StepName"] == "mxnet_mnist_condition":
+            assert exe_step["StepStatus"] == "Succeeded"
+            assert exe_step["Metadata"]["Condition"]["Outcome"] is True
+        else:
+            assert exe_step["StepStatus"] == "Failed"
+            assert exe_step["FailureReason"] == "F1 score too low:0.7"
+
+
+@pytest.fixture(scope="module")
+def dummy_container(sagemaker_session):
+    compatible_python_version = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
+    ecr_uri = _build_container(sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE)
+    return ecr_uri
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_step_decorator_and_step_dependency(
+    local_pipeline_session, dummy_container
+):
+    step_settings = dict(
+        role=ROLE,
+        instance_type="ml.m5.xlarge",
+        image_uri=dummy_container,
+        keep_alive_period_in_seconds=60,
+    )
+
+    @step(**step_settings)
+    def generator():
+        return 3, 4
+
+    @step(**step_settings)
+    def sum(a, b):
+        """adds two numbers"""
+        return a + b
+
+    step_output_a = generator()
+    step_output_b = sum(step_output_a[0], step_output_a[1])
+
+    pipeline = Pipeline(
+        name="local_pipeline_step_decorator",
+        steps=[step_output_b],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert not pipeline_execution_describe_result.get("FailureReason", None)
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 2
+
+    assert execution.result(step_name=get_step(step_output_a).name) == (3, 4)
+    assert execution.result(step_name=get_step(step_output_b).name) == 7
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_step_decorator_and_pre_exe_script(
+    local_pipeline_session, dummy_container
+):
+    step_settings = dict(
+        role=ROLE,
+        instance_type="local",
+        image_uri=dummy_container,
+        keep_alive_period_in_seconds=60,
+        pre_execution_script=os.path.join(DATA_DIR, "workflow", "pre_exec_commands"),
+    )
+
+    @step(**step_settings)
+    def validate_file_exists(files_exists, files_does_not_exist):
+        for file_name in files_exists:
+            if not os.path.exists(file_name):
+                raise ValueError(f"file {file_name} should exist")
+
+        for file_name in files_does_not_exist:
+            if os.path.exists(file_name):
+                raise ValueError(f"file {file_name} should not exist")
+
+    step_output_a = validate_file_exists(["test_file_1", "test_file_3"], ["test_file_2"])
+
+    pipeline = Pipeline(
+        name="local_pipeline_step_decorator_with_pre_exe_script",
+        steps=[step_output_a],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert not pipeline_execution_describe_result.get("FailureReason", None)
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 1
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_step_decorator_and_condition_step(
+    local_pipeline_session, dummy_container
+):
+    step_settings = dict(
+        role=ROLE,
+        instance_type="local",
+        image_uri=dummy_container,
+        keep_alive_period_in_seconds=60,
+    )
+
+    @step(**step_settings)
+    def left_condition() -> tuple:
+        return 1, 2, 3
+
+    @step(**step_settings)
+    def if_step():
+        return "In if branch"
+
+    @step(**step_settings)
+    def else_step():
+        return "In else branch"
+
+    step_output = left_condition()
+
+    if_step_output = if_step()
+    else_step_output = else_step()
+
+    cond_gt = ConditionGreaterThan(left=step_output[1], right=1)
+    cond_step = ConditionStep(
+        name="MyConditionStep",
+        conditions=[cond_gt],
+        if_steps=[if_step_output],
+        else_steps=[else_step_output],
+    )
+
+    pipeline = Pipeline(
+        name="local_pipeline_step_decorator_with_json_get_and_cond_step",
+        steps=[cond_step, step_output],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert not pipeline_execution_describe_result.get("FailureReason", None)
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 3
+
+    for exe_step_result in pipeline_execution_list_steps_result["PipelineExecutionSteps"]:
+        assert exe_step_result["StepStatus"] == "Succeeded"
+        if exe_step_result["StepName"] == cond_step.name:
+            assert exe_step_result["Metadata"]["Condition"]["Outcome"] is True
+
+
+@pytest.mark.local_mode
+def test_local_pipeline_with_step_decorator_data_referenced_by_other_steps(
+    local_pipeline_session,
+    dummy_container,
+    sklearn_latest_version,
+):
+    processing_job_instance_counts = 2
+
+    @step(
+        name="step1",
+        image_uri=dummy_container,
+        role=ROLE,
+        instance_type="ml.m5.xlarge",
+        keep_alive_period_in_seconds=60,
+    )
+    def func(var: int):
+        return 1, var
+
+    step_output = func(processing_job_instance_counts)
+
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+    inputs = [
+        ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
+    ]
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=sklearn_latest_version,
+        role=ROLE,
+        instance_type="local",
+        instance_count=step_output[1],
+        command=["python3"],
+        sagemaker_session=local_pipeline_session,
+        base_job_name="test-sklearn",
+    )
+
+    step_args = sklearn_processor.run(
+        inputs=inputs,
+        code=script_path,
+    )
+    process_step = ProcessingStep(
+        name="MyProcessStep",
+        step_args=step_args,
+    )
+
+    cond_eq = ConditionEquals(
+        left=process_step.properties.ProcessingResources.ClusterConfig.InstanceCount,
+        right=processing_job_instance_counts,
+    )
+    cond_step = ConditionStep(
+        name="MyConditionStep",
+        conditions=[cond_eq],
+        if_steps=[],
+        else_steps=[],
+    )
+
+    pipeline = Pipeline(
+        name="Local_Pipeline_step_decorator_with_json_get_and_proc_step",
+        steps=[cond_step],
+        sagemaker_session=local_pipeline_session,
+    )
+
+    pipeline.create(ROLE, "pipeline for sdk integ testing")
+
+    with lock.lock(LOCK_PATH):
+        execution = pipeline.start()
+
+    pipeline_execution_describe_result = execution.describe()
+    assert not pipeline_execution_describe_result.get("FailureReason", None)
+    assert pipeline_execution_describe_result["PipelineExecutionStatus"] == "Succeeded"
+
+    pipeline_execution_list_steps_result = execution.list_steps()
+    assert len(pipeline_execution_list_steps_result["PipelineExecutionSteps"]) == 3
+
+    for exe_step_result in pipeline_execution_list_steps_result["PipelineExecutionSteps"]:
+        assert exe_step_result["StepStatus"] == "Succeeded"
+        if exe_step_result["StepName"] == cond_step.name:
+            assert exe_step_result["Metadata"]["Condition"]["Outcome"] is True
+
+
+@pytest.mark.local_mode
+def test_local_remote_function_with_additional_dependencies(
+    local_pipeline_session, dummy_container
+):
+    dependencies_path = os.path.join(DATA_DIR, "remote_function", "requirements.txt")
+
+    @remote(
+        role=ROLE,
+        image_uri=dummy_container,
+        dependencies=dependencies_path,
+        instance_type="local",
+        sagemaker_session=local_pipeline_session,
+    )
+    def cuberoot(x):
+        from scipy.special import cbrt
+
+        return cbrt(x)
+
+    assert cuberoot(27) == 3

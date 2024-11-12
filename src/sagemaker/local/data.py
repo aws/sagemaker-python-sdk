@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -69,7 +69,7 @@ def get_splitter_instance(split_type):
     Returns
         :class:`sagemaker.local.data.Splitter`: an Instance of a Splitter
     """
-    if split_type is None:
+    if split_type == "None" or split_type is None:
         return NoneSplitter()
     if split_type == "Line":
         return LineSplitter()

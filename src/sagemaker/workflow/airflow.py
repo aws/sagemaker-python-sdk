@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,6 +20,9 @@ import sagemaker
 from sagemaker import fw_utils, job, utils, s3, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.estimator import EstimatorBase
+from sagemaker.processing import Processor
+from sagemaker.utils import format_tags
 
 
 def prepare_framework(estimator, s3_operations):
@@ -35,12 +38,17 @@ def prepare_framework(estimator, s3_operations):
     """
     if estimator.code_location is not None:
         bucket, key = s3.parse_s3_url(estimator.code_location)
-        key = os.path.join(key, estimator._current_job_name, "source", "sourcedir.tar.gz")
+        key = s3.s3_path_join(key, estimator._current_job_name, "source", "sourcedir.tar.gz")
     elif estimator.uploaded_code is not None:
         bucket, key = s3.parse_s3_url(estimator.uploaded_code.s3_prefix)
     else:
-        bucket = estimator.sagemaker_session._default_bucket
-        key = os.path.join(estimator._current_job_name, "source", "sourcedir.tar.gz")
+        bucket = estimator.sagemaker_session.default_bucket
+        key = s3.s3_path_join(
+            estimator.sagemaker_session.default_bucket_prefix,
+            estimator._current_job_name,
+            "source",
+            "sourcedir.tar.gz",
+        )
 
     script = os.path.basename(estimator.entry_point)
 
@@ -60,13 +68,13 @@ def prepare_framework(estimator, s3_operations):
         ]
     estimator._hyperparameters[sagemaker.model.DIR_PARAM_NAME] = code_dir
     estimator._hyperparameters[sagemaker.model.SCRIPT_PARAM_NAME] = script
-    estimator._hyperparameters[
-        sagemaker.model.CONTAINER_LOG_LEVEL_PARAM_NAME
-    ] = estimator.container_log_level
+    estimator._hyperparameters[sagemaker.model.CONTAINER_LOG_LEVEL_PARAM_NAME] = (
+        estimator.container_log_level
+    )
     estimator._hyperparameters[sagemaker.model.JOB_NAME_PARAM_NAME] = estimator._current_job_name
-    estimator._hyperparameters[
-        sagemaker.model.SAGEMAKER_REGION_PARAM_NAME
-    ] = estimator.sagemaker_session.boto_region_name
+    estimator._hyperparameters[sagemaker.model.SAGEMAKER_REGION_PARAM_NAME] = (
+        estimator.sagemaker_session.boto_region_name
+    )
 
 
 def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
@@ -151,13 +159,18 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         estimator._current_job_name = job_name
     else:
         base_name = estimator.base_job_name or utils.base_name_from_image(
-            estimator.training_image_uri()
+            estimator.training_image_uri(),
+            default_base_name=EstimatorBase.JOB_CLASS_NAME,
         )
         estimator._current_job_name = utils.name_from_base(base_name)
 
     if estimator.output_path is None:
-        default_bucket = estimator.sagemaker_session.default_bucket()
-        estimator.output_path = "s3://{}/".format(default_bucket)
+        estimator.output_path = s3.s3_path_join(
+            "s3://",
+            estimator.sagemaker_session.default_bucket(),
+            estimator.sagemaker_session.default_bucket_prefix,
+            with_end_slash=True,
+        )
 
     if isinstance(estimator, sagemaker.estimator.Framework):
         prepare_framework(estimator, s3_operations)
@@ -184,7 +197,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         train_config["VpcConfig"] = job_config["vpc_config"]
 
     if estimator.use_spot_instances:
-        train_config["EnableManagedSpotTraining"] = True
+        # estimator.use_spot_instances may be a Pipeline ParameterBoolean object
+        # which is parsed during the Pipeline execution runtime
+        train_config["EnableManagedSpotTraining"] = estimator.use_spot_instances
 
     if estimator.hyperparameters() is not None:
         hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
@@ -195,6 +210,11 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if s3_operations:
         train_config["S3Operations"] = s3_operations
 
+    if (estimator.checkpoint_local_path is not None) & (estimator.checkpoint_s3_uri is not None):
+        train_config["CheckpointConfig"] = {
+            "LocalPath": estimator.checkpoint_local_path,
+            "S3Uri": estimator.checkpoint_s3_uri,
+        }
     return train_config
 
 
@@ -402,7 +422,7 @@ def _extract_training_config_list_from_estimator_dict(
     )
 
     train_config_dict = {}
-    for (estimator_name, estimator) in tuner.estimator_dict.items():
+    for estimator_name, estimator in tuner.estimator_dict.items():
         train_config_dict[estimator_name] = training_base_config(
             estimator=estimator,
             inputs=inputs.get(estimator_name) if inputs else None,
@@ -419,9 +439,9 @@ def _extract_training_config_list_from_estimator_dict(
         train_config.pop("HyperParameters", None)
         train_config["StaticHyperParameters"] = tuner.static_hyperparameters_dict[estimator_name]
 
-        train_config["AlgorithmSpecification"][
-            "MetricDefinitions"
-        ] = tuner.metric_definitions_dict.get(estimator_name)
+        train_config["AlgorithmSpecification"]["MetricDefinitions"] = (
+            tuner.metric_definitions_dict.get(estimator_name)
+        )
 
         train_config["DefinitionName"] = estimator_name
         train_config["TuningObjective"] = {
@@ -441,7 +461,7 @@ def _merge_s3_operations(s3_operations_list):
     """Merge a list of S3 operation dictionaries into one"""
     s3_operations_merged = {}
     for s3_operations in s3_operations_list:
-        for (key, operations) in s3_operations.items():
+        for key, operations in s3_operations.items():
             if key not in s3_operations_merged:
                 s3_operations_merged[key] = []
             for operation in operations:
@@ -533,7 +553,12 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     base_name = utils.base_name_from_image(deploy_image)
     model.name = model.name or utils.name_from_base(base_name)
 
-    bucket = model.bucket or model.sagemaker_session._default_bucket
+    bucket, key_prefix = s3.determine_bucket_and_prefix(
+        bucket=model.bucket,
+        key_prefix=None,
+        sagemaker_session=model.sagemaker_session,
+    )
+
     if model.entry_point is not None:
         script = os.path.basename(model.entry_point)
         key = "{}/source/sourcedir.tar.gz".format(model.name)
@@ -542,14 +567,14 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
             code_dir = model.source_dir
             model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
         else:
-            code_dir = "s3://{}/{}".format(bucket, key)
+            code_dir = s3.s3_path_join("s3://", bucket, key_prefix, key)
             model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
             s3_operations["S3Upload"] = [
                 {"Path": model.source_dir or script, "Bucket": bucket, "Key": key, "Tar": True}
             ]
 
     deploy_env = dict(model.env)
-    deploy_env.update(model._framework_env_vars())
+    deploy_env.update(model._script_mode_env_vars())
 
     try:
         if model.model_server_workers:
@@ -747,8 +772,11 @@ def transform_config(
         )
 
     if transformer.output_path is None:
-        transformer.output_path = "s3://{}/{}".format(
-            transformer.sagemaker_session.default_bucket(), transformer._current_job_name
+        transformer.output_path = s3.s3_path_join(
+            "s3://",
+            transformer.sagemaker_session.default_bucket(),
+            transformer.sagemaker_session.default_bucket_prefix,
+            transformer._current_job_name,
         )
 
     job_config = sagemaker.transformer._TransformJob._load_config(
@@ -871,7 +899,7 @@ def transform_config_from_estimator(
             be made to each individual transform container at one time.
         max_payload (int): Maximum size of the payload in a single HTTP request
             to the container in MB.
-        tags (list[dict]): List of tags for labeling a transform job. If none
+        tags (Optional[Tags]): List of tags for labeling a transform job. If none
             specified, then the tags used for the training job are used for the
             transform job.
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
@@ -942,7 +970,7 @@ def transform_config_from_estimator(
             env,
             max_concurrent_transforms,
             max_payload,
-            tags,
+            format_tags(tags),
             role,
             model_server_workers,
             volume_kms_key,
@@ -959,7 +987,7 @@ def transform_config_from_estimator(
             env,
             max_concurrent_transforms,
             max_payload,
-            tags,
+            format_tags(tags),
             role,
             volume_kms_key,
         )
@@ -1038,7 +1066,7 @@ def deploy_config_from_estimator(
     model_name=None,
     endpoint_name=None,
     tags=None,
-    **kwargs
+    **kwargs,
 ):
     """Export Airflow deploy config from a SageMaker estimator
 
@@ -1102,9 +1130,17 @@ def processing_config(
             :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
         job_name (str): Processing job name. If not specified, the processor generates
             a default job name, based on the base job name and current timestamp.
-        experiment_config (dict[str, str]): Experiment management configuration.
-            Dictionary contains three optional keys:
-            'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         container_arguments ([str]): The arguments for a container used to run a processing job.
         container_entrypoint ([str]): The entrypoint for a container used to run a processing job.
         kms_key_id (str): The AWS Key Management Service (AWS KMS) key that Amazon SageMaker
@@ -1123,7 +1159,7 @@ def processing_config(
         processor._current_job_name = (
             utils.name_from_base(base_name)
             if base_name is not None
-            else utils.base_name_from_image(processor.image_uri)
+            else utils.base_name_from_image(processor.image_uri, Processor.JOB_CLASS_NAME)
         )
 
     config = {

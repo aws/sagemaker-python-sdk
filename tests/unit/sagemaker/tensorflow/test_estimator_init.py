@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,7 +25,13 @@ ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_va
 
 @pytest.fixture()
 def sagemaker_session():
-    return Mock(name="sagemaker_session", boto_region_name=REGION)
+    session_mock = Mock(
+        name="sagemaker_session",
+        boto_region_name=REGION,
+        default_bucket_prefix=None,
+    )
+    session_mock.sagemaker_config = {}
+    return session_mock
 
 
 def _build_tf(sagemaker_session, **kwargs):

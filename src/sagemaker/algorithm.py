@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,15 +13,24 @@
 """Test docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, Dict, List
+
 import sagemaker
 import sagemaker.parameter
 from sagemaker import vpc_utils
 from sagemaker.deserializers import BytesDeserializer
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.estimator import EstimatorBase
+from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.serializers import IdentitySerializer
 from sagemaker.transformer import Transformer
 from sagemaker.predictor import Predictor
+from sagemaker.session import Session
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.utils import format_tags, Tags
+
+from sagemaker.workflow import is_pipeline_variable
 
 
 class AlgorithmEstimator(EstimatorBase):
@@ -37,29 +46,29 @@ class AlgorithmEstimator(EstimatorBase):
 
     def __init__(
         self,
-        algorithm_arn,
-        role,
-        instance_count,
-        instance_type,
-        volume_size=30,
-        volume_kms_key=None,
-        max_run=24 * 60 * 60,
-        input_mode="File",
-        output_path=None,
-        output_kms_key=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        hyperparameters=None,
-        tags=None,
-        subnets=None,
-        security_group_ids=None,
-        model_uri=None,
-        model_channel_name="model",
-        metric_definitions=None,
-        encrypt_inter_container_traffic=False,
-        use_spot_instances=False,
-        max_wait=None,
-        **kwargs  # pylint: disable=W0613
+        algorithm_arn: str,
+        role: str = None,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        volume_size: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_run: Union[int, PipelineVariable] = 24 * 60 * 60,
+        input_mode: Union[str, PipelineVariable] = "File",
+        output_path: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[Tags] = None,
+        subnets: Optional[List[Union[str, PipelineVariable]]] = None,
+        security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_uri: Optional[str] = None,
+        model_channel_name: Union[str, PipelineVariable] = "model",
+        metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = False,
+        use_spot_instances: Union[bool, PipelineVariable] = False,
+        max_wait: Optional[Union[int, PipelineVariable]] = None,
+        **kwargs,  # pylint: disable=W0613
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
 
@@ -71,19 +80,21 @@ class AlgorithmEstimator(EstimatorBase):
                 access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
                 needs to access an AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to
-                use for training. instance_type (str): Type of EC2
-                instance to use for training, for example, 'ml.c4.xlarge'.
-            volume_size (int): Size in GB of the EBS volume to use for
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
+                for training.
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
+                for example, 'ml.c4.xlarge'.
+            volume_size (int or PipelineVariable): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large enough to store
                 training data if File Mode is used (which is the default).
-            volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached
-                to the training instance (default: None).
-            max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
+            volume_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting
+                EBS volume attached to the training instance (default: None).
+            max_run (int or PipelineVariable): Timeout in seconds for training
+                (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the
                 job regardless of its current status.
-            input_mode (str): The input mode that the algorithm supports
-            (default: 'File'). Valid modes:
+            input_mode (str or PipelineVariable): The input mode that the algorithm supports
+                (default: 'File'). Valid modes:
 
                 * 'File' - Amazon SageMaker copies the training dataset from
                   the S3 location to a local directory.
@@ -93,13 +104,14 @@ class AlgorithmEstimator(EstimatorBase):
                 This argument can be overriden on a per-channel basis using
                 ``sagemaker.inputs.TrainingInput.input_mode``.
 
-            output_path (str): S3 location for saving the training result (model artifacts and
-                output files). If not specified, results are stored to a default bucket. If
+            output_path (str or PipelineVariable): S3 location for saving the training result
+                (model artifacts and output files). If not specified,
+                results are stored to a default bucket. If
                 the bucket with the specific name does not exist, the
                 estimator creates the bucket during the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method
                 execution.
-            output_kms_key (str): Optional. KMS key ID for encrypting the
+            output_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting the
                 training output (default: None). base_job_name (str): Prefix for
                 training job name when the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`
@@ -110,9 +122,10 @@ class AlgorithmEstimator(EstimatorBase):
                 interactions with Amazon SageMaker APIs and any other AWS services needed. If
                 not specified, the estimator creates one using the default
                 AWS configuration chain.
-            tags (list[dict]): List of tags for labeling a training job. For more, see
+            tags (Union[Tags]): Tags for
+                labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            subnets (list[str]): List of subnet ids. If not specified
+            subnets (list[str] or list[PipelineVariable]): List of subnet ids. If not specified
                 training job will be created without VPC config.
                 security_group_ids (list[str]): List of security group ids. If
                 not specified training job will be created without VPC config.
@@ -123,44 +136,58 @@ class AlgorithmEstimator(EstimatorBase):
                 other artifacts coming from a different source.
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
-            model_channel_name (str): Name of the channel where 'model_uri'
+            model_channel_name (str or PipelineVariable): Name of the channel where 'model_uri'
                 will be downloaded (default: 'model'). metric_definitions
                 (list[dict]): A list of dictionaries that defines the metric(s)
                 used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
                 the name of the metric, and 'Regex' for the regular
                 expression used to extract the metric from the logs.
-            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
-                containers is encrypted for the training job (default: ``False``).
-            use_spot_instances (bool): Specifies whether to use SageMaker
+            encrypt_inter_container_traffic (bool or PipelineVariable): Specifies whether traffic
+                between training containers is encrypted for the training job (default: ``False``).
+            use_spot_instances (bool or PipelineVariable): Specifies whether to use SageMaker
                 Managed Spot instances for training. If enabled then the
                 `max_wait` arg should also be set.
 
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
-            max_wait (int): Timeout in seconds waiting for spot training
+            max_wait (int or PipelineVariable): Timeout in seconds waiting for spot training
                 instances (default: None). After this amount of time Amazon
                 SageMaker will stop waiting for Spot instances to become
                 available (default: ``None``).
             **kwargs: Additional kwargs. This is unused. It's only added for AlgorithmEstimator
                 to ignore the irrelevant arguments.
+
+        Raises:
+            ValueError:
+            - If an AWS IAM Role is not provided.
+            - Bad value for instance type.
+            RuntimeError:
+            - When setting up custom VPC, both subnets and security_group_ids are not provided
+            - If instance_count > 1 (distributed training) with instance type local or local gpu
+            - If LocalSession is not used with instance type local or local gpu
+            - file:// output path used outside of local mode
+            botocore.exceptions.ClientError:
+            - algorithm arn is incorrect
+            - insufficient permission to access/ describe algorithm
+            - algorithm is in a different region
         """
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(
             role,
-            instance_count,
-            instance_type,
-            volume_size,
-            volume_kms_key,
-            max_run,
-            input_mode,
-            output_path,
-            output_kms_key,
-            base_job_name,
-            sagemaker_session,
-            tags,
-            subnets,
-            security_group_ids,
+            instance_count=instance_count,
+            instance_type=instance_type,
+            volume_size=volume_size,
+            volume_kms_key=volume_kms_key,
+            max_run=max_run,
+            input_mode=input_mode,
+            output_path=output_path,
+            output_kms_key=output_kms_key,
+            base_job_name=base_job_name,
+            sagemaker_session=sagemaker_session,
+            tags=format_tags(tags),
+            subnets=subnets,
+            security_group_ids=security_group_ids,
             model_uri=model_uri,
             model_channel_name=model_channel_name,
             metric_definitions=metric_definitions,
@@ -175,7 +202,7 @@ class AlgorithmEstimator(EstimatorBase):
         self.validate_train_spec()
         self.hyperparameter_definitions = self._parse_hyperparameters()
 
-        self.hyperparam_dict = {}
+        self._hyperparameters = {}
         if hyperparameters:
             self.set_hyperparameters(**hyperparameters)
 
@@ -187,7 +214,7 @@ class AlgorithmEstimator(EstimatorBase):
         # Check that the input mode provided is compatible with the training input modes for the
         # algorithm.
         input_modes = self._algorithm_training_input_modes(train_spec["TrainingChannels"])
-        if self.input_mode not in input_modes:
+        if not is_pipeline_variable(self.input_mode) and self.input_mode not in input_modes:
             raise ValueError(
                 "Invalid input mode: %s. %s only supports: %s"
                 % (self.input_mode, algorithm_name, input_modes)
@@ -195,14 +222,17 @@ class AlgorithmEstimator(EstimatorBase):
 
         # Check that the training instance type is compatible with the algorithm.
         supported_instances = train_spec["SupportedTrainingInstanceTypes"]
-        if self.instance_type not in supported_instances:
+        if (
+            not is_pipeline_variable(self.instance_type)
+            and self.instance_type not in supported_instances
+        ):
             raise ValueError(
                 "Invalid instance_type: %s. %s supports the following instance types: %s"
                 % (self.instance_type, algorithm_name, supported_instances)
             )
 
         # Verify if distributed training is supported by the algorithm
-        if (
+        if not is_pipeline_variable(self.instance_count) and (
             self.instance_count > 1
             and "SupportsDistributedTraining" in train_spec
             and not train_spec["SupportsDistributedTraining"]
@@ -216,7 +246,7 @@ class AlgorithmEstimator(EstimatorBase):
         """Placeholder docstring"""
         for k, v in kwargs.items():
             value = self._validate_and_cast_hyperparameter(k, v)
-            self.hyperparam_dict[k] = value
+            self._hyperparameters[k] = value
 
         self._validate_and_set_default_hyperparameters()
 
@@ -226,7 +256,7 @@ class AlgorithmEstimator(EstimatorBase):
         The fit() method, that does the model training, calls this method to
         find the hyperparameters you specified.
         """
-        return self.hyperparam_dict
+        return self._hyperparameters
 
     def training_image_uri(self):
         """Returns the docker image to use for training.
@@ -255,7 +285,7 @@ class AlgorithmEstimator(EstimatorBase):
         serializer=IdentitySerializer(),
         deserializer=BytesDeserializer(),
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
-        **kwargs
+        **kwargs,
     ):
         """Create a model to deploy.
 
@@ -309,7 +339,7 @@ class AlgorithmEstimator(EstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
             predictor_cls=predictor_cls,
-            **kwargs
+            **kwargs,
         )
 
     def transformer(
@@ -376,7 +406,7 @@ class AlgorithmEstimator(EstimatorBase):
             if self._is_marketplace():
                 transform_env = None
 
-            tags = tags or self.tags
+            tags = format_tags(tags) or self.tags
         else:
             raise RuntimeError("No finished training job found associated with this estimator")
 
@@ -415,12 +445,19 @@ class AlgorithmEstimator(EstimatorBase):
 
         super(AlgorithmEstimator, self)._prepare_for_training(job_name)
 
-    def fit(self, inputs=None, wait=True, logs=True, job_name=None):
+    @runnable_by_pipeline
+    def fit(
+        self,
+        inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+    ):
         """Placeholder docstring"""
         if inputs:
             self._validate_input_channels(inputs)
 
-        super(AlgorithmEstimator, self).fit(inputs, wait, logs, job_name)
+        return super(AlgorithmEstimator, self).fit(inputs, wait, logs, job_name)
 
     def _validate_input_channels(self, channels):
         """Placeholder docstring"""
@@ -465,10 +502,10 @@ class AlgorithmEstimator(EstimatorBase):
         # Check if all the required hyperparameters are set. If there is a default value
         # for one, set it.
         for name, definition in self.hyperparameter_definitions.items():
-            if name not in self.hyperparam_dict:
+            if name not in self._hyperparameters:
                 spec = definition["spec"]
                 if "DefaultValue" in spec:
-                    self.hyperparam_dict[name] = spec["DefaultValue"]
+                    self._hyperparameters[name] = spec["DefaultValue"]
                 elif "IsRequired" in spec and spec["IsRequired"]:
                     raise ValueError("Required hyperparameter: %s is not set" % name)
 

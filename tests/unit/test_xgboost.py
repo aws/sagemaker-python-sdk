@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,6 +22,8 @@ from mock import patch
 from packaging.version import Version
 
 
+from sagemaker.fw_utils import UploadedCode
+from sagemaker.session_settings import SessionSettings
 from sagemaker.xgboost import XGBoost, XGBoostModel, XGBoostPredictor
 
 
@@ -53,6 +55,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 
@@ -67,6 +70,8 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -76,6 +81,8 @@ def sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 
@@ -148,18 +155,13 @@ def _create_train_job(version, instance_count=1, instance_type="ml.c4.4xlarge"):
         "vpc_config": None,
         "environment": None,
         "experiment_config": None,
+        "enable_network_isolation": False,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -178,6 +180,26 @@ def test_create_model(sagemaker_session, xgboost_framework_version):
     default_image_uri = _get_full_image_uri(xgboost_framework_version)
     model_values = xgboost_model.prepare_container_def(CPU)
     assert model_values["Image"] == default_image_uri
+
+
+@patch("sagemaker.model.FrameworkModel._upload_code")
+def test_create_model_with_network_isolation(upload, sagemaker_session, xgboost_framework_version):
+    source_dir = "s3://mybucket/source"
+    repacked_model_data = "s3://mybucket/prefix/model.tar.gz"
+
+    xgboost_model = XGBoostModel(
+        model_data=source_dir,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        entry_point=SCRIPT_PATH,
+        framework_version=xgboost_framework_version,
+        enable_network_isolation=True,
+    )
+    xgboost_model.uploaded_code = UploadedCode(s3_prefix=repacked_model_data, script_name="script")
+    xgboost_model.repacked_model_data = repacked_model_data
+    model_values = xgboost_model.prepare_container_def(CPU)
+    assert model_values["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"] == "/opt/ml/model/code"
+    assert model_values["ModelDataUrl"] == repacked_model_data
 
 
 @patch("sagemaker.estimator.name_from_base")

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,11 +23,18 @@ from sagemaker.amazon.amazon_estimator import (
     _build_shards,
     FileSystemRecordSet,
 )
+from sagemaker.session_settings import SessionSettings
+from tests.unit import (
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+    DEFAULT_S3_BUCKET_NAME,
+    _test_default_bucket_and_prefix_combinations,
+)
 
 COMMON_ARGS = {"role": "myrole", "instance_count": 1, "instance_type": "ml.c4.xlarge"}
 
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
+DEFAULT_PREFIX_NAME = "Some-Prefix"
 TIMESTAMP = "2017-11-06-14:14:15.671"
 
 
@@ -40,6 +47,8 @@ def sagemaker_session():
         region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
@@ -72,6 +81,8 @@ def sagemaker_session():
     sms.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 
@@ -137,6 +148,29 @@ def test_data_location_does_not_call_default_bucket(sagemaker_session):
     )
     assert pca.data_location == data_location
     assert not sagemaker_session.default_bucket.called
+
+
+def test_data_location_default_bucket_and_prefix_combinations():
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=(
+            lambda sess: PCA(
+                num_components=2,
+                sagemaker_session=sess,
+                data_location="s3://test",
+                **COMMON_ARGS,
+            ).data_location
+        ),
+        function_without_user_input=(
+            lambda sess: PCA(num_components=2, sagemaker_session=sess, **COMMON_ARGS).data_location
+        ),
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/sagemaker-record-sets/"
+        ),
+        expected__without_user_input__with_default_bucket_only=f"s3://{DEFAULT_S3_BUCKET_NAME}/sagemaker-record-sets/",
+        expected__with_user_input__with_default_bucket_and_prefix="s3://test",
+        expected__with_user_input__with_default_bucket_only="s3://test",
+    )
+    assert actual == expected
 
 
 def test_prepare_for_training(sagemaker_session):
@@ -225,6 +259,9 @@ def test_fit_ndarray(time, sagemaker_session):
 
     assert mock_object.put.call_count == 4
 
+    called_args = sagemaker_session.train.call_args
+    assert not called_args[1]["experiment_config"]
+
 
 def test_fit_pass_experiment_config(sagemaker_session):
     kwargs = dict(COMMON_ARGS)
@@ -239,12 +276,18 @@ def test_fit_pass_experiment_config(sagemaker_session):
     labels = [99, 85, 87, 2]
     pca.fit(
         pca.record_set(np.array(train), np.array(labels)),
-        experiment_config={"ExperimentName": "exp"},
+        experiment_config={
+            "ExperimentName": "exp",
+            "RunName": "rn",
+        },
     )
 
     called_args = sagemaker_session.train.call_args
 
-    assert called_args[1]["experiment_config"] == {"ExperimentName": "exp"}
+    assert called_args[1]["experiment_config"] == {
+        "ExperimentName": "exp",
+        "RunName": "rn",
+    }
 
 
 def test_build_shards():

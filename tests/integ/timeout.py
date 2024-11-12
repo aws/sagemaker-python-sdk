@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,7 +23,8 @@ import stopit
 from sagemaker import Predictor
 from tests.integ.retry import retries
 
-LOGGER = logging.getLogger("timeout")
+# Setting LOGGER for backward compatibility, in case users import it...
+logger = LOGGER = logging.getLogger("timeout")
 
 
 @contextmanager
@@ -54,6 +55,7 @@ def timeout_and_delete_endpoint_by_name(
     minutes=45,
     hours=0,
     sleep_between_cleanup_attempts=10,
+    exponential_sleep=False,
 ):
     limit = seconds + 60 * minutes + 3600 * hours
 
@@ -72,7 +74,7 @@ def timeout_and_delete_endpoint_by_name(
                         sagemaker_session=sagemaker_session, endpoint_name=endpoint_name
                     )
                     sagemaker_session.delete_endpoint(endpoint_name)
-                    LOGGER.info("deleted endpoint {}".format(endpoint_name))
+                    logger.info("deleted endpoint %s", endpoint_name)
 
                     _show_logs(endpoint_name, "Endpoints", sagemaker_session)
                     if no_errors:
@@ -83,7 +85,13 @@ def timeout_and_delete_endpoint_by_name(
                         # avoids the inner exception to be overwritten
                         pass
                 # trying to delete the resource again in 10 seconds
-                sleep(sleep_between_cleanup_attempts)
+                if exponential_sleep:
+                    _sleep_between_cleanup_attempts = sleep_between_cleanup_attempts * (
+                        3 - attempts
+                    )
+                else:
+                    _sleep_between_cleanup_attempts = sleep_between_cleanup_attempts
+                sleep(_sleep_between_cleanup_attempts)
 
 
 @contextmanager
@@ -104,7 +112,7 @@ def timeout_and_delete_model_with_transformer(
                 attempts -= 1
                 try:
                     transformer.delete_model()
-                    LOGGER.info("deleted SageMaker model {}".format(transformer.model_name))
+                    logger.info("deleted SageMaker model %s", transformer.model_name)
 
                     _show_logs(transformer.model_name, "Models", sagemaker_session)
                     if no_errors:
@@ -114,6 +122,50 @@ def timeout_and_delete_model_with_transformer(
                     if ce.response["Error"]["Code"] == "ValidationException":
                         pass
                 sleep(sleep_between_cleanup_attempts)
+
+
+@contextmanager
+def timeout_and_delete_model_by_name(
+    model_name,
+    sagemaker_session,
+    seconds=0,
+    minutes=45,
+    hours=0,
+    sleep_between_cleanup_attempts=10,
+    exponential_sleep=False,
+):
+    limit = seconds + 60 * minutes + 3600 * hours
+
+    with stopit.ThreadingTimeout(limit, swallow_exc=False) as t:
+        no_errors = False
+        try:
+            yield [t]
+            no_errors = True
+        finally:
+            attempts = 3
+
+            while attempts > 0:
+                attempts -= 1
+                try:
+                    sagemaker_session.delete_model(model_name)
+                    logger.info("deleted model %s", model_name)
+
+                    _show_logs(model_name, "Models", sagemaker_session)
+                    if no_errors:
+                        _cleanup_logs(model_name, "Models", sagemaker_session)
+                    break
+                except ClientError as ce:
+                    if ce.response["Error"]["Code"] == "ValidationException":
+                        # avoids the inner exception to be overwritten
+                        pass
+                # trying to delete the resource again in 10 seconds
+                if exponential_sleep:
+                    _sleep_between_cleanup_attempts = sleep_between_cleanup_attempts * (
+                        3 - attempts
+                    )
+                else:
+                    _sleep_between_cleanup_attempts = sleep_between_cleanup_attempts
+                sleep(_sleep_between_cleanup_attempts)
 
 
 def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name):
@@ -149,8 +201,10 @@ def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name)
             # Delete schedules.
             monitor.delete_monitoring_schedule()
         except Exception as e:
-            LOGGER.warning(
-                "Failed to delete monitor {}".format(monitor.monitoring_schedule_name), e
+            logger.warning(
+                "Failed to delete monitor %s,\nError: %s",
+                monitor.monitoring_schedule_name,
+                e,
             )
 
 
@@ -158,7 +212,7 @@ def _show_logs(resource_name, resource_type, sagemaker_session):
     log_group = "/aws/sagemaker/{}/{}".format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
-        LOGGER.info("cloudwatch logs for log group {}:".format(log_group))
+        logger.info("cloudwatch logs for log group %s:", log_group)
         logs = AWSLogs(
             log_group_name=log_group,
             log_stream_name="ALL",
@@ -167,7 +221,7 @@ def _show_logs(resource_name, resource_type, sagemaker_session):
         )
         logs.list_logs()
     except Exception:
-        LOGGER.exception(
+        logger.exception(
             "Failure occurred while listing cloudwatch log group %s. Swallowing exception but printing "
             "stacktrace for debugging.",
             log_group,
@@ -178,12 +232,12 @@ def _cleanup_logs(resource_name, resource_type, sagemaker_session):
     log_group = "/aws/sagemaker/{}/{}".format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
-        LOGGER.info("deleting cloudwatch log group {}:".format(log_group))
+        logger.info("deleting cloudwatch log group %s:", log_group)
         cwl_client = sagemaker_session.boto_session.client("logs")
         cwl_client.delete_log_group(logGroupName=log_group)
-        LOGGER.info("deleted cloudwatch log group: {}".format(log_group))
+        logger.info("deleted cloudwatch log group: %s", log_group)
     except Exception:
-        LOGGER.exception(
+        logger.exception(
             "Failure occurred while cleaning up cloudwatch log group %s. "
             "Swallowing exception but printing stacktrace for debugging.",
             log_group,

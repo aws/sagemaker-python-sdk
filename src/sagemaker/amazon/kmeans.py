@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Union, Optional, List
+
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
@@ -21,7 +23,9 @@ from sagemaker.amazon.validation import gt, isin, ge, le
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class KMeans(AmazonAlgorithmEstimatorBase):
@@ -32,23 +36,25 @@ class KMeans(AmazonAlgorithmEstimatorBase):
     the algorithm to use to determine similarity.
     """
 
-    repo_name = "kmeans"
-    repo_version = 1
+    repo_name: str = "kmeans"
+    repo_version: str = "1"
 
-    k = hp("k", gt(1), "An integer greater-than 1", int)
-    init_method = hp("init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str)
-    max_iterations = hp("local_lloyd_max_iter", gt(0), "An integer greater-than 0", int)
-    tol = hp("local_lloyd_tol", (ge(0), le(1)), "An float in [0, 1]", float)
-    num_trials = hp("local_lloyd_num_trials", gt(0), "An integer greater-than 0", int)
-    local_init_method = hp(
+    k: hp = hp("k", gt(1), "An integer greater-than 1", int)
+    init_method: hp = hp(
+        "init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str
+    )
+    max_iterations: hp = hp("local_lloyd_max_iter", gt(0), "An integer greater-than 0", int)
+    tol: hp = hp("local_lloyd_tol", (ge(0), le(1)), "An float in [0, 1]", float)
+    num_trials: hp = hp("local_lloyd_num_trials", gt(0), "An integer greater-than 0", int)
+    local_init_method: hp = hp(
         "local_lloyd_init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str
     )
-    half_life_time_size = hp(
+    half_life_time_size: hp = hp(
         "half_life_time_size", ge(0), "An integer greater-than-or-equal-to 0", int
     )
-    epochs = hp("epochs", gt(0), "An integer greater-than 0", int)
-    center_factor = hp("extra_center_factor", gt(0), "An integer greater-than 0", int)
-    eval_metrics = hp(
+    epochs: hp = hp("epochs", gt(0), "An integer greater-than 0", int)
+    center_factor: hp = hp("extra_center_factor", gt(0), "An integer greater-than 0", int)
+    eval_metrics: hp = hp(
         name="eval_metrics",
         validation_message='A comma separated list of "msd" or "ssd"',
         data_type=list,
@@ -56,20 +62,20 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        k=None,
-        init_method=None,
-        max_iterations=None,
-        tol=None,
-        num_trials=None,
-        local_init_method=None,
-        half_life_time_size=None,
-        epochs=None,
-        center_factor=None,
-        eval_metrics=None,
-        **kwargs
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        k: Optional[int] = None,
+        init_method: Optional[str] = None,
+        max_iterations: Optional[int] = None,
+        tol: Optional[float] = None,
+        num_trials: Optional[int] = None,
+        local_init_method: Optional[str] = None,
+        half_life_time_size: Optional[int] = None,
+        epochs: Optional[int] = None,
+        center_factor: Optional[int] = None,
+        eval_metrics: Optional[List[Union[str, PipelineVariable]]] = None,
+        **kwargs,
     ):
         """A k-means clustering class :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`.
 
@@ -109,9 +115,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             k (int): The number of clusters to produce.
             init_method (str): How to initialize cluster locations. One of
@@ -135,8 +141,8 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             center_factor (int): The algorithm will create
                 ``num_clusters * extra_center_factor`` as it runs and reduce the
                 number of centers to ``k`` when finalizing
-            eval_metrics (list): JSON list of metrics types to be used for
-                reporting the score for the model. Allowed values are "msd"
+            eval_metrics (list[str] or list[PipelineVariable]): JSON list of metrics types
+                to be used for reporting the score for the model. Allowed values are "msd"
                 Means Square Error, "ssd": Sum of square distance. If test data
                 is provided, the score shall be reported in terms of all
                 requested metrics.
@@ -178,7 +184,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             self.role,
             self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=5000, job_name=None):
@@ -216,6 +222,7 @@ class KMeansPredictor(Predictor):
         sagemaker_session=None,
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
+        component_name=None,
     ):
         """Initialization for KMeansPredictor class.
 
@@ -230,12 +237,15 @@ class KMeansPredictor(Predictor):
                 serializes input data to x-recordio-protobuf format.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses responses from x-recordio-protobuf format.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(KMeansPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -246,11 +256,17 @@ class KMeansModel(Model):
     Predictor to performs k-means cluster assignment.
     """
 
-    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        **kwargs,
+    ):
         """Initialization for KMeansModel class.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -270,11 +286,13 @@ class KMeansModel(Model):
             sagemaker_session.boto_region_name,
             version=KMeans.repo_version,
         )
+        pop_out_unused_kwarg("predictor_cls", kwargs, KMeansPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(KMeansModel, self).__init__(
             image_uri,
             model_data,
             role,
             predictor_cls=KMeansPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

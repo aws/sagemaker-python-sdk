@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,14 +12,20 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import io
 import json
 import os
 
+import numpy as np
+
 import pytest
+import sagemaker.amazon.common as smac
+
 
 import sagemaker
 from sagemaker import image_uris
 from sagemaker.estimator import Estimator
+from sagemaker.s3 import S3Uploader
 from sagemaker.serializers import SimpleBaseSerializer
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, datasets
@@ -100,6 +106,60 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
         assert len(result["predictions"]) == 10
         for prediction in result["predictions"]:
             assert prediction["score"] is not None
+
+
+@pytest.mark.release
+def test_estimator_register_publish_training_details(sagemaker_session, region, cpu_instance_type):
+
+    bucket = sagemaker_session.default_bucket()
+    prefix = "model-card-sample-notebook"
+
+    raw_data = (
+        (0.5, 0),
+        (0.75, 0),
+        (1.0, 0),
+        (1.25, 0),
+        (1.50, 0),
+        (1.75, 0),
+        (2.0, 0),
+        (2.25, 1),
+        (2.5, 0),
+        (2.75, 1),
+        (3.0, 0),
+        (3.25, 1),
+        (3.5, 0),
+        (4.0, 1),
+        (4.25, 1),
+        (4.5, 1),
+        (4.75, 1),
+        (5.0, 1),
+        (5.5, 1),
+    )
+    training_data = np.array(raw_data).astype("float32")
+    labels = training_data[:, 1]
+
+    # upload data to S3 bucket
+    buf = io.BytesIO()
+    smac.write_numpy_to_dense_tensor(buf, training_data, labels)
+    buf.seek(0)
+    s3_train_data = f"s3://{bucket}/{prefix}/train"
+    S3Uploader.upload_bytes(b=buf, s3_uri=s3_train_data, sagemaker_session=sagemaker_session)
+    output_location = f"s3://{bucket}/{prefix}/output"
+    container = image_uris.retrieve("linear-learner", region)
+    estimator = Estimator(
+        container,
+        role="SageMakerRole",
+        instance_count=1,
+        instance_type=cpu_instance_type,
+        output_path=output_location,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(
+        feature_dim=2, mini_batch_size=10, predictor_type="binary_classifier"
+    )
+    estimator.fit({"train": s3_train_data})
+    print(f"Training job name: {estimator.latest_training_job.name}")
+    estimator.register()
 
 
 def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, training_set):

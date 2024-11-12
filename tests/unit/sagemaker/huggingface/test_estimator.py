@@ -1,4 +1,4 @@
-# Copyright 2017-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,8 +19,11 @@ import os
 import pytest
 from mock import MagicMock, Mock, patch
 
-from sagemaker import image_uris
-from sagemaker.huggingface import HuggingFace
+from sagemaker.huggingface import HuggingFace, HuggingFaceModel
+from sagemaker.session_settings import SessionSettings
+
+
+from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -32,13 +35,10 @@ TIMESTAMP = "2017-11-06-14:14:15.672"
 TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
-INSTANCE_TYPE = "ml.p2.xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 IMAGE_URI = "huggingface"
 JOB_NAME = "{}-{}".format(IMAGE_URI, TIMESTAMP)
 ROLE = "Dummy"
-REGION = "us-east-1"
-GPU = "ml.p2.xlarge"
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
@@ -50,6 +50,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 
@@ -64,6 +65,8 @@ def fixture_sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -73,20 +76,9 @@ def fixture_sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
-
-
-def _get_full_gpu_image_uri(version, base_framework_version):
-    return image_uris.retrieve(
-        "huggingface",
-        REGION,
-        version=version,
-        py_version="py36",
-        instance_type=GPU,
-        image_scope="training",
-        base_framework_version=base_framework_version,
-        container_version="cu110-ubuntu18.04",
-    )
 
 
 def _huggingface_estimator(
@@ -108,7 +100,7 @@ def _huggingface_estimator(
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
-        instance_type=instance_type if instance_type else INSTANCE_TYPE,
+        instance_type=instance_type if instance_type else GPU_INSTANCE_TYPE,
         base_job_name=base_job_name,
         **kwargs,
     )
@@ -116,7 +108,7 @@ def _huggingface_estimator(
 
 def _create_train_job(version, base_framework_version):
     return {
-        "image_uri": _get_full_gpu_image_uri(version, base_framework_version),
+        "image_uri": get_full_gpu_image_uri(version, base_framework_version),
         "input_mode": "File",
         "input_config": [
             {
@@ -133,7 +125,7 @@ def _create_train_job(version, base_framework_version):
         "job_name": JOB_NAME,
         "output_config": {"S3OutputPath": "s3://{}/".format(BUCKET_NAME)},
         "resource_config": {
-            "InstanceType": GPU,
+            "InstanceType": GPU_INSTANCE_TYPE,
             "InstanceCount": 1,
             "VolumeSizeInGB": 30,
         },
@@ -153,18 +145,13 @@ def _create_train_job(version, base_framework_version):
         "environment": None,
         "retry_strategy": None,
         "experiment_config": None,
+        "enable_network_isolation": False,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "503895931360.dkr.ecr.us-east-1.amazonaws.com/sagemaker-debugger-rules:latest",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -177,7 +164,7 @@ def test_huggingface_invalid_args():
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
-            instance_type=INSTANCE_TYPE,
+            instance_type=GPU_INSTANCE_TYPE,
             transformers_version="4.2.1",
             pytorch_version="1.6",
             enable_sagemaker_metrics=False,
@@ -190,7 +177,7 @@ def test_huggingface_invalid_args():
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
-            instance_type=INSTANCE_TYPE,
+            instance_type=GPU_INSTANCE_TYPE,
             pytorch_version="1.6",
             enable_sagemaker_metrics=False,
         )
@@ -202,7 +189,7 @@ def test_huggingface_invalid_args():
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
-            instance_type=INSTANCE_TYPE,
+            instance_type=GPU_INSTANCE_TYPE,
             transformers_version="4.2.1",
             enable_sagemaker_metrics=False,
         )
@@ -214,7 +201,7 @@ def test_huggingface_invalid_args():
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
-            instance_type=INSTANCE_TYPE,
+            instance_type=GPU_INSTANCE_TYPE,
             transformers_version="4.2",
             pytorch_version="1.6",
             tensorflow_version="2.3",
@@ -233,14 +220,15 @@ def test_huggingface(
     sagemaker_session,
     huggingface_training_version,
     huggingface_pytorch_training_version,
+    huggingface_pytorch_training_py_version,
 ):
     hf = HuggingFace(
-        py_version="py36",
+        py_version=huggingface_pytorch_training_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
+        instance_type=GPU_INSTANCE_TYPE,
         transformers_version=huggingface_training_version,
         pytorch_version=huggingface_pytorch_training_version,
         enable_sagemaker_metrics=False,
@@ -266,13 +254,58 @@ def test_huggingface(
     assert actual_train_args == expected_train_args
 
 
+def test_huggingface_neuron(
+    sagemaker_session,
+    huggingface_neuron_latest_inference_pytorch_version,
+    huggingface_neuron_latest_inference_transformer_version,
+    huggingface_neuron_latest_inference_py_version,
+):
+
+    inputs = "s3://mybucket/train"
+    huggingface_model = HuggingFaceModel(
+        model_data=inputs,
+        transformers_version=huggingface_neuron_latest_inference_transformer_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        pytorch_version=huggingface_neuron_latest_inference_pytorch_version,
+        py_version=huggingface_neuron_latest_inference_py_version,
+    )
+    container = huggingface_model.prepare_container_def("ml.inf1.xlarge", inference_tool="neuron")
+    assert container["Image"]
+
+
+def test_huggingface_neuronx(
+    sagemaker_session,
+    huggingface_neuronx_latest_inference_pytorch_version,
+    huggingface_neuronx_latest_inference_transformer_version,
+    huggingface_neuronx_latest_inference_py_version,
+):
+
+    inputs = "s3://mybucket/train"
+    huggingface_model = HuggingFaceModel(
+        model_data=inputs,
+        transformers_version=huggingface_neuronx_latest_inference_transformer_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        pytorch_version=huggingface_neuronx_latest_inference_pytorch_version,
+        py_version=huggingface_neuronx_latest_inference_py_version,
+    )
+    container = huggingface_model.prepare_container_def("ml.inf2.xlarge", inference_tool="neuronx")
+    assert container["Image"]
+    assert "sdk" in container["Image"] and "py" in container["Image"]
+
+
 def test_attach(
-    sagemaker_session, huggingface_training_version, huggingface_pytorch_training_version
+    sagemaker_session,
+    huggingface_training_version,
+    huggingface_pytorch_training_version,
+    huggingface_pytorch_training_py_version,
 ):
     training_image = (
         f"1.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
         f"{huggingface_pytorch_training_version}-"
-        f"transformers{huggingface_training_version}-gpu-py36-cu110-ubuntu18.04"
+        f"transformers{huggingface_training_version}-gpu-"
+        f"{huggingface_pytorch_training_py_version}-cu110-ubuntu20.04"
     )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
@@ -304,7 +337,7 @@ def test_attach(
 
     estimator = HuggingFace.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "neo"
-    assert estimator.py_version == "py36"
+    assert estimator.py_version == huggingface_pytorch_training_py_version
     assert estimator.framework_version == huggingface_training_version
     assert estimator.pytorch_version == huggingface_pytorch_training_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"

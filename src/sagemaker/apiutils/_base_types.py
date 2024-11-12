@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 from sagemaker.apiutils import _boto_functions, _utils
+from sagemaker.utils import format_tags
 
 
 class ApiObject(object):
@@ -122,7 +123,7 @@ class Record(ApiObject):
         boto_list_items_name,
         boto_next_token_name="NextToken",
         sagemaker_session=None,
-        **kwargs
+        **kwargs,
     ):
         """List objects from the SageMaker API."""
         sagemaker_session = sagemaker_session or _utils.default_session()
@@ -153,7 +154,7 @@ class Record(ApiObject):
         search_item_factory,
         boto_next_token_name="NextToken",
         sagemaker_session=None,
-        **kwargs
+        **kwargs,
     ):
         """Search for objects with the SageMaker API."""
         sagemaker_session = sagemaker_session or _utils.default_session()
@@ -173,8 +174,10 @@ class Record(ApiObject):
                 search_items = search_method_response.get("Results", [])
                 next_token = search_method_response.get(boto_next_token_name)
                 for item in search_items:
-                    if cls.__name__ in item:
-                        yield search_item_factory(item[cls.__name__])
+                    # _TrialComponent class in experiments module is not public currently
+                    class_name = cls.__name__.lstrip("_")
+                    if class_name in item:
+                        yield search_item_factory(item[class_name])
                 if not next_token:
                     break
         except StopIteration:
@@ -192,13 +195,13 @@ class Record(ApiObject):
 
         Args:
             resource_arn (str): The arn of the Record
-            tags (dict): An array of Tag objects that set to Record
+            tags (Optional[Tags]): An array of Tag objects that set to Record
 
         Returns:
             A list of key, value pair objects. i.e. [{"key":"value"}]
         """
         tag_list = self.sagemaker_session.sagemaker_client.add_tags(
-            ResourceArn=resource_arn, Tags=tags
+            ResourceArn=resource_arn, Tags=format_tags(tags)
         )["Tags"]
         return tag_list
 

@@ -1,0 +1,2 @@
+pyspark==3.3.2
+sagemaker-feature-store-pyspark-3.3

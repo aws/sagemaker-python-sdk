@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,15 +15,15 @@ from __future__ import absolute_import
 import logging
 import json
 import os
-from distutils.util import strtobool
 
 import pytest
-from mock import MagicMock, Mock
+from mock import MagicMock, Mock, ANY
 from mock import patch
 
 from sagemaker.chainer import defaults
 from sagemaker.chainer import Chainer
 from sagemaker.chainer import ChainerPredictor, ChainerModel
+from sagemaker.session_settings import SessionSettings
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -62,6 +62,8 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -71,6 +73,9 @@ def sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 
@@ -144,20 +149,15 @@ def _create_train_job(version, py_version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "enable_network_isolation": False,
         "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -173,7 +173,15 @@ def test_additional_hyperparameters(sagemaker_session, chainer_version, chainer_
         framework_version=chainer_version,
         py_version=chainer_py_version,
     )
-    assert bool(strtobool(chainer.hyperparameters()["sagemaker_use_mpi"]))
+
+    assert chainer.hyperparameters()["sagemaker_use_mpi"].lower() in (
+        "y",
+        "yes",
+        "t",
+        "true",
+        "on",
+        "1",
+    )
     assert int(chainer.hyperparameters()["sagemaker_num_processes"]) == 4
     assert int(chainer.hyperparameters()["sagemaker_process_slots_per_host"]) == 10
     assert (
@@ -614,3 +622,57 @@ def test_model_py2_warning(warning, sagemaker_session, chainer_version):
     )
     assert model.py_version == "py2"
     warning.assert_called_with(model._framework_name, defaults.LATEST_PY2_VERSION)
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_register_chainer_model_auto_infer_framework(
+    sagemaker_session, chainer_version, chainer_py_version
+):
+
+    model_package_group_name = "test-chainer-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    chainer_model = ChainerModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=chainer_version,
+        py_version=chainer_py_version,
+    )
+
+    chainer_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "CHAINER",
+                "FrameworkVersion": chainer_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )

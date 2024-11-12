@@ -5,11 +5,13 @@ Training APIs
 .. toctree::
    :maxdepth: 4
 
+   algorithm
    analytics
    automl
+   automlv2
    debugger
    estimators
-   algorithm
    tuner
    parameter
    processing
+   profiler

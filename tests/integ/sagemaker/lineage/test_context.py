@@ -20,6 +20,7 @@ import time
 import pytest
 
 from sagemaker.lineage import context
+from sagemaker.lineage.query import LineageQueryDirectionEnum
 
 
 def test_create_delete(context_obj):
@@ -30,6 +31,16 @@ def test_create_delete(context_obj):
 def test_create_delete_with_association(context_obj_with_association):
     # fixture does create and then delete, this test ensures it happens at least once
     assert context_obj_with_association.context_arn
+
+
+def test_action(static_endpoint_context, sagemaker_session):
+    actions_from_query = static_endpoint_context.actions(
+        direction=LineageQueryDirectionEnum.ASCENDANTS
+    )
+
+    assert len(actions_from_query) > 0
+    for action in actions_from_query:
+        assert "action" in action.action_arn
 
 
 def test_save(context_obj, sagemaker_session):

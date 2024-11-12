@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,7 +22,8 @@ import pasta
 
 from sagemaker.cli.compatibility.v2.ast_transformer import ASTTransformer
 
-LOGGER = logging.getLogger(__name__)
+# Setting LOGGER for backward compatibility, in case users import this...
+logger = LOGGER = logging.getLogger(__name__)
 
 
 class FileUpdater(object):
@@ -59,7 +60,7 @@ class FileUpdater(object):
             os.makedirs(output_dir)
 
         if os.path.exists(self.output_path):
-            LOGGER.warning("Overwriting file %s", self.output_path)
+            logger.warning("Overwriting file %s", self.output_path)
 
 
 class PyFileUpdater(FileUpdater):

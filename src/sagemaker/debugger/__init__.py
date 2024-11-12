@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,9 +15,10 @@ from __future__ import absolute_import
 
 from sagemaker.debugger.debugger import (  # noqa: F401
     CollectionConfig,
+    DEBUGGER_FLAG,
     DebuggerHookConfig,
     framework_name,
-    get_default_profiler_rule,
+    get_default_profiler_processing_job,
     get_rule_container_image_uri,
     ProfilerRule,
     Rule,
@@ -26,6 +27,7 @@ from sagemaker.debugger.debugger import (  # noqa: F401
     TensorBoardOutputConfig,
 )
 from sagemaker.debugger.framework_profile import FrameworkProfile  # noqa: F401
+from sagemaker.debugger.profiler import Profiler  # noqa: F401
 from sagemaker.debugger.metrics_config import (  # noqa: F401
     DataloaderProfilingConfig,
     DetailedProfilingConfig,

@@ -10,12 +10,17 @@ Configure the Debugger-specific parameters when constructing
 a SageMaker estimator to gain visibility and insights
 into your training job.
 
+.. contents::
+
 .. currentmodule:: sagemaker.debugger
+
+Debugger Rule APIs
+~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: get_rule_container_image_uri
     :show-inheritance:
 
-.. autoclass:: get_default_profiler_rule
+.. autoclass:: get_default_profiler_processing_job
     :show-inheritance:
 
 .. class:: sagemaker.debugger.rule_configs
@@ -40,9 +45,8 @@ into your training job.
     :show-inheritance:
     :inherited-members:
 
-.. autoclass:: ProfilerRule
-    :show-inheritance:
-    :inherited-members:
+Debugger Configuration APIs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: CollectionConfig
     :show-inheritance:
@@ -52,28 +56,3 @@ into your training job.
 
 .. autoclass:: TensorBoardOutputConfig
     :show-inheritance:
-
-.. autoclass:: ProfilerConfig
-    :show-inheritance:
-
-.. autoclass:: FrameworkProfile
-    :show-inheritance:
-
-.. autoclass:: DetailedProfilingConfig
-    :show-inheritance:
-
-.. autoclass:: DataloaderProfilingConfig
-    :show-inheritance:
-
-.. autoclass:: PythonProfilingConfig
-    :show-inheritance:
-
-.. autoclass:: PythonProfiler
-    :show-inheritance:
-
-.. autoclass:: cProfileTimer
-    :show-inheritance:
-
-.. automodule:: sagemaker.debugger.metrics_config
-    :members: StepRange, TimeRange
-    :undoc-members:

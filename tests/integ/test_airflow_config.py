@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,12 +14,11 @@ from __future__ import absolute_import
 
 import os
 
-import airflow
 import pytest
 import numpy as np
-from airflow import DAG
-from airflow.contrib.operators.sagemaker_training_operator import SageMakerTrainingOperator
-from airflow.contrib.operators.sagemaker_transform_operator import SageMakerTransformOperator
+from configparser import ParsingError
+from sagemaker.utils import retries
+
 from six.moves.urllib.parse import urlparse
 
 import tests.integ
@@ -43,11 +42,33 @@ from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn import SKLearn
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.utils import sagemaker_timestamp
-from sagemaker.workflow import airflow as sm_airflow
 from sagemaker.xgboost import XGBoost
 from tests.integ import datasets, DATA_DIR
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout
+
+for _ in retries(
+    max_retry_count=10,  # 10*6 = 1min
+    exception_message_prefix="airflow import ",
+    seconds_to_sleep=6,
+):
+    try:
+        import sagemaker.workflow.airflow as sm_airflow
+        import airflow.utils as utils
+        from airflow import DAG
+        from airflow.providers.amazon.aws.operators.sagemaker import (
+            SageMakerTrainingOperator,
+            SageMakerTransformOperator,
+        )
+
+        break
+    except ParsingError:
+        pass
+    except ValueError as ve:
+        if "Unable to configure formatter" in str(ve):
+            print(f"Received: {ve}")
+        else:
+            raise ve
 
 PYTORCH_MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 PYTORCH_MNIST_SCRIPT = os.path.join(PYTORCH_MNIST_DIR, "mnist.py")
@@ -624,7 +645,7 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
 
     default_args = {
         "owner": "airflow",
-        "start_date": airflow.utils.dates.days_ago(2),
+        "start_date": utils.dates.days_ago(2),
         "provide_context": True,
     }
 

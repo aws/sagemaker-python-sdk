@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -88,6 +88,19 @@ def spark_py_processor(sagemaker_session, cpu_instance_type):
 
 
 @pytest.fixture(scope="module")
+def spark_v3_py_processor(sagemaker_session, cpu_instance_type):
+    spark_py_processor = PySparkProcessor(
+        role="SageMakerRole",
+        instance_count=2,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        framework_version="3.1",
+    )
+
+    return spark_py_processor
+
+
+@pytest.fixture(scope="module")
 def spark_jar_processor(sagemaker_session, cpu_instance_type):
     spark_jar_processor = SparkJarProcessor(
         role="SageMakerRole",
@@ -95,6 +108,19 @@ def spark_jar_processor(sagemaker_session, cpu_instance_type):
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version="2.4",
+    )
+
+    return spark_jar_processor
+
+
+@pytest.fixture(scope="module")
+def spark_v3_jar_processor(sagemaker_session, cpu_instance_type):
+    spark_jar_processor = SparkJarProcessor(
+        role="SageMakerRole",
+        instance_count=2,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        framework_version="3.1",
     )
 
     return spark_jar_processor
@@ -178,6 +204,15 @@ def configuration() -> list:
         },
     ]
     return configuration
+
+
+def test_sagemaker_pyspark_v3(
+    spark_v3_py_processor, spark_v3_jar_processor, sagemaker_session, configuration, build_jar
+):
+    test_sagemaker_pyspark_multinode(spark_v3_py_processor, sagemaker_session, configuration)
+    test_sagemaker_java_jar_multinode(
+        spark_v3_jar_processor, sagemaker_session, configuration, build_jar
+    )
 
 
 def test_sagemaker_pyspark_multinode(spark_py_processor, sagemaker_session, configuration):

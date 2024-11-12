@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -49,7 +49,7 @@ HEADER_OF_PREDICTED_LABEL = "Prediction"
 HEADERS_OF_FEATURES = ["F1", "F2", "F3", "F4", "F5", "F6", "F7"]
 ALL_HEADERS = [*HEADERS_OF_FEATURES, HEADER_OF_LABEL, HEADER_OF_PREDICTED_LABEL]
 
-CRON = "cron(*/5 * * * ? *)"
+CRON = "cron(0 * * * ? *)"
 UPDATED_CRON = CronExpressionGenerator.daily()
 MAX_RUNTIME_IN_SECONDS = 30 * 60
 UPDATED_MAX_RUNTIME_IN_SECONDS = 25 * 60
@@ -235,6 +235,7 @@ def test_model_quality_monitor(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_run_model_quality_monitor(
     scheduled_model_quality_monitor,
     sagemaker_session,
@@ -260,6 +261,7 @@ def test_run_model_quality_monitor(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_run_model_quality_monitor_baseline(
     sagemaker_session,
     endpoint_name,
@@ -456,6 +458,7 @@ def _upload_actual_data(sagemaker_session, endpoint_name, actuals_s3_uri_base):
     capture_s3_uri_base = os.path.join(
         "s3://",
         sagemaker_session.default_bucket(),
+        sagemaker_session.default_bucket_prefix,
         "model-monitor",
         "data-capture",
         endpoint_name,

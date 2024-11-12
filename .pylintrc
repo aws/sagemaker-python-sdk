@@ -42,7 +42,7 @@ unsafe-load-any-extension=no
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code
-extension-pkg-whitelist=numpy
+extension-pkg-allow-list=numpy,math,_struct,_hashlib
 
 # Allow optimization of some AST trees. This will activate a peephole AST
 # optimizer, which will apply various small optimizations. For instance, it can
@@ -94,6 +94,7 @@ disable=
     useless-object-inheritance, # TODO: Enable this check and fix code once Python 2 is no longer supported.
     super-with-arguments,
     raise-missing-from,
+    E1136,
 
 [REPORTS]
 # Set the output format. Available formats are text, parseable, colorized, msvs
@@ -309,7 +310,7 @@ ignore-mixin-members=yes
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis. It
 # supports qualified module names, as well as Unix pattern matching.
-ignored-modules=distutils
+ignored-modules=
 
 # List of class names for which member attributes should not be checked (useful
 # for classes with dynamically set attributes). This supports the use of
@@ -383,7 +384,7 @@ max-returns=6
 max-branches=12
 
 # Maximum number of statements in function / method body
-max-statements=100
+max-statements=105
 
 # Maximum number of parents for a class (see R0901).
 max-parents=7

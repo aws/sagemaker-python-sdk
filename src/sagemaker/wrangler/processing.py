@@ -1,4 +1,4 @@
-#  Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #  #
 #  Licensed under the Apache License, Version 2.0 (the "License"). You
 #  may not use this file except in compliance with the License. A copy of
@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, List
+from typing import Dict, Optional
 
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import (
@@ -23,6 +23,7 @@ from sagemaker.processing import (
 )
 from sagemaker import image_uris
 from sagemaker.session import Session
+from sagemaker.utils import format_tags, Tags
 
 
 class DataWranglerProcessor(Processor):
@@ -30,10 +31,10 @@ class DataWranglerProcessor(Processor):
 
     def __init__(
         self,
-        role: str,
-        data_wrangler_flow_source: str,
-        instance_count: int,
-        instance_type: str,
+        role: str = None,
+        data_wrangler_flow_source: str = None,
+        instance_count: int = None,
+        instance_type: str = None,
         volume_size_in_gb: int = 30,
         volume_kms_key: str = None,
         output_kms_key: str = None,
@@ -41,7 +42,7 @@ class DataWranglerProcessor(Processor):
         base_job_name: str = None,
         sagemaker_session: Session = None,
         env: Dict[str, str] = None,
-        tags: List[dict] = None,
+        tags: Optional[Tags] = None,
         network_config: NetworkConfig = None,
     ):
         """Initializes a ``Processor`` instance.
@@ -78,7 +79,7 @@ class DataWranglerProcessor(Processor):
                 one using the default AWS configuration chain.
             env (dict[str, str]): Environment variables to be passed to
                 the processing jobs (default: None).
-            tags (list[dict]): List of tags to be passed to the processing job
+            tags (Optional[Tags]): Tags to be passed to the processing job
                 (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             network_config (:class:`~sagemaker.network.NetworkConfig`):
@@ -103,7 +104,7 @@ class DataWranglerProcessor(Processor):
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )
 

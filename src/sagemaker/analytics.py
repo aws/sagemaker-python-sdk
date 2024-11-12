@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -261,7 +261,11 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
             )
             new_output = raw_result["TrainingJobSummaries"]
             output.extend(new_output)
-            logger.debug("Got %d more TrainingJobs. Total so far: %d", len(new_output), len(output))
+            logger.debug(
+                "Got %d more TrainingJobs. Total so far: %d",
+                len(new_output),
+                len(output),
+            )
             if ("NextToken" in raw_result) and (len(new_output) > 0):
                 next_args["NextToken"] = raw_result["NextToken"]
             else:
@@ -344,7 +348,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
             a dict with the `start_time` and `end_time`.
         """
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)
-        start_time = self._start_time or description[u"TrainingStartTime"]  # datetime object
+        start_time = self._start_time or description["TrainingStartTime"]  # datetime object
         # Incrementing end time by 1 min since CloudWatch drops seconds before finding the logs.
         # This results in logs being searched in the time range in which the correct log line was
         # not present.
@@ -353,7 +357,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         #       CW will consider end time as 2018-10-22 08:25 and will not be able to search the
         #           correct log.
         end_time = self._end_time or description.get(
-            u"TrainingEndTime", datetime.datetime.utcnow()
+            "TrainingEndTime", datetime.datetime.utcnow()
         ) + datetime.timedelta(minutes=1)
 
         return {"start_time": start_time, "end_time": end_time}

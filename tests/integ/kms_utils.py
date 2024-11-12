@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -64,7 +64,7 @@ def _create_kms_key(
 ):
     if role_arn:
         principal = PRINCIPAL_TEMPLATE.format(
-            partition=utils._aws_partition(region),
+            partition=utils.aws_partition(region),
             account_id=account_id,
             role_arn=role_arn,
             sagemaker_role=sagemaker_role,
@@ -95,7 +95,7 @@ def _add_role_to_policy(
 
     if role_arn not in principal or sagemaker_role not in principal:
         principal = PRINCIPAL_TEMPLATE.format(
-            partition=utils._aws_partition(region),
+            partition=utils.aws_partition(region),
             account_id=account_id,
             role_arn=role_arn,
             sagemaker_role=sagemaker_role,
@@ -198,7 +198,7 @@ def bucket_with_encryption(sagemaker_session, sagemaker_role):
     s3_client.put_bucket_policy(
         Bucket=bucket_name,
         Policy=KMS_BUCKET_POLICY.format(
-            partition=utils._aws_partition(region), bucket_name=bucket_name
+            partition=utils.aws_partition(region), bucket_name=bucket_name
         ),
     )
 

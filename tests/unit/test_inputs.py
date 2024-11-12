@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -56,6 +56,44 @@ def test_training_input_all_arguments():
                 "S3DataDistributionType": distribution,
                 "S3DataType": s3_data_type,
                 "S3Uri": prefix,
+            }
+        },
+        "CompressionType": compression,
+        "ContentType": content_type,
+        "RecordWrapperType": record_wrapping,
+        "InputMode": input_mode,
+    }
+
+    assert result.config == expected
+
+
+def test_training_input_all_arguments_heterogeneous_cluster():
+    prefix = "pre"
+    distribution = "FullyReplicated"
+    compression = "Gzip"
+    content_type = "text/csv"
+    record_wrapping = "RecordIO"
+    s3_data_type = "Manifestfile"
+    instance_groups = ["data-server"]
+    input_mode = "Pipe"
+    result = TrainingInput(
+        s3_data=prefix,
+        distribution=distribution,
+        compression=compression,
+        input_mode=input_mode,
+        content_type=content_type,
+        record_wrapping=record_wrapping,
+        s3_data_type=s3_data_type,
+        instance_groups=instance_groups,
+    )
+
+    expected = {
+        "DataSource": {
+            "S3DataSource": {
+                "S3DataDistributionType": distribution,
+                "S3DataType": s3_data_type,
+                "S3Uri": prefix,
+                "InstanceGroupNames": instance_groups,
             }
         },
         "CompressionType": compression,

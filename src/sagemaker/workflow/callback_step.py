@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Dict
+from typing import List, Dict, Union, Optional
 from enum import Enum
 
 import attr
@@ -27,6 +27,7 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
 )
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 
 
@@ -49,7 +50,7 @@ class CallbackOutput:
     """
 
     output_name: str = attr.ib(default=None)
-    output_type: CallbackOutputTypeEnum = attr.ib(default=CallbackOutputTypeEnum.String.value)
+    output_type: CallbackOutputTypeEnum = attr.ib(default=CallbackOutputTypeEnum.String)
 
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
@@ -83,8 +84,10 @@ class CallbackStep(Step):
         sqs_queue_url: str,
         inputs: dict,
         outputs: List[CallbackOutput],
-        cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a CallbackStep.
 
@@ -94,23 +97,27 @@ class CallbackStep(Step):
             inputs (dict): Input arguments that will be provided
                 in the SQS message body of callback messages.
             outputs (List[CallbackOutput]): Outputs that can be provided when completing a callback.
+            display_name (str): The display name of the callback step.
+            description (str): The description of the callback step.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
-                depends on
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `CallbackStep`
+                depends on.
         """
-        super(CallbackStep, self).__init__(name, StepTypeEnum.CALLBACK, depends_on)
+        super(CallbackStep, self).__init__(
+            name, display_name, description, StepTypeEnum.CALLBACK, depends_on
+        )
         self.sqs_queue_url = sqs_queue_url
         self.outputs = outputs
         self.cache_config = cache_config
         self.inputs = inputs
 
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
+        root_prop = Properties(step_name=name)
 
         property_dict = {}
         for output in outputs:
             property_dict[output.output_name] = Properties(
-                f"{root_path}.OutputParameters['{output.output_name}']"
+                step_name=name, path=f"OutputParameters['{output.output_name}']"
             )
 
         root_prop.__dict__["Outputs"] = property_dict

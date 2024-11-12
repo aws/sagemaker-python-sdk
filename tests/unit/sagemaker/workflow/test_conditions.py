@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -36,7 +36,7 @@ def test_condition_equals():
     cond = ConditionEquals(left=param, right=1)
     assert cond.to_request() == {
         "Type": "Equals",
-        "LeftValue": {"Get": "Parameters.MyInt"},
+        "LeftValue": param,
         "RightValue": 1,
     }
 
@@ -47,8 +47,8 @@ def test_condition_equals_parameter():
     cond = ConditionEquals(left=param1, right=param2)
     assert cond.to_request() == {
         "Type": "Equals",
-        "LeftValue": {"Get": "Parameters.MyInt1"},
-        "RightValue": {"Get": "Parameters.MyInt2"},
+        "LeftValue": param1,
+        "RightValue": param2,
     }
 
 
@@ -57,7 +57,7 @@ def test_condition_greater_than():
     cond = ConditionGreaterThan(left=var, right="2020-12-01")
     assert cond.to_request() == {
         "Type": "GreaterThan",
-        "LeftValue": {"Get": "Execution.StartDateTime"},
+        "LeftValue": var,
         "RightValue": "2020-12-01",
     }
 
@@ -68,8 +68,8 @@ def test_condition_greater_than_or_equal_to():
     cond = ConditionGreaterThanOrEqualTo(left=var, right=param)
     assert cond.to_request() == {
         "Type": "GreaterThanOrEqualTo",
-        "LeftValue": {"Get": "Execution.StartDateTime"},
-        "RightValue": {"Get": "Parameters.StartDateTime"},
+        "LeftValue": var,
+        "RightValue": param,
     }
 
 
@@ -78,7 +78,7 @@ def test_condition_less_than():
     cond = ConditionLessThan(left=var, right="2020-12-01")
     assert cond.to_request() == {
         "Type": "LessThan",
-        "LeftValue": {"Get": "Execution.StartDateTime"},
+        "LeftValue": var,
         "RightValue": "2020-12-01",
     }
 
@@ -89,8 +89,8 @@ def test_condition_less_than_or_equal_to():
     cond = ConditionLessThanOrEqualTo(left=var, right=param)
     assert cond.to_request() == {
         "Type": "LessThanOrEqualTo",
-        "LeftValue": {"Get": "Execution.StartDateTime"},
-        "RightValue": {"Get": "Parameters.StartDateTime"},
+        "LeftValue": var,
+        "RightValue": param,
     }
 
 
@@ -99,7 +99,7 @@ def test_condition_in():
     cond_in = ConditionIn(value=param, in_values=["abc", "def"])
     assert cond_in.to_request() == {
         "Type": "In",
-        "QueryValue": {"Get": "Parameters.MyStr"},
+        "QueryValue": param,
         "Values": ["abc", "def"],
     }
 
@@ -111,8 +111,8 @@ def test_condition_in_mixed():
     cond_in = ConditionIn(value=param, in_values=["abc", prop, var])
     assert cond_in.to_request() == {
         "Type": "In",
-        "QueryValue": {"Get": "Parameters.MyStr"},
-        "Values": ["abc", {"Get": "foo"}, {"Get": "Execution.StartDateTime"}],
+        "QueryValue": param,
+        "Values": ["abc", prop, var],
     }
 
 
@@ -122,9 +122,9 @@ def test_condition_not():
     cond_not = ConditionNot(expression=cond_eq)
     assert cond_not.to_request() == {
         "Type": "Not",
-        "Expression": {
+        "Condition": {
             "Type": "Equals",
-            "LeftValue": {"Get": "Parameters.MyStr"},
+            "LeftValue": param,
             "RightValue": "foo",
         },
     }
@@ -136,9 +136,9 @@ def test_condition_not_in():
     cond_not = ConditionNot(expression=cond_in)
     assert cond_not.to_request() == {
         "Type": "Not",
-        "Expression": {
+        "Condition": {
             "Type": "In",
-            "QueryValue": {"Get": "Parameters.MyStr"},
+            "QueryValue": param,
             "Values": ["abc", "def"],
         },
     }
@@ -155,13 +155,22 @@ def test_condition_or():
         "Conditions": [
             {
                 "Type": "GreaterThan",
-                "LeftValue": {"Get": "Execution.StartDateTime"},
+                "LeftValue": var,
                 "RightValue": "2020-12-01",
             },
             {
                 "Type": "In",
-                "QueryValue": {"Get": "Parameters.MyStr"},
+                "QueryValue": param,
                 "Values": ["abc", "def"],
             },
         ],
+    }
+
+
+def test_left_and_right_primitives():
+    cond = ConditionEquals(left=2, right=1)
+    assert cond.to_request() == {
+        "Type": "Equals",
+        "LeftValue": 2,
+        "RightValue": 1,
     }

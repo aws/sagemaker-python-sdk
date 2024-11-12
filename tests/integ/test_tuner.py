@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,6 +19,7 @@ import time
 import numpy as np
 import pytest
 from botocore.exceptions import ClientError
+from packaging.version import Version
 
 import tests.integ
 from sagemaker import KMeans, LDA, RandomCutForest, image_uris
@@ -35,6 +36,7 @@ from sagemaker.tuner import (
     ContinuousParameter,
     CategoricalParameter,
     HyperparameterTuner,
+    InstanceConfig,
     WarmStartConfig,
     WarmStartTypes,
     create_transfer_learning_tuner,
@@ -97,6 +99,9 @@ def _tune_and_deploy(
     job_name=None,
     warm_start_config=None,
     early_stopping_type="Off",
+    instance_configs=None,
+    autotune=False,
+    hyperparameters_to_keep_static=None,
 ):
     tuner = _tune(
         kmeans_estimator,
@@ -105,6 +110,9 @@ def _tune_and_deploy(
         warm_start_config=warm_start_config,
         job_name=job_name,
         early_stopping_type=early_stopping_type,
+        instance_configs=instance_configs,
+        autotune=autotune,
+        hyperparameters_to_keep_static=hyperparameters_to_keep_static,
     )
     _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type, cpu_instance_type)
 
@@ -134,6 +142,9 @@ def _tune(
     max_jobs=2,
     max_parallel_jobs=2,
     early_stopping_type="Off",
+    instance_configs=None,
+    autotune=False,
+    hyperparameters_to_keep_static=None,
 ):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
 
@@ -147,8 +158,10 @@ def _tune(
                 max_parallel_jobs=max_parallel_jobs,
                 warm_start_config=warm_start_config,
                 early_stopping_type=early_stopping_type,
+                autotune=autotune,
+                hyperparameters_to_keep_static=hyperparameters_to_keep_static,
             )
-
+        tuner.override_resource_config(instance_configs=instance_configs)
         records = kmeans_estimator.record_set(kmeans_train_set[0][:100])
         test_record_set = kmeans_estimator.record_set(kmeans_train_set[0][:100], channel="test")
 
@@ -170,6 +183,44 @@ def test_tuning_kmeans(
         cpu_instance_type,
         hyperparameter_ranges=hyperparameter_ranges,
         job_name=job_name,
+    )
+
+
+def test_tuning_kmeans_autotune(
+    sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges, cpu_instance_type
+):
+    job_name = unique_name_from_base("test-tune-kmeans-autotune", 32)
+    _tune_and_deploy(
+        kmeans_estimator,
+        kmeans_train_set,
+        sagemaker_session,
+        cpu_instance_type,
+        hyperparameter_ranges=hyperparameter_ranges,
+        job_name=job_name,
+        autotune=True,
+        hyperparameters_to_keep_static=[
+            "local_lloyd_init_method",
+            "local_lloyd_num_trials",
+            "local_lloyd_tol",
+        ],
+    )
+
+
+def test_tuning_kmeans_with_instance_configs(
+    sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges, cpu_instance_type
+):
+    job_name = unique_name_from_base("tst-fit")
+    _tune_and_deploy(
+        kmeans_estimator,
+        kmeans_train_set,
+        sagemaker_session,
+        cpu_instance_type,
+        hyperparameter_ranges=hyperparameter_ranges,
+        job_name=job_name,
+        instance_configs=[
+            InstanceConfig(instance_count=1, instance_type="ml.m4.2xlarge", volume_size=30),
+            InstanceConfig(instance_count=1, instance_type="ml.m4.xlarge", volume_size=30),
+        ],
     )
 
 
@@ -578,6 +629,62 @@ def test_tuning_mxnet(
         predictor.predict(data)
 
 
+@pytest.mark.slow_test
+def test_tuning_mxnet_autotune(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+):
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        estimator = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            framework_version=mxnet_training_latest_version,
+            sagemaker_session=sagemaker_session,
+        )
+        estimator.set_hyperparameters(learning_rate=0.1)
+
+        hyperparameter_ranges = {}
+        objective_metric_name = "Validation-accuracy"
+        metric_definitions = [
+            {"Name": "Validation-accuracy", "Regex": "Validation-accuracy=([0-9\\.]+)"}
+        ]
+        tuner = HyperparameterTuner(
+            estimator,
+            objective_metric_name,
+            hyperparameter_ranges,
+            metric_definitions,
+            max_jobs=4,
+            max_parallel_jobs=2,
+            autotune=True,
+            hyperparameters_to_keep_static=None,
+        )
+
+        train_input = estimator.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = estimator.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        tuning_job_name = unique_name_from_base("tune-mxnet-autotune", max_length=32)
+        print("Started hyperparameter tuning job with name:" + tuning_job_name)
+        tuner.fit({"train": train_input, "test": test_input}, job_name=tuning_job_name)
+
+    best_training_job = tuner.best_training_job()
+    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
+        predictor = tuner.deploy(1, cpu_instance_type)
+        data = np.zeros(shape=(1, 1, 28, 28))
+        predictor.predict(data)
+
+
 @pytest.mark.release
 def test_tuning_tf(
     sagemaker_session,
@@ -585,11 +692,17 @@ def test_tuning_tf(
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
 ):
+    if Version(tensorflow_training_latest_version) >= Version("2.16"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
-    script_path = os.path.join(resource_path, "mnist.py")
+    script_path = "mnist.py"
 
     estimator = TensorFlow(
         entry_point=script_path,
+        source_dir=resource_path,
         role="SageMakerRole",
         instance_count=1,
         instance_type=cpu_instance_type,
@@ -600,7 +713,7 @@ def test_tuning_tf(
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
     objective_metric_name = "accuracy"
-    metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
+    metric_definitions = [{"Name": objective_metric_name, "Regex": "Accuracy: ([0-9\\.]+)"}]
 
     tuner = HyperparameterTuner(
         estimator,
@@ -628,11 +741,16 @@ def test_tuning_tf_vpc_multi(
     tensorflow_training_latest_py_version,
 ):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
+    if Version(tensorflow_training_latest_version) >= Version("2.16"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
     instance_type = cpu_instance_type
     instance_count = 2
 
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
-    script_path = os.path.join(resource_path, "mnist.py")
+    script_path = "mnist.py"
 
     ec2_client = sagemaker_session.boto_session.client("ec2")
     subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(ec2_client)
@@ -640,6 +758,7 @@ def test_tuning_tf_vpc_multi(
 
     estimator = TensorFlow(
         entry_point=script_path,
+        source_dir=resource_path,
         role="SageMakerRole",
         framework_version=tensorflow_training_latest_version,
         py_version=tensorflow_training_latest_py_version,
@@ -654,7 +773,7 @@ def test_tuning_tf_vpc_multi(
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
     objective_metric_name = "accuracy"
-    metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
+    metric_definitions = [{"Name": objective_metric_name, "Regex": "Accuracy: ([0-9\\.]+)"}]
 
     tuner = HyperparameterTuner(
         estimator,

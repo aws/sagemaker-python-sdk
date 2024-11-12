@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,7 +29,8 @@ bucket for storage. A prefixing scheme based on event time is used to store your
 from __future__ import absolute_import
 
 import abc
-from typing import Dict, Any
+from typing import Dict, Any, List
+from enum import Enum
 
 import attr
 
@@ -84,16 +85,64 @@ class OnlineStoreSecurityConfig(Config):
 
 
 @attr.s
+class TtlDuration(Config):
+    """TtlDuration for records in online FeatureStore.
+
+    Attributes:
+        unit (str): time unit.
+        value (int): time value.
+    """
+
+    unit: str = attr.ib()
+    value: int = attr.ib()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            Unit=self.unit,
+            Value=self.value,
+        )
+
+
+@attr.s
+class TargetStoreEnum(Enum):
+    """Enum of store types for put record.
+
+    The store types can be Standard or InMemory.
+    """
+
+    ONLINE_STORE = "OnlineStore"
+    OFFLINE_STORE = "OfflineStore"
+
+
+class OnlineStoreStorageTypeEnum(Enum):
+    """Enum of storage types for online store.
+
+    The online store storage types can be Standard or InMemory.
+    """
+
+    STANDARD = "Standard"
+    IN_MEMORY = "InMemory"
+
+
+@attr.s
 class OnlineStoreConfig(Config):
     """OnlineStoreConfig for FeatureStore.
 
     Attributes:
         enable_online_store (bool): whether to enable the online store.
         online_store_security_config (OnlineStoreSecurityConfig): configuration of security setting.
+        ttl_duration (TtlDuration): Default time to live duration for records.
     """
 
     enable_online_store: bool = attr.ib(default=True)
     online_store_security_config: OnlineStoreSecurityConfig = attr.ib(default=None)
+    ttl_duration: TtlDuration = attr.ib(default=None)
+    storage_type: OnlineStoreStorageTypeEnum = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Construct a dictionary based on the attributes.
@@ -104,6 +153,29 @@ class OnlineStoreConfig(Config):
         return Config.construct_dict(
             EnableOnlineStore=self.enable_online_store,
             SecurityConfig=self.online_store_security_config,
+            TtlDuration=self.ttl_duration,
+            StorageType=self.storage_type.value if self.storage_type else None,
+        )
+
+
+@attr.s
+class OnlineStoreConfigUpdate(Config):
+    """OnlineStoreConfigUpdate for FeatureStore.
+
+    Attributes:
+        ttl_duration (TtlDuration): Default time to live duration for records.
+    """
+
+    ttl_duration: TtlDuration = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            TtlDuration=self.ttl_duration,
         )
 
 
@@ -158,6 +230,16 @@ class DataCatalogConfig(Config):
         )
 
 
+class TableFormatEnum(Enum):
+    """Enum of table formats.
+
+    The offline store table formats can be Glue or Iceberg.
+    """
+
+    GLUE = "Glue"
+    ICEBERG = "Iceberg"
+
+
 @attr.s
 class OfflineStoreConfig(Config):
     """OfflineStoreConfig for FeatureStore.
@@ -166,11 +248,13 @@ class OfflineStoreConfig(Config):
         s3_storage_config (S3StorageConfig): configuration of S3 storage.
         disable_glue_table_creation (bool): whether to disable the Glue table creation.
         data_catalog_config (DataCatalogConfig): configuration of the data catalog.
+        table_format (TableFormatEnum): format of the offline store table.
     """
 
     s3_storage_config: S3StorageConfig = attr.ib()
     disable_glue_table_creation: bool = attr.ib(default=False)
     data_catalog_config: DataCatalogConfig = attr.ib(default=None)
+    table_format: TableFormatEnum = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Construct a dictionary based on the attributes.
@@ -182,6 +266,7 @@ class OfflineStoreConfig(Config):
             DisableGlueTableCreation=self.disable_glue_table_creation,
             S3StorageConfig=self.s3_storage_config,
             DataCatalogConfig=self.data_catalog_config,
+            TableFormat=self.table_format.value if self.table_format else None,
         )
 
 
@@ -192,10 +277,13 @@ class FeatureValue(Config):
     Attributes:
         feature_name (str): name of the Feature.
         value_as_string (str): value of the Feature in string form.
+        value_as_string_list (List[str]): value of the Feature in string list
+        form used for collection type.
     """
 
     feature_name: str = attr.ib(default=None)
     value_as_string: str = attr.ib(default=None)
+    value_as_string_list: List[str] = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Construct a dictionary based on the attributes provided.
@@ -206,4 +294,249 @@ class FeatureValue(Config):
         return Config.construct_dict(
             FeatureName=self.feature_name,
             ValueAsString=self.value_as_string,
+            ValueAsStringList=self.value_as_string_list,
+        )
+
+
+@attr.s
+class FeatureParameter(Config):
+    """FeatureParameter for FeatureStore.
+
+    Attributes:
+        key (str): key of the parameter.
+        value (str): value of the parameter.
+    """
+
+    key: str = attr.ib(default=None)
+    value: str = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            Key=self.key,
+            Value=self.value,
+        )
+
+
+class ResourceEnum(Enum):
+    """Enum of resources.
+
+    The data type of resource can be ``FeatureGroup`` or ``FeatureMetadata``.
+    """
+
+    def __str__(self):
+        """Override str method to return enum value."""
+        return str(self.value)
+
+    FEATURE_GROUP = "FeatureGroup"
+    FEATURE_METADATA = "FeatureMetadata"
+
+
+class SearchOperatorEnum(Enum):
+    """Enum of search operators.
+
+    The data type of search operator can be ``And`` or ``Or``.
+    """
+
+    def __str__(self):
+        """Override str method to return enum value."""
+        return str(self.value)
+
+    AND = "And"
+    OR = "Or"
+
+
+class SortOrderEnum(Enum):
+    """Enum of sort orders.
+
+    The data type of sort order can be ``Ascending`` or ``Descending``.
+    """
+
+    def __str__(self):
+        """Override str method to return enum value."""
+        return str(self.value)
+
+    ASCENDING = "Ascending"
+    DESCENDING = "Descending"
+
+
+class FilterOperatorEnum(Enum):
+    """Enum of filter operators.
+
+    The data type of filter operator can be ``Equals``, ``NotEquals``, ``GreaterThan``,
+    ``GreaterThanOrEqualTo``, ``LessThan``, ``LessThanOrEqualTo``, ``Contains``, ``Exists``,
+    ``NotExists``, or ``In``.
+    """
+
+    def __str__(self):
+        """Override str method to return enum value."""
+        return str(self.value)
+
+    EQUALS = "Equals"
+    NOT_EQUALS = "NotEquals"
+    GREATER_THAN = "GreaterThan"
+    GREATER_THAN_OR_EQUAL_TO = "GreaterThanOrEqualTo"
+    LESS_THAN = "LessThan"
+    LESS_THAN_OR_EQUAL_TO = "LessThanOrEqualTo"
+    CONTAINS = "Contains"
+    EXISTS = "Exists"
+    NOT_EXISTS = "NotExists"
+    IN = "In"
+
+
+@attr.s
+class Filter(Config):
+    """Filter for FeatureStore search.
+
+    Attributes:
+        name (str): A resource property name.
+        value (str): A value used with ``Name`` and ``Operator`` to determine which resources
+            satisfy the filter's condition.
+        operator (FilterOperatorEnum): A Boolean binary operator that is used to evaluate the
+        filter. If specify ``Value`` without ``Operator``, Amazon SageMaker uses ``Equals``
+        (default: None).
+    """
+
+    name: str = attr.ib()
+    value: str = attr.ib()
+    operator: FilterOperatorEnum = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            Name=self.name,
+            Value=self.value,
+            Operator=None if not self.operator else str(self.operator),
+        )
+
+
+@attr.s
+class Identifier(Config):
+    """Identifier of batch get record API.
+
+    Attributes:
+        feature_group_name (str): name of a feature group.
+        record_identifiers_value_as_string (List[str]): string value of record identifier.
+        feature_names (List[str]): list of feature names (default: None).
+    """
+
+    feature_group_name: str = attr.ib()
+    record_identifiers_value_as_string: List[str] = attr.ib()
+    feature_names: List[str] = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+
+        return Config.construct_dict(
+            FeatureGroupName=self.feature_group_name,
+            RecordIdentifiersValueAsString=self.record_identifiers_value_as_string,
+            FeatureNames=None if not self.feature_names else self.feature_names,
+        )
+
+
+class DeletionModeEnum(Enum):
+    """Enum of deletion modes.
+
+    The deletion mode for deleting records can be SoftDelete or HardDelete.
+    """
+
+    SOFT_DELETE = "SoftDelete"
+    HARD_DELETE = "HardDelete"
+
+
+class ExpirationTimeResponseEnum(Enum):
+    """Enum of toggling the response of ExpiresAt.
+
+    The ExpirationTimeResponse for toggling the response of ExpiresAt can be Disabled or Enabled.
+    """
+
+    DISABLED = "Disabled"
+    ENABLED = "Enabled"
+
+
+class ThroughputModeEnum(Enum):
+    """Enum of throughput modes supported by feature group.
+
+    Throughput mode of feature group can be ON_DEMAND or PROVISIONED.
+    """
+
+    ON_DEMAND = "OnDemand"
+    PROVISIONED = "Provisioned"
+
+
+@attr.s
+class ThroughputConfig(Config):
+    """Throughput configuration of the feature group.
+
+    Throughput configuration can be ON_DEMAND, or PROVISIONED with valid values for
+    read and write capacity units. ON_DEMAND works best for less predictable traffic,
+    while PROVISIONED works best for consistent and predictable traffic.
+
+    Attributes:
+        mode (ThroughputModeEnum): Throughput mode
+        provisioned_read_capacity_units (int): For provisioned feature groups, this indicates
+            the read throughput you are billed for and can consume without throttling.
+        provisioned_write_capacity_units (int):  For provisioned feature groups, this indicates
+            the write throughput you are billed for and can consume without throttling.
+    """
+
+    mode: ThroughputModeEnum = attr.ib(default=None)
+    provisioned_read_capacity_units: int = attr.ib(default=None)
+    provisioned_write_capacity_units: int = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            ThroughputMode=self.mode.value if self.mode else None,
+            ProvisionedReadCapacityUnits=self.provisioned_read_capacity_units,
+            ProvisionedWriteCapacityUnits=self.provisioned_write_capacity_units,
+        )
+
+
+@attr.s
+class ThroughputConfigUpdate(Config):
+    """Target throughput configuration for the feature group.
+
+    Target throughput configuration can be ON_DEMAND, or PROVISIONED with valid values for
+    read and write capacity units. ON_DEMAND works best for less predictable traffic,
+    while PROVISIONED works best for consistent and predictable traffic.
+
+    Attributes:
+        mode (ThroughputModeEnum): Target throughput mode
+        provisioned_read_capacity_units (int): For provisioned feature groups, this indicates
+            the read throughput you are billed for and can consume without throttling.
+        provisioned_write_capacity_units (int):  For provisioned feature groups, this indicates
+            the write throughput you are billed for and can consume without throttling.
+    """
+
+    mode: ThroughputModeEnum = attr.ib(default=None)
+    provisioned_read_capacity_units: int = attr.ib(default=None)
+    provisioned_write_capacity_units: int = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            ThroughputMode=self.mode.value if self.mode else None,
+            ProvisionedReadCapacityUnits=self.provisioned_read_capacity_units,
+            ProvisionedWriteCapacityUnits=self.provisioned_write_capacity_units,
         )

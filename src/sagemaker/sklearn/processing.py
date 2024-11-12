@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,9 +17,14 @@ data validation, and model evaluation and interpretation on SageMaker.
 """
 from __future__ import absolute_import
 
+from typing import Union, List, Dict, Optional
+
+from sagemaker.network import NetworkConfig
 from sagemaker import image_uris, Session
 from sagemaker.processing import ScriptProcessor
 from sagemaker.sklearn import defaults
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.utils import format_tags, Tags
 
 
 class SKLearnProcessor(ScriptProcessor):
@@ -27,20 +32,20 @@ class SKLearnProcessor(ScriptProcessor):
 
     def __init__(
         self,
-        framework_version,
-        role,
-        instance_type,
-        instance_count,
-        command=None,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        framework_version: str,  # New arg
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        command: Optional[List[str]] = None,
+        volume_size_in_gb: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[Tags] = None,
+        network_config: Optional[NetworkConfig] = None,
     ):
         """Initialize an ``SKLearnProcessor`` instance.
 
@@ -53,19 +58,19 @@ class SKLearnProcessor(ScriptProcessor):
                 to access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
                 needs to access an AWS resource.
-            instance_type (str): Type of EC2 instance to use for
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
-            instance_count (int): The number of instances to run
+            instance_count (int or PipelineVariable): The number of instances to run
                 the Processing job with. Defaults to 1.
             command ([str]): The command to run, along with any command-line flags.
                 Example: ["python3", "-v"]. If not provided, ["python3"] or ["python2"]
                 will be chosen based on the py_version parameter.
-            volume_size_in_gb (int): Size in GB of the EBS volume to
+            volume_size_in_gb (int or PipelineVariable): Size in GB of the EBS volume to
                 use for storing data during processing (default: 30).
-            volume_kms_key (str): A KMS key for the processing
+            volume_kms_key (str or PipelineVariable): A KMS key for the processing
                 volume.
-            output_kms_key (str): The KMS key id for all ProcessingOutputs.
-            max_runtime_in_seconds (int): Timeout in seconds.
+            output_kms_key (str or PipelineVariable): The KMS key id for all ProcessingOutputs.
+            max_runtime_in_seconds (int or PipelineVariable): Timeout in seconds.
                 After this amount of time Amazon SageMaker terminates the job
                 regardless of its current status.
             base_job_name (str): Prefix for processing name. If not specified,
@@ -75,8 +80,9 @@ class SKLearnProcessor(ScriptProcessor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the processor creates one
                 using the default AWS configuration chain.
-            env (dict): Environment variables to be passed to the processing job.
-            tags ([dict]): List of tags to be passed to the processing job.
+            env (dict[str, str] or dict[str, PipelineVariable]): Environment variables
+                to be passed to the processing job.
+            tags (Optional[Tags]): Tags to be passed to the processing job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -104,6 +110,6 @@ class SKLearnProcessor(ScriptProcessor):
             base_job_name=base_job_name,
             sagemaker_session=session,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             network_config=network_config,
         )

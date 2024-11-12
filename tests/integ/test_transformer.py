@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,12 +18,17 @@ import time
 
 import pytest
 
-from sagemaker import KMeans, s3
+from packaging.version import Version
+from packaging.specifiers import SpecifierSet
+
+from sagemaker import KMeans, s3, get_execution_role
 from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorchModel
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.transformer import Transformer
 from sagemaker.estimator import Estimator
+from sagemaker.inputs import BatchDataCaptureConfig
+from sagemaker.xgboost import XGBoostModel
 from sagemaker.utils import unique_name_from_base
 from tests.integ import (
     datasets,
@@ -35,7 +40,44 @@ from tests.integ.kms_utils import bucket_with_encryption, get_or_create_kms_key
 from tests.integ.timeout import timeout, timeout_and_delete_model_with_transformer
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
+from sagemaker.model_monitor import DatasetFormat, Statistics, Constraints
+
+from sagemaker.workflow.check_job_config import CheckJobConfig
+from sagemaker.workflow.quality_check_step import (
+    DataQualityCheckConfig,
+    ModelQualityCheckConfig,
+)
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.s3 import S3Uploader
+from sagemaker.clarify import (
+    BiasConfig,
+    DataConfig,
+)
+from sagemaker.workflow.clarify_check_step import (
+    DataBiasCheckConfig,
+)
+
+_INSTANCE_COUNT = 1
+_INSTANCE_TYPE = "ml.c5.xlarge"
+_HEADERS = ["Label", "F1", "F2", "F3", "F4"]
+_CHECK_FAIL_ERROR_MSG_CLARIFY = "ClientError: Clarify check failed. See violation report"
+_PROBLEM_TYPE = "Regression"
+_HEADER_OF_LABEL = "Label"
+_HEADER_OF_PREDICTED_LABEL = "Prediction"
+_CHECK_FAIL_ERROR_MSG_QUALITY = "ClientError: Quality check failed. See violation report"
+
+
 MXNET_MNIST_PATH = os.path.join(DATA_DIR, "mxnet_mnist")
+
+
+@pytest.fixture(scope="module")
+def role(sagemaker_session):
+    return get_execution_role(sagemaker_session)
+
+
+@pytest.fixture
+def pipeline_name():
+    return unique_name_from_base("my-pipeline-transform")
 
 
 @pytest.fixture(scope="module")
@@ -76,6 +118,131 @@ def mxnet_transform_input(sagemaker_session):
     return sagemaker_session.upload_data(
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
+
+
+@pytest.fixture
+def check_job_config(role, pipeline_session):
+    return CheckJobConfig(
+        role=role,
+        instance_count=_INSTANCE_COUNT,
+        instance_type=_INSTANCE_TYPE,
+        volume_size_in_gb=60,
+        sagemaker_session=pipeline_session,
+    )
+
+
+@pytest.fixture
+def supplied_baseline_statistics_uri_param():
+    return ParameterString(name="SuppliedBaselineStatisticsUri", default_value="")
+
+
+@pytest.fixture
+def supplied_baseline_constraints_uri_param():
+    return ParameterString(name="SuppliedBaselineConstraintsUri", default_value="")
+
+
+@pytest.fixture
+def dataset(pipeline_session):
+    dataset_local_path = os.path.join(DATA_DIR, "pipeline/clarify_check_step/dataset.csv")
+    dataset_s3_uri = "s3://{}/{}/{}/{}/{}".format(
+        pipeline_session.default_bucket(),
+        "clarify_check_step",
+        "input",
+        "dataset",
+        unique_name_from_base("dataset"),
+    )
+    return S3Uploader.upload(dataset_local_path, dataset_s3_uri, sagemaker_session=pipeline_session)
+
+
+@pytest.fixture
+def data_config(pipeline_session, dataset):
+    output_path = "s3://{}/{}/{}/{}".format(
+        pipeline_session.default_bucket(),
+        "clarify_check_step",
+        "analysis_result",
+        unique_name_from_base("result"),
+    )
+    analysis_cfg_output_path = "s3://{}/{}/{}/{}".format(
+        pipeline_session.default_bucket(),
+        "clarify_check_step",
+        "analysis_cfg",
+        unique_name_from_base("analysis_cfg"),
+    )
+    return DataConfig(
+        s3_data_input_path=dataset,
+        s3_output_path=output_path,
+        s3_analysis_config_output_path=analysis_cfg_output_path,
+        label="Label",
+        headers=_HEADERS,
+        dataset_type="text/csv",
+    )
+
+
+@pytest.fixture
+def bias_config():
+    return BiasConfig(
+        label_values_or_threshold=[1],
+        facet_name="F1",
+        facet_values_or_threshold=[0.5],
+        group_name="F2",
+    )
+
+
+@pytest.fixture
+def data_bias_check_config(data_config, bias_config):
+    return DataBiasCheckConfig(
+        data_config=data_config,
+        data_bias_config=bias_config,
+    )
+
+
+@pytest.fixture
+def data_quality_baseline_dataset():
+    return os.path.join(DATA_DIR, "pipeline/quality_check_step/data_quality/baseline_dataset.csv")
+
+
+@pytest.fixture
+def data_quality_check_config(data_quality_baseline_dataset):
+    return DataQualityCheckConfig(
+        baseline_dataset=data_quality_baseline_dataset,
+        dataset_format=DatasetFormat.csv(header=False),
+    )
+
+
+@pytest.fixture
+def data_quality_supplied_baseline_statistics(sagemaker_session):
+    return Statistics.from_file_path(
+        statistics_file_path=os.path.join(
+            DATA_DIR, "pipeline/quality_check_step/data_quality/statistics.json"
+        ),
+        sagemaker_session=sagemaker_session,
+    ).file_s3_uri
+
+
+@pytest.fixture
+def model_quality_baseline_dataset():
+    return os.path.join(DATA_DIR, "pipeline/quality_check_step/model_quality/baseline_dataset.csv")
+
+
+@pytest.fixture
+def model_quality_check_config(model_quality_baseline_dataset):
+    return ModelQualityCheckConfig(
+        baseline_dataset=model_quality_baseline_dataset,
+        dataset_format=DatasetFormat.csv(),
+        problem_type=_PROBLEM_TYPE,
+        inference_attribute=_HEADER_OF_LABEL,
+        ground_truth_attribute=_HEADER_OF_PREDICTED_LABEL,
+    )
+
+
+@pytest.fixture
+def model_quality_supplied_baseline_statistics(sagemaker_session):
+    return Statistics.from_file_path(
+        statistics_file_path=os.path.join(
+            DATA_DIR, "pipeline/quality_check_step/model_quality/statistics.json"
+        ),
+        sagemaker_session=sagemaker_session,
+    ).file_s3_uri
 
 
 @pytest.mark.release
@@ -248,6 +415,37 @@ def test_transform_model_client_config(
         assert model_client_config == transform_job_desc["ModelClientConfig"]
 
 
+def test_transform_data_capture_config(
+    mxnet_estimator, mxnet_transform_input, sagemaker_session, cpu_instance_type
+):
+    destination_s3_uri = os.path.join("s3://", sagemaker_session.default_bucket(), "data_capture")
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri=destination_s3_uri, kms_key_id="", generate_inference_id=False
+    )
+    transformer = mxnet_estimator.transformer(1, cpu_instance_type)
+
+    # we extract the S3Prefix from the input
+    filename = mxnet_transform_input.split("/")[-1]
+    input_prefix = mxnet_transform_input.replace(f"/{filename}", "")
+    transformer.transform(
+        input_prefix,
+        content_type="text/csv",
+        batch_data_capture_config=batch_data_capture_config,
+    )
+
+    with timeout_and_delete_model_with_transformer(
+        transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
+    ):
+        transformer.wait()
+        transform_job_desc = sagemaker_session.sagemaker_client.describe_transform_job(
+            TransformJobName=transformer.latest_transform_job.name
+        )
+
+        assert (
+            batch_data_capture_config._to_request_dict() == transform_job_desc["DataCaptureConfig"]
+        )
+
+
 def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     tags = [{"Key": "some-tag", "Value": "value-for-tag"}]
 
@@ -313,13 +511,13 @@ def test_single_transformer_multiple_jobs(
     with timeout_and_delete_model_with_transformer(
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
-        assert transformer.output_path == "s3://{}/{}".format(
-            sagemaker_session.default_bucket(), job_name
+        assert transformer.output_path == "s3://{}/{}/{}".format(
+            sagemaker_session.default_bucket(), sagemaker_session.default_bucket_prefix, job_name
         )
         job_name = unique_name_from_base("test-mxnet-transform")
         transformer.transform(mxnet_transform_input, content_type="text/csv", job_name=job_name)
-        assert transformer.output_path == "s3://{}/{}".format(
-            sagemaker_session.default_bucket(), job_name
+        assert transformer.output_path == "s3://{}/{}/{}".format(
+            sagemaker_session.default_bucket(), sagemaker_session.default_bucket_prefix, job_name
         )
 
 
@@ -358,10 +556,17 @@ def test_transform_mxnet_logs(
 def test_transform_tf_kms_network_isolation(
     sagemaker_session, cpu_instance_type, tmpdir, tf_full_version, tf_full_py_version
 ):
+    if Version(tf_full_version) in SpecifierSet("==2.16.*"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
+
     data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
 
     tf = TensorFlow(
-        entry_point=os.path.join(data_path, "mnist.py"),
+        entry_point="mnist.py",
+        source_dir=data_path,
         role="SageMakerRole",
         instance_count=1,
         instance_type=cpu_instance_type,
@@ -419,8 +624,12 @@ def test_transform_tf_kms_network_isolation(
 
         with open(os.path.join(tmpdir, "tf-batch-output", "data.csv.out")) as f:
             result = json.load(f)
-            assert len(result["predictions"][0]["probabilities"]) == 10
-            assert result["predictions"][0]["classes"] >= 1
+            prediction_0 = result["predictions"][0]
+            if type(prediction_0) is dict:
+                assert len(result["predictions"][0]["probabilities"]) == 10
+                assert result["predictions"][0]["classes"] >= 1
+            else:
+                assert len(result["predictions"][0]) == 10
 
 
 def _create_transformer_and_transform_job(
@@ -446,3 +655,130 @@ def _create_transformer_and_transform_job(
         job_name=unique_name_from_base("test-transform"),
     )
     return transformer
+
+
+def test_transformer_and_monitoring_job(
+    pipeline_session,
+    sagemaker_session,
+    role,
+    pipeline_name,
+    check_job_config,
+    data_bias_check_config,
+):
+    xgb_model_data_s3 = pipeline_session.upload_data(
+        path=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "xgb_model.tar.gz"),
+        key_prefix="integ-test-data/xgboost/model",
+    )
+    data_bias_supplied_baseline_constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(
+            DATA_DIR, "pipeline/clarify_check_step/data_bias/good_cases/analysis.json"
+        ),
+        sagemaker_session=sagemaker_session,
+    ).file_s3_uri
+
+    xgb_model = XGBoostModel(
+        model_data=xgb_model_data_s3,
+        framework_version="1.3-1",
+        role=role,
+        sagemaker_session=sagemaker_session,
+        entry_point=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "inference.py"),
+        enable_network_isolation=True,
+    )
+
+    xgb_model.deploy(_INSTANCE_COUNT, _INSTANCE_TYPE)
+
+    transform_output = f"s3://{sagemaker_session.default_bucket()}/{pipeline_name}Transform"
+    transformer = Transformer(
+        model_name=xgb_model.name,
+        strategy="SingleRecord",
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        output_path=transform_output,
+        sagemaker_session=pipeline_session,
+    )
+
+    transform_input = pipeline_session.upload_data(
+        path=os.path.join(DATA_DIR, "xgboost_abalone", "abalone"),
+        key_prefix="integ-test-data/xgboost_abalone/abalone",
+    )
+
+    execution = transformer.transform_with_monitoring(
+        monitoring_config=data_bias_check_config,
+        monitoring_resource_config=check_job_config,
+        data=transform_input,
+        content_type="text/libsvm",
+        supplied_baseline_constraints=data_bias_supplied_baseline_constraints,
+        role=role,
+    )
+
+    execution_steps = execution.list_steps()
+    assert len(execution_steps) == 2
+
+    for execution_step in execution_steps:
+        assert execution_step["StepStatus"] == "Succeeded"
+
+    xgb_model.delete_model()
+
+
+def test_transformer_and_monitoring_job_to_pass_with_no_failure_in_violation(
+    pipeline_session,
+    sagemaker_session,
+    role,
+    pipeline_name,
+    check_job_config,
+    data_bias_check_config,
+):
+    xgb_model_data_s3 = pipeline_session.upload_data(
+        path=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "xgb_model.tar.gz"),
+        key_prefix="integ-test-data/xgboost/model",
+    )
+    data_bias_supplied_baseline_constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(
+            DATA_DIR, "pipeline/clarify_check_step/data_bias/bad_cases/analysis.json"
+        ),
+        sagemaker_session=sagemaker_session,
+    ).file_s3_uri
+
+    xgb_model = XGBoostModel(
+        model_data=xgb_model_data_s3,
+        framework_version="1.3-1",
+        role=role,
+        sagemaker_session=sagemaker_session,
+        entry_point=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "inference.py"),
+        enable_network_isolation=True,
+    )
+
+    xgb_model.deploy(_INSTANCE_COUNT, _INSTANCE_TYPE)
+
+    transform_output = f"s3://{sagemaker_session.default_bucket()}/{pipeline_name}Transform"
+    transformer = Transformer(
+        model_name=xgb_model.name,
+        strategy="SingleRecord",
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        output_path=transform_output,
+        sagemaker_session=pipeline_session,
+    )
+
+    transform_input = pipeline_session.upload_data(
+        path=os.path.join(DATA_DIR, "xgboost_abalone", "abalone"),
+        key_prefix="integ-test-data/xgboost_abalone/abalone",
+    )
+
+    execution = transformer.transform_with_monitoring(
+        monitoring_config=data_bias_check_config,
+        monitoring_resource_config=check_job_config,
+        data=transform_input,
+        content_type="text/libsvm",
+        supplied_baseline_constraints=data_bias_supplied_baseline_constraints,
+        role=role,
+        fail_on_violation=False,
+    )
+
+    execution_steps = execution.list_steps()
+    assert len(execution_steps) == 2
+
+    for execution_step in execution_steps:
+        assert execution_step["StepStatus"] == "Succeeded"
+
+    xgb_model.delete_model()

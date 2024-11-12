@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -129,4 +129,4 @@ def test_create_endpoint_wait(sagemaker_session):
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_once_with(
         EndpointName=ENDPOINT_NAME, EndpointConfigName=ENDPOINT_CONFIG_NAME, Tags=[]
     )
-    sagemaker_session.wait_for_endpoint.assert_called_once_with(ENDPOINT_NAME)
+    sagemaker_session.wait_for_endpoint.assert_called_once_with(ENDPOINT_NAME, live_logging=False)

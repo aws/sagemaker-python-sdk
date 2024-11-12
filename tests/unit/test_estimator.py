@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from copy import deepcopy
 
 import logging
 import json
@@ -18,9 +19,18 @@ import os
 import subprocess
 from time import sleep
 
+from sagemaker.fw_utils import UploadedCode
+
+
 import pytest
 from botocore.exceptions import ClientError
-from mock import ANY, MagicMock, Mock, patch
+from mock import ANY, MagicMock, Mock, patch, PropertyMock
+from sagemaker.huggingface.estimator import HuggingFace
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET,
+    JUMPSTART_RESOURCE_BASE_NAME,
+)
+from sagemaker.jumpstart.enums import JumpStartTag
 
 import sagemaker.local
 from sagemaker import TrainingInput, utils, vpc_utils
@@ -34,12 +44,37 @@ from sagemaker.debugger import (
     ProfilerRule,
     Rule,
 )
+from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
+from sagemaker.instance_group import InstanceGroup
+from sagemaker.interactive_apps import SupportedInteractiveAppTypes
 from sagemaker.model import FrameworkModel
+from sagemaker.model_card.model_card import ModelCard, ModelOverview
+from sagemaker.model_card.schema_constraints import ModelCardStatusEnum
+from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
+from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.session_settings import SessionSettings
+from sagemaker.sklearn.estimator import SKLearn
+from sagemaker.tensorflow.estimator import TensorFlow
+from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.transformer import Transformer
+from sagemaker.workflow.execution_variables import ExecutionVariable
+from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
+from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
+from sagemaker.xgboost.estimator import XGBoost
+from tests.unit import (
+    SAGEMAKER_CONFIG_TRAINING_JOB,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+    SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+    _test_default_bucket_and_prefix_combinations,
+    DEFAULT_S3_BUCKET_NAME,
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+)
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -53,6 +88,7 @@ TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
+KEEP_ALIVE_PERIOD_IN_SECONDS = 1800
 ACCELERATOR_TYPE = "ml.eia.medium"
 ROLE = "DummyRole"
 IMAGE_URI = "fakeimage"
@@ -72,8 +108,24 @@ CODECOMMIT_REPO_SSH = "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/tes
 CODECOMMIT_BRANCH = "master"
 REPO_DIR = "/tmp/repo_dir"
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+TRAINING_REPOSITORY_ACCESS_MODE = "VPC"
+ENABLE_INFRA_CHECK = True
+TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN = "arn:aws:lambda:us-west-2:1234567890:function:test"
+CONTAINER_ENTRY_POINT = ["entry_point1", "entry_point2"]
+CONTAINER_ARGUMENTS = ["container_arg1", "container_arg2"]
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
+
+DESCRIBE_TRAINING_JOB_RESULT_UNCOMPRESSED_S3_MODEL = {
+    "ModelArtifacts": {
+        "S3ModelArtifacts": "s3://bucket/model/prefix",
+    },
+    "OutputDataConfig": {
+        "CompressionType": "NONE",
+        "KmsKeyId": "outputkms",
+        "S3OutputPath": "s3://path/to/model",
+    },
+}
 
 RETURNED_JOB_DESCRIPTION = {
     "AlgorithmSpecification": {
@@ -118,12 +170,44 @@ ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"Model
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
 DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
+DISTRIBUTION_MWMS_ENABLED = {"multi_worker_mirrored_strategy": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
 DISTRIBUTION_SM_DDP_ENABLED = {
-    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
+    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}},
+    "torch_distributed": {"enabled": False},
 }
+DISTRIBUTION_SM_DDP_DISABLED = {
+    "smdistributed": {"enabled": True},
+    "torch_distributed": {"enabled": False},
+}
+DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED = {
+    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}},
+    "torch_distributed": {"enabled": True},
+}
+DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED = {
+    "smdistributed": {"enabled": True},
+    "torch_distributed": {"enabled": True},
+}
+MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    "test-pipeline",
+    "test-training-step",
+    None,
+    "code-hash-0123456789",
+    "config-hash-0123456789",
+    _DEFINITION_CONFIG,
+)
+HOOK_CONFIG_WITHOUT_S3_PATH = DebuggerHookConfig(
+    hook_parameters={"save_interval": "1"},
+)
+HOOK_CONFIG = DebuggerHookConfig(
+    hook_parameters={"save_interval": "1"},
+    s3_output_path="s3://mytestbucket/testpath/",
+)
+S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG = "s3://mybucket/"
 
 
 class DummyFramework(Framework):
@@ -177,7 +261,14 @@ class DummyFrameworkModel(FrameworkModel):
     def create_predictor(self, endpoint_name):
         return None
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):
+    def prepare_container_def(
+        self,
+        instance_type,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
+        model_reference_arn=None,
+    ):
         return MODEL_CONTAINER_DEF
 
 
@@ -198,6 +289,8 @@ def sagemaker_session():
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_training_job = Mock(
@@ -207,7 +300,28 @@ def sagemaker_session():
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     sms.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     sms.upload_data = Mock(return_value=OUTPUT_PATH)
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
+
+
+@pytest.fixture()
+def pipeline_session():
+    client_mock = Mock()
+    client_mock._client_config.user_agent = (
+        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
+    )
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value=ROLE)
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+    session_mock = Mock(region_name=REGION, settings=SessionSettings())
+    session_mock.resource.return_value = resource_mock
+    session_mock.client.return_value = client_mock
+    return PipelineSession(
+        boto_session=session_mock, sagemaker_client=client_mock, default_bucket=BUCKET_NAME
+    )
 
 
 @pytest.fixture()
@@ -219,6 +333,118 @@ def training_job_description(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_training_job = mock_describe_training_job
     sagemaker_session.describe_training_job = mock_describe_training_job
     return returned_job_description
+
+
+def test_validate_smdistributed_unsupported_image_raises(sagemaker_session):
+    # Test unsupported image raises error.
+    for unsupported_image in DummyFramework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
+        # Fail due to unsupported CUDA12 DLC image.
+        f = DummyFramework(
+            "some_script.py",
+            role="DummyRole",
+            instance_type="ml.p4d.24xlarge",
+            sagemaker_session=sagemaker_session,
+            output_path="outputpath",
+            image_uri=unsupported_image,
+        )
+        with pytest.raises(ValueError):
+            f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
+        with pytest.raises(ValueError):
+            f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
+
+    # Test unsupported image with suffix raises error.
+    for unsupported_image in DummyFramework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:
+        # Fail due to unsupported CUDA12 DLC image.
+        f = DummyFramework(
+            "some_script.py",
+            role="DummyRole",
+            instance_type="ml.p4d.24xlarge",
+            sagemaker_session=sagemaker_session,
+            output_path="outputpath",
+            image_uri=unsupported_image + "-ubuntu20.04-sagemaker-pr-3303",
+        )
+        with pytest.raises(ValueError):
+            f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
+        with pytest.raises(ValueError):
+            f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
+
+
+def test_validate_smdistributed_p5_raises(sagemaker_session):
+    # Supported DLC image.
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_type="ml.p5.48xlarge",
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="some_acceptable_image",
+    )
+    # Both fail because instance type is p5 and torch_distributed is off.
+    with pytest.raises(ValueError):
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
+    with pytest.raises(ValueError):
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
+
+
+def test_validate_smdistributed_p5_not_raises(sagemaker_session):
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_type="ml.p5.48xlarge",
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="ecr-url/2.0.1-gpu-py310-cu121-ubuntu20.04-sagemaker-pr-3303",
+    )
+    # Testing with p5 instance and torch_distributed enabled.
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED)
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED)
+
+
+def test_validate_smdistributed_backward_compat_p4_not_raises(sagemaker_session):
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_type="ml.p4d.24xlarge",
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="some_acceptable_image",
+    )
+    # Testing backwards compatability with p4d instances.
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED)
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED)
+
+
+def test_validate_smdistributed_instance_groups_raises(sagemaker_session):
+    instance_group_1 = InstanceGroup("train_group", "ml.p4d.24xlarge", 2)
+    instance_group_2 = InstanceGroup("train_group", "ml.p5.48xlarge", 2)
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_groups=[instance_group_1, instance_group_2],
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="some_acceptable_image",
+    )
+    # Testing instance_group with p5 raises exception
+    with pytest.raises(ValueError):
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_ENABLED)
+    with pytest.raises(ValueError):
+        f._distribution_configuration(DISTRIBUTION_SM_DDP_DISABLED)
+
+
+def test_validate_smdistributed_instance_groups_not_raises(sagemaker_session):
+    instance_group_1 = InstanceGroup("train_group", "ml.p4d.24xlarge", 2)
+    f = DummyFramework(
+        "some_script.py",
+        role="DummyRole",
+        instance_groups=[instance_group_1],
+        sagemaker_session=sagemaker_session,
+        output_path="outputpath",
+        image_uri="some_acceptable_image",
+    )
+    # Testing instance_group without p5 does not raise exception
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_ENABLED)
+    f._distribution_configuration(DISTRIBUTION_SM_TORCH_DIST_AND_DDP_DISABLED)
 
 
 def test_framework_all_init_args(sagemaker_session):
@@ -290,6 +516,482 @@ def test_framework_all_init_args(sagemaker_session):
     }
 
 
+def test_subnets_without_security_groups(sagemaker_session):
+    with pytest.raises(RuntimeError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            subnets=["123"],
+        )
+
+
+def test_security_groups_without_subnets(sagemaker_session):
+    with pytest.raises(RuntimeError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            security_group_ids=["123"],
+        )
+
+
+def test_framework_without_role_parameter(sagemaker_session):
+    with pytest.raises(ValueError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            instance_groups=[
+                InstanceGroup("group1", "ml.c4.xlarge", 1),
+                InstanceGroup("group2", "ml.m4.xlarge", 2),
+            ],
+        )
+
+
+def test_default_value_of_enable_network_isolation(sagemaker_session):
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    assert framework.enable_network_isolation() is False
+
+
+def test_framework_initialization_with_sagemaker_config_injection(sagemaker_session):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["PythonSDK"][
+        "Modules"
+    ]["Estimator"]["DebugHookConfig"]
+    assert framework.role == expected_role_arn
+    assert framework.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        framework.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert framework.output_kms_key == expected_kms_key_id
+    assert framework.volume_kms_key == expected_volume_kms_key_id
+    assert framework.security_group_ids == expected_security_groups
+    assert framework.subnets == expected_subnets
+    assert framework.environment == expected_environment
+    assert framework.disable_profiler == expected_disable_profiler_attribute
+    assert framework.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_session):
+    """
+    Tests that the estimator initialization works when all the supported defaults config params "
+    are provided from the sagemaker_config
+    """
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["PythonSDK"][
+        "Modules"
+    ]["Estimator"]["DebugHookConfig"]
+    assert estimator.role == expected_role_arn
+    assert estimator.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        estimator.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert estimator.output_kms_key == expected_kms_key_id
+    assert estimator.volume_kms_key == expected_volume_kms_key_id
+    assert estimator.security_group_ids == expected_security_groups
+    assert estimator.subnets == expected_subnets
+    assert estimator.environment == expected_environment
+    assert estimator.disable_profiler == expected_disable_profiler_attribute
+    assert estimator.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_estimator_with_debugger_hook_config_provided_as_bool_from_direct_input(
+    sagemaker_session,
+):
+    """
+    Tests that the estimator initialization works correctly with sagemaker_config injection
+    when debugger_hook_config is provided as True from direct input
+    """
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+        debugger_hook_config=True,
+    )
+    assert estimator.debugger_hook_config == {}
+
+
+def test_estimator_with_debugger_hook_config_provided_as_dict_from_direct_input(
+    sagemaker_session,
+):
+    """
+    Tests that the estimator initialization works correctly with sagemaker_config injection
+    when debugger_hook_config is provided as dict from direct input
+    """
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+        debugger_hook_config=HOOK_CONFIG,
+    )
+    assert estimator.debugger_hook_config == HOOK_CONFIG
+
+
+def test_estimator_initialization_with_sagemaker_config_injection_no_kms_supported(
+    sagemaker_session,
+):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.g5.2xlarge", 1),
+            InstanceGroup("group2", "ml.g5.2xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["PythonSDK"][
+        "Modules"
+    ]["Estimator"]["DebugHookConfig"]
+    assert estimator.role == expected_role_arn
+    assert estimator.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        estimator.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert estimator.output_kms_key == expected_kms_key_id
+    assert estimator.volume_kms_key is None
+    assert estimator.security_group_ids == expected_security_groups
+    assert estimator.subnets == expected_subnets
+    assert estimator.disable_profiler == expected_disable_profiler_attribute
+    assert estimator.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_support(
+    sagemaker_session,
+):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.p2.xlarge", 1),
+            InstanceGroup("group2", "ml.g5.2xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    expected_disable_profiler_attribute = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ProfilerConfig"
+    ]["DisableProfiler"]
+    expected_debugger_hook_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["PythonSDK"][
+        "Modules"
+    ]["Estimator"]["DebugHookConfig"]
+    assert estimator.role == expected_role_arn
+    assert estimator.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        estimator.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert estimator.output_kms_key == expected_kms_key_id
+    assert estimator.volume_kms_key == expected_volume_kms_key_id
+    assert estimator.security_group_ids == expected_security_groups
+    assert estimator.subnets == expected_subnets
+    assert estimator.disable_profiler == expected_disable_profiler_attribute
+    assert estimator.debugger_hook_config == expected_debugger_hook_config
+
+
+def test_framework_with_heterogeneous_cluster(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["InstanceGroups"][0] == {
+        "InstanceGroupName": "group1",
+        "InstanceCount": 1,
+        "InstanceType": "ml.c4.xlarge",
+    }
+    assert args["resource_config"]["InstanceGroups"][1] == {
+        "InstanceGroupName": "group2",
+        "InstanceCount": 2,
+        "InstanceType": "ml.m4.xlarge",
+    }
+
+
+def test_framework_with_keep_alive_period(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        keep_alive_period_in_seconds=KEEP_ALIVE_PERIOD_IN_SECONDS,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["KeepAlivePeriodInSeconds"] == KEEP_ALIVE_PERIOD_IN_SECONDS
+
+
+def test_framework_with_both_training_repository_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        training_repository_access_mode=TRAINING_REPOSITORY_ACCESS_MODE,
+        training_repository_credentials_provider_arn=TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert (
+        args["training_image_config"]["TrainingRepositoryAccessMode"]
+        == TRAINING_REPOSITORY_ACCESS_MODE
+    )
+    assert (
+        args["training_image_config"]["TrainingRepositoryAuthConfig"][
+            "TrainingRepositoryCredentialsProviderArn"
+        ]
+        == TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN
+    )
+
+
+def test_framework_with_training_repository_access_mode(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        training_repository_access_mode=TRAINING_REPOSITORY_ACCESS_MODE,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert (
+        args["training_image_config"]["TrainingRepositoryAccessMode"]
+        == TRAINING_REPOSITORY_ACCESS_MODE
+    )
+    assert "TrainingRepositoryAuthConfig" not in args["training_image_config"]
+
+
+def test_framework_without_training_repository_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("training_image_config") is None
+
+
+def test_framework_without_infra_check_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("health_check_config") is None
+
+
+def test_framework_with_infra_check_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_infra_check=ENABLE_INFRA_CHECK,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["infra_check_config"]["EnableInfraCheck"] == ENABLE_INFRA_CHECK
+
+
+def test_framework_with_container_entry_point(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        container_entry_point=CONTAINER_ENTRY_POINT,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["container_entry_point"] == CONTAINER_ENTRY_POINT
+
+
+def test_framework_with_container_arguments(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        container_arguments=CONTAINER_ARGUMENTS,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["container_arguments"] == CONTAINER_ARGUMENTS
+
+
 def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
     debugger_built_in_rule_with_custom_args = Rule.sagemaker(
         base_config=rule_configs.stalled_training_rule(),
@@ -327,6 +1029,7 @@ def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
         ],
     }
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
 
@@ -491,15 +1194,9 @@ def test_framework_without_debugger_and_profiler(time, sagemaker_session):
     }
     assert "debugger_rule_configs" not in args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
@@ -561,6 +1258,7 @@ def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
         ],
     }
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
@@ -596,6 +1294,7 @@ def test_framework_with_only_profiler_rule_specified(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
@@ -628,16 +1327,10 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         "ProfilingIntervalInMilliseconds": 1000,
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 @pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
@@ -651,7 +1344,9 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
     )
+    sms.sagemaker_config = {}
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -662,8 +1357,122 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
     f.fit("s3://mydata")
     sms.train.assert_called_once()
     _, args = sms.train.call_args
-    assert args.get("profiler_config") is None
+    # assert args.get("profiler_config") == {"DisableProfiler": True}
+    # temporarily check if "DisableProfiler" flag is true until s3_output is changed to optional in service
+    assert args.get("profiler_config")["DisableProfiler"] is True
     assert args.get("profiler_rule_configs") is None
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
+    with pytest.raises(ValueError) as error:
+        boto_mock = Mock(name="boto_session", region_name=region)
+        sms = MagicMock(
+            name="sagemaker_session",
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_client=None,
+            s3_resource=None,
+            settings=SessionSettings(),
+        )
+        sms.sagemaker_config = {}
+        f = DummyFramework(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sms,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            debugger_hook_config=DebuggerHookConfig(s3_output_path="s3://output"),
+        )
+        f.fit("s3://mydata")
+
+    assert "Current region does not support debugger but debugger hook config is set!" in str(error)
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_enable_profiling_in_unsupported_region(region):
+    with pytest.raises(ValueError) as error:
+        boto_mock = Mock(name="boto_session", region_name=region)
+        sms = MagicMock(
+            name="sagemaker_session",
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_client=None,
+            s3_resource=None,
+            settings=SessionSettings(),
+        )
+        sms.sagemaker_config = {}
+        f = DummyFramework(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sms,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+        )
+        f.fit("s3://mydata")
+        f.enable_default_profiling()
+
+    assert "Current region does not support profiler / debugger!" in str(error)
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_update_profiling_in_unsupported_region(region):
+    with pytest.raises(ValueError) as error:
+        boto_mock = Mock(name="boto_session", region_name=region)
+        sms = MagicMock(
+            name="sagemaker_session",
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_client=None,
+            s3_resource=None,
+            settings=SessionSettings(),
+        )
+        sms.sagemaker_config = {}
+        f = DummyFramework(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sms,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+        )
+        f.fit("s3://mydata")
+        f.update_profiler(system_monitor_interval_millis=1000)
+
+    assert "Current region does not support profiler / debugger!" in str(error)
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_disable_profiling_in_unsupported_region(region):
+    with pytest.raises(ValueError) as error:
+        boto_mock = Mock(name="boto_session", region_name=region)
+        sms = MagicMock(
+            name="sagemaker_session",
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_client=None,
+            s3_resource=None,
+            settings=SessionSettings(),
+        )
+        sms.sagemaker_config = {}
+        f = DummyFramework(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sms,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+        )
+        f.fit("s3://mydata")
+        f.disable_profiling()
+
+    assert "Current region does not support profiler / debugger!" in str(error)
 
 
 def test_framework_with_profiler_config_and_profiler_disabled(sagemaker_session):
@@ -678,7 +1487,10 @@ def test_framework_with_profiler_config_and_profiler_disabled(sagemaker_session)
             disable_profiler=True,
         )
         f.fit("s3://mydata")
-    assert "profiler_config cannot be set when disable_profiler is True." in str(error)
+    # assert "profiler_config cannot be set when disable_profiler is True." in str(error)
+    assert "profiler_config.disable_profiler cannot be False when disable_profiler is True." in str(
+        error
+    )
 
 
 def test_framework_with_profiler_rule_and_profiler_disabled(sagemaker_session):
@@ -740,15 +1552,9 @@ def test_framework_with_enabling_default_profiling(
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 @patch("time.time", return_value=TIME)
@@ -772,16 +1578,7 @@ def test_framework_with_enabling_default_profiling_with_existed_s3_output_path(
     f.enable_default_profiling()
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {
-        "S3OutputPath": "s3://custom/",
-    }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
+    assert args["profiler_config"] == {"DisableProfiler": False, "S3OutputPath": "s3://custom/"}
 
 
 def test_framework_with_disabling_profiling_when_profiler_is_already_disabled(
@@ -814,7 +1611,9 @@ def test_framework_with_disabling_profiling(sagemaker_session, training_job_desc
     f.disable_profiling()
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"DisableProfiler": True}
+    # assert args["profiler_config"] == {"DisableProfiler": True}
+    # temporarily check if "DisableProfiler" flag is true until s3_output is changed to optional in service
+    assert args.get("profiler_config")["DisableProfiler"] is True
 
 
 def test_framework_with_update_profiler_when_no_training_job(sagemaker_session):
@@ -871,6 +1670,7 @@ def test_framework_with_update_profiler_config(sagemaker_session):
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "ProfilingIntervalInMilliseconds": 1000,
     }
     assert "profiler_rule_configs" not in args
@@ -899,7 +1699,7 @@ def test_framework_with_update_profiler_report_rule(sagemaker_session):
             "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
         }
     ]
-    assert "profiler_config" not in args
+    assert args["profiler_config"]["DisableProfiler"] is False
 
 
 def test_framework_with_disable_framework_metrics(sagemaker_session):
@@ -914,11 +1714,13 @@ def test_framework_with_disable_framework_metrics(sagemaker_session):
     f.update_profiler(disable_framework_metrics=True)
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"ProfilingParameters": {}}
+    assert args["profiler_config"] == {"DisableProfiler": False, "ProfilingParameters": {}}
     assert "profiler_rule_configs" not in args
 
 
-def test_framework_with_disable_framework_metrics_and_update_system_metrics(sagemaker_session):
+def test_framework_with_disable_framework_metrics_and_update_system_metrics(
+    sagemaker_session,
+):
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -931,13 +1733,16 @@ def test_framework_with_disable_framework_metrics_and_update_system_metrics(sage
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "ProfilingIntervalInMilliseconds": 1000,
         "ProfilingParameters": {},
     }
     assert "profiler_rule_configs" not in args
 
 
-def test_framework_with_disable_framework_metrics_and_update_framework_params(sagemaker_session):
+def test_framework_with_disable_framework_metrics_and_update_framework_params(
+    sagemaker_session,
+):
     with pytest.raises(ValueError) as error:
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -973,7 +1778,10 @@ def test_framework_with_update_profiler_config_and_profiler_rule(sagemaker_sessi
     f.update_profiler(rules=[profiler_custom_rule], system_monitor_interval_millis=1000)
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"ProfilingIntervalInMilliseconds": 1000}
+    assert args["profiler_config"] == {
+        "DisableProfiler": False,
+        "ProfilingIntervalInMilliseconds": 1000,
+    }
     assert args["profiler_rule_configs"] == [
         {
             "InstanceType": "c4.4xlarge",
@@ -1091,6 +1899,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "encrypt_inter_container_traffic": True,
         "use_spot_instances": True,
         "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
+        "enable_network_isolation": False,
         "checkpoint_local_path": "/tmp/checkpoints",
         "environment": None,
         "experiment_config": None,
@@ -1208,6 +2017,117 @@ def test_sagemaker_model_custom_channel_name(sagemaker_session):
     ]
 
 
+def test_framework_with_remote_debug_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_remote_debug=True,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["remote_debug_config"]["EnableRemoteDebug"]
+    assert f.get_remote_debug_config()["EnableRemoteDebug"]
+
+
+def test_framework_without_remote_debug_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("remote_debug_config") is None
+    assert f.get_remote_debug_config() is None
+
+
+def test_framework_enable_remote_debug(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    f.fit("s3://mydata")
+    f.enable_remote_debug()
+
+    sagemaker_session.update_training_job.assert_called_once()
+    _, args = sagemaker_session.update_training_job.call_args
+    assert args["remote_debug_config"] == {
+        "EnableRemoteDebug": True,
+    }
+    assert f.get_remote_debug_config()["EnableRemoteDebug"]
+    assert len(args) == 2
+
+
+def test_framework_disable_remote_debug(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        enable_remote_debug=True,
+    )
+    f.fit("s3://mydata")
+    f.disable_remote_debug()
+
+    sagemaker_session.update_training_job.assert_called_once()
+    _, args = sagemaker_session.update_training_job.call_args
+    assert args["remote_debug_config"] == {
+        "EnableRemoteDebug": False,
+    }
+    assert not f.get_remote_debug_config()["EnableRemoteDebug"]
+    assert len(args) == 2
+
+
+def test_framework_with_session_chaining_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        enable_session_tag_chaining=True,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["session_chaining_config"]["EnableSessionTagChaining"]
+    assert f.get_session_chaining_config()["EnableSessionTagChaining"]
+
+
+def test_framework_without_session_chaining_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("SessionTagChaining") is None
+    assert f.get_remote_debug_config() is None
+
+
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_custom_code_bucket(time, sagemaker_session):
     code_bucket = "codebucket"
@@ -1273,6 +2193,95 @@ def test_invalid_custom_code_bucket(sagemaker_session):
     with pytest.raises(ValueError) as error:
         t.fit("s3://bucket/mydata")
     assert "Expecting 's3' scheme" in str(error)
+
+
+def test_get_instance_type_gpu(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.p3.16xlarge" == estimator._get_instance_type()
+
+
+def test_estimator_with_output_compression_disabled(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+        disable_output_compression=True,
+    )
+
+    assert estimator.disable_output_compression
+
+
+def test_estimator_with_output_compression_as_default(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert not estimator.disable_output_compression
+
+
+def test_get_instance_type_cpu(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.c5.xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.c4.xlarge" == estimator._get_instance_type()
+
+
+def test_get_instance_type_no_instance_groups(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_type="ml.c4.xlarge",
+        instance_count=1,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.c4.xlarge" == estimator._get_instance_type()
+
+
+def test_get_instance_type_no_instance_groups_or_instance_type(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_type=None,
+        instance_count=None,
+        instance_groups=None,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+    with pytest.raises(ValueError) as error:
+        estimator._get_instance_type()
+
+    assert (
+        "instance_groups must be set if instance_type is not set and instance_groups must be a list."
+        in str(error)
+    )
 
 
 def test_augmented_manifest(sagemaker_session):
@@ -1345,7 +2354,10 @@ def test_local_code_location():
         config=config,
         local_mode=True,
         spec=sagemaker.local.LocalSession,
+        settings=SessionSettings(),
     )
+
+    sms.sagemaker_config = {}
     t = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -1533,6 +2545,77 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     assert fw.latest_training_job.name == JOB_NAME
 
 
+@pytest.mark.parametrize(
+    "debugger_hook_config_direct_input, sagemaker_config, expected_debugger_hook_config_output",
+    [
+        (None, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (True, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (False, None, False),
+        (HOOK_CONFIG, None, HOOK_CONFIG.s3_output_path),
+        (HOOK_CONFIG_WITHOUT_S3_PATH, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (None, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE, False),
+        (
+            True,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (False, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE, False),
+        (
+            HOOK_CONFIG,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            HOOK_CONFIG.s3_output_path,
+        ),
+        (
+            HOOK_CONFIG_WITHOUT_S3_PATH,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_FALSE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (
+            None,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (
+            True,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+        (False, SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE, False),
+        (
+            HOOK_CONFIG,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            HOOK_CONFIG.s3_output_path,
+        ),
+        (
+            HOOK_CONFIG_WITHOUT_S3_PATH,
+            SAGEMAKER_CONFIG_TRAINING_JOB_WITH_DEBUG_HOOK_CONFIG_AS_TRUE,
+            S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG,
+        ),
+    ],
+)
+def test_prepare_for_training_for_debugger_hook_config_value_combinations(
+    sagemaker_session,
+    sagemaker_config,
+    debugger_hook_config_direct_input,
+    expected_debugger_hook_config_output,
+):
+    sagemaker_session.sagemaker_config = sagemaker_config
+    fw = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        debugger_hook_config=debugger_hook_config_direct_input,
+    )
+    fw._prepare_for_training()
+
+    if expected_debugger_hook_config_output is False:
+        assert fw.debugger_hook_config == expected_debugger_hook_config_output
+    else:
+        assert fw.debugger_hook_config.s3_output_path == expected_debugger_hook_config_output
+
+
 def test_prepare_for_training_unique_job_name_generation(sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -1584,7 +2667,7 @@ def test_git_support_with_branch_and_commit_succeed(git_clone_repo, sagemaker_se
     git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
         "entry_point": "/tmp/repo_dir/entry_point",
         "source_dir": None,
-        "dependencies": None,
+        "dependencies": [],
     }
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
     entry_point = "entry_point"
@@ -2020,9 +3103,9 @@ def test_framework_transformer_creation(name_from_base, sagemaker_session):
 
     name_from_base.assert_called_with(IMAGE_URI)
     sagemaker_session.create_model.assert_called_with(
-        MODEL_IMAGE,
-        ROLE,
-        MODEL_CONTAINER_DEF,
+        name=MODEL_IMAGE,
+        role=ROLE,
+        container_defs=MODEL_CONTAINER_DEF,
         tags=None,
         vpc_config=vpc_config,
         enable_network_isolation=False,
@@ -2086,9 +3169,9 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     )
 
     sagemaker_session.create_model.assert_called_with(
-        model_name,
-        new_role,
-        MODEL_CONTAINER_DEF,
+        name=model_name,
+        role=new_role,
+        container_defs=MODEL_CONTAINER_DEF,
         vpc_config=new_vpc_config,
         tags=TAGS,
         enable_network_isolation=True,
@@ -2240,7 +3323,12 @@ def test_start_new(sagemaker_session):
         hyperparameters=hyperparameters,
     )
 
-    exp_config = {"ExperimentName": "exp", "TrialName": "t", "TrialComponentDisplayName": "tc"}
+    exp_config = {
+        "ExperimentName": "exp",
+        "TrialName": "t",
+        "TrialComponentDisplayName": "tc",
+        "RunName": "rn",
+    }
 
     started_training_job = training_job.start_new(estimator, inputs, experiment_config=exp_config)
     called_args = sagemaker_session.train.call_args
@@ -2323,8 +3411,8 @@ def test_different_code_location_kms_key(utils, sagemaker_session):
     obj = sagemaker_session.boto_session.resource("s3").Object
 
     obj.assert_called_with("another-location", "%s/source/sourcedir.tar.gz" % fw._current_job_name)
-
-    obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=None)
+    extra_args = {"ServerSideEncryption": "aws:kms"}
+    obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
 
 
 @patch("sagemaker.utils")
@@ -2381,14 +3469,7 @@ NO_INPUT_TRAIN_CALL = {
     "input_config": None,
     "input_mode": "File",
     "output_config": {"S3OutputPath": OUTPUT_PATH},
-    "profiler_config": {"S3OutputPath": OUTPUT_PATH},
-    "profiler_rule_configs": [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ],
+    "profiler_config": {"DisableProfiler": False, "S3OutputPath": OUTPUT_PATH},
     "resource_config": {
         "InstanceCount": INSTANCE_COUNT,
         "InstanceType": INSTANCE_TYPE,
@@ -2400,6 +3481,7 @@ NO_INPUT_TRAIN_CALL = {
     "vpc_config": None,
     "metric_definitions": None,
     "environment": None,
+    "enable_network_isolation": False,
     "experiment_config": None,
 }
 
@@ -2431,6 +3513,7 @@ EXP_TRAIN_CALL.update(
             "ExperimentName": "exp",
             "TrialName": "trial",
             "TrialComponentDisplayName": "tc",
+            "RunName": "rn",
         }
     }
 )
@@ -2474,12 +3557,19 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        explainer_config_dict=None,
+        live_logging=False,
     )
 
     sagemaker_session.create_model.assert_called_with(
-        model_name,
-        "DummyRole",
-        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        name=model_name,
+        role="DummyRole",
+        container_defs={
+            "ModelDataUrl": "s3://bucket/model.tar.gz",
+            "Environment": {},
+            "Image": "fakeimage",
+        },
         enable_network_isolation=False,
         vpc_config=None,
         tags=tags,
@@ -2519,16 +3609,124 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        explainer_config_dict=None,
+        live_logging=False,
     )
 
     sagemaker_session.create_model.assert_called_with(
-        ANY,
-        "DummyRole",
-        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        name=ANY,
+        role="DummyRole",
+        container_defs={
+            "ModelDataUrl": "s3://bucket/model.tar.gz",
+            "Environment": {},
+            "Image": "fakeimage",
+        },
         enable_network_isolation=False,
         vpc_config=None,
         tags=tags,
     )
+
+
+@patch("sagemaker.estimator.name_from_base")
+def test_fit_deploy_uncompressed_s3_model(name_from_base, sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job",
+        return_value=DESCRIBE_TRAINING_JOB_RESULT_UNCOMPRESSED_S3_MODEL,
+    )
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+    )
+
+    estimator.fit()
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
+
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    variant = [
+        {
+            "InstanceType": "c4.4xlarge",
+            "VariantName": "AllTraffic",
+            "ModelName": model_name,
+            "InitialVariantWeight": 1,
+            "InitialInstanceCount": 1,
+        }
+    ]
+
+    name_from_base.assert_called_with(IMAGE_URI)
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=model_name,
+        production_variants=variant,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        explainer_config_dict=None,
+        tags=None,
+        live_logging=False,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        name=model_name,
+        role="DummyRole",
+        container_defs={
+            "ModelDataSource": {
+                "S3DataSource": {
+                    # S3 URI passed to Createmodel API should have trailing forward slash appeneded
+                    "S3Uri": "s3://bucket/model/prefix/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            "Environment": {},
+            "Image": "fakeimage",
+        },
+        enable_network_isolation=False,
+        vpc_config=None,
+        tags=None,
+    )
+
+
+@patch("sagemaker.estimator.name_from_base")
+def test_fit_deploy_uncompressed_s3_model_unrecognized_compression_type(
+    name_from_base, sagemaker_session
+):
+    training_job_desc = deepcopy(DESCRIBE_TRAINING_JOB_RESULT_UNCOMPRESSED_S3_MODEL)
+    training_job_desc["OutputDataConfig"]["CompressionType"] = "JUNK"
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job",
+        return_value=training_job_desc,
+    )
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+    )
+
+    estimator.fit()
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
+
+    with pytest.raises(
+        ValueError,
+        match='Unrecognized training job output data compression type "JUNK"',
+    ):
+        estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    name_from_base.assert_called_with(IMAGE_URI)
+
+    sagemaker_session.endpoint_from_production_variants.assert_not_called()
+    sagemaker_session.create_model.assert_not_called()
 
 
 @patch("time.time", return_value=TIME)
@@ -2551,6 +3749,7 @@ def test_generic_to_fit_no_input(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == NO_INPUT_TRAIN_CALL
 
@@ -2575,6 +3774,7 @@ def test_generic_to_fit_no_hps(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == BASE_TRAIN_CALL
 
@@ -2601,6 +3801,7 @@ def test_generic_to_fit_with_hps(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == HP_TRAIN_CALL
 
@@ -2622,6 +3823,7 @@ def test_generic_to_fit_with_experiment_config(time, sagemaker_session):
             "ExperimentName": "exp",
             "TrialName": "trial",
             "TrialComponentDisplayName": "tc",
+            "RunName": "rn",
         },
     )
 
@@ -2632,6 +3834,7 @@ def test_generic_to_fit_with_experiment_config(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == EXP_TRAIN_CALL
 
@@ -2669,7 +3872,7 @@ def test_generic_to_fit_with_network_isolation(sagemaker_session):
 
     sagemaker_session.train.assert_called_once()
     args = sagemaker_session.train.call_args[1]
-    assert args["enable_network_isolation"]
+    assert args["enable_network_isolation"] is True
 
 
 def test_generic_to_fit_with_sagemaker_metrics_missing(sagemaker_session):
@@ -2785,20 +3988,87 @@ def test_generic_to_deploy(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == HP_TRAIN_CALL
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0].startswith(IMAGE_URI)
-    assert args[1] == ROLE
-    assert args[2]["Image"] == IMAGE_URI
-    assert args[2]["ModelDataUrl"] == MODEL_DATA
+    assert kwargs["name"].startswith(IMAGE_URI)
+    assert kwargs["role"] == ROLE
+    assert kwargs["container_defs"]["Image"] == IMAGE_URI
+    assert kwargs["container_defs"]["ModelDataUrl"] == MODEL_DATA
     assert kwargs["vpc_config"] is None
 
     assert isinstance(predictor, Predictor)
     assert predictor.endpoint_name.startswith(IMAGE_URI)
     assert predictor.sagemaker_session == sagemaker_session
+
+
+def test_generic_to_deploy_async(sagemaker_session):
+    e = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit()
+    s3_output_path = "s3://some-s3-path"
+    s3_failure_path = "s3://some-s3-failures-path"
+
+    predictor_async = e.deploy(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        async_inference_config=AsyncInferenceConfig(
+            output_path=s3_output_path, failure_path=s3_failure_path
+        ),
+    )
+
+    sagemaker_session.create_model.assert_called_once()
+    _, kwargs = sagemaker_session.create_model.call_args
+    assert isinstance(predictor_async, AsyncPredictor)
+    assert predictor_async.endpoint_name.startswith(IMAGE_URI)
+    assert predictor_async.sagemaker_session == sagemaker_session
+
+
+def test_generic_to_deploy_bad_arguments_combination(sagemaker_session):
+    e = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit()
+
+    bad_args = (
+        {"instance_type": INSTANCE_TYPE},
+        {"initial_instance_count": INSTANCE_COUNT},
+        {"instance_type": None, "initial_instance_count": None},
+    )
+    for args in bad_args:
+        with pytest.raises(
+            ValueError,
+            match="Must specify instance type and instance count unless using serverless inference",
+        ):
+            e.deploy(args)
+
+    with pytest.raises(
+        ValueError,
+        match="serverless_inference_config needs to be a ServerlessInferenceConfig object",
+    ):
+        e.deploy(serverless_inference_config={})
+
+    with pytest.raises(
+        ValueError,
+        match="explainer_config needs to be a ExplainerConfig object",
+    ):
+        e.deploy(explainer_config={})
 
 
 def test_generic_to_deploy_network_isolation(sagemaker_session):
@@ -2850,6 +4120,13 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         wait=True,
         kms_key=kms_key,
         data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
+        inference_recommendation_id=None,
+        explainer_config=None,
     )
 
 
@@ -2969,7 +4246,7 @@ def test_deploy_with_model_name(sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0] == model_name
+    assert kwargs["name"] == model_name
 
 
 def test_deploy_with_no_model_name(sagemaker_session):
@@ -2987,7 +4264,57 @@ def test_deploy_with_no_model_name(sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0].startswith(IMAGE_URI)
+    assert kwargs["name"].startswith(IMAGE_URI)
+
+
+@patch("sagemaker.estimator.Estimator.create_model")
+def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+    endpoint_name = "endpoint-name"
+    volume_size_gb = 256
+    model_data_download_timeout_sec = 600
+    startup_health_check_timeout_sec = 600
+
+    model = MagicMock()
+    create_model.return_value = model
+
+    estimator.deploy(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        endpoint_name=endpoint_name,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+    )
+
+    model.deploy.assert_called_with(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        serializer=None,
+        deserializer=None,
+        accelerator_type=None,
+        endpoint_name=endpoint_name,
+        tags=None,
+        wait=True,
+        kms_key=None,
+        data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+        inference_recommendation_id=None,
+        explainer_config=None,
+    )
 
 
 def test_register_default_image(sagemaker_session):
@@ -3007,6 +4334,24 @@ def test_register_default_image(sagemaker_session):
     response_types = ["application/json"]
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+    data_input_config = '{"input_1":[1,224,224,3]}'
+    model_overview = ModelOverview(model_creator="TestCreator")
+    model_card = ModelCard(
+        name="TestCard",
+        status=ModelCardStatusEnum.DRAFT,
+        model_overview=model_overview,
+    )
+    update_model_life_cycle = ModelLifeCycle(
+        stage="Development",
+        stage_status="In-Progress",
+        stage_description="Sending for Staging Verification",
+    )
+    update_model_life_cycle_req = update_model_life_cycle._to_request_dict()
 
     estimator.register(
         content_types=content_types,
@@ -3014,22 +4359,88 @@ def test_register_default_image(sagemaker_session):
         inference_instances=inference_instances,
         transform_instances=transform_instances,
         model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
+        data_input_configuration=data_input_config,
+        model_card=model_card,
+        model_life_cycle=update_model_life_cycle_req,
     )
     sagemaker_session.create_model.assert_not_called()
+    exp_model_card = {
+        "ModelCardStatus": "Draft",
+        "ModelCardContent": '{"model_overview": {"model_creator": "TestCreator", "model_artifact": []}}',
+    }
+    exp_model_life_cycle = {
+        "Stage": "Development",
+        "StageStatus": "In-Progress",
+        "StageDescription": "Sending for Staging Verification",
+    }
 
     expected_create_model_package_request = {
-        "containers": [
-            {
-                "Image": estimator.image_uri,
-                "ModelDataUrl": estimator.model_data,
-            }
-        ],
+        "containers": [{"Image": estimator.image_uri, "ModelDataUrl": estimator.model_data}],
         "content_types": content_types,
         "response_types": response_types,
         "inference_instances": inference_instances,
         "transform_instances": transform_instances,
         "model_package_name": model_package_name,
         "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
+        "model_life_cycle": exp_model_life_cycle,
+        "model_card": exp_model_card,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
+def test_register_default_image_without_instance_type_args(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+
+    model_package_name = "test-estimator-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+    model_card = {"ModelCardStatus": ModelCardStatusEnum.DRAFT, "ModelCardContent": "{}"}
+    estimator.register(
+        content_types=content_types,
+        response_types=response_types,
+        model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
+    )
+    sagemaker_session.create_model.assert_not_called()
+
+    expected_create_model_package_request = {
+        "containers": [{"Image": estimator.image_uri, "ModelDataUrl": estimator.model_data}],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": None,
+        "transform_instances": None,
+        "model_package_name": model_package_name,
+        "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
+        "model_card": model_card,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -3054,6 +4465,12 @@ def test_register_inference_image(sagemaker_session):
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
     inference_image = "fake-inference-image"
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+    model_card = {"ModelCardStatus": ModelCardStatusEnum.DRAFT, "ModelCardContent": "{}"}
 
     estimator.register(
         content_types=content_types,
@@ -3061,27 +4478,57 @@ def test_register_inference_image(sagemaker_session):
         inference_instances=inference_instances,
         transform_instances=transform_instances,
         model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
         image_uri=inference_image,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
     )
     sagemaker_session.create_model.assert_not_called()
 
     expected_create_model_package_request = {
-        "containers": [
-            {
-                "Image": inference_image,
-                "ModelDataUrl": estimator.model_data,
-            }
-        ],
+        "containers": [{"Image": inference_image, "ModelDataUrl": estimator.model_data}],
         "content_types": content_types,
         "response_types": response_types,
         "inference_instances": inference_instances,
         "transform_instances": transform_instances,
         "model_package_name": model_package_name,
         "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
+        "model_card": model_card,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
     )
+
+
+def test_register_under_pipeline_session(pipeline_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=pipeline_session,
+    )
+
+    model_package_name = "test-estimator-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+
+    with pytest.raises(TypeError) as error:
+        estimator.register(
+            content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            model_package_name=model_package_name,
+        )
+    assert "estimator.register does not support PipelineSession" in str(error.value)
 
 
 @patch("sagemaker.estimator.LocalSession")
@@ -3090,8 +4537,14 @@ def test_local_mode(session_class, local_session_class):
     local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
 
+    local_session.settings = SessionSettings()
+
+    local_session.sagemaker_config = {}
+
     session = Mock()
     session.local_mode = False
+
+    session.sagemaker_config = {}
 
     local_session_class.return_value = local_session
     session_class.return_value = session
@@ -3117,6 +4570,10 @@ def test_local_mode_file_output_path(local_session_class):
     local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
     local_session_class.return_value = local_session
+
+    local_session.settings = SessionSettings()
+
+    local_session.sagemaker_config = {}
 
     e = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local", output_path="file:///tmp/model/")
     assert e.output_path == "file:///tmp/model/"
@@ -3200,8 +4657,44 @@ def test_prepare_init_params_from_job_description_with_retry_strategy():
     assert init_params["max_retry_attempts"] == 2
 
 
-def test_prepare_init_params_from_job_description_with_invalid_training_job():
+def test_prepare_init_params_from_job_description_with_training_image_config():
+    job_description = RETURNED_JOB_DESCRIPTION.copy()
+    job_description["AlgorithmSpecification"]["TrainingImageConfig"] = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567890:function:test"
+        },
+    }
 
+    init_params = EstimatorBase._prepare_init_params_from_job_description(
+        job_details=job_description
+    )
+
+    assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
+    assert init_params["instance_count"] == 1
+    assert init_params["training_repository_access_mode"] == "Vpc"
+    assert (
+        init_params["training_repository_credentials_provider_arn"]
+        == "arn:aws:lambda:us-west-2:1234567890:function:test"
+    )
+
+
+def test_prepare_init_params_from_job_description_with_container_entry_point_and_args():
+    job_description = RETURNED_JOB_DESCRIPTION.copy()
+    job_description["AlgorithmSpecification"]["ContainerEntrypoint"] = CONTAINER_ENTRY_POINT
+    job_description["AlgorithmSpecification"]["ContainerArguments"] = CONTAINER_ARGUMENTS
+
+    init_params = EstimatorBase._prepare_init_params_from_job_description(
+        job_details=job_description
+    )
+
+    assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
+    assert init_params["instance_count"] == 1
+    assert init_params["container_entry_point"] == CONTAINER_ENTRY_POINT
+    assert init_params["container_arguments"] == CONTAINER_ARGUMENTS
+
+
+def test_prepare_init_params_from_job_description_with_invalid_training_job():
     invalid_job_description = RETURNED_JOB_DESCRIPTION.copy()
     invalid_job_description["AlgorithmSpecification"] = {"TrainingInputMode": "File"}
 
@@ -3252,6 +4745,29 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
     assert "scikit-decision-trees-1542410022" in estimator._current_job_name
 
 
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir(
+    pipeline_session,
+):
+    # script_uri is NOT provided -> use new cache key behavior that builds path using pipeline name + code_hash
+    image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
+    model_uri = "s3://someprefix2/models/model.tar.gz"
+    estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=pipeline_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=image_uri,
+        model_uri=model_uri,
+    )
+    step_args = estimator.fit()
+    # execute estimator.fit() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    expected_path = "/".join(["test-pipeline", "code", "code-hash-0123456789"])
+    assert expected_path in estimator.uploaded_code.s3_prefix
+
+
 @patch(
     "sagemaker.estimator.Estimator.fit",
     Mock(
@@ -3299,6 +4815,8 @@ def test_estimator_local_mode_error(sagemaker_session):
 
 
 def test_estimator_local_mode_ok(sagemaker_local_session):
+
+    sagemaker_local_session.sagemaker_config = {}
     # When using instance local with a session which is not LocalSession we should error out
     Estimator(
         image_uri="some-image",
@@ -3339,6 +4857,21 @@ def test_framework_distribution_configuration(sagemaker_session):
     assert actual_ddp == expected_ddp
 
 
+def test_mwms_distribution_configuration(sagemaker_session):
+    framework = DummyFramework(
+        entry_point="script",
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    with pytest.raises(ValueError) as error:
+        framework._distribution_configuration(distribution=DISTRIBUTION_MWMS_ENABLED)
+
+    assert "only supported with" in str(error)
+    assert "but received" in str(error)
+
+
 def test_image_name_map(sagemaker_session):
     e = DummyFramework(
         "my_script.py",
@@ -3350,3 +4883,1092 @@ def test_image_name_map(sagemaker_session):
     )
 
     assert e.image_uri == IMAGE_URI
+
+
+@patch("sagemaker.git_utils.git_clone_repo")
+def test_git_support_with_branch_and_commit_succeed_estimator_class(
+    git_clone_repo, sagemaker_session
+):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    }
+    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+    entry_point = "entry_point"
+    fw = Estimator(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+    )
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
+
+
+@patch("sagemaker.estimator.Estimator._stage_user_code_in_s3")
+def test_script_mode_estimator(patched_stage_user_code, sagemaker_session):
+    patched_stage_user_code.return_value = UploadedCode(
+        s3_prefix="s3://bucket/key", script_name="script_name"
+    )
+    script_uri = "s3://codebucket/someprefix/sourcedir.tar.gz"
+    image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
+    model_uri = "s3://someprefix2/models/model.tar.gz"
+    t = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        source_dir=script_uri,
+        image_uri=image_uri,
+        model_uri=model_uri,
+    )
+    t.fit("s3://bucket/mydata")
+
+    patched_stage_user_code.assert_called_once()
+    sagemaker_session.train.assert_called_once()
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+def test_script_mode_estimator_same_calls_as_framework(
+    patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+
+    script_uri = "s3://codebucket/someprefix/sourcedir.tar.gz"
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    model_uri = "s3://someprefix2/models/model.tar.gz"
+    training_data_uri = "s3://bucket/mydata"
+    hyperparameters = {
+        "int_hyperparam": 1,
+        "string_hyperparam": "hello",
+        "stringified_numeric_hyperparam": "44",
+        "float_hyperparam": 1.234,
+    }
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=script_uri,
+        image_uri=IMAGE_URI,
+        model_uri=model_uri,
+        dependencies=[],
+        debugger_hook_config={},
+        hyperparameters=deepcopy(hyperparameters),
+    )
+    generic_estimator.fit(training_data_uri)
+
+    generic_estimator_tar_and_upload_dir_args = patched_tar_and_upload_dir.call_args_list
+    generic_estimator_train_args = sagemaker_session.train.call_args_list
+
+    patched_tar_and_upload_dir.reset_mock()
+    sagemaker_session.train.reset_mock()
+
+    framework_estimator = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        source_dir=script_uri,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        model_uri=model_uri,
+        dependencies=[],
+        debugger_hook_config={},
+        hyperparameters=deepcopy(hyperparameters),
+    )
+    framework_estimator.fit(training_data_uri)
+
+    assert len(generic_estimator_tar_and_upload_dir_args) == 1
+    assert len(generic_estimator_train_args) == 1
+    assert generic_estimator_tar_and_upload_dir_args == patched_tar_and_upload_dir.call_args_list
+    assert generic_estimator_train_args == sagemaker_session.train.call_args_list
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_tags_jumpstart_estimators_and_models(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    )
+    jumpstart_source_dir_2 = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[1]}/source_dirs/source.tar.gz"
+    )
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=jumpstart_source_dir_2,
+        tags=[{"Key": "some", "Value": "tag"}],
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert [
+        {"Key": "some", "Value": "tag"},
+        {"Key": JumpStartTag.TRAINING_MODEL_URI.value, "Value": jumpstart_source_dir_2},
+        {"Key": JumpStartTag.TRAINING_SCRIPT_URI.value, "Value": jumpstart_source_dir},
+    ] == sagemaker_session.train.call_args_list[0][1]["tags"]
+
+    sagemaker_session.reset_mock()
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    inference_jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}"
+        "/source_dirs/inference/source.tar.gz"
+    )
+
+    generic_estimator.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+        source_dir=inference_jumpstart_source_dir,
+        entry_point="inference.py",
+        role=ROLE,
+        tags=[{"Key": "deploys", "Value": "tag"}],
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+        {"Key": "deploys", "Value": "tag"},
+        {"Key": JumpStartTag.TRAINING_MODEL_URI.value, "Value": jumpstart_source_dir_2},
+        {"Key": JumpStartTag.TRAINING_SCRIPT_URI.value, "Value": jumpstart_source_dir},
+        {"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": inference_jumpstart_source_dir},
+    ]
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+        {"Key": "deploys", "Value": "tag"},
+        {"Key": JumpStartTag.TRAINING_MODEL_URI.value, "Value": jumpstart_source_dir_2},
+        {"Key": JumpStartTag.TRAINING_SCRIPT_URI.value, "Value": jumpstart_source_dir},
+        {"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": inference_jumpstart_source_dir},
+    ]
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_tags_jumpstart_models(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    )
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert [
+        {"Key": JumpStartTag.TRAINING_SCRIPT_URI.value, "Value": jumpstart_source_dir}
+    ] == sagemaker_session.train.call_args_list[0][1]["tags"]
+
+    sagemaker_session.reset_mock()
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    inference_source_dir = "s3://dsfsdfsd/sdfsdfs/sdfsd"
+
+    generic_estimator.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+        source_dir=inference_source_dir,
+        entry_point="inference.py",
+        role=ROLE,
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+        {"Key": JumpStartTag.TRAINING_SCRIPT_URI.value, "Value": jumpstart_source_dir}
+    ]
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+        {"Key": JumpStartTag.TRAINING_SCRIPT_URI.value, "Value": jumpstart_source_dir}
+    ]
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    source_dir = "s3://dsfsdfsd/sdfsdfs/sdfsd"
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert None is sagemaker_session.train.call_args_list[0][1]["tags"]
+
+    sagemaker_session.reset_mock()
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    inference_jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}"
+        "/source_dirs/inference/source.tar.gz"
+    )
+
+    generic_estimator.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+        source_dir=inference_jumpstart_source_dir,
+        entry_point="inference.py",
+        role=ROLE,
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+        {"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": inference_jumpstart_source_dir}
+    ]
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+        {"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": inference_jumpstart_source_dir}
+    ]
+
+
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+@patch("sagemaker.utils.repack_model")
+def test_all_framework_estimators_add_jumpstart_uri_tags(
+    patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+
+    framework_estimator_classes_to_kwargs = {
+        PyTorch: {
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+            "instance_type": "ml.p2.xlarge",
+        },
+        TensorFlow: {
+            "framework_version": "2.3",
+            "py_version": "py37",
+            "instance_type": "ml.p2.xlarge",
+        },
+        HuggingFace: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+            "instance_type": "ml.p2.xlarge",
+        },
+        MXNet: {"framework_version": "1.7.0", "py_version": "py3", "instance_type": "ml.p2.xlarge"},
+        SKLearn: {"framework_version": "0.23-1", "instance_type": "ml.m2.xlarge"},
+        XGBoost: {"framework_version": "1.3-1", "instance_type": "ml.m2.xlarge"},
+    }
+    jumpstart_model_uri = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
+    )
+    jumpstart_model_uri_2 = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[1]}/model_dirs/model.tar.gz"
+    )
+    for framework_estimator_class, kwargs in framework_estimator_classes_to_kwargs.items():
+        estimator = framework_estimator_class(
+            entry_point=ENTRY_POINT,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_uri=jumpstart_model_uri,
+            instance_count=INSTANCE_COUNT,
+            tags=[{"Key": "blah", "Value": "yoyoma"}],
+            **kwargs,
+        )
+
+        estimator.fit()
+
+        assert {
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_model_uri,
+        } in sagemaker_session.train.call_args_list[0][1]["tags"]
+
+        assert {"Key": "blah", "Value": "yoyoma"} in sagemaker_session.train.call_args_list[0][1][
+            "tags"
+        ]
+
+        estimator.deploy(
+            initial_instance_count=INSTANCE_COUNT,
+            instance_type=kwargs["instance_type"],
+            image_uri=IMAGE_URI,
+            source_dir=jumpstart_model_uri_2,
+            entry_point="inference.py",
+            role=ROLE,
+            tags=[{"Key": "blah", "Value": "yoyoma"}],
+            model_reference_arn=None,
+        )
+
+        assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+            {"Key": "blah", "Value": "yoyoma"}
+        ] + [
+            {"Key": JumpStartTag.TRAINING_MODEL_URI.value, "Value": jumpstart_model_uri},
+            {"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": jumpstart_model_uri_2},
+        ]
+        assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+            {"Key": "blah", "Value": "yoyoma"}
+        ] + [
+            {"Key": JumpStartTag.TRAINING_MODEL_URI.value, "Value": jumpstart_model_uri},
+            {"Key": JumpStartTag.INFERENCE_SCRIPT_URI.value, "Value": jumpstart_model_uri_2},
+        ]
+
+        sagemaker_session.train.reset_mock()
+
+
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+@patch("sagemaker.utils.repack_model")
+def test_all_framework_estimators_support_disabling_jumpstart_uri_tags(
+    patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+
+    sagemaker_session.settings = SessionSettings(include_jumpstart_tags=False)
+
+    framework_estimator_classes_to_kwargs = {
+        PyTorch: {
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+            "instance_type": "ml.p2.xlarge",
+        },
+        TensorFlow: {
+            "framework_version": "2.3",
+            "py_version": "py37",
+            "instance_type": "ml.p2.xlarge",
+        },
+        HuggingFace: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+            "instance_type": "ml.p2.xlarge",
+        },
+        MXNet: {"framework_version": "1.7.0", "py_version": "py3", "instance_type": "ml.p2.xlarge"},
+        SKLearn: {"framework_version": "0.23-1", "instance_type": "ml.m2.xlarge"},
+        XGBoost: {"framework_version": "1.3-1", "instance_type": "ml.m2.xlarge"},
+    }
+    jumpstart_model_uri = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
+    )
+    jumpstart_model_uri_2 = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[1]}/model_dirs/model.tar.gz"
+    )
+    for framework_estimator_class, kwargs in framework_estimator_classes_to_kwargs.items():
+        estimator = framework_estimator_class(
+            entry_point=ENTRY_POINT,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_uri=jumpstart_model_uri,
+            instance_count=INSTANCE_COUNT,
+            tags=[{"Key": "blah", "Value": "yoyoma"}],
+            **kwargs,
+        )
+
+        estimator.fit()
+
+        assert [{"Key": "blah", "Value": "yoyoma"}] == sagemaker_session.train.call_args_list[0][1][
+            "tags"
+        ]
+
+        estimator.deploy(
+            initial_instance_count=INSTANCE_COUNT,
+            instance_type=kwargs["instance_type"],
+            image_uri=IMAGE_URI,
+            source_dir=jumpstart_model_uri_2,
+            entry_point="inference.py",
+            role=ROLE,
+        )
+
+        assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+            {"Key": "blah", "Value": "yoyoma"}
+        ]
+        assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+            {"Key": "blah", "Value": "yoyoma"}
+        ]
+        sagemaker_session.train.reset_mock()
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    source_dir = "s3://dsfsdfsd/sdfsdfs/sdfsd"
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert not sagemaker_session.train.call_args_list[0][1]["job_name"].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )
+    sagemaker_session.reset_mock()
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    inference_jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}"
+        "/source_dirs/inference/source.tar.gz"
+    )
+
+    generic_estimator.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+        source_dir=inference_jumpstart_source_dir,
+        entry_point="inference.py",
+        role=ROLE,
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )
+
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )
+
+
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+@patch("sagemaker.utils.repack_model")
+def test_all_framework_estimators_add_jumpstart_base_name(
+    patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+
+    framework_estimator_classes_to_kwargs = {
+        PyTorch: {
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+            "instance_type": "ml.p2.xlarge",
+        },
+        TensorFlow: {
+            "framework_version": "2.3",
+            "py_version": "py37",
+            "instance_type": "ml.p2.xlarge",
+        },
+        HuggingFace: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+            "instance_type": "ml.p2.xlarge",
+        },
+        MXNet: {"framework_version": "1.7.0", "py_version": "py3", "instance_type": "ml.p2.xlarge"},
+        SKLearn: {"framework_version": "0.23-1", "instance_type": "ml.m2.xlarge"},
+        XGBoost: {"framework_version": "1.3-1", "instance_type": "ml.m2.xlarge"},
+    }
+    jumpstart_model_uri = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
+    )
+    jumpstart_model_uri_2 = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[1]}/model_dirs/model.tar.gz"
+    )
+    for framework_estimator_class, kwargs in framework_estimator_classes_to_kwargs.items():
+        estimator = framework_estimator_class(
+            entry_point=ENTRY_POINT,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_uri=jumpstart_model_uri,
+            instance_count=INSTANCE_COUNT,
+            **kwargs,
+        )
+
+        estimator.fit()
+
+        assert sagemaker_session.train.call_args_list[0][1]["job_name"].startswith(
+            JUMPSTART_RESOURCE_BASE_NAME
+        )
+
+        estimator.deploy(
+            initial_instance_count=INSTANCE_COUNT,
+            instance_type=kwargs["instance_type"],
+            image_uri=IMAGE_URI,
+            source_dir=jumpstart_model_uri_2,
+            entry_point="inference.py",
+            role=ROLE,
+        )
+
+        assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
+            JUMPSTART_RESOURCE_BASE_NAME
+        )
+
+        assert sagemaker_session.endpoint_from_production_variants.call_args_list[0].startswith(
+            JUMPSTART_RESOURCE_BASE_NAME
+        )
+
+        sagemaker_session.endpoint_from_production_variants.reset_mock()
+        sagemaker_session.create_model.reset_mock()
+        sagemaker_session.train.reset_mock()
+
+
+def test_insert_invalid_source_code_args():
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+            enable_network_isolation=True,
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables "
+        "when enable_network_isolation is a pipeline variable or it is set to True."
+    ) in str(err.value)
+
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point="dummy.py",
+            source_dir=ParameterString(name="SourceDir"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+            enable_network_isolation=ParameterBoolean(name="EnableNetworkIsolation"),
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables "
+        "when enable_network_isolation is a pipeline variable or it is set to True."
+    ) in str(err.value)
+
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri=IMAGE_URI,
+            role=ROLE,
+            git_config={"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT},
+            source_dir=ParameterString(name="SourceDir"),
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables when git_config is given"
+        in str(err.value)
+    )
+
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri=IMAGE_URI,
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert "The entry_point should not be a pipeline variable when source_dir is missing" in str(
+        err.value
+    )
+
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            source_dir="file://my-file/",
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert (
+        "The entry_point should not be a pipeline variable " "when source_dir is a local path"
+    ) in str(err.value)
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_escapes_hyperparameters_as_json(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    )
+
+    hyperparameters = {
+        "int_hyperparam": 1,
+        "string_hyperparam": "hello",
+        "stringified_numeric_hyperparam": "44",
+        "float_hyperparam": 1.234,
+    }
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+        hyperparameters=hyperparameters,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    formatted_hyperparams = EstimatorBase._json_encode_hyperparameters(hyperparameters)
+
+    assert (
+        set(formatted_hyperparams.items())
+        - set(sagemaker_session.train.call_args_list[0][1]["hyperparameters"].items())
+        == set()
+    )
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_estimator_local_download_dir(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
+
+    local_download_dir = "some/download/dir"
+
+    sagemaker_session.settings.local_download_dir = local_download_dir
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    )
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert (
+        patched_tar_and_upload_dir.call_args_list[0][1]["settings"].local_download_dir
+        == local_download_dir
+    )
+
+
+@pytest.mark.parametrize(
+    "input_key_prefix, input_current_job_name, input_pipeline_config, output_code_s3_prefix",
+    [
+        (
+            "my/prefix",
+            "job-name",
+            MOCKED_PIPELINE_CONFIG,
+            "my/prefix/test-pipeline/code/code-hash-0123456789",
+        ),
+        ("my/prefix", "job-name", None, "my/prefix/job-name/source"),
+        ("", "job-name", MOCKED_PIPELINE_CONFIG, "test-pipeline/code/code-hash-0123456789"),
+        ("", "job-name", None, "job-name/source"),
+        (None, "job-name", MOCKED_PIPELINE_CONFIG, "test-pipeline/code/code-hash-0123456789"),
+        (None, "job-name", None, "job-name/source"),
+        (None, None, MOCKED_PIPELINE_CONFIG, "test-pipeline/code/code-hash-0123456789"),
+        (None, None, None, "source"),
+    ],
+)
+def test_assign_s3_prefix(
+    sagemaker_session,
+    input_key_prefix,
+    input_current_job_name,
+    input_pipeline_config,
+    output_code_s3_prefix,
+):
+
+    with patch("sagemaker.workflow.utilities._pipeline_config", input_pipeline_config):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sagemaker_session,
+        )
+        framework._current_job_name = input_current_job_name
+        assert framework._assign_s3_prefix(input_key_prefix) == output_code_s3_prefix
+
+
+@patch("sagemaker.estimator._TrainingJob.start_new")
+@patch("sagemaker.estimator.tar_and_upload_dir")
+def test_output_path_default_bucket_and_prefix_combinations(start_new, tar_and_upload_dir):
+    def with_user_input(sess):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sess,
+            output_path="s3://test",
+        )
+        framework.fit(None, job_name=JOB_NAME, wait=False, logs=True)
+        start_new.assert_called()  # just to make sure this is patched with a mock
+        tar_and_upload_dir.assert_called()  # just to make sure this is patched with a mock
+        return framework.output_path
+
+    def without_user_input(sess):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sess,
+        )
+        framework.fit(None, job_name=JOB_NAME, wait=False, logs=True)
+        start_new.assert_called()  # just to make sure this is patched with a mock
+        tar_and_upload_dir.assert_called()  # just to make sure this is patched with a mock
+        return framework.output_path
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/"
+        ),
+        expected__without_user_input__with_default_bucket_only=f"s3://{DEFAULT_S3_BUCKET_NAME}/",
+        expected__with_user_input__with_default_bucket_and_prefix="s3://test",
+        expected__with_user_input__with_default_bucket_only="s3://test",
+    )
+    assert actual == expected
+
+
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@pytest.mark.parametrize(
+    (
+        "output_path, code_location,"
+        "expected__without_user_input__with_default_bucket_and_default_prefix, "
+        "expected__without_user_input__with_default_bucket_only, "
+        "expected__with_user_input__with_default_bucket_and_prefix, "
+        "expected__with_user_input__with_default_bucket_only"
+    ),
+    [
+        # Group of not-None output_bucket
+        (
+            "s3://output-bucket/output-prefix/output-prefix2",
+            "s3://code-bucket/code-prefix/code-prefix2",
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+        ),
+        (
+            "s3://output-bucket/output-prefix/output-prefix2",
+            None,
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("output-bucket", f"{JOB_NAME}/source"),
+            ("output-bucket", f"{JOB_NAME}/source"),
+        ),
+        # Group of None output_bucket
+        (
+            None,
+            "s3://code-bucket/code-prefix/code-prefix2",
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+        ),
+        (
+            None,
+            None,
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+        ),
+        # Group of PipelineVariable output_bucket
+        (
+            ExecutionVariable("output_path"),
+            "s3://code-bucket/code-prefix/code-prefix2",
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+        ),
+        (
+            ExecutionVariable("output_path"),
+            None,
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+        ),
+        # Group of file output_bucket
+        (
+            "file://output-bucket/output-prefix/output-prefix2",
+            "s3://code-bucket/code-prefix/code-prefix2",
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+        ),
+        (
+            "file://output-bucket/output-prefix/output-prefix2",
+            None,
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+        ),
+    ],
+)
+def test_stage_user_code_in_s3_default_bucket_and_prefix_combinations(
+    tar_and_upload_dir,
+    output_path,
+    code_location,
+    expected__without_user_input__with_default_bucket_and_default_prefix,
+    expected__without_user_input__with_default_bucket_only,
+    expected__with_user_input__with_default_bucket_and_prefix,
+    expected__with_user_input__with_default_bucket_only,
+):
+    def with_user_input(sess):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sess,
+        )
+
+        if output_path is not None:
+            framework.output_path = output_path
+        if code_location is not None:
+            framework.code_location = code_location
+
+        # this method calls _stage_user_code_in_s3()
+        framework._prepare_for_training(job_name=JOB_NAME)
+        kwargs = tar_and_upload_dir.call_args.kwargs
+        return kwargs["bucket"], kwargs["s3_key_prefix"]
+
+    def without_user_input(sess):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sess,
+        )
+
+        # this method calls _stage_user_code_in_s3()
+        framework._prepare_for_training(job_name=JOB_NAME)
+        kwargs = tar_and_upload_dir.call_args.kwargs
+        return kwargs["bucket"], kwargs["s3_key_prefix"]
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            expected__without_user_input__with_default_bucket_and_default_prefix
+        ),
+        expected__without_user_input__with_default_bucket_only=(
+            expected__without_user_input__with_default_bucket_only
+        ),
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            expected__with_user_input__with_default_bucket_and_prefix
+        ),
+        expected__with_user_input__with_default_bucket_only=(
+            expected__with_user_input__with_default_bucket_only
+        ),
+    )
+    assert actual == expected
+
+
+def test_estimator_get_app_url_success(sagemaker_session):
+    job_name = "get-app-url-test-job-name"
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        base_job_name=job_name,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+
+    url = f.get_app_url("TensorBoard", open_in_default_web_browser=False)
+
+    assert url and job_name in url
+
+    app_type = SupportedInteractiveAppTypes.TENSORBOARD
+    url = f.get_app_url(app_type, open_in_default_web_browser=False)
+
+    assert url and job_name in url
+
+
+def test_estimator_get_app_url_fail(sagemaker_session):
+    job_name = "get-app-url-test-job-name"
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        base_job_name=job_name,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    with pytest.raises(ValueError) as error:
+        f.get_app_url("fake-app")
+
+    assert "does not support URL retrieval." in str(error)
+
+
+@patch("sagemaker.mlflow.forward_sagemaker_metrics.log_sagemaker_job_to_mlflow")
+def test_forward_sagemaker_metrics(mock_log_to_mlflow, sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        enable_network_isolation=True,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+        ],
+    )
+
+    # Set environment variables restores to state after the test.
+    with patch.dict(os.environ, {"MLFLOW_TRACKING_URI": "test_uri"}):
+        f.fit("s3://mydata")
+
+    mock_log_to_mlflow.assert_called_once()
+
+
+@patch("sagemaker.mlflow.forward_sagemaker_metrics.log_sagemaker_job_to_mlflow")
+def test_no_forward_sagemaker_metrics(mock_log_to_mlflow, sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=False,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+        ],
+    )
+    with patch.dict(os.environ, {"MLFLOW_TRACKING_URI": "test_uri"}):
+        f.fit("s3://mydata")
+    mock_log_to_mlflow.assert_not_called()

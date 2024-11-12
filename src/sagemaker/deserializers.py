@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,312 +13,140 @@
 """Implements methods for deserializing data returned from an inference endpoint."""
 from __future__ import absolute_import
 
-import csv
 
-import abc
-import codecs
-import io
-import json
+from typing import List, Optional
 
-import numpy as np
-from six import with_metaclass
+# base_deserializers was refactored from deserializers.
+# this import ensures backward compatibility.
+from sagemaker.base_deserializers import (  # noqa: F401 # pylint: disable=W0611
+    BaseDeserializer,
+    BytesDeserializer,
+    CSVDeserializer,
+    DeferredError,
+    JSONDeserializer,
+    JSONLinesDeserializer,
+    NumpyDeserializer,
+    PandasDeserializer,
+    SimpleBaseDeserializer,
+    StreamDeserializer,
+    StringDeserializer,
+    TorchTensorDeserializer,
+)
 
-from sagemaker.utils import DeferredError
-
-try:
-    import pandas
-except ImportError as e:
-    pandas = DeferredError(e)
+from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.enums import JumpStartModelType
+from sagemaker.session import Session
 
 
-class BaseDeserializer(abc.ABC):
-    """Abstract base class for creation of new deserializers.
+def retrieve_options(
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> List[BaseDeserializer]:
+    """Retrieves the supported deserializers for the model matching the given arguments.
 
-    Provides a skeleton for customization requiring the overriding of the method
-    deserialize and the class attribute ACCEPT.
+    Args:
+        region (str): The AWS Region for which to retrieve the supported deserializers.
+            Defaults to ``None``.
+        model_id (str): The model ID of the model for which to
+            retrieve the supported deserializers. (Default: None).
+        model_version (str): The version of the model for which to retrieve the
+            supported deserializers. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+    Returns:
+        List[BaseDeserializer]: The supported deserializers to use for the model.
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
     """
 
-    @abc.abstractmethod
-    def deserialize(self, stream, content_type):
-        """Deserialize data received from an inference endpoint.
+    if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
+        raise ValueError(
+            "Must specify JumpStart `model_id` and `model_version` when retrieving deserializers."
+        )
 
-        Args:
-            stream (botocore.response.StreamingBody): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            object: The data deserialized into an object.
-        """
-
-    @property
-    @abc.abstractmethod
-    def ACCEPT(self):
-        """The content types that are expected from the inference endpoint."""
+    return artifacts._retrieve_deserializer_options(
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
+    )
 
 
-class SimpleBaseDeserializer(with_metaclass(abc.ABCMeta, BaseDeserializer)):
-    """Abstract base class for creation of new deserializers.
+def retrieve_default(
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+    sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
+) -> BaseDeserializer:
+    """Retrieves the default deserializer for the model matching the given arguments.
 
-    This class extends the API of :class:~`sagemaker.deserializers.BaseDeserializer` with more
-    user-friendly options for setting the ACCEPT content type header, in situations where it can be
-    provided at init and freely updated.
+    Args:
+        region (str): The AWS Region for which to retrieve the default deserializer.
+            Defaults to ``None``.
+        model_id (str): The model ID of the model for which to
+            retrieve the default deserializer. (Default: None).
+        model_version (str): The version of the model for which to retrieve the
+            default deserializer. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions. If not
+            specified, one is created using the default AWS configuration
+            chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+    Returns:
+        BaseDeserializer: The default deserializer to use for the model.
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
     """
 
-    def __init__(self, accept="*/*"):
-        """Initialize a ``SimpleBaseDeserializer`` instance.
+    if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
+        raise ValueError(
+            "Must specify JumpStart `model_id` and `model_version` when retrieving deserializers."
+        )
 
-        Args:
-            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
-                is expected from the inference endpoint (default: "*/*").
-        """
-        super(SimpleBaseDeserializer, self).__init__()
-        self.accept = accept
-
-    @property
-    def ACCEPT(self):
-        """The tuple of possible content types that are expected from the inference endpoint."""
-        if isinstance(self.accept, str):
-            return (self.accept,)
-        return self.accept
-
-
-class StringDeserializer(SimpleBaseDeserializer):
-    """Deserialize data from an inference endpoint into a decoded string."""
-
-    def __init__(self, encoding="UTF-8", accept="application/json"):
-        """Initialize a ``StringDeserializer`` instance.
-
-        Args:
-            encoding (str): The string encoding to use (default: UTF-8).
-            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
-                is expected from the inference endpoint (default: "application/json").
-        """
-        super(StringDeserializer, self).__init__(accept=accept)
-        self.encoding = encoding
-
-    def deserialize(self, stream, content_type):
-        """Deserialize data from an inference endpoint into a decoded string.
-
-        Args:
-            stream (botocore.response.StreamingBody): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            str: The data deserialized into a decoded string.
-        """
-        try:
-            return stream.read().decode(self.encoding)
-        finally:
-            stream.close()
-
-
-class BytesDeserializer(SimpleBaseDeserializer):
-    """Deserialize a stream of bytes into a bytes object."""
-
-    def deserialize(self, stream, content_type):
-        """Read a stream of bytes returned from an inference endpoint.
-
-        Args:
-            stream (botocore.response.StreamingBody): A stream of bytes.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            bytes: The bytes object read from the stream.
-        """
-        try:
-            return stream.read()
-        finally:
-            stream.close()
-
-
-class CSVDeserializer(SimpleBaseDeserializer):
-    """Deserialize a stream of bytes into a list of lists.
-
-    Consider using :class:~`sagemaker.deserializers.NumpyDeserializer` or
-    :class:~`sagemaker.deserializers.PandasDeserializer` instead, if you'd like to convert text/csv
-    responses directly into other data types.
-    """
-
-    def __init__(self, encoding="utf-8", accept="text/csv"):
-        """Initialize a ``CSVDeserializer`` instance.
-
-        Args:
-            encoding (str): The string encoding to use (default: "utf-8").
-            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
-                is expected from the inference endpoint (default: "text/csv").
-        """
-        super(CSVDeserializer, self).__init__(accept=accept)
-        self.encoding = encoding
-
-    def deserialize(self, stream, content_type):
-        """Deserialize data from an inference endpoint into a list of lists.
-
-        Args:
-            stream (botocore.response.StreamingBody): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            list: The data deserialized into a list of lists representing the
-                contents of a CSV file.
-        """
-        try:
-            decoded_string = stream.read().decode(self.encoding)
-            return list(csv.reader(decoded_string.splitlines()))
-        finally:
-            stream.close()
-
-
-class StreamDeserializer(SimpleBaseDeserializer):
-    """Directly return the data and content-type received from an inference endpoint.
-
-    It is the user's responsibility to close the data stream once they're done
-    reading it.
-    """
-
-    def deserialize(self, stream, content_type):
-        """Returns a stream of the response body and the MIME type of the data.
-
-        Args:
-            stream (botocore.response.StreamingBody): A stream of bytes.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            tuple: A two-tuple containing the stream and content-type.
-        """
-        return stream, content_type
-
-
-class NumpyDeserializer(SimpleBaseDeserializer):
-    """Deserialize a stream of data in .npy or UTF-8 CSV/JSON format to a numpy array."""
-
-    def __init__(self, dtype=None, accept="application/x-npy", allow_pickle=True):
-        """Initialize a ``NumpyDeserializer`` instance.
-
-        Args:
-            dtype (str): The dtype of the data (default: None).
-            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
-                is expected from the inference endpoint (default: "application/x-npy").
-            allow_pickle (bool): Allow loading pickled object arrays (default: True).
-        """
-        super(NumpyDeserializer, self).__init__(accept=accept)
-        self.dtype = dtype
-        self.allow_pickle = allow_pickle
-
-    def deserialize(self, stream, content_type):
-        """Deserialize data from an inference endpoint into a NumPy array.
-
-        Args:
-            stream (botocore.response.StreamingBody): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            numpy.ndarray: The data deserialized into a NumPy array.
-        """
-        try:
-            if content_type == "text/csv":
-                return np.genfromtxt(
-                    codecs.getreader("utf-8")(stream), delimiter=",", dtype=self.dtype
-                )
-            if content_type == "application/json":
-                return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
-            if content_type == "application/x-npy":
-                return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
-        finally:
-            stream.close()
-
-        raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
-
-
-class JSONDeserializer(SimpleBaseDeserializer):
-    """Deserialize JSON data from an inference endpoint into a Python object."""
-
-    def __init__(self, accept="application/json"):
-        """Initialize a ``JSONDeserializer`` instance.
-
-        Args:
-            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
-                is expected from the inference endpoint (default: "application/json").
-        """
-        super(JSONDeserializer, self).__init__(accept=accept)
-
-    def deserialize(self, stream, content_type):
-        """Deserialize JSON data from an inference endpoint into a Python object.
-
-        Args:
-            stream (botocore.response.StreamingBody): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            object: The JSON-formatted data deserialized into a Python object.
-        """
-        try:
-            return json.load(codecs.getreader("utf-8")(stream))
-        finally:
-            stream.close()
-
-
-class PandasDeserializer(SimpleBaseDeserializer):
-    """Deserialize CSV or JSON data from an inference endpoint into a pandas dataframe."""
-
-    def __init__(self, accept=("text/csv", "application/json")):
-        """Initialize a ``PandasDeserializer`` instance.
-
-        Args:
-            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
-                is expected from the inference endpoint (default: ("text/csv","application/json")).
-        """
-        super(PandasDeserializer, self).__init__(accept=accept)
-
-    def deserialize(self, stream, content_type):
-        """Deserialize CSV or JSON data from an inference endpoint into a pandas dataframe.
-
-        If the data is JSON, the data should be formatted in the 'columns' orient.
-        See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_json.html
-
-        Args:
-            stream (botocore.response.StreamingBody): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            pandas.DataFrame: The data deserialized into a pandas DataFrame.
-        """
-        if content_type == "text/csv":
-            return pandas.read_csv(stream)
-
-        if content_type == "application/json":
-            return pandas.read_json(stream)
-
-        raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
-
-
-class JSONLinesDeserializer(SimpleBaseDeserializer):
-    """Deserialize JSON lines data from an inference endpoint."""
-
-    def __init__(self, accept="application/jsonlines"):
-        """Initialize a ``JSONLinesDeserializer`` instance.
-
-        Args:
-            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
-                is expected from the inference endpoint (default: ("text/csv","application/json")).
-        """
-        super(JSONLinesDeserializer, self).__init__(accept=accept)
-
-    def deserialize(self, stream, content_type):
-        """Deserialize JSON lines data from an inference endpoint.
-
-        See https://docs.python.org/3/library/json.html#py-to-json-table to
-        understand how JSON values are converted to Python objects.
-
-        Args:
-            stream (botocore.response.StreamingBody): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            list: A list of JSON serializable objects.
-        """
-        try:
-            body = stream.read().decode("utf-8")
-            lines = body.rstrip().split("\n")
-            return [json.loads(line) for line in lines]
-        finally:
-            stream.close()
+    return artifacts._retrieve_default_deserializer(
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        sagemaker_session=sagemaker_session,
+        model_type=model_type,
+        config_name=config_name,
+    )

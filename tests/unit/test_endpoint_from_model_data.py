@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,6 +17,11 @@ from botocore.exceptions import ClientError
 from mock import MagicMock, Mock
 from mock import patch
 
+from .common import (
+    _raise_unexpected_client_error,
+    _raise_does_already_exists_client_error,
+    _raise_does_not_exist_client_error,
+)
 import sagemaker
 
 ENDPOINT_NAME = "myendpoint"
@@ -39,15 +44,6 @@ def sagemaker_session():
     ims = sagemaker.Session(
         sagemaker_client=MagicMock(name="sagemaker_client"), boto_session=boto_mock
     )
-    ims.sagemaker_client.describe_model = Mock(
-        name="describe_model", side_effect=_raise_does_not_exist_client_error
-    )
-    ims.sagemaker_client.describe_endpoint_config = Mock(
-        name="describe_endpoint_config", side_effect=_raise_does_not_exist_client_error
-    )
-    ims.sagemaker_client.describe_endpoint = Mock(
-        name="describe_endpoint", side_effect=_raise_does_not_exist_client_error
-    )
     ims.create_model = Mock(name="create_model")
     ims.create_endpoint_config = Mock(name="create_endpoint_config")
     ims.create_endpoint = Mock(name="create_endpoint")
@@ -64,16 +60,6 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
         role=DEPLOY_ROLE,
         wait=False,
     )
-
-    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
-        EndpointName=NAME_FROM_IMAGE
-    )
-    sagemaker_session.sagemaker_client.describe_model.assert_called_once_with(
-        ModelName=NAME_FROM_IMAGE
-    )
-    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
-        EndpointConfigName=NAME_FROM_IMAGE
-    )
     sagemaker_session.create_model.assert_called_once_with(
         name=NAME_FROM_IMAGE, role=DEPLOY_ROLE, container_defs=CONTAINER_DEF, vpc_config=None
     )
@@ -84,9 +70,10 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
         data_capture_config_dict=None,
+        tags=None,
     )
     sagemaker_session.create_endpoint.assert_called_once_with(
-        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False
+        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False, tags=None
     )
     assert returned_name == NAME_FROM_IMAGE
 
@@ -108,16 +95,6 @@ def test_no_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessio
         model_vpc_config=VPC_CONFIG,
         accelerator_type=ACCELERATOR_TYPE,
     )
-
-    sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
-        EndpointName=ENDPOINT_NAME
-    )
-    sagemaker_session.sagemaker_client.describe_model.assert_called_once_with(
-        ModelName=ENDPOINT_NAME
-    )
-    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
-        EndpointConfigName=ENDPOINT_NAME
-    )
     sagemaker_session.create_model.assert_called_once_with(
         name=ENDPOINT_NAME,
         role=DEPLOY_ROLE,
@@ -131,36 +108,105 @@ def test_no_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessio
         instance_type=INSTANCE_TYPE,
         accelerator_type=ACCELERATOR_TYPE,
         data_capture_config_dict=None,
+        tags=None,
     )
     sagemaker_session.create_endpoint.assert_called_once_with(
-        endpoint_name=ENDPOINT_NAME, config_name=ENDPOINT_NAME, wait=False
+        endpoint_name=ENDPOINT_NAME, config_name=ENDPOINT_NAME, wait=False, tags=None
     )
     assert returned_name == ENDPOINT_NAME
 
 
 @patch("sagemaker.session.name_from_image", return_value=NAME_FROM_IMAGE)
 def test_model_and_endpoint_config_exist(name_from_image_mock, sagemaker_session):
-    sagemaker_session.sagemaker_client.describe_model = Mock(name="describe_model")
-    sagemaker_session.sagemaker_client.describe_endpoint_config = Mock(
-        name="describe_endpoint_config"
+    container_def_with_env = CONTAINER_DEF.copy()
+
+    sagemaker_session.create_endpoint_config = Mock(
+        name="create_endpoint_config", side_effect=_raise_does_already_exists_client_error
     )
 
-    sagemaker_session.endpoint_from_model_data(
-        model_s3_location=S3_MODEL_ARTIFACTS,
-        image_uri=DEPLOY_IMAGE,
+    try:
+        sagemaker_session.endpoint_from_model_data(
+            model_s3_location=S3_MODEL_ARTIFACTS,
+            image_uri=DEPLOY_IMAGE,
+            initial_instance_count=INITIAL_INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            wait=False,
+        )
+    except ClientError:
+        assert False, "Unexpected ClientError raised for resource already exists scenario"
+
+    sagemaker_session.create_model.assert_called_once_with(
+        name=NAME_FROM_IMAGE,
+        role=None,
+        container_defs=container_def_with_env,
+        vpc_config=None,
+    )
+    sagemaker_session.create_endpoint_config.assert_called_once_with(
+        name=NAME_FROM_IMAGE,
+        model_name=NAME_FROM_IMAGE,
         initial_instance_count=INITIAL_INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        wait=False,
+        accelerator_type=None,
+        data_capture_config_dict=None,
+        tags=None,
     )
-
-    sagemaker_session.create_model.assert_not_called()
-    sagemaker_session.create_endpoint_config.assert_not_called()
     sagemaker_session.create_endpoint.assert_called_once_with(
-        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False
+        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False, tags=None
     )
 
 
-def test_entity_exists():
+@patch("sagemaker.session.name_from_image", return_value=NAME_FROM_IMAGE)
+def test_model_and_endpoint_config_raises_unexpected_error(name_from_image_mock, sagemaker_session):
+    container_def_with_env = CONTAINER_DEF.copy()
+
+    sagemaker_session.create_endpoint_config = Mock(
+        name="create_endpoint_config", side_effect=_raise_unexpected_client_error
+    )
+
+    with pytest.raises(ClientError):
+        sagemaker_session.endpoint_from_model_data(
+            model_s3_location=S3_MODEL_ARTIFACTS,
+            image_uri=DEPLOY_IMAGE,
+            initial_instance_count=INITIAL_INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            wait=False,
+        )
+
+    sagemaker_session.create_model.assert_called_once_with(
+        name=NAME_FROM_IMAGE,
+        role=None,
+        container_defs=container_def_with_env,
+        vpc_config=None,
+    )
+    sagemaker_session.create_endpoint_config.assert_called_once_with(
+        name=NAME_FROM_IMAGE,
+        model_name=NAME_FROM_IMAGE,
+        initial_instance_count=INITIAL_INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        accelerator_type=None,
+        data_capture_config_dict=None,
+        tags=None,
+    )
+    sagemaker_session.create_endpoint.assert_not_called()
+
+
+def test_create_resource_entity_exists():
+    # _create_resource returns False
+    assert not sagemaker.session._create_resource(_raise_does_already_exists_client_error)
+
+
+def test_create_resource_unexpected_error():
+    # _create_resource returns ClientError
+    with pytest.raises(ClientError):
+        sagemaker.session._create_resource(_raise_unexpected_client_error)
+
+
+def test_create_resource_entity_doesnt_exist():
+    # _create_resource returns True
+    assert sagemaker.session._create_resource(lambda: None)
+
+
+def test_deployment_entity_exists():
     assert sagemaker.session._deployment_entity_exists(lambda: None)
 
 
@@ -169,16 +215,5 @@ def test_entity_doesnt_exist():
 
 
 def test_describe_failure():
-    def _raise_unexpected_client_error():
-        response = {
-            "Error": {"Code": "ValidationException", "Message": "Name does not satisfy expression."}
-        }
-        raise ClientError(error_response=response, operation_name="foo")
-
     with pytest.raises(ClientError):
         sagemaker.session._deployment_entity_exists(_raise_unexpected_client_error)
-
-
-def _raise_does_not_exist_client_error(**kwargs):
-    response = {"Error": {"Code": "ValidationException", "Message": "Could not find entity."}}
-    raise ClientError(error_response=response, operation_name="foo")

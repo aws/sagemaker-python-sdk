@@ -1,4 +1,4 @@
-# Copyright 2017-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,18 +20,27 @@ from sagemaker.model import Model
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 
+IMAGE_URI = "inference-container-uri"
+
 REGION = "us-west-2"
 
 NEO_REGION_ACCOUNT = "301217895009"
 DESCRIBE_COMPILATION_JOB_RESPONSE = {
     "CompilationJobStatus": "Completed",
     "ModelArtifacts": {"S3ModelArtifacts": "s3://output-path/model.tar.gz"},
+    "InferenceImage": IMAGE_URI,
 }
 
 
 @pytest.fixture
 def sagemaker_session():
-    return Mock(boto_region_name=REGION)
+    session = Mock(
+        boto_region_name=REGION,
+        default_bucket_prefix=None,
+    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
+    return session
 
 
 def _create_model(sagemaker_session=None):
@@ -44,7 +53,7 @@ def test_compile_model_for_inferentia(sagemaker_session):
     )
     model = _create_model(sagemaker_session)
     model.compile(
-        target_instance_family="ml_inf",
+        target_instance_family="ml_inf1",
         input_shape={"data": [1, 3, 1024, 1024]},
         output_path="s3://output",
         role="role",
@@ -52,12 +61,7 @@ def test_compile_model_for_inferentia(sagemaker_session):
         framework_version="1.15.0",
         job_name="compile-model",
     )
-    assert (
-        "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
-            NEO_REGION_ACCOUNT, REGION
-        )
-        == model.image_uri
-    )
+    assert DESCRIBE_COMPILATION_JOB_RESPONSE["InferenceImage"] == model.image_uri
     assert model._is_compiled_model is True
 
 
@@ -169,6 +173,7 @@ def test_compile_model_for_cloud_tflite(sagemaker_session):
 @patch("sagemaker.session.Session")
 def test_compile_creates_session(session):
     session.return_value.boto_region_name = REGION
+    session.return_value.sagemaker_config = {}
 
     model = _create_model()
     model.compile(
@@ -239,6 +244,31 @@ def test_compile_validates_model_data():
     assert "You must provide an S3 path to the compressed model artifacts." in str(e)
 
 
+def test_compile_validates_model_data_source():
+    model_data_src = {
+        "S3DataSource": {
+            "S3Uri": "s3://bucket/model/prefix",
+            "S3DataType": "S3Prefix",
+            "CompressionType": "None",
+        }
+    }
+    model = Model(MODEL_IMAGE, model_data=model_data_src)
+
+    with pytest.raises(
+        ValueError, match="Compiling model data from ModelDataSource is currently not supported"
+    ) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="tensorflow",
+            job_name="compile-model",
+        )
+
+    assert "Compiling model data from ModelDataSource is currently not supported" in str(e)
+
+
 def test_deploy_honors_provided_model_name(sagemaker_session):
     model = _create_model(sagemaker_session)
     model._is_compiled_model = True
@@ -271,11 +301,12 @@ def test_deploy_add_compiled_model_suffix_to_endpoint_name_from_model_name(sagem
     assert model.endpoint_name.startswith("{}-ml-c4".format(model_name))
 
 
-@patch("sagemaker.session.Session")
-def test_compile_with_framework_version_15(session):
-    session.return_value.boto_region_name = REGION
+def test_compile_with_framework_version_15(sagemaker_session):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
 
-    model = _create_model()
+    model = _create_model(sagemaker_session)
     model.compile(
         target_instance_family="ml_c4",
         input_shape={"data": [1, 3, 1024, 1024]},
@@ -286,14 +317,15 @@ def test_compile_with_framework_version_15(session):
         job_name="compile-model",
     )
 
-    assert "1.5" in model.image_uri
+    assert IMAGE_URI == model.image_uri
 
 
-@patch("sagemaker.session.Session")
-def test_compile_with_framework_version_16(session):
-    session.return_value.boto_region_name = REGION
+def test_compile_with_framework_version_16(sagemaker_session):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
 
-    model = _create_model()
+    model = _create_model(sagemaker_session)
     model.compile(
         target_instance_family="ml_c4",
         input_shape={"data": [1, 3, 1024, 1024]},
@@ -304,35 +336,17 @@ def test_compile_with_framework_version_16(session):
         job_name="compile-model",
     )
 
-    assert "1.6" in model.image_uri
-
-
-@patch("sagemaker.session.Session")
-def test_compile_validates_framework_version(session):
-    session.return_value.boto_region_name = REGION
-
-    model = _create_model()
-    with pytest.raises(ValueError) as e:
-        model.compile(
-            target_instance_family="ml_c4",
-            input_shape={"data": [1, 3, 1024, 1024]},
-            output_path="s3://output",
-            role="role",
-            framework="pytorch",
-            framework_version="1.6.1",
-            job_name="compile-model",
-        )
-
-    assert "Unsupported neo-pytorch version: 1.6.1." in str(e)
+    assert IMAGE_URI == model.image_uri
 
 
 @patch("sagemaker.session.Session")
 def test_compile_with_pytorch_neo_in_ml_inf(session):
     session.return_value.boto_region_name = REGION
+    session.return_value.sagemaker_config = {}
 
     model = _create_model()
     model.compile(
-        target_instance_family="ml_inf",
+        target_instance_family="ml_inf1",
         input_shape={"data": [1, 3, 1024, 1024]},
         output_path="s3://output",
         role="role",
@@ -347,3 +361,61 @@ def test_compile_with_pytorch_neo_in_ml_inf(session):
         )
         != model.image_uri
     )
+
+
+@patch("sagemaker.session.Session")
+def test_compile_with_tensorflow_neo_in_ml_inf(session):
+    session.return_value.boto_region_name = REGION
+    session.return_value.sagemaker_config = {}
+
+    model = _create_model()
+    model.compile(
+        target_instance_family="ml_inf1",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tensorflow",
+        framework_version="1.15",
+        job_name="compile-model",
+    )
+
+    assert (
+        "{}.dkr.ecr.{}.amazonaws.com/sagemaker-inference-tensorflow:1.15-cpu-py3".format(
+            NEO_REGION_ACCOUNT, REGION
+        )
+        != model.image_uri
+    )
+
+
+@pytest.mark.parametrize(
+    "target,framework,fx_version,expected_fx_version",
+    [
+        ("ml_c4", "pytorch", "1.6", "1.6"),
+        ("rasp3b", "pytorch", "1.6.1", "1.6"),
+        ("amba_cv2", "pytorch", "1.6.1", None),
+        ("ml_c4", "tensorflow", "1.15.1", "1.15"),
+        ("ml_c4", "tensorflow", "2.15.1", "2.15"),
+        ("ml_inf1", "tensorflow", "2.15.1", "2.15"),
+        ("ml_inf2", "pytorch", "2.0", "2.0"),
+        ("ml_inf2", "pytorch", "2.0.1", "2.0"),
+        ("ml_trn1", "pytorch", "2.0.1", "2.0"),
+        ("ml_trn1", "tensorflow", "2.0.1", "2.0"),
+    ],
+)
+def test_compile_validates_framework_version(
+    sagemaker_session, target, framework, fx_version, expected_fx_version
+):
+    model = _create_model(sagemaker_session)
+    config = model._compilation_job_config(
+        target,
+        {"data": [1, 3, 1024, 1024]},
+        "s3://output",
+        "role",
+        900,
+        "compile-model",
+        framework,
+        None,
+        framework_version=fx_version,
+    )
+
+    assert config["input_model_config"].get("FrameworkVersion", None) == expected_fx_version

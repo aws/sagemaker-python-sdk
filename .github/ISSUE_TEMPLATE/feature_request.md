@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest new functionality for this library
 title: ''
-labels: ''
+labels: 'feature request'
 assignees: ''
 
 ---

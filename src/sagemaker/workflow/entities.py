@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,7 +16,10 @@ from __future__ import absolute_import
 import abc
 
 from enum import EnumMeta
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sagemaker.workflow.steps import Step
 
 PrimitiveType = Union[str, int, bool, float, None]
 RequestType = Union[Dict[str, Any], List[Dict[str, Any]]]
@@ -57,3 +60,64 @@ class Expression(abc.ABC):
     @abc.abstractmethod
     def expr(self) -> RequestType:
         """Get the expression structure for workflow service calls."""
+
+
+class PipelineVariable(Expression):
+    """Base object for pipeline variables
+
+    PipelineVariable subclasses must implement the expr property. Its subclasses include:
+    :class:`~sagemaker.workflow.parameters.Parameter`,
+    :class:`~sagemaker.workflow.properties.Properties`,
+    :class:`~sagemaker.workflow.functions.Join`,
+    :class:`~sagemaker.workflow.functions.JsonGet`,
+    :class:`~sagemaker.workflow.execution_variables.ExecutionVariable`.
+    :class:`~sagemaker.workflow.step_outputs.StepOutput`.
+    """
+
+    def __add__(self, other: Union[Expression, PrimitiveType]):
+        """Add function for PipelineVariable
+
+        Args:
+            other (Union[Expression, PrimitiveType]): The other object to be concatenated.
+
+        Always raise an error since pipeline variables do not support concatenation
+        """
+
+        raise TypeError("Pipeline variables do not support concatenation.")
+
+    def __str__(self):
+        """Override built-in String function for PipelineVariable"""
+        raise TypeError(
+            "Pipeline variables do not support __str__ operation. "
+            "Please use `.to_string()` to convert it to string type in execution time "
+            "or use `.expr` to translate it to Json for display purpose in Python SDK."
+        )
+
+    def __int__(self):
+        """Override built-in Integer function for PipelineVariable"""
+        raise TypeError("Pipeline variables do not support __int__ operation.")
+
+    def __float__(self):
+        """Override built-in Float function for PipelineVariable"""
+        raise TypeError("Pipeline variables do not support __float__ operation.")
+
+    def to_string(self):
+        """Prompt the pipeline to convert the pipeline variable to String in runtime"""
+        from sagemaker.workflow.functions import Join
+
+        return Join(on="", values=[self])
+
+    @property
+    @abc.abstractmethod
+    def expr(self) -> RequestType:
+        """Get the expression structure for workflow service calls."""
+
+    @property
+    def _pickleable(self):
+        """A pickleable object that can be used in a function step."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def _referenced_steps(self) -> List[Union["Step", str]]:
+        """List of steps that this variable is generated from."""

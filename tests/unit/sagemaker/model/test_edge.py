@@ -1,4 +1,4 @@
-# Copyright 2020-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -30,7 +30,13 @@ DESCRIBE_EDGE_PACKAGING_JOB_RESPONSE = {
 
 @pytest.fixture
 def sagemaker_session():
-    return Mock(boto_region_name=REGION)
+    session = Mock(
+        boto_region_name=REGION,
+        default_bucket_prefix=None,
+    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
+    return session
 
 
 def _create_model(sagemaker_session=None):

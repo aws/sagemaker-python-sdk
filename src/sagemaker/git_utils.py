@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import os
+from pathlib import Path
 import subprocess
 import tempfile
 import warnings
@@ -174,7 +175,7 @@ def _clone_command_for_github_like(git_config, dest_dir):
         CalledProcessError: If failed to clone git repo.
     """
     is_https = git_config["repo"].startswith("https://")
-    is_ssh = git_config["repo"].startswith("git@")
+    is_ssh = git_config["repo"].startswith("git@") or git_config["repo"].startswith("ssh://")
     if not is_https and not is_ssh:
         raise ValueError("Invalid Git url provided.")
     if is_ssh:
@@ -277,13 +278,18 @@ def _run_clone_command(repo_url, dest_dir):
     if repo_url.startswith("https://"):
         my_env["GIT_TERMINAL_PROMPT"] = "0"
         subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
-    elif repo_url.startswith("git@"):
-        with tempfile.NamedTemporaryFile() as sshnoprompt:
-            write_pipe = open(sshnoprompt.name, "w")
-            write_pipe.write("ssh -oBatchMode=yes $@")
-            write_pipe.close()
-            os.chmod(sshnoprompt.name, 0o511)
-            my_env["GIT_SSH"] = sshnoprompt.name
+    elif repo_url.startswith("git@") or repo_url.startswith("ssh://"):
+        try:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                custom_ssh_executable = Path(tmp_dir) / "ssh_batch"
+                with open(custom_ssh_executable, "w") as pipe:
+                    print("#!/bin/sh", file=pipe)
+                    print("ssh -oBatchMode=yes $@", file=pipe)
+                os.chmod(custom_ssh_executable, 0o511)
+                my_env["GIT_SSH"] = str(custom_ssh_executable)
+                subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
+        except subprocess.CalledProcessError:
+            del my_env["GIT_SSH"]
             subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
 
 

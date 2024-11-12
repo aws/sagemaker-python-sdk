@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,25 +13,29 @@
 """This file contains code related to metadata properties."""
 from __future__ import absolute_import
 
+from typing import Optional, Union
+
+from sagemaker.workflow.entities import PipelineVariable
+
 
 class MetadataProperties(object):
     """Accepts metadata properties parameters for conversion to request dict."""
 
     def __init__(
         self,
-        commit_id=None,
-        repository=None,
-        generated_by=None,
-        project_id=None,
+        commit_id: Optional[Union[str, PipelineVariable]] = None,
+        repository: Optional[Union[str, PipelineVariable]] = None,
+        generated_by: Optional[Union[str, PipelineVariable]] = None,
+        project_id: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Initialize a ``MetadataProperties`` instance and turn parameters into dict.
 
         # TODO: flesh out docstrings
         Args:
-            commit_id (str):
-            repository (str):
-            generated_by (str):
-            project_id (str):
+            commit_id (str or PipelineVariable):
+            repository (str or PipelineVariable):
+            generated_by (str or PipelineVariable):
+            project_id (str or PipelineVariable):
         """
         self.commit_id = commit_id
         self.repository = repository

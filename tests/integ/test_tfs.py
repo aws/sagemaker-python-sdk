@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -150,19 +150,6 @@ def test_predict(tfs_predictor):
     expected_result = {"predictions": [3.5, 4.0, 5.5]}
 
     result = tfs_predictor.predict(input_data)
-    assert expected_result == result
-
-
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
-    reason="EI is not supported in region {}".format(tests.integ.test_region()),
-)
-@pytest.mark.release
-def test_predict_with_accelerator(tfs_predictor_with_accelerator):
-    input_data = {"instances": [1.0, 2.0, 5.0]}
-    expected_result = {"predictions": [3.5, 4.0, 5.5]}
-
-    result = tfs_predictor_with_accelerator.predict(input_data)
     assert expected_result == result
 
 

@@ -202,6 +202,7 @@ location of your offline store.
        role_arn = role,
        s3_uri = offline_feature_store_bucket,
        enable_online_store = True,
+       ttl_duration = None,
        online_store_kms_key_id = None,
        offline_store_kms_key_id = None,
        disable_glue_table_creation = False,
@@ -229,9 +230,11 @@ The following code from the fraud detection example shows a minimal
        enable_online_store=True
    )
 
-Creating a feature group takes time as the data is loaded. You will need
-to wait until it is created before you can use it. You can check status
-using the following method.
+Creating a feature group takes time as the data is loaded. You will
+need to wait until it is created before you can use it. You can
+check status using the following method. Note that it can take
+approximately 10-15 minutes to provision an online ``FeatureGroup``
+with the ``InMemory`` ``StorageType``.
 
 .. code:: python
 
@@ -380,10 +383,108 @@ location for the data set to be saved there.
 From here you can train a model using this data set and then perform
 inference.
 
+.. rubric:: Using the Offline Store SDK: Getting Started
+   :name: bCe9CA61b79
+
+The Feature Store Offline SDK provides the ability to quickly and easily
+build ML-ready datasets for use by ML model training or pre-processing.
+The SDK makes it easy to build datasets from SQL join, point-in-time accurate
+join, and event range time frames, all without the need to write any SQL code.
+This functionality is accessed via the DatasetBuilder class which is the
+primary entry point for the SDK functionality.
+
+.. code:: python
+
+   from sagemaker.feature_store.feature_store import FeatureStore
+
+   feature_store = FeatureStore(sagemaker_session=feature_store_session)
+
+.. code:: python
+
+   base_feature_group = identity_feature_group
+   target_feature_group = transaction_feature_group
+
+You can create dataset using `create_dataset` of feature store API.
+`base` can either be a feature group or a pandas dataframe.
+
+.. code:: python
+
+   result_df, query = feature_store.create_dataset(
+      base=base_feature_group,
+      output_path=f"s3://{s3_bucket_name}"
+   ).to_dataframe()
+
+If you want to join other feature group, you can specify extra
+feature group using `with_feature_group` method.
+
+.. code:: python
+
+   dataset_builder = feature_store.create_dataset(
+      base=base_feature_group,
+      output_path=f"s3://{s3_bucket_name}"
+   ).with_feature_group(target_feature_group, record_identifier_name)
+
+   result_df, query = dataset_builder.to_dataframe()
+
+.. rubric:: Using the Offline Store SDK: Configuring the DatasetBuilder
+   :name: bCe9CA61b80
+
+How the DatasetBuilder produces the resulting dataframe can be configured
+in various ways.
+
+By default the Python SDK will exclude all deleted and duplicate records.
+However if you need either of them in returned dataset, you can call
+`include_duplicated_records` or `include_deleted_records` when creating
+dataset builder.
+
+.. code:: python
+
+   dataset_builder.include_duplicated_records()
+   dataset_builder.include_deleted_records()
+
+The DatasetBuilder provides `with_number_of_records_from_query_results` and
+`with_number_of_recent_records_by_record_identifier` methods to limit the
+number of records returned for the offline snapshot.
+
+`with_number_of_records_from_query_results` will limit the number of records
+in the output. For example, when N = 100, only 100 records are going to be
+returned in either the csv or dataframe.
+
+.. code:: python
+
+   dataset_builder.with_number_of_records_from_query_results(number_of_records=N)
+
+On the other hand, `with_number_of_recent_records_by_record_identifier` is
+used to deal with records which have the same identifier. They are going
+to be sorted according to `event_time` and return at most N recent records
+in the output.
+
+.. code:: python
+
+   dataset_builder.with_number_of_recent_records_by_record_identifier(number_of_recent_records=N)
+
+Since these functions return the dataset builder, these functions can
+be chained.
+
+.. code:: python
+
+   dataset_builder
+      .with_number_of_records_from_query_results(number_of_records=N)
+      .include_duplicated_records()
+      .with_number_of_recent_records_by_record_identifier(number_of_recent_records=N)
+      .to_dataframe()
+
+There are additional configurations that can be made for various use cases,
+such as time travel and point-in-time join. These are outlined in the
+Feature Store `DatasetBuilder API Reference
+<https://sagemaker.readthedocs.io/en/stable/api/prep_data/feature_store.html#dataset-builder>`__.
+
 .. rubric:: Delete a feature group
    :name: bCe9CA61b78
 
-You can delete a feature group with the ``delete`` function.
+You can delete a feature group with the ``delete`` function. Note that it
+can take approximately 10-15 minutes to delete an online ``FeatureGroup``
+with the ``InMemory`` ``StorageType``.
 
 .. code:: python
 
@@ -395,3 +496,4 @@ The following code example is from the fraud detection example.
 
    identity_feature_group.delete()
    transaction_feature_group.delete()
+

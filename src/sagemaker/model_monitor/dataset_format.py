@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -59,3 +59,44 @@ class DatasetFormat(object):
 
         """
         return {"sagemakerCaptureJson": {}}
+
+
+class MonitoringDatasetFormat(object):
+    """Represents a Dataset Format that is used when calling a DefaultModelMonitor."""
+
+    @staticmethod
+    def csv(header=True):
+        """Returns a DatasetFormat JSON string for use with a DefaultModelMonitor.
+
+        Args:
+            header (bool): Whether the csv dataset to baseline and monitor has a header.
+                Default: True.
+
+        Returns:
+            dict: JSON string containing DatasetFormat to be used by DefaultModelMonitor.
+
+        """
+        return {"Csv": {"Header": header}}
+
+    @staticmethod
+    def json(lines=True):
+        """Returns a DatasetFormat JSON string for use with a DefaultModelMonitor.
+
+        Args:
+            lines (bool): Whether the file should be read as a json object per line. Default: True.
+
+        Returns:
+            dict: JSON string containing DatasetFormat to be used by DefaultModelMonitor.
+
+        """
+        return {"Json": {"Line": lines}}
+
+    @staticmethod
+    def parquet():
+        """Returns a DatasetFormat SageMaker Capture Json string for use with a DefaultModelMonitor.
+
+        Returns:
+            dict: JSON string containing DatasetFormat to be used by DefaultModelMonitor.
+
+        """
+        return {"Parquet": {}}

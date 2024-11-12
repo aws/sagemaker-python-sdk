@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,6 +20,8 @@ import os
 import pandas as pd
 import pytest
 import tempfile
+import uuid
+import time
 
 import tests.integ
 import tests.integ.timeout
@@ -33,6 +35,8 @@ from sagemaker.model_monitor import (
     ExplainabilityAnalysisConfig,
     ModelBiasMonitor,
     ModelExplainabilityMonitor,
+    BatchTransformInput,
+    MonitoringDatasetFormat,
 )
 from sagemaker.s3 import S3Uploader
 from sagemaker.utils import unique_name_from_base
@@ -53,6 +57,7 @@ ENDPOINT_INPUT_LOCAL_PATH = "/opt/ml/processing/input/endpoint"
 HEADER_OF_LABEL = "Label"
 HEADERS_OF_FEATURES = ["F1", "F2", "F3", "F4", "F5", "F6", "F7"]
 ALL_HEADERS = [*HEADERS_OF_FEATURES, HEADER_OF_LABEL]
+HEADER_OF_PREDICTION = "Decision"
 DATASET_TYPE = "text/csv"
 CONTENT_TYPE = DATASET_TYPE
 ACCEPT_TYPE = DATASET_TYPE
@@ -64,7 +69,7 @@ SHAP_BASELINE = [[13, 17, 23, 24, 21, 21, 22]]
 SHAP_NUM_OF_SAMPLES = 5
 SHAP_AGG_METHOD = "mean_abs"
 
-CRON = "cron(*/5 * * * ? *)"
+CRON = "cron(0 * * * ? *)"
 UPDATED_CRON = CronExpressionGenerator.daily()
 MAX_RUNTIME_IN_SECONDS = 30 * 60
 UPDATED_MAX_RUNTIME_IN_SECONDS = 25 * 60
@@ -233,6 +238,71 @@ def scheduled_bias_monitor(
     return bias_monitor
 
 
+def test_one_time_bias_monitor(bias_monitor, sagemaker_session, bias_config):
+    monitor_schedule_name = utils.unique_name_from_base("bias-monitor")
+    ground_truth_input = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        "IntegTestGroundtruth",
+    )
+    bias_analysis_config = BiasAnalysisConfig(
+        bias_config, headers=ALL_HEADERS, label=HEADER_OF_LABEL
+    )
+    s3_uri_monitoring_output = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        monitor_schedule_name,
+        "monitor_output",
+    )
+    # To include probability threshold
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+        probability_threshold_attribute=BIAS_PROBABILITY_THRESHOLD,
+    )
+
+    start = datetime.now()
+
+    bias_monitor.create_monitoring_schedule(
+        monitor_schedule_name=monitor_schedule_name,
+        analysis_config=bias_analysis_config,
+        batch_transform_input=batch_transform_input,
+        ground_truth_input=ground_truth_input,
+        output_s3_uri=s3_uri_monitoring_output,
+        schedule_cron_expression=CronExpressionGenerator.now(),
+        data_analysis_start_time=START_TIME_OFFSET,
+        data_analysis_end_time=END_TIME_OFFSET,
+    )
+
+    try:
+        _wait_for_first_execution_to_start(monitor=bias_monitor)
+
+        # storing the start time as soon as an execution starts
+        end = datetime.now()
+
+        _wait_for_first_execution_to_complete(monitor=bias_monitor)
+        bias_monitor.stop_monitoring_schedule()
+        bias_monitor.delete_monitoring_schedule()
+
+        # the execution should start within 30 minutes
+        assert (end - start).total_seconds() < 30 * 60
+
+    except Exception as e:
+        bias_monitor.stop_monitoring_schedule()
+        bias_monitor.delete_monitoring_schedule()
+        raise e
+
+
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
@@ -290,6 +360,7 @@ def test_bias_monitor(sagemaker_session, scheduled_bias_monitor, endpoint_name, 
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_run_bias_monitor(
     scheduled_bias_monitor, sagemaker_session, endpoint_name, ground_truth_input, upload_actual_data
 ):
@@ -325,7 +396,7 @@ def scheduled_explainability_monitor(
 ):
     monitor_schedule_name = utils.unique_name_from_base("explainability-monitor")
     analysis_config = ExplainabilityAnalysisConfig(
-        shap_config, model_config, headers=HEADERS_OF_FEATURES
+        shap_config, model_config, headers=HEADERS_OF_FEATURES, label_headers=[HEADER_OF_PREDICTION]
     )
     s3_uri_monitoring_output = os.path.join(
         "s3://",
@@ -399,6 +470,7 @@ def test_explainability_monitor(sagemaker_session, scheduled_explainability_moni
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_run_explainability_monitor(
     scheduled_explainability_monitor,
     sagemaker_session,
@@ -550,6 +622,7 @@ def _upload_actual_data(sagemaker_session, endpoint_name, actuals_s3_uri_base):
     capture_s3_uri_base = os.path.join(
         "s3://",
         sagemaker_session.default_bucket(),
+        sagemaker_session.default_bucket_prefix,
         "model-monitor",
         "data-capture",
         endpoint_name,
@@ -595,4 +668,39 @@ def _wait_for_completion(monitor):
                 monitor.stop_monitoring_schedule()
         # End this loop once the execution has reached a terminal state.
         if last_execution_status in ["Completed", "CompletedWithViolations", "Failed", "Stopped"]:
+            break
+
+
+def _wait_for_first_execution_to_complete(monitor):
+    for _ in retries(
+        max_retry_count=30,
+        exception_message_prefix="Waiting for first execution to reach terminal state",
+        seconds_to_sleep=60,
+    ):
+        schedule_desc = monitor.describe_schedule()
+        execution_summary = schedule_desc.get("LastMonitoringExecutionSummary")
+
+        # Once there is an execution, we can break
+        if execution_summary is not None:
+            monitor.stop_monitoring_schedule()
+            last_execution_status = execution_summary["MonitoringExecutionStatus"]
+
+            if last_execution_status not in ["Pending", "InProgess"]:
+                # to prevent delete as it takes sometime for schedule to update out of InProgress
+                time.sleep(120)
+                break
+
+
+def _wait_for_first_execution_to_start(monitor):
+    for _ in retries(
+        max_retry_count=30,
+        exception_message_prefix="Waiting for an execution for the schedule to start",
+        seconds_to_sleep=60,
+    ):
+        schedule_desc = monitor.describe_schedule()
+        execution_summary = schedule_desc.get("LastMonitoringExecutionSummary")
+
+        # Once there is an execution, we can break
+        if execution_summary is not None:
+            monitor.stop_monitoring_schedule()
             break

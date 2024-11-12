@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,9 +25,7 @@ TRAINING_DATA = os.path.join(DATA_DIR, "iris_training.csv")
 TARGET_ATTRIBUTE_NAME = "virginica"
 
 
-def create_auto_ml_job_if_not_exist(sagemaker_session):
-    auto_ml_job_name = "python-sdk-integ-test-base-job"
-
+def create_auto_ml_job_if_not_exist(sagemaker_session, auto_ml_job_name):
     try:
         sagemaker_session.describe_auto_ml_job(job_name=auto_ml_job_name)
     except Exception as e:  # noqa: F841

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import base64
 import copy
@@ -30,16 +30,19 @@ import sys
 import tarfile
 import tempfile
 
-from distutils.spawn import find_executable
 from threading import Thread
+from typing import Dict, List
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
+from sagemaker.config.config_schema import CONTAINER_CONFIG, LOCAL
 import sagemaker.local.data
 import sagemaker.local.utils
 import sagemaker.utils
+from sagemaker.utils import custom_extractall_tarfile
 
 CONTAINER_PREFIX = "algo"
+STUDIO_HOST_NAME = "sagemaker-local"
 DOCKER_COMPOSE_FILENAME = "docker-compose.yaml"
 DOCKER_COMPOSE_HTTP_TIMEOUT_ENV = "COMPOSE_HTTP_TIMEOUT"
 DOCKER_COMPOSE_HTTP_TIMEOUT = "120"
@@ -48,6 +51,14 @@ DOCKER_COMPOSE_HTTP_TIMEOUT = "120"
 REGION_ENV_NAME = "AWS_REGION"
 TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
 S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
+SM_STUDIO_LOCAL_MODE = "SM_STUDIO_LOCAL_MODE"
+
+# SELinux Enabled
+SELINUX_ENABLED = os.environ.get("SAGEMAKER_LOCAL_SELINUX_ENABLED", "False").lower() in [
+    "1",
+    "true",
+    "yes",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -87,14 +98,8 @@ class _SageMakerContainer(object):
         from sagemaker.local.local_session import LocalSession
 
         # check if docker-compose is installed
-        if find_executable("docker-compose") is None:
-            raise ImportError(
-                "'docker-compose' is not installed. "
-                "Local Mode features will not work without docker-compose. "
-                "For more information on how to install 'docker-compose', please, see "
-                "https://docs.docker.com/compose/install/"
-            )
 
+        self.compose_cmd_prefix = _SageMakerContainer._get_compose_cmd_prefix()
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.instance_type = instance_type
         self.instance_count = instance_count
@@ -104,15 +109,84 @@ class _SageMakerContainer(object):
         # Since we are using a single docker network, Generate a random suffix to attach to the
         # container names. This way multiple jobs can run in parallel.
         suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
-        self.hosts = [
-            "{}-{}-{}".format(CONTAINER_PREFIX, i, suffix)
-            for i in range(1, self.instance_count + 1)
-        ]
+        self.is_studio = sagemaker.local.utils.check_for_studio()
+        if self.is_studio:
+            if self.instance_count > 1:
+                raise NotImplementedError(
+                    "Multi instance Local Mode execution is "
+                    "currently not supported in SageMaker Studio."
+                )
+            # For studio use-case, directories need to be created in `~/tmp`, rather than /tmp
+            home = os.path.expanduser("~")
+            root_dir = os.path.join(home, "tmp")
+            if not os.path.isdir(root_dir):
+                os.mkdir(root_dir)
+            if self.sagemaker_session.config:
+                self.sagemaker_session.config["local"]["container_root"] = root_dir
+            else:
+                self.sagemaker_session.config = {"local": {"container_root": root_dir}}
+            # Studio only supports single instance run
+            self.hosts = [STUDIO_HOST_NAME]
+        else:
+            self.hosts = [
+                "{}-{}-{}".format(CONTAINER_PREFIX, i, suffix)
+                for i in range(1, self.instance_count + 1)
+            ]
+
         self.container_root = None
         self.container = None
 
+    @staticmethod
+    def _get_compose_cmd_prefix():
+        """Gets the Docker Compose command.
+
+        The method initially looks for 'docker compose' v2
+        executable, if not found looks for 'docker-compose' executable.
+
+        Returns:
+            Docker Compose executable split into list.
+
+        Raises:
+            ImportError: If Docker Compose executable was not found.
+        """
+        compose_cmd_prefix = []
+
+        output = None
+        try:
+            output = subprocess.check_output(
+                ["docker", "compose", "version"],
+                stderr=subprocess.DEVNULL,
+                encoding="UTF-8",
+            )
+        except subprocess.CalledProcessError:
+            logger.info(
+                "'Docker Compose' is not installed. "
+                "Proceeding to check for 'docker-compose' CLI."
+            )
+
+        if output and "v2" in output.strip():
+            logger.info("'Docker Compose' found using Docker CLI.")
+            compose_cmd_prefix.extend(["docker", "compose"])
+            return compose_cmd_prefix
+
+        if shutil.which("docker-compose") is not None:
+            logger.info("'Docker Compose' found using Docker Compose CLI.")
+            compose_cmd_prefix.extend(["docker-compose"])
+            return compose_cmd_prefix
+
+        raise ImportError(
+            "Docker Compose is not installed. "
+            "Local Mode features will not work without docker compose. "
+            "For more information on how to install 'docker compose', please, see "
+            "https://docs.docker.com/compose/install/"
+        )
+
     def process(
-        self, processing_inputs, processing_output_config, environment, processing_job_name
+        self,
+        processing_inputs,
+        processing_output_config,
+        environment,
+        processing_job_name,
     ):
         """Run a processing job locally using docker-compose.
 
@@ -139,28 +213,27 @@ class _SageMakerContainer(object):
         for host in self.hosts:
             _create_processing_config_file_directories(self.container_root, host)
             self.write_processing_config_files(
-                host, environment, processing_inputs, processing_output_config, processing_job_name
+                host,
+                environment,
+                processing_inputs,
+                processing_output_config,
+                processing_job_name,
             )
 
         self._generate_compose_file(
             "process", additional_volumes=volumes, additional_env_vars=environment
         )
-        compose_command = self._compose()
 
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
 
+        compose_command = self._compose()
         process = subprocess.Popen(
             compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
         try:
             _stream_output(process)
-        except RuntimeError as e:
-            # _stream_output() doesn't have the command line. We will handle the exception
-            # which contains the exit code and append the command line to it.
-            msg = f"Failed to run: {compose_command}"
-            raise RuntimeError(msg) from e
         finally:
             # Uploading processing outputs back to Amazon S3.
             self._upload_processing_outputs(data_dir, processing_output_config)
@@ -174,9 +247,9 @@ class _SageMakerContainer(object):
 
         # Print our Job Complete line to have a similar experience to training on SageMaker where
         # you see this line at the end.
-        print("===== Job Complete =====")
+        logger.info("===== Job Complete =====")
 
-    def train(self, input_data_config, output_data_config, hyperparameters, job_name):
+    def train(self, input_data_config, output_data_config, hyperparameters, environment, job_name):
         """Run a training job locally using docker-compose.
 
         Args:
@@ -184,6 +257,7 @@ class _SageMakerContainer(object):
                 channels to be used for training.
             output_data_config: The configuration of the output data.
             hyperparameters (dict): The HyperParameters for the training job.
+            environment (dict): The environment collection for the training job.
             job_name (str): Name of the local training job being run.
 
         Returns (str): Location of the trained model.
@@ -217,30 +291,26 @@ class _SageMakerContainer(object):
             REGION_ENV_NAME: self.sagemaker_session.boto_region_name,
             TRAINING_JOB_NAME_ENV_NAME: job_name,
         }
+        training_env_vars.update(environment)
         if self.sagemaker_session.s3_resource is not None:
-            training_env_vars[
-                S3_ENDPOINT_URL_ENV_NAME
-            ] = self.sagemaker_session.s3_resource.meta.client._endpoint.host
+            training_env_vars[S3_ENDPOINT_URL_ENV_NAME] = (
+                self.sagemaker_session.s3_resource.meta.client._endpoint.host
+            )
 
         compose_data = self._generate_compose_file(
             "train", additional_volumes=volumes, additional_env_vars=training_env_vars
         )
-        compose_command = self._compose()
 
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
 
+        compose_command = self._compose()
         process = subprocess.Popen(
             compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
         try:
             _stream_output(process)
-        except RuntimeError as e:
-            # _stream_output() doesn't have the command line. We will handle the exception
-            # which contains the exit code and append the command line to it.
-            msg = "Failed to run: %s, %s" % (compose_command, str(e))
-            raise RuntimeError(msg)
         finally:
             artifacts = self.retrieve_artifacts(compose_data, output_data_config, job_name)
 
@@ -252,7 +322,7 @@ class _SageMakerContainer(object):
 
         # Print our Job Complete line to have a similar experience to training on SageMaker where
         # you see this line at the end.
-        print("===== Job Complete =====")
+        logger.info("===== Job Complete =====")
         return artifacts
 
     def serve(self, model_dir, environment):
@@ -277,7 +347,8 @@ class _SageMakerContainer(object):
             script_dir = environment[sagemaker.estimator.DIR_PARAM_NAME.upper()]
             parsed_uri = urlparse(script_dir)
             if parsed_uri.scheme == "file":
-                volumes.append(_Volume(parsed_uri.path, "/opt/ml/code"))
+                host_dir = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
+                volumes.append(_Volume(host_dir, "/opt/ml/code"))
                 # Update path to mount location
                 environment = environment.copy()
                 environment[sagemaker.estimator.DIR_PARAM_NAME.upper()] = "/opt/ml/code"
@@ -288,6 +359,7 @@ class _SageMakerContainer(object):
         self._generate_compose_file(
             "serve", additional_env_vars=environment, additional_volumes=volumes
         )
+
         compose_command = self._compose()
 
         self.container = _HostingContainer(compose_command)
@@ -338,6 +410,7 @@ class _SageMakerContainer(object):
         # Gather the artifacts from all nodes into artifacts/model and artifacts/output
         for host in self.hosts:
             volumes = compose_data["services"][str(host)]["volumes"]
+            volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
             for volume in volumes:
                 if re.search(r"^[A-Za-z]:", volume):
                     unit, host_dir, container_dir = volume.split(":")
@@ -370,6 +443,7 @@ class _SageMakerContainer(object):
                 output_data_config["S3OutputPath"],
                 job_name,
                 self.sagemaker_session,
+                prefix="output",
             )
 
         _delete_tree(model_artifacts)
@@ -378,7 +452,12 @@ class _SageMakerContainer(object):
         return os.path.join(output_data, "model.tar.gz")
 
     def write_processing_config_files(
-        self, host, environment, processing_inputs, processing_output_config, processing_job_name
+        self,
+        host,
+        environment,
+        processing_inputs,
+        processing_output_config,
+        processing_job_name,
     ):
         """Write the config files for the processing containers.
 
@@ -495,7 +574,8 @@ class _SageMakerContainer(object):
             training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
             parsed_uri = urlparse(training_dir)
             if parsed_uri.scheme == "file":
-                volumes.append(_Volume(parsed_uri.path, "/opt/ml/code"))
+                host_dir = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
+                volumes.append(_Volume(host_dir, "/opt/ml/code"))
                 # Also mount a directory that all the containers can access.
                 volumes.append(_Volume(shared_dir, "/opt/ml/shared"))
 
@@ -504,7 +584,8 @@ class _SageMakerContainer(object):
             parsed_uri.scheme == "file"
             and sagemaker.model.SAGEMAKER_OUTPUT_LOCATION in hyperparameters
         ):
-            intermediate_dir = os.path.join(parsed_uri.path, "output", "intermediate")
+            dir_path = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
+            intermediate_dir = os.path.join(dir_path, "output", "intermediate")
             if not os.path.exists(intermediate_dir):
                 os.makedirs(intermediate_dir)
             volumes.append(_Volume(intermediate_dir, "/opt/ml/output/intermediate"))
@@ -605,7 +686,7 @@ class _SageMakerContainer(object):
         for filename in model_data_source.get_file_list():
             if tarfile.is_tarfile(filename):
                 with tarfile.open(filename) as tar:
-                    tar.extractall(path=model_data_source.get_root_dir())
+                    custom_extractall_tarfile(tar, model_data_source.get_root_dir())
 
         volumes.append(_Volume(model_data_source.get_root_dir(), "/opt/ml/model"))
 
@@ -642,6 +723,9 @@ class _SageMakerContainer(object):
         additional_env_var_list = ["{}={}".format(k, v) for k, v in additional_env_vars.items()]
         environment.extend(additional_env_var_list)
 
+        if self.is_studio:
+            environment.extend([f"{SM_STUDIO_LOCAL_MODE}=True"])
+
         if os.environ.get(DOCKER_COMPOSE_HTTP_TIMEOUT_ENV) is None:
             os.environ[DOCKER_COMPOSE_HTTP_TIMEOUT_ENV] = DOCKER_COMPOSE_HTTP_TIMEOUT
 
@@ -655,12 +739,19 @@ class _SageMakerContainer(object):
             for h in self.hosts
         }
 
-        content = {
-            # Use version 2.3 as a minimum so that we can specify the runtime
-            "version": "2.3",
-            "services": services,
-            "networks": {"sagemaker-local": {"name": "sagemaker-local"}},
-        }
+        if self.is_studio:
+            content = {
+                # Use version 2.3 as a minimum so that we can specify the runtime
+                "version": "2.3",
+                "services": services,
+            }
+        else:
+            content = {
+                # Use version 2.3 as a minimum so that we can specify the runtime
+                "version": "2.3",
+                "services": services,
+                "networks": {"sagemaker-local": {"name": "sagemaker-local"}},
+            }
 
         docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
 
@@ -689,10 +780,9 @@ class _SageMakerContainer(object):
         Args:
             detached:
         """
-        compose_cmd = "docker-compose"
+        compose_cmd = self.compose_cmd_prefix
 
         command = [
-            compose_cmd,
             "-f",
             os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
             "up",
@@ -700,18 +790,27 @@ class _SageMakerContainer(object):
             "--abort-on-container-exit" if not detached else "--detach",  # mutually exclusive
         ]
 
-        logger.info("docker command: %s", " ".join(command))
-        return command
+        compose_cmd.extend(command)
 
-    def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
+        logger.info("docker command: %s", " ".join(compose_cmd))
+        return compose_cmd
+
+    def _create_docker_host(
+        self,
+        host: str,
+        environment: List[str],
+        optml_subdirs: set[str],
+        command: str,
+        volumes: List,
+    ) -> Dict:
         """Creates the docker host configuration.
 
         Args:
-            host:
-            environment:
-            optml_subdirs:
-            command:
-            volumes:
+            host (str): The host address
+            environment (List[str]): List of environment variables
+            optml_subdirs (Set[str]): Set of subdirs
+            command (str): Either 'train' or 'serve'
+            volumes (list): List of volumes that will be mapped to the containers
         """
         optml_volumes = self._build_optml_volumes(host, optml_subdirs)
         optml_volumes.extend(volumes)
@@ -719,18 +818,30 @@ class _SageMakerContainer(object):
         container_name_prefix = "".join(
             random.choice(string.ascii_lowercase + string.digits) for _ in range(10)
         )
+        container_default_config = (
+            sagemaker.utils.get_config_value(
+                f"{LOCAL}.{CONTAINER_CONFIG}", self.sagemaker_session.config
+            )
+            or {}
+        )
 
         host_config = {
+            **container_default_config,
             "image": self.image,
             "container_name": f"{container_name_prefix}-{host}",
             "stdin_open": True,
             "tty": True,
             "volumes": [v.map for v in optml_volumes],
             "environment": environment,
-            "networks": {"sagemaker-local": {"aliases": [host]}},
         }
 
-        if command != "process":
+        is_train_with_entrypoint = False
+        if command == "train" and self.container_entrypoint:
+            # Remote function or Pipeline function step is translated into a training job
+            # with container_entrypoint configured
+            is_train_with_entrypoint = True
+
+        if command != "process" and not is_train_with_entrypoint:
             host_config["command"] = command
         else:
             if self.container_entrypoint:
@@ -738,12 +849,21 @@ class _SageMakerContainer(object):
             if self.container_arguments:
                 host_config["entrypoint"] = host_config["entrypoint"] + self.container_arguments
 
+        if self.is_studio:
+            host_config["network_mode"] = "sagemaker"
+        else:
+            host_config["networks"] = {"sagemaker-local": {"aliases": [host]}}
+
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.
         if self.instance_type == "local_gpu":
-            host_config["runtime"] = "nvidia"
+            host_config["deploy"] = {
+                "resources": {
+                    "reservations": {"devices": [{"count": "all", "capabilities": ["gpu"]}]}
+                }
+            }
 
-        if command == "serve":
+        if not self.is_studio and command == "serve":
             serving_port = (
                 sagemaker.utils.get_config_value(
                     "local.serving_port", self.sagemaker_session.config
@@ -819,7 +939,7 @@ class _HostingContainer(Thread):
         """Creates a new threaded hosting container.
 
         Args:
-            command:
+            command (dict): docker compose command
         """
         Thread.__init__(self)
         self.command = command
@@ -840,6 +960,8 @@ class _HostingContainer(Thread):
 
     def down(self):
         """Placeholder docstring"""
+        if os.name != "nt":
+            sagemaker.local.utils.kill_child_processes(self.process.pid)
         self.process.terminate()
 
 
@@ -865,10 +987,14 @@ class _Volume(object):
 
         self.container_dir = container_dir if container_dir else "/opt/ml/input/data/" + channel
         self.host_dir = host_dir
+        map_format = "{}:{}"
+        if platform.system() == "Linux" and SELINUX_ENABLED:
+            # Support mounting shared volumes in SELinux enabled hosts
+            map_format += ":z"
         if platform.system() == "Darwin" and host_dir.startswith("/var"):
             self.host_dir = os.path.join("/private", host_dir)
 
-        self.map = "{}:{}".format(self.host_dir, self.container_dir)
+        self.map = map_format.format(self.host_dir, self.container_dir)
 
 
 def _stream_output(process):
@@ -890,8 +1016,8 @@ def _stream_output(process):
         sys.stdout.write(stdout)
         exit_code = process.poll()
 
-    if exit_code != 0:
-        raise RuntimeError("Process exited with code: %s" % exit_code)
+    if exit_code not in [0, 130]:
+        raise RuntimeError(f"Failed to run: {process.args}. Process exited with code: {exit_code}")
 
     return exit_code
 
@@ -992,7 +1118,7 @@ def _aws_credentials(session):
                 "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
                 "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
             ]
-        if not _aws_credentials_available_in_metadata_service():
+        if _use_short_lived_credentials() or not _aws_credentials_available_in_metadata_service():
             logger.warning(
                 "Using the short-lived AWS credentials found in session. They might expire while "
                 "running."
@@ -1028,6 +1154,11 @@ def _aws_credentials_available_in_metadata_service():
         )
     )
     return not instance_metadata_provider.load() is None
+
+
+def _use_short_lived_credentials():
+    """Use short-lived AWS credentials found in session."""
+    return os.environ.get("USE_SHORT_LIVED_CREDENTIALS") == "1"
 
 
 def _write_json_file(filename, content):
@@ -1073,8 +1204,14 @@ def _ecr_login_if_needed(boto_session, image):
     token = raw_token.decode("utf-8").strip("AWS:")
     ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
-    cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
-    subprocess.check_output(cmd.split())
+    # Log in to ecr, but use communicate to not print creds to the console
+    cmd = f"docker login {ecr_url} -u AWS --password-stdin".split()
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+    )
+
+    proc.communicate(input=token.encode())
 
     return True
 

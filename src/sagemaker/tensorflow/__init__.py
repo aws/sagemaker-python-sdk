@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,3 +15,6 @@ from __future__ import absolute_import
 
 from sagemaker.tensorflow.estimator import TensorFlow  # noqa: F401 (imported but unused)
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor  # noqa: F401
+from sagemaker.tensorflow.processing import TensorFlowProcessor  # noqa: F401
+
+from sagemaker.tensorflow.training_compiler.config import TrainingCompilerConfig  # noqa: F401

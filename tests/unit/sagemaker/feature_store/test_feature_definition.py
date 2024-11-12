@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,6 +17,11 @@ from sagemaker.feature_store.feature_definition import (
     FeatureDefinition,
     FeatureTypeEnum,
     IntegralFeatureDefinition,
+    FractionalFeatureDefinition,
+    StringFeatureDefinition,
+    VectorCollectionType,
+    ListCollectionType,
+    SetCollectionType,
 )
 
 
@@ -46,5 +51,41 @@ def test_integral_feature_definition():
         {
             "FeatureName": "MyFeature",
             "FeatureType": "Integral",
+        }
+    )
+
+
+def test_collection_type_feature_definition():
+    definition_integral_list = IntegralFeatureDefinition(
+        feature_name="MyIntList", collection_type=ListCollectionType()
+    )
+    assert ordered(definition_integral_list.to_dict()) == ordered(
+        {
+            "FeatureName": "MyIntList",
+            "FeatureType": "Integral",
+            "CollectionType": "List",
+        }
+    )
+
+    definition_string_set = StringFeatureDefinition(
+        feature_name="MyStringSet", collection_type=SetCollectionType()
+    )
+    assert ordered(definition_string_set.to_dict()) == ordered(
+        {
+            "FeatureName": "MyStringSet",
+            "FeatureType": "String",
+            "CollectionType": "Set",
+        }
+    )
+
+    definition_vector_feature = FractionalFeatureDefinition(
+        feature_name="MyVector", collection_type=VectorCollectionType(dimension=10)
+    )
+    assert ordered(definition_vector_feature.to_dict()) == ordered(
+        {
+            "FeatureName": "MyVector",
+            "FeatureType": "Fractional",
+            "CollectionType": "Vector",
+            "CollectionConfig": {"VectorConfig": {"Dimension": 10}},
         }
     )

@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,6 +18,7 @@ Amazon SageMaker Model Monitoring Schedules.
 from __future__ import print_function, absolute_import
 
 import json
+import logging
 import os
 import uuid
 
@@ -27,6 +28,8 @@ from sagemaker import s3
 from sagemaker.session import Session
 
 NO_SUCH_KEY_CODE = "NoSuchKey"
+
+logger = logging.getLogger(__name__)
 
 
 class ModelMonitoringFile(object):
@@ -123,11 +126,12 @@ class Statistics(ModelMonitoringFile):
                 )
             )
         except ClientError as error:
-            print(
-                "\nCould not retrieve statistics file at location '{}'. "
+            logger.warning(
+                "\nCould not retrieve statistics file at location '%s'. "
                 "To manually retrieve Statistics object from a given uri, "
                 "use 'my_model_monitor.statistics(my_s3_uri)' or "
-                "'Statistics.from_s3_uri(my_s3_uri)'".format(statistics_file_s3_uri)
+                "'Statistics.from_s3_uri(my_s3_uri)'",
+                statistics_file_s3_uri,
             )
             raise error
 
@@ -158,7 +162,12 @@ class Statistics(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "statistics.json"
         desired_s3_uri = s3.s3_path_join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            sagemaker_session.default_bucket_prefix,
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=statistics_file_string,
@@ -248,11 +257,12 @@ class Constraints(ModelMonitoringFile):
                 )
             )
         except ClientError as error:
-            print(
-                "\nCould not retrieve constraints file at location '{}'. "
+            logger.warning(
+                "\nCould not retrieve constraints file at location '%s'. "
                 "To manually retrieve Constraints object from a given uri, "
                 "use 'my_model_monitor.constraints(my_s3_uri)' or "
-                "'Constraints.from_s3_uri(my_s3_uri)'".format(constraints_file_s3_uri)
+                "'Constraints.from_s3_uri(my_s3_uri)'",
+                constraints_file_s3_uri,
             )
             raise error
 
@@ -286,7 +296,12 @@ class Constraints(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "constraints.json"
         desired_s3_uri = s3.s3_path_join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            sagemaker_session.default_bucket_prefix,
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=constraints_file_string,
@@ -441,7 +456,12 @@ class ConstraintViolations(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "constraint_violations.json"
         desired_s3_uri = s3.s3_path_join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            sagemaker_session.default_bucket_prefix,
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=constraint_violations_file_string,

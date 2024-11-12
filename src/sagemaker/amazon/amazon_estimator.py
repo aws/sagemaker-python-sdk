@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,17 +16,21 @@ from __future__ import absolute_import
 import json
 import logging
 import tempfile
+from typing import Union, Optional, Dict
 
 from six.moves.urllib.parse import urlparse
 
-from sagemaker import image_uris
+from sagemaker import image_uris, s3_utils
 from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.deprecations import renamed_warning
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.inputs import FileSystemInput, TrainingInput
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import sagemaker_timestamp, check_and_get_run_experiment_config
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger(__name__)
 
@@ -37,19 +41,21 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     This class isn't intended to be instantiated directly.
     """
 
-    feature_dim = hp("feature_dim", validation.gt(0), data_type=int)
-    mini_batch_size = hp("mini_batch_size", validation.gt(0), data_type=int)
-    repo_name = None
-    repo_version = None
+    feature_dim: hp = hp("feature_dim", validation.gt(0), data_type=int)
+    mini_batch_size: hp = hp("mini_batch_size", validation.gt(0), data_type=int)
+    repo_name: Optional[str] = None
+    repo_version: Optional[str] = None
+
+    DEFAULT_MINI_BATCH_SIZE: Optional[int] = None
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        data_location=None,
-        enable_network_isolation=False,
-        **kwargs
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        data_location: Optional[str] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        **kwargs,
     ):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
@@ -59,16 +65,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training. Required.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'. Required.
             data_location (str or None): The s3 prefix to upload RecordSet
                 objects to, expressed as an S3 url. For example
                 "s3://example-bucket/some-key-prefix/". Objects will be saved in
                 a unique sub-directory of the specified location. If None, a
                 default data location will be used.
-            enable_network_isolation (bool): Specifies whether container will
+            enable_network_isolation (bool or PipelineVariable): Specifies whether container will
                 run in network isolation mode. Network isolation mode restricts
                 the container access to outside networks (such as the internet).
                 Also known as internet-free mode (default: ``False``).
@@ -85,10 +91,17 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             instance_count,
             instance_type,
             enable_network_isolation=enable_network_isolation,
-            **kwargs
+            **kwargs,
         )
-        data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
-            self.sagemaker_session.default_bucket()
+
+        data_location = data_location or (
+            s3_utils.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
+                "sagemaker-record-sets",
+                with_end_slash=True,
+            )
         )
         self._data_location = data_location
 
@@ -110,8 +123,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         return self._data_location
 
     @data_location.setter
-    def data_location(self, data_location):
+    def data_location(self, data_location: str):
         """Placeholder docstring"""
+        if is_pipeline_variable(data_location):
+            raise TypeError(
+                "Invalid input: data_location should be a plain string "
+                "rather than a pipeline variable - ({}).".format(type(data_location))
+            )
+
         if not data_location.startswith("s3://"):
             raise ValueError(
                 'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location)
@@ -192,14 +211,15 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.feature_dim = feature_dim
         self.mini_batch_size = mini_batch_size
 
+    @runnable_by_pipeline
     def fit(
         self,
-        records,
-        mini_batch_size=None,
-        wait=True,
-        logs=True,
-        job_name=None,
-        experiment_config=None,
+        records: "RecordSet",
+        mini_batch_size: Optional[int] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
     ):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
@@ -229,19 +249,34 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 generates a default job name, based on the training image name
                 and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys, 'ExperimentName',
-                'TrialName', and 'TrialComponentName'
-                (default: ``None``).
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_training_job = _TrainingJob.start_new(
             self, records, experiment_config=experiment_config
         )
         if wait:
             self.latest_training_job.wait(logs=logs)
 
-    def record_set(self, train, labels=None, channel="train", encrypt=False):
+    def record_set(
+        self,
+        train,
+        labels=None,
+        channel="train",
+        encrypt=False,
+        distribution="ShardedByS3Key",
+    ):
         """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
 
         For the 2D ``ndarray`` ``train``, each row is converted to a
@@ -266,6 +301,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 should be assigned to.
             encrypt (bool): Specifies whether the objects uploaded to S3 are
                 encrypted on the server side using AES-256 (default: ``False``).
+            distribution (str): The SageMaker TrainingJob channel s3 data
+                distribution type (default: ``ShardedByS3Key``).
 
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training
@@ -288,35 +325,59 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             num_records=train.shape[0],
             feature_dim=train.shape[1],
             channel=channel,
+            distribution=distribution,
         )
+
+    def _get_default_mini_batch_size(self, num_records: int):
+        """Generate the default mini_batch_size"""
+        if is_pipeline_variable(self.instance_count):
+            logger.warning(
+                "mini_batch_size is not given in .fit() and instance_count is a "
+                "pipeline variable (%s) which is only interpreted in pipeline execution time. "
+                "Thus setting mini_batch_size to 1, since it can't be greater than "
+                "number of records per instance_count, otherwise the training job fails.",
+                type(self.instance_count),
+            )
+            return 1
+
+        return min(self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count)))
 
 
 class RecordSet(object):
     """Placeholder docstring"""
 
     def __init__(
-        self, s3_data, num_records, feature_dim, s3_data_type="ManifestFile", channel="train"
+        self,
+        s3_data: Union[str, PipelineVariable],
+        num_records: int,
+        feature_dim: int,
+        s3_data_type: Union[str, PipelineVariable] = "ManifestFile",
+        channel: Union[str, PipelineVariable] = "train",
+        distribution: str = "ShardedByS3Key",
     ):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
         Args:
-            s3_data (str): The S3 location of the training data
+            s3_data (str or PipelineVariable): The S3 location of the training data
             num_records (int): The number of records in the set.
             feature_dim (int): The dimensionality of "values" arrays in the
                 Record features, and label (if each Record is labeled).
-            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If
-                'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train
+            s3_data_type (str or PipelineVariable): Valid values: 'S3Prefix', 'ManifestFile'.
+                If 'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train
                 on. All objects with s3 keys beginning with ``s3_data`` will be
                 used to train. If 'ManifestFile', then ``s3_data`` defines a
                 single s3 manifest file, listing each s3 object to train on.
-            channel (str): The SageMaker Training Job channel this RecordSet
+            channel (str or PipelineVariable): The SageMaker Training Job channel this RecordSet
                 should be bound to
+            distribution (str): The SageMaker TrainingJob S3 data distribution type.
+                Valid values: 'ShardedByS3Key', 'FullyReplicated'.
         """
         self.s3_data = s3_data
         self.feature_dim = feature_dim
         self.num_records = num_records
         self.s3_data_type = s3_data_type
         self.channel = channel
+        self.distribution = distribution
 
     def __repr__(self):
         """Return an unambiguous representation of this RecordSet"""
@@ -330,7 +391,7 @@ class RecordSet(object):
     def records_s3_input(self):
         """Return a TrainingInput to represent the training data"""
         return TrainingInput(
-            self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type
+            self.s3_data, distribution=self.distribution, s3_data_type=self.s3_data_type
         )
 
 
@@ -445,7 +506,7 @@ def upload_numpy_to_s3_shards(
             raise ex
 
 
-def get_image_uri(region_name, repo_name, repo_version=1):
+def get_image_uri(region_name, repo_name, repo_version="1"):
     """Deprecated method. Please use sagemaker.image_uris.retrieve().
 
     Args:

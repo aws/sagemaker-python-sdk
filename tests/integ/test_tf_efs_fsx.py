@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,7 +25,7 @@ from sagemaker.utils import unique_name_from_base
 import tests
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.file_system_input_utils import tear_down, set_up_efs_fsx
-from tests.integ.s3_utils import assert_s3_files_exist
+from tests.integ.s3_utils import assert_s3_file_patterns_exist
 from tests.integ.timeout import timeout
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -88,10 +88,10 @@ def test_mnist_efs(
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=file_system_input, job_name=unique_name_from_base("test-mnist-efs"))
 
-    assert_s3_files_exist(
+    assert_s3_file_patterns_exist(
         sagemaker_session,
         estimator.model_dir,
-        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
+        [r"model\.ckpt-\d+\.index", r"checkpoint"],
     )
 
 
@@ -129,10 +129,10 @@ def test_mnist_lustre(
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=file_system_input, job_name=unique_name_from_base("test-mnist-lustre"))
-    assert_s3_files_exist(
+    assert_s3_file_patterns_exist(
         sagemaker_session,
         estimator.model_dir,
-        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
+        [r"model\.ckpt-\d+\.index", r"checkpoint"],
     )
 
 

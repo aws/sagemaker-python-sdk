@@ -5,6 +5,13 @@ Model
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
+
+.. autoclass:: sagemaker.jumpstart.model.JumpStartModel
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :inherited-members:
 
 .. autoclass:: sagemaker.model.FrameworkModel
     :members:
@@ -15,3 +22,4 @@ Model
     :members:
     :undoc-members:
     :show-inheritance:
+

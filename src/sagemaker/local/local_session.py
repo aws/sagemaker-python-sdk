@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -11,16 +11,27 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import logging
-import os
 import platform
+from datetime import datetime
+from typing import Dict
 
 import boto3
 from botocore.exceptions import ClientError
+import jsonschema
 
+from sagemaker.config import (
+    SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA,
+    SESSION_DEFAULT_S3_BUCKET_PATH,
+    SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH,
+    load_local_mode_config,
+    load_sagemaker_config,
+    validate_sagemaker_config,
+)
 from sagemaker.local.image import _SageMakerContainer
+from sagemaker.local.utils import get_docker_host
 from sagemaker.local.entities import (
     _LocalEndpointConfig,
     _LocalEndpoint,
@@ -28,14 +39,22 @@ from sagemaker.local.entities import (
     _LocalProcessingJob,
     _LocalTrainingJob,
     _LocalTransformJob,
+    _LocalPipeline,
 )
 from sagemaker.session import Session
-from sagemaker.utils import get_config_value, _module_import_error
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+from sagemaker.utils import (
+    get_config_value,
+    _module_import_error,
+    resolve_value_from_config,
+    format_tags,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class LocalSagemakerClient(object):
+class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
     """A SageMakerClient that implements the API calls locally.
 
     Used for doing local training and hosting local endpoints. It still needs access to
@@ -55,6 +74,7 @@ class LocalSagemakerClient(object):
     _models = {}
     _endpoint_configs = {}
     _endpoints = {}
+    _pipelines = {}
 
     def __init__(self, sagemaker_session=None):
         """Initialize a LocalSageMakerClient.
@@ -65,6 +85,7 @@ class LocalSagemakerClient(object):
         """
         self.sagemaker_session = sagemaker_session or LocalSession()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_processing_job")
     def create_processing_job(
         self,
         ProcessingJobName,
@@ -73,7 +94,7 @@ class LocalSagemakerClient(object):
         Environment=None,
         ProcessingInputs=None,
         ProcessingOutputConfig=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates a processing job in Local Mode
 
@@ -147,6 +168,7 @@ class LocalSagemakerClient(object):
             raise ClientError(error_response, "describe_processing_job")
         return LocalSagemakerClient._processing_jobs[ProcessingJobName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_training_job")
     def create_training_job(
         self,
         TrainingJobName,
@@ -154,7 +176,8 @@ class LocalSagemakerClient(object):
         OutputDataConfig,
         ResourceConfig,
         InputDataConfig=None,
-        **kwargs
+        Environment=None,
+        **kwargs,
     ):
         """Create a training job in Local Mode.
 
@@ -166,6 +189,8 @@ class LocalSagemakerClient(object):
           OutputDataConfig(dict): Identifies the location where you want to save the results of
             model training.
           ResourceConfig(dict): Identifies the resources to use for local model training.
+          Environment(dict, optional): Describes the environment variables to pass
+            to the container. (Default value = None)
           HyperParameters(dict) [optional]: Specifies these algorithm-specific parameters to
             influence the quality of the final model.
           **kwargs:
@@ -174,16 +199,23 @@ class LocalSagemakerClient(object):
 
         """
         InputDataConfig = InputDataConfig or {}
+        Environment = Environment or {}
         container = _SageMakerContainer(
             ResourceConfig["InstanceType"],
             ResourceConfig["InstanceCount"],
             AlgorithmSpecification["TrainingImage"],
             sagemaker_session=self.sagemaker_session,
         )
+        if AlgorithmSpecification.get("ContainerEntrypoint", None):
+            container.container_entrypoint = AlgorithmSpecification["ContainerEntrypoint"]
+        if AlgorithmSpecification.get("ContainerArguments", None):
+            container.container_arguments = AlgorithmSpecification["ContainerArguments"]
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
         logger.info("Starting training job")
-        training_job.start(InputDataConfig, OutputDataConfig, hyperparameters, TrainingJobName)
+        training_job.start(
+            InputDataConfig, OutputDataConfig, hyperparameters, Environment, TrainingJobName
+        )
 
         LocalSagemakerClient._training_jobs[TrainingJobName] = training_job
 
@@ -207,6 +239,7 @@ class LocalSagemakerClient(object):
             raise ClientError(error_response, "describe_training_job")
         return LocalSagemakerClient._training_jobs[TrainingJobName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_transform_job")
     def create_transform_job(
         self,
         TransformJobName,
@@ -214,7 +247,7 @@ class LocalSagemakerClient(object):
         TransformInput,
         TransformOutput,
         TransformResources,
-        **kwargs
+        **kwargs,
     ):
         """Create the transform job.
 
@@ -252,6 +285,7 @@ class LocalSagemakerClient(object):
             raise ClientError(error_response, "describe_transform_job")
         return LocalSagemakerClient._transform_jobs[TransformJobName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_model")
     def create_model(
         self, ModelName, PrimaryContainer, *args, **kwargs
     ):  # pylint: disable=unused-argument
@@ -301,6 +335,7 @@ class LocalSagemakerClient(object):
             raise ClientError(error_response, "describe_endpoint_config")
         return LocalSagemakerClient._endpoint_configs[EndpointConfigName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_endpoint_config")
     def create_endpoint_config(self, EndpointConfigName, ProductionVariants, Tags=None):
         """Create the endpoint configuration.
 
@@ -313,7 +348,7 @@ class LocalSagemakerClient(object):
 
         """
         LocalSagemakerClient._endpoint_configs[EndpointConfigName] = _LocalEndpointConfig(
-            EndpointConfigName, ProductionVariants, Tags
+            EndpointConfigName, ProductionVariants, format_tags(Tags)
         )
 
     def describe_endpoint(self, EndpointName):
@@ -332,6 +367,7 @@ class LocalSagemakerClient(object):
             raise ClientError(error_response, "describe_endpoint")
         return LocalSagemakerClient._endpoints[EndpointName].describe()
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_endpoint")
     def create_endpoint(self, EndpointName, EndpointConfigName, Tags=None):
         """Create the endpoint.
 
@@ -343,7 +379,12 @@ class LocalSagemakerClient(object):
         Returns:
 
         """
-        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, Tags, self.sagemaker_session)
+        endpoint = _LocalEndpoint(
+            EndpointName,
+            EndpointConfigName,
+            format_tags(Tags),
+            self.sagemaker_session,
+        )
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
         endpoint.serve()
 
@@ -395,6 +436,113 @@ class LocalSagemakerClient(object):
         if ModelName in LocalSagemakerClient._models:
             del LocalSagemakerClient._models[ModelName]
 
+    @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_pipeline")
+    def create_pipeline(
+        self, pipeline, pipeline_description, **kwargs  # pylint: disable=unused-argument
+    ):
+        """Create a local pipeline.
+
+        Args:
+            pipeline (Pipeline): Pipeline object
+            pipeline_description (str): Description of the pipeline
+
+        Returns:
+            Pipeline metadata (PipelineArn)
+
+        """
+        local_pipeline = _LocalPipeline(
+            pipeline=pipeline,
+            pipeline_description=pipeline_description,
+            local_session=self.sagemaker_session,
+        )
+        LocalSagemakerClient._pipelines[pipeline.name] = local_pipeline
+        return {"PipelineArn": pipeline.name}
+
+    def update_pipeline(
+        self, pipeline, pipeline_description, **kwargs  # pylint: disable=unused-argument
+    ):
+        """Update a local pipeline.
+
+        Args:
+            pipeline (Pipeline): Pipeline object
+            pipeline_description (str): Description of the pipeline
+
+        Returns:
+            Pipeline metadata (PipelineArn)
+
+        """
+        if pipeline.name not in LocalSagemakerClient._pipelines:
+            error_response = {
+                "Error": {
+                    "Code": "ResourceNotFound",
+                    "Message": "Pipeline {} does not exist".format(pipeline.name),
+                }
+            }
+            raise ClientError(error_response, "update_pipeline")
+        LocalSagemakerClient._pipelines[pipeline.name].pipeline_description = pipeline_description
+        LocalSagemakerClient._pipelines[pipeline.name].pipeline = pipeline
+        LocalSagemakerClient._pipelines[pipeline.name].last_modified_time = (
+            datetime.now().timestamp()
+        )
+        return {"PipelineArn": pipeline.name}
+
+    def describe_pipeline(self, PipelineName):
+        """Describe the pipeline.
+
+        Args:
+          PipelineName (str):
+
+        Returns:
+            Pipeline metadata (PipelineArn, PipelineDefinition, LastModifiedTime, etc)
+
+        """
+        if PipelineName not in LocalSagemakerClient._pipelines:
+            error_response = {
+                "Error": {
+                    "Code": "ResourceNotFound",
+                    "Message": "Pipeline {} does not exist".format(PipelineName),
+                }
+            }
+            raise ClientError(error_response, "describe_pipeline")
+        return LocalSagemakerClient._pipelines[PipelineName].describe()
+
+    def delete_pipeline(self, PipelineName):
+        """Delete the local pipeline.
+
+        Args:
+          PipelineName (str):
+
+        Returns:
+            Pipeline metadata (PipelineArn)
+
+        """
+        if PipelineName in LocalSagemakerClient._pipelines:
+            del LocalSagemakerClient._pipelines[PipelineName]
+        return {"PipelineArn": PipelineName}
+
+    def start_pipeline_execution(self, PipelineName, **kwargs):
+        """Start the pipeline.
+
+        Args:
+          PipelineName (str):
+
+        Returns: _LocalPipelineExecution object
+
+        """
+        if "ParallelismConfiguration" in kwargs:
+            logger.warning("Parallelism configuration is not supported in local mode.")
+        if "SelectiveExecutionConfig" in kwargs:
+            raise ValueError("SelectiveExecutionConfig is not supported in local mode.")
+        if PipelineName not in LocalSagemakerClient._pipelines:
+            error_response = {
+                "Error": {
+                    "Code": "ResourceNotFound",
+                    "Message": "Pipeline {} does not exist".format(PipelineName),
+                }
+            }
+            raise ClientError(error_response, "start_pipeline_execution")
+        return LocalSagemakerClient._pipelines[PipelineName].start(**kwargs)
+
 
 class LocalSagemakerRuntimeClient(object):
     """A SageMaker Runtime client that calls a local endpoint only."""
@@ -415,7 +563,21 @@ class LocalSagemakerRuntimeClient(object):
         self.http = urllib3.PoolManager()
         self.serving_port = 8080
         self.config = config
-        self.serving_port = get_config_value("local.serving_port", config) or 8080
+
+    @property
+    def config(self) -> dict:
+        """Local config getter"""
+        return self._config
+
+    @config.setter
+    def config(self, value: dict):
+        """Local config setter, this method also updates the `serving_port` attribute.
+
+        Args:
+            value (dict): the new config value
+        """
+        self._config = value
+        self.serving_port = get_config_value("local.serving_port", self._config) or 8080
 
     def invoke_endpoint(
         self,
@@ -448,7 +610,7 @@ class LocalSagemakerRuntimeClient(object):
         Returns:
             object: Inference for the given input.
         """
-        url = "http://localhost:%s/invocations" % self.serving_port
+        url = "http://%s:%d/invocations" % (get_docker_host(), self.serving_port)
         headers = {}
 
         if ContentType is not None:
@@ -478,12 +640,59 @@ class LocalSagemakerRuntimeClient(object):
 
 
 class LocalSession(Session):
-    """A LocalSession class definition."""
+    """A SageMaker ``Session`` class for Local Mode.
 
-    def __init__(self, boto_session=None, s3_endpoint_url=None):
+    This class provides alternative Local Mode implementations for the functionality of
+    :class:`~sagemaker.session.Session`.
+    """
+
+    def __init__(
+        self,
+        boto_session=None,
+        default_bucket=None,
+        s3_endpoint_url=None,
+        disable_local_code=False,
+        sagemaker_config: dict = None,
+        default_bucket_prefix=None,
+    ):
+        """Create a Local SageMaker Session.
+
+        Args:
+            boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+                calls are delegated to (default: None). If not provided, one is created with
+                default AWS configuration chain.
+            s3_endpoint_url (str): Override the default endpoint URL for Amazon S3, if set
+                (default: None).
+            disable_local_code (bool): Set ``True`` to override the default AWS configuration
+                chain to disable the ``local.local_code`` setting, which may not be supported for
+                some SDK features (default: False).
+            sagemaker_config: A dictionary containing default values for the
+                SageMaker Python SDK. (default: None). The dictionary must adhere to the schema
+                defined at `~sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA`.
+                If sagemaker_config is not provided and configuration files exist (at the default
+                paths for admins and users, or paths set through the environment variables
+                SAGEMAKER_ADMIN_CONFIG_OVERRIDE and SAGEMAKER_USER_CONFIG_OVERRIDE),
+                a new dictionary will be generated from those configuration files. Alternatively,
+                this dictionary can be generated by calling
+                :func:`~sagemaker.config.load_sagemaker_config` and then be provided to the
+                Session.
+            default_bucket_prefix (str): The default prefix to use for S3 Object Keys. When
+                objects are saved to the Session's default_bucket, the Object Key used will
+                start with the default_bucket_prefix. If not provided here or within
+                sagemaker_config, no additional prefix will be added.
+        """
         self.s3_endpoint_url = s3_endpoint_url
+        # We use this local variable to avoid disrupting the __init__->_initialize API of the
+        # parent class... But overwriting it after constructor won't do anything, so prefix _ to
+        # discourage external use:
+        self._disable_local_code = disable_local_code
 
-        super(LocalSession, self).__init__(boto_session)
+        super(LocalSession, self).__init__(
+            boto_session=boto_session,
+            default_bucket=default_bucket,
+            sagemaker_config=sagemaker_config,
+            default_bucket_prefix=default_bucket_prefix,
+        )
 
         if platform.system() == "Windows":
             logger.warning("Windows Support for Local Mode is Experimental")
@@ -508,7 +717,6 @@ class LocalSession(Session):
         else:
             self.boto_session = boto_session
 
-        # self.boto_session = boto_session or boto3.Session()
         self._region_name = self.boto_session.region_name
 
         if self._region_name is None:
@@ -518,21 +726,69 @@ class LocalSession(Session):
 
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+
         self.local_mode = True
+        sagemaker_config = kwargs.get("sagemaker_config", None)
+        if sagemaker_config:
+            validate_sagemaker_config(sagemaker_config)
 
         if self.s3_endpoint_url is not None:
             self.s3_resource = boto_session.resource("s3", endpoint_url=self.s3_endpoint_url)
             self.s3_client = boto_session.client("s3", endpoint_url=self.s3_endpoint_url)
+            self.sagemaker_config = (
+                sagemaker_config
+                if sagemaker_config
+                else load_sagemaker_config(s3_resource=self.s3_resource)
+            )
+        else:
+            self.s3_resource = self.boto_session.resource("s3", region_name=self._region_name)
+            self.s3_client = self.boto_session.client("s3", region_name=self._region_name)
+            self.sagemaker_config = (
+                sagemaker_config if sagemaker_config else load_sagemaker_config()
+            )
 
-        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
-        if os.path.exists(sagemaker_config_file):
+        sagemaker_config = kwargs.get("sagemaker_config", None)
+        if sagemaker_config:
+            validate_sagemaker_config(sagemaker_config)
+            self.sagemaker_config = sagemaker_config
+        else:
+            # self.s3_resource might be None. If it is None, load_sagemaker_config will
+            # create a default S3 resource, but only if it needs to fetch from S3
+            self.sagemaker_config = load_sagemaker_config(s3_resource=self.s3_resource)
+
+        # after sagemaker_config initialization, update self._default_bucket_name_override if needed
+        self._default_bucket_name_override = resolve_value_from_config(
+            direct_input=self._default_bucket_name_override,
+            config_path=SESSION_DEFAULT_S3_BUCKET_PATH,
+            sagemaker_session=self,
+        )
+        # after sagemaker_config initialization, update self.default_bucket_prefix if needed
+        self.default_bucket_prefix = resolve_value_from_config(
+            direct_input=self.default_bucket_prefix,
+            config_path=SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH,
+            sagemaker_session=self,
+        )
+
+        self.config = load_local_mode_config()
+        if self._disable_local_code and self.config and "local" in self.config:
+            self.config["local"]["local_code"] = False
+
+    @Session.config.setter
+    def config(self, value: Dict | None):
+        """Setter of the local mode config"""
+        if value is not None:
             try:
-                import yaml
-            except ImportError as e:
-                logger.error(_module_import_error("yaml", "Local mode", "local"))
+                jsonschema.validate(value, SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA)
+            except jsonschema.ValidationError as e:
+                logger.error("Failed to validate the local mode config")
                 raise e
+            self._config = value
+        else:
+            self._config = value
 
-            self.config = yaml.load(open(sagemaker_config_file, "r"))
+        # update the runtime client on config changed
+        if getattr(self, "sagemaker_runtime_client", None):
+            self.sagemaker_runtime_client.config = self._config
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.
@@ -541,6 +797,21 @@ class LocalSession(Session):
           job_name:
           wait:  (Default value = False)
           poll:  (Default value = 5)
+
+        Returns:
+
+        """
+        # override logs_for_job() as it doesn't need to perform any action
+        # on local mode.
+        pass  # pylint: disable=unnecessary-pass
+
+    def logs_for_processing_job(self, job_name, wait=False, poll=10):
+        """A no-op method meant to override the sagemaker client.
+
+        Args:
+          job_name:
+          wait:  (Default value = False)
+          poll:  (Default value = 10)
 
         Returns:
 

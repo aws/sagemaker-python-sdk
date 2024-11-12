@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -32,3 +32,9 @@ SMDATAPARALLEL_PROFILING_START_STEP_DEFAULT = 15
 PROFILING_NUM_STEPS_DEFAULT = 1
 START_STEP_DEFAULT = 0
 PYTHON_PROFILING_NUM_STEPS_DEFAULT = 3
+
+# These options are used in detail profiler (NOT framework profile)
+CPU_PROFILING_DURATION = 3600
+FILE_ROTATION_INTERVAL_DEFAULT = 600  # 600 secs
+DETAIL_PROF_PROCESSING_DEFAULT_INSTANCE_TYPE = "ml.m5.4xlarge"
+DETAIL_PROF_PROCESSING_DEFAULT_VOLUME_SIZE = 128

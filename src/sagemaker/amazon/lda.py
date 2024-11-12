@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,9 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+import logging
+from typing import Union, Optional
+
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
@@ -21,7 +24,12 @@ from sagemaker.amazon.validation import gt
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow import is_pipeline_variable
+
+logger = logging.getLogger(__name__)
 
 
 class LDA(AmazonAlgorithmEstimatorBase):
@@ -33,25 +41,25 @@ class LDA(AmazonAlgorithmEstimatorBase):
     word, and the categories are the topics.
     """
 
-    repo_name = "lda"
-    repo_version = 1
+    repo_name: str = "lda"
+    repo_version: str = "1"
 
-    num_topics = hp("num_topics", gt(0), "An integer greater than zero", int)
-    alpha0 = hp("alpha0", gt(0), "A positive float", float)
-    max_restarts = hp("max_restarts", gt(0), "An integer greater than zero", int)
-    max_iterations = hp("max_iterations", gt(0), "An integer greater than zero", int)
-    tol = hp("tol", gt(0), "A positive float", float)
+    num_topics: hp = hp("num_topics", gt(0), "An integer greater than zero", int)
+    alpha0: hp = hp("alpha0", gt(0), "A positive float", float)
+    max_restarts: hp = hp("max_restarts", gt(0), "An integer greater than zero", int)
+    max_iterations: hp = hp("max_iterations", gt(0), "An integer greater than zero", int)
+    tol: hp = hp("tol", gt(0), "A positive float", float)
 
     def __init__(
         self,
-        role,
-        instance_type=None,
-        num_topics=None,
-        alpha0=None,
-        max_restarts=None,
-        max_iterations=None,
-        tol=None,
-        **kwargs
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_topics: Optional[int] = None,
+        alpha0: Optional[float] = None,
+        max_restarts: Optional[int] = None,
+        max_iterations: Optional[int] = None,
+        tol: Optional[float] = None,
+        **kwargs,
     ):
         """Latent Dirichlet Allocation (LDA) is :class:`Estimator` used for unsupervised learning.
 
@@ -98,7 +106,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_topics (int): The number of topics for LDA to find within the
                 data.
@@ -120,11 +128,10 @@ class LDA(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         # this algorithm only supports single instance training
-        if kwargs.pop("instance_count", 1) != 1:
-            print(
-                "LDA only supports single instance training. Defaulting to 1 {}.".format(
-                    instance_type
-                )
+        instance_count = kwargs.pop("instance_count", 1)
+        if is_pipeline_variable(instance_count) or instance_count != 1:
+            logger.warning(
+                "LDA only supports single instance training. Defaulting to 1 %s.", instance_type
             )
 
         super(LDA, self).__init__(role, 1, instance_type, **kwargs)
@@ -152,7 +159,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(  # pylint: disable=signature-differs
@@ -190,6 +197,7 @@ class LDAPredictor(Predictor):
         sagemaker_session=None,
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
+        component_name=None,
     ):
         """Creates "LDAPredictor" object to be used for transforming input vectors.
 
@@ -204,12 +212,15 @@ class LDAPredictor(Predictor):
                 serializes input data to x-recordio-protobuf format.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses responses from x-recordio-protobuf format.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(LDAPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -220,11 +231,17 @@ class LDAModel(Model):
     Predictor that transforms vectors to a lower-dimensional representation.
     """
 
-    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        **kwargs,
+    ):
         """Initialization for LDAModel class.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -244,11 +261,13 @@ class LDAModel(Model):
             sagemaker_session.boto_region_name,
             version=LDA.repo_version,
         )
+        pop_out_unused_kwarg("predictor_cls", kwargs, LDAPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(LDAModel, self).__init__(
             image_uri,
             model_data,
             role,
             predictor_cls=LDAPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

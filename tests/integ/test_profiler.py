@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import os
-import re
 import time
 import uuid
 
@@ -22,7 +21,6 @@ import pytest
 from sagemaker.debugger import (
     DebuggerHookConfig,
     FrameworkProfile,
-    get_rule_container_image_uri,
     ProfilerConfig,
     ProfilerRule,
     Rule,
@@ -101,13 +99,6 @@ def test_mxnet_with_default_profiler_config_and_profiler_rule(
         )
         assert job_description.get("ProfilingStatus") == "Enabled"
 
-        profiler_rule_configuration = job_description.get("ProfilerRuleConfigurations")[0]
-        assert re.match(r"ProfilerReport-\d*", profiler_rule_configuration["RuleConfigurationName"])
-        assert profiler_rule_configuration["RuleEvaluatorImage"] == get_rule_container_image_uri(
-            mx.sagemaker_session.boto_region_name
-        )
-        assert profiler_rule_configuration["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
-
         with pytest.raises(ValueError) as error:
             mx.enable_default_profiling()
         assert "Debugger monitoring is already enabled." in str(error)
@@ -156,13 +147,6 @@ def test_mxnet_with_custom_profiler_config_then_update_rule_and_config(
         assert job_description.get("ProfilerConfig") == profiler_config._to_request_dict()
         assert job_description.get("ProfilingStatus") == "Enabled"
 
-        profiler_rule_configuration = job_description.get("ProfilerRuleConfigurations")[0]
-        assert re.match(r"ProfilerReport-\d*", profiler_rule_configuration["RuleConfigurationName"])
-        assert profiler_rule_configuration["RuleEvaluatorImage"] == get_rule_container_image_uri(
-            mx.sagemaker_session.boto_region_name
-        )
-        assert profiler_rule_configuration["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
-
         _wait_until_training_can_be_updated(sagemaker_session.sagemaker_client, training_job_name)
 
         mx.update_profiler(
@@ -173,13 +157,6 @@ def test_mxnet_with_custom_profiler_config_then_update_rule_and_config(
         job_description = mx.latest_training_job.describe()
         assert job_description["ProfilerConfig"]["S3OutputPath"] == profiler_config.s3_output_path
         assert job_description["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 500
-
-        profiler_report_rule_config = job_description.get("ProfilerRuleConfigurations")[0]
-        assert re.match(r"ProfilerReport-\d*", profiler_report_rule_config["RuleConfigurationName"])
-        assert profiler_report_rule_config["RuleEvaluatorImage"] == get_rule_container_image_uri(
-            mx.sagemaker_session.boto_region_name
-        )
-        assert profiler_report_rule_config["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
 
 
 def test_mxnet_with_built_in_profiler_rule_with_custom_parameters(
@@ -379,13 +356,6 @@ def test_mxnet_with_enable_framework_metrics_then_update_framework_metrics(
             == updated_framework_profile.profiling_parameters
         )
 
-        profiler_rule_configuration = job_description.get("ProfilerRuleConfigurations")[0]
-        assert re.match(r"ProfilerReport-\d*", profiler_rule_configuration["RuleConfigurationName"])
-        assert profiler_rule_configuration["RuleEvaluatorImage"] == get_rule_container_image_uri(
-            mx.sagemaker_session.boto_region_name
-        )
-        assert profiler_rule_configuration["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
-
 
 def test_mxnet_with_disable_profiler_then_enable_default_profiling(
     sagemaker_session,
@@ -423,13 +393,52 @@ def test_mxnet_with_disable_profiler_then_enable_default_profiling(
         )
 
         job_description = mx.latest_training_job.describe()
-        assert job_description.get("ProfilerConfig") is None
         assert job_description.get("ProfilerRuleConfigurations") is None
         assert job_description.get("ProfilingStatus") == "Disabled"
 
         _wait_until_training_can_be_updated(sagemaker_session.sagemaker_client, training_job_name)
-
         mx.enable_default_profiling()
 
         job_description = mx.latest_training_job.describe()
         assert job_description["ProfilerConfig"]["S3OutputPath"] == mx.output_path
+
+
+def test_mxnet_profiling_with_disable_debugger_hook(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            debugger_hook_config=False,
+        )
+
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        training_job_name = unique_name_from_base("test-profiler-mxnet-training")
+        mx.fit(
+            inputs={"train": train_input, "test": test_input},
+            job_name=training_job_name,
+            wait=False,
+        )
+
+        job_description = mx.latest_training_job.describe()
+        # setting debugger_hook_config to false  would not disable profiling
+        # https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-turn-off.html
+        assert job_description.get("ProfilingStatus") == "Enabled"

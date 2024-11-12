@@ -15,10 +15,14 @@ from __future__ import absolute_import
 
 from typing import Optional, Iterator
 from datetime import datetime
+import logging
 
 from sagemaker.apiutils import _base_types
 from sagemaker.lineage import _api_types
 from sagemaker.lineage._api_types import AssociationSummary
+from sagemaker.utils import format_tags
+
+logger = logging.getLogger(__name__)
 
 
 class Association(_base_types.Record):
@@ -73,6 +77,10 @@ class Association(_base_types.Record):
         Returns:
             list({str:str}): a list of key value pairs
         """
+        logger.warning(
+            "set_tag on Association is deprecated. Use set_tag on the source or destination\
+             entity instead."
+        )
         return self._set_tags(resource_arn=self.source_arn, tags=[tag])
 
     def set_tags(self, tags=None):
@@ -84,7 +92,11 @@ class Association(_base_types.Record):
         Returns:
             list({str:str}): a list of key value pairs
         """
-        return self._set_tags(resource_arn=self.source_arn, tags=tags)
+        logger.warning(
+            "set_tags on Association is deprecated. Use set_tags on the source or destination\
+            entity instead."
+        )
+        return self._set_tags(resource_arn=self.source_arn, tags=format_tags(tags))
 
     @classmethod
     def create(

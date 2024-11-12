@@ -1,4 +1,5 @@
-FROM public.ecr.aws/ubuntu/ubuntu:18.04
+# added latest image from https://gallery.ecr.aws/lts/ubuntu
+FROM public.ecr.aws/ubuntu/ubuntu:22.04
 
 # Set a docker label to advertise multi-model support on the container
 LABEL com.amazonaws.sagemaker.capabilities.multi-models=true
@@ -15,7 +16,7 @@ RUN apt-get update && \
     curl \
     vim \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -O https://bootstrap.pypa.io/get-pip.py \
+    && curl -O https://bootstrap.pypa.io/pip/get-pip.py \
     && python3 get-pip.py
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1

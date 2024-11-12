@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,6 +19,8 @@ import pytest
 from mock import patch
 
 from sagemaker import image_uris
+from sagemaker.workflow.functions import Join
+from sagemaker.workflow.parameters import ParameterString
 
 BASE_CONFIG = {
     "processors": ["cpu", "gpu"],
@@ -272,6 +274,7 @@ def test_retrieve_ecr_hostname(config_for_framework):
         "cn-north-1": "000000010010",
         "cn-northwest-1": "010000001000",
         "us-iso-east-1": "000111111000",
+        "us-isob-east-1": "000111111000",
     }
 
     config = copy.deepcopy(BASE_CONFIG)
@@ -307,6 +310,16 @@ def test_retrieve_ecr_hostname(config_for_framework):
         image_scope="training",
     )
     assert "000111111000.dkr.ecr.us-iso-east-1.c2s.ic.gov/dummy:1.0.0-cpu-py3" == uri
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-isob-east-1",
+        image_scope="training",
+    )
+    assert "000111111000.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/dummy:1.0.0-cpu-py3" == uri
 
 
 @patch("sagemaker.image_uris.config_for_framework")
@@ -716,4 +729,54 @@ def test_retrieve_huggingface(config_for_framework):
     assert (
         "564829616587.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
         "1.6.0-transformers4.3.1-gpu-py37-cu110-ubuntu18.04" == pt_new_version
+    )
+
+
+def test_retrieve_with_pipeline_variable():
+    kwargs = dict(
+        framework="tensorflow",
+        version="1.15",
+        py_version="py3",
+        instance_type="ml.m5.xlarge",
+        region="us-east-1",
+        image_scope="training",
+    )
+    # instance_type is plain string which should not break anything
+    image_uris.retrieve(**kwargs)
+
+    # instance_type is parameter string with not None default value
+    # which should not break anything
+    kwargs["instance_type"] = ParameterString(
+        name="TrainingInstanceType",
+        default_value="ml.m5.xlarge",
+    )
+    image_uris.retrieve(**kwargs)
+
+    # instance_type is parameter string without default value
+    # (equivalent to pass in None to instance_type field)
+    # which should fail due to empty instance type check
+    kwargs["instance_type"] = ParameterString(name="TrainingInstanceType")
+    with pytest.raises(Exception) as error:
+        image_uris.retrieve(**kwargs)
+    assert "Empty SageMaker instance type" in str(error.value)
+
+    # instance_type is other types of pipeline variable
+    # which should break loudly
+    kwargs["instance_type"] = Join(on="", values=["a", "b"])
+    with pytest.raises(Exception) as error:
+        image_uris.retrieve(**kwargs)
+    assert "the argument instance_type should not be a pipeline variable" in str(error.value)
+
+    # instance_type (ParameterString) is given as args rather than kwargs
+    # which should not break anything
+    image_uris.retrieve(
+        "tensorflow",
+        "us-east-1",
+        "1.15",
+        "py3",
+        ParameterString(
+            name="TrainingInstanceType",
+            default_value="ml.m5.xlarge",
+        ),
+        image_scope="training",
     )

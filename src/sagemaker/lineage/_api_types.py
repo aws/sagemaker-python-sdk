@@ -207,7 +207,7 @@ class UserContext(_base_types.ApiObject):
             user_profile_arn=user_profile_arn,
             user_profile_name=user_profile_name,
             domain_id=domain_id,
-            **kwargs
+            **kwargs,
         )
 
 

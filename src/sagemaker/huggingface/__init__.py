@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,3 +15,7 @@ from __future__ import absolute_import
 
 from sagemaker.huggingface.estimator import HuggingFace  # noqa: F401
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor  # noqa: F401
+from sagemaker.huggingface.processing import HuggingFaceProcessor  # noqa:F401
+from sagemaker.huggingface.llm_utils import get_huggingface_llm_image_uri  # noqa: F401
+
+from sagemaker.huggingface.training_compiler.config import TrainingCompilerConfig  # noqa: F401

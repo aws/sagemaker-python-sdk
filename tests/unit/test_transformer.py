@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,10 +13,26 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import MagicMock, Mock, patch
+from mock import MagicMock, Mock, patch, PropertyMock
+from sagemaker.session_settings import SessionSettings
 
 from sagemaker.transformer import _TransformJob, Transformer
+from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
+from sagemaker.inputs import BatchDataCaptureConfig
+from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
+
 from tests.integ import test_local_mode
+from tests.unit import SAGEMAKER_CONFIG_TRANSFORM_JOB
+from sagemaker.model_monitor import DatasetFormat
+from sagemaker.workflow.quality_check_step import (
+    ModelQualityCheckConfig,
+)
+from sagemaker.workflow.check_job_config import CheckJobConfig
+
+_CHECK_JOB_PREFIX = "CheckJobPrefix"
+
+ROLE = "DummyRole"
+REGION = "us-west-2"
 
 MODEL_NAME = "model"
 IMAGE_URI = "image-for-model"
@@ -40,9 +56,29 @@ INIT_PARAMS = {
     "base_transform_job_name": JOB_NAME,
 }
 
+PROCESS_REQUEST_ARGS = {
+    "inputs": "processing_inputs",
+    "output_config": "output_config",
+    "job_name": "job_name",
+    "resources": "resource_config",
+    "stopping_condition": {"MaxRuntimeInSeconds": 3600},
+    "app_specification": "app_specification",
+    "experiment_config": {"ExperimentName": "AnExperiment"},
+}
+
 MODEL_DESC_PRIMARY_CONTAINER = {"PrimaryContainer": {"Image": IMAGE_URI}}
 
 MODEL_DESC_CONTAINERS_ONLY = {"Containers": [{"Image": IMAGE_URI}]}
+
+_DEFINITION_CONFIG = PipelineDefinitionConfig(use_custom_job_prefix=False)
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    "test-pipeline",
+    "test-training-step",
+    None,
+    "code-hash-0123456789",
+    "config-hash-0123456789",
+    _DEFINITION_CONFIG,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -53,8 +89,35 @@ def mock_create_tar_file():
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session")
-    return Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
+    boto_mock = Mock(name="boto_session", region_name=REGION)
+    session = Mock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        local_mode=False,
+        default_bucket_prefix=None,
+    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
+    return session
+
+
+@pytest.fixture()
+def pipeline_session():
+    client_mock = Mock()
+    client_mock._client_config.user_agent = (
+        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
+    )
+    client_mock.describe_model.return_value = {"PrimaryContainer": {"Image": IMAGE_URI}}
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value=ROLE)
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+    session_mock = Mock(region_name=REGION)
+    session_mock.resource.return_value = resource_mock
+    session_mock.client.return_value = client_mock
+    return PipelineSession(
+        boto_session=session_mock, sagemaker_client=client_mock, default_bucket=S3_BUCKET
+    )
 
 
 @pytest.fixture()
@@ -66,6 +129,92 @@ def transformer(sagemaker_session):
         output_path=OUTPUT_PATH,
         sagemaker_session=sagemaker_session,
         volume_kms_key=KMS_KEY_ID,
+    )
+
+
+@patch("sagemaker.transformer._TransformJob.start_new")
+def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRANSFORM_JOB
+
+    sagemaker_session.settings = SessionSettings()
+
+    transformer = Transformer(
+        MODEL_NAME,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    # volume kms key and output kms key are inserted from the config
+    assert (
+        transformer.volume_kms_key
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["TransformResources"][
+            "VolumeKmsKeyId"
+        ]
+    )
+    assert (
+        transformer.output_kms_key
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["TransformOutput"][
+            "KmsKeyId"
+        ]
+    )
+    assert (
+        transformer.env
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["Environment"]
+    )
+
+    content_type = "text/csv"
+    compression = "Gzip"
+    split = "Line"
+    input_filter = "$.feature"
+    output_filter = "$['sagemaker_output', 'id']"
+    join_source = "Input"
+    experiment_config = {
+        "ExperimentName": "exp",
+        "TrialName": "t",
+        "TrialComponentDisplayName": "tc",
+    }
+    model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri=OUTPUT_PATH, generate_inference_id=False
+    )
+    transformer.transform(
+        DATA,
+        S3_DATA_TYPE,
+        content_type=content_type,
+        compression_type=compression,
+        split_type=split,
+        job_name=JOB_NAME,
+        input_filter=input_filter,
+        output_filter=output_filter,
+        join_source=join_source,
+        experiment_config=experiment_config,
+        model_client_config=model_client_config,
+        batch_data_capture_config=batch_data_capture_config,
+    )
+
+    assert transformer._current_job_name == JOB_NAME
+    assert transformer.output_path == OUTPUT_PATH
+    start_new_job.assert_called_once_with(
+        transformer,
+        DATA,
+        S3_DATA_TYPE,
+        content_type,
+        compression,
+        split,
+        input_filter,
+        output_filter,
+        join_source,
+        experiment_config,
+        model_client_config,
+        batch_data_capture_config,
+    )
+    # KmsKeyId in BatchDataCapture will be inserted from the config
+    assert (
+        batch_data_capture_config.kms_key_id
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["DataCaptureConfig"][
+            "KmsKeyId"
+        ]
     )
 
 
@@ -117,7 +266,7 @@ def test_transformer_init_optional_params(sagemaker_session):
     accept = "text/csv"
     max_concurrent_transforms = 100
     max_payload = 100
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     env = {"FOO": "BAR"}
 
     transformer = Transformer(
@@ -168,6 +317,9 @@ def test_transform_with_all_params(start_new_job, transformer):
         "TrialComponentDisplayName": "tc",
     }
     model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri=OUTPUT_PATH, kms_key_id=KMS_KEY_ID, generate_inference_id=False
+    )
 
     transformer.transform(
         DATA,
@@ -181,6 +333,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         join_source=join_source,
         experiment_config=experiment_config,
         model_client_config=model_client_config,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
     assert transformer._current_job_name == JOB_NAME
@@ -197,6 +350,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         join_source,
         experiment_config,
         model_client_config,
+        batch_data_capture_config,
     )
 
 
@@ -294,6 +448,33 @@ def test_transform_with_generated_output_path(start_new_job, transformer, sagema
 
     transformer.transform(DATA, job_name=JOB_NAME)
     assert transformer.output_path == "s3://{}/{}".format(S3_BUCKET, JOB_NAME)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_transform_with_generated_output_path_pipeline_config(pipeline_session):
+    transformer = Transformer(
+        MODEL_NAME,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=pipeline_session,
+        volume_kms_key=KMS_KEY_ID,
+    )
+    step_args = transformer.transform(DATA)
+    # execute transform.transform() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    expected_path = {
+        "Std:Join": {
+            "On": "/",
+            "Values": [
+                "s3:/",
+                S3_BUCKET,
+                "test-pipeline",
+                {"Get": "Execution.PipelineExecutionId"},
+                "test-training-step",
+            ],
+        }
+    }
+    assert expected_path == transformer.output_path.expr
 
 
 def test_transform_with_invalid_s3_uri(transformer):
@@ -409,7 +590,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
     strategy = "MultiRecord"
     max_concurrent_transforms = 100
     max_payload = 100
-    tags = {"Key": "foo", "Value": "bar"}
+    tags = [{"Key": "foo", "Value": "bar"}]
     env = {"FOO": "BAR"}
 
     transformer = Transformer(
@@ -433,6 +614,10 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
     join_source = "Input"
     model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
 
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri=OUTPUT_PATH, kms_key_id=KMS_KEY_ID, generate_inference_id=False
+    )
+
     job = _TransformJob.start_new(
         transformer=transformer,
         data=DATA,
@@ -445,6 +630,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
         join_source=join_source,
         experiment_config={"ExperimentName": "exp"},
         model_client_config=model_client_config,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
     assert job.sagemaker_session == sagemaker_session
@@ -469,6 +655,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
         model_client_config=model_client_config,
         tags=tags,
         data_processing=prepare_data_processing.return_value,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
 
@@ -592,6 +779,48 @@ def test_stop_transform_job(sagemaker_session, transformer):
     transformer.stop_transform_job()
 
     sagemaker_session.stop_transform_job.assert_called_once_with(name=JOB_NAME)
+
+
+@patch("sagemaker.transformer.Transformer._retrieve_image_uri", return_value=IMAGE_URI)
+@patch("sagemaker.workflow.pipeline.Pipeline.upsert", return_value={})
+@patch("sagemaker.workflow.pipeline.Pipeline.start", return_value=Mock())
+def test_transform_with_monitoring_create_and_starts_pipeline(
+    pipeline_start, upsert, image_uri, sagemaker_session, transformer
+):
+
+    config = CheckJobConfig(
+        role=ROLE,
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        volume_size_in_gb=60,
+        max_runtime_in_seconds=1800,
+        sagemaker_session=sagemaker_session,
+        base_job_name=_CHECK_JOB_PREFIX,
+    )
+
+    quality_check_config = ModelQualityCheckConfig(
+        baseline_dataset="s3://baseline_dataset_s3_url",
+        dataset_format=DatasetFormat.csv(header=True),
+        problem_type="BinaryClassification",
+        inference_attribute="quality_cfg_attr_value",
+        probability_attribute="quality_cfg_attr_value",
+        ground_truth_attribute="quality_cfg_attr_value",
+        probability_threshold_attribute="quality_cfg_attr_value",
+        post_analytics_processor_script="s3://my_bucket/data_quality/postprocessor.py",
+        output_s3_uri="s3://output_s3_uri",
+    )
+
+    transformer.transform_with_monitoring(
+        monitoring_config=quality_check_config,
+        monitoring_resource_config=config,
+        data=DATA,
+        content_type="text/libsvm",
+        supplied_baseline_constraints="supplied_baseline_constraints",
+        role=ROLE,
+    )
+
+    upsert.assert_called_once()
+    pipeline_start.assert_called_once()
 
 
 def test_stop_transform_job_no_transform_job(transformer):

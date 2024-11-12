@@ -80,7 +80,7 @@ with the following:
 
         # ... load from args.train and args.test, train a model, write model to args.model_dir.
 
-Because the SageMaker imports your training script, you should put your training code in a main guard
+Because SageMaker imports your training script, you should put your training code in a main guard
 (``if __name__=='__main__':``) if you are using the same script to host your model, so that SageMaker does not
 inadvertently run your training code at the wrong point in execution.
 
@@ -132,13 +132,48 @@ Using third-party libraries
 ---------------------------
 
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvision``, and ``numpy``.
-For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <https://github.com/aws/deep-learning-containers/tree/master/pytorch>`_.
 
 If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime. Both ``requirements.txt`` and your training script should be put in the same folder. You must specify this folder in ``source_dir`` argument when creating PyTorch estimator.
 
 The function of installing packages using ``requirements.txt`` is supported for all PyTorch versions during training. When serving a PyTorch model, support for this function varies with PyTorch versions. For PyTorch 1.3.1 or newer, ``requirements.txt`` must be under folder ``code``. The SageMaker PyTorch Estimator will automatically save ``code`` in ``model.tar.gz`` after training (assuming you set up your script and ``requirements.txt`` correctly as stipulated in the previous paragraph). In the case of bringing your own trained model for deployment, you must save ``requirements.txt`` under folder ``code`` in ``model.tar.gz`` yourself or specify it through ``dependencies``. For PyTorch 1.2.0, ``requirements.txt`` is not supported for inference. For PyTorch 0.4.0 to 1.1.0, ``requirements.txt`` must be in ``source_dir``.
 
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install. For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
+
+If you were to use your own custom Docker Image, the `SageMaker Python SDK` and the `SageMaker Training Toolkit <https://github.com/aws/sagemaker-training-toolkit/>`__ need to be installed.
+
+To do so, you can add the following lines to your ``requirements.txt`` file:
+
+.. code:: text
+
+    sagemaker
+    sagemaker-training
+
+Deep Learning Framework-Specific SageMaker Toolkits and Containers
+------------------------------------------------------------------
+
+Framework-specific Toolkits exist. You might want to use them in your applications for framework-specific features.
+
+For Training Toolkits, see:
+
+- `SageMaker PyTorch Training Toolkit <https://github.com/aws/sagemaker-pytorch-training-toolkit>`__
+- `SageMaker MXNet Training Toolkit <https://github.com/aws/sagemaker-mxnet-training-toolkit>`__
+- `SageMaker TensorFlow Training Toolkit <https://github.com/aws/sagemaker-tensorflow-training-toolkit>`__
+
+For Inference Toolkits, see:
+
+- `SageMaker PyTorch Inference Toolkit <https://github.com/aws/sagemaker-pytorch-inference-toolkit>`__
+- `SageMaker MXNet Inference Toolkit <https://github.com/aws/sagemaker-mxnet-training-toolkit>`__
+- `SageMaker TensorFlow Inference Toolkit <https://github.com/aws/sagemaker-tensorflow-inference-toolkit>`__
+- `SageMaker HuggingFace Inference Toolkit <https://github.com/aws/sagemaker-huggingface-inference-toolkit>`__
+
+Moreover, for more information on the container runtime environment, including specific framework versions and configurations,
+see `AWS Deep Learning Containers <https://github.com/aws/deep-learning-containers/>`_. More specifically, see:
+
+- `Images for PyTorch <https://github.com/aws/deep-learning-containers/tree/master/pytorch>`__
+- `Images for MXNet <https://github.com/aws/deep-learning-containers/tree/master/mxnet>`__
+- `Images for TensorFlow <https://github.com/aws/deep-learning-containers/tree/master/tensorflow>`__
+- `Images for HuggingFace <https://github.com/aws/deep-learning-containers/tree/master/huggingface>`__
+
 
 Create an Estimator
 ===================
@@ -177,7 +212,7 @@ fit Required Arguments
    case, the S3 objects rooted at the ``my-training-data`` prefix will
    be available in the default ``train`` channel. A dict from
    string channel names to S3 URIs. In this case, the objects rooted at
-   each S3 prefix will available as files in each channel directory.
+   each S3 prefix will be available as files in each channel directory.
 
 For example:
 
@@ -196,20 +231,36 @@ fit Optional Arguments
 -  ``logs``: Defaults to True, whether to show logs produced by training
    job in the Python session. Only meaningful when wait is True.
 
+----
 
 Distributed PyTorch Training
 ============================
 
-You can run a multi-machine, distributed PyTorch training using the PyTorch Estimator. By default, PyTorch objects will
-submit single-machine training jobs to SageMaker. If you set ``instance_count`` to be greater than one, multi-machine
-training jobs will be launched when ``fit`` is called. When you run multi-machine training, SageMaker will import your
-training script and run it on each host in the cluster.
+SageMaker supports the `PyTorch DistributedDataParallel (DDP)
+<https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_
+package. You simply need to check the variables in your training script,
+such as the world size and the rank of the current host, when initializing
+process groups for distributed training.
+And then, launch the training job using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class
+with the ``pytorchddp`` option as the distribution strategy.
 
-To initialize distributed training in your script you would call ``dist.init_process_group`` providing desired backend
-and rank and setting 'WORLD_SIZE' environment variable similar to how you would do it outside of SageMaker using
-environment variable initialization:
+.. note::
+
+  This PyTorch DDP support is available
+  in the SageMaker PyTorch Deep Learning Containers v1.12 and later.
+
+Adapt Your Training Script
+--------------------------
+
+To initialize distributed training in your script, call
+`torch.distributed.init_process_group
+<https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
+with the desired backend and the rank of the current host.
 
 .. code:: python
+
+    import torch.distributed as dist
 
     if args.distributed:
         # Initialize the distributed environment.
@@ -218,12 +269,209 @@ environment variable initialization:
         host_rank = args.hosts.index(args.current_host)
         dist.init_process_group(backend=args.backend, rank=host_rank)
 
-SageMaker sets 'MASTER_ADDR' and 'MASTER_PORT' environment variables for you, but you can overwrite them.
+SageMaker sets ``'MASTER_ADDR'`` and ``'MASTER_PORT'`` environment variables for you,
+but you can also overwrite them.
 
-Supported backends:
--  `gloo` and `tcp` for cpu instances
--  `gloo` and `nccl` for gpu instances
+**Supported backends:**
 
+-  ``gloo`` and ``tcp`` for CPU instances
+-  ``gloo`` and ``nccl`` for GPU instances
+
+Launching a Distributed Training Job
+------------------------------------
+
+You can run multi-node distributed PyTorch training jobs using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class.
+With ``instance_count=1``, the estimator submits a
+single-node training job to SageMaker; with ``instance_count`` greater
+than one, a multi-node training job is launched.
+
+To run a distributed training script that adopts
+the `PyTorch DistributedDataParallel (DDP) package
+<https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_,
+choose the ``pytorchddp`` as the distributed training option in the ``PyTorch`` estimator.
+
+With the ``pytorchddp`` option, the SageMaker PyTorch estimator runs a SageMaker
+training container for PyTorch, sets up the environment for MPI, and launches
+the training job using the ``mpirun`` command on each worker with the given information
+during the PyTorch DDP initialization.
+
+.. note::
+
+  The SageMaker PyTorch estimator can operate both ``mpirun`` (for PyTorch 1.12.0 and later)
+  and ``torchrun`` (for PyTorch 1.13.1 and later) in the backend for distributed training.
+
+For more information about setting up PyTorch DDP in your training script,
+see `Getting Started with Distributed Data Parallel
+<https://pytorch.org/tutorials/intermediate/ddp_tutorial.html>`_ in the
+PyTorch documentation.
+
+The following examples show how to set a PyTorch estimator
+to run a distributed training job on two ``ml.p4d.24xlarge`` instances.
+
+**Using PyTorch DDP with the mpirun backend**
+
+.. code:: python
+
+    from sagemaker.pytorch import PyTorch
+
+    pt_estimator = PyTorch(
+        entry_point="train_ptddp.py",
+        role="SageMakerRole",
+        framework_version="1.12.0",
+        py_version="py38",
+        instance_count=2,
+        instance_type="ml.p4d.24xlarge",
+        distribution={
+            "pytorchddp": {
+                "enabled": True
+            }
+        }
+    )
+
+**Using PyTorch DDP with the torchrun backend**
+
+.. code:: python
+
+    from sagemaker.pytorch import PyTorch
+
+    pt_estimator = PyTorch(
+        entry_point="train_ptddp.py",
+        role="SageMakerRole",
+        framework_version="1.13.1",
+        py_version="py38",
+        instance_count=2,
+        instance_type="ml.p4d.24xlarge",
+        distribution={
+            "torch_distributed": {
+                "enabled": True
+            }
+        }
+    )
+
+
+.. note::
+
+    For more information about setting up ``torchrun`` in your training script,
+    see `torchrun (Elastic Launch) <https://pytorch.org/docs/stable/elastic/run.html>`_ in *the
+    PyTorch documentation*.
+
+----
+
+.. _distributed-pytorch-training-on-trainium:
+
+Distributed Training with PyTorch Neuron on Trn1 instances
+==========================================================
+
+SageMaker Training supports Amazon EC2 Trn1 instances powered by
+`AWS Trainium <https://aws.amazon.com/machine-learning/trainium/>`_ device,
+the second generation purpose-built machine learning accelerator from AWS.
+Each Trn1 instance consists of up to 16 Trainium devices, and each
+Trainium device consists of two `NeuronCores
+<https://awsdocs-neuron.readthedocs-hosted.com/en/latest/general/arch/neuron-hardware/trn1-arch.html#trainium-architecture>`_
+in the *AWS Neuron Documentation*.
+
+You can run distributed training job on Trn1 instances.
+SageMaker supports the ``xla`` package through ``torchrun``.
+With this, you do not need to manually pass ``RANK``,
+``WORLD_SIZE``, ``MASTER_ADDR``, and ``MASTER_PORT``.
+You can launch the training job using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class
+with the ``torch_distributed`` option as the distribution strategy.
+
+.. note::
+
+  This ``torch_distributed`` support is available
+  in the AWS Deep Learning Containers for PyTorch Neuron starting v1.11.0.
+  To find a complete list of supported versions of PyTorch Neuron, see
+  `Neuron Containers <https://github.com/aws/deep-learning-containers/blob/master/available_images.md#neuron-containers>`_
+  in the *AWS Deep Learning Containers GitHub repository*.
+
+.. note::
+
+  SageMaker Debugger is not compatible with Trn1 instances.
+
+Adapt Your Training Script to Initialize with the XLA backend
+-------------------------------------------------------------
+
+To initialize distributed training in your script, call
+`torch.distributed.init_process_group
+<https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
+with the ``xla`` backend as shown below.
+
+.. code:: python
+
+    import torch.distributed as dist
+
+    dist.init_process_group('xla')
+
+SageMaker takes care of ``'MASTER_ADDR'`` and ``'MASTER_PORT'`` for you via ``torchrun``
+
+For detailed documentation about modifying your training script for Trainium, see `Multi-worker data-parallel MLP training using torchrun <https://awsdocs-neuron.readthedocs-hosted.com/en/latest/frameworks/torch/torch-neuronx/tutorials/training/mlp.html?highlight=torchrun#multi-worker-data-parallel-mlp-training-using-torchrun>`_ in the *AWS Neuron Documentation*.
+
+**Currently Supported backends:**
+
+-  ``xla`` for Trainium (Trn1) instances
+
+For up-to-date information on supported backends for Trn1 instances, see `AWS Neuron Documentation <https://awsdocs-neuron.readthedocs-hosted.com/en/latest/index.html>`_.
+
+Launching a Distributed Training Job on Trainium
+------------------------------------------------
+
+You can run multi-node distributed PyTorch training jobs on Trn1 instances using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class.
+With ``instance_count=1``, the estimator submits a
+single-node training job to SageMaker; with ``instance_count`` greater
+than one, a multi-node training job is launched.
+
+With the ``torch_distributed`` option, the SageMaker PyTorch estimator runs a SageMaker
+training container for PyTorch Neuron, sets up the environment, and launches
+the training job using the ``torchrun`` command on each worker with the given information.
+
+**Examples**
+
+The following examples show how to run a PyTorch training using ``torch_distributed`` in SageMaker
+on one ``ml.trn1.2xlarge`` instance and two ``ml.trn1.32xlarge`` instances:
+
+.. code:: python
+
+    from sagemaker.pytorch import PyTorch
+
+    pt_estimator = PyTorch(
+        entry_point="train_torch_distributed.py",
+        role="SageMakerRole",
+        framework_version="1.11.0",
+        py_version="py38",
+        instance_count=1,
+        instance_type="ml.trn1.2xlarge",
+        distribution={
+            "torch_distributed": {
+                "enabled": True
+            }
+        }
+    )
+
+    pt_estimator.fit("s3://bucket/path/to/training/data")
+
+.. code:: python
+
+    from sagemaker.pytorch import PyTorch
+
+    pt_estimator = PyTorch(
+        entry_point="train_torch_distributed.py",
+        role="SageMakerRole",
+        framework_version="1.11.0",
+        py_version="py38",
+        instance_count=2,
+        instance_type="ml.trn1.32xlarge",
+        distribution={
+            "torch_distributed": {
+                "enabled": True
+            }
+        }
+    )
+
+    pt_estimator.fit("s3://bucket/path/to/training/data")
 
 *********************
 Deploy PyTorch Models
@@ -346,20 +594,25 @@ Before a model can be served, it must be loaded. The SageMaker PyTorch model ser
 
 .. code:: python
 
-    def model_fn(model_dir)
+    def model_fn(model_dir, context)
+
+``context`` is an optional argument that contains additional serving information, such as the GPU ID and batch size.
+If specified in the function declaration, the context will be created and passed to the function by SageMaker.
+For more information about ``context``, see the `Serving Context class <https://github.com/pytorch/serve/blob/master/ts/context.py>`_.
 
 SageMaker will inject the directory where your model files and sub-directories, saved by ``save``, have been mounted.
 Your model function should return a model object that can be used for model serving.
 
 The following code-snippet shows an example ``model_fn`` implementation.
-It loads the model parameters from a ``model.pth`` file in the SageMaker model directory ``model_dir``.
+It loads the model parameters from a ``model.pth`` file in the SageMaker model directory ``model_dir``. As explained in the preceding example,
+``context`` is an optional argument that passes additional information.
 
 .. code:: python
 
     import torch
     import os
 
-    def model_fn(model_dir):
+    def model_fn(model_dir, context):
         model = Your_Model()
         with open(os.path.join(model_dir, 'model.pth'), 'rb') as f:
             model.load_state_dict(torch.load(f))
@@ -391,7 +644,7 @@ If you are using PyTorch Elastic Inference 1.5.1, you should provide ``model_fn`
 The client-side Elastic Inference framework is CPU-only, even though inference still happens in a CUDA context on the server. Thus, the default ``model_fn`` for Elastic Inference loads the model to CPU. Tracing models may lead to tensor creation on a specific device, which may cause device-related errors when loading a model onto a different device. Providing an explicit ``map_location=torch.device('cpu')`` argument forces all tensors to CPU.
 
 For more information on the default inference handler functions, please refer to:
-`SageMaker PyTorch Default Inference Handler <https://github.com/aws/sagemaker-pytorch-serving-container/blob/master/src/sagemaker_pytorch_serving_container/default_inference_handler.py>`_.
+`SageMaker PyTorch Default Inference Handler <https://github.com/aws/sagemaker-pytorch-inference-toolkit/blob/master/src/sagemaker_pytorch_serving_container/default_pytorch_inference_handler.py>`_.
 
 Serve a PyTorch Model
 ---------------------
@@ -413,13 +666,13 @@ function in the chain. Inside the SageMaker PyTorch model server, the process lo
 .. code:: python
 
     # Deserialize the Invoke request body into an object we can perform prediction on
-    input_object = input_fn(request_body, request_content_type)
+    input_object = input_fn(request_body, request_content_type, context)
 
     # Perform prediction on the deserialized object, with the loaded model
-    prediction = predict_fn(input_object, model)
+    prediction = predict_fn(input_object, model, context)
 
     # Serialize the prediction result into the desired response content type
-    output = output_fn(prediction, response_content_type)
+    output = output_fn(prediction, response_content_type, context)
 
 The above code sample shows the three function definitions:
 
@@ -467,9 +720,13 @@ it should return an object that can be passed to ``predict_fn`` and have the fol
 
 .. code:: python
 
-    def input_fn(request_body, request_content_type)
+    def input_fn(request_body, request_content_type, context)
 
-Where ``request_body`` is a byte buffer and ``request_content_type`` is a Python string
+Where ``request_body`` is a byte buffer and ``request_content_type`` is a Python string.
+
+``context`` is an optional argument that contains additional serving information, such as the GPU ID and batch size.
+If specified in the function declaration, the context will be created and passed to the function by SageMaker.
+For more information about ``context``, see the `Serving Context class <https://github.com/pytorch/serve/blob/master/ts/context.py>`_.
 
 The SageMaker PyTorch model server provides a default implementation of ``input_fn``.
 This function deserializes JSON, CSV, or NPY encoded data into a torch.Tensor.
@@ -517,16 +774,19 @@ The ``predict_fn`` function has the following signature:
 
 .. code:: python
 
-    def predict_fn(input_object, model)
+    def predict_fn(input_object, model, context)
 
 Where ``input_object`` is the object returned from ``input_fn`` and
 ``model`` is the model loaded by ``model_fn``.
+If you are using multiple GPUs, then specify the ``context`` argument, which contains information such as the GPU ID for a dynamically-selected GPU and the batch size.
+One of the examples below demonstrates how to configure ``predict_fn`` with the ``context`` argument to handle multiple GPUs. For more information about ``context``, see the `Serving Context class <https://github.com/pytorch/serve/blob/master/ts/context.py>`_.
+If you are using CPUs or a single GPU, then you do not need to specify the ``context`` argument.
 
 The default implementation of ``predict_fn`` invokes the loaded model's ``__call__`` function on ``input_object``,
 and returns the resulting value. The return-type should be a torch.Tensor to be compatible with the default
 ``output_fn``.
 
-The example below shows an overridden ``predict_fn``:
+The following example shows an overridden ``predict_fn``:
 
 .. code:: python
 
@@ -535,6 +795,20 @@ The example below shows an overridden ``predict_fn``:
 
     def predict_fn(input_data, model):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model.to(device)
+        model.eval()
+        with torch.no_grad():
+            return model(input_data.to(device))
+
+The following example is for use cases with multiple GPUs and shows an overridden ``predict_fn`` that uses the ``context`` argument to dynamically select a GPU device for making predictions:
+
+.. code:: python
+
+    import torch
+    import numpy as np
+
+    def predict_fn(input_data, model, context):
+        device = torch.device("cuda:" + str(context.system_properties.get("gpu_id")) if torch.cuda.is_available() else "cpu")
         model.to(device)
         model.eval()
         with torch.no_grad():
@@ -595,11 +869,14 @@ The ``output_fn`` has the following signature:
 
 .. code:: python
 
-    def output_fn(prediction, content_type)
+    def output_fn(prediction, content_type, context)
 
 Where ``prediction`` is the result of invoking ``predict_fn`` and
-the content type for the response, as specified by the InvokeEndpoint request.
-The function should return a byte array of data serialized to content_type.
+the content type for the response, as specified by the InvokeEndpoint request. The function should return a byte array of data serialized to ``content_type``.
+
+``context`` is an optional argument that contains additional serving information, such as the GPU ID and batch size.
+If specified in the function declaration, the context will be created and passed to the function by SageMaker.
+For more information about ``context``, see the `Serving Context class <https://github.com/pytorch/serve/blob/master/ts/context.py>`_.
 
 The default implementation expects ``prediction`` to be a torch.Tensor and can serialize the result to JSON, CSV, or NPY.
 It accepts response content types of "application/json", "text/csv", and "application/x-npy".
@@ -650,7 +927,7 @@ see `For versions 1.1 and lower <#for-versions-1.1-and-lower>`_.
     |               |--inference.py
     |               |--requirements.txt
 
-Where ``requirments.txt`` is an optional file that specifies dependencies on third-party libraries.
+Where ``requirements.txt`` is an optional file that specifies dependencies on third-party libraries.
 
 Create a ``PyTorchModel`` object
 --------------------------------

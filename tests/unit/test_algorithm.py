@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -158,6 +158,7 @@ DESCRIBE_ALGORITHM_RESPONSE = {
 def test_algorithm_supported_input_mode_with_valid_input_types(session):
     # verify that the Estimator verifies the
     # input mode that an Algorithm supports.
+    session.sagemaker_config = {}
 
     file_mode_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     file_mode_algo["TrainingSpecification"]["TrainingChannels"] = [
@@ -259,6 +260,7 @@ def test_algorithm_supported_input_mode_with_valid_input_types(session):
 def test_algorithm_supported_input_mode_with_bad_input_types(session):
     # verify that the Estimator verifies raises exceptions when
     # attempting to train with an incorrect input type
+    session.sagemaker_config = {}
 
     file_mode_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     file_mode_algo["TrainingSpecification"]["TrainingChannels"] = [
@@ -329,6 +331,7 @@ def test_algorithm_supported_input_mode_with_bad_input_types(session):
 @patch("sagemaker.estimator.EstimatorBase.fit", Mock())
 @patch("sagemaker.Session")
 def test_algorithm_trainining_channels_with_expected_channels(session):
+    session.sagemaker_config = {}
     training_channels = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
 
     training_channels["TrainingSpecification"]["TrainingChannels"] = [
@@ -370,6 +373,7 @@ def test_algorithm_trainining_channels_with_expected_channels(session):
 @patch("sagemaker.estimator.EstimatorBase.fit", Mock())
 @patch("sagemaker.Session")
 def test_algorithm_trainining_channels_with_invalid_channels(session):
+    session.sagemaker_config = {}
     training_channels = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
 
     training_channels["TrainingSpecification"]["TrainingChannels"] = [
@@ -412,6 +416,7 @@ def test_algorithm_trainining_channels_with_invalid_channels(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_train_instance_types_valid_instance_types(session):
+    session.sagemaker_config = {}
     describe_algo_response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     instance_types = ["ml.m4.xlarge", "ml.m5.2xlarge"]
 
@@ -440,6 +445,7 @@ def test_algorithm_train_instance_types_valid_instance_types(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_train_instance_types_invalid_instance_types(session):
+    session.sagemaker_config = {}
     describe_algo_response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     instance_types = ["ml.m4.xlarge", "ml.m5.2xlarge"]
 
@@ -462,6 +468,7 @@ def test_algorithm_train_instance_types_invalid_instance_types(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_distributed_training_validation(session):
+    session.sagemaker_config = {}
     distributed_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     distributed_algo["TrainingSpecification"]["SupportsDistributedTraining"] = True
 
@@ -502,6 +509,7 @@ def test_algorithm_distributed_training_validation(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_hyperparameter_integer_range_valid_range(session):
+    session.sagemaker_config = {}
     hyperparameters = [
         {
             "Description": "Grow a tree with max_leaf_nodes in best-first fashion.",
@@ -535,6 +543,7 @@ def test_algorithm_hyperparameter_integer_range_valid_range(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_hyperparameter_integer_range_invalid_range(session):
+    session.sagemaker_config = {}
     hyperparameters = [
         {
             "Description": "Grow a tree with max_leaf_nodes in best-first fashion.",
@@ -571,6 +580,7 @@ def test_algorithm_hyperparameter_integer_range_invalid_range(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_hyperparameter_continuous_range_valid_range(session):
+    session.sagemaker_config = {}
     hyperparameters = [
         {
             "Description": "A continuous hyperparameter",
@@ -606,6 +616,7 @@ def test_algorithm_hyperparameter_continuous_range_valid_range(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_hyperparameter_continuous_range_invalid_range(session):
+    session.sagemaker_config = {}
     hyperparameters = [
         {
             "Description": "A continuous hyperparameter",
@@ -642,6 +653,7 @@ def test_algorithm_hyperparameter_continuous_range_invalid_range(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_hyperparameter_categorical_range(session):
+    session.sagemaker_config = {}
     hyperparameters = [
         {
             "Description": "A continuous hyperparameter",
@@ -679,6 +691,7 @@ def test_algorithm_hyperparameter_categorical_range(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_required_hyperparameters_not_provided(session):
+    session.sagemaker_config = {}
     hyperparameters = [
         {
             "Description": "A continuous hyperparameter",
@@ -723,6 +736,7 @@ def test_algorithm_required_hyperparameters_not_provided(session):
 @patch("sagemaker.Session")
 @patch("sagemaker.estimator.EstimatorBase.fit", Mock())
 def test_algorithm_required_hyperparameters_are_provided(session):
+    session.sagemaker_config = {}
     hyperparameters = [
         {
             "Description": "A categorical hyperparameter",
@@ -767,6 +781,7 @@ def test_algorithm_required_hyperparameters_are_provided(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_required_free_text_hyperparameter_not_provided(session):
+    session.sagemaker_config = {}
     hyperparameters = [
         {
             "Name": "free_text_hp1",
@@ -810,6 +825,7 @@ def test_algorithm_required_free_text_hyperparameter_not_provided(session):
 @patch("sagemaker.Session")
 @patch("sagemaker.algorithm.AlgorithmEstimator.create_model")
 def test_algorithm_create_transformer(create_model, session):
+    session.sagemaker_config = {}
     session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
 
     estimator = AlgorithmEstimator(
@@ -834,6 +850,7 @@ def test_algorithm_create_transformer(create_model, session):
 
 @patch("sagemaker.Session")
 def test_algorithm_create_transformer_without_completed_training_job(session):
+    session.sagemaker_config = {}
     session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
 
     estimator = AlgorithmEstimator(
@@ -852,6 +869,7 @@ def test_algorithm_create_transformer_without_completed_training_job(session):
 @patch("sagemaker.algorithm.AlgorithmEstimator.create_model")
 @patch("sagemaker.Session")
 def test_algorithm_create_transformer_with_product_id(create_model, session):
+    session.sagemaker_config = {}
     response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     response["ProductId"] = "some-product-id"
     session.sagemaker_client.describe_algorithm = Mock(return_value=response)
@@ -875,6 +893,7 @@ def test_algorithm_create_transformer_with_product_id(create_model, session):
 
 @patch("sagemaker.Session")
 def test_algorithm_enable_network_isolation_no_product_id(session):
+    session.sagemaker_config = {}
     session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
 
     estimator = AlgorithmEstimator(
@@ -891,6 +910,7 @@ def test_algorithm_enable_network_isolation_no_product_id(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_enable_network_isolation_with_product_id(session):
+    session.sagemaker_config = {}
     response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     response["ProductId"] = "some-product-id"
     session.sagemaker_client.describe_algorithm = Mock(return_value=response)
@@ -909,6 +929,7 @@ def test_algorithm_enable_network_isolation_with_product_id(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_encrypt_inter_container_traffic(session):
+    session.sagemaker_config = {}
     response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     response["encrypt_inter_container_traffic"] = True
     session.sagemaker_client.describe_algorithm = Mock(return_value=response)
@@ -928,6 +949,7 @@ def test_algorithm_encrypt_inter_container_traffic(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_no_required_hyperparameters(session):
+    session.sagemaker_config = {}
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     del some_algo["TrainingSpecification"]["SupportedHyperParameters"]
 
@@ -947,6 +969,7 @@ def test_algorithm_no_required_hyperparameters(session):
 
 def test_algorithm_attach_from_hyperparameter_tuning():
     session = Mock()
+    session.sagemaker_config = {}
     job_name = "training-job-that-is-part-of-a-tuning-job"
     algo_arn = "arn:aws:sagemaker:us-east-2:000000000000:algorithm/scikit-decision-trees"
     role_arn = "arn:aws:iam::123412341234:role/SageMakerRole"
@@ -1019,6 +1042,7 @@ def test_algorithm_attach_from_hyperparameter_tuning():
 
 @patch("sagemaker.Session")
 def test_algorithm_supported_with_spot_instances(session):
+    session.sagemaker_config = {}
     session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
 
     assert AlgorithmEstimator(

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,11 +22,13 @@ from mock import patch
 from pkg_resources import parse_version
 
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
-from sagemaker.model_metrics import MetricsSource, ModelMetrics
+from sagemaker.model_metrics import FileSource, MetricsSource, ModelMetrics
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
+from sagemaker.session_settings import SessionSettings
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_NAME = "dummy_script.py"
@@ -61,11 +63,14 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
 
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+
+INFERENCE_IMAGE_URI = "inference-uri"
 
 
 @pytest.fixture()
@@ -79,10 +84,15 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
-    describe_compilation = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"}}
+    describe_compilation = {
+        "ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"},
+        "InferenceImage": INFERENCE_IMAGE_URI,
+    }
     session.sagemaker_client.create_model_package.side_effect = MODEL_PKG_RESPONSE
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -91,6 +101,9 @@ def sagemaker_session():
     session.wait_for_compilation_job = Mock(return_value=describe_compilation)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 
@@ -108,6 +121,11 @@ def skip_if_mms_version(mxnet_inference_version):
 def skip_if_not_mms_version(mxnet_inference_version):
     if not _is_mms_version(mxnet_inference_version):
         pytest.skip("Skipping because this version does not use MMS")
+
+
+@pytest.fixture()
+def component_name():
+    return "test_component_name"
 
 
 def _get_train_args(job_name):
@@ -149,18 +167,13 @@ def _get_train_args(job_name):
         "environment": None,
         "retry_strategy": None,
         "experiment_config": None,
+        "enable_network_isolation": False,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.0-cpu-py3",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -192,12 +205,6 @@ def _create_compilation_job(input_shape, output_location):
         "stop_condition": {"MaxRuntimeInSeconds": 900},
         "tags": None,
     }
-
-
-def _neo_inference_image(mxnet_version):
-    return "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-inference-{}:{}-cpu-py3".format(
-        FRAMEWORK.lower(), mxnet_version
-    )
 
 
 @patch("sagemaker.estimator.name_from_base")
@@ -421,7 +428,7 @@ def test_mxnet_neo(time, strftime, sagemaker_session, neo_mxnet_version):
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
-    assert compiled_model.image_uri == _neo_inference_image(neo_mxnet_version)
+    assert compiled_model.image_uri == INFERENCE_IMAGE_URI
 
     predictor = mx.deploy(1, CPU, use_compiled_model=True)
     assert isinstance(predictor, MXNetPredictor)
@@ -460,13 +467,31 @@ def test_model(
         s3_uri="s3://b/c",
         content_digest="d",
     )
+    dummy_file_source = FileSource(
+        content_type="a",
+        s3_uri="s3://b/c",
+        content_digest="d",
+    )
     model_metrics = ModelMetrics(
         model_statistics=dummy_metrics_source,
         model_constraints=dummy_metrics_source,
         model_data_statistics=dummy_metrics_source,
         model_data_constraints=dummy_metrics_source,
         bias=dummy_metrics_source,
+        bias_pre_training=dummy_metrics_source,
+        bias_post_training=dummy_metrics_source,
         explainability=dummy_metrics_source,
+    )
+    drift_check_baselines = DriftCheckBaselines(
+        model_statistics=dummy_metrics_source,
+        model_constraints=dummy_metrics_source,
+        model_data_statistics=dummy_metrics_source,
+        model_data_constraints=dummy_metrics_source,
+        bias_config_file=dummy_file_source,
+        bias_pre_training_constraints=dummy_metrics_source,
+        bias_post_training_constraints=dummy_metrics_source,
+        explainability_constraints=dummy_metrics_source,
+        explainability_config_file=dummy_file_source,
     )
     model.register(
         content_types,
@@ -478,6 +503,7 @@ def test_model(
         marketplace_cert=True,
         approval_status="Approved",
         description="description",
+        drift_check_baselines=drift_check_baselines,
     )
     expected_create_model_package_request = {
         "containers": ANY,
@@ -490,6 +516,7 @@ def test_model(
         "marketplace_cert": True,
         "approval_status": "Approved",
         "description": "description",
+        "drift_check_baselines": drift_check_baselines._to_request_dict(),
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -555,13 +582,31 @@ def test_model_register_all_args(
         s3_uri="s3://b/c",
         content_digest="d",
     )
+    dummy_file_source = FileSource(
+        content_type="a",
+        s3_uri="s3://b/c",
+        content_digest="d",
+    )
     model_metrics = ModelMetrics(
         model_statistics=dummy_metrics_source,
         model_constraints=dummy_metrics_source,
         model_data_statistics=dummy_metrics_source,
         model_data_constraints=dummy_metrics_source,
         bias=dummy_metrics_source,
+        bias_pre_training=dummy_metrics_source,
+        bias_post_training=dummy_metrics_source,
         explainability=dummy_metrics_source,
+    )
+    drift_check_baselines = DriftCheckBaselines(
+        model_statistics=dummy_metrics_source,
+        model_constraints=dummy_metrics_source,
+        model_data_statistics=dummy_metrics_source,
+        model_data_constraints=dummy_metrics_source,
+        bias_config_file=dummy_file_source,
+        bias_pre_training_constraints=dummy_metrics_source,
+        bias_post_training_constraints=dummy_metrics_source,
+        explainability_constraints=dummy_metrics_source,
+        explainability_config_file=dummy_file_source,
     )
     metadata_properties = MetadataProperties(
         commit_id="test-commit-id",
@@ -580,6 +625,7 @@ def test_model_register_all_args(
         marketplace_cert=True,
         approval_status="Approved",
         description="description",
+        drift_check_baselines=drift_check_baselines,
     )
     expected_create_model_package_request = {
         "containers": ANY,
@@ -593,6 +639,7 @@ def test_model_register_all_args(
         "marketplace_cert": True,
         "approval_status": "Approved",
         "description": "description",
+        "drift_check_baselines": drift_check_baselines._to_request_dict(),
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -707,7 +754,7 @@ def test_model_prepare_container_def_no_instance_type_or_image(
 
 
 def test_attach(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
-    if mxnet_training_py_version == "py37":
+    if mxnet_training_py_version in ["py37", "py38"]:
         training_image = "1.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{1}-cpu-{0}".format(
             mxnet_training_py_version, mxnet_training_version
         )
@@ -1061,3 +1108,62 @@ def test_custom_image_estimator_deploy(
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = mx.create_model(image_uri=custom_image)
     assert model.image_uri == custom_image
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_register_mxnet_model_auto_infer_framework(
+    sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version
+):
+
+    model_package_group_name = "test-mxnet-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    mxnet_model = MXNetModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=mxnet_inference_version,
+        py_version=mxnet_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+
+    mxnet_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": MODEL_DATA,
+                "Framework": FRAMEWORK.upper(),
+                "FrameworkVersion": mxnet_inference_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
+def test_predictor_with_component_name(sagemaker_session, component_name):
+    predictor = MXNetPredictor("endpoint", sagemaker_session, component_name=component_name)
+
+    assert predictor._get_component_name() == component_name

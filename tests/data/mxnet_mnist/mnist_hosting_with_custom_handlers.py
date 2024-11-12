@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -21,6 +21,7 @@ import struct
 
 
 # --- this example demonstrates how to extend default behavior during model hosting ---
+
 
 # --- Model preparation ---
 # it is possible to specify own code to load the model, otherwise a default model loading takes place

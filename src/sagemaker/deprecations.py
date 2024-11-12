@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -21,24 +21,27 @@ logger = logging.getLogger(__name__)
 V2_URL = "https://sagemaker.readthedocs.io/en/stable/v2.html"
 
 
-def _warn(msg):
+def _warn(msg, sdk_version=None):
     """Generic warning raiser referencing V2
 
     Args:
         phrase: The phrase to include in the warning.
+        sdk_version: the sdk version of removal of support.
     """
-    full_msg = f"{msg} in sagemaker>=2.\nSee: {V2_URL} for details."
+    _sdk_version = sdk_version if sdk_version is not None else "2"
+    full_msg = f"{msg} in sagemaker>={_sdk_version}.\nSee: {V2_URL} for details."
     warnings.warn(full_msg, DeprecationWarning, stacklevel=2)
     logger.warning(full_msg)
 
 
-def removed_warning(phrase):
+def removed_warning(phrase, sdk_version=None):
     """Raise a warning for a no-op in sagemaker>=2
 
     Args:
         phrase: the prefix phrase of the warning message.
+        sdk_version: the sdk version of removal of support.
     """
-    _warn(f"{phrase} is a no-op")
+    _warn(f"{phrase} is a no-op", sdk_version)
 
 
 def renamed_warning(phrase):
@@ -48,6 +51,55 @@ def renamed_warning(phrase):
         phrase: the prefix phrase of the warning message.
     """
     _warn(f"{phrase} has been renamed")
+
+
+def deprecation_warn(name, date, msg=None):
+    """Raise a warning for soon to be deprecated feature in sagemaker>=2
+
+    Args:
+        name (str): Name of the feature
+        date (str): the date when the feature will be deprecated
+        msg (str): the prefix phrase of the warning message.
+    """
+    _warn(f"{name} will be deprecated on {date}.{msg}")
+
+
+def deprecation_warn_base(msg):
+    """Raise a warning for soon to be deprecated feature in sagemaker>=2
+
+    Args:
+        msg (str): the warning message.
+    """
+    _warn(msg)
+
+
+def deprecation_warning(date, msg=None):
+    """Decorator for raising deprecation warning for a feature in sagemaker>=2
+
+    Args:
+        date (str): the date when the feature will be deprecated
+        msg (str): the prefix phrase of the warning message.
+
+    Usage:
+        @deprecation_warning(msg="message", date="date")
+        def sample_function():
+            print("xxxx....")
+
+        @deprecation_warning(msg="message", date="date")
+        class SampleClass():
+            def __init__(self):
+                print("xxxx....")
+
+    """
+
+    def deprecate(obj):
+        def wrapper(*args, **kwargs):
+            deprecation_warn(obj.__name__, date, msg)
+            return obj(*args, **kwargs)
+
+        return wrapper
+
+    return deprecate
 
 
 def renamed_kwargs(old_name, new_name, value, kwargs):
@@ -104,6 +156,34 @@ def removed_function(name):
         removed_warning(f"The function {name}")
 
     return func
+
+
+def deprecated(sdk_version=None):
+    """Decorator for raising deprecated warning for a feature in sagemaker>=2
+
+    Args:
+        sdk_version (str): the sdk version of removal of support.
+
+    Usage:
+        @deprecated()
+        def sample_function():
+            print("xxxx....")
+
+        @deprecated(sdk_version="2.66")
+        class SampleClass():
+            def __init__(self):
+                print("xxxx....")
+
+    """
+
+    def deprecate(obj):
+        def wrapper(*args, **kwargs):
+            removed_warning(obj.__name__, sdk_version)
+            return obj(*args, **kwargs)
+
+        return wrapper
+
+    return deprecate
 
 
 def deprecated_function(func, name):

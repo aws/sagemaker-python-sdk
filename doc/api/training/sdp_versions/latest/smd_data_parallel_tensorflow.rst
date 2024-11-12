@@ -1,16 +1,18 @@
-#################################################################
-TensorFlow Guide to SageMaker's distributed data parallel library
-#################################################################
+####################
+Guide for TensorFlow
+####################
 
-.. admonition:: Contents
+Use this guide to learn how to use the SageMaker distributed
+data parallel library API for TensorFlow.
 
-   - :ref:`tensorflow-sdp-modify`
-   - :ref:`tensorflow-sdp-api`
+.. contents:: Topics
+  :depth: 3
+  :local:
 
 .. _tensorflow-sdp-modify:
 
-Modify a TensorFlow 2.x training script to use SageMaker data parallel
-======================================================================
+Modify a TensorFlow 2.x training script to use the SageMaker data parallel library
+==================================================================================
 
 The following steps show you how to convert a TensorFlow 2.x training
 script to utilize the distributed data parallel library.
@@ -155,10 +157,6 @@ script you will have for distributed training with the library.
 TensorFlow API
 ==============
 
-.. rubric:: Supported versions
-
-**TensorFlow 2.3.1, 2.4.1, 2.5.0**
-
 .. function:: smdistributed.dataparallel.tensorflow.init()
 
    Initialize ``smdistributed.dataparallel``. Must be called at the
@@ -247,16 +245,25 @@ TensorFlow API
 
 .. function:: smdistributed.dataparallel.tensorflow.allreduce(tensor, param_index, num_params, compression=Compression.none, op=ReduceOp.AVERAGE)
 
-   Performs an all-reduce operation on a tensor (``tf.Tensor``).
+   Performs an ``allreduce`` operation on a tensor (``tf.Tensor``).
 
-   ``smdistributed.dataparallel`` AllReduce API can be used for all
-   reducing gradient tensors or any other tensors. By
-   default, ``smdistributed.dataparallel`` AllReduce averages the
-   tensors across the participating workers.
-   ​
+   The ``smdistributed.dataparallel`` package's AllReduce API for TensorFlow to allreduce
+   gradient tensors. By default, ``smdistributed.dataparallel`` allreduce averages the
+   gradient tensors across participating workers.
+
+   .. note::
+
+    :class:`smdistributed.dataparallel.tensorflow.allreduce()` should
+    only be used to allreduce gradient tensors.
+    For other (non-gradient) tensors, you must use
+    :class:`smdistributed.dataparallel.tensorflow.oob_allreduce()`.
+    If you use :class:`smdistributed.dataparallel.tensorflow.allreduce()`
+    for non-gradient tensors,
+    the distributed training job might stall or stop.
+
    **Inputs:**
 
-   - ``tensor (tf.Tensor)(required)``: The tensor to be all-reduced. The shape of the input must be identical across all ranks.
+   - ``tensor (tf.Tensor)(required)``: The tensor to be allreduced. The shape of the input must be identical across all ranks.
    - ``param_index (int)(required):`` 0 if you are reducing a single tensor. Index of the tensor if you are reducing a list of tensors.
    - ``num_params (int)(required):`` len(tensor).
    - ``compression (smdistributed.dataparallel.tensorflow.Compression)(optional)``: Compression algorithm used to reduce the amount of data sent and received by each worker node. Defaults to not using compression.
@@ -310,9 +317,9 @@ TensorFlow API
 
 .. function:: smdistributed.dataparallel.tensorflow.oob_allreduce(tensor, compression=Compression.none, op=ReduceOp.AVERAGE)
 
-   OutOfBand (oob) AllReduce is simplified AllReduce function for use cases
+   Out-of-band (oob) AllReduce is simplified AllReduce function for use-cases
    such as calculating total loss across all the GPUs in the training.
-   oob_allreduce average the tensors, as reduction operation, across the
+   ``oob_allreduce`` average the tensors, as reduction operation, across the
    worker nodes.
 
    **Inputs:**
@@ -330,15 +337,25 @@ TensorFlow API
 
    -  ``None``
 
-   .. rubric:: Notes
+   .. note::
 
-   ``smdistributed.dataparallel.tensorflow.oob_allreduce``, in most
-   cases, is ~2x slower
-   than ``smdistributed.dataparallel.tensorflow.allreduce``  so it is not
-   recommended to be used for performing gradient reduction during the
-   training
-   process. ``smdistributed.dataparallel.tensorflow.oob_allreduce`` internally
-   uses NCCL AllReduce with ``ncclSum`` as the reduction operation.
+      In most cases, the :class:`smdistributed.dataparallel.tensorflow.oob_allreduce()`
+      function is ~2x slower
+      than :class:`smdistributed.dataparallel.tensorflow.allreduce()`. It is not
+      recommended to use the :class:`smdistributed.dataparallel.tensorflow.oob_allreduce()`
+      function for performing gradient
+      reduction during the training process.
+      ``smdistributed.dataparallel.tensorflow.oob_allreduce`` internally
+      uses NCCL AllReduce with ``ncclSum`` as the reduction operation.
+
+   .. note::
+
+      :class:`smdistributed.dataparallel.tensorflow.oob_allreduce()` should
+      only be used to allreduce non-gradient tensors.
+      If you use :class:`smdistributed.dataparallel.tensorflow.allreduce()`
+      for non-gradient tensors,
+      the distributed training job might stall or stop.
+      To allreduce gradients, use :class:`smdistributed.dataparallel.tensorflow.allreduce()`.
 
 
 .. function:: smdistributed.dataparallel.tensorflow.overlap(tensor)

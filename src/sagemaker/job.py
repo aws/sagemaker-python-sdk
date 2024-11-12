@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,6 +18,7 @@ from six import string_types
 
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.local import file_input
+from sagemaker.workflow import is_pipeline_variable
 
 
 class _Job(object):
@@ -67,15 +68,21 @@ class _Job(object):
         input_config = _Job._format_inputs_to_input_config(inputs, validate_uri)
         role = (
             estimator.sagemaker_session.expand_role(estimator.role)
-            if expand_role
+            if (expand_role and not is_pipeline_variable(estimator.role))
             else estimator.role
         )
-        output_config = _Job._prepare_output_config(estimator.output_path, estimator.output_kms_key)
+        output_config = _Job._prepare_output_config(
+            estimator.output_path,
+            estimator.output_kms_key,
+            disable_output_compression=estimator.disable_output_compression,
+        )
         resource_config = _Job._prepare_resource_config(
             estimator.instance_count,
             estimator.instance_type,
+            estimator.instance_groups,
             estimator.volume_size,
             estimator.volume_kms_key,
+            estimator.keep_alive_period_in_seconds,
         )
         stop_condition = _Job._prepare_stop_condition(estimator.max_run, estimator.max_wait)
         vpc_config = estimator.get_vpc_config()
@@ -167,14 +174,14 @@ class _Job(object):
         target_attribute_name=None,
     ):
         """Placeholder docstring"""
+        s3_input_result = TrainingInput(
+            uri_input,
+            content_type=content_type,
+            input_mode=input_mode,
+            compression=compression,
+            target_attribute_name=target_attribute_name,
+        )
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
-            s3_input_result = TrainingInput(
-                uri_input,
-                content_type=content_type,
-                input_mode=input_mode,
-                compression=compression,
-                target_attribute_name=target_attribute_name,
-            )
             return s3_input_result
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("file://"):
             return file_input(uri_input)
@@ -184,16 +191,11 @@ class _Job(object):
                 '"file://"'.format(uri_input)
             )
         if isinstance(uri_input, str):
-            s3_input_result = TrainingInput(
-                uri_input,
-                content_type=content_type,
-                input_mode=input_mode,
-                compression=compression,
-                target_attribute_name=target_attribute_name,
-            )
             return s3_input_result
         if isinstance(uri_input, (TrainingInput, file_input, FileSystemInput)):
             return uri_input
+        if is_pipeline_variable(uri_input):
+            return s3_input_result
 
         raise ValueError(
             "Cannot format input {}. Expecting one of str, TrainingInput, file_input or "
@@ -275,23 +277,48 @@ class _Job(object):
         return input_dict
 
     @staticmethod
-    def _prepare_output_config(s3_path, kms_key_id):
+    def _prepare_output_config(s3_path, kms_key_id, disable_output_compression=False):
         """Placeholder docstring"""
         config = {"S3OutputPath": s3_path}
         if kms_key_id is not None:
             config["KmsKeyId"] = kms_key_id
+        if disable_output_compression:
+            config["CompressionType"] = "NONE"
         return config
 
     @staticmethod
-    def _prepare_resource_config(instance_count, instance_type, volume_size, volume_kms_key):
+    def _prepare_resource_config(
+        instance_count,
+        instance_type,
+        instance_groups,
+        volume_size,
+        volume_kms_key,
+        keep_alive_period_in_seconds,
+    ):
         """Placeholder docstring"""
         resource_config = {
-            "InstanceCount": instance_count,
-            "InstanceType": instance_type,
             "VolumeSizeInGB": volume_size,
         }
         if volume_kms_key is not None:
             resource_config["VolumeKmsKeyId"] = volume_kms_key
+        if keep_alive_period_in_seconds is not None:
+            resource_config["KeepAlivePeriodInSeconds"] = keep_alive_period_in_seconds
+        if instance_groups is not None:
+            if instance_count is not None or instance_type is not None:
+                raise ValueError(
+                    "instance_count and instance_type cannot be set when instance_groups is set"
+                )
+
+            resource_config["InstanceGroups"] = [
+                group._to_request_dict() for group in instance_groups
+            ]
+        else:
+            if instance_count is None or instance_type is None:
+                raise ValueError(
+                    "instance_count and instance_type must be set if instance_groups is not set"
+                )
+            resource_config["InstanceCount"] = instance_count
+            resource_config["InstanceType"] = instance_type
 
         return resource_config
 

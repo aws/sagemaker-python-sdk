@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,6 +16,7 @@ import pytest
 from mock import Mock
 
 from sagemaker import image_uris
+from sagemaker.session_settings import SessionSettings
 from sagemaker.sparkml import SparkMLModel, SparkMLPredictor
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -40,16 +41,19 @@ def sagemaker_session():
         region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.boto_region_name = REGION
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_config = {}
     return sms
 
 
 def test_sparkml_model(sagemaker_session):
     sparkml = SparkMLModel(sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE)
-    assert sparkml.image_uri == image_uris.retrieve("sparkml-serving", REGION, version="2.4")
+    assert sparkml.image_uri == image_uris.retrieve("sparkml-serving", REGION, version="3.3")
 
 
 def test_predictor_type(sagemaker_session):

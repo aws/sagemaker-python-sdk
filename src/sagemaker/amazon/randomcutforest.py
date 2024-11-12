@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, List
+
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
@@ -21,7 +23,9 @@ from sagemaker.amazon.validation import ge, le
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class RandomCutForest(AmazonAlgorithmEstimatorBase):
@@ -32,31 +36,31 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
     or unclassifiable data points.
     """
 
-    repo_name = "randomcutforest"
-    repo_version = 1
-    MINI_BATCH_SIZE = 1000
+    repo_name: str = "randomcutforest"
+    repo_version: str = "1"
+    MINI_BATCH_SIZE: int = 1000
 
-    eval_metrics = hp(
+    eval_metrics: hp = hp(
         name="eval_metrics",
         validation_message='A comma separated list of "accuracy" or "precision_recall_fscore"',
         data_type=list,
     )
 
-    num_trees = hp("num_trees", (ge(50), le(1000)), "An integer in [50, 1000]", int)
-    num_samples_per_tree = hp(
+    num_trees: hp = hp("num_trees", (ge(50), le(1000)), "An integer in [50, 1000]", int)
+    num_samples_per_tree: hp = hp(
         "num_samples_per_tree", (ge(1), le(2048)), "An integer in [1, 2048]", int
     )
-    feature_dim = hp("feature_dim", (ge(1), le(10000)), "An integer in [1, 10000]", int)
+    feature_dim: hp = hp("feature_dim", (ge(1), le(10000)), "An integer in [1, 10000]", int)
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        num_samples_per_tree=None,
-        num_trees=None,
-        eval_metrics=None,
-        **kwargs
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_samples_per_tree: Optional[int] = None,
+        num_trees: Optional[int] = None,
+        eval_metrics: Optional[List] = None,
+        **kwargs,
     ):
         """An `Estimator` class implementing a Random Cut Forest.
 
@@ -96,9 +100,9 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_samples_per_tree (int): Optional. The number of samples used to
                 build each tree in the forest. The total number of samples drawn
@@ -140,7 +144,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -179,6 +183,7 @@ class RandomCutForestPredictor(Predictor):
         sagemaker_session=None,
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
+        component_name=None,
     ):
         """Initialization for RandomCutForestPredictor class.
 
@@ -193,12 +198,15 @@ class RandomCutForestPredictor(Predictor):
                 serializes input data to x-recordio-protobuf format.
             deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
                 Default parses responses from x-recordio-protobuf format.
+            component_name (str): Optional. Name of the Amazon SageMaker inference
+                component corresponding to the predictor.
         """
         super(RandomCutForestPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
 
@@ -209,11 +217,17 @@ class RandomCutForestModel(Model):
     Predictor that calculates anomaly scores for datapoints.
     """
 
-    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        **kwargs,
+    ):
         """Initialization for RandomCutForestModel class.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -233,11 +247,13 @@ class RandomCutForestModel(Model):
             sagemaker_session.boto_region_name,
             version=RandomCutForest.repo_version,
         )
+        pop_out_unused_kwarg("predictor_cls", kwargs, RandomCutForestPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(RandomCutForestModel, self).__init__(
             image_uri,
             model_data,
             role,
             predictor_cls=RandomCutForestPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

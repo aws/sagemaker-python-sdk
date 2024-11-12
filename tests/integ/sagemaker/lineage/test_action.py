@@ -20,6 +20,7 @@ import time
 import pytest
 
 from sagemaker.lineage import action
+from sagemaker.lineage.query import LineageQueryDirectionEnum
 
 
 def test_create_delete(action_obj):
@@ -117,3 +118,60 @@ def test_tags(action_obj, sagemaker_session):
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0
     assert [actual_tags[-1]] == tags
+
+
+@pytest.mark.skip("data inconsistency P61661075")
+def test_upstream_artifacts(static_model_deployment_action):
+    artifacts_from_query = static_model_deployment_action.artifacts(
+        direction=LineageQueryDirectionEnum.ASCENDANTS
+    )
+    assert len(artifacts_from_query) > 0
+    for artifact in artifacts_from_query:
+        assert "artifact" in artifact.artifact_arn
+
+
+@pytest.mark.skip("data inconsistency P61661075")
+def test_downstream_artifacts(static_approval_action):
+    artifacts_from_query = static_approval_action.artifacts(
+        direction=LineageQueryDirectionEnum.DESCENDANTS
+    )
+    assert len(artifacts_from_query) > 0
+    for artifact in artifacts_from_query:
+        assert "artifact" in artifact.artifact_arn
+
+
+@pytest.mark.skip("data inconsistency P61661075")
+def test_datasets(static_approval_action, static_dataset_artifact, sagemaker_session):
+    try:
+        sagemaker_session.sagemaker_client.add_association(
+            SourceArn=static_dataset_artifact.artifact_arn,
+            DestinationArn=static_approval_action.action_arn,
+            AssociationType="ContributedTo",
+        )
+    except Exception:
+        print("Source and Destination association already exists.")
+
+    time.sleep(3)
+    artifacts_from_query = static_approval_action.datasets()
+
+    assert len(artifacts_from_query) > 0
+    for artifact in artifacts_from_query:
+        assert "artifact" in artifact.artifact_arn
+        assert artifact.artifact_type == "DataSet"
+
+    try:
+        sagemaker_session.sagemaker_client.delete_association(
+            SourceArn=static_dataset_artifact.artifact_arn,
+            DestinationArn=static_approval_action.action_arn,
+        )
+    except Exception:
+        pass
+
+
+@pytest.mark.skip("data inconsistency P61661075")
+def test_endpoints(static_approval_action):
+    endpoint_contexts_from_query = static_approval_action.endpoints()
+    assert len(endpoint_contexts_from_query) > 0
+    for endpoint in endpoint_contexts_from_query:
+        assert endpoint.context_type == "Endpoint"
+        assert "endpoint" in endpoint.context_arn

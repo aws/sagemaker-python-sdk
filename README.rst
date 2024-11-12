@@ -10,6 +10,10 @@ SageMaker Python SDK
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Latest Version
 
+.. image:: https://img.shields.io/conda/vn/conda-forge/sagemaker-python-sdk.svg
+   :target: https://anaconda.org/conda-forge/sagemaker-python-sdk
+   :alt: Conda-Forge Version
+
 .. image:: https://img.shields.io/pypi/pyversions/sagemaker.svg
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Supported Python Versions
@@ -21,6 +25,10 @@ SageMaker Python SDK
 .. image:: https://readthedocs.org/projects/sagemaker/badge/?version=stable
    :target: https://sagemaker.readthedocs.io/en/stable/
    :alt: Documentation Status
+
+.. image:: https://github.com/aws/sagemaker-python-sdk/actions/workflows/codebuild-ci-health.yml/badge.svg
+    :target: https://github.com/aws/sagemaker-python-sdk/actions/workflows/codebuild-ci-health.yml
+    :alt: CI Health
 
 SageMaker Python SDK is an open source library for training and deploying machine learning models on Amazon SageMaker.
 
@@ -63,11 +71,10 @@ Table of Contents
 Installing the SageMaker Python SDK
 -----------------------------------
 
-The SageMaker Python SDK is built to PyPI and can be installed with pip as follows:
-
+The SageMaker Python SDK is built to PyPI and the latest version of the SageMaker Python SDK can be installed with pip as follows
 ::
 
-    pip install sagemaker
+    pip install sagemaker==<Latest version from pyPI from https://pypi.org/project/sagemaker/>
 
 You can install from source by cloning this repository and running a pip install command in the root directory of the repository:
 
@@ -87,9 +94,17 @@ Supported Python Versions
 
 SageMaker Python SDK is tested on:
 
-- Python 3.6
-- Python 3.7
 - Python 3.8
+- Python 3.9
+- Python 3.10
+- Python 3.11
+
+Telemetry
+~~~~~~~~~~~~~~~
+
+The ``sagemaker`` library has telemetry enabled to help us better understand user needs, diagnose issues, and deliver new features. This telemetry tracks the usage of various SageMaker functions.
+
+If you prefer to opt out of telemetry, you can easily do so by setting the ``TelemetryOptOut`` parameter to ``true`` in the SDK defaults configuration. For detailed instructions, please visit `Configuring and using defaults with the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html#configuring-and-using-defaults-with-the-sagemaker-python-sdk>`__.
 
 AWS Permissions
 ~~~~~~~~~~~~~~~
@@ -103,7 +118,7 @@ However, if you are using an IAM role with a path in it, you should grant permis
 
 Licensing
 ~~~~~~~~~
-SageMaker Python SDK is licensed under the Apache 2.0 License. It is copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. The license is available at:
+SageMaker Python SDK is licensed under the Apache 2.0 License. It is copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. The license is available at:
 http://aws.amazon.com/apache2.0/
 
 Running tests
@@ -125,13 +140,15 @@ To run the unit tests with tox, run:
 
     tox tests/unit
 
-**Integrations tests**
+**Integration tests**
 
 To run the integration tests, the following prerequisites must be met
 
 1. AWS account credentials are available in the environment for the boto3 client to use.
 2. The AWS account has an IAM role named :code:`SageMakerRole`.
    It should have the AmazonSageMakerFullAccess policy attached as well as a policy with `the necessary permissions to use Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei-setup.html>`__.
+3. To run remote_function tests, dummy ecr repo should be created. It can be created by running -
+    :code:`aws ecr create-repository --repository-name remote-function-dummy-container`
 
 We recommend selectively running just those integration tests you'd like to run. You can filter by individual test function names with:
 
@@ -153,6 +170,18 @@ You can also run them in parallel:
 
     tox -- -n auto tests/integ
 
+
+Git Hooks
+~~~~~~~~~
+
+to enable all git hooks in the .githooks directory, run these commands in the repository directory:
+
+::
+
+    find .git/hooks -type l -exec rm {} \;
+    find .githooks -type f -exec ln -sf ../../{} .git/hooks/ \;
+
+To enable an individual git hook, simply move it from the .githooks/ directory to the .git/hooks/ directory.
 
 Building Sphinx docs
 ~~~~~~~~~~~~~~~~~~~~
@@ -201,7 +230,7 @@ In order to host a SparkML model in SageMaker, it should be serialized with ``ML
 
 For more information on MLeap, see https://github.com/combust/mleap .
 
-Supported major version of Spark: 2.4 (MLeap version - 0.9.6)
+Supported major version of Spark: 3.3 (MLeap version - 0.20.0)
 
 Here is an example on how to create an instance of  ``SparkMLModel`` class and use ``deploy()`` method to create an
 endpoint which can be used to perform prediction against your trained SparkML Model.

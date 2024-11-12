@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,7 +18,7 @@ import logging
 
 import mock
 import pytest
-from mock import Mock, patch
+from mock import Mock, patch, ANY
 
 from sagemaker.serializers import CSVSerializer, IdentitySerializer
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel, TensorFlowPredictor
@@ -60,6 +60,7 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        default_bucket_prefix=None,
     )
     session.default_bucket = Mock(name="default_bucket", return_value="my_bucket")
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
@@ -67,7 +68,14 @@ def sagemaker_session():
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
+
+
+@pytest.fixture()
+def component_name():
+    return "test_component_name"
 
 
 @patch("sagemaker.image_uris.retrieve", return_value=IMAGE)
@@ -86,6 +94,7 @@ def test_tfs_model(retrieve_image_uri, sagemaker_session, tensorflow_inference_v
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
         image_scope="inference",
+        serverless_inference_config=None,
     )
     assert IMAGE == cdef["Image"]
     assert {} == cdef["Environment"]
@@ -110,6 +119,7 @@ def test_tfs_model_accelerator(retrieve_image_uri, sagemaker_session, tensorflow
         instance_type=INSTANCE_TYPE,
         accelerator_type=ACCELERATOR_TYPE,
         image_scope="inference",
+        serverless_inference_config=None,
     )
     assert IMAGE == cdef["Image"]
 
@@ -452,3 +462,57 @@ def mock_response(expected_response, sagemaker_session, content_type=JSON_CONTEN
         "ContentType": content_type,
         "Body": io.BytesIO(expected_response),
     }
+
+
+def test_register_tfs_model_auto_infer_framework(sagemaker_session, tensorflow_inference_version):
+    model_package_group_name = "test-tfs-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    tfs_model = TensorFlowModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        framework_version=tensorflow_inference_version,
+        sagemaker_session=sagemaker_session,
+    )
+
+    tfs_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "TENSORFLOW",
+                "FrameworkVersion": tensorflow_inference_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
+def test_predictor_with_component_name(sagemaker_session, component_name):
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, component_name=component_name)
+
+    assert predictor._get_component_name() == component_name

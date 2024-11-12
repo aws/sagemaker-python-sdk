@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import io
 import os
 import uuid
 
@@ -238,3 +239,34 @@ def test_s3_uploader_and_downloader_downloads_files_when_given_directory_uris_wi
 
     with open(os.path.join(TMP_BASE_PATH, my_inner_directory_uuid, file_2_name), "r") as f:
         assert file_2_body == f.read()
+
+
+def test_upload_and_read_bytes(sagemaker_session, s3_files_kms_key):
+    my_uuid = str(uuid.uuid4())
+    base_s3_uri = os.path.join(
+        "s3://", sagemaker_session.default_bucket(), "integ-test-test-upload-read-bytes", my_uuid
+    )
+
+    body = bytes(my_uuid, "utf-8")
+
+    S3Uploader.upload_bytes(
+        body,
+        s3_uri=os.path.join(base_s3_uri, "from_bytes"),
+        kms_key=s3_files_kms_key,
+        sagemaker_session=sagemaker_session,
+    )
+
+    S3Uploader.upload_bytes(
+        io.BytesIO(body),
+        s3_uri=os.path.join(base_s3_uri, "from_bytes_io"),
+        kms_key=s3_files_kms_key,
+        sagemaker_session=sagemaker_session,
+    )
+
+    assert body == S3Downloader.read_bytes(
+        s3_uri=os.path.join(base_s3_uri, "from_bytes"), sagemaker_session=sagemaker_session
+    )
+
+    assert body == S3Downloader.read_bytes(
+        s3_uri=os.path.join(base_s3_uri, "from_bytes_io"), sagemaker_session=sagemaker_session
+    )

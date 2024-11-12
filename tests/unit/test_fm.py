@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -21,6 +21,7 @@ from sagemaker.amazon.factorization_machines import (
     FactorizationMachinesPredictor,
 )
 from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.session_settings import SessionSettings
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -58,6 +59,8 @@ def sagemaker_session():
         local_mode=False,
         s3_client=False,
         s3_resource=False,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
@@ -66,6 +69,8 @@ def sagemaker_session():
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 

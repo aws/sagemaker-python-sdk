@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -166,7 +166,7 @@ def log_stream(client, log_group, stream_name, start_time=0, skip=0):
             logStreamName=stream_name,
             startTime=start_time,
             startFromHead=True,
-            **token_arg
+            **token_arg,
         )
         next_token = response["nextForwardToken"]
         events = response["events"]

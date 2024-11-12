@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -127,9 +127,46 @@ def test_multi_estimator_tuning(
     _deploy_and_predict(sagemaker_session, tuner_attached, data_set, cpu_instance_type)
 
 
-def _fit_tuner(sagemaker_session, tuner):
+def test_multi_estimator_tuning_autotune(
+    sagemaker_session, estimator_fm, estimator_knn, data_set, cpu_instance_type
+):
+    tuner = HyperparameterTuner.create(
+        base_tuning_job_name=BASE_TUNING_JOB_NAME,
+        estimator_dict={ESTIMATOR_FM: estimator_fm, ESTIMATOR_KNN: estimator_knn},
+        objective_metric_name_dict={
+            ESTIMATOR_FM: OBJECTIVE_METRIC_NAME_FM,
+            ESTIMATOR_KNN: OBJECTIVE_METRIC_NAME_KNN,
+        },
+        hyperparameter_ranges_dict={
+            ESTIMATOR_FM: HYPER_PARAMETER_RANGES_FM,
+            ESTIMATOR_KNN: HYPER_PARAMETER_RANGES_KNN,
+        },
+        strategy=STRATEGY,
+        objective_type=OBJECTIVE_TYPE,
+        max_jobs=MAX_JOBS,
+        max_parallel_jobs=MAX_PARALLEL_JOBS,
+        tags=TAGS,
+        autotune=True,
+        hyperparameters_to_keep_static_dict={
+            ESTIMATOR_FM: ["num_factors", "predictor_type"],
+            ESTIMATOR_KNN: ["predictor_type", "mini_batch_size"],
+        },
+    )
+    tuning_job_base_name = "test-multi-autotune"
+    _fit_tuner(sagemaker_session, tuner, tuning_job_base_name=tuning_job_base_name)
+
+    _retrieve_analytics(sagemaker_session, tuner.latest_tuning_job.name)
+
+    tuner_attached = _attach_tuner(sagemaker_session, tuner.latest_tuning_job.name)
+
+    _deploy_and_predict(sagemaker_session, tuner_attached, data_set, cpu_instance_type)
+
+
+def _fit_tuner(sagemaker_session, tuner, tuning_job_base_name=None):
     training_inputs = _create_training_inputs(sagemaker_session)
-    job_name = utils.unique_name_from_base("test-multi-algo-tuning", max_length=32)
+    if tuning_job_base_name is None:
+        tuning_job_base_name = "test-multi-algo-tuning"
+    job_name = utils.unique_name_from_base(tuning_job_base_name, max_length=32)
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         tuner.fit(

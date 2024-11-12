@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,20 +20,25 @@ from sagemaker import TrainingInput
 from sagemaker.amazon.amazon_estimator import RecordSet, FileSystemRecordSet
 from sagemaker.estimator import Estimator, Framework
 from sagemaker.inputs import FileSystemInput
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.job import _Job
 from sagemaker.model import FrameworkModel
+from sagemaker.workflow.parameters import ParameterString
 
 BUCKET_NAME = "s3://mybucket/train"
 S3_OUTPUT_PATH = "s3://bucket/prefix"
 LOCAL_FILE_NAME = "file://local/file"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
+KEEP_ALIVE_PERIOD = 1800
+INSTANCE_GROUP = InstanceGroup("group", "ml.c4.xlarge", 1)
 VOLUME_SIZE = 1
 MAX_RUNTIME = 1
 ROLE = "DummyRole"
 REGION = "us-west-2"
 IMAGE_NAME = "fakeimage"
 SCRIPT_NAME = "script.py"
+NONE_COMPRESSION_TYPE = "NONE"
 JOB_NAME = "fakejob"
 VOLUME_KMS_KEY = "volkmskey"
 MODEL_CHANNEL_NAME = "testModelChannel"
@@ -73,10 +78,15 @@ def estimator(sagemaker_session):
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
     mock_session = Mock(
-        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
+        default_bucket_prefix=None,
     )
     mock_session.expand_role = Mock(name="expand_role", return_value=ROLE)
-
+    # For tests which doesn't verify config file injection, operate with empty config
+    mock_session.sagemaker_config = {}
     return mock_session
 
 
@@ -135,6 +145,23 @@ def test_load_config(estimator):
     assert config["role"] == ROLE
     assert config["output_config"]["S3OutputPath"] == S3_OUTPUT_PATH
     assert "KmsKeyId" not in config["output_config"]
+    assert "CompressionType" not in config["output_config"]
+    assert config["resource_config"]["InstanceCount"] == INSTANCE_COUNT
+    assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
+    assert config["resource_config"]["VolumeSizeInGB"] == VOLUME_SIZE
+    assert config["stop_condition"]["MaxRuntimeInSeconds"] == MAX_RUNTIME
+
+
+def test_load_config_with_output_compression_disabled(estimator):
+    inputs = TrainingInput(BUCKET_NAME)
+    estimator.disable_output_compression = True
+    config = _Job._load_config(inputs, estimator)
+
+    assert config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    assert config["role"] == ROLE
+    assert config["output_config"]["S3OutputPath"] == S3_OUTPUT_PATH
+    assert "KmsKeyId" not in config["output_config"]
+    assert config["output_config"]["CompressionType"] == NONE_COMPRESSION_TYPE
     assert config["resource_config"]["InstanceCount"] == INSTANCE_COUNT
     assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
     assert config["resource_config"]["VolumeSizeInGB"] == VOLUME_SIZE
@@ -213,6 +240,15 @@ def test_load_config_with_code_channel_no_code_uri(framework):
     assert "KmsKeyId" not in config["output_config"]
     assert config["resource_config"]["InstanceCount"] == INSTANCE_COUNT
     assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
+
+
+def test_load_config_with_role_as_pipeline_parameter(estimator):
+    inputs = TrainingInput(BUCKET_NAME)
+    estimator.role = ParameterString(name="Role")
+
+    config = _Job._load_config(inputs, estimator)
+
+    assert config["role"] == estimator.role
 
 
 def test_format_inputs_none():
@@ -597,7 +633,7 @@ def test_prepare_output_config_kms_key_none():
 
 def test_prepare_resource_config():
     resource_config = _Job._prepare_resource_config(
-        INSTANCE_COUNT, INSTANCE_TYPE, VOLUME_SIZE, None
+        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, None, None
     )
 
     assert resource_config == {
@@ -607,9 +643,23 @@ def test_prepare_resource_config():
     }
 
 
+def test_prepare_resource_config_with_keep_alive_period():
+    resource_config = _Job._prepare_resource_config(
+        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, VOLUME_KMS_KEY, KEEP_ALIVE_PERIOD
+    )
+
+    assert resource_config == {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": VOLUME_SIZE,
+        "VolumeKmsKeyId": VOLUME_KMS_KEY,
+        "KeepAlivePeriodInSeconds": KEEP_ALIVE_PERIOD,
+    }
+
+
 def test_prepare_resource_config_with_volume_kms():
     resource_config = _Job._prepare_resource_config(
-        INSTANCE_COUNT, INSTANCE_TYPE, VOLUME_SIZE, VOLUME_KMS_KEY
+        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, VOLUME_KMS_KEY, None
     )
 
     assert resource_config == {
@@ -618,6 +668,55 @@ def test_prepare_resource_config_with_volume_kms():
         "VolumeSizeInGB": VOLUME_SIZE,
         "VolumeKmsKeyId": VOLUME_KMS_KEY,
     }
+
+
+def test_prepare_resource_config_with_heterogeneous_cluster():
+    resource_config = _Job._prepare_resource_config(
+        None,
+        None,
+        [InstanceGroup("group1", "ml.c4.xlarge", 1), InstanceGroup("group2", "ml.m4.xlarge", 2)],
+        VOLUME_SIZE,
+        None,
+        None,
+    )
+
+    assert resource_config == {
+        "InstanceGroups": [
+            {"InstanceGroupName": "group1", "InstanceCount": 1, "InstanceType": "ml.c4.xlarge"},
+            {"InstanceGroupName": "group2", "InstanceCount": 2, "InstanceType": "ml.m4.xlarge"},
+        ],
+        "VolumeSizeInGB": VOLUME_SIZE,
+    }
+
+
+def test_prepare_resource_config_with_instance_groups_instance_type_instance_count_set():
+    with pytest.raises(ValueError) as error:
+        _Job._prepare_resource_config(
+            INSTANCE_COUNT,
+            INSTANCE_TYPE,
+            [INSTANCE_GROUP],
+            VOLUME_SIZE,
+            None,
+            None,
+        )
+    assert "instance_count and instance_type cannot be set when instance_groups is set" in str(
+        error
+    )
+
+
+def test_prepare_resource_config_with_instance_groups_instance_type_instance_count_not_set():
+    with pytest.raises(ValueError) as error:
+        _Job._prepare_resource_config(
+            None,
+            None,
+            None,
+            VOLUME_SIZE,
+            None,
+            None,
+        )
+    assert "instance_count and instance_type must be set if instance_groups is not set" in str(
+        error
+    )
 
 
 def test_prepare_stop_condition():

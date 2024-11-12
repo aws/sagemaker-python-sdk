@@ -16,3 +16,8 @@ The Amazon SageMaker XGBoost open source framework algorithm.
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. autoclass:: sagemaker.xgboost.processing.XGBoostProcessor
+    :members:
+    :undoc-members:
+    :show-inheritance:

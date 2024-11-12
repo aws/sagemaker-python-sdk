@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,6 +20,8 @@ from sagemaker.predictor import Predictor
 
 import pytest
 from mock import MagicMock, Mock, patch
+
+from sagemaker.session_settings import SessionSettings
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -46,6 +48,7 @@ CODECOMMIT_REPO = "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-
 CODECOMMIT_REPO_SSH = "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/"
 CODECOMMIT_BRANCH = "master"
 REPO_DIR = "/tmp/repo_dir"
+IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.9.0-gpu-py38"
 
 
 class DummyFrameworkModel(FrameworkModel):
@@ -89,8 +92,12 @@ def sagemaker_session():
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 
@@ -203,6 +210,7 @@ def test_git_support_repo_not_provided(sagemaker_session):
     ),
 )
 def test_git_support_git_clone_fail(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     entry_point = "source_dir/entry_point"
     git_config = {"repo": "https://github.com/aws/no-such-repo.git", "branch": BRANCH}
     with pytest.raises(subprocess.CalledProcessError) as error:
@@ -252,6 +260,7 @@ def test_git_support_commit_not_exist(git_clone_repo, sagemaker_session):
     side_effect=ValueError("Entry point does not exist in the repo."),
 )
 def test_git_support_entry_point_not_exist(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     entry_point = "source_dir/entry_point"
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
     with pytest.raises(ValueError) as error:
@@ -267,6 +276,7 @@ def test_git_support_entry_point_not_exist(sagemaker_session):
     side_effect=ValueError("Source directory does not exist in the repo."),
 )
 def test_git_support_source_dir_not_exist(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     entry_point = "entry_point"
     source_dir = "source_dir_that_does_not_exist"
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
@@ -286,6 +296,7 @@ def test_git_support_source_dir_not_exist(sagemaker_session):
     side_effect=ValueError("Dependency no-such-dir does not exist in the repo."),
 )
 def test_git_support_dependencies_not_exist(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     entry_point = "entry_point"
     dependencies = ["foo", "no_such_dir"]
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
@@ -461,3 +472,66 @@ def test_git_support_codecommit_ssh_passphrase_required(
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "returned non-zero exit status" in str(error.value)
+
+
+@patch("sagemaker.utils.repack_model")
+def test_not_repack_code_location_with_key_prefix(repack_model, sagemaker_session):
+
+    code_location = "s3://my-bucket/code/location/"
+
+    t = FrameworkModel(
+        entry_point=ENTRY_POINT,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir="s3://codebucket/someprefix/sourcedir.tar.gz",
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+        code_location=code_location,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    repack_model.assert_not_called()
+
+
+@patch("sagemaker.utils.repack_model")
+def test_is_repack_with_code_location(repack_model, sagemaker_session):
+
+    code_location = "s3://my-bucket/code/location/"
+
+    model = FrameworkModel(
+        entry_point=ENTRY_POINT,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir="s3://codebucket/someprefix/sourcedir.tar.gz",
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+        code_location=code_location,
+    )
+
+    assert not model.is_repack()
+
+
+@patch("sagemaker.git_utils.git_clone_repo")
+@patch("sagemaker.model.fw_utils.tar_and_upload_dir")
+def test_is_repack_with_git_config(tar_and_upload_dir, git_clone_repo, sagemaker_session):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, sourcedir, dependency: {
+        "entry_point": "entry_point",
+        "source_dir": "/tmp/repo_dir/source_dir",
+        "dependencies": ["/tmp/repo_dir/foo", "/tmp/repo_dir/bar"],
+    }
+
+    entry_point = "entry_point"
+    source_dir = "source_dir"
+    dependencies = ["foo", "bar"]
+    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+    model = FrameworkModel(
+        sagemaker_session=sagemaker_session,
+        entry_point=entry_point,
+        source_dir=source_dir,
+        dependencies=dependencies,
+        git_config=git_config,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+
+    assert not model.is_repack()

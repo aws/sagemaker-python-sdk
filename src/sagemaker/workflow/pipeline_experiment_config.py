@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -34,9 +34,22 @@ class PipelineExperimentConfig(Entity):
     ):
         """Create a PipelineExperimentConfig
 
+        Examples:
+        Use pipeline name as the experiment name and pipeline execution id as the trial name::
+
+            PipelineExperimentConfig(
+                ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID)
+
+        Use a customized experiment name and pipeline execution id as the trial name::
+
+            PipelineExperimentConfig(
+                'MyExperiment', ExecutionVariables.PIPELINE_EXECUTION_ID)
+
         Args:
-            experiment_name: the name of the experiment that will be created
-            trial_name: the name of the trial that will be created
+            experiment_name (Union[str, Parameter, ExecutionVariable, Expression]):
+                the name of the experiment that will be created.
+            trial_name (Union[str, Parameter, ExecutionVariable, Expression]):
+                the name of the trial that will be created.
         """
         self.experiment_name = experiment_name
         self.trial_name = trial_name

@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,7 +18,9 @@ responses for models hosted on SageMaker Endpoints.
 from __future__ import print_function, absolute_import
 
 from sagemaker import s3
+from sagemaker.config import ENDPOINT_CONFIG_DATA_CAPTURE_KMS_KEY_ID_PATH
 from sagemaker.session import Session
+from sagemaker.utils import resolve_value_from_config
 
 _MODEL_MONITOR_S3_PATH = "model-monitor"
 _DATA_CAPTURE_S3_PATH = "data-capture"
@@ -66,16 +68,21 @@ class DataCaptureConfig(object):
         self.enable_capture = enable_capture
         self.sampling_percentage = sampling_percentage
         self.destination_s3_uri = destination_s3_uri
+        sagemaker_session = sagemaker_session or Session()
         if self.destination_s3_uri is None:
-            sagemaker_session = sagemaker_session or Session()
             self.destination_s3_uri = s3.s3_path_join(
                 "s3://",
                 sagemaker_session.default_bucket(),
+                sagemaker_session.default_bucket_prefix,
                 _MODEL_MONITOR_S3_PATH,
                 _DATA_CAPTURE_S3_PATH,
             )
 
-        self.kms_key_id = kms_key_id
+        self.kms_key_id = resolve_value_from_config(
+            kms_key_id,
+            ENDPOINT_CONFIG_DATA_CAPTURE_KMS_KEY_ID_PATH,
+            sagemaker_session=sagemaker_session,
+        )
         self.capture_options = capture_options or ["REQUEST", "RESPONSE"]
         self.csv_content_types = csv_content_types or ["text/csv"]
         self.json_content_types = json_content_types or ["application/json"]

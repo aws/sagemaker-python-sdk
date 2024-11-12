@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,8 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""Classes for using MXNet with Amazon SageMaker."""
 from __future__ import absolute_import  # noqa: F401
 
 from sagemaker.mxnet.estimator import MXNet  # noqa: F401
 from sagemaker.mxnet.model import MXNetModel, MXNetPredictor  # noqa: F401
+from sagemaker.mxnet.processing import MXNetProcessor  # noqa: F401

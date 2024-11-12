@@ -173,3 +173,21 @@
       of your accepting any such warranty or additional liability.
 
    END OF TERMS AND CONDITIONS
+
+   ======================================================================================
+    Amazon SageMaker Examples Subcomponents:
+
+    The Amazon SageMaker Examples project contains subcomponents with separate
+    copyright notices and license terms. Your use of the source code for the
+    these subcomponents is subject to the terms and conditions of the following
+    licenses. See licenses/ for text of these licenses.
+
+    If a folder hierarchy is listed as subcomponent, separate listings of
+    further subcomponents (files or folder hierarchies) part of the hierarchy
+    take precedence.
+
+    =======================================================================================
+    2-clause BSD license
+    =======================================================================================
+    _static/kendrasearchtools.js
+    _templates/search.html

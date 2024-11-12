@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,7 +22,8 @@ from packaging.version import Version
 from sagemaker import image_uris
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch, PyTorchPredictor, PyTorchModel
-
+from sagemaker.instance_group import InstanceGroup
+from sagemaker.session_settings import SessionSettings
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -54,7 +55,10 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
+
+DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True}}
 
 
 @pytest.fixture(name="sagemaker_session")
@@ -68,6 +72,8 @@ def fixture_sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -77,7 +83,15 @@ def fixture_sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
+
+
+@pytest.fixture()
+def component_name():
+    return "test_component_name"
 
 
 def _get_full_cpu_image_uri(version, py_version):
@@ -97,7 +111,7 @@ def _pytorch_estimator(
     py_version,
     instance_type=None,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
     return PyTorch(
         entry_point=SCRIPT_PATH,
@@ -108,7 +122,7 @@ def _pytorch_estimator(
         instance_count=INSTANCE_COUNT,
         instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -151,18 +165,13 @@ def _create_train_job(version, py_version):
         "environment": None,
         "retry_strategy": None,
         "experiment_config": None,
+        "enable_network_isolation": False,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -303,7 +312,12 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 def test_pytorch(
-    time, name_from_base, sagemaker_session, pytorch_inference_version, pytorch_inference_py_version
+    time,
+    name_from_base,
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+    gpu_pytorch_instance_type,
 ):
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,
@@ -340,24 +354,29 @@ def test_pytorch(
         REGION,
         version=pytorch_inference_version,
         py_version=pytorch_inference_py_version,
-        instance_type=GPU,
+        instance_type=gpu_pytorch_instance_type,
         image_scope="inference",
     )
 
-    actual_environment = model.prepare_container_def(GPU)
+    actual_environment = model.prepare_container_def(gpu_pytorch_instance_type)
     submit_directory = actual_environment["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"]
     model_url = actual_environment["ModelDataUrl"]
     expected_environment = _get_environment(submit_directory, model_url, expected_image_uri)
     assert actual_environment == expected_environment
 
     assert "cpu" in model.prepare_container_def(CPU)["Image"]
-    predictor = pytorch.deploy(1, GPU)
+    predictor = pytorch.deploy(1, gpu_pytorch_instance_type)
     assert isinstance(predictor, PyTorchPredictor)
 
 
 @patch("sagemaker.utils.repack_model", MagicMock())
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_model(sagemaker_session, pytorch_inference_version, pytorch_inference_py_version):
+def test_model(
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+    gpu_pytorch_instance_type,
+):
     model = PyTorchModel(
         MODEL_DATA,
         role=ROLE,
@@ -366,13 +385,14 @@ def test_model(sagemaker_session, pytorch_inference_version, pytorch_inference_p
         py_version=pytorch_inference_py_version,
         sagemaker_session=sagemaker_session,
     )
-    predictor = model.deploy(1, GPU)
+    predictor = model.deploy(1, gpu_pytorch_instance_type)
     assert isinstance(predictor, PyTorchPredictor)
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.utils.repack_model")
-def test_mms_model(repack_model, sagemaker_session):
+@pytest.mark.parametrize("gpu_pytorch_instance_type", ["1.2"], indirect=True)
+def test_mms_model(repack_model, sagemaker_session, gpu_pytorch_instance_type):
     PyTorchModel(
         MODEL_DATA,
         role=ROLE,
@@ -380,7 +400,7 @@ def test_mms_model(repack_model, sagemaker_session):
         sagemaker_session=sagemaker_session,
         framework_version="1.2",
         py_version="py3",
-    ).deploy(1, GPU)
+    ).deploy(1, gpu_pytorch_instance_type)
 
     repack_model.assert_called_with(
         dependencies=[],
@@ -429,6 +449,7 @@ def test_model_custom_serialization(
     sagemaker_session,
     pytorch_inference_version,
     pytorch_inference_py_version,
+    gpu_pytorch_instance_type,
 ):
     model = PyTorchModel(
         MODEL_DATA,
@@ -442,7 +463,7 @@ def test_model_custom_serialization(
     custom_deserializer = Mock()
     predictor = model.deploy(
         1,
-        GPU,
+        gpu_pytorch_instance_type,
         serializer=custom_serializer,
         deserializer=custom_deserializer,
     )
@@ -691,3 +712,117 @@ def test_custom_image_estimator_deploy(
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = pytorch.create_model(image_uri=custom_image)
     assert model.image_uri == custom_image
+
+
+def test_pt_heterogeneous_cluster_distribution_config(
+    sagemaker_session, pytorch_training_version, pytorch_training_py_version
+):
+    training_group = InstanceGroup("train_group", "ml.c4.xlarge", 1)
+    expected_return = {"mpi": {"enabled": True}, "instance_groups": ["train_group"]}
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        instance_groups=[training_group],
+        distribution={
+            "mpi": {"enabled": True},
+            "instance_groups": [training_group],
+        },
+    )
+    assert pytorch.distribution == expected_return
+
+
+@patch("sagemaker.utils.repack_model", MagicMock())
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_register_pytorch_model_auto_infer_framework(
+    sagemaker_session, pytorch_inference_version, pytorch_inference_py_version
+):
+
+    model_package_group_name = "test-pytorch-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    pytorch_model = PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+
+    pytorch_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "PYTORCH",
+                "FrameworkVersion": pytorch_inference_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
+def test_pytorch_ddp_distribution_configuration(
+    sagemaker_session, pytorch_ddp_framework_version, pytorch_ddp_py_version
+):
+    test_instance_type = "ml.p4d.24xlarge"
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_ddp_framework_version,
+        py_version=pytorch_ddp_py_version,
+        distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
+        instance_type=test_instance_type,
+    )
+    actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
+        distribution=pytorch.distribution
+    )
+    expected_torch_ddp = {
+        "sagemaker_distributed_dataparallel_enabled": True,
+        "sagemaker_distributed_dataparallel_custom_mpi_options": "",
+        "sagemaker_instance_type": test_instance_type,
+    }
+    assert actual_pytorch_ddp == expected_torch_ddp
+
+
+def test_pytorch_ddp_distribution_configuration_unsupported(sagemaker_session):
+    unsupported_framework_version = "1.5.0"
+    unsupported_py_version = "py2"
+    with pytest.raises(ValueError) as error:
+        _pytorch_estimator(
+            sagemaker_session,
+            framework_version=unsupported_framework_version,
+            py_version=unsupported_py_version,
+            distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
+        )
+    assert (f"framework_version {unsupported_framework_version} is not supported") in str(error)
+    assert (f"py_version {unsupported_py_version} is not supported") in str(error)
+
+
+def test_predictor_with_component_name(sagemaker_session, component_name):
+    predictor = PyTorchPredictor("endpoint", sagemaker_session, component_name=component_name)
+
+    assert predictor._get_component_name() == component_name

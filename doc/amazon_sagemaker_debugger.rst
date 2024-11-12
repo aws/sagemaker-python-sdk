@@ -4,6 +4,12 @@ Amazon SageMaker Debugger
 #########################
 
 
+.. warning::
+
+  This page is no longer supported for maintenence. The live documentation is at `Debug and Profile Training Jobs Using Amazon SageMaker Debugger <https://docs.aws.amazon.com/sagemaker/latest/dg/train-debugger.html>`_
+  and `Debugger API <https://sagemaker.readthedocs.io/en/stable/api/training/debugger.html>`_.
+
+
 Amazon SageMaker Debugger allows you to detect anomalies while training your machine learning model by emitting relevant data during training, storing the data and then analyzing it.
 
 .. contents::

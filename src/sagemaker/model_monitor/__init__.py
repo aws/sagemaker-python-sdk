@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,6 +23,7 @@ from sagemaker.model_monitor.model_monitoring import DefaultModelMonitor  # noqa
 from sagemaker.model_monitor.model_monitoring import BaseliningJob  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import MonitoringExecution  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import EndpointInput  # noqa: F401
+from sagemaker.model_monitor.model_monitoring import BatchTransformInput  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import MonitoringOutput  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import ModelQualityMonitor  # noqa: F401
 
@@ -42,5 +43,13 @@ from sagemaker.model_monitor.monitoring_files import ConstraintViolations  # noq
 
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig  # noqa: F401
 from sagemaker.model_monitor.dataset_format import DatasetFormat  # noqa: F401
+from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat  # noqa: F401
 
 from sagemaker.network import NetworkConfig  # noqa: F401
+
+from sagemaker.model_monitor.data_quality_monitoring_config import (  # noqa: F401
+    DataQualityMonitoringConfig,
+)
+from sagemaker.model_monitor.data_quality_monitoring_config import (  # noqa: F401
+    DataQualityDistributionConstraints,
+)

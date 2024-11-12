@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -68,7 +68,9 @@ def from_boto(boto_dict, boto_name_to_member_name, member_name_to_type):
             api_type, is_collection = member_name_to_type[member_name]
             if is_collection:
                 if isinstance(boto_value, dict):
-                    member_value = api_type.from_boto(boto_value)
+                    member_value = {
+                        key: api_type.from_boto(value) for key, value in boto_value.items()
+                    }
                 else:
                     member_value = [api_type.from_boto(item) for item in boto_value]
             else:

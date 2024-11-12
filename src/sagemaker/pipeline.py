@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,10 +13,35 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Dict, List, Union
+
 import sagemaker
+from sagemaker import ModelMetrics, Model
+from sagemaker.config import (
+    ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
+    MODEL_VPC_CONFIG_PATH,
+    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_EXECUTION_ROLE_ARN_PATH,
+    load_sagemaker_config,
+)
+from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model import ModelPackage
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.session import Session
-from sagemaker.utils import name_from_image
+from sagemaker.utils import (
+    name_from_image,
+    update_container_with_inference_params,
+    resolve_value_from_config,
+    format_tags,
+)
 from sagemaker.transformer import Transformer
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.utils import instance_supports_kms
 
 
 class PipelineModel(object):
@@ -27,13 +52,13 @@ class PipelineModel(object):
 
     def __init__(
         self,
-        models,
-        role,
-        predictor_cls=None,
-        name=None,
-        vpc_config=None,
-        sagemaker_session=None,
-        enable_network_isolation=False,
+        models: List[Model],
+        role: str = None,
+        predictor_cls: Optional[callable] = None,
+        name: Optional[str] = None,
+        vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
+        sagemaker_session: Optional[Session] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = None,
     ):
         """Initialize a SageMaker `Model` instance.
 
@@ -56,29 +81,59 @@ class PipelineModel(object):
                 function on the created endpoint name.
             name (str): The model name. If None, a default model name will be
                 selected on each ``deploy``.
-            vpc_config (dict[str, list[str]]): The VpcConfig set on the model
-                (default: None)
+            vpc_config (dict[str, list[str]] or dict[str, list[PipelineVariable]]):
+                The VpcConfig set on the model (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
-            enable_network_isolation (bool): Default False. if True, enables
-                network isolation in the endpoint, isolating the model
+            enable_network_isolation (bool or PipelineVariable): Default False. if True,
+                enables network isolation in the endpoint, isolating the model
                 container. No inbound or outbound network calls can be made to
                 or from the model container.Boolean
         """
         self.models = models
-        self.role = role
         self.predictor_cls = predictor_cls
         self.name = name
-        self.vpc_config = vpc_config
-        self.sagemaker_session = sagemaker_session
-        self.enable_network_isolation = enable_network_isolation
         self.endpoint_name = None
+        self.sagemaker_session = sagemaker_session
 
-    def pipeline_container_def(self, instance_type):
+        # In case, sagemaker_session is None, get sagemaker_config from load_sagemaker_config()
+        # to resolve value from config for the respective parameter
+        self._sagemaker_config = (
+            load_sagemaker_config() if (self.sagemaker_session is None) else None
+        )
+
+        self.role = resolve_value_from_config(
+            role,
+            MODEL_EXECUTION_ROLE_ARN_PATH,
+            sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
+        )
+        self.vpc_config = resolve_value_from_config(
+            vpc_config,
+            MODEL_VPC_CONFIG_PATH,
+            sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
+        )
+        self.enable_network_isolation = resolve_value_from_config(
+            direct_input=enable_network_isolation,
+            config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
+            sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
+        )
+
+        if not self.role:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create a Pipeline Model.")
+
+    def pipeline_container_def(self, instance_type=None):
         """The pipeline definition for deploying this model.
 
         This is the dict created by ``sagemaker.pipeline_container_def()``.
@@ -112,6 +167,9 @@ class PipelineModel(object):
         update_endpoint=False,
         data_capture_config=None,
         kms_key=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     ):
         """Deploy the ``Model`` to an ``Endpoint``.
 
@@ -160,6 +218,16 @@ class PipelineModel(object):
             kms_key (str): The ARN, Key ID or Alias of the KMS key that is used to
                 encrypt the data on the storage volume attached to the instance hosting
                 the endpoint.
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
@@ -167,7 +235,7 @@ class PipelineModel(object):
             is not None. Otherwise, return None.
         """
         if not self.sagemaker_session:
-            self.sagemaker_session = Session()
+            self.sagemaker_session = Session(sagemaker_config=self._sagemaker_config)
 
         containers = self.pipeline_container_def(instance_type)
 
@@ -181,13 +249,27 @@ class PipelineModel(object):
         )
 
         production_variant = sagemaker.production_variant(
-            self.name, instance_type, initial_instance_count
+            self.name,
+            instance_type,
+            initial_instance_count,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
         self.endpoint_name = endpoint_name or self.name
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+            )
+            if instance_supports_kms(instance_type)
+            else kms_key
+        )
 
         data_capture_config_dict = None
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
+
+        tags = format_tags(tags)
 
         if update_endpoint:
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(
@@ -198,6 +280,9 @@ class PipelineModel(object):
                 tags=tags,
                 kms_key=kms_key,
                 data_capture_config_dict=data_capture_config_dict,
+                volume_size=volume_size,
+                model_data_download_timeout=model_data_download_timeout,
+                container_startup_health_check_timeout=container_startup_health_check_timeout,
             )
             self.sagemaker_session.update_endpoint(
                 self.endpoint_name, endpoint_config_name, wait=wait
@@ -221,6 +306,17 @@ class PipelineModel(object):
             return predictor
         return None
 
+    @runnable_by_pipeline
+    def create(self, instance_type: str):
+        """Create a SageMaker Model Entity
+
+        Args:
+            instance_type (str): The EC2 instance type that this Model will be
+                used for, this is only used to determine if the image needs GPU
+                support or not.
+        """
+        self._create_sagemaker_pipeline_model(instance_type)
+
     def _create_sagemaker_pipeline_model(self, instance_type):
         """Create a SageMaker Model Entity
 
@@ -230,18 +326,163 @@ class PipelineModel(object):
                 support or not.
         """
         if not self.sagemaker_session:
-            self.sagemaker_session = Session()
+            self.sagemaker_session = Session(sagemaker_config=self._sagemaker_config)
 
         containers = self.pipeline_container_def(instance_type)
 
         self.name = self.name or name_from_image(containers[0]["Image"])
-        self.sagemaker_session.create_model(
-            self.name,
-            self.role,
-            containers,
+        create_model_args = dict(
+            name=self.name,
+            role=self.role,
+            container_defs=containers,
             vpc_config=self.vpc_config,
             enable_network_isolation=self.enable_network_isolation,
         )
+        self.sagemaker_session.create_model(**create_model_args)
+
+    @runnable_by_pipeline
+    def register(
+        self,
+        content_types: List[Union[str, PipelineVariable]] = None,
+        response_types: List[Union[str, PipelineVariable]] = None,
+        inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_package_name: Optional[Union[str, PipelineVariable]] = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        marketplace_cert: bool = False,
+        approval_status: Optional[Union[str, PipelineVariable]] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        domain: Optional[Union[str, PipelineVariable]] = None,
+        sample_payload_url: Optional[Union[str, PipelineVariable]] = None,
+        task: Optional[Union[str, PipelineVariable]] = None,
+        framework: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[Union[str, PipelineVariable]] = None,
+        nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
+        data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
+        skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
+        source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+    ):
+        """Creates a model package for creating SageMaker models or listing on Marketplace.
+
+        Args:
+            content_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the input data.
+            response_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the output data.
+            inference_instances (list[str] or list[PipelineVariable]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str] or list[PipelineVariable]): A list of the instance types
+                on which a transformation job can be run or on which an endpoint can be deployed
+                (default: None).
+            model_package_name (str or PipelineVariable): Model Package name, exclusive to
+                `model_package_group_name`, using `model_package_name` makes the Model Package
+                un-versioned (default: None).
+            model_package_group_name (str or PipelineVariable): Model Package Group name,
+                exclusive to `model_package_name`, using `model_package_group_name` makes
+                the Model Package versioned (default: None).
+            image_uri (str or PipelineVariable): Inference image uri for the container.
+                Model class' self.image will be used if it is None (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str or PipelineVariable): Model Approval Status, values can
+                be "Approved", "Rejected", or "PendingManualApproval"
+                (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str] or dict[str, PipelineVariable]):
+                A dictionary of key-value paired metadata properties (default: None).
+            domain (str or PipelineVariable): Domain values can be "COMPUTER_VISION",
+                "NATURAL_LANGUAGE_PROCESSING", "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str or PipelineVariable): The S3 path where the sample payload
+                is stored (default: None).
+            task (str or PipelineVariable): Task values which are supported by Inference Recommender
+                are "FILL_MASK", "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION",
+                "IMAGE_SEGMENTATION", "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str or PipelineVariable): Machine learning framework of the model package
+                container image (default: None).
+            framework_version (str or PipelineVariable): Framework version of the Model Package
+                Container Image (default: None).
+            nearest_model_name (str or PipelineVariable): Name of a pre-trained machine learning
+                benchmarked by Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str or PipelineVariable): Input object for the model
+                (default: None).
+            skip_model_validation (str or PipelineVariable): Indicates if you want to skip model
+                validation. Values can be "All" or "None" (default: None).
+            source_uri (str or PipelineVariable): The URI of the source for the model package
+                (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
+
+        Returns:
+            If ``sagemaker_session`` is a ``PipelineSession`` instance, returns pipeline step
+                arguments. Otherwise, returns ``None``
+        """
+        for model in self.models:
+            if model.model_data is None:
+                raise ValueError("SageMaker Model Package cannot be created without model data.")
+        if model_package_group_name is not None:
+            container_def = self.pipeline_container_def(
+                inference_instances[0] if inference_instances else None
+            )
+            container_def = update_container_with_inference_params(
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                data_input_configuration=data_input_configuration,
+                container_list=container_def,
+            )
+        else:
+            container_def = [
+                {
+                    "Image": image_uri or model.image_uri,
+                    "ModelDataUrl": model.model_data,
+                }
+                for model in self.models
+            ]
+
+        model_pkg_args = sagemaker.get_model_package_args(
+            content_types,
+            response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            model_package_name=model_package_name,
+            model_package_group_name=model_package_group_name,
+            model_metrics=model_metrics,
+            metadata_properties=metadata_properties,
+            marketplace_cert=marketplace_cert,
+            approval_status=approval_status,
+            description=description,
+            container_def_list=container_def,
+            drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
+            skip_model_validation=skip_model_validation,
+            source_uri=source_uri,
+            model_card=model_card,
+        )
+
+        model_package = self.sagemaker_session.create_model_package_from_containers(
+            **model_pkg_args
+        )
+
+        if model_package is not None and "ModelPackageArn" in model_package:
+            return ModelPackage(
+                role=self.role,
+                model_package_arn=model_package.get("ModelPackageArn"),
+                sagemaker_session=self.sagemaker_session,
+                predictor_cls=self.predictor_cls,
+            )
+        return None
 
     def transformer(
         self,
@@ -302,7 +543,7 @@ class PipelineModel(object):
             max_concurrent_transforms=max_concurrent_transforms,
             max_payload=max_payload,
             env=env,
-            tags=tags,
+            tags=format_tags(tags),
             base_transform_job_name=self.name,
             volume_kms_key=volume_kms_key,
             sagemaker_session=self.sagemaker_session,
