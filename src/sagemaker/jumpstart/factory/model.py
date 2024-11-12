@@ -588,7 +588,9 @@ def _apply_accept_eula_on_model_data_source(
             )
         )
 
-    mutable_model_data_source["model_access_config"] = {"accept_eula": accept_eula}
+    mutable_model_data_source["s3_data_source"]["model_access_config"] = {
+        "accept_eula": accept_eula
+    }
     return mutable_model_data_source
 
 
