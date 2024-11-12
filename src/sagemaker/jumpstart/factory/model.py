@@ -655,7 +655,7 @@ def get_deploy_kwargs(
     training_config_name: Optional[str] = None,
     config_name: Optional[str] = None,
     routing_config: Optional[Dict[str, Any]] = None,
-    model_access_configs: Optional[List[ModelAccessConfig]] = None,
+    model_access_configs: Optional[Dict[str, ModelAccessConfig]] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 

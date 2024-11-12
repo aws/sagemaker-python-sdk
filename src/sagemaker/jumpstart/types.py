@@ -2294,7 +2294,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_type: Optional[EndpointType] = None,
         config_name: Optional[str] = None,
         routing_config: Optional[Dict[str, Any]] = None,
-        model_access_configs: Optional[List[CoreModelAccessConfig]] = None
+        model_access_configs: Optional[Dict[str, CoreModelAccessConfig]] = None
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 

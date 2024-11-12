@@ -1538,7 +1538,7 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
 
 def _add_model_access_configs_to_model_data_sources(
     model_data_sources: List[Dict[str, any]],
-    model_access_configs: List[ModelAccessConfig],
+    model_access_configs: Dict[str, ModelAccessConfig],
     model_id: str,
     region: str,
 ):
@@ -1548,25 +1548,29 @@ def _add_model_access_configs_to_model_data_sources(
         return model_data_sources
 
     acked_model_data_sources = []
-    acked_model_access_configs = 0
     for model_data_source in model_data_sources:
-        hosting_eula_key = model_data_source.pop("HostingEulaKey", None)
+        hosting_eula_key = model_data_source.get("HostingEulaKey")
         if hosting_eula_key:
-            if not model_access_configs or acked_model_access_configs == len(model_access_configs):
+            if not model_access_configs or not model_access_configs.get(model_id):
                 eula_message_template = "{model_source}{base_eula_message}{model_access_configs_message}"
+                model_access_config_entry = (
+                    "\"{model_id}\":ModelAccessConfig(accept_eula=True)".format(model_id=model_id)
+                )
                 raise ValueError(eula_message_template.format(
                     model_source="Draft " if model_data_source.get("ChannelName") else "",
                     base_eula_message=format_eula_message_from_specs(
                         model_id=model_id, region=region, hosting_eula_key=hosting_eula_key
                     ),
                     model_access_configs_message=(
-                        " Please add a ModelAccessConfig with AcceptEula=True"
-                        " to model_access_configs to acknowledge the EULA."
+                        " Please add a ModelAccessConfig entry:"
+                        f" {model_access_config_entry} "
+                        "to model_access_configs to acknowledge the EULA."
                     )
                 ))
             acked_model_data_source = model_data_source.copy()
+            acked_model_data_source.pop("HostingEulaKey")
             acked_model_data_source["S3DataSource"]["ModelAccessConfig"] = (
-                camel_case_to_pascal_case(model_access_configs[acked_model_access_configs].model_dump())
+                camel_case_to_pascal_case(model_access_configs.get(model_id).model_dump())
             )
             acked_model_data_sources.append(acked_model_data_source)
         else:
