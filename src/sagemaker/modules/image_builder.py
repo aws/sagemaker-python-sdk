@@ -81,7 +81,7 @@ FROM {base_image}
 """
 
 
-def build_image(
+def build_image_from_base(
     image_name: str = "sm-custom-image",
     env_name: str = "sm_custom_env",
     deploy_to_ecr: bool = False,
@@ -162,7 +162,7 @@ def build_image(
     return None
 
 
-def capture_local_environment(
+def build_image_from_local(
     image_name: str = "sm-local-capture",
     env_name: str = "saved_local_env",
     package_manager: str = "pip",
@@ -285,13 +285,13 @@ def capture_local_environment(
                 f.write(additional_requirements)
                 logger.info("Merged requirements file saved to %s", requirement_txt_path)
 
-            if not base_image:
-                version = sys.version_info
-                base_image = f"python:{version.major}.{version.minor}.{version.micro}"
-            dockerfile_contents = PIP_DOCKERFILE_TEMPLATE.format(
-                base_image=base_image,
-                env_name=env_name,
-            )
+        if not base_image:
+            version = sys.version_info
+            base_image = f"python:{version.major}.{version.minor}.{version.micro}"
+        dockerfile_contents = PIP_DOCKERFILE_TEMPLATE.format(
+            base_image=base_image,
+            env_name=env_name,
+        )
 
     else:
         raise ValueError(
@@ -300,6 +300,55 @@ def capture_local_environment(
         )
 
     _build_docker_image(image_name, dockerfile_contents)
+
+    if deploy_to_ecr:
+        return _push_image_to_ecr(image_name, ecr_repo_name, boto_session, region)
+    return None
+
+
+def build_image_from_dockerfile(
+    image_name: str,
+    dockerfile: str,
+    deploy_to_ecr: bool = False,
+    ecr_repo_name: Optional[str] = None,
+    boto_session: Optional[boto3.Session] = None,
+    region: Optional[str] = None,
+) -> Optional[str]:
+    """Build a Docker image with Dockerfile.
+
+    Args:
+        image_name (str): The name of the docker image.
+        dockerfile (str): The file path to the Dockerfile.
+        deploy_to_ecr (bool): Whether to deploy the docker image to AWS ECR, defaults to False.
+            If set to True, the AWS credentials must be configured in the environment.
+        ecr_repo_name (Optional[str]): The AWS ECR repo to push the docker image. If not specified,
+            it will use image_name as the ECR repo name. This parameter is only valid when
+            deploy_to_ecr is True.
+        boto_session (Optional[boto3.Session]): The boto3 session with AWS account info. If not
+            provided, a new boto session will be created.
+        region (Optional[str]): The AWS region.
+
+    Exceptions:
+        docker.errors.DockerException: Error while fetching server API version:
+            The docker engine is not running in your environment.
+        docker.errors.BuildError: The docker failed to build the image. The most likely reason is:
+            1) Some packages are not supported in the base image. 2) There are dependency conflicts
+            between your local environment and additional dependencies.
+        botocore.exceptions.ClientError: AWS credentials are not configured.
+    """
+    absolute_path = os.path.abspath(dockerfile)
+    directory = os.path.dirname(absolute_path)
+
+    client = docker.from_env()
+    _, logs = client.images.build(
+        path=directory,
+        dockerfile=absolute_path,
+        rm=True,
+        tag=image_name,
+    )
+    for log in logs:
+        logger.info(log.get("stream", "").strip())
+    logger.info("Docker image %s built successfully", image_name)
 
     if deploy_to_ecr:
         return _push_image_to_ecr(image_name, ecr_repo_name, boto_session, region)
