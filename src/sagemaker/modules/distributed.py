@@ -15,49 +15,17 @@ from __future__ import absolute_import
 
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, PrivateAttr
+from sagemaker.modules.utils import safe_serialize
 
 
-class DistributedRunner(BaseModel):
-    """Base class for DistributedRunner Class"""
+class SMP(BaseModel):
+    """SMP.
 
-    _type: str = PrivateAttr()
-
-    def model_dump(self, *args, **kwargs):
-        """Dump the model to a dictionary."""
-        result = super().model_dump(*args, **kwargs)
-        result["_type"] = self._type
-        return result
-
-
-class Torchrun(DistributedRunner):
-    """TorchDistributed.
-
-    The Torchrun distributed runner uses `torchrun` or `torch.distributed.launch` in the backend to
-    launch distributed training.
-
-    Attributes:
-        process_count_per_node (int):
-            The number of processes to run on each node in the training job.
-            Will default to the number of GPUs available in the container.
-    """
-
-    _type: str = PrivateAttr(default="torchrun")
-
-    process_count_per_node: Optional[int] = None
-
-
-class TorchrunSMP(DistributedRunner):
-    """TorchrunSMP.
-
-    The TorchrunSMP runner uses `torchrun` or `torch.distributed.launch` in the backend
-    to launch distributed training. This strategy is used for a PyTorch job using the SageMaker
-    Model Parallelism library v2. For more information on the model parallelism parameters, see:
+    This class is used for configuring the SageMaker Model Parallelism v2 parameters.
+    For more information on the model parallelism parameters, see:
     https://docs.aws.amazon.com/sagemaker/latest/dg/distributed-model-parallel-v2-reference.html#distributed-model-parallel-v2-reference-init-config
 
     Attributes:
-        process_count_per_node (int):
-            The number of processes to run on each node in the training job.
-            Will default to the number of GPUs available in the container.
         hybrid_shard_degree (Optional[int]):
             Specifies a sharded parallelism degree for the model.
         sm_activation_offloading (Optional[bool]):
@@ -85,9 +53,6 @@ class TorchrunSMP(DistributedRunner):
             parallelism or expert parallelism.
     """
 
-    _type: str = PrivateAttr(default="torchrun")
-
-    process_count_per_node: Optional[int] = None
     hybrid_shard_degree: Optional[int] = None
     sm_activation_offloading: Optional[bool] = None
     activation_loading_horizon: Optional[int] = None
@@ -98,13 +63,45 @@ class TorchrunSMP(DistributedRunner):
     expert_parallel_degree: Optional[int] = None
     random_seed: Optional[int] = None
 
-    def _to_mp_parameters_dict(self) -> Dict[str, Any]:
-        """Convert to a dictionary of MP parameters."""
+    def _to_mp_hyperparameters(self) -> Dict[str, Any]:
+        """Converts to the hyperparameters format for the SageMaker Model Parallelism v2."""
         mp_parameters = self.model_dump(exclude_none=True)
-        mp_parameters.pop("_type")
-        if mp_parameters.get("process_count_per_node") is not None:
-            mp_parameters.pop("process_count_per_node")
-        return mp_parameters
+        hyperparameters = {
+            "mp_parameters": safe_serialize(mp_parameters),
+        }
+        return hyperparameters
+
+
+class DistributedRunner(BaseModel):
+    """Base class for DistributedRunner Class"""
+
+    _type: str = PrivateAttr()
+
+    def model_dump(self, *args, **kwargs):
+        """Dump the model to a dictionary."""
+        result = super().model_dump(*args, **kwargs)
+        result["_type"] = self._type
+        return result
+
+
+class Torchrun(DistributedRunner):
+    """TorchDistributed.
+
+    The Torchrun runner uses `torchrun` or `torch.distributed.launch` in the backend to
+    launch distributed training.
+
+    Attributes:
+        process_count_per_node (int):
+            The number of processes to run on each node in the training job.
+            Will default to the number of GPUs available in the container.
+        smp (Optional[SMP]):
+            The SageMaker Model Parallelism v2 parameters.
+    """
+
+    _type: str = PrivateAttr(default="torchrun")
+
+    process_count_per_node: Optional[int] = None
+    smp: Optional["SMP"] = None
 
 
 class MPI(DistributedRunner):

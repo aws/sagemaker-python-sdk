@@ -152,7 +152,8 @@ def set_env(
     # Hyperparameters
     env_vars["SM_HPS"] = hyperparameters_config
     for key, value in hyperparameters_config.items():
-        env_vars[f"SM_HP_{key.upper()}"] = safe_serialize(value)
+        key_upper = key.replace("-", "_").upper()
+        env_vars[f"SM_HP_{key_upper}"] = safe_serialize(value)
 
     # Host Variables
     current_host = resource_config["current_host"]

@@ -15,10 +15,15 @@ from __future__ import absolute_import
 
 import os
 import json
+import subprocess
+import tempfile
+from pathlib import Path
+
 from datetime import datetime
 from typing import Literal, Any
 
 from sagemaker_core.shapes import Unassigned
+from sagemaker.modules import logger
 
 
 def _is_valid_s3_uri(path: str, path_type: Literal["File", "Directory", "Any"] = "Any") -> bool:
@@ -141,3 +146,49 @@ def safe_serialize(data):
         return json.dumps(data)
     except TypeError:
         return str(data)
+
+
+def _run_clone_command_silent(repo_url, dest_dir):
+    """Run the 'git clone' command with the repo url and the directory to clone the repo into.
+
+    Args:
+        repo_url (str): Git repo url to be cloned.
+        dest_dir: (str): Local path where the repo should be cloned into.
+
+    Raises:
+        CalledProcessError: If failed to clone git repo.
+    """
+    my_env = os.environ.copy()
+    if repo_url.startswith("https://"):
+        try:
+            my_env["GIT_TERMINAL_PROMPT"] = "0"
+            subprocess.check_call(
+                ["git", "clone", repo_url, dest_dir],
+                env=my_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to clone repository: {repo_url}")
+            logger.error(f"Error output:\n{e}")
+            raise
+    elif repo_url.startswith("git@") or repo_url.startswith("ssh://"):
+        try:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                custom_ssh_executable = Path(tmp_dir) / "ssh_batch"
+                with open(custom_ssh_executable, "w") as pipe:
+                    print("#!/bin/sh", file=pipe)
+                    print("ssh -oBatchMode=yes $@", file=pipe)
+                os.chmod(custom_ssh_executable, 0o511)
+                my_env["GIT_SSH"] = str(custom_ssh_executable)
+                subprocess.check_call(
+                    ["git", "clone", repo_url, dest_dir],
+                    env=my_env,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+        except subprocess.CalledProcessError as e:
+            del my_env["GIT_SSH"]
+            logger.error(f"Failed to clone repository: {repo_url}")
+            logger.error(f"Error output:\n{e}")
+            raise
