@@ -29,6 +29,7 @@ from sagemaker.xgboost import XGBoostModel
 from sagemaker import image_uris
 from sagemaker.session import get_execution_role
 from sagemaker.model import ModelPackage
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 _XGBOOST_PATH = os.path.join(DATA_DIR, "xgboost_abalone")
 
@@ -72,6 +73,62 @@ def test_update_approval_model_package(sagemaker_session):
     )
     sagemaker_session.sagemaker_client.delete_model_package_group(
         ModelPackageGroupName=model_group_name
+    )
+
+
+def test_update_model_life_cycle_model_package(sagemaker_session):
+
+    model_group_name = unique_name_from_base("test-model-group")
+
+    sagemaker_session.sagemaker_client.create_model_package_group(
+        ModelPackageGroupName=model_group_name
+    )
+
+    xgb_model_data_s3 = sagemaker_session.upload_data(
+        path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
+        key_prefix="integ-test-data/xgboost/model",
+    )
+    model = XGBoostModel(
+        model_data=xgb_model_data_s3, framework_version="1.3-1", sagemaker_session=sagemaker_session
+    )
+
+    create_model_life_cycle = ModelLifeCycle(
+        stage="Development",
+        stage_status="In-Progress",
+        stage_description="Development In Progress",
+    )
+    model_package = model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.m5.large"],
+        transform_instances=["ml.m5.large"],
+        model_package_group_name=model_group_name,
+        model_life_cycle=create_model_life_cycle._to_request_dict(),
+    )
+
+    desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
+        ModelPackageName=model_package.model_package_arn
+    )
+    create_model_life_cycle_req = create_model_life_cycle._to_request_dict()
+
+    assert desc_model_package["ModelLifeCycle"] == create_model_life_cycle_req
+
+    update_model_life_cycle = ModelLifeCycle(
+        stage="Staging",
+        stage_status="In-Progress",
+        stage_description="Sending for Staging Verification",
+    )
+    update_model_life_cycle_req = update_model_life_cycle._to_request_dict()
+
+    model_package.update_model_life_cycle(update_model_life_cycle_req)
+
+    desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
+        ModelPackageName=model_package.model_package_arn
+    )
+    assert desc_model_package["ModelLifeCycle"] == update_model_life_cycle_req
+
+    sagemaker_session.sagemaker_client.delete_model_package(
+        ModelPackageName=model_package.model_package_arn
     )
 
 

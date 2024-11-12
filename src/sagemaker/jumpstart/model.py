@@ -70,6 +70,7 @@ from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model_life_cycle import ModelLifeCycle
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
@@ -863,6 +864,7 @@ class JumpStartModel(Model):
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
         accept_eula: Optional[bool] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -917,6 +919,7 @@ class JumpStartModel(Model):
                 The `accept_eula` value must be explicitly defined as `True` in order to
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
         Returns:
             A `sagemaker.model.ModelPackage` instance.
         """
@@ -960,6 +963,7 @@ class JumpStartModel(Model):
             config_name=self.config_name,
             model_card=model_card,
             accept_eula=accept_eula,
+            model_life_cycle=model_life_cycle,
         )
 
         model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())

@@ -107,7 +107,6 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
-from sagemaker.mlflow.forward_sagemaker_metrics import log_sagemaker_job_to_mlflow
 
 logger = logging.getLogger(__name__)
 
@@ -1374,8 +1373,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             forward_to_mlflow_tracking_server = True
         if wait:
             self.latest_training_job.wait(logs=logs)
-        if forward_to_mlflow_tracking_server:
-            log_sagemaker_job_to_mlflow(self.latest_training_job.name)
+        try:
+            if forward_to_mlflow_tracking_server:
+                from sagemaker.mlflow.forward_sagemaker_metrics import log_sagemaker_job_to_mlflow
+
+                log_sagemaker_job_to_mlflow(self.latest_training_job.name)
+        except ImportError:
+            if forward_to_mlflow_tracking_server:
+                raise ValueError("Unable to import mlflow, check if sagemaker-mlflow is installed")
 
     def _compilation_job_name(self):
         """Placeholder docstring"""
@@ -1756,6 +1761,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         data_input_configuration=None,
         skip_model_validation=None,
         source_uri=None,
+        model_life_cycle=None,
         model_card=None,
         **kwargs,
     ):
@@ -1807,6 +1813,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             source_uri (str): The URI of the source for the model package (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1862,6 +1869,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
 
     @property

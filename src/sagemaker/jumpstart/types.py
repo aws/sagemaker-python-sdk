@@ -42,6 +42,7 @@ from sagemaker.jumpstart.hub.parser_utils import (
     camel_to_snake,
     walk_and_apply_json,
 )
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 
 class JumpStartDataHolderType:
@@ -2779,6 +2780,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "data_input_configuration",
         "skip_model_validation",
         "source_uri",
+        "model_life_cycle",
         "config_name",
         "model_card",
         "accept_eula",
@@ -2828,6 +2830,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
         config_name: Optional[str] = None,
         model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
         accept_eula: Optional[bool] = None,

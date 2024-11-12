@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.233.0 (2024-11-04)
+
+### Features
+
+ * triton v24.09
+ * Marketplace model support in HubService
+
+### Bug Fixes and Other Changes
+
+ * Fixing JumpStart Tests
+ * bumping smp version from 2.6.0 to 2.6.1
+ * Updates for DJL 0.30.0 release
+
 ## v2.232.3 (2024-10-30)
 
 ### Bug Fixes and Other Changes
