@@ -20,7 +20,7 @@ import subprocess
 import traceback
 import json
 
-from typing import List, Dict, Any, Tuple, IO
+from typing import List, Dict, Any, Tuple, IO, Optional
 
 # Initialize logger
 SM_LOG_LEVEL = os.environ.get("SM_LOG_LEVEL", 20)
@@ -30,16 +30,17 @@ logger.addHandler(console_handler)
 logger.setLevel(int(SM_LOG_LEVEL))
 
 FAILURE_FILE = "/opt/ml/output/failure"
-DEFAULT_FAILURE_MESSAGE = f"""
+DEFAULT_FAILURE_MESSAGE = """
 Training Execution failed.
 For more details, see CloudWatch logs at 'aws/sagemaker/TrainingJobs'.
-TrainingJob - {os.environ['TRAINING_JOB_NAME']}
+TrainingJob - {training_job_name}
 """
 
 USER_CODE_PATH = "/opt/ml/input/data/sm_code"
 SOURCE_CODE_JSON = "/opt/ml/input/data/sm_drivers/sourcecode.json"
 DISTRIBUTED_RUNNER_JSON = "/opt/ml/input/data/sm_drivers/distributed_runner.json"
 
+HYPERPARAMETERS_JSON = "/opt/ml/input/config/hyperparameters.json"
 
 SM_EFA_NCCL_INSTANCES = [
     "ml.g4dn.8xlarge",
@@ -59,8 +60,10 @@ SM_EFA_RDMA_INSTANCES = [
 ]
 
 
-def write_failure_file(message: str = DEFAULT_FAILURE_MESSAGE):
+def write_failure_file(message: Optional[str] = None):
     """Write a failure file with the message."""
+    if message is None:
+        message = DEFAULT_FAILURE_MESSAGE.format(training_job_name=os.environ["TRAINING_JOB_NAME"])
     if not os.path.exists(FAILURE_FILE):
         with open(FAILURE_FILE, "w") as f:
             f.write(message)
@@ -86,6 +89,16 @@ def read_distributed_runner_json(distributed_json: Dict[str, Any] = DISTRIBUTED_
     return distributed_runner_dict
 
 
+def read_hyperparameters_json(hyperparameters_json: Dict[str, Any] = HYPERPARAMETERS_JSON):
+    """Read the hyperparameters config json file."""
+    try:
+        with open(hyperparameters_json, "r") as f:
+            hyperparameters_dict = json.load(f) or {}
+    except FileNotFoundError:
+        hyperparameters_dict = {}
+    return hyperparameters_dict
+
+
 def get_process_count(distributed_runner_dict: Dict[str, Any]) -> int:
     """Get the number of processes to run on each node in the training job."""
     return (
@@ -94,6 +107,68 @@ def get_process_count(distributed_runner_dict: Dict[str, Any]) -> int:
         or int(os.environ.get("SM_NUM_NEURONS", 0))
         or 1
     )
+
+
+def hyperparameters_to_cli_args(hyperparameters: Dict[str, Any]) -> List[str]:
+    """Convert the hyperparameters to CLI arguments."""
+    cli_args = []
+    for key, value in hyperparameters.items():
+        value = safe_deserialize(value)
+        cli_args.extend([f"--{key}", safe_serialize(value)])
+
+    return cli_args
+
+
+def safe_deserialize(data: Any) -> Any:
+    """Safely deserialize data from a JSON string.
+
+    This function handles the following cases:
+    1. If `data` is not a string, it returns the input as-is.
+    2. If `data` is a string and matches common boolean values ("true" or "false"),
+    it returns the corresponding boolean value (True or False).
+    3. If `data` is a JSON-encoded string, it attempts to deserialize it using `json.loads()`.
+    4. If `data` is a string but cannot be decoded as JSON, it returns the original string.
+
+    Returns:
+        Any: The deserialized data, or the original input if it cannot be JSON-decoded.
+    """
+    if not isinstance(data, str):
+        return data
+
+    lower_data = data.lower()
+    if lower_data in ["true"]:
+        return True
+    if lower_data in ["false"]:
+        return False
+
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        return data
+
+
+def safe_serialize(data):
+    """Serialize the data without wrapping strings in quotes.
+
+    This function handles the following cases:
+    1. If `data` is a string, it returns the string as-is without wrapping in quotes.
+    2. If `data` is serializable (e.g., a dictionary, list, int, float), it returns
+       the JSON-encoded string using `json.dumps()`.
+    3. If `data` cannot be serialized (e.g., a custom object), it returns the string
+       representation of the data using `str(data)`.
+
+    Args:
+        data (Any): The data to serialize.
+
+    Returns:
+        str: The serialized JSON-compatible string or the string representation of the input.
+    """
+    if isinstance(data, str):
+        return data
+    try:
+        return json.dumps(data)
+    except TypeError:
+        return str(data)
 
 
 def get_python_executable() -> str:

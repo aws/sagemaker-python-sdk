@@ -70,11 +70,13 @@ DUMMY_DISTRIBUTED_RUNNER = {
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.start_sshd_daemon")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.bootstrap_master_node")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.bootstrap_worker_node")
+@patch("sagemaker.modules.train.container_drivers.mpi_driver.hyperparameters_to_cli_args")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.get_mpirun_command")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.execute_commands")
 def test_mpi_driver_worker(
     mock_execute_commands,
     mock_get_mpirun_command,
+    mock_hyperparameters_to_cli_args,
     mock_bootstrap_worker_node,
     mock_bootstrap_master_node,
     mock_start_sshd_daemon,
@@ -82,6 +84,7 @@ def test_mpi_driver_worker(
     mock_read_source_code_json,
     mock_read_distributed_runner_json,
 ):
+    mock_hyperparameters_to_cli_args.return_value = []
     mock_read_source_code_json.return_value = DUMMY_SOURCE_CODE
     mock_read_distributed_runner_json.return_value = DUMMY_DISTRIBUTED_RUNNER
 
@@ -112,6 +115,7 @@ def test_mpi_driver_worker(
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.bootstrap_master_node")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.bootstrap_worker_node")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.get_process_count")
+@patch("sagemaker.modules.train.container_drivers.mpi_driver.hyperparameters_to_cli_args")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.get_mpirun_command")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.execute_commands")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.write_status_file_to_workers")
@@ -119,6 +123,7 @@ def test_mpi_driver_master(
     mock_write_status_file_to_workers,
     mock_execute_commands,
     mock_get_mpirun_command,
+    mock_hyperparameters_to_cli_args,
     mock_get_process_count,
     mock_bootstrap_worker_node,
     mock_bootstrap_master_node,
@@ -127,6 +132,7 @@ def test_mpi_driver_master(
     mock_read_source_code_config_json,
     mock_read_distributed_runner_json,
 ):
+    mock_hyperparameters_to_cli_args.return_value = []
     mock_read_source_code_config_json.return_value = DUMMY_SOURCE_CODE
     mock_read_distributed_runner_json.return_value = DUMMY_DISTRIBUTED_RUNNER
     mock_get_mpirun_command.return_value = DUMMY_MPI_COMMAND

@@ -123,9 +123,9 @@ class Compute(shapes.ResourceConfig):
     Attributes:
         instance_type (Optional[str]):
             The ML compute instance type. For information about available instance types,
-            see https://aws.amazon.com/sagemaker/pricing/. Default: ml.m5.xlarge
+            see https://aws.amazon.com/sagemaker/pricing/.
         instance_count (Optional[int]): The number of ML compute instances to use. For distributed
-            training, provide a value greater than 1. Default: 1
+            training, provide a value greater than 1.
         volume_size_in_gb (Optional[int]):
             The size of the ML storage volume that you want to provision.  ML storage volumes store
             model artifacts and incremental states. Training algorithms might also use the ML

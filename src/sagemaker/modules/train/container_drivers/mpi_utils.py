@@ -22,13 +22,14 @@ from typing import List
 from utils import logger, SM_EFA_NCCL_INSTANCES, SM_EFA_RDMA_INSTANCES, get_python_executable
 
 FINISHED_STATUS_FILE = "/tmp/done.algo-1"
+READY_FILE = "/tmp/ready.%s"
 DEFAULT_SSH_PORT = 22
 
 
-def _write_status_file(host: str, status_file: str) -> bool:
-    """Write the status file to the provided host."""
+def _write_file_to_host(host: str, status_file: str) -> bool:
+    """Write the a file to the provided host."""
     try:
-        logger.info("Writing finished status file (%s) to %s", status_file, host)
+        logger.info(f"Writing {status_file} to {host}")
         subprocess.run(
             ["ssh", host, "touch", f"{status_file}"],
             capture_output=True,
@@ -46,7 +47,7 @@ def write_status_file_to_workers(worker_hosts: List[str], status_file: str = FIN
     """Write the status file to all worker nodes."""
     for worker in worker_hosts:
         retry = 0
-        while not _write_status_file(worker, status_file):
+        while not _write_file_to_host(worker, status_file):
             time.sleep(5)
             retry += 1
             if retry > 5:
@@ -102,7 +103,10 @@ def _wait_for_workers(worker_hosts: List[str], port: int = DEFAULT_SSH_PORT, tim
 
     while True:
         logger.info("Master is attempting to connect to all workers...")
-        all_workers_connected = all(_can_connect(worker, port) for worker in worker_hosts)
+        all_workers_connected = all(
+            _can_connect(worker, port) and os.path.exists(READY_FILE % worker)
+            for worker in worker_hosts
+        )
 
         if all_workers_connected:
             logger.info("Master can connect to all worker nodes.")
@@ -131,6 +135,7 @@ def bootstrap_worker_node(master_host: str, status_file: str = FINISHED_STATUS_F
     """Bootstrap the worker nodes."""
     logger.info("Bootstrapping worker node...")
     _wait_for_master(master_host)
+    _write_file_to_host(master_host, READY_FILE % os.environ["SM_CURRENT_HOST"])
     _wait_for_status_file(status_file)
 
 

@@ -22,13 +22,15 @@ from utils import (
     logger,
     read_source_code_json,
     read_distributed_runner_json,
+    read_hyperparameters_json,
+    hyperparameters_to_cli_args,
     get_process_count,
     get_python_executable,
-    SM_EFA_NCCL_INSTANCES,
-    SM_EFA_RDMA_INSTANCES,
     execute_commands,
     write_failure_file,
     USER_CODE_PATH,
+    SM_EFA_NCCL_INSTANCES,
+    SM_EFA_RDMA_INSTANCES,
 )
 
 
@@ -65,6 +67,7 @@ def create_commands():
     """Create the Torch Distributed command to execute"""
     source_code = read_source_code_json()
     distribution = read_distributed_runner_json()
+    hyperparameters = read_hyperparameters_json()
 
     process_count = get_process_count(distribution)
     host_count = int(os.environ["SM_HOST_COUNT"])
@@ -92,6 +95,10 @@ def create_commands():
         )
 
     torch_cmd.extend([os.path.join(USER_CODE_PATH, source_code["entry_script"])])
+
+    args = hyperparameters_to_cli_args(hyperparameters)
+    torch_cmd += args
+
     return torch_cmd
 
 
@@ -110,7 +117,7 @@ def main():
     """
     setup_env()
     torch_cmd = create_commands()
-    logger.info(f"Executing command: {torch_cmd}")
+    logger.info(f"Executing command: {' '.join(torch_cmd)}")
     exit_code, traceback = execute_commands(torch_cmd)
     if exit_code != 0:
         write_failure_file(traceback)

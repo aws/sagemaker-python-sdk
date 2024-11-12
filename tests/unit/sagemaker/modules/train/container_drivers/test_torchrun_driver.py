@@ -86,7 +86,12 @@ def test_get_base_pytorch_command_torch_distributed_launch(
     "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_runner_json",
     return_value=DUMMY_DISTRIBUTED_RUNNER,
 )
+@patch(
+    "sagemaker.modules.train.container_drivers.torchrun_driver.hyperparameters_to_cli_args",
+    return_value=[],
+)
 def test_create_commands_single_node(
+    mock_hyperparameters_to_cli_args,
     mock_read_distributed_runner_json,
     mock_read_source_code_json,
     mock_get_base_pytorch_command,
@@ -137,7 +142,12 @@ def test_create_commands_single_node(
     "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_runner_json",
     return_value=DUMMY_DISTRIBUTED_RUNNER,
 )
+@patch(
+    "sagemaker.modules.train.container_drivers.torchrun_driver.hyperparameters_to_cli_args",
+    return_value=[],
+)
 def test_create_commands_multi_node(
+    mock_hyperparameters_to_cli_args,
     mock_read_distributed_runner_json,
     mock_read_source_code_json,
     mock_get_base_pytorch_command,
