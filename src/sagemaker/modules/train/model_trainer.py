@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 import os
 import json
+import shutil
+from tempfile import TemporaryDirectory
 
 from typing import Optional, List, Union, Dict, Any
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
@@ -58,6 +60,7 @@ from sagemaker.modules.utils import (
     _get_unique_name,
     _is_valid_path,
     _is_valid_s3_uri,
+    safe_serialize,
 )
 from sagemaker.modules.types import DataSourceType
 from sagemaker.modules.constants import (
@@ -77,6 +80,7 @@ from sagemaker.modules.templates import (
     EXECUTE_BASE_COMMANDS,
     EXECUTE_MPI_DRIVER,
     EXEUCTE_TORCHRUN_DRIVER,
+    EXECUTE_BASIC_SCRIPT_DRIVER,
 )
 from sagemaker.modules import logger
 
@@ -350,11 +354,14 @@ class ModelTrainer(BaseModel):
         string_hyper_parameters = {}
         if self.hyperparameters:
             for hyper_parameter, value in self.hyperparameters.items():
-                string_hyper_parameters[hyper_parameter] = str(value)
+                string_hyper_parameters[hyper_parameter] = safe_serialize(value)
 
         container_entrypoint = None
         container_arguments = None
         if self.source_code:
+
+            drivers_dir = TemporaryDirectory()
+            shutil.copytree(SM_DRIVERS_LOCAL_PATH, drivers_dir.name, dirs_exist_ok=True)
 
             # If source code is provided, create a channel for the source code
             # The source code will be mounted at /opt/ml/input/data/sm_code in the container
@@ -365,17 +372,22 @@ class ModelTrainer(BaseModel):
                 input_data_config.append(source_code_channel)
 
             self._prepare_train_script(
-                source_code=self.source_code, distributed_runner=self.distributed_runner
+                tmp_dir=drivers_dir,
+                source_code=self.source_code,
+                distributed_runner=self.distributed_runner,
             )
+
             if isinstance(self.distributed_runner, TorchrunSMP):
                 mp_parameters = self.distributed_runner._to_mp_parameters_dict()
-                string_hyper_parameters["mp_parameters"] = json.dumps(mp_parameters)
+                string_hyper_parameters["mp_parameters"] = safe_serialize(mp_parameters)
 
-            self._write_source_code_json(self.source_code)
-            self._write_distributed_runner_json(self.distributed_runner)
+            self._write_source_code_json(tmp_dir=drivers_dir, source_code=self.source_code)
+            self._write_distributed_runner_json(
+                tmp_dir=drivers_dir, distributed_runner=self.distributed_runner
+            )
 
             # Create an input channel for drivers packaged by the sdk
-            sm_drivers_channel = self.create_input_data_channel(SM_DRIVERS, SM_DRIVERS_LOCAL_PATH)
+            sm_drivers_channel = self.create_input_data_channel(SM_DRIVERS, drivers_dir.name)
             input_data_config.append(sm_drivers_channel)
 
             # If source_code is provided, we will always use
@@ -525,24 +537,27 @@ class ModelTrainer(BaseModel):
                 )
         return channels
 
-    def _write_source_code_json(self, source_code: SourceCode):
+    def _write_source_code_json(self, tmp_dir: TemporaryDirectory, source_code: SourceCode):
         """Write the source code configuration to a JSON file."""
-        file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, SOURCE_CODE_JSON)
+        file_path = os.path.join(tmp_dir.name, SOURCE_CODE_JSON)
         with open(file_path, "w") as f:
             dump = source_code.model_dump(exclude_none=True) if source_code else {}
             f.write(json.dumps(dump))
 
     def _write_distributed_runner_json(
-        self, distributed_runner: Optional[DistributedRunner] = None
+        self,
+        tmp_dir: TemporaryDirectory,
+        distributed_runner: Optional[DistributedRunner] = None,
     ):
         """Write the distributed runner configuration to a JSON file."""
-        file_path = os.path.join(SM_DRIVERS_LOCAL_PATH, DISTRIBUTED_RUNNER_JSON)
+        file_path = os.path.join(tmp_dir.name, DISTRIBUTED_RUNNER_JSON)
         with open(file_path, "w") as f:
             dump = distributed_runner.model_dump(exclude_none=True) if distributed_runner else {}
             f.write(json.dumps(dump))
 
     def _prepare_train_script(
         self,
+        tmp_dir: TemporaryDirectory,
         source_code: SourceCode,
         distributed_runner: Optional[DistributedRunner] = None,
     ):
@@ -561,19 +576,6 @@ class ModelTrainer(BaseModel):
                 )
             base_command = source_code.command.split()
             base_command = " ".join(base_command)
-
-        if source_code.entry_script and not source_code.command and not distributed_runner:
-            if source_code.entry_script.endswith(".py"):
-                base_command = f"$SM_PYTHON_CMD {source_code.entry_script}"
-            elif source_code.entry_script.endswith(".sh"):
-                base_command = (
-                    f"chmod +x {source_code.entry_script} && " f"bash {source_code.entry_script}"
-                )
-            else:
-                raise ValueError(
-                    f"Unsupported entry script: {source_code.entry_script}."
-                    + "Only .py and .sh scripts are supported."
-                )
 
         install_requirements = ""
         if source_code.requirements:
@@ -594,6 +596,13 @@ class ModelTrainer(BaseModel):
                 execute_driver = EXEUCTE_TORCHRUN_DRIVER
             else:
                 raise ValueError(f"Unsupported distribution type: {distribution_type}.")
+        elif source_code.entry_script and not source_code.command and not distributed_runner:
+            if not source_code.entry_script.endswith((".py", ".sh")):
+                raise ValueError(
+                    f"Unsupported entry script: {source_code.entry_script}."
+                    + "Only .py and .sh scripts are supported."
+                )
+            execute_driver = EXECUTE_BASIC_SCRIPT_DRIVER
 
         train_script = TRAIN_SCRIPT_TEMPLATE.format(
             working_dir=working_dir,
@@ -601,8 +610,7 @@ class ModelTrainer(BaseModel):
             execute_driver=execute_driver,
         )
 
-        os.makedirs(SM_DRIVERS_LOCAL_PATH, exist_ok=True)
-        with open(os.path.join(SM_DRIVERS_LOCAL_PATH, TRAIN_SCRIPT), "w") as f:
+        with open(os.path.join(tmp_dir.name, TRAIN_SCRIPT), "w") as f:
             f.write(train_script)
 
     def with_metric_settings(

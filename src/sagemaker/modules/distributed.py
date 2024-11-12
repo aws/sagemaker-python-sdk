@@ -30,9 +30,9 @@ class DistributedRunner(BaseModel):
 
 
 class Torchrun(DistributedRunner):
-    """TorchDistribution.
+    """TorchDistributed.
 
-    The TorchDistribution runner uses `torchrun` or `torch.distributed.launch` in the backend to
+    The Torchrun distributed runner uses `torchrun` or `torch.distributed.launch` in the backend to
     launch distributed training.
 
     Attributes:

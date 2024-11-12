@@ -26,6 +26,7 @@ from sagemaker.modules.train.container_drivers.scripts.environment import (
     mask_sensitive_info,
     HIDDEN_VALUE,
 )
+from sagemaker.modules.train.container_drivers.utils import safe_serialize
 
 RESOURCE_CONFIG = dict(
     current_host="algo-1",
@@ -114,7 +115,11 @@ export SM_TRAINING_ENV='{"channel_input_dirs": {"train": "/opt/ml/input/data/tra
 @patch("sagemaker.modules.train.container_drivers.scripts.environment.num_cpus", return_value=8)
 @patch("sagemaker.modules.train.container_drivers.scripts.environment.num_gpus", return_value=0)
 @patch("sagemaker.modules.train.container_drivers.scripts.environment.num_neurons", return_value=0)
-def test_set_env(mock_num_cpus, mock_num_gpus, mock_num_neurons):
+@patch(
+    "sagemaker.modules.train.container_drivers.scripts.environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env(mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
         set_env(
             resource_config=RESOURCE_CONFIG,

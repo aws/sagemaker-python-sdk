@@ -13,6 +13,8 @@
 """ModelTrainer Tests."""
 from __future__ import absolute_import
 
+import shutil
+import tempfile
 import json
 import os
 import pytest
@@ -22,7 +24,6 @@ from sagemaker.session import Session
 from sagemaker.modules.train.model_trainer import ModelTrainer
 from sagemaker.modules.constants import (
     DEFAULT_INSTANCE_TYPE,
-    SM_DRIVERS_LOCAL_PATH,
     DISTRIBUTED_RUNNER_JSON,
     SOURCE_CODE_JSON,
     TRAIN_SCRIPT,
@@ -442,43 +443,55 @@ def test_additional_settings(mock_training_job, modules_session):
     ],
 )
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
-def test_train_with_distributed_runner(mock_training_job, test_case, modules_session):
+@patch("sagemaker.modules.train.model_trainer.TemporaryDirectory")
+def test_train_with_distributed_runner(
+    mock_tmp_dir, mock_training_job, test_case, request, modules_session
+):
     modules_session.upload_data.return_value = (
         f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/test"
     )
 
-    expected_train_script_path = f"{SM_DRIVERS_LOCAL_PATH}/{TRAIN_SCRIPT}"
-    expected_runner_json_path = f"{SM_DRIVERS_LOCAL_PATH}/{DISTRIBUTED_RUNNER_JSON}"
-    expected_source_code_json_path = f"{SM_DRIVERS_LOCAL_PATH}/{SOURCE_CODE_JSON}"
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_dir._cleanup = False
+    tmp_dir.cleanup = lambda: None
+    mock_tmp_dir.return_value = tmp_dir
 
-    model_trainer = ModelTrainer(
-        session=modules_session,
-        training_image=DEFAULT_IMAGE,
-        source_code=test_case["source_code"],
-        distributed_runner=test_case["distributed_runner"],
-    )
+    expected_train_script_path = os.path.join(tmp_dir.name, TRAIN_SCRIPT)
+    expected_runner_json_path = os.path.join(tmp_dir.name, DISTRIBUTED_RUNNER_JSON)
+    expected_source_code_json_path = os.path.join(tmp_dir.name, SOURCE_CODE_JSON)
 
-    model_trainer.train()
-    mock_training_job.create.assert_called_once()
-    assert mock_training_job.create.call_args.kwargs["hyper_parameters"] == (
-        test_case["expected_hyperparameters"]
-    )
-
-    assert os.path.exists(expected_train_script_path)
-    with open(expected_train_script_path, "r") as f:
-        train_script_content = f.read()
-        assert test_case["expected_template"] in train_script_content
-
-    assert os.path.exists(expected_runner_json_path)
-    with open(expected_runner_json_path, "r") as f:
-        runner_json_content = f.read()
-        assert test_case["distributed_runner"].model_dump(exclude_none=True) == (
-            json.loads(runner_json_content)
+    try:
+        model_trainer = ModelTrainer(
+            session=modules_session,
+            training_image=DEFAULT_IMAGE,
+            source_code=test_case["source_code"],
+            distributed_runner=test_case["distributed_runner"],
         )
 
-    assert os.path.exists(expected_source_code_json_path)
-    with open(expected_source_code_json_path, "r") as f:
-        source_code_json_content = f.read()
-        assert test_case["source_code"].model_dump(exclude_none=True) == (
-            json.loads(source_code_json_content)
+        model_trainer.train()
+        mock_training_job.create.assert_called_once()
+        assert mock_training_job.create.call_args.kwargs["hyper_parameters"] == (
+            test_case["expected_hyperparameters"]
         )
+
+        assert os.path.exists(expected_train_script_path)
+        with open(expected_train_script_path, "r") as f:
+            train_script_content = f.read()
+            assert test_case["expected_template"] in train_script_content
+
+        assert os.path.exists(expected_runner_json_path)
+        with open(expected_runner_json_path, "r") as f:
+            runner_json_content = f.read()
+            assert test_case["distributed_runner"].model_dump(exclude_none=True) == (
+                json.loads(runner_json_content)
+            )
+
+        assert os.path.exists(expected_source_code_json_path)
+        with open(expected_source_code_json_path, "r") as f:
+            source_code_json_content = f.read()
+            assert test_case["source_code"].model_dump(exclude_none=True) == (
+                json.loads(source_code_json_content)
+            )
+    finally:
+        shutil.rmtree(tmp_dir.name)
+        assert not os.path.exists(tmp_dir.name)

@@ -13,8 +13,8 @@
 """Utils module."""
 from __future__ import absolute_import
 
-import re
 import os
+import json
 from datetime import datetime
 from typing import Literal, Any
 
@@ -87,8 +87,8 @@ def _get_unique_name(base, max_length=63):
         str: The unique name
     """
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
+    base = base.replace("_", "-")
     unique_name = f"{base}-{current_time}"
-    unique_name = re.sub(r"[^a-zA-Z0-9-]", "", unique_name)  # Remove invalid characters
     unique_name = unique_name[:max_length]  # Truncate to max_length
     return unique_name
 
@@ -117,3 +117,27 @@ def convert_unassigned_to_none(instance) -> Any:
         if isinstance(value, Unassigned):
             setattr(instance, name, None)
     return instance
+
+
+def safe_serialize(data):
+    """Serialize the data without wrapping strings in quotes.
+
+    This function handles the following cases:
+    1. If `data` is a string, it returns the string as-is without wrapping in quotes.
+    2. If `data` is serializable (e.g., a dictionary, list, int, float), it returns
+       the JSON-encoded string using `json.dumps()`.
+    3. If `data` cannot be serialized (e.g., a custom object), it returns the string
+       representation of the data using `str(data)`.
+
+    Args:
+        data (Any): The data to serialize.
+
+    Returns:
+        str: The serialized JSON-compatible string or the string representation of the input.
+    """
+    if isinstance(data, str):
+        return data
+    try:
+        return json.dumps(data)
+    except TypeError:
+        return str(data)

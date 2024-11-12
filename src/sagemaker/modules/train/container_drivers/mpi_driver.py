@@ -21,6 +21,8 @@ from utils import (
     logger,
     read_source_code_json,
     read_distributed_runner_json,
+    read_hyperparameters_json,
+    hyperparameters_to_cli_args,
     get_process_count,
     execute_commands,
     write_failure_file,
@@ -58,6 +60,7 @@ def main():
     """
     source_code = read_source_code_json()
     distribution = read_distributed_runner_json()
+    hyperparameters = read_hyperparameters_json()
 
     sm_current_host = os.environ["SM_CURRENT_HOST"]
     sm_hosts = json.loads(os.environ["SM_HOSTS"])
@@ -87,7 +90,10 @@ def main():
             entry_script_path=os.path.join(USER_CODE_PATH, source_code["entry_script"]),
         )
 
-        logger.info(f"Executing command: {mpi_command}")
+        args = hyperparameters_to_cli_args(hyperparameters)
+        mpi_command += args
+
+        logger.info(f"Executing command: {' '.join(mpi_command)}")
         exit_code, error_traceback = execute_commands(mpi_command)
         write_status_file_to_workers(worker_hosts)
 

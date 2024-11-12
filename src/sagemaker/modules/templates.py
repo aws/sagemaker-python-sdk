@@ -15,8 +15,13 @@ from __future__ import absolute_import
 
 EXECUTE_BASE_COMMANDS = """
 CMD="{base_command}"
-echo "Running command: $CMD"
+echo "Executing command: $CMD"
 eval $CMD
+"""
+
+EXECUTE_BASIC_SCRIPT_DRIVER = """
+echo "Running Basic Script driver"
+$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/basic_script_driver.py
 """
 
 EXEUCTE_TORCHRUN_DRIVER = """

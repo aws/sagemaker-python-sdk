@@ -21,6 +21,11 @@ import os
 import sys
 import logging
 
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, parent_dir)
+
+from utils import safe_serialize  # noqa: E402 # pylint: disable=C0413
+
 # Initialize logger
 SM_LOG_LEVEL = os.environ.get("SM_LOG_LEVEL", 20)
 logger = logging.getLogger(__name__)
@@ -147,7 +152,7 @@ def set_env(
     # Hyperparameters
     env_vars["SM_HPS"] = hyperparameters_config
     for key, value in hyperparameters_config.items():
-        env_vars[f"SM_HP_{key.upper()}"] = value
+        env_vars[f"SM_HP_{key.upper()}"] = safe_serialize(value)
 
     # Host Variables
     current_host = resource_config["current_host"]
@@ -197,10 +202,7 @@ def set_env(
     }
     with open(output_file, "w") as f:
         for key, value in env_vars.items():
-            if isinstance(value, (list, dict)):
-                f.write(f"export {key}='{json.dumps(value)}'\n")
-            else:
-                f.write(f"export {key}='{value}'\n")
+            f.write(f"export {key}='{safe_serialize(value)}'\n")
 
     logger.info("Environment Variables:")
     log_env_variables(env_vars_dict=env_vars)
