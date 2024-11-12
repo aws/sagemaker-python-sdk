@@ -19,10 +19,11 @@ import shutil
 from tempfile import TemporaryDirectory
 
 from typing import Optional, List, Union, Dict, Any
-from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
-
+from sagemaker_core.main import resources
 from sagemaker_core.resources import TrainingJob
 from sagemaker_core.shapes import AlgorithmSpecification
+
+from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 
 from sagemaker import get_execution_role, Session
 from sagemaker.modules.configs import (
@@ -51,6 +52,7 @@ from sagemaker.modules.configs import (
     CheckpointConfig,
     InputData,
 )
+
 from sagemaker.modules.distributed import (
     DistributedRunner,
     TorchrunSMP,
@@ -187,6 +189,9 @@ class ModelTrainer(BaseModel):
     hyperparameters: Optional[Dict[str, Any]] = None
     tags: Optional[List[Tag]] = None
 
+    # Created Artifacts
+    _latest_training_job: Optional[resources.TrainingJob] = None
+
     # Metrics settings
     _enable_sage_maker_metrics_time_series: Optional[bool] = PrivateAttr(default=False)
     _metric_definitions: Optional[List[MetricDefinition]] = PrivateAttr(default=None)
@@ -194,6 +199,7 @@ class ModelTrainer(BaseModel):
     # Debugger settings
     _debug_hook_config: Optional[DebugHookConfig] = PrivateAttr(default=None)
     _debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = PrivateAttr(default=None)
+    _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
     _profiler_config: Optional[ProfilerConfig] = PrivateAttr(default=None)
     _profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = PrivateAttr(
         default=None
@@ -448,11 +454,9 @@ class ModelTrainer(BaseModel):
             infra_check_config=self._infra_check_config,
             session_chaining_config=self._session_chaining_config,
         )
-
+        self._latest_training_job = training_job
         if wait:
             training_job.wait(logs=logs)
-        if logs and not wait:
-            logger.warning("Not displaing the training container logs as 'wait' is set to False.")
 
     def create_input_data_channel(self, channel_name: str, data_source: DataSourceType) -> Channel:
         """Create an input data channel for the training job.

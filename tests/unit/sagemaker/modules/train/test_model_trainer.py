@@ -20,6 +20,8 @@ import os
 import pytest
 from unittest.mock import patch, MagicMock
 
+from sagemaker_core.main.resources import TrainingJob
+
 from sagemaker.session import Session
 from sagemaker.modules.train.model_trainer import ModelTrainer
 from sagemaker.modules.constants import (
@@ -316,6 +318,7 @@ def test_debugger_settings(mock_training_job, modules_session):
 
     assert model_trainer._debug_hook_config == debug_hook_config
     assert model_trainer._debug_rule_configurations == debug_rule_config
+
     assert model_trainer._profiler_config == profiler_config
     assert model_trainer._profiler_rule_configurations == profiler_rule_config
     assert model_trainer._tensor_board_output_config == tensor_board_output_config
@@ -485,7 +488,12 @@ def test_train_with_distributed_runner(
             assert test_case["distributed_runner"].model_dump(exclude_none=True) == (
                 json.loads(runner_json_content)
             )
-
+        assert os.path.exists(expected_source_code_json_path)
+        with open(expected_source_code_json_path, "r") as f:
+            source_code_json_content = f.read()
+            assert test_case["source_code"].model_dump(exclude_none=True) == (
+                json.loads(source_code_json_content)
+            )
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
@@ -495,3 +503,11 @@ def test_train_with_distributed_runner(
     finally:
         shutil.rmtree(tmp_dir.name)
         assert not os.path.exists(tmp_dir.name)
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_train_stores_created_training_job(mock_training_job, model_trainer):
+    mock_training_job.create.return_value = TrainingJob(training_job_name="Created-job")
+    model_trainer.train(wait=False)
+    assert model_trainer._latest_training_job is not None
+    assert model_trainer._latest_training_job == TrainingJob(training_job_name="Created-job")

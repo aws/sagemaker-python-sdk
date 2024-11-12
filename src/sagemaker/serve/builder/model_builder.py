@@ -24,6 +24,9 @@ import re
 
 from pathlib import Path
 
+from sagemaker_core.main.resources import TrainingJob
+
+from sagemaker.estimator import Estimator
 from sagemaker.enums import Tag
 from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
@@ -176,8 +179,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             The schema builder can be omitted for HuggingFace models with task types TextGeneration,
             TextClassification, and QuestionAnswering. Omitting SchemaBuilder is in
             beta for FillMask, and AutomaticSpeechRecognition use-cases.
-        model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
-            inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or ``inference_spec``
+        model (Optional[Union[object, str, ModelTrainer, TrainingJob, Estimator]]):
+            Define object from which training artifacts can be extracted.
+            Either ``model`` or ``inference_spec``
             is required for the model builder to build the artifact.
         inference_spec (InferenceSpec): The inference spec file with your customized
             ``invoke`` and ``load`` functions.
@@ -268,14 +272,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     schema_builder: Optional[SchemaBuilder] = field(
         default=None, metadata={"help": "Defines the i/o schema of the model"}
     )
-    model: Optional[Union[object, str]] = field(
+    model: Optional[Union[object, str, "ModelTrainer", TrainingJob, Estimator]] = field(
         default=None,
-        metadata={
-            "help": (
-                'Model object with "predict" method to perform inference '
-                "or HuggingFace/JumpStart Model ID"
-            )
-        },
+        metadata={"help": "Define object from which training artifacts can be extracted"}
     )
     inference_spec: InferenceSpec = field(
         default=None,
@@ -852,12 +851,23 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Type[Model]: A deployable ``Model`` object.
         """
+        from sagemaker.modules.train.model_trainer import ModelTrainer
         self.modes = dict()
 
         if mode:
             self.mode = mode
         if role_arn:
             self.role_arn = role_arn
+
+        if isinstance(self.model, TrainingJob):
+            self.model_path = self.model.model_artifacts.s3_model_artifacts
+            self.model = None
+        elif isinstance(self.model, ModelTrainer):
+            self.model_path = self.model._latest_training_job.model_artifacts.s3_model_artifacts
+            self.model = None
+        elif isinstance(self.model, Estimator):
+            self.model_path = self.model.output_path
+            self.model = None
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
 
