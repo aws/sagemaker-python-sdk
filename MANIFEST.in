@@ -3,6 +3,7 @@ recursive-include src/sagemaker *.py
 include src/sagemaker/image_uri_config/*.json
 include src/sagemaker/serve/schema/*.json
 include src/sagemaker/serve/requirements.txt
+include src/sagemaker/modules/train/sm_recipes/training_recipes.json
 recursive-include requirements *
 
 include VERSION

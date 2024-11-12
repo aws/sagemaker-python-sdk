@@ -55,7 +55,7 @@ from sagemaker.modules.configs import (
 
 from sagemaker.modules.distributed import (
     DistributedRunner,
-    TorchrunSMP,
+    Torchrun,
 )
 from sagemaker.modules.utils import (
     _get_repo_name_from_image,
@@ -85,6 +85,7 @@ from sagemaker.modules.templates import (
     EXECUTE_BASIC_SCRIPT_DRIVER,
 )
 from sagemaker.modules import logger
+from sagemaker.modules.train.sm_recipes.utils import get_args_from_recipe, _determine_device_type
 
 
 class ModelTrainer(BaseModel):
@@ -212,6 +213,14 @@ class ModelTrainer(BaseModel):
     _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
     _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
     _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
+
+    _temp_recipe_train_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
+
+    def __del__(self):
+        """Destructor method to clean up the temporary directory."""
+        # Clean up the temporary directory if it exists
+        if self._temp_recipe_train_dir is not None:
+            self._temp_recipe_train_dir.cleanup()
 
     def _validate_training_image_and_algorithm_name(
         self, training_image: Optional[str], algorithm_name: Optional[str]
@@ -383,9 +392,9 @@ class ModelTrainer(BaseModel):
                 distributed_runner=self.distributed_runner,
             )
 
-            if isinstance(self.distributed_runner, TorchrunSMP):
-                mp_parameters = self.distributed_runner._to_mp_parameters_dict()
-                string_hyper_parameters["mp_parameters"] = safe_serialize(mp_parameters)
+            if isinstance(self.distributed_runner, Torchrun) and self.distributed_runner.smp:
+                mp_parameters = self.distributed_runner.smp._to_mp_hyperparameters()
+                string_hyper_parameters.update(mp_parameters)
 
             self._write_source_code_json(tmp_dir=drivers_dir, source_code=self.source_code)
             self._write_distributed_runner_json(
@@ -455,6 +464,11 @@ class ModelTrainer(BaseModel):
             session_chaining_config=self._session_chaining_config,
         )
         self._latest_training_job = training_job
+
+        # Clean up the temporary directory if it exists
+        if self._temp_recipe_train_dir is not None:
+            self._temp_recipe_train_dir.cleanup()
+
         if wait:
             training_job.wait(logs=logs)
 
@@ -748,3 +762,77 @@ class ModelTrainer(BaseModel):
         self._session_chaining_config = session_chaining_config
         self._remote_debug_config = remote_debug_config
         return self
+
+    @classmethod
+    def from_recipe(
+        cls,
+        training_recipe: str,
+        compute: Compute,
+        recipe_overrides: Optional[Dict[str, Any]] = None,
+        training_image: Optional[str] = None,
+        session: Optional[Session] = None,
+        role: Optional[str] = None,
+        base_job_name: Optional[str] = None,
+        **kwargs,
+    ) -> "ModelTrainer":
+        """Create a ModelTrainer from a training recipe.
+
+        Args:
+            training_recipe (str):
+                The training recipe to use for training the model. This must be the name of
+                a sagemaker training recipe or a path to a local training recipe .yaml file.
+            compute (Compute):
+                The compute configuration. This is used to specify the compute resources for
+                the training job. If not specified, will default to 1 instance of ml.m5.xlarge.
+            recipe_overrides (Optional[Dict[str, Any]]):
+                The recipe overrides. This is used to override the default recipe parameters.
+            training_image (Optional[str]):
+                The training image URI to use for the training job container. If not specified,
+                the training image will be determined from the recipe.
+            session (Optional[Session]):
+                The SageMaker session.
+                If not specified, a new session will be created.
+            role (Optional[str]):
+                The IAM role ARN for the training job.
+                If not specified, the default SageMaker execution role will be used.
+            base_job_name (Optional[str]):
+                The base name for the training job.
+                If not specified, a default name will be generated using the algorithm name
+                or training image.
+            kwargs:
+                Additional keyword arguments to pass to the ModelTrainer constructor.
+
+        """
+        if compute.instance_type is None:
+            raise ValueError(
+                "Must set `instance_type` in compute_config when using training recipes."
+            )
+        device_type = _determine_device_type(compute.instance_type)
+        if device_type == "cpu":
+            raise ValueError(
+                "Training recipes are not supported for CPU instances. "
+                + "Please provide a GPU or Tranium instance type."
+            )
+
+        if session is None:
+            session = Session()
+            logger.warning("Session not provided. Using default Session.")
+        if role is None:
+            role = get_execution_role()
+            logger.warning(f"Role not provided. Using default role:\n{role}")
+
+        model_trainer_args, recipe_train_dir = get_args_from_recipe(
+            training_recipe=training_recipe,
+            recipe_overrides=recipe_overrides,
+            compute=compute,
+            session=session,
+        )
+        if training_image is not None:
+            model_trainer_args["training_image"] = training_image
+
+        model_trainer = cls(
+            session=session, role=role, base_job_name=base_job_name, **model_trainer_args, **kwargs
+        )
+
+        model_trainer._temp_recipe_train_dir = recipe_train_dir
+        return model_trainer

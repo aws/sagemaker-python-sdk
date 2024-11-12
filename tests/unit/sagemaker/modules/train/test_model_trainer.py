@@ -50,7 +50,7 @@ from sagemaker.modules.configs import (
     SessionChainingConfig,
     InputData,
 )
-from sagemaker.modules.distributed import Torchrun, TorchrunSMP, MPI
+from sagemaker.modules.distributed import Torchrun, SMP, MPI
 from sagemaker.modules.templates import EXEUCTE_TORCHRUN_DRIVER, EXECUTE_MPI_DRIVER
 from tests.unit import DATA_DIR
 
@@ -412,11 +412,13 @@ def test_additional_settings(mock_training_job, modules_session):
         },
         {
             "source_code": DEFAULT_SOURCE_CODE,
-            "distributed_runner": TorchrunSMP(
-                hybrid_shard_degree=3,
-                sm_activation_offloading=True,
-                allow_empty_shards=True,
-                tensor_parallel_degree=5,
+            "distributed_runner": Torchrun(
+                smp=SMP(
+                    hybrid_shard_degree=3,
+                    sm_activation_offloading=True,
+                    allow_empty_shards=True,
+                    tensor_parallel_degree=5,
+                )
             ),
             "expected_template": EXEUCTE_TORCHRUN_DRIVER,
             "expected_hyperparameters": {

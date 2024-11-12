@@ -37,13 +37,14 @@ EXPECTED_HYPERPARAMETERS = {
 DEFAULT_CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py310"
 
 
-def test_hp_contract_basic_py_script():
+def test_hp_contract_basic_py_script(modules_sagemaker_session):
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/modules/params-script",
         entry_script="train.py",
     )
 
     model_trainer = ModelTrainer(
+        session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
         source_code=source_code,
@@ -53,12 +54,13 @@ def test_hp_contract_basic_py_script():
     model_trainer.train()
 
 
-def test_hp_contract_basic_sh_script():
+def test_hp_contract_basic_sh_script(modules_sagemaker_session):
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/modules/params-script",
         entry_script="train.sh",
     )
     model_trainer = ModelTrainer(
+        session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
         source_code=source_code,
@@ -68,13 +70,14 @@ def test_hp_contract_basic_sh_script():
     model_trainer.train()
 
 
-def test_hp_contract_mpi_script():
+def test_hp_contract_mpi_script(modules_sagemaker_session):
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/modules/params-script",
         entry_script="train.py",
     )
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(
+        session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         compute=compute,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
@@ -86,13 +89,14 @@ def test_hp_contract_mpi_script():
     model_trainer.train()
 
 
-def test_hp_contract_torchrun_script():
+def test_hp_contract_torchrun_script(modules_sagemaker_session):
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/modules/params-script",
         entry_script="train.py",
     )
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(
+        session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         compute=compute,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
