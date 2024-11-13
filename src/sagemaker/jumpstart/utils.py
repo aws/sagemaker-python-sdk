@@ -564,6 +564,7 @@ def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
 
 
 def format_eula_message_from_specs(model_id: str, region: str, hosting_eula_key: str):
+    """Returns a formatted EULA message."""
     return (
         f"Model '{model_id}' requires accepting end-user license agreement (EULA). "
         f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
@@ -1552,21 +1553,25 @@ def _add_model_access_configs_to_model_data_sources(
         hosting_eula_key = model_data_source.get("HostingEulaKey")
         if hosting_eula_key:
             if not model_access_configs or not model_access_configs.get(model_id):
-                eula_message_template = "{model_source}{base_eula_message}{model_access_configs_message}"
-                model_access_config_entry = (
-                    "\"{model_id}\":ModelAccessConfig(accept_eula=True)".format(model_id=model_id)
+                eula_message_template = (
+                    "{model_source}{base_eula_message}{model_access_configs_message}"
                 )
-                raise ValueError(eula_message_template.format(
-                    model_source="Draft " if model_data_source.get("ChannelName") else "",
-                    base_eula_message=format_eula_message_from_specs(
-                        model_id=model_id, region=region, hosting_eula_key=hosting_eula_key
-                    ),
-                    model_access_configs_message=(
-                        " Please add a ModelAccessConfig entry:"
-                        f" {model_access_config_entry} "
-                        "to model_access_configs to acknowledge the EULA."
+                model_access_config_entry = (
+                    '"{model_id}":ModelAccessConfig(accept_eula=True)'.format(model_id=model_id)
+                )
+                raise ValueError(
+                    eula_message_template.format(
+                        model_source="Draft " if model_data_source.get("ChannelName") else "",
+                        base_eula_message=format_eula_message_from_specs(
+                            model_id=model_id, region=region, hosting_eula_key=hosting_eula_key
+                        ),
+                        model_access_configs_message=(
+                            " Please add a ModelAccessConfig entry:"
+                            f" {model_access_config_entry} "
+                            "to model_access_configs to acknowledge the EULA."
+                        ),
                     )
-                ))
+                )
             acked_model_data_source = model_data_source.copy()
             acked_model_data_source.pop("HostingEulaKey")
             acked_model_data_source["S3DataSource"]["ModelAccessConfig"] = (
@@ -1576,3 +1581,17 @@ def _add_model_access_configs_to_model_data_sources(
         else:
             acked_model_data_sources.append(model_data_source)
     return acked_model_data_sources
+
+
+def get_draft_model_content_bucket(provider: Dict, region: str) -> str:
+    """Returns the correct content bucket for a 1p draft model."""
+    neo_bucket = get_neo_content_bucket(region=region)
+    if not provider:
+        return neo_bucket
+    provider_name = provider.get("name", "")
+    if provider_name == "JumpStart":
+        classification = provider.get("classification", "ungated")
+        if classification == "gated":
+            return get_jumpstart_gated_content_bucket(region=region)
+        return get_jumpstart_content_bucket(region=region)
+    return neo_bucket

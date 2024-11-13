@@ -1082,7 +1082,7 @@ class S3DataSource(JumpStartDataHolderType):
 class AdditionalModelDataSource(JumpStartDataHolderType):
     """Data class of additional model data source mirrors CreateModel API."""
 
-    SERIALIZATION_EXCLUSION_SET: Set[str] = set()
+    SERIALIZATION_EXCLUSION_SET = {"provider"}
 
     __slots__ = ["channel_name", "s3_data_source", "hosting_eula_key"]
 
@@ -1103,6 +1103,7 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
         self.channel_name: str = json_obj["channel_name"]
         self.s3_data_source: S3DataSource = S3DataSource(json_obj["s3_data_source"])
         self.hosting_eula_key: str = json_obj.get("hosting_eula_key")
+        self.provider: Dict = json_obj.get("provider", {})
 
     def to_json(self, exclude_keys=True) -> Dict[str, Any]:
         """Returns json representation of AdditionalModelDataSource object."""
@@ -1121,7 +1122,9 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
 class JumpStartModelDataSource(AdditionalModelDataSource):
     """Data class JumpStart additional model data source."""
 
-    SERIALIZATION_EXCLUSION_SET = {"artifact_version"}
+    SERIALIZATION_EXCLUSION_SET = {
+        "artifact_version"
+    } | AdditionalModelDataSource.SERIALIZATION_EXCLUSION_SET
 
     __slots__ = list(SERIALIZATION_EXCLUSION_SET) + AdditionalModelDataSource.__slots__
 
@@ -2241,7 +2244,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "config_name",
         "routing_config",
         "specs",
-        "model_access_configs"
+        "model_access_configs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2255,7 +2258,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "sagemaker_session",
         "training_instance_type",
         "config_name",
-        "model_access_configs"
+        "model_access_configs",
     }
 
     def __init__(
@@ -2294,7 +2297,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_type: Optional[EndpointType] = None,
         config_name: Optional[str] = None,
         routing_config: Optional[Dict[str, Any]] = None,
-        model_access_configs: Optional[Dict[str, CoreModelAccessConfig]] = None
+        model_access_configs: Optional[Dict[str, CoreModelAccessConfig]] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 

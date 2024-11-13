@@ -458,9 +458,7 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
         )
 
-    def set_deployment_config(
-        self, config_name: str, instance_type: str
-    ) -> None:
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
         """Sets the deployment config to apply to the model.
 
         Args:
@@ -479,7 +477,7 @@ class JumpStartModel(Model):
             instance_type=instance_type,
             config_name=config_name,
             sagemaker_session=self.sagemaker_session,
-            role=self.role
+            role=self.role,
         )
 
     @property
@@ -766,11 +764,11 @@ class JumpStartModel(Model):
                 (Default: EndpointType.MODEL_BASED).
             routing_config (Optional[Dict]): Settings the control how the endpoint routes
                 incoming traffic to the instances that the endpoint hosts.
-            model_access_configs (Optional[Dict[str, ModelAccessConfig]]): For models that require ModelAccessConfig,
-                provide a `{ "model_id", ModelAccessConfig(accept_eula=True) }` to indicate whether model terms
-                of use have been accepted. The `accept_eula` value must be explicitly defined as `True` in order to
-                accept the end-user license agreement (EULA) that some.
-                (Default: None)
+            model_access_configs (Optional[Dict[str, ModelAccessConfig]]): For models that require
+                ModelAccessConfig, provide a `{ "model_id", ModelAccessConfig(accept_eula=True) }`
+                to indicate whether model terms of use have been accepted. The `accept_eula` value
+                must be explicitly defined as `True` in order to accept the end-user license
+                agreement (EULA) that some. (Default: None)
 
         Raises:
             MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.

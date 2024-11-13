@@ -504,9 +504,7 @@ class JumpStart(ABC):
             sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
         )
 
-    def set_deployment_config(
-        self, config_name: str, instance_type: str
-    ) -> None:
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
         """Sets the deployment config to apply to the model.
 
         Args:

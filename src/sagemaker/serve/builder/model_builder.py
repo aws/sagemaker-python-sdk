@@ -1344,7 +1344,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             Optional[Dict[str, Any]]: Model optimization job input arguments.
         """
         if speculative_decoding_config:
-            if speculative_decoding_config.get("ModelProvider", "") == "JumpStart":
+            if speculative_decoding_config.get("ModelProvider", "").lower() == "jumpstart":
                 _jumpstart_speculative_decoding(
                     model=self.pysdk_model,
                     speculative_decoding_config=speculative_decoding_config,

@@ -54,11 +54,11 @@ from sagemaker.jumpstart.utils import (
     add_hub_content_arn_tags,
     add_jumpstart_model_info_tags,
     get_default_jumpstart_session_with_user_agent_suffix,
-    get_neo_content_bucket,
     get_top_ranked_config_name,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
+    get_draft_model_content_bucket,
 )
 
 from sagemaker.jumpstart.factory.utils import (
@@ -76,7 +76,6 @@ from sagemaker.utils import (
     name_from_base,
     format_tags,
     Tags,
-    get_domain_for_region,
 )
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
@@ -572,7 +571,9 @@ def _add_additional_model_data_sources_to_kwargs(
     # Append speculative decoding data source from metadata
     speculative_decoding_data_sources = specs.get_speculative_decoding_s3_data_sources()
     for data_source in speculative_decoding_data_sources:
-        data_source.s3_data_source.set_bucket(get_neo_content_bucket(region=kwargs.region))
+        data_source.s3_data_source.set_bucket(
+            get_draft_model_content_bucket(provider=data_source.provider, region=kwargs.region)
+        )
     api_shape_additional_model_data_sources = (
         [
             camel_case_to_pascal_case(data_source.to_json())
