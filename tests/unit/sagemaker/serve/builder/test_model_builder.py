@@ -2667,6 +2667,39 @@ class TestModelBuilder(unittest.TestCase):
             ),
         )
 
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_exclusive_sharding(self, mock_get_serve_setting):
+        mock_sagemaker_session = Mock()
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Sharding config is mutually exclusive and cannot be combined with any other optimization.",
+            lambda: model_builder.optimize(
+                compilation_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+                sharding_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_exclusive_sharding_args(self, mock_get_serve_setting):
+        mock_sagemaker_session = Mock()
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "OPTION_TENSOR_PARALLEL_DEGREE is required environment variable with Sharding config.",
+            lambda: model_builder.optimize(
+                sharding_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+            ),
+        )
+
     @patch.object(ModelBuilder, "_prepare_for_mode")
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     def test_optimize_for_hf_with_custom_s3_path(
