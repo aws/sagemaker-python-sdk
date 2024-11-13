@@ -1293,6 +1293,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 max_runtime_in_sec=max_runtime_in_sec,
             )
 
+        if sharding_config:
+            self.pysdk_model._is_sharded_model = True
+
         if input_args:
             self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
             job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
@@ -1301,9 +1304,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.pysdk_model.remove_tag_with_key(Tag.OPTIMIZATION_JOB_NAME)
         if not speculative_decoding_config:
             self.pysdk_model.remove_tag_with_key(Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER)
-
-        if sharding_config:
-            self.pysdk_model._is_sharded_model = True
 
         return self.pysdk_model
 
