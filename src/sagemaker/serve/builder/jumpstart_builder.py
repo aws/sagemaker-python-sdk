@@ -681,6 +681,7 @@ class JumpStart(ABC):
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -701,6 +702,8 @@ class JumpStart(ABC):
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
                 Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
@@ -727,7 +730,7 @@ class JumpStart(ABC):
             pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
 
         optimization_config, override_env = _extract_optimization_config_and_env(
-            quantization_config, compilation_config
+            quantization_config, compilation_config, sharding_config
         )
         if not optimization_config and is_compilation:
             override_env = override_env or pysdk_model_env_vars
@@ -792,7 +795,7 @@ class JumpStart(ABC):
         optimization_env_vars = _update_environment_variables(optimization_env_vars, override_env)
         if optimization_env_vars:
             self.pysdk_model.env.update(optimization_env_vars)
-        if quantization_config or is_compilation:
+        if quantization_config or sharding_config or is_compilation:
             return create_optimization_job_args
         return None
 

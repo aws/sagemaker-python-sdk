@@ -1200,6 +1200,57 @@ class TestJumpStartBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_sharding_for_jumpstart(
+        self,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+        mock_sagemaker_session = Mock()
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.env = {"SAGEMAKER_ENV": "1"}
+        mock_pysdk_model.model_data = mock_model_data
+        mock_pysdk_model.image_uri = mock_tgi_image_uri
+        mock_pysdk_model.list_deployment_configs.return_value = DEPLOYMENT_CONFIGS
+        mock_pysdk_model.deployment_config = DEPLOYMENT_CONFIGS[0]
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species "
+            "of turtle native to the brackish coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a "
+                "species of turtle native to the brackish coastal "
+                "tidal marshes of the east coast."
+            }
+        ]
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_jumpstart(
+            accept_eula=True,
+            sharding_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            env_vars={
+                "OPTION_TENSOR_PARALLEL_DEGREE": "1",
+                "OPTION_MAX_ROLLING_BATCH_SIZE": "2",
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertIsNotNone(out_put)
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_gated_model",
         return_value=True,

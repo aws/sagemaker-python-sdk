@@ -1119,6 +1119,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -1141,6 +1142,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
                 Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
@@ -1170,6 +1173,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             quantization_config=quantization_config,
             compilation_config=compilation_config,
             speculative_decoding_config=speculative_decoding_config,
+            sharding_config=sharding_config,
             env_vars=env_vars,
             vpc_config=vpc_config,
             kms_key=kms_key,
@@ -1189,6 +1193,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -1211,6 +1216,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
                 Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
@@ -1238,6 +1245,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if quantization_config and compilation_config:
             raise ValueError("Quantization config and compilation config are mutually exclusive.")
 
+        if sharding_config and (quantization_config or compilation_config or speculative_decoding_config):
+            raise ValueError("Sharding config is mutually exclusive and cannot be combined with any other optimization.")
+
+        if sharding_config and ((env_vars and "OPTION_TENSOR_PARALLEL_DEGREE" not in env_vars) or (sharding_config.get("OverrideEnvironment") and "OPTION_TENSOR_PARALLEL_DEGREE" not in sharding_config["OverrideEnvironment"])):
+            raise ValueError("OPTION_TENSOR_PARALLEL_DEGREE is required environment variable with Sharding config.")
+
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
         self.instance_type = instance_type or self.instance_type
         self.role_arn = role_arn or self.role_arn
@@ -1254,6 +1267,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 quantization_config=quantization_config,
                 compilation_config=compilation_config,
                 speculative_decoding_config=speculative_decoding_config,
+                sharding_config=sharding_config,
                 env_vars=env_vars,
                 vpc_config=vpc_config,
                 kms_key=kms_key,
@@ -1272,11 +1286,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 quantization_config=quantization_config,
                 compilation_config=compilation_config,
                 speculative_decoding_config=speculative_decoding_config,
+                sharding_config=sharding_config,
                 env_vars=env_vars,
                 vpc_config=vpc_config,
                 kms_key=kms_key,
                 max_runtime_in_sec=max_runtime_in_sec,
             )
+
+        if sharding_config:
+            self.pysdk_model._is_sharded_model = True
 
         if input_args:
             self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
@@ -1297,6 +1315,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -1311,6 +1330,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
                 Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
@@ -1327,7 +1348,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             self.pysdk_model, speculative_decoding_config, False
         )
 
-        if quantization_config or compilation_config:
+        if quantization_config or compilation_config or sharding_config:
             create_optimization_job_args = {
                 "OptimizationJobName": job_name,
                 "DeploymentInstanceType": self.instance_type,
