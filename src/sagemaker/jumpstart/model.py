@@ -468,8 +468,6 @@ class JumpStartModel(Model):
             instance_type (str):
                 The instance_type that the model will use after setting
                 the config.
-            accept_draft_model_eula (Optional[bool]):
-                If the config selected comes with a gated additional model data source.
         """
         self.__init__(
             model_id=self.model_id,

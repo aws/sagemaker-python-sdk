@@ -844,7 +844,6 @@ class JumpStart(ABC):
         """
         if speculative_decoding_config:
             model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
-            accept_draft_model_eula = speculative_decoding_config.get("AcceptEula", False)
 
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
 
@@ -874,7 +873,6 @@ class JumpStart(ABC):
                             self.pysdk_model.set_deployment_config(
                                 config_name=deployment_config.get("DeploymentConfigName"),
                                 instance_type=deployment_config.get("InstanceType"),
-                                accept_draft_model_eula=accept_draft_model_eula,
                             )
                         except ValueError as e:
                             raise ValueError(
@@ -909,7 +907,7 @@ class JumpStart(ABC):
                 )
             else:
                 self.pysdk_model = _custom_speculative_decoding(
-                    self.pysdk_model, speculative_decoding_config, accept_draft_model_eula
+                    self.pysdk_model, speculative_decoding_config, speculative_decoding_config.get("AcceptEula", False)
                 )
 
     def _find_compatible_deployment_config(
