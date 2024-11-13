@@ -514,8 +514,6 @@ class JumpStart(ABC):
             instance_type (str):
                 The instance_type that the model will use after setting
                 the config.
-            accept_draft_model_eula (Optional[bool]):
-                If the config selected comes with a gated additional model data source.
         """
         if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
             raise Exception("Cannot set deployment config to an uninitialized model.")
