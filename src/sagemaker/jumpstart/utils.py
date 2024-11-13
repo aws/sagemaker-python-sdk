@@ -558,12 +558,12 @@ def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
     """Returns EULA message to display if one is available, else empty string."""
     if model_specs.hosting_eula_key is None:
         return ""
-    return format_eula_message_from_specs(
+    return format_eula_message_template(
         model_id=model_specs.model_id, region=region, hosting_eula_key=model_specs.hosting_eula_key
     )
 
 
-def format_eula_message_from_specs(model_id: str, region: str, hosting_eula_key: str):
+def format_eula_message_template(model_id: str, region: str, hosting_eula_key: str):
     """Returns a formatted EULA message."""
     return (
         f"Model '{model_id}' requires accepting end-user license agreement (EULA). "
@@ -1561,8 +1561,8 @@ def _add_model_access_configs_to_model_data_sources(
                 )
                 raise ValueError(
                     eula_message_template.format(
-                        model_source="Draft " if model_data_source.get("ChannelName") else "",
-                        base_eula_message=format_eula_message_from_specs(
+                        model_source="Additional " if model_data_source.get("ChannelName") else "",
+                        base_eula_message=format_eula_message_template(
                             model_id=model_id, region=region, hosting_eula_key=hosting_eula_key
                         ),
                         model_access_configs_message=(
