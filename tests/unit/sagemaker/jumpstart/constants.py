@@ -7467,7 +7467,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
         "inference_dependencies": [],
         "inference_vulnerabilities": [],
         "training_vulnerable": False,
-        "training_dependencies": ["numpy==1.19.5", "opencv_python==4.0.1.23"],
+        "training_dependencies": ["numpy==2.0", "opencv_python==4.0.1.23"],
         "training_vulnerabilities": [],
         "deprecated": False,
         "hyperparameters": [
