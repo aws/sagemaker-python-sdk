@@ -50,7 +50,7 @@ RESOURCE_CONFIG = f"{SM_INPUT_CONFIG_DIR}/resourceconfig.json"
 INPUT_DATA_CONFIG = f"{SM_INPUT_CONFIG_DIR}/inputdataconfig.json"
 HYPERPARAMETERS_CONFIG = f"{SM_INPUT_CONFIG_DIR}/hyperparameters.json"
 
-ENV_OUTPUT_FILE = "/opt/ml/input/data/sm_drivers/scripts/sm_training.env"
+ENV_OUTPUT_FILE = "/opt/ml/input/sm_training.env"
 
 SENSITIVE_KEYWORDS = ["SECRET", "PASSWORD", "KEY", "TOKEN", "PRIVATE", "CREDS", "CREDENTIALS"]
 HIDDEN_VALUE = "******"
