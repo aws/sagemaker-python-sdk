@@ -293,7 +293,7 @@ class ModelTrainer(BaseModel):
             logger.warning("Session not provided. Using default Session.")
 
         if self.role is None:
-            self.role = get_execution_role()
+            self.role = get_execution_role(sagemaker_session=self.session)
             logger.warning(f"Role not provided. Using default role:\n{self.role}")
 
         if self.base_job_name is None:

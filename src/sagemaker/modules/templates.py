@@ -50,18 +50,16 @@ TrainingJob - $TRAINING_JOB_NAME" >> /opt/ml/output/failure
 }}
 
 check_python() {{
-    if command -v python3 &>/dev/null; then
-        SM_PYTHON_CMD="python3"
-        SM_PIP_CMD="pip3"
-        echo "Found python3"
-    elif command -v python &>/dev/null; then
-        SM_PYTHON_CMD="python"
-        SM_PIP_CMD="pip"
-        echo "Found python"
-    else
-        echo "Python may not be installed"
+    SM_PYTHON_CMD=$(command -v python3 || command -v python)
+    SM_PIP_CMD=$(command -v pip3 || command -v pip)
+
+    # Check if Python is found
+    if [[ -z "$SM_PYTHON_CMD" || -z "$SM_PIP_CMD" ]]; then
+        echo "Error: The Python executable was not found in the system path."
         return 1
     fi
+
+    return 0
 }}
 
 trap 'handle_error' ERR
