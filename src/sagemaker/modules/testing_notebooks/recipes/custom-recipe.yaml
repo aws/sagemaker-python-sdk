@@ -1,0 +1,110 @@
+run:
+  name: llama-8b
+  results_dir: /opt/ml/model
+  time_limit: 6-00:00:00
+  model_type: hf
+trainer:
+  devices: 8
+  num_nodes: 1
+  accelerator: gpu
+  precision: bf16
+  max_steps: 50
+  log_every_n_steps: 1
+  val_check_interval: 1
+  limit_val_batches: 0
+exp_manager:
+  exp_dir: ''
+  name: experiment
+  create_tensorboard_logger: true
+  create_checkpoint_callback: true
+  checkpoint_callback_params:
+    save_top_k: 0
+    every_n_train_steps: 10
+    monitor: step
+    mode: max
+    save_last: true
+  checkpoint_dir: /opt/ml/checkpoints
+  resume_from_checkpoint: null
+  auto_checkpoint:
+    enabled: false
+  export_full_model:
+    every_n_train_steps: 0
+    save_last: false
+  explicit_log_dir: /opt/ml/output/tensorboard
+use_smp_model: false
+distributed_backend: nccl
+model:
+  model_type: llama_v3
+  train_batch_size: 1
+  seed: 12345
+  grad_clip: 1.0
+  log_reduced_training_loss: true
+  context_parallel_degree: 1
+  moe: false
+  activation_checkpointing: true
+  activation_loading_horizon: 2
+  delayed_param: false
+  offload_activations: false
+  fsdp: true
+  sharding_strategy: hybrid_shard
+  forward_prefetch: true
+  shard_degree: 8
+  backward_fetch_policy: backward_pre
+  auto_wrap_policy: transformer_auto_wrap_policy
+  limit_all_gathers: false
+  use_orig_param: false
+  fp8: false
+  max_context_width: 8192
+  max_position_embeddings: 8192
+  num_hidden_layers: 32
+  hidden_size: 4096
+  num_attention_heads: 32
+  intermediate_size: 14336
+  initializer_range: 0.02
+  layernorm_epsilon: 1.0e-05
+  vocab_size: 128256
+  num_key_value_heads: null
+  use_flash_attention: true
+  rope_theta: 500000.0
+  rope_scaling:
+    rope_type: llama3
+    factor: 8.0
+    high_freq_factor: 4.0
+    low_freq_factor: 1.0
+    original_max_position_embeddings: 8192
+  do_finetune: true
+  hf_model_name_or_path: meta-llama/Llama-3.1-8B
+  hf_access_token: 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
+  peft:
+    peft_type: lora
+    rank: 32
+    alpha: 16
+    dropout: 0.1
+  precision: bf16
+  lr_decay_iters: 50
+  optim:
+    name: adamw
+    lr: 0.0001
+    weight_decay: 0.01
+    betas:
+    - 0.9
+    - 0.95
+    sched:
+      name: CosineAnnealing
+      warmup_steps: 0
+      constant_steps: 0
+      min_lr: 1.0e-06
+  data:
+    train_dir: /opt/ml/input/data/train
+    val_dir: /opt/ml/input/data/val
+    dataset_type: hf
+    use_synthetic_data: true
+  nsys_profile:
+    enabled: false
+    start_step: 10
+    end_step: 10
+    ranks:
+    - 0
+    gen_shape: false
+  viztracer:
+    enabled: false

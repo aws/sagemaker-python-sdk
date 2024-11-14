@@ -191,7 +191,7 @@ class ModelTrainer(BaseModel):
     tags: Optional[List[Tag]] = None
 
     # Created Artifacts
-    _latest_training_job: Optional[resources.TrainingJob] = None
+    _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
 
     # Metrics settings
     _enable_sage_maker_metrics_time_series: Optional[bool] = PrivateAttr(default=False)
@@ -200,7 +200,6 @@ class ModelTrainer(BaseModel):
     # Debugger settings
     _debug_hook_config: Optional[DebugHookConfig] = PrivateAttr(default=None)
     _debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = PrivateAttr(default=None)
-    _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
     _profiler_config: Optional[ProfilerConfig] = PrivateAttr(default=None)
     _profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = PrivateAttr(
         default=None
