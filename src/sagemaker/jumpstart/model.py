@@ -665,7 +665,7 @@ class JumpStartModel(Model):
         managed_instance_scaling: Optional[str] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         routing_config: Optional[Dict[str, Any]] = None,
-        model_access_configs: Optional[List[ModelAccessConfig]] = None,
+        model_access_configs: Optional[Dict[str, ModelAccessConfig]] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -766,7 +766,7 @@ class JumpStartModel(Model):
                 ModelAccessConfig, provide a `{ "model_id", ModelAccessConfig(accept_eula=True) }`
                 to indicate whether model terms of use have been accepted. The `accept_eula` value
                 must be explicitly defined as `True` in order to accept the end-user license
-                agreement (EULA) that some. (Default: None)
+                agreement (EULA) that some models require. (Default: None)
 
         Raises:
             MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.
