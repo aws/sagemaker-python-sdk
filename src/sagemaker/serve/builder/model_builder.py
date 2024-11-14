@@ -112,6 +112,7 @@ from sagemaker.huggingface.llm_utils import (
     download_huggingface_model_metadata,
 )
 from sagemaker.serve.validations.optimization import _validate_optimization_configuration
+from sagemaker.modules.train import ModelTrainer
 
 logger = logging.getLogger(__name__)
 
@@ -272,9 +273,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     schema_builder: Optional[SchemaBuilder] = field(
         default=None, metadata={"help": "Defines the i/o schema of the model"}
     )
-    model: Optional[Union[object, str, "ModelTrainer", TrainingJob, Estimator]] = field(
+    model: Optional[Union[object, str, ModelTrainer, TrainingJob, Estimator]] = field(
         default=None,
-        metadata={"help": "Define object from which training artifacts can be extracted"}
+        metadata={"help": "Define object from which training artifacts can be extracted"},
     )
     inference_spec: InferenceSpec = field(
         default=None,
@@ -851,7 +852,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Type[Model]: A deployable ``Model`` object.
         """
-        from sagemaker.modules.train.model_trainer import ModelTrainer
+
         self.modes = dict()
 
         if mode:

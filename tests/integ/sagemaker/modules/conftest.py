@@ -14,28 +14,27 @@
 from __future__ import absolute_import
 
 import pytest
-import json
 
+import os
 import boto3
-from botocore.config import Config
 from sagemaker import Session
 
 DEFAULT_REGION = "us-west-2"
 
-@pytest.fixture(scope="module")
-def modules_boto_session(request):
-    config = request.config.getoption("--boto-config")
-    if config:
-        return boto3.Session(**json.loads(config))
-    else:
-        return boto3.Session(region_name=DEFAULT_REGION)
 
 @pytest.fixture(scope="module")
-def modules_sagemaker_session(request, modules_boto_session):
-    sagemaker_client = (
-        modules_boto_session.client(
-            "sagemaker", 
-            config=Config(retries={"max_attempts": 10, "mode": "standard"})
-        )
-    )
-    return Session(boto_session=modules_boto_session)
+def modules_sagemaker_session():
+    region = os.environ.get("AWS_DEFAULT_REGION")
+    if not region:
+        os.environ["AWS_DEFAULT_REGION"] = DEFAULT_REGION
+        region_manual_set = True
+    else:
+        region_manual_set = True
+
+    boto_session = boto3.Session(region_name=os.environ["AWS_DEFAULT_REGION"])
+    sagemaker_session = Session(boto_session=boto_session)
+
+    yield sagemaker_session
+
+    if region_manual_set:
+        del os.environ["AWS_DEFAULT_REGION"]
