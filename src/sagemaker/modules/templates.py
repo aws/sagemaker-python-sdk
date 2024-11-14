@@ -86,7 +86,7 @@ echo
 
 echo "Setting up environment variables"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/scripts/environment.py
-source /opt/ml/input/data/sm_drivers/scripts/sm_training.env
+source /opt/ml/input/sm_training.env
 
 {working_dir}
 {install_requirements}

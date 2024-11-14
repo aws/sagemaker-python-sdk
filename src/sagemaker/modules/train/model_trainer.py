@@ -13,6 +13,7 @@
 """ModelTrainer class module."""
 from __future__ import absolute_import
 
+from enum import Enum
 import os
 import json
 import shutil
@@ -53,6 +54,7 @@ from sagemaker.modules.configs import (
     InputData,
 )
 
+from sagemaker.modules.local_core.local_container import _LocalContainer
 from sagemaker.modules.distributed import (
     DistributedRunner,
     Torchrun,
@@ -86,6 +88,13 @@ from sagemaker.modules.templates import (
 )
 from sagemaker.modules import logger
 from sagemaker.modules.train.sm_recipes.utils import get_args_from_recipe, _determine_device_type
+
+
+class Mode(Enum):
+    """Enum class for training mode."""
+
+    LOCAL_CONTAINER = "LOCAL_CONTAINER"
+    SAGEMAKER_TRAINING_JOB = "SAGEMAKER_TRAINING_JOB"
 
 
 class ModelTrainer(BaseModel):
@@ -171,6 +180,7 @@ class ModelTrainer(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
+    training_mode: Mode = Mode.SAGEMAKER_TRAINING_JOB
     session: Optional[Session] = None
     role: Optional[str] = None
     base_job_name: Optional[str] = None
@@ -186,9 +196,10 @@ class ModelTrainer(BaseModel):
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
     checkpoint_config: Optional[CheckpointConfig] = None
     training_input_mode: Optional[str] = "File"
-    environment: Optional[Dict[str, str]] = None
-    hyperparameters: Optional[Dict[str, Any]] = None
+    environment: Optional[Dict[str, str]] = {}
+    hyperparameters: Optional[Dict[str, Any]] = {}
     tags: Optional[List[Tag]] = None
+    local_container_root: Optional[str] = os.getcwd()
 
     # Created Artifacts
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
@@ -287,13 +298,14 @@ class ModelTrainer(BaseModel):
         self._validate_source_code(self.source_code)
         self._validate_distributed_runner(self.source_code, self.distributed_runner)
 
-        if self.session is None:
-            self.session = Session()
-            logger.warning("Session not provided. Using default Session.")
+        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
+            if self.session is None:
+                self.session = Session()
+                logger.warning("Session not provided. Using default Session.")
 
-        if self.role is None:
-            self.role = get_execution_role(sagemaker_session=self.session)
-            logger.warning(f"Role not provided. Using default role:\n{self.role}")
+            if self.role is None:
+                self.role = get_execution_role(sagemaker_session=self.session)
+                logger.warning(f"Role not provided. Using default role:\n{self.role}")
 
         if self.base_job_name is None:
             if self.algorithm_name:
@@ -320,7 +332,7 @@ class ModelTrainer(BaseModel):
                 f"StoppingCondition not provided. Using default:\n{self.stopping_condition}"
             )
 
-        if self.output_data_config is None:
+        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
             session = self.session
             base_job_name = self.base_job_name
             self.output_data_config = OutputDataConfig(
@@ -426,50 +438,70 @@ class ModelTrainer(BaseModel):
         resource_config = self.compute._to_resource_config()
         vpc_config = self.networking._to_vpc_config() if self.networking else None
 
-        training_job = TrainingJob.create(
-            training_job_name=_get_unique_name(self.base_job_name),
-            algorithm_specification=algorithm_specification,
-            hyper_parameters=string_hyper_parameters,
-            input_data_config=input_data_config,
-            resource_config=resource_config,
-            vpc_config=vpc_config,
-            # Public Instance Attributes
-            session=self.session.boto_session,
-            role_arn=self.role,
-            tags=self.tags,
-            stopping_condition=self.stopping_condition,
-            output_data_config=self.output_data_config,
-            checkpoint_config=self.checkpoint_config,
-            environment=self.environment,
-            enable_managed_spot_training=self.compute.enable_managed_spot_training,
-            enable_inter_container_traffic_encryption=(
-                self.networking.enable_inter_container_traffic_encryption
-                if self.networking
-                else None
-            ),
-            enable_network_isolation=(
-                self.networking.enable_network_isolation if self.networking else None
-            ),
-            # Private Instance Attributes
-            debug_hook_config=self._debug_hook_config,
-            debug_rule_configurations=self._debug_rule_configurations,
-            remote_debug_config=self._remote_debug_config,
-            profiler_config=self._profiler_config,
-            profiler_rule_configurations=self._profiler_rule_configurations,
-            tensor_board_output_config=self._tensor_board_output_config,
-            retry_strategy=self._retry_strategy,
-            experiment_config=self._experiment_config,
-            infra_check_config=self._infra_check_config,
-            session_chaining_config=self._session_chaining_config,
-        )
-        self._latest_training_job = training_job
+        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
+            training_job = TrainingJob.create(
+                training_job_name=_get_unique_name(self.base_job_name),
+                algorithm_specification=algorithm_specification,
+                hyper_parameters=string_hyper_parameters,
+                input_data_config=input_data_config,
+                resource_config=resource_config,
+                vpc_config=vpc_config,
+                # Public Instance Attributes
+                session=self.session.boto_session,
+                role_arn=self.role,
+                tags=self.tags,
+                stopping_condition=self.stopping_condition,
+                output_data_config=self.output_data_config,
+                checkpoint_config=self.checkpoint_config,
+                environment=self.environment,
+                enable_managed_spot_training=self.compute.enable_managed_spot_training,
+                enable_inter_container_traffic_encryption=(
+                    self.networking.enable_inter_container_traffic_encryption
+                    if self.networking
+                    else None
+                ),
+                enable_network_isolation=(
+                    self.networking.enable_network_isolation if self.networking else None
+                ),
+                # Private Instance Attributes
+                debug_hook_config=self._debug_hook_config,
+                debug_rule_configurations=self._debug_rule_configurations,
+                remote_debug_config=self._remote_debug_config,
+                profiler_config=self._profiler_config,
+                profiler_rule_configurations=self._profiler_rule_configurations,
+                tensor_board_output_config=self._tensor_board_output_config,
+                retry_strategy=self._retry_strategy,
+                experiment_config=self._experiment_config,
+                infra_check_config=self._infra_check_config,
+                session_chaining_config=self._session_chaining_config,
+            )
+            self._latest_training_job = training_job
 
-        # Clean up the temporary directory if it exists
-        if self._temp_recipe_train_dir is not None:
-            self._temp_recipe_train_dir.cleanup()
+            # Clean up the temporary directory if it exists
+            if self._temp_recipe_train_dir is not None:
+                self._temp_recipe_train_dir.cleanup()
 
-        if wait:
-            training_job.wait(logs=logs)
+            if wait:
+                training_job.wait(logs=logs)
+            if logs and not wait:
+                logger.warning(
+                    "Not displaing the training container logs as 'wait' is set to False."
+                )
+        else:
+            local_container = _LocalContainer(
+                training_job_name=_get_unique_name(self.base_job_name),
+                instance_type=resource_config.instance_type,
+                instance_count=resource_config.instance_count,
+                image=algorithm_specification.training_image,
+                container_root=self.local_container_root,
+                sagemaker_session=self.session,
+                container_entrypoint=algorithm_specification.container_entrypoint,
+                container_arguments=algorithm_specification.container_arguments,
+                input_data_config=input_data_config,
+                hyper_parameters=string_hyper_parameters,
+                environment=self.environment,
+            )
+            local_container.train(wait)
 
     def create_input_data_channel(self, channel_name: str, data_source: DataSourceType) -> Channel:
         """Create an input data channel for the training job.
@@ -495,22 +527,34 @@ class ModelTrainer(BaseModel):
                     input_mode="File",
                 )
             elif _is_valid_path(data_source):
-                s3_uri = self.session.upload_data(
-                    path=data_source,
-                    bucket=self.session.default_bucket(),
-                    key_prefix=f"{self.base_job_name}/input/{channel_name}",
-                )
-                channel = Channel(
-                    channel_name=channel_name,
-                    data_source=DataSource(
-                        s3_data_source=S3DataSource(
-                            s3_data_type="S3Prefix",
-                            s3_uri=s3_uri,
-                            s3_data_distribution_type="FullyReplicated",
+                if self.training_mode == Mode.LOCAL_CONTAINER:
+                    channel = Channel(
+                        channel_name=channel_name,
+                        data_source=DataSource(
+                            file_system_data_source=FileSystemDataSource.model_construct(
+                                directory_path=data_source,
+                                file_system_type="EFS",
+                            ),
                         ),
-                    ),
-                    input_mode="File",
-                )
+                        input_mode="File",
+                    )
+                else:
+                    s3_uri = self.session.upload_data(
+                        path=data_source,
+                        bucket=self.session.default_bucket(),
+                        key_prefix=f"{self.base_job_name}/input/{channel_name}",
+                    )
+                    channel = Channel(
+                        channel_name=channel_name,
+                        data_source=DataSource(
+                            s3_data_source=S3DataSource(
+                                s3_data_type="S3Prefix",
+                                s3_uri=s3_uri,
+                                s3_data_distribution_type="FullyReplicated",
+                            ),
+                        ),
+                        input_mode="File",
+                    )
             else:
                 raise ValueError(f"Not a valid S3 URI or local file path: {data_source}.")
         elif isinstance(data_source, S3DataSource):
