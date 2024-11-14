@@ -737,9 +737,7 @@ class JumpStart(ABC):
         if not optimization_config:
             optimization_config = {}
 
-        if (
-            not optimization_config or not optimization_config.get("ModelCompilationConfig")
-        ) and is_compilation:
+        if not optimization_config.get("ModelCompilationConfig") and is_compilation:
             # Fallback to default if override_env is None or empty
             if not compilation_override_env:
                 compilation_override_env = pysdk_model_env_vars
@@ -907,7 +905,9 @@ class JumpStart(ABC):
                 )
             else:
                 self.pysdk_model = _custom_speculative_decoding(
-                    self.pysdk_model, speculative_decoding_config, speculative_decoding_config.get("AcceptEula", False)
+                    self.pysdk_model,
+                    speculative_decoding_config,
+                    speculative_decoding_config.get("AcceptEula", False),
                 )
 
     def _find_compatible_deployment_config(

@@ -73,9 +73,8 @@ def _deployment_config_contains_draft_model(deployment_config: Optional[Dict]) -
         return False
     deployment_args = deployment_config.get("DeploymentArgs", {})
     additional_data_sources = deployment_args.get("AdditionalDataSources")
-    if not additional_data_sources:
-        return False
-    return additional_data_sources.get("speculative_decoding", False)
+
+    return "speculative_decoding" in additional_data_sources if additional_data_sources else False
 
 
 def _is_draft_model_jumpstart_provided(deployment_config: Optional[Dict]) -> bool:
@@ -207,15 +206,15 @@ def _extract_speculative_draft_model_provider(
     if speculative_decoding_config is None:
         return None
 
-    if speculative_decoding_config.get("ModelProvider").lower() == "jumpstart":
+    model_provider = speculative_decoding_config.get("ModelProvider", "").lower()
+
+    if model_provider == "jumpstart":
         return "jumpstart"
 
-    if speculative_decoding_config.get(
-        "ModelProvider"
-    ).lower() == "custom" or speculative_decoding_config.get("ModelSource"):
+    if model_provider == "custom" or speculative_decoding_config.get("ModelSource"):
         return "custom"
 
-    if speculative_decoding_config.get("ModelProvider").lower() == "sagemaker":
+    if model_provider == "sagemaker":
         return "sagemaker"
 
     return "auto"
@@ -238,7 +237,7 @@ def _extract_additional_model_data_source_s3_uri(
     ):
         return None
 
-    return additional_model_data_source.get("S3DataSource").get("S3Uri", None)
+    return additional_model_data_source.get("S3DataSource").get("S3Uri")
 
 
 def _extract_deployment_config_additional_model_data_source_s3_uri(
@@ -272,7 +271,7 @@ def _is_draft_model_gated(
     Returns:
         bool: Whether the draft model is gated or not.
     """
-    return draft_model_config.get("hosting_eula_key", None)
+    return "hosting_eula_key" in draft_model_config if draft_model_config else False
 
 
 def _extracts_and_validates_speculative_model_source(
@@ -371,7 +370,7 @@ def _extract_optimization_config_and_env(
         compilation_config (Optional[Dict]): The compilation config.
 
     Returns:
-        Optional[Tuple[Optional[Dict], Optional[Dict]]]:
+        Optional[Tuple[Optional[Dict], Optional[Dict], Optional[Dict]]]:
             The optimization config and environment variables.
     """
     optimization_config = {}
@@ -388,7 +387,7 @@ def _extract_optimization_config_and_env(
     if compilation_config is not None:
         optimization_config["ModelCompilationConfig"] = compilation_config
 
-    # Return both dicts and environment variable if either is present
+    # Return optimization config dict and environment variables if either is present
     if optimization_config:
         return optimization_config, quantization_override_env, compilation_override_env
 

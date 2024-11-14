@@ -28,6 +28,7 @@ from sagemaker.serve.utils.exceptions import (
 from tests.unit.sagemaker.serve.constants import (
     DEPLOYMENT_CONFIGS,
     OPTIMIZED_DEPLOYMENT_CONFIG_WITH_GATED_DRAFT_MODEL,
+    CAMEL_CASE_ADDTL_DRAFT_MODEL_DATA_SOURCES,
 )
 
 mock_model_id = "huggingface-llm-amazon-falconlite"
@@ -1203,19 +1204,34 @@ class TestJumpStartBuilder(unittest.TestCase):
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
-    def test_optimize_gated_draft_model_for_jumpstart_with_accept_eula_false(
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._jumpstart_speculative_decoding",
+        return_value=True,
+    )
+    def test_jumpstart_model_provider_calls_jumpstart_speculative_decoding(
         self,
+        mock_js_speculative_decoding,
+        mock_pretrained_js_model,
+        mock_is_js_model,
         mock_serve_settings,
-        mock_telemetry,
+        mock_capture_telemetry,
     ):
         mock_sagemaker_session = Mock()
-
         mock_pysdk_model = Mock()
         mock_pysdk_model.env = {"SAGEMAKER_ENV": "1"}
         mock_pysdk_model.model_data = mock_model_data
         mock_pysdk_model.image_uri = mock_tgi_image_uri
         mock_pysdk_model.list_deployment_configs.return_value = DEPLOYMENT_CONFIGS
         mock_pysdk_model.deployment_config = OPTIMIZED_DEPLOYMENT_CONFIG_WITH_GATED_DRAFT_MODEL
+        mock_pysdk_model.additional_model_data_sources = CAMEL_CASE_ADDTL_DRAFT_MODEL_DATA_SOURCES
 
         sample_input = {
             "inputs": "The diamondback terrapin or simply terrapin is a species "
@@ -1238,13 +1254,16 @@ class TestJumpStartBuilder(unittest.TestCase):
 
         model_builder.pysdk_model = mock_pysdk_model
 
-        self.assertRaises(
-            ValueError,
-            model_builder._optimize_for_jumpstart(
-                accept_eula=True,
-                speculative_decoding_config={"Provider": "sagemaker", "AcceptEula": False},
-            ),
+        model_builder._optimize_for_jumpstart(
+            accept_eula=True,
+            speculative_decoding_config={
+                "ModelProvider": "JumpStart",
+                "ModelID": "meta-textgeneration-llama-3-2-1b",
+                "AcceptEula": False,
+            },
         )
+
+        mock_js_speculative_decoding.assert_called_once()
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)

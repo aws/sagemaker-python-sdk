@@ -1122,9 +1122,9 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
 class JumpStartModelDataSource(AdditionalModelDataSource):
     """Data class JumpStart additional model data source."""
 
-    SERIALIZATION_EXCLUSION_SET = {
+    SERIALIZATION_EXCLUSION_SET = AdditionalModelDataSource.SERIALIZATION_EXCLUSION_SET.union(
         "artifact_version"
-    } | AdditionalModelDataSource.SERIALIZATION_EXCLUSION_SET
+    )
 
     __slots__ = list(SERIALIZATION_EXCLUSION_SET) + AdditionalModelDataSource.__slots__
 

@@ -591,7 +591,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 )
 
         if "endpoint_logging" not in kwargs:
-            kwargs["endpoint_logging"] = True
+            kwargs["endpoint_logging"] = False
         predictor = self._original_deploy(
             *args,
             instance_type=instance_type,

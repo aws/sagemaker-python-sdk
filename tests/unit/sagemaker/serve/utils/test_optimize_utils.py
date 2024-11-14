@@ -32,10 +32,14 @@ from sagemaker.serve.utils.optimize_utils import (
     _custom_speculative_decoding,
     _is_inferentia_or_trainium,
     _is_draft_model_gated,
+    _deployment_config_contains_draft_model,
+    _jumpstart_speculative_decoding,
 )
 from tests.unit.sagemaker.serve.constants import (
     GATED_DRAFT_MODEL_CONFIG,
     NON_GATED_DRAFT_MODEL_CONFIG,
+    OPTIMIZED_DEPLOYMENT_CONFIG_WITH_GATED_DRAFT_MODEL,
+    NON_OPTIMIZED_DEPLOYMENT_CONFIG,
 )
 
 mock_optimization_job_output = {
@@ -185,6 +189,9 @@ def test_update_environment_variables(env, new_env, output_env):
         ({"ModelProvider": "SageMaker"}, "sagemaker"),
         ({"ModelProvider": "Custom"}, "custom"),
         ({"ModelSource": "s3://"}, "custom"),
+        ({"ModelProvider": "JumpStart"}, "jumpstart"),
+        ({"ModelProvider": "asdf"}, "auto"),
+        ({"ModelProvider": "Auto"}, "auto"),
         (None, None),
     ],
 )
@@ -229,7 +236,7 @@ def test_generate_additional_model_data_sources():
                 "S3Uri": "s3://jumpstart-private-cache-alpha-us-west-2/meta-textgeneration/",
                 "S3DataType": "S3Prefix",
                 "CompressionType": "None",
-                "ModelAccessConfig": {"ACCEPT_EULA": True},
+                "ModelAccessConfig": {"AcceptEula": True},
             },
         }
     ]
@@ -268,12 +275,12 @@ def test_is_s3_uri(s3_uri, expected):
 @pytest.mark.parametrize(
     "draft_model_config, expected",
     [
-        (GATED_DRAFT_MODEL_CONFIG, NON_GATED_DRAFT_MODEL_CONFIG),
-        (True, False),
+        (GATED_DRAFT_MODEL_CONFIG, True),
+        (NON_GATED_DRAFT_MODEL_CONFIG, False),
     ],
 )
 def test_is_draft_model_gated(draft_model_config, expected):
-    assert _is_draft_model_gated(draft_model_config, expected)
+    assert _is_draft_model_gated(draft_model_config) is expected
 
 
 @pytest.mark.parametrize(
@@ -334,6 +341,145 @@ def test_extract_optimization_config_and_env(
     )
 
 
+@pytest.mark.parametrize(
+    "deployment_config",
+    [
+        (OPTIMIZED_DEPLOYMENT_CONFIG_WITH_GATED_DRAFT_MODEL, True),
+        (NON_OPTIMIZED_DEPLOYMENT_CONFIG, False),
+        (None, False),
+    ],
+)
+def deployment_config_contains_draft_model(deployment_config, expected):
+    assert _deployment_config_contains_draft_model(deployment_config)
+
+
+class TestJumpStartSpeculativeDecodingConfig(unittest.TestCase):
+
+    @patch("sagemaker.model.Model")
+    def test_with_no_js_model_id(self, mock_model):
+        mock_model.env = {}
+        mock_model.additional_model_data_sources = None
+        speculative_decoding_config = {"ModelSource": "JumpStart"}
+
+        with self.assertRaises(ValueError) as _:
+            _jumpstart_speculative_decoding(mock_model, speculative_decoding_config)
+
+    @patch(
+        "sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket",
+        return_value="js_gated_content_bucket",
+    )
+    @patch(
+        "sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket",
+        return_value="js_content_bucket",
+    )
+    @patch(
+        "sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs",
+        return_value=Mock(),
+    )
+    @patch("sagemaker.model.Model")
+    def test_with_gated_js_model(
+        self,
+        mock_model,
+        mock_model_specs,
+        mock_js_content_bucket,
+        mock_js_gated_content_bucket,
+    ):
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.boto_region_name = "us-west-2"
+
+        mock_model.env = {}
+        mock_model.additional_model_data_sources = None
+        speculative_decoding_config = {
+            "ModelSource": "JumpStart",
+            "ModelID": "meta-textgeneration-llama-3-2-1b",
+            "AcceptEula": True,
+        }
+
+        mock_model_specs.return_value.to_json.return_value = {
+            "gated_bucket": True,
+            "hosting_prepacked_artifact_key": "hosting_prepacked_artifact_key",
+        }
+
+        _jumpstart_speculative_decoding(
+            mock_model, speculative_decoding_config, mock_sagemaker_session
+        )
+
+        expected_env_var = {
+            "OPTION_SPECULATIVE_DRAFT_MODEL": "/opt/ml/additional-model-data-sources/draft_model/"
+        }
+        self.maxDiff = None
+
+        self.assertEqual(
+            mock_model.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "S3Uri": f"s3://{mock_js_gated_content_bucket.return_value}/hosting_prepacked_artifact_key",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                        "ModelAccessConfig": {"AcceptEula": True},
+                    },
+                }
+            ],
+        )
+
+        mock_model.add_tags.assert_called_once_with(
+            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "jumpstart"}
+        )
+        self.assertEqual(mock_model.env, expected_env_var)
+
+    @patch(
+        "sagemaker.serve.utils.optimize_utils.get_eula_message", return_value="Accept eula message"
+    )
+    @patch(
+        "sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket",
+        return_value="js_gated_content_bucket",
+    )
+    @patch(
+        "sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket",
+        return_value="js_content_bucket",
+    )
+    @patch(
+        "sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs",
+        return_value=Mock(),
+    )
+    @patch("sagemaker.model.Model")
+    def test_with_gated_js_model_and_accept_eula_false(
+        self,
+        mock_model,
+        mock_model_specs,
+        mock_js_content_bucket,
+        mock_js_gated_content_bucket,
+        mock_eula_message,
+    ):
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.boto_region_name = "us-west-2"
+
+        mock_model.env = {}
+        mock_model.additional_model_data_sources = None
+        speculative_decoding_config = {
+            "ModelSource": "JumpStart",
+            "ModelID": "meta-textgeneration-llama-3-2-1b",
+            "AcceptEula": False,
+        }
+
+        mock_model_specs.return_value.to_json.return_value = {
+            "gated_bucket": True,
+            "hosting_prepacked_artifact_key": "hosting_prepacked_artifact_key",
+        }
+
+        self.assertRaisesRegex(
+            ValueError,
+            f"{mock_eula_message.return_value} Set `AcceptEula`=True in "
+            f"speculative_decoding_config once acknowledged.",
+            _jumpstart_speculative_decoding,
+            mock_model,
+            speculative_decoding_config,
+            mock_sagemaker_session,
+        )
+
+
 class TestCustomSpeculativeDecodingConfig(unittest.TestCase):
 
     @patch("sagemaker.model.Model")
@@ -387,7 +533,7 @@ class TestCustomSpeculativeDecodingConfig(unittest.TestCase):
                         "S3Uri": "s3://bucket/huggingface-pytorch-tgi-inference",
                         "S3DataType": "S3Prefix",
                         "CompressionType": "None",
-                        "ModelAccessConfig": {"ACCEPT_EULA": True},
+                        "ModelAccessConfig": {"AcceptEula": True},
                     },
                 }
             ],
