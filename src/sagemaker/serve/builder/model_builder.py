@@ -26,13 +26,16 @@ from pathlib import Path
 
 from sagemaker_core.main.resources import TrainingJob
 
+from sagemaker.transformer import Transformer
+from sagemaker.async_inference import AsyncInferenceConfig
+from sagemaker.batch_inference.batch_transform_inference_config import BatchTransformInferenceConfig
+from sagemaker.compute_resource_requirements import ResourceRequirements
+from sagemaker.enums import Tag, EndpointType
 from sagemaker.estimator import Estimator
-from sagemaker.enums import Tag
 from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.s3 import S3Downloader
-
-from sagemaker import Session
+from sagemaker import Session, utils
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
@@ -105,6 +108,7 @@ from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import get_met
 from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
+from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.utils import Tags
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import (
@@ -593,12 +597,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             return predictor
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
             # Validate parameters
-            if not instance_type:
-                raise ValueError("Missing required parameter `instance_type`")
-
-            if not initial_instance_count:
-                raise ValueError("Missing required parameter `initial_instance_count`")
-
+            # Instance type and instance count parameter validation is done based on deployment type
+            # and will be done inside Model.deploy()
             if is_1p_image_uri(image_uri=self.image_uri):
                 validate_image_uri_and_hardware(
                     image_uri=self.image_uri,
@@ -660,8 +660,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         )
 
         self._prepare_for_mode()
-
-        return self._create_model()
+        self.model = self._create_model()
+        return self.model
 
     def _user_agent_decorator(self, func):
         """Placeholder docstring"""
@@ -901,13 +901,15 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if (
             not (isinstance(self.model, str) and self._is_jumpstart_model_id())
         ) and self.model_server:
-            return self._build_for_model_server()
+            self.built_model = self._build_for_model_server()
+            return self.built_model
 
         if isinstance(self.model, str):
             model_task = None
             if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
                 self.model_hub = ModelHub.JUMPSTART
-                return self._build_for_jumpstart()
+                self.built_model = self._build_for_jumpstart()
+                return self.built_model
             self.model_hub = ModelHub.HUGGINGFACE
 
             if self.model_metadata:
@@ -925,18 +927,23 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 if self.schema_builder is None and model_task is not None:
                     self._hf_schema_builder_init(model_task)
                 if model_task == "text-generation":
-                    return self._build_for_tgi()
+                    self.built_model = self._build_for_tgi()
+                    return self.built_model
                 if model_task == "sentence-similarity":
-                    return self._build_for_tei()
+                    self.built_model = self._build_for_tei()
+                    return self.built_model
                 elif self._can_fit_on_single_gpu():
-                    return self._build_for_transformers()
+                    self.built_model = self._build_for_transformers()
+                    return self.built_model
                 else:
-                    return self._build_for_transformers()
+                    self.built_model = self._build_for_transformers()
+                    return self.built_model
 
         # Set TorchServe as default model server
         if not self.model_server:
             self.model_server = ModelServer.TORCHSERVE
-            return self._build_for_torchserve()
+            self.built_model = self._build_for_torchserve()
+            return self.built_model
 
         raise ValueError("%s model server is not supported" % self.model_server)
 
@@ -1545,6 +1552,81 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             should_upload_artifacts=True,
         )
         self.pysdk_model.env.update(env)
+
+    def deploy(
+        self,
+        endpoint_name: str = None,
+        initial_instance_count: Optional[int] = 1,
+        inference_config: Optional[
+            Union[
+                ServerlessInferenceConfig,
+                AsyncInferenceConfig,
+                BatchTransformInferenceConfig,
+                ResourceRequirements,
+            ]
+        ] = None,
+    ) -> Union[Predictor, Transformer]:
+        """Deploys the built Model.
+
+        Depending on the type of config provided, this function will call deployment accordingly.
+        Args:
+            endpoint_name (str): Name of the endpoint to deploy.
+             The supplied base name is used as a prefix and
+             a unique ID is appended to guarantee uniqueness.
+            initial_instance_count (int): Number of instances to deploy.
+            inference_config (Optional[Union[ServerlessInferenceConfig,
+               AsyncInferenceConfig, BatchTransformInferenceConfig, ResourceRequirements]]) :
+                Additional Config for different deployment types such as
+                serverless, async, batch and multi-model/container
+        Returns:
+            Transformer for Batch Deployments
+            Predictors for all others
+        """
+        if not hasattr(self, "built_model"):
+            raise ValueError("Model Needs to be built before deploying")
+        endpoint_name = utils.unique_name_from_base(endpoint_name)
+        if not inference_config:  # Real-time Deployment
+            return self.built_model.deploy(
+                instance_type=self.instance_type,
+                initial_instance_count=initial_instance_count,
+                endpoint_name=endpoint_name,
+            )
+
+        if isinstance(inference_config, ServerlessInferenceConfig):
+            return self.built_model.deploy(
+                serverless_inference_config=inference_config,
+                endpoint_name=endpoint_name,
+            )
+
+        if isinstance(inference_config, AsyncInferenceConfig):
+            return self.built_model.deploy(
+                instance_type=self.instance_type,
+                initial_instance_count=initial_instance_count,
+                async_inference_config=inference_config,
+                endpoint_name=endpoint_name,
+            )
+
+        if isinstance(inference_config, BatchTransformInferenceConfig):
+            transformer = self.built_model.transformer(
+                instance_type=inference_config.instance_type,
+                output_path=inference_config.output_path,
+                instance_count=inference_config.instance_count,
+            )
+            transformer.wait()
+            return transformer
+
+        if isinstance(inference_config, ResourceRequirements):
+            # Multi Model and MultiContainer endpoints with Inference Component
+            return self.built_model.deploy(
+                instance_type=self.instance_type,
+                mode=Mode.SAGEMAKER_ENDPOINT,
+                endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+                resources=inference_config,
+                initial_instance_count=initial_instance_count,
+                role=self.role_arn,
+            )
+
+        raise ValueError("Deployment Options not supported")
 
     def display_benchmark_metrics(self, **kwargs):
         """Display Markdown Benchmark Metrics for deployment configs."""
