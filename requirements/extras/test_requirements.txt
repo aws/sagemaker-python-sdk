@@ -25,7 +25,10 @@ pyvis==0.2.1
 pandas==1.4.4
 scikit-learn==1.3.0
 cloudpickle>=2.2.1
+<<<<<<< HEAD
 jsonpickle<4.0.0
+=======
+>>>>>>> 42acb4f4 (chore: Merge from main (#1600))
 PyYAML==6.0
 # TODO find workaround
 xgboost>=1.6.2,<=1.7.6
