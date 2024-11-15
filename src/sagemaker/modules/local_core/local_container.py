@@ -16,11 +16,12 @@ from __future__ import absolute_import
 import base64
 import os
 import re
+import shutil
 import subprocess
+from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 
-from sagemaker.local.data import LocalFileDataSource, S3DataSource
 from sagemaker.local.image import (
     _Volume,
     _aws_credentials,
@@ -34,7 +35,7 @@ from sagemaker.model import DIR_PARAM_NAME
 from sagemaker.modules import logger
 from sagemaker.modules.configs import Channel
 from sagemaker.session import Session
-from sagemaker.utils import ECR_URI_PATTERN, create_tar_file, _module_import_error
+from sagemaker.utils import ECR_URI_PATTERN, create_tar_file, _module_import_error, download_folder
 from sagemaker_core.main.utils import Unassigned
 from sagemaker_core.shapes import DataSource
 
@@ -420,8 +421,9 @@ class _LocalContainer(BaseModel):
         Args:
             wait (bool): Whether to wait for the docker command result.
         """
-        command = [
-            "docker-compose",
+        _compose_cmd_prefix = self._get_compose_cmd_prefix()
+
+        command = _compose_cmd_prefix + [
             "-f",
             os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
             "up",
@@ -502,8 +504,8 @@ class _LocalContainer(BaseModel):
             channel_dir = os.path.join(data_dir, channel_name)
             os.makedirs(channel_dir, exist_ok=True)
 
-            data_source_instance = self._get_data_source_instance(channel.data_source)
-            volumes.append(_Volume(data_source_instance.get_root_dir(), channel=channel_name).map)
+            data_source_local_path = self._get_data_source_local_path(channel.data_source)
+            volumes.append(_Volume(data_source_local_path, channel=channel_name).map)
 
         # If there is a training script directory and it is a local directory,
         # mount it to the container.
@@ -518,23 +520,68 @@ class _LocalContainer(BaseModel):
 
         return volumes
 
-    def _get_data_source_instance(self, data_source: DataSource):
-        """Return an Instance of :class:`sagemaker.local.data.DataSource`.
+    def _get_data_source_local_path(self, data_source: DataSource):
+        """Return a local data path of :class:`sagemaker.local.data.DataSource`.
 
-        The instance can handle the provided data_source URI.
-
-        data_source can be either file:// or s3://
+        If the data source is from S3, the data will be downloaded to a temporary
+        local path.
+        If the data source is local file, the absolute path will be returned.
 
         Args:
             data_source (DataSource): a data source of local file or s3
 
         Returns:
-            sagemaker.local.data.DataSource: an Instance of a Data Source
+            str: The local path of the data.
         """
         if data_source.s3_data_source != Unassigned():
             uri = data_source.s3_data_source.s3_uri
             parsed_uri = urlparse(uri)
-            return S3DataSource(parsed_uri.netloc, parsed_uri.path, self.sagemaker_session)
+            local_dir = TemporaryDirectory(prefix=os.path.join(self.container_root + "/")).name
+            download_folder(parsed_uri.netloc, parsed_uri.path, local_dir, self.sagemaker_session)
+            return local_dir
         else:
-            uri = data_source.file_system_data_source.directory_path
-            return LocalFileDataSource(uri)
+            return os.path.abspath(data_source.file_system_data_source.directory_path)
+
+    def _get_compose_cmd_prefix(self) -> List[str]:
+        """Gets the Docker Compose command.
+
+        The method initially looks for 'docker compose' v2
+        executable, if not found looks for 'docker-compose' executable.
+
+        Returns:
+            List[str]: Docker Compose executable split into list.
+
+        Raises:
+            ImportError: If Docker Compose executable was not found.
+        """
+        compose_cmd_prefix = []
+
+        output = None
+        try:
+            output = subprocess.check_output(
+                ["docker", "compose", "version"],
+                stderr=subprocess.DEVNULL,
+                encoding="UTF-8",
+            )
+        except subprocess.CalledProcessError:
+            logger.info(
+                "'Docker Compose' is not installed. "
+                "Proceeding to check for 'docker-compose' CLI."
+            )
+
+        if output and "v2" in output.strip():
+            logger.info("'Docker Compose' found using Docker CLI.")
+            compose_cmd_prefix.extend(["docker", "compose"])
+            return compose_cmd_prefix
+
+        if shutil.which("docker-compose") is not None:
+            logger.info("'Docker Compose' found using Docker Compose CLI.")
+            compose_cmd_prefix.extend(["docker-compose"])
+            return compose_cmd_prefix
+
+        raise ImportError(
+            "Docker Compose is not installed. "
+            "Local Mode features will not work without docker compose. "
+            "For more information on how to install 'docker compose', please, see "
+            "https://docs.docker.com/compose/install/"
+        )

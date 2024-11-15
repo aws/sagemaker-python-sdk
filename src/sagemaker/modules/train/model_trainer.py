@@ -385,8 +385,12 @@ class ModelTrainer(BaseModel):
         container_entrypoint = None
         container_arguments = None
         if self.source_code:
-
-            drivers_dir = TemporaryDirectory()
+            if self.training_mode == Mode.LOCAL_CONTAINER:
+                drivers_dir = TemporaryDirectory(
+                    prefix=os.path.join(self.local_container_root + "/")
+                )
+            else:
+                drivers_dir = TemporaryDirectory()
             shutil.copytree(SM_DRIVERS_LOCAL_PATH, drivers_dir.name, dirs_exist_ok=True)
 
             # If source code is provided, create a channel for the source code
