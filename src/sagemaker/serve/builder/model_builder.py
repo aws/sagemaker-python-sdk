@@ -1283,7 +1283,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             # TRTLLM is used by Neo if the following are provided:
             #  1) a GPU instance type
             #  2) compilation config
-            gpu_instance_families = ["g5", "g6", "p4d", "p5"]
+            gpu_instance_families = ["g5", "g6", "p4d", "p4de", "p5"]
             is_gpu_instance = optimization_instance_type and any(
                 gpu_instance_family in optimization_instance_type
                 for gpu_instance_family in gpu_instance_families
@@ -1296,8 +1296,16 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 keyword in self.model.lower() for keyword in llama_3_1_keywords
             )
 
-            if is_gpu_instance and self.model and is_llama_3_1 and self.is_compiled:
-                raise ValueError("Compilation is not supported for Llama-3.1 with a GPU instance.")
+            if is_gpu_instance and self.model and self.is_compiled:
+                if is_llama_3_1:
+                    raise ValueError(
+                        "Compilation is not supported for Llama-3.1 with a GPU instance."
+                    )
+                if speculative_decoding_config:
+                    raise ValueError(
+                        "Compilation is not supported with speculative decoding with "
+                        "a GPU instance."
+                    )
 
             self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
             job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
