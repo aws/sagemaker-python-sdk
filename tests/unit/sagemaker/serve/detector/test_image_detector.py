@@ -47,7 +47,7 @@ class TestImageDetector(unittest.TestCase):
         xgb_model = Mock()
         xgb_model.__class__.__bases__ = (xgboost,)
         self.assert_dlc_is_expected(
-            "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1", xgb_model
+            "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1.7-1", xgb_model
         )
 
     @patch.dict(sys.modules, {"xgboost": MagicMock(__version__="1.6.5")})
@@ -57,7 +57,7 @@ class TestImageDetector(unittest.TestCase):
         xgb_model = Mock()
         xgb_model.__class__.__bases__ = (xgboost,)
         self.assert_dlc_is_expected(
-            "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1", xgb_model
+            "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1.7-1", xgb_model
         )
 
     @patch.dict(sys.modules, {"xgboost": MagicMock(__version__="1.5.1")})
@@ -67,7 +67,7 @@ class TestImageDetector(unittest.TestCase):
         xgb_model = Mock()
         xgb_model.__class__.__bases__ = (xgboost,)
         self.assert_dlc_is_expected(
-            "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.5-1", xgb_model
+            "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1.5-1", xgb_model
         )
 
     # Test Torch Success
@@ -202,7 +202,7 @@ class TestImageDetector(unittest.TestCase):
         xgb_model = Mock()
         xgb_model.__class__ = xgboost
         self.assert_dlc_is_expected(
-            "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1", xgb_model
+            "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1.7-1", xgb_model
         )
 
     # helpers

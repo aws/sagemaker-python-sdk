@@ -496,14 +496,7 @@ def _validate_version_and_set_if_needed(version, config, framework, image_scope)
     aliased_versions = list(config.get("version_aliases", {}).keys())
     if len(available_versions) == 1 and version not in aliased_versions:
         return available_versions[0]
-    if not version and framework in [
-        DATA_WRANGLER_FRAMEWORK,
-        HUGGING_FACE_LLM_FRAMEWORK,
-        HUGGING_FACE_TEI_GPU_FRAMEWORK,
-        HUGGING_FACE_TEI_CPU_FRAMEWORK,
-        HUGGING_FACE_LLM_NEURONX_FRAMEWORK,
-        STABILITYAI_FRAMEWORK,
-    ]:
+    if not version:
         version = _get_latest_version(framework, version, image_scope)
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
     return version
