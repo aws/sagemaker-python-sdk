@@ -206,7 +206,6 @@ def get_mpirun_command(
         str(num_processes),
         "--allow-run-as-root",
         "--tag-output",
-        "--oversubscribe",
         "-mca",
         "btl_tcp_if_include",
         network_interface_name,
@@ -245,6 +244,7 @@ def get_mpirun_command(
     instance_type = os.environ["SM_CURRENT_INSTANCE_TYPE"]
     # EFA settings
     if instance_type in SM_EFA_NCCL_INSTANCES:
+        mpirun_command.extend(["-x", "FI_PROVIDER=efa"])
         # Use simple protocol to handle the out-of-order data delivery from EFA
         mpirun_command.extend(["-x", "NCCL_PROTO=simple"])
 

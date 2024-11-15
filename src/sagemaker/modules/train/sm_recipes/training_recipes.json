@@ -1,6 +1,6 @@
 {
-    "adapter_repo": "git@github.com:aws/private-sagemaker-training-adapter-for-nemo-staging.git",
-    "launcher_repo": "git@github.com:aws/private-sagemaker-training-launcher-staging.git",
+    "adapter_repo": "git@github.com-adapter:benieric/private-sagemaker-hyperpod-training-adapter-for-nemo-staging.git",
+    "launcher_repo": "git@github.com-launcher:benieric/private-sagemaker-hyperpod-recipes-staging.git",
     "neuron_dist_repo": "https://github.com/aws-neuron/neuronx-distributed-training.git",
     "gpu_image" : {
         "framework": "pytorch-smp",
