@@ -513,25 +513,26 @@ def test_model_reference_marketplace_model(setup):
     assert model_semver.model_version == model_marketplace_version.model_version
 
 
-def test_model_reference_marketplace_model_deployment(setup):
-    session = get_sm_session()
-    public_hub_marketplace_model_id = "upstage-solar-mini-chat"
-    _setup_test_hub_with_reference(public_hub_marketplace_model_id)
+# TODO: PySDK test account not subscribed to this model
+# def test_model_reference_marketplace_model_deployment(setup):
+#     session = get_sm_session()
+#     public_hub_marketplace_model_id = "upstage-solar-mini-chat"
+#     _setup_test_hub_with_reference(public_hub_marketplace_model_id)
 
-    marketplace_model = JumpStartModel(  # Retrieving MP model MP version -> uses MPver
-        model_id=public_hub_marketplace_model_id,
-        hub_name=TEST_HUB_WITH_REFERENCE,
-        role=session.get_caller_identity_arn(),
-        sagemaker_session=session,
-        model_version="240612.5",
-    )
-    predictor = marketplace_model.deploy(
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
-        accept_eula=True,
-    )
+#     marketplace_model = JumpStartModel(  # Retrieving MP model MP version -> uses MPver
+#         model_id=public_hub_marketplace_model_id,
+#         hub_name=TEST_HUB_WITH_REFERENCE,
+#         role=session.get_caller_identity_arn(),
+#         sagemaker_session=session,
+#         model_version="240612.5",
+#     )
+#     predictor = marketplace_model.deploy(
+#         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+#         accept_eula=True,
+#     )
 
-    predictor.delete_predictor()
-    _teardown_test_hub_with_reference(public_hub_marketplace_model_id)
+#     predictor.delete_predictor()
+#     _teardown_test_hub_with_reference(public_hub_marketplace_model_id)
 
 
 def test_bedrock_store_model_tags_from_hub_service(setup):

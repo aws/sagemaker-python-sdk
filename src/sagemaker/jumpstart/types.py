@@ -40,7 +40,7 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker.enums import EndpointType
 from sagemaker.jumpstart.hub.parser_utils import (
-    pascal_to_snake,
+    camel_to_snake,
     walk_and_apply_json,
 )
 from sagemaker.model_life_cycle import ModelLifeCycle
@@ -241,7 +241,7 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
             return
 
         if self._is_hub_content:
-            json_obj = walk_and_apply_json(json_obj, pascal_to_snake)
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
 
         self.framework = json_obj.get("framework")
         self.framework_version = json_obj.get("framework_version")
@@ -295,7 +295,7 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         """
 
         if self._is_hub_content:
-            json_obj = walk_and_apply_json(json_obj, pascal_to_snake)
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.name = json_obj["name"]
         self.type = json_obj["type"]
         self.default = json_obj["default"]
@@ -363,7 +363,7 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of environment variable.
         """
-        json_obj = walk_and_apply_json(json_obj, pascal_to_snake)
+        json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.name = json_obj["name"]
         self.type = json_obj["type"]
         self.default = json_obj["default"]
@@ -413,7 +413,7 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
             return
 
         if self._is_hub_content:
-            json_obj = walk_and_apply_json(json_obj, pascal_to_snake)
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.default_content_type = json_obj["default_content_type"]
         self.supported_content_types = json_obj["supported_content_types"]
         self.default_accept_type = json_obj["default_accept_type"]
@@ -467,7 +467,7 @@ class JumpStartSerializablePayload(JumpStartDataHolderType):
             return
 
         if self._is_hub_content:
-            json_obj = walk_and_apply_json(json_obj, pascal_to_snake)
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.raw_payload = json_obj
         self.content_type = json_obj["content_type"]
         self.body = json_obj.get("body")
@@ -540,7 +540,7 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
         if response is None:
             return
 
-        response = walk_and_apply_json(response, pascal_to_snake)
+        response = walk_and_apply_json(response, camel_to_snake)
         self.aliases: Optional[dict] = response.get("aliases")
         self.regional_aliases = None
         self.variants: Optional[dict] = response.get("variants")
@@ -1180,7 +1180,7 @@ class JumpStartConfigRanking(JumpStartDataHolderType):
             spec (Dict[str, Any]): Dictionary representation of training config ranking.
         """
         if is_hub_content:
-            spec = walk_and_apply_json(spec, pascal_to_snake)
+            spec = walk_and_apply_json(spec, camel_to_snake)
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1286,7 +1286,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
         if self._is_hub_content:
-            json_obj = walk_and_apply_json(json_obj, pascal_to_snake)
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.model_id: str = json_obj.get("model_id")
         self.url: str = json_obj.get("url")
         self.version: str = json_obj.get("version")
@@ -1515,7 +1515,7 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
             ValueError: If the component field is invalid.
         """
         if is_hub_content:
-            component = walk_and_apply_json(component, pascal_to_snake)
+            component = walk_and_apply_json(component, camel_to_snake)
         self.component_name = component_name
         super().__init__(component, is_hub_content)
         self.from_json(component)
@@ -1568,8 +1568,8 @@ class JumpStartMetadataConfig(JumpStartDataHolderType):
                 The list of components that are used to construct the resolved config.
         """
         if is_hub_content:
-            config = walk_and_apply_json(config, pascal_to_snake)
-            base_fields = walk_and_apply_json(base_fields, pascal_to_snake)
+            config = walk_and_apply_json(config, camel_to_snake)
+            base_fields = walk_and_apply_json(base_fields, camel_to_snake)
         self.base_fields = base_fields
         self.config_components: Dict[str, JumpStartConfigComponent] = config_components
         self.benchmark_metrics: Dict[str, List[JumpStartBenchmarkStat]] = (
@@ -1735,7 +1735,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
         """
         super().from_json(json_obj)
         if self._is_hub_content:
-            json_obj = walk_and_apply_json(json_obj, pascal_to_snake)
+            json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.inference_config_components: Optional[Dict[str, JumpStartConfigComponent]] = (
             {
                 component_name: JumpStartConfigComponent(component_name, component)

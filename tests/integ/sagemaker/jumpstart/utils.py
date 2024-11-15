@@ -54,6 +54,7 @@ def get_sm_session() -> Session:
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 def get_sm_session_with_override() -> Session:
     # [TODO]: Remove service endpoint override before GA
@@ -70,6 +71,8 @@ def get_sm_session_with_override() -> Session:
 
 
 >>>>>>> ff3eae05 (feat: Adding Bedrock Store model support for HubService (#1539))
+=======
+>>>>>>> 42acb4f4 (chore: Merge from main (#1600))
 def get_training_dataset_for_model_and_version(model_id: str, version: str) -> dict:
     return TRAINING_DATASET_MODEL_DICT[(model_id, version)]
 
