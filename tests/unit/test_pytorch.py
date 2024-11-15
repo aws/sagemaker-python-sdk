@@ -18,6 +18,7 @@ import os
 import pytest
 from mock import ANY, MagicMock, Mock, patch
 from packaging.version import Version
+import tempfile
 
 from sagemaker import image_uris
 from sagemaker.pytorch import defaults
@@ -906,7 +907,7 @@ def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
         recipe_overrides=recipe_overrides,
     )
 
-    assert pytorch.source_dir == os.path.join(pytorch.recipe_train_dir.name, "examples", model)
+    assert pytorch.source_dir == "."
     assert pytorch.entry_point == f"{model}_pretrain.py"
     expected_distribution = {
         "torch_distributed": {
@@ -956,7 +957,46 @@ def test_training_recipe_with_override(sagemaker_session):
         recipe_overrides=recipe_overrides,
     )
 
-    assert pytorch.source_dir == os.path.join(pytorch.recipe_train_dir.name, "examples", "mistral")
+    assert pytorch.source_dir == "."
+    assert pytorch.entry_point == "mistral_pretrain.py"
+    assert pytorch.image_uri == IMAGE_URI
+
+
+def test_training_recipe_gpu_custom_source_dir(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+
+    recipe_overrides = {
+        "run": {
+            "results_dir": "/opt/ml/model",
+        },
+        "exp_manager": {
+            "explicit_log_dir": "/opt/ml/output",
+            "checkpoint_dir": "/opt/ml/checkpoints",
+        },
+        "model": {
+            "data": {
+                "train_dir": "/opt/ml/input/data/train",
+                "val_dir": "/opt/ml/input/data/val",
+            },
+            "model_type": "mistral",
+        },
+    }
+    source_dir = tempfile.TemporaryDirectory(prefix="source_")
+    pytorch = PyTorch(
+        output_path="s3://output_path",
+        role=ROLE,
+        image_uri=IMAGE_URI,
+        source_dir=source_dir.name,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE_GPU,
+        base_job_name="job",
+        container_log_level=container_log_level,
+        training_recipe="training/llama/hf_llama3_8b_seq8192_gpu",
+        recipe_overrides=recipe_overrides,
+    )
+
+    assert pytorch.source_dir == source_dir.name
     assert pytorch.entry_point == "mistral_pretrain.py"
     assert pytorch.image_uri == IMAGE_URI
 
@@ -991,7 +1031,49 @@ def test_training_recipe_for_trainium(sagemaker_session):
         recipe_overrides=recipe_overrides,
     )
 
-    assert pytorch.source_dir == os.path.join(pytorch.recipe_train_dir.name, "examples")
+    assert pytorch.source_dir == "."
+    assert pytorch.entry_point == "training_orchestrator.py"
+    expected_distribution = {
+        "torch_distributed": {
+            "enabled": True,
+        },
+    }
+    assert pytorch.distribution == expected_distribution
+
+
+def test_training_recipe_for_trainium_custom_source_dir(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+
+    recipe_overrides = {
+        "run": {
+            "results_dir": "/opt/ml/model",
+        },
+        "exp_manager": {
+            "explicit_log_dir": "/opt/ml/output",
+        },
+        "data": {
+            "train_dir": "/opt/ml/input/data/train",
+        },
+        "model": {
+            "model_config": "/opt/ml/input/data/train/config.json",
+        },
+        "compiler_cache_url": "s3://s3://output_path/neuron-cache",
+    }
+    source_dir = tempfile.TemporaryDirectory(prefix="source_")
+    pytorch = PyTorch(
+        output_path="s3://output_path",
+        role=ROLE,
+        source_dir=source_dir.name,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE_TRAINIUM,
+        base_job_name="job",
+        container_log_level=container_log_level,
+        training_recipe=NEURON_RECIPE,
+        recipe_overrides=recipe_overrides,
+    )
+
+    assert pytorch.source_dir == source_dir.name
     assert pytorch.entry_point == "training_orchestrator.py"
     expected_distribution = {
         "torch_distributed": {
