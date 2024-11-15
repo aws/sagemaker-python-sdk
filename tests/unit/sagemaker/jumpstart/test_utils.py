@@ -2253,7 +2253,7 @@ class TestAcceptEulaModelAccessConfig(TestCase):
             + self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
         )
 
-    def test_public_additional_model_data_source_with_model_access_config_should_ignored_it(self):
+    def test_public_additional_model_data_source_with_model_access_config_should_ignore_it(self):
         # WHERE / WHEN
         additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
             model_data_sources=self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,

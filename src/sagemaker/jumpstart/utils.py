@@ -1548,7 +1548,7 @@ def _add_model_access_configs_to_model_data_sources(
     Args:
         model_data_sources (DeploymentConfigMetadata): Model data sources that will be updated
         model_access_configs (DeploymentConfigMetadata): Config holding accept_eula field
-        model_id (DeploymentConfigMetadata): Jumpstart mode id.
+        model_id (DeploymentConfigMetadata): Jumpstart model id.
         region (str): Region where the user is operating in.
     Returns:
         List[Dict[str, Any]]: List of model data sources with accept EULA configs applied
