@@ -801,9 +801,14 @@ class ModelTest(unittest.TestCase):
         js_class_deploy = JumpStartModel.deploy
         js_class_deploy_args = set(signature(js_class_deploy).parameters.keys())
 
-        assert js_class_deploy_args - parent_class_deploy_args - deploy_args_removed_at_deploy_time == set()
-        assert (parent_class_deploy_args - js_class_deploy_args - deploy_args_removed_at_deploy_time ==
-                deploy_args_to_skip)
+        assert (
+            js_class_deploy_args - parent_class_deploy_args - deploy_args_removed_at_deploy_time
+            == set()
+        )
+        assert (
+            parent_class_deploy_args - js_class_deploy_args - deploy_args_removed_at_deploy_time
+            == deploy_args_to_skip
+        )
 
     @mock.patch(
         "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
@@ -1775,18 +1780,17 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_set_deployment_config_and_deploy_for_gated_draft_model(
-            self,
-            mock_model_deploy: mock.Mock,
-            mock_get_model_specs: mock.Mock,
-            mock_session: mock.Mock,
-            mock_get_manifest: mock.Mock,
-            mock_get_jumpstart_configs: mock.Mock,
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         # WHERE
         mock_get_model_specs.side_effect = append_gated_draft_model_specs_to_jumpstart_model_spec
         mock_get_manifest.side_effect = (
-            lambda region, model_type, *args, **kwargs:
-                get_prototype_manifest(region, model_type)
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
         mock_model_deploy.return_value = default_predictor
 
@@ -1799,7 +1803,11 @@ class ModelTest(unittest.TestCase):
         assert model.config_name is None
 
         # WHEN
-        model.deploy(model_access_configs={"pytorch-eqa-bert-base-cased":ModelAccessConfig(accept_eula=True)})
+        model.deploy(
+            model_access_configs={
+                "pytorch-eqa-bert-base-cased": ModelAccessConfig(accept_eula=True)
+            }
+        )
 
         # THEN
         mock_model_deploy.assert_called_once_with(
@@ -1822,18 +1830,17 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_model_set_deployment_config_and_deploy_for_gated_draft_model_no_model_access_configs(
-            self,
-            mock_model_deploy: mock.Mock,
-            mock_get_model_specs: mock.Mock,
-            mock_session: mock.Mock,
-            mock_get_manifest: mock.Mock,
-            mock_get_jumpstart_configs: mock.Mock,
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         # WHERE
         mock_get_model_specs.side_effect = append_gated_draft_model_specs_to_jumpstart_model_spec
         mock_get_manifest.side_effect = (
-            lambda region, model_type, *args, **kwargs:
-            get_prototype_manifest(region, model_type)
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
         mock_model_deploy.return_value = default_predictor
 

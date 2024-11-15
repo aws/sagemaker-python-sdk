@@ -1578,13 +1578,17 @@ def _add_model_access_configs_to_model_data_sources(
                         ),
                     )
                 )
-            mutable_model_data_source.pop("HostingEulaKey")  # pop when model access config is applied
+            mutable_model_data_source.pop(
+                "HostingEulaKey"
+            )  # pop when model access config is applied
             mutable_model_data_source["S3DataSource"]["ModelAccessConfig"] = (
                 camel_case_to_pascal_case(model_access_configs.get(model_id).model_dump())
             )
             acked_model_data_sources.append(mutable_model_data_source)
         else:
-            mutable_model_data_source.pop("HostingEulaKey")  # pop when model access config is not applicable
+            mutable_model_data_source.pop(
+                "HostingEulaKey"
+            )  # pop when model access config is not applicable
             acked_model_data_sources.append(mutable_model_data_source)
     return acked_model_data_sources
 
