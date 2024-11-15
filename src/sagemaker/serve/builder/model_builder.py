@@ -478,7 +478,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         return serializer, deserializer
 
-    def _get_predictor(self, endpoint_name: str, sagemaker_session: Session) -> Predictor:
+    def _get_predictor(self,
+                       endpoint_name: str,
+                       sagemaker_session: Session,
+                       component_name: Optional[str] = None) -> Predictor:
         """Placeholder docstring"""
         serializer, deserializer = self._get_client_translators()
 
@@ -487,6 +490,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             sagemaker_session=sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name
         )
 
     def _create_model(self):
@@ -1612,7 +1616,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 output_path=inference_config.output_path,
                 instance_count=inference_config.instance_count,
             )
-            transformer.wait()
             return transformer
 
         if isinstance(inference_config, ResourceRequirements):

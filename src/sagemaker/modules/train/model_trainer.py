@@ -589,7 +589,7 @@ class ModelTrainer(BaseModel):
         channels = []
         for input_data in input_data_channels:
             if isinstance(input_data, Channel):
-                channels.append(input)
+                channels.append(input_data)
             elif isinstance(input_data, InputData):
                 channel = self.create_input_data_channel(
                     input_data.channel_name, input_data.data_source

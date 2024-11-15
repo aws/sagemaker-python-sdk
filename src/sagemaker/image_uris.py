@@ -609,7 +609,6 @@ def _validate_py_version_and_set_if_needed(py_version, version_config, framework
 
 def _validate_arg(arg, available_options, arg_name):
     """Checks if the arg is in the available options, and raises a ``ValueError`` if not."""
-    print("VALIDATE")
     if arg not in available_options:
         raise ValueError(
             "Unsupported {arg_name}: {arg}. You may need to upgrade your SDK version "
