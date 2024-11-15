@@ -1283,7 +1283,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             # TRTLLM is used by Neo if the following are provided:
             #  1) a GPU instance type
             #  2) compilation config
-            gpu_instance_families = ["g4", "g5", "p4d"]
+            gpu_instance_families = ["g5", "g6", "p4d", "p5"]
             is_gpu_instance = optimization_instance_type and any(
                 gpu_instance_family in optimization_instance_type
                 for gpu_instance_family in gpu_instance_families
