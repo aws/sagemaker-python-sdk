@@ -32,6 +32,7 @@ from sagemaker.jumpstart.types import (
     DeploymentConfigMetadata,
     JumpStartModelDeployKwargs,
     JumpStartBenchmarkStat,
+    JumpStartAdditionalDataSources,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import get_formatted_manifest
@@ -436,3 +437,26 @@ def append_instance_stat_metrics(
                 )
             )
     return metrics
+
+
+def append_gated_draft_model_specs_to_jumpstart_model_spec(*args, **kwargs):
+    augmented_spec = get_prototype_model_spec(*args, **kwargs)
+    augmented_spec.hosting_additional_data_sources = JumpStartAdditionalDataSources(spec={
+        'speculative_decoding': [
+            {
+                'channel_name': 'draft_model',
+                'provider': {
+                    'name': 'JumpStart',
+                    'classification': 'gated'
+                },
+                'artifact_version': 'v1',
+                'hosting_eula_key': 'fmhMetadata/eula/llama3_2Eula.txt',
+                's3_data_source': {
+                    's3_uri': 'meta-textgeneration/meta-textgeneration-llama-3-2-1b-instruct/artifacts/inference-prepack/v1.0.0/',
+                    'compression_type': 'None',
+                    's3_data_type': 'S3Prefix'
+                }
+            }
+        ]
+    })
+    return augmented_spec

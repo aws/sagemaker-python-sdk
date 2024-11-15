@@ -817,12 +817,14 @@ class JumpStartModel(Model):
                 f"{EndpointType.INFERENCE_COMPONENT_BASED} is not supported for Proprietary models."
             )
 
+        print(self.additional_model_data_sources)
         self.additional_model_data_sources = _add_model_access_configs_to_model_data_sources(
             self.additional_model_data_sources,
             deploy_kwargs.model_access_configs,
             deploy_kwargs.model_id,
             deploy_kwargs.region,
         )
+        print(self.additional_model_data_sources)
 
         try:
             predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())

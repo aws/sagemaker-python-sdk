@@ -1544,6 +1544,7 @@ def _add_model_access_configs_to_model_data_sources(
     region: str,
 ):
     """Sets AcceptEula to True for gated speculative decoding models"""
+    print(model_data_sources)
 
     if not model_data_sources:
         return model_data_sources
@@ -1551,8 +1552,13 @@ def _add_model_access_configs_to_model_data_sources(
     acked_model_data_sources = []
     for model_data_source in model_data_sources:
         hosting_eula_key = model_data_source.get("HostingEulaKey")
+        mutable_model_data_source = model_data_source.copy()
         if hosting_eula_key:
-            if not model_access_configs or not model_access_configs.get(model_id):
+            if (
+                not model_access_configs
+                or not model_access_configs.get(model_id)
+                or not model_access_configs.get(model_id).accept_eula
+            ):
                 eula_message_template = (
                     "{model_source}{base_eula_message}{model_access_configs_message}"
                 )
@@ -1572,14 +1578,14 @@ def _add_model_access_configs_to_model_data_sources(
                         ),
                     )
                 )
-            acked_model_data_source = model_data_source.copy()
-            acked_model_data_source.pop("HostingEulaKey")
-            acked_model_data_source["S3DataSource"]["ModelAccessConfig"] = (
+            mutable_model_data_source.pop("HostingEulaKey")  # pop when model access config is applied
+            mutable_model_data_source["S3DataSource"]["ModelAccessConfig"] = (
                 camel_case_to_pascal_case(model_access_configs.get(model_id).model_dump())
             )
-            acked_model_data_sources.append(acked_model_data_source)
+            acked_model_data_sources.append(mutable_model_data_source)
         else:
-            acked_model_data_sources.append(model_data_source)
+            mutable_model_data_source.pop("HostingEulaKey")  # pop when model access config is not applicable
+            acked_model_data_sources.append(mutable_model_data_source)
     return acked_model_data_sources
 
 
