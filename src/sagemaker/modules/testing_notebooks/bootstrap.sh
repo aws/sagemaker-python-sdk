@@ -18,3 +18,6 @@ sudo apt-get install docker-ce-cli=$VERSION_STRING docker-compose-plugin -y
 
 # validate the Docker Client is able to access Docker Server at [unix:///docker/proxy.sock]
 docker version
+
+pip install "pydantic>=2.0.0"
+pip install sagemaker-2.232.4.dev0.tar.gz
