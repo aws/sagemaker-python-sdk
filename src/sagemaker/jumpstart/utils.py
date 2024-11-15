@@ -1542,10 +1542,19 @@ def _add_model_access_configs_to_model_data_sources(
     model_access_configs: Dict[str, ModelAccessConfig],
     model_id: str,
     region: str,
-):
-    """Sets AcceptEula to True for gated speculative decoding models"""
-    print(model_data_sources)
+) -> List[Dict[str, any]]:
+    """Iterate over the accept EULA configs to ensure all channels are matched
 
+    Args:
+        model_data_sources (DeploymentConfigMetadata): Model data sources that will be updated
+        model_access_configs (DeploymentConfigMetadata): Config holding accept_eula field
+        model_id (DeploymentConfigMetadata): Jumpstart mode id.
+        region (str): Region where the user is operating in.
+    Returns:
+        List[Dict[str, Any]]: List of model data sources with accept EULA configs applied
+    Raise:
+        ValueError if at least one channel that requires EULA acceptance as not passed.
+    """
     if not model_data_sources:
         return model_data_sources
 
