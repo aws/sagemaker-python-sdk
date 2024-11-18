@@ -117,8 +117,7 @@ from sagemaker.huggingface.llm_utils import (
 )
 from sagemaker.serve.validations.optimization import _validate_optimization_configuration
 from sagemaker.modules.train import ModelTrainer
-
-logger = logging.getLogger(__name__)
+from sagemaker.modules import logger
 
 # Any new server type should be added here
 supported_model_servers = {
