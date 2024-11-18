@@ -7735,6 +7735,7 @@ def production_variant(
     container_startup_health_check_timeout=None,
     managed_instance_scaling=None,
     routing_config=None,
+    inference_ami_version=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -7798,6 +7799,9 @@ def production_variant(
             ContainerStartupHealthCheckTimeoutInSeconds=container_startup_health_check_timeout,
             RoutingConfig=routing_config,
         )
+
+    if inference_ami_version:
+        production_variant_configuration["InferenceAmiVersion"] = inference_ami_version
 
     return production_variant_configuration
 

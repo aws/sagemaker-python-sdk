@@ -1389,6 +1389,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.hosting_model_package_arns: Optional[Dict] = (
             model_package_arns if model_package_arns is not None else {}
         )
+
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
@@ -2245,6 +2246,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "routing_config",
         "specs",
         "model_access_configs",
+        "inference_ami_version",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2298,6 +2300,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         config_name: Optional[str] = None,
         routing_config: Optional[Dict[str, Any]] = None,
         model_access_configs: Optional[Dict[str, CoreModelAccessConfig]] = None,
+        inference_ami_version: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -2336,6 +2339,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.config_name = config_name
         self.routing_config = routing_config
         self.model_access_configs = model_access_configs
+        self.inference_ami_version = inference_ami_version
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):

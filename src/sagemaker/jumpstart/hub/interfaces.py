@@ -471,6 +471,7 @@ class HubModelDocument(HubDataHolderType):
         "hosting_use_script_uri",
         "hosting_eula_uri",
         "hosting_model_package_arn",
+        "inference_ami_version",
         "model_subscription_link",
         "inference_configs",
         "inference_config_components",
@@ -592,6 +593,8 @@ class HubModelDocument(HubDataHolderType):
         )
         self.hosting_eula_uri: Optional[str] = json_obj.get("HostingEulaUri")
         self.hosting_model_package_arn: Optional[str] = json_obj.get("HostingModelPackageArn")
+
+        self.inference_ami_version: Optional[str] = json_obj.get("InferenceAmiVersion")
 
         self.model_subscription_link: Optional[str] = json_obj.get("ModelSubscriptionLink")
 

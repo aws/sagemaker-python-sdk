@@ -666,6 +666,7 @@ class JumpStartModel(Model):
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         routing_config: Optional[Dict[str, Any]] = None,
         model_access_configs: Optional[Dict[str, ModelAccessConfig]] = None,
+        inference_ami_version: Optional[str] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -808,6 +809,7 @@ class JumpStartModel(Model):
             config_name=self.config_name,
             routing_config=routing_config,
             model_access_configs=model_access_configs,
+            inference_ami_version=inference_ami_version,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY
