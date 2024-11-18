@@ -795,6 +795,14 @@ class JumpStart(ABC):
         optimization_env_vars = _update_environment_variables(optimization_env_vars, override_env)
         if optimization_env_vars:
             self.pysdk_model.env.update(optimization_env_vars)
+
+        if sharding_config and self.pysdk_model._enable_network_isolation:
+            logger.warning(
+                "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
+                "Loading of model requires network access. Setting it to False."
+            )
+            self.pysdk_model._enable_network_isolation = False
+
         if quantization_config or sharding_config or is_compilation:
             return create_optimization_job_args
         return None

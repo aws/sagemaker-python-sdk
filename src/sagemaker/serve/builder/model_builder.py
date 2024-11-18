@@ -1245,11 +1245,25 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if quantization_config and compilation_config:
             raise ValueError("Quantization config and compilation config are mutually exclusive.")
 
-        if sharding_config and (quantization_config or compilation_config or speculative_decoding_config):
-            raise ValueError("Sharding config is mutually exclusive and cannot be combined with any other optimization.")
+        if sharding_config and (
+            quantization_config or compilation_config or speculative_decoding_config
+        ):
+            raise ValueError(
+                "Sharding config is mutually exclusive and cannot be combined with any "
+                "other optimization."
+            )
 
-        if sharding_config and ((env_vars and "OPTION_TENSOR_PARALLEL_DEGREE" not in env_vars) or (sharding_config.get("OverrideEnvironment") and "OPTION_TENSOR_PARALLEL_DEGREE" not in sharding_config["OverrideEnvironment"])):
-            raise ValueError("OPTION_TENSOR_PARALLEL_DEGREE is required environment variable with Sharding config.")
+        if sharding_config and (
+            (env_vars and "OPTION_TENSOR_PARALLEL_DEGREE" not in env_vars)
+            or (
+                sharding_config.get("OverrideEnvironment")
+                and "OPTION_TENSOR_PARALLEL_DEGREE" not in sharding_config["OverrideEnvironment"]
+            )
+        ):
+            raise ValueError(
+                "OPTION_TENSOR_PARALLEL_DEGREE is a required environment variable with "
+                "sharding config."
+            )
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
         self.instance_type = instance_type or self.instance_type

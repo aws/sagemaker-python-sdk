@@ -2694,7 +2694,7 @@ class TestModelBuilder(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError,
-            "OPTION_TENSOR_PARALLEL_DEGREE is required environment variable with Sharding config.",
+            "OPTION_TENSOR_PARALLEL_DEGREE is a required environment variable with sharding config.",
             lambda: model_builder.optimize(
                 sharding_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
             ),

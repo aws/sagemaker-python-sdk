@@ -326,7 +326,9 @@ def test_is_s3_uri(s3_uri, expected):
 def test_extract_optimization_config_and_env(
     quantization_config, compilation_config, sharding_config, expected_config, expected_env
 ):
-    assert _extract_optimization_config_and_env(quantization_config, compilation_config, sharding_config) == (
+    assert _extract_optimization_config_and_env(
+        quantization_config, compilation_config, sharding_config
+    ) == (
         expected_config,
         expected_env,
     )

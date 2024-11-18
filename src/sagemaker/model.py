@@ -1601,9 +1601,17 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
         if self._is_sharded_model and endpoint_type != EndpointType.INFERENCE_COMPONENT_BASED:
-            logging.warning("Forcing INFERENCE_COMPONENT_BASED endpoint for sharded model. ADVISORY - "
-                            "Use INFERENCE_COMPONENT_BASED endpoints over MODEL_BASED endpoints.")
+            logging.warning(
+                "Forcing INFERENCE_COMPONENT_BASED endpoint for sharded model. ADVISORY - "
+                "Use INFERENCE_COMPONENT_BASED endpoints over MODEL_BASED endpoints."
+            )
             endpoint_type = EndpointType.INFERENCE_COMPONENT_BASED
+
+        if self._is_sharded_model and self._enable_network_isolation:
+            raise ValueError(
+                "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
+                "Loading of model requires network access."
+            )
 
         # Support multiple models on same endpoint
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:

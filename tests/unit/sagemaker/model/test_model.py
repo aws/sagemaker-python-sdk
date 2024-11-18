@@ -958,6 +958,7 @@ def test_all_framework_models_inference_component_based_endpoint_deploy_path(
         sagemaker_session.endpoint_in_service_or_not.reset_mock()
         sagemaker_session.create_model.reset_mock()
 
+
 @patch("sagemaker.utils.repack_model")
 @patch("sagemaker.fw_utils.tar_and_upload_dir")
 def test_sharded_model_force_inference_component_based_endpoint_deploy_path(
@@ -967,7 +968,7 @@ def test_sharded_model_force_inference_component_based_endpoint_deploy_path(
         HuggingFaceModel: {
             "pytorch_version": "1.7.1",
             "py_version": "py36",
-            "transformers_version": "4.6.1"
+            "transformers_version": "4.6.1",
         },
     }
 
@@ -1006,6 +1007,7 @@ def test_sharded_model_force_inference_component_based_endpoint_deploy_path(
         sagemaker_session.create_inference_component.reset_mock()
         sagemaker_session.endpoint_in_service_or_not.reset_mock()
         sagemaker_session.create_model.reset_mock()
+
 
 @patch("sagemaker.utils.repack_model")
 def test_repack_code_location_with_key_prefix(repack_model, sagemaker_session):
