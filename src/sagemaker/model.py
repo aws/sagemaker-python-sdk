@@ -1383,6 +1383,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         inference_component_name=None,
         routing_config: Optional[Dict[str, Any]] = None,
         model_reference_arn: Optional[str] = None,
+        inference_ami_version: Optional[str] = None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1652,6 +1653,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     container_startup_health_check_timeout=container_startup_health_check_timeout,
                     managed_instance_scaling=managed_instance_scaling_config,
                     routing_config=routing_config,
+                    inference_ami_version=inference_ami_version,
                 )
 
                 self.sagemaker_session.endpoint_from_production_variants(
