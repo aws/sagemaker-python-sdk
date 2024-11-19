@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
 
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import payloads
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -51,6 +52,7 @@ from sagemaker.jumpstart.utils import (
     add_instance_rate_stats_to_benchmark_metrics,
     deployment_config_response_data,
     _deployment_config_lru_cache,
+    _add_model_access_configs_to_model_data_sources,
 )
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -540,12 +542,16 @@ class JumpStartModel(Model):
         inferred_model_id = inferred_model_version = inferred_inference_component_name = None
 
         if inference_component_name is None or model_id is None or model_version is None:
-            inferred_model_id, inferred_model_version, inferred_inference_component_name, _, _ = (
-                get_model_info_from_endpoint(
-                    endpoint_name=endpoint_name,
-                    inference_component_name=inference_component_name,
-                    sagemaker_session=sagemaker_session,
-                )
+            (
+                inferred_model_id,
+                inferred_model_version,
+                inferred_inference_component_name,
+                _,
+                _,
+            ) = get_model_info_from_endpoint(
+                endpoint_name=endpoint_name,
+                inference_component_name=inference_component_name,
+                sagemaker_session=sagemaker_session,
             )
 
         model_id = model_id or inferred_model_id
@@ -659,6 +665,7 @@ class JumpStartModel(Model):
         managed_instance_scaling: Optional[str] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         routing_config: Optional[Dict[str, Any]] = None,
+        model_access_configs: Optional[Dict[str, ModelAccessConfig]] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -755,6 +762,11 @@ class JumpStartModel(Model):
                 (Default: EndpointType.MODEL_BASED).
             routing_config (Optional[Dict]): Settings the control how the endpoint routes
                 incoming traffic to the instances that the endpoint hosts.
+            model_access_configs (Optional[Dict[str, ModelAccessConfig]]): For models that require
+                ModelAccessConfig, provide a `{ "model_id", ModelAccessConfig(accept_eula=True) }`
+                to indicate whether model terms of use have been accepted. The `accept_eula` value
+                must be explicitly defined as `True` in order to accept the end-user license
+                agreement (EULA) that some models require. (Default: None)
 
         Raises:
             MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.
@@ -795,6 +807,7 @@ class JumpStartModel(Model):
             model_type=self.model_type,
             config_name=self.config_name,
             routing_config=routing_config,
+            model_access_configs=model_access_configs,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY
@@ -803,6 +816,13 @@ class JumpStartModel(Model):
             raise ValueError(
                 f"{EndpointType.INFERENCE_COMPONENT_BASED} is not supported for Proprietary models."
             )
+
+        self.additional_model_data_sources = _add_model_access_configs_to_model_data_sources(
+            self.additional_model_data_sources,
+            deploy_kwargs.model_access_configs,
+            deploy_kwargs.model_id,
+            deploy_kwargs.region,
+        )
 
         try:
             predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
@@ -1016,10 +1036,11 @@ class JumpStartModel(Model):
                 )
 
             if metadata_config.benchmark_metrics:
-                err, metadata_config.benchmark_metrics = (
-                    add_instance_rate_stats_to_benchmark_metrics(
-                        self.region, metadata_config.benchmark_metrics
-                    )
+                (
+                    err,
+                    metadata_config.benchmark_metrics,
+                ) = add_instance_rate_stats_to_benchmark_metrics(
+                    self.region, metadata_config.benchmark_metrics
                 )
 
             config_components = metadata_config.config_components.get(config_name)

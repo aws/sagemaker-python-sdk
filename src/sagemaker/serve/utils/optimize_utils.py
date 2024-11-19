@@ -17,8 +17,10 @@ import re
 import logging
 from typing import Dict, Any, Optional, Union, List, Tuple
 
-from sagemaker import Model
+from sagemaker import Model, Session
 from sagemaker.enums import Tag
+from sagemaker.jumpstart.utils import accessors, get_eula_message
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,46 @@ def _is_image_compatible_with_optimization_job(image_uri: Optional[str]) -> bool
     if image_uri is None:
         return True
     return "djl-inference:" in image_uri and ("-lmi" in image_uri or "-neuronx-" in image_uri)
+
+
+def _deployment_config_contains_draft_model(deployment_config: Optional[Dict]) -> bool:
+    """Checks whether a deployment config contains a speculative decoding draft model.
+
+    Args:
+        deployment_config (Dict): The deployment config to check.
+
+    Returns:
+        bool: Whether the deployment config contains a draft model or not.
+    """
+    if deployment_config is None:
+        return False
+    deployment_args = deployment_config.get("DeploymentArgs", {})
+    additional_data_sources = deployment_args.get("AdditionalDataSources")
+
+    return "speculative_decoding" in additional_data_sources if additional_data_sources else False
+
+
+def _is_draft_model_jumpstart_provided(deployment_config: Optional[Dict]) -> bool:
+    """Checks whether a deployment config's draft model is provided by JumpStart.
+
+    Args:
+        deployment_config (Dict): The deployment config to check.
+
+    Returns:
+        bool: Whether the draft model is provided by JumpStart or not.
+    """
+    if deployment_config is None:
+        return False
+
+    additional_model_data_sources = deployment_config.get("DeploymentArgs", {}).get(
+        "AdditionalDataSources"
+    )
+    for source in additional_model_data_sources.get("speculative_decoding", []):
+        if source["channel_name"] == "draft_model":
+            if source.get("provider", {}).get("name") == "JumpStart":
+                return True
+            continue
+    return False
 
 
 def _generate_optimized_model(pysdk_model: Model, optimization_response: dict) -> Model:
@@ -164,12 +206,72 @@ def _extract_speculative_draft_model_provider(
     if speculative_decoding_config is None:
         return None
 
-    if speculative_decoding_config.get(
-        "ModelProvider"
-    ) == "Custom" or speculative_decoding_config.get("ModelSource"):
+    model_provider = speculative_decoding_config.get("ModelProvider", "").lower()
+
+    if model_provider == "jumpstart":
+        return "jumpstart"
+
+    if model_provider == "custom" or speculative_decoding_config.get("ModelSource"):
         return "custom"
 
-    return "sagemaker"
+    if model_provider == "sagemaker":
+        return "sagemaker"
+
+    return "auto"
+
+
+def _extract_additional_model_data_source_s3_uri(
+    additional_model_data_source: Optional[Dict] = None,
+) -> Optional[str]:
+    """Extracts model data source s3 uri from a model data source in Pascal case.
+
+    Args:
+        additional_model_data_source (Optional[Dict]): A model data source.
+
+    Returns:
+        str: S3 uri of the model resources.
+    """
+    if (
+        additional_model_data_source is None
+        or additional_model_data_source.get("S3DataSource", None) is None
+    ):
+        return None
+
+    return additional_model_data_source.get("S3DataSource").get("S3Uri")
+
+
+def _extract_deployment_config_additional_model_data_source_s3_uri(
+    additional_model_data_source: Optional[Dict] = None,
+) -> Optional[str]:
+    """Extracts model data source s3 uri from a model data source in snake case.
+
+    Args:
+        additional_model_data_source (Optional[Dict]): A model data source.
+
+    Returns:
+        str: S3 uri of the model resources.
+    """
+    if (
+        additional_model_data_source is None
+        or additional_model_data_source.get("s3_data_source", None) is None
+    ):
+        return None
+
+    return additional_model_data_source.get("s3_data_source").get("s3_uri", None)
+
+
+def _is_draft_model_gated(
+    draft_model_config: Optional[Dict] = None,
+) -> bool:
+    """Extracts model gated-ness from draft model data source.
+
+    Args:
+        draft_model_config (Optional[Dict]): A model data source.
+
+    Returns:
+        bool: Whether the draft model is gated or not.
+    """
+    return "hosting_eula_key" in draft_model_config if draft_model_config else False
 
 
 def _extracts_and_validates_speculative_model_source(
@@ -238,7 +340,7 @@ def _generate_additional_model_data_sources(
         },
     }
     if accept_eula:
-        additional_model_data_source["S3DataSource"]["ModelAccessConfig"] = {"ACCEPT_EULA": True}
+        additional_model_data_source["S3DataSource"]["ModelAccessConfig"] = {"AcceptEula": True}
 
     return [additional_model_data_source]
 
@@ -260,7 +362,7 @@ def _is_s3_uri(s3_uri: Optional[str]) -> bool:
 
 def _extract_optimization_config_and_env(
     quantization_config: Optional[Dict] = None, compilation_config: Optional[Dict] = None
-) -> Optional[Tuple[Optional[Dict], Optional[Dict]]]:
+) -> Optional[Tuple[Optional[Dict], Optional[Dict], Optional[Dict]]]:
     """Extracts optimization config and environment variables.
 
     Args:
@@ -268,18 +370,28 @@ def _extract_optimization_config_and_env(
         compilation_config (Optional[Dict]): The compilation config.
 
     Returns:
-        Optional[Tuple[Optional[Dict], Optional[Dict]]]:
+        Optional[Tuple[Optional[Dict], Optional[Dict], Optional[Dict]]]:
             The optimization config and environment variables.
     """
-    if quantization_config:
-        return {"ModelQuantizationConfig": quantization_config}, quantization_config.get(
-            "OverrideEnvironment"
-        )
-    if compilation_config:
-        return {"ModelCompilationConfig": compilation_config}, compilation_config.get(
-            "OverrideEnvironment"
-        )
-    return None, None
+    optimization_config = {}
+    quantization_override_env = (
+        quantization_config.get("OverrideEnvironment") if quantization_config else None
+    )
+    compilation_override_env = (
+        compilation_config.get("OverrideEnvironment") if compilation_config else None
+    )
+
+    if quantization_config is not None:
+        optimization_config["ModelQuantizationConfig"] = quantization_config
+
+    if compilation_config is not None:
+        optimization_config["ModelCompilationConfig"] = compilation_config
+
+    # Return optimization config dict and environment variables if either is present
+    if optimization_config:
+        return optimization_config, quantization_override_env, compilation_override_env
+
+    return None, None, None
 
 
 def _custom_speculative_decoding(
@@ -300,6 +412,8 @@ def _custom_speculative_decoding(
             speculative_decoding_config
         )
 
+        accept_eula = speculative_decoding_config.get("AcceptEula", accept_eula)
+
         if _is_s3_uri(additional_model_source):
             channel_name = _generate_channel_name(model.additional_model_data_sources)
             speculative_draft_model = f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}"
@@ -316,3 +430,62 @@ def _custom_speculative_decoding(
         )
 
     return model
+
+
+def _jumpstart_speculative_decoding(
+    model=Model,
+    speculative_decoding_config: Optional[Dict[str, Any]] = None,
+    sagemaker_session: Optional[Session] = None,
+):
+    """Modifies the given model for speculative decoding config with JumpStart provider.
+
+    Args:
+        model (Model): The model.
+        speculative_decoding_config (Optional[Dict]): The speculative decoding config.
+        sagemaker_session (Optional[Session]): Sagemaker session for execution.
+    """
+    if speculative_decoding_config:
+        js_id = speculative_decoding_config.get("ModelID")
+        if not js_id:
+            raise ValueError(
+                "`ModelID` is a required field in `speculative_decoding_config` when "
+                "using JumpStart as draft model provider."
+            )
+        model_version = speculative_decoding_config.get("ModelVersion", "*")
+        accept_eula = speculative_decoding_config.get("AcceptEula", False)
+        channel_name = _generate_channel_name(model.additional_model_data_sources)
+
+        model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+            model_id=js_id,
+            version=model_version,
+            region=sagemaker_session.boto_region_name,
+            sagemaker_session=sagemaker_session,
+        )
+        model_spec_json = model_specs.to_json()
+
+        js_bucket = accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket()
+
+        if model_spec_json.get("gated_bucket", False):
+            if not accept_eula:
+                eula_message = get_eula_message(
+                    model_specs=model_specs, region=sagemaker_session.boto_region_name
+                )
+                raise ValueError(
+                    f"{eula_message} Set `AcceptEula`=True in "
+                    f"speculative_decoding_config once acknowledged."
+                )
+            js_bucket = accessors.JumpStartModelsAccessor.get_jumpstart_gated_content_bucket()
+
+        key_prefix = model_spec_json.get("hosting_prepacked_artifact_key")
+        model.additional_model_data_sources = _generate_additional_model_data_sources(
+            f"s3://{js_bucket}/{key_prefix}",
+            channel_name,
+            accept_eula,
+        )
+
+        model.env.update(
+            {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
+        )
+        model.add_tags(
+            {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "jumpstart"},
+        )

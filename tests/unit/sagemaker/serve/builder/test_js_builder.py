@@ -25,7 +25,11 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelOutOfMemoryException,
     LocalModelInvocationException,
 )
-from tests.unit.sagemaker.serve.constants import DEPLOYMENT_CONFIGS
+from tests.unit.sagemaker.serve.constants import (
+    DEPLOYMENT_CONFIGS,
+    OPTIMIZED_DEPLOYMENT_CONFIG_WITH_GATED_DRAFT_MODEL,
+    CAMEL_CASE_ADDTL_DRAFT_MODEL_DATA_SOURCES,
+)
 
 mock_model_id = "huggingface-llm-amazon-falconlite"
 mock_t5_model_id = "google/flan-t5-xxl"
@@ -1201,6 +1205,124 @@ class TestJumpStartBuilder(unittest.TestCase):
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder._jumpstart_speculative_decoding",
+        return_value=True,
+    )
+    def test_jumpstart_model_provider_calls_jumpstart_speculative_decoding(
+        self,
+        mock_js_speculative_decoding,
+        mock_pretrained_js_model,
+        mock_is_js_model,
+        mock_serve_settings,
+        mock_capture_telemetry,
+    ):
+        mock_sagemaker_session = Mock()
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.env = {"SAGEMAKER_ENV": "1"}
+        mock_pysdk_model.model_data = mock_model_data
+        mock_pysdk_model.image_uri = mock_tgi_image_uri
+        mock_pysdk_model.list_deployment_configs.return_value = DEPLOYMENT_CONFIGS
+        mock_pysdk_model.deployment_config = OPTIMIZED_DEPLOYMENT_CONFIG_WITH_GATED_DRAFT_MODEL
+        mock_pysdk_model.additional_model_data_sources = CAMEL_CASE_ADDTL_DRAFT_MODEL_DATA_SOURCES
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species "
+            "of turtle native to the brackish coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a "
+                "species of turtle native to the brackish coastal "
+                "tidal marshes of the east coast."
+            }
+        ]
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        model_builder._optimize_for_jumpstart(
+            accept_eula=True,
+            speculative_decoding_config={
+                "ModelProvider": "JumpStart",
+                "ModelID": "meta-textgeneration-llama-3-2-1b",
+                "AcceptEula": False,
+            },
+        )
+
+        mock_js_speculative_decoding.assert_called_once()
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_quantize_and_compile_for_jumpstart(
+        self,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+        mock_sagemaker_session = Mock()
+        mock_metadata_config = Mock()
+        mock_metadata_config.resolved_config = {
+            "supported_inference_instance_types": ["ml.inf2.48xlarge"],
+            "hosting_neuron_model_id": "huggingface-llmneuron-mistral-7b",
+        }
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.env = {"SAGEMAKER_ENV": "1"}
+        mock_pysdk_model.model_data = mock_model_data
+        mock_pysdk_model.image_uri = mock_tgi_image_uri
+        mock_pysdk_model.list_deployment_configs.return_value = DEPLOYMENT_CONFIGS
+        mock_pysdk_model.deployment_config = DEPLOYMENT_CONFIGS[0]
+        mock_pysdk_model.config_name = "config_name"
+        mock_pysdk_model._metadata_configs = {"config_name": mock_metadata_config}
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species "
+            "of turtle native to the brackish coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a "
+                "species of turtle native to the brackish coastal "
+                "tidal marshes of the east coast."
+            }
+        ]
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_jumpstart(
+            accept_eula=True,
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertIsNotNone(out_put)
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch(
         "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_gated_model",
         return_value=True,
     )
@@ -1383,3 +1505,103 @@ class TestJumpStartBuilder(unittest.TestCase):
         self.assertEqual(optimized_model.env["OPTION_ROLLING_BATCH"], "auto")
         self.assertEqual(optimized_model.env["OPTION_MAX_ROLLING_BATCH_SIZE"], "4")
         self.assertEqual(optimized_model.env["OPTION_NEURON_OPTIMIZE_LEVEL"], "2")
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_gated_model",
+        return_value=True,
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.prepare_tgi_js_resources",
+        return_value=({"model_type": "t5", "n_head": 71}, True),
+    )
+    def test_optimize_compile_for_jumpstart_without_compilation_config(
+        self,
+        mock_prepare_for_tgi,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model,
+        mock_js_model,
+        mock_is_gated_model,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+        mock_sagemaker_session = Mock()
+        mock_metadata_config = Mock()
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = (
+            lambda *args: mock_optimization_job_response
+        )
+
+        mock_metadata_config.resolved_config = {
+            "supported_inference_instance_types": ["ml.inf2.48xlarge"],
+            "hosting_neuron_model_id": "huggingface-llmneuron-mistral-7b",
+        }
+
+        mock_js_model.return_value = MagicMock()
+        mock_js_model.return_value.env = {
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "ENDPOINT_SERVER_TIMEOUT": "3600",
+            "MODEL_CACHE_ROOT": "/opt/ml/model",
+            "SAGEMAKER_ENV": "1",
+            "HF_MODEL_ID": "/opt/ml/model",
+            "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        }
+
+        mock_pre_trained_model.return_value = MagicMock()
+        mock_pre_trained_model.return_value.env = dict()
+        mock_pre_trained_model.return_value.config_name = "config_name"
+        mock_pre_trained_model.return_value.model_data = mock_model_data
+        mock_pre_trained_model.return_value.image_uri = mock_tgi_image_uri
+        mock_pre_trained_model.return_value.list_deployment_configs.return_value = (
+            DEPLOYMENT_CONFIGS
+        )
+        mock_pre_trained_model.return_value.deployment_config = DEPLOYMENT_CONFIGS[0]
+        mock_pre_trained_model.return_value._metadata_configs = {
+            "config_name": mock_metadata_config
+        }
+
+        sample_input = {
+            "inputs": "The diamondback terrapin or simply terrapin is a species "
+            "of turtle native to the brackish coastal tidal marshes of the",
+            "parameters": {"max_new_tokens": 1024},
+        }
+        sample_output = [
+            {
+                "generated_text": "The diamondback terrapin or simply terrapin is a "
+                "species of turtle native to the brackish coastal "
+                "tidal marshes of the east coast."
+            }
+        ]
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            schema_builder=SchemaBuilder(sample_input, sample_output),
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        optimized_model = model_builder.optimize(
+            accept_eula=True,
+            instance_type="ml.inf2.24xlarge",
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(
+            optimized_model.image_uri,
+            mock_optimization_job_response["OptimizationOutput"]["RecommendedInferenceImage"],
+        )
+        self.assertEqual(
+            optimized_model.model_data["S3DataSource"]["S3Uri"],
+            mock_optimization_job_response["OutputConfig"]["S3OutputLocation"],
+        )
+        self.assertEqual(optimized_model.env["SAGEMAKER_PROGRAM"], "inference.py")
+        self.assertEqual(optimized_model.env["ENDPOINT_SERVER_TIMEOUT"], "3600")
+        self.assertEqual(optimized_model.env["MODEL_CACHE_ROOT"], "/opt/ml/model")
+        self.assertEqual(optimized_model.env["SAGEMAKER_ENV"], "1")
+        self.assertEqual(optimized_model.env["HF_MODEL_ID"], "/opt/ml/model")
+        self.assertEqual(optimized_model.env["SAGEMAKER_MODEL_SERVER_WORKERS"], "1")

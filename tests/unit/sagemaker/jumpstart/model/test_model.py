@@ -19,6 +19,7 @@ import unittest
 import pandas as pd
 from mock import MagicMock, Mock
 import pytest
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.jumpstart.artifacts.environment_variables import (
     _retrieve_default_environment_variables,
@@ -54,6 +55,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
     get_base_deployment_configs,
     get_base_spec_with_prototype_configs_with_missing_benchmarks,
     append_instance_stat_metrics,
+    append_gated_draft_model_specs_to_jumpstart_model_spec,
 )
 import boto3
 
@@ -772,6 +774,7 @@ class ModelTest(unittest.TestCase):
 
         init_args_to_skip: Set[str] = set(["model_reference_arn"])
         deploy_args_to_skip: Set[str] = set(["kwargs", "model_reference_arn"])
+        deploy_args_removed_at_deploy_time: Set[str] = set(["model_access_configs"])
 
         parent_class_init = Model.__init__
         parent_class_init_args = set(signature(parent_class_init).parameters.keys())
@@ -798,8 +801,14 @@ class ModelTest(unittest.TestCase):
         js_class_deploy = JumpStartModel.deploy
         js_class_deploy_args = set(signature(js_class_deploy).parameters.keys())
 
-        assert js_class_deploy_args - parent_class_deploy_args == set()
-        assert parent_class_deploy_args - js_class_deploy_args == deploy_args_to_skip
+        assert (
+            js_class_deploy_args - parent_class_deploy_args - deploy_args_removed_at_deploy_time
+            == set()
+        )
+        assert (
+            parent_class_deploy_args - js_class_deploy_args - deploy_args_removed_at_deploy_time
+            == deploy_args_to_skip
+        )
 
     @mock.patch(
         "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
@@ -1762,6 +1771,91 @@ class ModelTest(unittest.TestCase):
             endpoint_logging=False,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_set_deployment_config_and_deploy_for_gated_draft_model(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
+    ):
+        # WHERE
+        mock_get_model_specs.side_effect = append_gated_draft_model_specs_to_jumpstart_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id = "pytorch-eqa-bert-base-cased"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        assert model.config_name is None
+
+        # WHEN
+        model.deploy(
+            model_access_configs={
+                "pytorch-eqa-bert-base-cased": ModelAccessConfig(accept_eula=True)
+            }
+        )
+
+        # THEN
+        mock_model_deploy.assert_called_once_with(
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            tags=[
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+            ],
+            wait=True,
+            endpoint_logging=False,
+        )
+
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_model_set_deployment_config_and_deploy_for_gated_draft_model_no_model_access_configs(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
+    ):
+        # WHERE
+        mock_get_model_specs.side_effect = append_gated_draft_model_specs_to_jumpstart_model_spec
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_model_deploy.return_value = default_predictor
+
+        model_id = "pytorch-eqa-bert-base-cased"
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id)
+
+        assert model.config_name is None
+
+        # WHEN / THEN
+        with self.assertRaises(ValueError):
+            model.deploy()
+
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch(
         "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
@@ -1810,6 +1904,7 @@ class ModelTest(unittest.TestCase):
                         "S3Uri": "s3://sagemaker-sd-models-prod-us-west-2/key/to/draft/model/artifact/",
                         "ModelAccessConfig": {"AcceptEula": False},
                     },
+                    "HostingEulaKey": None,
                 }
             ],
         )

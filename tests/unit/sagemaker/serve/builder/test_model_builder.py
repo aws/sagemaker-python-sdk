@@ -2650,21 +2650,75 @@ class TestModelBuilder(unittest.TestCase):
             ),
         )
 
+    @patch.object(ModelBuilder, "_prepare_for_mode")
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
-    def test_optimize_exclusive_args(self, mock_get_serve_setting):
-        mock_sagemaker_session = Mock()
-        model_builder = ModelBuilder(
-            model="meta-textgeneration-llama-3-70b",
-            sagemaker_session=mock_sagemaker_session,
+    def test_optimize_for_hf_with_both_quantization_and_compilation(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
         )
 
-        self.assertRaisesRegex(
-            ValueError,
-            "Quantization config and compilation config are mutually exclusive.",
-            lambda: model_builder.optimize(
-                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
-                compilation_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
-            ),
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-8B-Instruc"}
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_hf(
+            job_name="job_name-123",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(model_builder.env_vars["HF_TOKEN"], "token")
+        self.assertEqual(model_builder.role_arn, "role-arn")
+        self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_TENSOR_PARALLEL_DEGREE"], "2")
+        self.assertEqual(
+            out_put,
+            {
+                "OptimizationJobName": "job_name-123",
+                "DeploymentInstanceType": "ml.g5.2xlarge",
+                "RoleArn": "role-arn",
+                "ModelSource": {"S3": {"S3Uri": "s3://bucket/code/code/"}},
+                "OptimizationConfigs": [
+                    {
+                        "ModelQuantizationConfig": {
+                            "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}
+                        }
+                    },
+                    {
+                        "ModelCompilationConfig": {
+                            "OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}
+                        }
+                    },
+                ],
+                "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
+            },
         )
 
     @patch.object(ModelBuilder, "_prepare_for_mode")
@@ -2785,4 +2839,110 @@ class TestModelBuilder(unittest.TestCase):
                 ],
                 "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
             },
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_with_gpu_instance_and_llama_3_1_and_compilation(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-1-8B-Instruct"}
+
+        sample_input = {"inputs": "dummy prompt", "parameters": {}}
+
+        sample_output = [{"generated_text": "dummy response"}]
+
+        dummy_schema_builder = SchemaBuilder(sample_input, sample_output)
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-1-8B-Instruct",
+            schema_builder=dummy_schema_builder,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Compilation is not supported for Llama-3.1 with a GPU instance.",
+            lambda: model_builder.optimize(
+                job_name="job_name-123",
+                compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
+                output_path="s3://bucket/code/",
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_with_gpu_instance_and_compilation_with_speculative_decoding(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "modelid"}
+
+        sample_input = {"inputs": "dummy prompt", "parameters": {}}
+
+        sample_output = [{"generated_text": "dummy response"}]
+
+        dummy_schema_builder = SchemaBuilder(sample_input, sample_output)
+
+        model_builder = ModelBuilder(
+            model="modelid",
+            schema_builder=dummy_schema_builder,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Compilation is not supported with speculative decoding with a GPU instance.",
+            lambda: model_builder.optimize(
+                job_name="job_name-123",
+                speculative_decoding_config={
+                    "ModelProvider": "custom",
+                    "ModelSource": "s3://data-source",
+                },
+                compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
+                output_path="s3://bucket/code/",
+            ),
         )

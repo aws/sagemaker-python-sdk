@@ -48,6 +48,9 @@ from sagemaker.serve.utils.optimize_utils import (
     _custom_speculative_decoding,
     SPECULATIVE_DRAFT_MODEL,
     _is_inferentia_or_trainium,
+    _jumpstart_speculative_decoding,
+    _deployment_config_contains_draft_model,
+    _is_draft_model_jumpstart_provided,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -718,24 +721,34 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
-        is_compilation = (not quantization_config) and (
-            (compilation_config is not None) or _is_inferentia_or_trainium(instance_type)
+        is_compilation = (compilation_config is not None) or _is_inferentia_or_trainium(
+            instance_type
         )
 
         pysdk_model_env_vars = dict()
         if is_compilation:
             pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
 
-        optimization_config, override_env = _extract_optimization_config_and_env(
-            quantization_config, compilation_config
+        # optimization_config can contain configs for both quantization and compilation
+        optimization_config, quantization_override_env, compilation_override_env = (
+            _extract_optimization_config_and_env(quantization_config, compilation_config)
         )
-        if not optimization_config and is_compilation:
-            override_env = override_env or pysdk_model_env_vars
-            optimization_config = {
-                "ModelCompilationConfig": {
-                    "OverrideEnvironment": override_env,
-                }
-            }
+
+        if not optimization_config:
+            optimization_config = {}
+
+        if not optimization_config.get("ModelCompilationConfig") and is_compilation:
+            # Fallback to default if override_env is None or empty
+            if not compilation_override_env:
+                compilation_override_env = pysdk_model_env_vars
+
+            # Update optimization_config with ModelCompilationConfig
+            override_compilation_config = (
+                {"OverrideEnvironment": compilation_override_env}
+                if compilation_override_env
+                else {}
+            )
+            optimization_config["ModelCompilationConfig"] = override_compilation_config
 
         if speculative_decoding_config:
             self._set_additional_model_source(speculative_decoding_config)
@@ -766,7 +779,7 @@ class JumpStart(ABC):
             "OptimizationJobName": job_name,
             "ModelSource": model_source,
             "DeploymentInstanceType": self.instance_type,
-            "OptimizationConfigs": [optimization_config],
+            "OptimizationConfigs": [{k: v} for k, v in optimization_config.items()],
             "OutputConfig": output_config,
             "RoleArn": self.role_arn,
         }
@@ -789,7 +802,13 @@ class JumpStart(ABC):
                     "AcceptEula": True
                 }
 
-        optimization_env_vars = _update_environment_variables(optimization_env_vars, override_env)
+        optimization_env_vars = _update_environment_variables(
+            optimization_env_vars,
+            {
+                **(quantization_override_env or {}),
+                **(compilation_override_env or {}),
+            },
+        )
         if optimization_env_vars:
             self.pysdk_model.env.update(optimization_env_vars)
         if quantization_config or is_compilation:
@@ -813,9 +832,7 @@ class JumpStart(ABC):
         return "private" in s3_uri
 
     def _set_additional_model_source(
-        self,
-        speculative_decoding_config: Optional[Dict[str, Any]] = None,
-        accept_eula: Optional[bool] = None,
+        self, speculative_decoding_config: Optional[Dict[str, Any]] = None
     ) -> None:
         """Set Additional Model Source to ``this`` model.
 
@@ -825,9 +842,10 @@ class JumpStart(ABC):
         """
         if speculative_decoding_config:
             model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
+
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
 
-            if model_provider == "sagemaker":
+            if model_provider in ["sagemaker", "auto"]:
                 additional_model_data_sources = (
                     self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
                         "AdditionalDataSources"
@@ -840,24 +858,56 @@ class JumpStart(ABC):
                         speculative_decoding_config
                     )
                     if deployment_config:
-                        self.pysdk_model.set_deployment_config(
-                            config_name=deployment_config.get("DeploymentConfigName"),
-                            instance_type=deployment_config.get("InstanceType"),
-                        )
+                        if model_provider == "sagemaker" and _is_draft_model_jumpstart_provided(
+                            deployment_config
+                        ):
+                            raise ValueError(
+                                "No `Sagemaker` provided draft model was found for "
+                                f"{self.model}. Try setting `ModelProvider` "
+                                "to `Auto` instead."
+                            )
+
+                        try:
+                            self.pysdk_model.set_deployment_config(
+                                config_name=deployment_config.get("DeploymentConfigName"),
+                                instance_type=deployment_config.get("InstanceType"),
+                            )
+                        except ValueError as e:
+                            raise ValueError(
+                                f"{e} If using speculative_decoding_config, "
+                                "accept the EULA by setting `AcceptEula`=True."
+                            )
                     else:
                         raise ValueError(
                             "Cannot find deployment config compatible for optimization job."
                         )
+                else:
+                    if model_provider == "sagemaker" and _is_draft_model_jumpstart_provided(
+                        self.pysdk_model.deployment_config
+                    ):
+                        raise ValueError(
+                            "No `Sagemaker` provided draft model was found for "
+                            f"{self.model}. Try setting `ModelProvider` "
+                            "to `Auto` instead."
+                        )
 
                 self.pysdk_model.env.update(
-                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}"}
+                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
                 )
                 self.pysdk_model.add_tags(
-                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
+                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": model_provider},
+                )
+            elif model_provider == "jumpstart":
+                _jumpstart_speculative_decoding(
+                    model=self.pysdk_model,
+                    speculative_decoding_config=speculative_decoding_config,
+                    sagemaker_session=self.sagemaker_session,
                 )
             else:
                 self.pysdk_model = _custom_speculative_decoding(
-                    self.pysdk_model, speculative_decoding_config, accept_eula
+                    self.pysdk_model,
+                    speculative_decoding_config,
+                    speculative_decoding_config.get("AcceptEula", False),
                 )
 
     def _find_compatible_deployment_config(
@@ -875,15 +925,17 @@ class JumpStart(ABC):
         for deployment_config in self.pysdk_model.list_deployment_configs():
             image_uri = deployment_config.get("deployment_config", {}).get("ImageUri")
 
-            if _is_image_compatible_with_optimization_job(image_uri):
+            if _is_image_compatible_with_optimization_job(
+                image_uri
+            ) and _deployment_config_contains_draft_model(deployment_config):
                 if (
-                    model_provider == "sagemaker"
+                    model_provider in ["sagemaker", "auto"]
                     and deployment_config.get("DeploymentArgs", {}).get("AdditionalDataSources")
                 ) or model_provider == "custom":
                     return deployment_config
 
         # There's no matching config from jumpstart to add sagemaker draft model location
-        if model_provider == "sagemaker":
+        if model_provider in ["sagemaker", "auto"]:
             return None
 
         # fall back to the default jumpstart model deployment config for optimization job
