@@ -25,7 +25,6 @@ import omegaconf
 from omegaconf import OmegaConf, dictconfig
 
 from sagemaker.image_uris import retrieve
-from sagemaker import Session
 
 from sagemaker.modules import logger
 from sagemaker.modules.utils import _run_clone_command_silent
@@ -66,7 +65,7 @@ def _load_recipes_cfg() -> str:
 
 def _load_base_recipe(
     training_recipe: str,
-    recipe_overrides: Optional[Dict[str, Any]],
+    recipe_overrides: Optional[Dict[str, Any]] = None,
     training_recipes_cfg: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Load recipe and apply overrides."""
@@ -195,7 +194,6 @@ def _configure_trainium_args(
 
     _run_clone_command_silent(training_recipes_cfg.get("neuron_dist_repo"), recipe_train_dir.name)
 
-    # Set SourceCodeConfig
     source_code.source_dir = os.path.join(recipe_train_dir.name, "examples")
     source_code.entry_script = "training_orchestrator.py"
     neuron_image_cfg = training_recipes_cfg.get("neuron_image")
@@ -220,11 +218,12 @@ def _configure_trainium_args(
     return args
 
 
-def get_args_from_recipe(
+def _get_args_from_recipe(
     training_recipe: str,
     compute: Compute,
-    session: Session,
+    region_name: str,
     recipe_overrides: Optional[Dict[str, Any]],
+    requirements: Optional[str],
 ) -> Tuple[Dict[str, Any], tempfile.TemporaryDirectory]:
     """Get arguments for ModelTrainer from a training recipe.
 
@@ -233,7 +232,7 @@ def get_args_from_recipe(
     {
         "source_code": SourceCode,
         "training_image": str,
-        "distributed_runner": Dict[str, Any],
+        "distributed_runner": DistributedRunner,
         "compute": Compute,
         "hyperparameters": Dict[str, Any],
     }
@@ -244,15 +243,16 @@ def get_args_from_recipe(
             Name of the training recipe or path to the recipe file.
         compute (Compute):
             Compute configuration for training.
-        session (Session):
-            Session object for training.
+        region_name (str):
+            Name of the AWS region.
         recipe_overrides (Optional[Dict[str, Any]]):
             Overrides for the training recipe.
+        requirements (Optional[str]):
+            Path to the requirements file.
     """
     if compute.instance_type is None:
         raise ValueError("Must set `instance_type` in compute when using training recipes.")
 
-    region_name = session.boto_region_name
     training_recipes_cfg = _load_recipes_cfg()
     recipe = _load_base_recipe(training_recipe, recipe_overrides, training_recipes_cfg)
 
@@ -262,18 +262,20 @@ def get_args_from_recipe(
     # Set instance_count
     if compute.instance_count and "num_nodes" in recipe["trainer"]:
         logger.warning(
-            "Using instance_count in compute to set number "
-            " of nodes. Ignoring trainer -> num_nodes in recipe."
+            f"Using Compute to set instance_count:\n{compute}."
+            "\nIgnoring trainer -> num_nodes in recipe."
         )
     if compute.instance_count is None:
         if "num_nodes" not in recipe["trainer"]:
             raise ValueError(
-                "Must set either instance_count argument for estimator or"
-                "set trainer -> num_nodes in recipe."
+                "Must provide Compute with instance_count or" " set trainer -> num_nodes in recipe."
             )
         compute.instance_count = recipe["trainer"]["num_nodes"]
 
-    # Get Training Image, SourceCodeConfig, and DistributionConfig args
+    if requirements and not os.path.isfile(requirements):
+        raise ValueError(f"Recipe requirements file {requirements} not found.")
+
+    # Get Training Image, SourceCode, and DistributedRunner args
     device_type = _determine_device_type(compute.instance_type)
     recipe_train_dir = tempfile.TemporaryDirectory(prefix="training_")
     if device_type == "gpu":
@@ -299,7 +301,12 @@ def get_args_from_recipe(
         config=final_recipe, f=os.path.join(args["source_code"].source_dir, "recipe.yaml")
     )
 
-    # Update args with compute_config and hyperparameters
+    # If recipe_requirements is provided, copy it to source_dir
+    if requirements:
+        shutil.copy(requirements, args["source_code"].source_dir)
+        args["source_code"].requirements = os.path.basename(requirements)
+
+    # Update args with compute and hyperparameters
     args.update(
         {
             "compute": compute,
