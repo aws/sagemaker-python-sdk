@@ -284,7 +284,10 @@ def test_is_draft_model_gated(draft_model_config, expected):
 
 
 @pytest.mark.parametrize(
-    "quantization_config, compilation_config, expected_config, expected_quant_env, expected_compilation_env",
+    (
+        "quantization_config, compilation_config, sharding_config, expected_config, "
+        "expected_quant_env, expected_compilation_env, expected_sharding_env"
+    ),
     [
         (
             None,
@@ -293,6 +296,7 @@ def test_is_draft_model_gated(draft_model_config, expected):
                     "OPTION_TENSOR_PARALLEL_DEGREE": "2",
                 }
             },
+            None,
             {
                 "ModelCompilationConfig": {
                     "OverrideEnvironment": {
@@ -304,6 +308,7 @@ def test_is_draft_model_gated(draft_model_config, expected):
             {
                 "OPTION_TENSOR_PARALLEL_DEGREE": "2",
             },
+            None,
         ),
         (
             {
@@ -311,6 +316,7 @@ def test_is_draft_model_gated(draft_model_config, expected):
                     "OPTION_TENSOR_PARALLEL_DEGREE": "2",
                 }
             },
+            None,
             None,
             {
                 "ModelQuantizationConfig": {
@@ -323,21 +329,48 @@ def test_is_draft_model_gated(draft_model_config, expected):
                 "OPTION_TENSOR_PARALLEL_DEGREE": "2",
             },
             None,
+            None,
         ),
-        (None, None, None, None, None),
+        (
+            None,
+            None,
+            {
+                "OverrideEnvironment": {
+                    "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                }
+            },
+            {
+                "ModelShardingConfig": {
+                    "OverrideEnvironment": {
+                        "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+                    }
+                },
+            },
+            None,
+            None,
+            {
+                "OPTION_TENSOR_PARALLEL_DEGREE": "2",
+            },
+        ),
+        (None, None, None, None, None, None, None),
     ],
 )
 def test_extract_optimization_config_and_env(
     quantization_config,
     compilation_config,
+    sharding_config,
     expected_config,
     expected_quant_env,
     expected_compilation_env,
+    expected_sharding_env,
 ):
-    assert _extract_optimization_config_and_env(quantization_config, compilation_config) == (
+    assert _extract_optimization_config_and_env(
+        quantization_config, compilation_config, sharding_config
+    ) == (
         expected_config,
         expected_quant_env,
         expected_compilation_env,
+        expected_sharding_env,
     )
 
 

@@ -684,6 +684,7 @@ class JumpStart(ABC):
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -704,6 +705,8 @@ class JumpStart(ABC):
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
                 Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
@@ -730,8 +733,13 @@ class JumpStart(ABC):
             pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
 
         # optimization_config can contain configs for both quantization and compilation
-        optimization_config, quantization_override_env, compilation_override_env = (
-            _extract_optimization_config_and_env(quantization_config, compilation_config)
+        (
+            optimization_config,
+            quantization_override_env,
+            compilation_override_env,
+            sharding_override_env,
+        ) = _extract_optimization_config_and_env(
+            quantization_config, compilation_config, sharding_config
         )
 
         if not optimization_config:
@@ -807,11 +815,20 @@ class JumpStart(ABC):
             {
                 **(quantization_override_env or {}),
                 **(compilation_override_env or {}),
+                **(sharding_override_env or {}),
             },
         )
         if optimization_env_vars:
             self.pysdk_model.env.update(optimization_env_vars)
-        if quantization_config or is_compilation:
+
+        if sharding_config and self.pysdk_model._enable_network_isolation:
+            logger.warning(
+                "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
+                "Loading of model requires network access. Setting it to False."
+            )
+            self.pysdk_model._enable_network_isolation = False
+
+        if quantization_config or sharding_config or is_compilation:
             return create_optimization_job_args
         return None
 
