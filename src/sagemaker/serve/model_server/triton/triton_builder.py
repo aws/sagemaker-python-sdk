@@ -32,7 +32,7 @@ from sagemaker.remote_function.core.serialization import _MetaData
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_TRITON_MODE = {Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT}
+SUPPORTED_TRITON_MODE = {Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT, Mode.IN_PROCESS}
 SUPPORTED_TRITON_FRAMEWORK = {"pytorch", "tensorflow"}
 INPUT_NAME = "input_1"
 OUTPUT_NAME = "output_1"

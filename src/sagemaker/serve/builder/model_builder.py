@@ -87,7 +87,10 @@ from sagemaker.serve.utils.optimize_utils import (
     _extract_speculative_draft_model_provider,
     _jumpstart_speculative_decoding,
 )
-from sagemaker.serve.utils.predictors import _get_local_mode_predictor, InProcessModePredictor
+from sagemaker.serve.utils.predictors import (
+    _get_local_mode_predictor,
+    _get_in_process_mode_predictor,
+)
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
     _get_gpu_info_fallback,
@@ -435,11 +438,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             # init the InProcessMode object
             self.modes[str(Mode.IN_PROCESS)] = InProcessMode(
                 inference_spec=self.inference_spec,
+                model=self.model,
                 schema_builder=self.schema_builder,
                 session=self.sagemaker_session,
                 model_path=self.model_path,
                 env_vars=self.env_vars,
-                model_server=self.model_server,
             )
             self.modes[str(Mode.IN_PROCESS)].prepare()
             return None
@@ -575,7 +578,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.mode == Mode.IN_PROCESS:
             serializer, deserializer = self._get_client_translators()
 
-            predictor = InProcessModePredictor(
+            predictor = _get_in_process_mode_predictor(
                 self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
             )
 
@@ -597,6 +600,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 self.image_uri, container_timeout_in_second, self.secret_key, predictor
             )
             return predictor
+
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
             # Validate parameters
             # Instance type and instance count parameter validation is done based on deployment type
@@ -650,16 +654,17 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """Build the model for torchserve"""
         self._save_model_inference_spec()
 
-        self._auto_detect_container()
+        if self.mode != Mode.IN_PROCESS:
+            self._auto_detect_container()
 
-        self.secret_key = prepare_for_torchserve(
-            model_path=self.model_path,
-            shared_libs=self.shared_libs,
-            dependencies=self.dependencies,
-            session=self.sagemaker_session,
-            image_uri=self.image_uri,
-            inference_spec=self.inference_spec,
-        )
+            self.secret_key = prepare_for_torchserve(
+                model_path=self.model_path,
+                shared_libs=self.shared_libs,
+                dependencies=self.dependencies,
+                session=self.sagemaker_session,
+                image_uri=self.image_uri,
+                inference_spec=self.inference_spec,
+            )
 
         self._prepare_for_mode()
         self.model = self._create_model()
@@ -854,6 +859,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Type[Model]: A deployable ``Model`` object.
         """
+        from sagemaker.modules.train.model_trainer import ModelTrainer
 
         self.modes = dict()
 
@@ -908,10 +914,25 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         if isinstance(self.model, str):
             model_task = None
-            if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+
+            if self._is_jumpstart_model_id():
+                if self.mode == Mode.IN_PROCESS:
+                    raise ValueError(
+                        f"{self.mode} is not supported for Jumpstart models. "
+                        "Please use LOCAL_CONTAINER mode to deploy a Jumpstart model"
+                        " on your local machine."
+                    )
                 self.model_hub = ModelHub.JUMPSTART
+                logger.debug("Building for Jumpstart model Id...")
                 self.built_model = self._build_for_jumpstart()
                 return self.built_model
+
+            if self.mode != Mode.IN_PROCESS:
+                if self._use_jumpstart_equivalent():
+                    self.model_hub = ModelHub.JUMPSTART
+                    logger.debug("Building for Jumpstart equiavalent model Id...")
+                    self.built_model = self._build_for_jumpstart()
+                    return self.built_model
             self.model_hub = ModelHub.HUGGINGFACE
 
             if self.model_metadata:
@@ -931,7 +952,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 if model_task == "text-generation":
                     self.built_model = self._build_for_tgi()
                     return self.built_model
-                if model_task == "sentence-similarity":
+                if model_task in ["sentence-similarity", "feature-extraction"]:
                     self.built_model = self._build_for_tei()
                     return self.built_model
                 elif self._can_fit_on_single_gpu():
@@ -951,16 +972,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
     def _build_validations(self):
         """Validations needed for model server overrides, or auto-detection or fallback"""
-        if (
-            self.mode == Mode.IN_PROCESS
-            and self.model_server is not ModelServer.MMS
-            and self.model_server is not ModelServer.DJL_SERVING
-            and self.model_server is not ModelServer.TORCHSERVE
-        ):
-            raise ValueError(
-                "IN_PROCESS mode is only supported for the following servers "
-                "in beta release: MMS/Transformers, TORCHSERVE, DJL_SERVING server"
-            )
         if self.inference_spec and self.model:
             raise ValueError("Can only set one of the following: model, inference_spec.")
 

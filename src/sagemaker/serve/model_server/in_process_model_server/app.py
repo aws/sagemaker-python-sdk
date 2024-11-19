@@ -6,7 +6,8 @@ import asyncio
 import io
 import logging
 import threading
-from typing import Optional
+import torch
+from typing import Optional, Type
 
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
@@ -31,19 +32,52 @@ class InProcessServer:
 
     def __init__(
         self,
+        model: Optional[str] = None,
         inference_spec: Optional[InferenceSpec] = None,
-        schema_builder: Optional[SchemaBuilder] = None,
+        schema_builder: Type[SchemaBuilder] = None,
+        task: Optional[str] = None,
     ):
         self._thread = None
         self._loop = None
         self._stop_event = asyncio.Event()
+        self._shutdown_event = threading.Event()
         self._router = APIRouter()
+        self._task = task
         self.server = None
         self.port = None
         self.host = None
+        self.model = model
         self.inference_spec = inference_spec
         self.schema_builder = schema_builder
-        self._load_model = self.inference_spec.load(model_dir=None)
+
+        if self.inference_spec:
+            # Use inference_spec to load the model
+            self._load_model = self.inference_spec.load(model_dir=None)
+        elif isinstance(self.model, str):
+            try:
+                # Use transformers pipeline to load the model
+                try:
+                    from transformers import pipeline, Pipeline
+                except ImportError:
+                    logger.error(
+                        "Unable to import transformers, check if transformers is installed."
+                    )
+
+                device = 0 if torch.cuda.is_available() else -1
+
+                self._load_model = pipeline(task, model=self.model, device=device)
+            except Exception:
+                logger.info("Falling back to SentenceTransformer for model loading.")
+                try:
+                    from sentence_transformers import SentenceTransformer
+                except ImportError:
+                    logger.error(
+                        "Unable to import sentence-transformers, check if sentence-transformers is installed."
+                    )
+
+                self._load_model = SentenceTransformer(self.model)
+        else:
+            raise ValueError("Either inference_spec or model must be provided.")
 
         @self._router.post("/invoke")
         async def invoke(request: Request):
@@ -56,7 +90,15 @@ class InProcessServer:
                 io.BytesIO(request_body), content_type[0]
             )
             logger.debug(f"Received request: {input_data}")
-            response = self.inference_spec.invoke(input_data, self._load_model)
+            if self.inference_spec:
+                response = self.inference_spec.invoke(input_data, self._load_model)
+            else:
+                input_data = input_data["inputs"] if "inputs" in input_data else input_data
+                if isinstance(self._load_model, Pipeline):
+                    response = self._load_model(input_data, max_length=30, num_return_sequences=1)
+                else:
+                    embeddings = self._load_model.encode(input_data, normalize_embeddings=True)
+                    response = {"embeddings": embeddings.tolist()}
             return response
 
         self._create_server()
@@ -88,8 +130,14 @@ class InProcessServer:
             self._thread.start()
 
     def stop_server(self):
-        """Destroys the uvicorn server."""
-        # TODO: Implement me.
+        """Stops the Uvicorn server by setting the shutdown event."""
+        if self._thread and self._thread.is_alive():
+            logger.info("Shutting down the server...")
+            self._shutdown_event.set()
+            self.server.handle_exit(sig=0, frame=None)
+            self._thread.join()
+
+        logger.info("Server shutdown complete.")
 
     def _start_run_async_in_thread(self):
         """Placeholder docstring"""
