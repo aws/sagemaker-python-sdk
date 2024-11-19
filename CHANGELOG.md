@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.234.0 (2024-11-19)
+
+### Features
+
+ * optimization technique related validations.
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: add TGI 2.4.0 image uri (#4922)"
+ * pin testing deps
+ * add TGI 2.4.0 image uri
+ * add jumpstart ap-southeast-5
+ * Move sagemaker-mlflow to extras
+
 ## v2.233.0 (2024-11-04)
 
 ### Features
