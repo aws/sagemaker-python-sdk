@@ -104,6 +104,7 @@ NEURON_CONFIGURATION = {
 
 
 def _validate_optimization_configuration(
+    is_jumpstart: bool,
     instance_type: str,
     quantization_config: Dict[str, Any],
     compilation_config: Dict[str, Any],
@@ -153,6 +154,9 @@ def _validate_optimization_configuration(
         and optimization_combination.speculative_decoding == {None}
         and optimization_combination.sharding == {None}
     ):
+        # JumpStart has defaults for Inf/Trn instances
+        if is_jumpstart and instance_family in NEURON_CONFIGURATION["supported_instance_families"]:
+            return
         raise ValueError(
             (
                 "Optimizations that provide no optimization configs "

@@ -284,7 +284,10 @@ def test_is_draft_model_gated(draft_model_config, expected):
 
 
 @pytest.mark.parametrize(
-    "quantization_config, compilation_config, sharding_config, expected_config, expected_quant_env, expected_compilation_env, expected_sharding_env",
+    (
+        "quantization_config, compilation_config, sharding_config, expected_config, "
+        "expected_quant_env, expected_compilation_env, expected_sharding_env"
+    ),
     [
         (
             None,

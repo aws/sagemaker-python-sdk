@@ -405,6 +405,7 @@ def _extract_optimization_config_and_env(
 
     return None, None, None, None
 
+
 def _custom_speculative_decoding(
     model: Model,
     speculative_decoding_config: Optional[Dict],

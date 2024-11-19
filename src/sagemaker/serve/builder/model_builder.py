@@ -1248,6 +1248,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         # TODO: ideally these dictionaries need to be sagemaker_core shapes
         # TODO: for organization, abstract all validation behind this fn
         _validate_optimization_configuration(
+            is_jumpstart=self._is_jumpstart_model_id(),
             instance_type=instance_type,
             quantization_config=quantization_config,
             compilation_config=compilation_config,
@@ -1263,13 +1264,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         if self.mode != Mode.SAGEMAKER_ENDPOINT:
             raise ValueError("Model optimization is only supported in Sagemaker Endpoint Mode.")
-
-        if sharding_config and (
-            quantization_config or compilation_config or speculative_decoding_config
-        ):
-            raise ValueError(
-                "Sharding config is mutually exclusive and cannot be combined with any other optimization."
-            )
 
         if sharding_config and (
             quantization_config or compilation_config or speculative_decoding_config
@@ -1456,7 +1450,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 quantization_override_env,
                 compilation_override_env,
                 sharding_override_env,
-            ) = _extract_optimization_config_and_env(quantization_config, compilation_config)
+            ) = _extract_optimization_config_and_env(
+                quantization_config, compilation_config, sharding_config
+            )
             create_optimization_job_args["OptimizationConfigs"] = [
                 {k: v} for k, v in optimization_config.items()
             ]

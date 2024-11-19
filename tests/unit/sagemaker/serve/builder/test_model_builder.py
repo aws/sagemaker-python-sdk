@@ -2927,6 +2927,7 @@ class TestModelBuilder(unittest.TestCase):
             "Compilation is not supported for Llama-3.1 with a GPU instance.",
             lambda: model_builder.optimize(
                 job_name="job_name-123",
+                instance_type="ml.g5.24xlarge",
                 compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
                 output_path="s3://bucket/code/",
             ),
@@ -2975,9 +2976,10 @@ class TestModelBuilder(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError,
-            "Compilation is not supported with speculative decoding with a GPU instance.",
+            "Optimizations that use Compilation and Speculative Decoding are not supported for GPU instances.",
             lambda: model_builder.optimize(
                 job_name="job_name-123",
+                instance_type="ml.g5.24xlarge",
                 speculative_decoding_config={
                     "ModelProvider": "custom",
                     "ModelSource": "s3://data-source",
@@ -3481,6 +3483,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             ValueError,
             "Optimizations that uses None instance type are not currently supported",
             lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
                 sharding_config={"key": "value"},
                 instance_type=None,
                 quantization_config=None,
@@ -3496,6 +3499,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
                 "are currently not support on both GPU and Neuron instances."
             ),
             lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
                 instance_type="ml.g5.24xlarge",
                 quantization_config=None,
                 speculative_decoding_config=None,
@@ -3504,12 +3508,22 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             ),
         )
 
+        _validate_optimization_configuration(
+            is_jumpstart=True,
+            instance_type="ml.inf2.xlarge",
+            quantization_config=None,
+            speculative_decoding_config=None,
+            compilation_config=None,
+            sharding_config=None,
+        )
+
     def test_trt_and_vllm_configurations_throw_errors_for_rule_set(self):
         # Quantization:smoothquant without compilation
         self.assertRaisesRegex(
             ValueError,
             "Optimizations that use Quantization:smoothquant must be provided with Compilation for GPU instances.",
             lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
                 instance_type="ml.g5.24xlarge",
                 quantization_config={
                     "OverrideEnvironment": {"OPTION_QUANTIZE": "smoothquant"},
@@ -3525,6 +3539,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             ValueError,
             "Optimizations that use Quantization:test are not supported for GPU instances.",
             lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
                 instance_type="ml.g5.24xlarge",
                 quantization_config={
                     "OverrideEnvironment": {"OPTION_QUANTIZE": "test"},
@@ -3540,6 +3555,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             ValueError,
             "Optimizations that use Speculative Decoding are not supported on Neuron instances.",
             lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
                 instance_type="ml.inf2.xlarge",
                 quantization_config=None,
                 speculative_decoding_config={"key": "value"},
@@ -3552,6 +3568,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             ValueError,
             "Optimizations that use Sharding are not supported on Neuron instances.",
             lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
                 instance_type="ml.inf2.xlarge",
                 quantization_config=None,
                 speculative_decoding_config=None,
@@ -3563,6 +3580,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
     def test_trt_configurations_rule_set(self):
         # Can be compiled with quantization
         _validate_optimization_configuration(
+            is_jumpstart=False,
             instance_type="ml.g5.24xlarge",
             quantization_config={
                 "OverrideEnvironment": {"OPTION_QUANTIZE": "smoothquant"},
@@ -3574,6 +3592,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
 
         # Can be just compiled
         _validate_optimization_configuration(
+            is_jumpstart=False,
             instance_type="ml.g5.24xlarge",
             quantization_config=None,
             sharding_config=None,
@@ -3583,6 +3602,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
 
         # Can be just compiled with empty dict
         _validate_optimization_configuration(
+            is_jumpstart=False,
             instance_type="ml.g5.24xlarge",
             quantization_config=None,
             sharding_config=None,
@@ -3593,6 +3613,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
     def test_vllm_configurations_rule_set(self):
         # Can use speculative decoding
         _validate_optimization_configuration(
+            is_jumpstart=False,
             instance_type="ml.g5.24xlarge",
             quantization_config=None,
             sharding_config=None,
@@ -3602,6 +3623,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
 
         # Can be quantized
         _validate_optimization_configuration(
+            is_jumpstart=False,
             instance_type="ml.g5.24xlarge",
             quantization_config={
                 "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
@@ -3613,6 +3635,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
 
         # Can be sharded
         _validate_optimization_configuration(
+            is_jumpstart=False,
             instance_type="ml.g5.24xlarge",
             quantization_config=None,
             sharding_config={"key": "value"},
@@ -3623,6 +3646,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
     def test_neuron_configurations_rule_set(self):
         # Can be compiled
         _validate_optimization_configuration(
+            is_jumpstart=False,
             instance_type="ml.inf2.xlarge",
             quantization_config=None,
             sharding_config=None,
@@ -3632,6 +3656,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
 
         # Can be compiled with empty dict
         _validate_optimization_configuration(
+            is_jumpstart=False,
             instance_type="ml.inf2.xlarge",
             quantization_config=None,
             sharding_config=None,
