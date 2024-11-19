@@ -16,7 +16,6 @@ import copy
 import logging
 
 import pytest
-from contextlib import nullcontext
 from mock import patch
 
 from sagemaker import image_uris
@@ -715,8 +714,8 @@ def test_retrieve_huggingface(config_for_framework):
         container_version="cu110-ubuntu18.04",
     )
     assert (
-            "564829616587.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
-            "1.6.0-transformers4.3.1-gpu-py37-cu110-ubuntu18.04" == pt_new_version
+        "564829616587.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
+        "1.6.0-transformers4.3.1-gpu-py37-cu110-ubuntu18.04" == pt_new_version
     )
 
 
@@ -769,6 +768,7 @@ def test_retrieve_with_pipeline_variable():
         image_scope="training",
     )
 
+
 @patch("sagemaker.image_uris.config_for_framework")
 def test_get_latest_version_function_with_invalid_framework(config_for_framework):
     config_for_framework.side_effect = FileNotFoundError
@@ -777,6 +777,7 @@ def test_get_latest_version_function_with_invalid_framework(config_for_framework
         image_uris.retrieve("xgboost", "inference")
         assert "No framework config for framework" in str(e.exception)
 
+
 @patch("sagemaker.image_uris.config_for_framework")
 def test_get_latest_version_function_with_no_framework(config_for_framework):
     config_for_framework.side_effect = {}
@@ -784,6 +785,7 @@ def test_get_latest_version_function_with_no_framework(config_for_framework):
     with pytest.raises(Exception) as e:
         image_uris.retrieve("xgboost", "inference")
         assert "No framework config for framework" in str(e.exception)
+
 
 @pytest.mark.parametrize(
     "framework",
@@ -854,7 +856,6 @@ def test_get_latest_version_function_with_no_framework(config_for_framework):
         "sagemaker-base-python",
     ],
 )
-
 @patch("sagemaker.image_uris.config_for_framework")
 @patch("sagemaker.image_uris.retrieve")
 def test_retrieve_with_parameterized(mock_image_retrieve, mock_config_for_framework, framework):

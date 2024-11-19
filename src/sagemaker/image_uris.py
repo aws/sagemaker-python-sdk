@@ -17,7 +17,7 @@ import json
 import logging
 import os
 import re
-from typing import Optional, Tuple
+from typing import Optional
 from packaging.version import Version
 
 from sagemaker import utils
@@ -463,6 +463,7 @@ def _get_latest_versions(list_of_versions):
     print("SORT")
     return sorted(list_of_versions, reverse=True)[0]
 
+
 def _get_latest_version(framework, version, image_scope):
     """Get the latest version from the input framework"""
     if version:
@@ -478,6 +479,7 @@ def _get_latest_version(framework, version, image_scope):
     if not version:
         version = _fetch_latest_version_from_config(framework_config, image_scope)
     return version
+
 
 def _validate_accelerator_type(accelerator_type):
     """Raises a ``ValueError`` if ``accelerator_type`` is invalid."""
@@ -748,7 +750,7 @@ def get_base_python_image_uri(region, py_version="310") -> str:
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo_and_tag)
 
 
-def _fetch_latest_version_from_config(
+def _fetch_latest_version_from_config(  # pylint: disable=R0911
     framework_config: dict, image_scope: Optional[str] = None
 ) -> Optional[str]:
     """Helper function to fetch the latest version as a string from a framework's config
