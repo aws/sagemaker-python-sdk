@@ -212,42 +212,6 @@ class TransformersLocalModePredictor(PredictorBase):
         self._mode_obj.destroy_server()
 
 
-class InProcessModePredictor(PredictorBase):
-    """Lightweight predictor for in process mode deployment"""
-
-    def __init__(
-        self,
-        mode_obj: Type[InProcessMode],
-        serializer=JSONSerializer(),
-        deserializer=JSONDeserializer(),
-    ):
-        self._mode_obj = mode_obj
-        self.serializer = serializer
-        self.deserializer = deserializer
-
-    def predict(self, data):
-        """Placeholder docstring"""
-        return self._mode_obj._invoke_serving(
-            self.serializer.serialize(data),
-            self.content_type,
-            self.deserializer.ACCEPT[0],
-        )
-
-    @property
-    def content_type(self):
-        """The MIME type of the data sent to the inference endpoint."""
-        return self.serializer.CONTENT_TYPE
-
-    @property
-    def accept(self):
-        """The content type(s) that are expected from the inference endpoint."""
-        return self.deserializer.ACCEPT
-
-    def delete_predictor(self):
-        """Shut down and remove the container that you created in LOCAL_CONTAINER mode"""
-        self._mode_obj.destroy_server()
-
-
 class TeiLocalModePredictor(PredictorBase):
     """Lightweight Tei predictor for local deployment in IN_PROCESS and LOCAL_CONTAINER modes"""
 
@@ -352,6 +316,54 @@ def _get_local_mode_predictor(
         )
 
     raise ValueError("%s model server is not supported yet!" % model_server)
+
+
+class InProcessModePredictor(PredictorBase):
+    """Lightweight predictor for in process mode deployment"""
+
+    def __init__(
+        self,
+        mode_obj: Type[InProcessMode],
+        serializer=JSONSerializer(),
+        deserializer=JSONDeserializer(),
+    ):
+        self._mode_obj = mode_obj
+        self.serializer = serializer
+        self.deserializer = deserializer
+
+    def predict(self, data):
+        """Placeholder docstring"""
+        return self._mode_obj._invoke_serving(
+            self.serializer.serialize(data),
+            self.content_type,
+            self.deserializer.ACCEPT[0],
+        )
+
+    @property
+    def content_type(self):
+        """The MIME type of the data sent to the inference endpoint."""
+        return self.serializer.CONTENT_TYPE
+
+    @property
+    def accept(self):
+        """The content type(s) that are expected from the inference endpoint."""
+        return self.deserializer.ACCEPT
+
+    def delete_predictor(self):
+        """Shut down and remove the container that you created in IN_PROCESS mode"""
+        self._mode_obj.destroy_server()
+
+
+def _get_in_process_mode_predictor(
+    # model_server: ModelServer,
+    mode_obj: Type[InProcessMode],
+    serializer=IdentitySerializer(),
+    deserializer=BytesDeserializer(),
+) -> Type[PredictorBase]:
+    """Returns Predictor for IN_PROCESS mode"""
+    return InProcessModePredictor(
+        mode_obj=mode_obj, serializer=serializer, deserializer=deserializer
+    )
 
 
 def retrieve_predictor(

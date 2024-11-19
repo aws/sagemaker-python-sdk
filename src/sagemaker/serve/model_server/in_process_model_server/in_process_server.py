@@ -18,7 +18,7 @@ class InProcessServing:
         from sagemaker.serve.model_server.in_process_model_server.app import InProcessServer
 
         self.server = InProcessServer(
-            inference_spec=self.inference_spec, schema_builder=self.schema_builder
+            inference_spec=self.inference_spec, model=self.model, schema_builder=self.schema_builder
         )
         self.server.start_server()
 

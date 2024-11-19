@@ -17,7 +17,6 @@ from unittest.mock import patch, Mock
 
 from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve import SchemaBuilder
-from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.utils.exceptions import InProcessDeepPingException
 
 
@@ -25,6 +24,7 @@ mock_prompt = "Hello, I'm a language model,"
 mock_response = "Hello, I'm a language model, and I'm here to help you with your English."
 mock_sample_input = {"inputs": mock_prompt, "parameters": {}}
 mock_sample_output = [{"generated_text": mock_response}]
+mock_model = "gpt2"
 
 
 class TestInProcessMode(unittest.TestCase):
@@ -40,8 +40,8 @@ class TestInProcessMode(unittest.TestCase):
 
         mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
         in_process_mode = InProcessMode(
-            model_server=ModelServer.MMS,
             inference_spec=mock_inference_spec,
+            model=mock_model,
             schema_builder=mock_schema_builder,
             session=mock_session,
             model_path="model_path",
@@ -67,8 +67,8 @@ class TestInProcessMode(unittest.TestCase):
 
         mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
         in_process_mode = InProcessMode(
-            model_server=ModelServer.DJL_SERVING,
             inference_spec=mock_inference_spec,
+            model=mock_model,
             schema_builder=mock_schema_builder,
             session=mock_session,
             model_path="model_path",
@@ -94,8 +94,8 @@ class TestInProcessMode(unittest.TestCase):
 
         mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
         in_process_mode = InProcessMode(
-            model_server=ModelServer.MMS,
             inference_spec=mock_inference_spec,
+            model=mock_model,
             schema_builder=mock_schema_builder,
             session=mock_session,
             model_path="model_path",
@@ -109,8 +109,8 @@ class TestInProcessMode(unittest.TestCase):
         mock_inference_spec.load.side_effect = lambda *args, **kwargs: "Dummy load"
         mock_schema_builder = SchemaBuilder(mock_sample_input, mock_sample_output)
         in_process_mode = InProcessMode(
-            model_server=ModelServer.MMS,
             inference_spec=mock_inference_spec,
+            model=mock_model,
             schema_builder=mock_schema_builder,
             session=mock_session,
             model_path="model_path",
@@ -139,8 +139,8 @@ class TestInProcessMode(unittest.TestCase):
         )
 
         in_process_mode = InProcessMode(
-            model_server=ModelServer.MMS,
             inference_spec=mock_inference_spec,
+            model=mock_model,
             schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
             session=mock_session,
             model_path="model_path",
@@ -151,9 +151,7 @@ class TestInProcessMode(unittest.TestCase):
 
         in_process_mode.create_server(predictor=mock_predictor)
 
-        mock_logger.info.assert_called_once_with(
-            "Waiting for model server %s to start up...", ModelServer.MMS
-        )
+        mock_logger.info.assert_called_once_with("Waiting for fastapi server to start up...")
         mock_logger.debug.assert_called_once_with(
             "Ping health check has passed. Returned %s", str(mock_response)
         )
@@ -180,8 +178,8 @@ class TestInProcessMode(unittest.TestCase):
         )
 
         in_process_mode = InProcessMode(
-            model_server=ModelServer.MMS,
             inference_spec=mock_inference_spec,
+            model=mock_model,
             schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
             session=mock_session,
             model_path="model_path",
@@ -204,8 +202,8 @@ class TestInProcessMode(unittest.TestCase):
         mock_stop_serving,
     ):
         in_process_mode = InProcessMode(
-            model_server=ModelServer.DJL_SERVING,
             inference_spec=mock_inference_spec,
+            model=mock_model,
             schema_builder=SchemaBuilder(mock_sample_input, mock_sample_output),
             session=mock_session,
             model_path="model_path",

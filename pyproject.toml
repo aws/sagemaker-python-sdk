@@ -35,6 +35,7 @@ dependencies = [
   "boto3>=1.34.142,<2.0",
   "cloudpickle==2.2.1",
   "docker",
+  "fastapi",
   "google-pasta",
   "importlib-metadata>=1.4.0,<7.0",
   "jsonschema",
@@ -54,6 +55,7 @@ dependencies = [
   "tblib>=1.7.0,<4",
   "tqdm",
   "urllib3>=1.26.8,<3.0.0",
+  "uvicorn"
 ]
 
 [project.scripts]

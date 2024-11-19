@@ -78,7 +78,6 @@ class DJL(ABC):
         self.mode = None
         self.model_server = None
         self.image_uri = None
-        self.inference_spec = None
         self._is_custom_image_uri = False
         self.image_config = None
         self.vpc_config = None
@@ -263,12 +262,7 @@ class DJL(ABC):
 
         _create_dir_structure(self.model_path)
         if not hasattr(self, "pysdk_model"):
-            if self.inference_spec is not None:
-                self.env_vars.update({"HF_MODEL_ID": self.inference_spec.get_model()})
-            else:
-                self.env_vars.update({"HF_MODEL_ID": self.model})
-
-            logger.info(self.env_vars)
+            self.env_vars.update({"HF_MODEL_ID": self.model})
 
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.env_vars.get("HF_MODEL_ID"), self.env_vars.get("HF_TOKEN")
