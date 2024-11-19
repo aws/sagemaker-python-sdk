@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.235.0 (2024-11-19)
+
+### Features
+
+ * Optimize() validations across TRT, VLLM, Neuron container optimizations
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  11-19-2024 06:17:58 PST
+
 ## v2.234.0 (2024-11-19)
 
 ### Features
