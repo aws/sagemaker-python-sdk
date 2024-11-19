@@ -87,7 +87,7 @@ from sagemaker.modules.templates import (
     EXECUTE_BASIC_SCRIPT_DRIVER,
 )
 from sagemaker.modules import logger
-from sagemaker.modules.train.sm_recipes.utils import get_args_from_recipe, _determine_device_type
+from sagemaker.modules.train.sm_recipes.utils import _get_args_from_recipe, _determine_device_type
 
 
 class Mode(Enum):
@@ -154,7 +154,7 @@ class ModelTrainer(BaseModel):
             see: https://docs.aws.amazon.com/sagemaker/latest/dg-ecr-paths/sagemaker-algo-docker-registry-paths
         training_image_config (Optional[TrainingImageConfig]):
             Training image Config. This is the configuration to use an image from a private
-            Docker registry for a traininob.
+            Docker registry for a training job.
         output_data_config (Optional[OutputDataConfig]):
             The output data configuration. This is used to specify the output data location
             for the training job.
@@ -480,10 +480,6 @@ class ModelTrainer(BaseModel):
                 session_chaining_config=self._session_chaining_config,
             )
             self._latest_training_job = training_job
-
-            # Clean up the temporary directory if it exists
-            if self._temp_recipe_train_dir is not None:
-                self._temp_recipe_train_dir.cleanup()
 
             if wait:
                 training_job.wait(logs=logs)
@@ -816,11 +812,18 @@ class ModelTrainer(BaseModel):
         training_recipe: str,
         compute: Compute,
         recipe_overrides: Optional[Dict[str, Any]] = None,
+        requirements: Optional[str] = None,
         training_image: Optional[str] = None,
+        training_image_config: Optional[TrainingImageConfig] = None,
+        output_data_config: Optional[OutputDataConfig] = None,
+        input_data_config: Optional[List[Union[Channel, InputData]]] = None,
+        checkpoint_config: Optional[CheckpointConfig] = None,
+        training_input_mode: Optional[str] = "File",
+        environment: Optional[Dict[str, str]] = None,
+        tags: Optional[List[Tag]] = None,
         session: Optional[Session] = None,
         role: Optional[str] = None,
         base_job_name: Optional[str] = None,
-        **kwargs,
     ) -> "ModelTrainer":
         """Create a ModelTrainer from a training recipe.
 
@@ -833,9 +836,33 @@ class ModelTrainer(BaseModel):
                 the training job. If not specified, will default to 1 instance of ml.m5.xlarge.
             recipe_overrides (Optional[Dict[str, Any]]):
                 The recipe overrides. This is used to override the default recipe parameters.
+            requirements (Optional[str]):
+                The path to a requirements file to install in the training job container.
             training_image (Optional[str]):
                 The training image URI to use for the training job container. If not specified,
                 the training image will be determined from the recipe.
+            training_image_config (Optional[TrainingImageConfig]):
+                Training image Config. This is the configuration to use an image from a private
+                Docker registry for a training job.
+            output_data_config (Optional[OutputDataConfig]):
+                The output data configuration. This is used to specify the output data location
+                for the training job.
+                If not specified, will default to `s3://<default_bucket>/<base_job_name>/output/`.
+            input_data_config (Optional[List[Union[Channel, InputData]]]):
+                The input data config for the training job.
+                Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
+                string, local file path string, S3DataSource object, or FileSystemDataSource object.
+            checkpoint_config (Optional[CheckpointConfig]):
+                Contains information about the output location for managed spot training checkpoint
+                data.
+            training_input_mode (Optional[str]):
+                The input mode for the training job. Valid values are "Pipe", "File", "FastFile".
+                Defaults to "File".
+            environment (Optional[Dict[str, str]]):
+                The environment variables for the training job.
+            tags (Optional[List[Tag]]):
+                An array of key-value pairs. You can use tags to categorize your AWS resources
+                in different ways, for example, by purpose, owner, or environment.
             session (Optional[Session]):
                 The SageMaker session.
                 If not specified, a new session will be created.
@@ -846,9 +873,6 @@ class ModelTrainer(BaseModel):
                 The base name for the training job.
                 If not specified, a default name will be generated using the algorithm name
                 or training image.
-            kwargs:
-                Additional keyword arguments to pass to the ModelTrainer constructor.
-
         """
         if compute.instance_type is None:
             raise ValueError(
@@ -865,20 +889,37 @@ class ModelTrainer(BaseModel):
             session = Session()
             logger.warning("Session not provided. Using default Session.")
         if role is None:
-            role = get_execution_role()
+            role = get_execution_role(sagemaker_session=session)
             logger.warning(f"Role not provided. Using default role:\n{role}")
 
-        model_trainer_args, recipe_train_dir = get_args_from_recipe(
+        # The training recipe is used to prepare the following args:
+        # - source_code
+        # - training_image
+        # - distributed_runner
+        # - compute
+        # - hyperparameters
+        model_trainer_args, recipe_train_dir = _get_args_from_recipe(
             training_recipe=training_recipe,
             recipe_overrides=recipe_overrides,
+            requirements=requirements,
             compute=compute,
-            session=session,
+            region_name=session.boto_region_name,
         )
         if training_image is not None:
             model_trainer_args["training_image"] = training_image
 
         model_trainer = cls(
-            session=session, role=role, base_job_name=base_job_name, **model_trainer_args, **kwargs
+            session=session,
+            role=role,
+            base_job_name=base_job_name,
+            training_image_config=training_image_config,
+            output_data_config=output_data_config,
+            input_data_config=input_data_config,
+            checkpoint_config=checkpoint_config,
+            training_input_mode=training_input_mode,
+            environment=environment,
+            tags=tags,
+            **model_trainer_args,
         )
 
         model_trainer._temp_recipe_train_dir = recipe_train_dir
