@@ -872,7 +872,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Type[Model]: A deployable ``Model`` object.
         """
-        from sagemaker.modules.train.model_trainer import ModelTrainer
 
         self.modes = dict()
 
@@ -1728,10 +1727,24 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         Replace it with the equivalent if there's one
         """
+        # Do not use the equivalent JS model if image_uri or env_vars is provided
+        if self.image_uri or self.env_vars:
+            return False
         if not hasattr(self, "_has_jumpstart_equivalent"):
             self._jumpstart_mapping = self._retrieve_hugging_face_model_mapping()
             self._has_jumpstart_equivalent = self.model in self._jumpstart_mapping
         if self._has_jumpstart_equivalent:
+            # Use schema builder from HF model metadata
+            if not self.schema_builder:
+                model_task = None
+                if self.model_metadata:
+                    model_task = self.model_metadata.get("HF_TASK")
+                hf_model_md = get_huggingface_model_metadata(self.model)
+                if not model_task:
+                    model_task = hf_model_md.get("pipeline_tag")
+                if model_task:
+                    self._hf_schema_builder_init(model_task)
+
             huggingface_model_id = self.model
             jumpstart_model_id = self._jumpstart_mapping[huggingface_model_id]["jumpstart-model-id"]
             self.model = jumpstart_model_id
@@ -1743,7 +1756,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 "artifact S3 URI and compare them."
             )
             logger.warning(  # pylint: disable=logging-fstring-interpolation
-                "Please note that for this model we are using the JumpStart's"
+                "Please note that for this model we are using the JumpStart's "
                 f'local copy "{jumpstart_model_id}" '
                 f'of the HuggingFace model "{huggingface_model_id}" you chose. '
                 "We strive to keep our local copy synced with the HF model hub closely. "

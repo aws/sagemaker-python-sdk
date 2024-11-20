@@ -111,13 +111,13 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
             if container_startup_timeout:
                 predictor = model.deploy(
                     role=role_arn,
-                    instance_count=1,
+                    initial_instance_count=1,
                     instance_type=instance_type_provided,
                     container_startup_health_check_timeout=container_startup_timeout,
                 )
             else:
                 predictor = model.deploy(
-                    role=role_arn, instance_count=1, instance_type=instance_type_provided
+                    role=role_arn, initial_instance_count=1, instance_type=instance_type_provided
                 )
 
             predicted_outputs = predictor.predict(inputs)
@@ -181,7 +181,7 @@ def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
 
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             predictor = model.deploy(
-                role=role_arn, instance_count=1, instance_type=instance_type_provided
+                role=role_arn, initial_instance_count=1, instance_type=instance_type_provided
             )
 
             predicted_outputs = predictor.predict(inputs)
