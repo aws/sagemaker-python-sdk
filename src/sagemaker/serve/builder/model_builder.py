@@ -20,9 +20,12 @@ from dataclasses import dataclass, field
 import logging
 import os
 import re
+import aws_cdk as cdk
 
 from pathlib import Path
 
+from constructs import Construct
+import sagemaker
 from sagemaker.enums import Tag
 from sagemaker.s3 import S3Downloader
 
@@ -1369,28 +1372,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
             return create_optimization_job_args
         return None
+    
+    
 
-    def _optimize_prepare_for_hf(self):
-        """Prepare huggingface model data for optimization."""
-        custom_model_path: str = (
-            self.model_metadata.get("CUSTOM_MODEL_PATH") if self.model_metadata else None
-        )
-        if _is_s3_uri(custom_model_path):
-            # Remove slash by the end of s3 uri, as it may lead to / subfolder during upload.
-            custom_model_path = (
-                custom_model_path[:-1] if custom_model_path.endswith("/") else custom_model_path
-            )
-        else:
-            if not custom_model_path:
-                custom_model_path = f"/tmp/sagemaker/model-builder/{self.model}"
-                download_huggingface_model_metadata(
-                    self.model,
-                    os.path.join(custom_model_path, "code"),
-                    self.env_vars.get("HUGGING_FACE_HUB_TOKEN"),
-                )
-
-        self.pysdk_model.model_data, env = self._prepare_for_mode(
-            model_path=custom_model_path,
-            should_upload_artifacts=True,
-        )
-        self.pysdk_model.env.update(env)
