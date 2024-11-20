@@ -44,6 +44,10 @@ def model_builder_model_schema_builder():
         model_path=HF_DIR,
         model="BAAI/bge-m3",
         schema_builder=SchemaBuilder(sample_input, loaded_response),
+        env_vars={
+            # Add this to bypass JumpStart model mapping
+            "HF_MODEL_ID": "BAAI/bge-m3"
+        },
     )
 
 
