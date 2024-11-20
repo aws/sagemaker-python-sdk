@@ -343,7 +343,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         # Auto detect the container image uri
         if self.image_uri:
             logger.info(
-                "Skipping auto detection as the image uri is provided %s",
+                "Test Skipping auto detection as the image uri is provided %s",
                 self.image_uri,
             )
             return

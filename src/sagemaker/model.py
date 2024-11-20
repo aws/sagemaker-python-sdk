@@ -598,6 +598,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
             source_uri=source_uri,
             model_card=model_card,
         )
+        print("Model package args are:", **model_pkg_args)
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
         )
@@ -977,6 +978,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 enable_network_isolation=self._enable_network_isolation,
                 tags=format_tags(tags),
             )
+            print("ruiliann test create_model_args:", create_model_args)  # Print create_model_args
+
+
             self.sagemaker_session.create_model(**create_model_args)
 
     def _get_model_uri(self):
