@@ -17,7 +17,7 @@ import pytest
 
 import os
 import boto3
-from sagemaker import Session
+from sagemaker.modules import Session
 
 DEFAULT_REGION = "us-west-2"
 

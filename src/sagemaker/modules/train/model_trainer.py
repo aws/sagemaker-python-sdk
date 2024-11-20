@@ -26,7 +26,7 @@ from sagemaker_core.shapes import AlgorithmSpecification
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 
-from sagemaker import get_execution_role, Session
+from sagemaker.modules import Session, get_execution_role
 from sagemaker.modules.configs import (
     Compute,
     StoppingCondition,
@@ -119,8 +119,9 @@ class ModelTrainer(BaseModel):
     ```
 
     Attributes:
-        sagemaker_session (Optiona(Session)):
-            The SageMaker session.
+        session (Optiona(Session)):
+            The SageMakerCore session. For convinience, can be imported like:
+            `from sagemaker.modules import Session`.
             If not specified, a new session will be created.
         role (Optional(str)):
             The IAM role ARN for the training job.

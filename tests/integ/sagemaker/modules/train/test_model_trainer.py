@@ -39,7 +39,7 @@ DEFAULT_CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-traini
 
 def test_hp_contract_basic_py_script(modules_sagemaker_session):
     source_code = SourceCode(
-        source_dir=f"{DATA_DIR}/modules/params-script",
+        source_dir=f"{DATA_DIR}/modules/params_script",
         entry_script="train.py",
     )
 
@@ -56,7 +56,7 @@ def test_hp_contract_basic_py_script(modules_sagemaker_session):
 
 def test_hp_contract_basic_sh_script(modules_sagemaker_session):
     source_code = SourceCode(
-        source_dir=f"{DATA_DIR}/modules/params-script",
+        source_dir=f"{DATA_DIR}/modules/params_script",
         entry_script="train.sh",
     )
     model_trainer = ModelTrainer(
@@ -72,7 +72,7 @@ def test_hp_contract_basic_sh_script(modules_sagemaker_session):
 
 def test_hp_contract_mpi_script(modules_sagemaker_session):
     source_code = SourceCode(
-        source_dir=f"{DATA_DIR}/modules/params-script",
+        source_dir=f"{DATA_DIR}/modules/params_script",
         entry_script="train.py",
     )
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
@@ -91,7 +91,7 @@ def test_hp_contract_mpi_script(modules_sagemaker_session):
 
 def test_hp_contract_torchrun_script(modules_sagemaker_session):
     source_code = SourceCode(
-        source_dir=f"{DATA_DIR}/modules/params-script",
+        source_dir=f"{DATA_DIR}/modules/params_script",
         entry_script="train.py",
     )
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
