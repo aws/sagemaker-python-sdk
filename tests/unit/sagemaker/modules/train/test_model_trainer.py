@@ -146,9 +146,9 @@ def model_trainer():
 def test_model_trainer_param_validation(test_case, modules_session):
     if test_case["should_throw"]:
         with pytest.raises(ValueError):
-            ModelTrainer(**test_case["init_params"], session=modules_session)
+            ModelTrainer(**test_case["init_params"], sagemaker_session=modules_session)
     else:
-        trainer = ModelTrainer(**test_case["init_params"], session=modules_session)
+        trainer = ModelTrainer(**test_case["init_params"], sagemaker_session=modules_session)
         assert trainer is not None
         assert trainer.training_image == DEFAULT_IMAGE
         assert trainer.compute == DEFAULT_COMPUTE_CONFIG
@@ -261,7 +261,7 @@ def test_metric_settings(mock_training_job, modules_session):
 
     model_trainer = ModelTrainer(
         training_image=image_uri,
-        session=modules_session,
+        sagemaker_session=modules_session,
         role=role,
     ).with_metric_settings(
         enable_sage_maker_metrics_time_series=True, metric_definitions=[metric_definition]
@@ -306,7 +306,7 @@ def test_debugger_settings(mock_training_job, modules_session):
 
     model_trainer = ModelTrainer(
         training_image=image_uri,
-        session=modules_session,
+        sagemaker_session=modules_session,
         role=role,
     ).with_debugger_settings(
         debug_hook_config=debug_hook_config,
@@ -367,7 +367,7 @@ def test_additional_settings(mock_training_job, modules_session):
     )
     model_trainer = ModelTrainer(
         training_image=image_uri,
-        session=modules_session,
+        sagemaker_session=modules_session,
         role=role,
     ).with_additional_settings(
         retry_strategy=retry_strategy,
@@ -467,7 +467,7 @@ def test_train_with_distributed_runner(
 
     try:
         model_trainer = ModelTrainer(
-            session=modules_session,
+            sagemaker_session=modules_session,
             training_image=DEFAULT_IMAGE,
             source_code=test_case["source_code"],
             distributed_runner=test_case["distributed_runner"],
