@@ -836,11 +836,24 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.env_vars.update({"MLFLOW_MODEL_FLAVOR": f"{deployment_flavor}"})
         self.dependencies.update({"requirements": mlflow_model_dependency_path})
 
+    @_capture_telemetry("ModelBuilder.build_training_job")
+    def _collect_training_job_model_telemetry(self):
+        return
+
+    @_capture_telemetry("ModelBuilder.build_model_trainer")
+    def _collect_model_trainer_model_telemetry(self):
+        return
+
+    @_capture_telemetry("ModelBuilder.build_estimator")
+    def _collect_estimator_model_telemetry(self):
+        return
+
     # Model Builder is a class to build the model for deployment.
     # It supports three modes of deployment
     # 1/ SageMaker Endpoint
     # 2/ Local launch with container
     # 3/ In process mode with Transformers server in beta release
+    @_capture_telemetry("ModelBuilder.build")
     def build(  # pylint: disable=R0911
         self,
         mode: Type[Mode] = None,
@@ -868,15 +881,20 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if role_arn:
             self.role_arn = role_arn
 
+        self.serve_settings = self._get_serve_setting()
+
         if isinstance(self.model, TrainingJob):
             self.model_path = self.model.model_artifacts.s3_model_artifacts
             self.model = None
+            self._collect_training_job_model_telemetry()
         elif isinstance(self.model, ModelTrainer):
             self.model_path = self.model._latest_training_job.model_artifacts.s3_model_artifacts
             self.model = None
+            self._collect_model_trainer_model_telemetry()
         elif isinstance(self.model, Estimator):
             self.model_path = self.model.output_path
             self.model = None
+            self._collect_estimator_model_telemetry()
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
 
@@ -899,7 +917,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             self.sagemaker_session.sagemaker_client._user_agent_creator.to_string
         )
 
-        self.serve_settings = self._get_serve_setting()
         self._is_custom_image_uri = self.image_uri is not None
 
         self._handle_mlflow_input()
@@ -1017,6 +1034,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.model_server == ModelServer.MMS:
             return self._build_for_transformers()
 
+    @_capture_telemetry("ModelBuilder.save")
     def save(
         self,
         save_path: Optional[str] = None,
@@ -1566,6 +1584,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         )
         self.pysdk_model.env.update(env)
 
+    @_capture_telemetry("ModelBuilder.deploy")
     def deploy(
         self,
         endpoint_name: str = None,

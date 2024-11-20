@@ -171,7 +171,7 @@ def _capture_telemetry(func_name: str):
 
             extra += f"&x-latency={round(elapsed, 2)}"
 
-            if not self.serve_settings.telemetry_opt_out:
+            if hasattr(self, "serve_settings") and not self.serve_settings.telemetry_opt_out:
                 _send_telemetry(
                     status,
                     MODE_TO_CODE[str(self.mode)],

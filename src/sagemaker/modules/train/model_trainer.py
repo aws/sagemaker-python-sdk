@@ -86,6 +86,8 @@ from sagemaker.modules.templates import (
     EXEUCTE_TORCHRUN_DRIVER,
     EXECUTE_BASIC_SCRIPT_DRIVER,
 )
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 from sagemaker.modules import logger
 from sagemaker.modules.train.sm_recipes.utils import _get_args_from_recipe, _determine_device_type
 
@@ -117,7 +119,7 @@ class ModelTrainer(BaseModel):
     ```
 
     Attributes:
-        session (Optiona(Session)):
+        sagemaker_session (Optiona(Session)):
             The SageMaker session.
             If not specified, a new session will be created.
         role (Optional(str)):
@@ -181,7 +183,7 @@ class ModelTrainer(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     training_mode: Mode = Mode.SAGEMAKER_TRAINING_JOB
-    session: Optional[Session] = None
+    sagemaker_session: Optional[Session] = None
     role: Optional[str] = None
     base_job_name: Optional[str] = None
     source_code: Optional[SourceCode] = None
@@ -299,12 +301,12 @@ class ModelTrainer(BaseModel):
         self._validate_distributed_runner(self.source_code, self.distributed_runner)
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
-            if self.session is None:
-                self.session = Session()
-                logger.warning("Session not provided. Using default Session.")
+            if self.sagemaker_session is None:
+                self.sagemaker_session = Session()
+                logger.warning("SageMaker session not provided. Using default Session.")
 
             if self.role is None:
-                self.role = get_execution_role(sagemaker_session=self.session)
+                self.role = get_execution_role(sagemaker_session=self.sagemaker_session)
                 logger.warning(f"Role not provided. Using default role:\n{self.role}")
 
         if self.base_job_name is None:
@@ -333,7 +335,7 @@ class ModelTrainer(BaseModel):
             )
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
-            session = self.session
+            session = self.sagemaker_session
             base_job_name = self.base_job_name
             self.output_data_config = OutputDataConfig(
                 s3_output_path=f"s3://{session.default_bucket()}/{base_job_name}",
@@ -348,6 +350,7 @@ class ModelTrainer(BaseModel):
         if self.training_image:
             logger.info(f"Training image URI: {self.training_image}")
 
+    @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
     @validate_call
     def train(
         self,
@@ -451,7 +454,7 @@ class ModelTrainer(BaseModel):
                 resource_config=resource_config,
                 vpc_config=vpc_config,
                 # Public Instance Attributes
-                session=self.session.boto_session,
+                session=self.sagemaker_session.boto_session,
                 role_arn=self.role,
                 tags=self.tags,
                 stopping_condition=self.stopping_condition,
@@ -494,7 +497,7 @@ class ModelTrainer(BaseModel):
                 instance_count=resource_config.instance_count,
                 image=algorithm_specification.training_image,
                 container_root=self.local_container_root,
-                sagemaker_session=self.session,
+                sagemaker_session=self.sagemaker_session,
                 container_entrypoint=algorithm_specification.container_entrypoint,
                 container_arguments=algorithm_specification.container_arguments,
                 input_data_config=input_data_config,
@@ -539,9 +542,9 @@ class ModelTrainer(BaseModel):
                         input_mode="File",
                     )
                 else:
-                    s3_uri = self.session.upload_data(
+                    s3_uri = self.sagemaker_session.upload_data(
                         path=data_source,
-                        bucket=self.session.default_bucket(),
+                        bucket=self.sagemaker_session.default_bucket(),
                         key_prefix=f"{self.base_job_name}/input/{channel_name}",
                     )
                     channel = Channel(
@@ -821,7 +824,7 @@ class ModelTrainer(BaseModel):
         training_input_mode: Optional[str] = "File",
         environment: Optional[Dict[str, str]] = None,
         tags: Optional[List[Tag]] = None,
-        session: Optional[Session] = None,
+        sagemaker_session: Optional[Session] = None,
         role: Optional[str] = None,
         base_job_name: Optional[str] = None,
     ) -> "ModelTrainer":
@@ -863,7 +866,7 @@ class ModelTrainer(BaseModel):
             tags (Optional[List[Tag]]):
                 An array of key-value pairs. You can use tags to categorize your AWS resources
                 in different ways, for example, by purpose, owner, or environment.
-            session (Optional[Session]):
+            sagemaker_session (Optional[Session]):
                 The SageMaker session.
                 If not specified, a new session will be created.
             role (Optional[str]):
@@ -885,9 +888,9 @@ class ModelTrainer(BaseModel):
                 + "Please provide a GPU or Tranium instance type."
             )
 
-        if session is None:
-            session = Session()
-            logger.warning("Session not provided. Using default Session.")
+        if sagemaker_session is None:
+            sagemaker_session = Session()
+            logger.warning("SageMaker session not provided. Using default Session.")
         if role is None:
             role = get_execution_role(sagemaker_session=session)
             logger.warning(f"Role not provided. Using default role:\n{role}")
@@ -903,13 +906,13 @@ class ModelTrainer(BaseModel):
             recipe_overrides=recipe_overrides,
             requirements=requirements,
             compute=compute,
-            region_name=session.boto_region_name,
+            region_name=sagemaker_session.boto_region_name,
         )
         if training_image is not None:
             model_trainer_args["training_image"] = training_image
 
         model_trainer = cls(
-            session=session,
+            sagemaker_session=sagemaker_session,
             role=role,
             base_job_name=base_job_name,
             training_image_config=training_image_config,

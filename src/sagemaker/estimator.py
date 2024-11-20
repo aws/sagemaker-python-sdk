@@ -106,7 +106,8 @@ from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
-
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
@@ -1297,6 +1298,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             )
         return None
 
+    @_telemetry_emitter(feature=Feature.ESTIMATOR, func_name="estimator.fit")
     @runnable_by_pipeline
     def fit(
         self,
