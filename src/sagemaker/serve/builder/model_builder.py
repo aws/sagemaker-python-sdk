@@ -79,6 +79,7 @@ from sagemaker.serve.utils.optimize_utils import (
     _is_s3_uri,
     _custom_speculative_decoding,
     _extract_speculative_draft_model_provider,
+    _jumpstart_speculative_decoding,
 )
 from sagemaker.serve.utils.predictors import _get_local_mode_predictor
 from sagemaker.serve.utils.hardware_detector import (
@@ -107,6 +108,7 @@ from sagemaker.huggingface.llm_utils import (
     get_huggingface_model_metadata,
     download_huggingface_model_metadata,
 )
+from sagemaker.serve.validations.optimization import _validate_optimization_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -593,7 +595,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 )
 
         if "endpoint_logging" not in kwargs:
-            kwargs["endpoint_logging"] = True
+            kwargs["endpoint_logging"] = False
         predictor = self._original_deploy(
             *args,
             instance_type=instance_type,
@@ -1122,6 +1124,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -1144,6 +1147,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
                 Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
@@ -1173,6 +1178,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             quantization_config=quantization_config,
             compilation_config=compilation_config,
             speculative_decoding_config=speculative_decoding_config,
+            sharding_config=sharding_config,
             env_vars=env_vars,
             vpc_config=vpc_config,
             kms_key=kms_key,
@@ -1192,6 +1198,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -1215,6 +1222,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
                 Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
+                Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
             vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
@@ -1229,6 +1238,27 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Model: A deployable ``Model`` object.
         """
+        if (
+            hasattr(self, "enable_network_isolation")
+            and self.enable_network_isolation
+            and sharding_config
+        ):
+            raise ValueError(
+                "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
+                "Loading of model requires network access."
+            )
+
+        # TODO: ideally these dictionaries need to be sagemaker_core shapes
+        # TODO: for organization, abstract all validation behind this fn
+        _validate_optimization_configuration(
+            is_jumpstart=self._is_jumpstart_model_id(),
+            instance_type=instance_type,
+            quantization_config=quantization_config,
+            compilation_config=compilation_config,
+            sharding_config=sharding_config,
+            speculative_decoding_config=speculative_decoding_config,
+        )
+
         self.is_compiled = compilation_config is not None
         self.is_quantized = quantization_config is not None
         self.speculative_decoding_draft_model_source = _extract_speculative_draft_model_provider(
@@ -1238,8 +1268,35 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.mode != Mode.SAGEMAKER_ENDPOINT:
             raise ValueError("Model optimization is only supported in Sagemaker Endpoint Mode.")
 
-        if quantization_config and compilation_config:
-            raise ValueError("Quantization config and compilation config are mutually exclusive.")
+        if sharding_config and (
+            quantization_config or compilation_config or speculative_decoding_config
+        ):
+            raise ValueError(
+                (
+                    "Sharding config is mutually exclusive "
+                    "and cannot be combined with any other optimization."
+                )
+            )
+
+        if sharding_config:
+            has_tensor_parallel_degree_in_env_vars = (
+                env_vars and "OPTION_TENSOR_PARALLEL_DEGREE" in env_vars
+            )
+            has_tensor_parallel_degree_in_overrides = (
+                sharding_config
+                and sharding_config.get("OverrideEnvironment")
+                and "OPTION_TENSOR_PARALLEL_DEGREE" in sharding_config.get("OverrideEnvironment")
+            )
+            if (
+                not has_tensor_parallel_degree_in_env_vars
+                and not has_tensor_parallel_degree_in_overrides
+            ):
+                raise ValueError(
+                    (
+                        "OPTION_TENSOR_PARALLEL_DEGREE is a required "
+                        "environment variable with sharding config."
+                    )
+                )
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
         self.instance_type = instance_type or self.instance_type
@@ -1257,6 +1314,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 quantization_config=quantization_config,
                 compilation_config=compilation_config,
                 speculative_decoding_config=speculative_decoding_config,
+                sharding_config=sharding_config,
                 env_vars=env_vars,
                 vpc_config=vpc_config,
                 kms_key=kms_key,
@@ -1275,13 +1333,47 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 quantization_config=quantization_config,
                 compilation_config=compilation_config,
                 speculative_decoding_config=speculative_decoding_config,
+                sharding_config=sharding_config,
                 env_vars=env_vars,
                 vpc_config=vpc_config,
                 kms_key=kms_key,
                 max_runtime_in_sec=max_runtime_in_sec,
             )
 
+        if sharding_config:
+            self.pysdk_model._is_sharded_model = True
+
         if input_args:
+            optimization_instance_type = input_args["DeploymentInstanceType"]
+
+            # Compilation using TRTLLM and Llama-3.1 is currently not supported.
+            # TRTLLM is used by Neo if the following are provided:
+            #  1) a GPU instance type
+            #  2) compilation config
+            gpu_instance_families = ["g5", "g6", "p4d", "p4de", "p5"]
+            is_gpu_instance = optimization_instance_type and any(
+                gpu_instance_family in optimization_instance_type
+                for gpu_instance_family in gpu_instance_families
+            )
+
+            # HF Model ID format = "meta-llama/Meta-Llama-3.1-8B"
+            # JS Model ID format = "meta-textgeneration-llama-3-1-8b"
+            llama_3_1_keywords = ["llama-3.1", "llama-3-1"]
+            is_llama_3_1 = self.model and any(
+                keyword in self.model.lower() for keyword in llama_3_1_keywords
+            )
+
+            if is_gpu_instance and self.model and self.is_compiled:
+                if is_llama_3_1:
+                    raise ValueError(
+                        "Compilation is not supported for Llama-3.1 with a GPU instance."
+                    )
+                if speculative_decoding_config:
+                    raise ValueError(
+                        "Compilation is not supported with speculative decoding with "
+                        "a GPU instance."
+                    )
+
             self.sagemaker_session.sagemaker_client.create_optimization_job(**input_args)
             job_status = self.sagemaker_session.wait_for_optimization_job(job_name)
             return _generate_optimized_model(self.pysdk_model, job_status)
@@ -1300,6 +1392,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -1315,6 +1408,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
                 Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
+                Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
             vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
@@ -1326,11 +1421,19 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Optional[Dict[str, Any]]: Model optimization job input arguments.
         """
-        self.pysdk_model = _custom_speculative_decoding(
-            self.pysdk_model, speculative_decoding_config, False
-        )
+        if speculative_decoding_config:
+            if speculative_decoding_config.get("ModelProvider", "").lower() == "jumpstart":
+                _jumpstart_speculative_decoding(
+                    model=self.pysdk_model,
+                    speculative_decoding_config=speculative_decoding_config,
+                    sagemaker_session=self.sagemaker_session,
+                )
+            else:
+                self.pysdk_model = _custom_speculative_decoding(
+                    self.pysdk_model, speculative_decoding_config, False
+                )
 
-        if quantization_config or compilation_config:
+        if quantization_config or compilation_config or sharding_config:
             create_optimization_job_args = {
                 "OptimizationJobName": job_name,
                 "DeploymentInstanceType": self.instance_type,
@@ -1345,11 +1448,24 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             model_source = _generate_model_source(self.pysdk_model.model_data, False)
             create_optimization_job_args["ModelSource"] = model_source
 
-            optimization_config, override_env = _extract_optimization_config_and_env(
-                quantization_config, compilation_config
+            (
+                optimization_config,
+                quantization_override_env,
+                compilation_override_env,
+                sharding_override_env,
+            ) = _extract_optimization_config_and_env(
+                quantization_config, compilation_config, sharding_config
             )
-            create_optimization_job_args["OptimizationConfigs"] = [optimization_config]
-            self.pysdk_model.env.update(override_env)
+            create_optimization_job_args["OptimizationConfigs"] = [
+                {k: v} for k, v in optimization_config.items()
+            ]
+            self.pysdk_model.env.update(
+                {
+                    **(quantization_override_env or {}),
+                    **(compilation_override_env or {}),
+                    **(sharding_override_env or {}),
+                }
+            )
 
             output_config = {"S3OutputLocation": output_path}
             if kms_key:

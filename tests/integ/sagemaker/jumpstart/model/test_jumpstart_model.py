@@ -53,6 +53,8 @@ GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS = {
     "ap-southeast-2",
 }
 
+TEST_HUB_WITH_REFERENCE = "mock-hub-name"
+
 
 def test_non_prepacked_jumpstart_model(setup):
 

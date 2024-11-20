@@ -4172,6 +4172,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         skip_model_validation="None",
         source_uri=None,
         model_card=None,
+        model_life_cycle=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -4211,6 +4212,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             source_uri (str): The URI of the source for the model package (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
         """
         if containers:
             # Containers are provided. Now we can merge missing entries from config.
@@ -4269,6 +4271,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
 
         def submit(request):
@@ -7196,6 +7199,7 @@ def get_model_package_args(
     skip_model_validation=None,
     source_uri=None,
     model_card=None,
+    model_life_cycle=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -7237,6 +7241,7 @@ def get_model_package_args(
         source_uri (str): The URI of the source for the model package (default: None).
         model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+        model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
     Returns:
         dict: A dictionary of method argument names and values.
@@ -7293,6 +7298,8 @@ def get_model_package_args(
         model_package_args["skip_model_validation"] = skip_model_validation
     if source_uri is not None:
         model_package_args["source_uri"] = source_uri
+    if model_life_cycle is not None:
+        model_package_args["model_life_cycle"] = model_life_cycle
     if model_card is not None:
         original_req = model_card._create_request_args()
         if original_req.get("ModelCardName") is not None:
@@ -7327,6 +7334,7 @@ def get_create_model_package_request(
     skip_model_validation="None",
     source_uri=None,
     model_card=None,
+    model_life_cycle=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -7366,6 +7374,7 @@ def get_create_model_package_request(
         source_uri (str): The URI of the source for the model package (default: None).
         model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+        model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -7465,7 +7474,8 @@ def get_create_model_package_request(
     request_dict["SkipModelValidation"] = skip_model_validation
     if model_card is not None:
         request_dict["ModelCard"] = model_card
-
+    if model_life_cycle is not None:
+        request_dict["ModelLifeCycle"] = model_life_cycle
     return request_dict
 
 

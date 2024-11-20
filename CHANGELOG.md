@@ -1,5 +1,72 @@
 # Changelog
 
+## v2.235.1 (2024-11-20)
+
+### Bug Fixes and Other Changes
+
+ * Update sagemaker-core dep
+ * update image_uri_configs  11-20-2024 06:17:41 PST
+
+## v2.235.0 (2024-11-19)
+
+### Features
+
+ * Optimize() validations across TRT, VLLM, Neuron container optimizations
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  11-19-2024 06:17:58 PST
+
+## v2.234.0 (2024-11-19)
+
+### Features
+
+ * optimization technique related validations.
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: add TGI 2.4.0 image uri (#4922)"
+ * pin testing deps
+ * add TGI 2.4.0 image uri
+ * add jumpstart ap-southeast-5
+ * Move sagemaker-mlflow to extras
+
+## v2.233.0 (2024-11-04)
+
+### Features
+
+ * triton v24.09
+ * Marketplace model support in HubService
+
+### Bug Fixes and Other Changes
+
+ * Fixing JumpStart Tests
+ * bumping smp version from 2.6.0 to 2.6.1
+ * Updates for DJL 0.30.0 release
+
+## v2.232.3 (2024-10-30)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  10-29-2024 07:17:56 PST
+ * Skip pytorch tests incompatible with latest version 2.4.0
+ * adding eu-central-2 bucket info to JS constants
+ * update image_uri_configs  10-23-2024 11:26:03 PST
+ * update image_uri_configs  10-17-2024 07:17:55 PST
+ * update image_uri_configs  10-03-2024 07:17:59 PST
+ * update image_uri_configs  09-27-2024 07:18:01 PST
+ * modified pull request template
+ * fixing typo in dependecy setup
+ * release: huggingface tgi neuronx 0.0.25 image
+ * Revert "update cloudpickle version to >=2.2.1 in pyproject.toml (#4899)"
+ * update cloudpickle version to >=2.2.1 in pyproject.toml
+ * update cloudpickle version to >=2.2.1
+ * chore(deps): bump pyspark from 3.3.1 to 3.3.2 in /requirements/extras
+ * changes for PT 2.4 currency upgrade
+ * chore: add lmi image config in me-central-1
+ * tests: Implement integration tests covering JumpStart PrivateHub workflows
+ * Use Miniforge to replace MambaForge
+
 ## v2.232.2 (2024-10-03)
 
 ### Bug Fixes and Other Changes

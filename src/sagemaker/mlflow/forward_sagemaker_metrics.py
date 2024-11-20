@@ -20,7 +20,11 @@ import platform
 import re
 from typing import Set, Tuple, List, Dict, Generator
 import boto3
-import mlflow
+
+try:
+    import mlflow
+except ImportError:
+    raise ValueError("Unable to import mlflow, check if sagemaker-mlflow is installed.")
 from mlflow import MlflowClient
 from mlflow.entities import Metric, Param, RunTag
 

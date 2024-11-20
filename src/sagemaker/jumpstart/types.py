@@ -17,6 +17,7 @@ import re
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker_core.shapes import ModelAccessConfig as CoreModelAccessConfig
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.utils import (
     S3_PREFIX,
@@ -42,6 +43,7 @@ from sagemaker.jumpstart.hub.parser_utils import (
     camel_to_snake,
     walk_and_apply_json,
 )
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 
 class JumpStartDataHolderType:
@@ -1080,9 +1082,9 @@ class S3DataSource(JumpStartDataHolderType):
 class AdditionalModelDataSource(JumpStartDataHolderType):
     """Data class of additional model data source mirrors CreateModel API."""
 
-    SERIALIZATION_EXCLUSION_SET: Set[str] = set()
+    SERIALIZATION_EXCLUSION_SET = {"provider"}
 
-    __slots__ = ["channel_name", "s3_data_source"]
+    __slots__ = ["channel_name", "s3_data_source", "hosting_eula_key"]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a AdditionalModelDataSource object.
@@ -1100,6 +1102,8 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
         """
         self.channel_name: str = json_obj["channel_name"]
         self.s3_data_source: S3DataSource = S3DataSource(json_obj["s3_data_source"])
+        self.hosting_eula_key: str = json_obj.get("hosting_eula_key")
+        self.provider: Dict = json_obj.get("provider", {})
 
     def to_json(self, exclude_keys=True) -> Dict[str, Any]:
         """Returns json representation of AdditionalModelDataSource object."""
@@ -1118,7 +1122,9 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
 class JumpStartModelDataSource(AdditionalModelDataSource):
     """Data class JumpStart additional model data source."""
 
-    SERIALIZATION_EXCLUSION_SET = {"artifact_version"}
+    SERIALIZATION_EXCLUSION_SET = AdditionalModelDataSource.SERIALIZATION_EXCLUSION_SET.union(
+        {"artifact_version"}
+    )
 
     __slots__ = list(SERIALIZATION_EXCLUSION_SET) + AdditionalModelDataSource.__slots__
 
@@ -1200,6 +1206,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "url",
         "version",
         "min_sdk_version",
+        "model_types",
+        "capabilities",
         "incremental_training_supported",
         "hosting_ecr_specs",
         "hosting_ecr_uri",
@@ -1287,6 +1295,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             json_obj.get("incremental_training_supported", False)
         )
         if self._is_hub_content:
+            self.capabilities: Optional[List[str]] = json_obj.get("capabilities")
+            self.model_types: Optional[List[str]] = json_obj.get("model_types")
             self.hosting_ecr_uri: Optional[str] = json_obj.get("hosting_ecr_uri")
             self._non_serializable_slots.append("hosting_ecr_specs")
         else:
@@ -2234,6 +2244,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "config_name",
         "routing_config",
         "specs",
+        "model_access_configs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2247,6 +2258,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "sagemaker_session",
         "training_instance_type",
         "config_name",
+        "model_access_configs",
     }
 
     def __init__(
@@ -2285,6 +2297,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_type: Optional[EndpointType] = None,
         config_name: Optional[str] = None,
         routing_config: Optional[Dict[str, Any]] = None,
+        model_access_configs: Optional[Dict[str, CoreModelAccessConfig]] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -2322,6 +2335,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_type = endpoint_type
         self.config_name = config_name
         self.routing_config = routing_config
+        self.model_access_configs = model_access_configs
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -2775,6 +2789,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "data_input_configuration",
         "skip_model_validation",
         "source_uri",
+        "model_life_cycle",
         "config_name",
         "model_card",
         "accept_eula",
@@ -2824,6 +2839,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
         config_name: Optional[str] = None,
         model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
         accept_eula: Optional[bool] = None,

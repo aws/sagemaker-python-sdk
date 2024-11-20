@@ -16,6 +16,7 @@ import json
 
 
 from typing import Any, Dict, List, Optional, Union
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import environment_variables, image_uris, instance_types, model_uris, script_uris
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -53,11 +54,11 @@ from sagemaker.jumpstart.utils import (
     add_hub_content_arn_tags,
     add_jumpstart_model_info_tags,
     get_default_jumpstart_session_with_user_agent_suffix,
-    get_neo_content_bucket,
     get_top_ranked_config_name,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
+    get_draft_model_content_bucket,
 )
 
 from sagemaker.jumpstart.factory.utils import (
@@ -70,11 +71,17 @@ from sagemaker import accept_types, content_types, serializers, deserializers
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
-from sagemaker.utils import camel_case_to_pascal_case, name_from_base, format_tags, Tags
+from sagemaker.utils import (
+    camel_case_to_pascal_case,
+    name_from_base,
+    format_tags,
+    Tags,
+)
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker import resource_requirements
 from sagemaker.enums import EndpointType
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 
 def get_default_predictor(
@@ -564,7 +571,9 @@ def _add_additional_model_data_sources_to_kwargs(
     # Append speculative decoding data source from metadata
     speculative_decoding_data_sources = specs.get_speculative_decoding_s3_data_sources()
     for data_source in speculative_decoding_data_sources:
-        data_source.s3_data_source.set_bucket(get_neo_content_bucket(region=kwargs.region))
+        data_source.s3_data_source.set_bucket(
+            get_draft_model_content_bucket(provider=data_source.provider, region=kwargs.region)
+        )
     api_shape_additional_model_data_sources = (
         [
             camel_case_to_pascal_case(data_source.to_json())
@@ -647,6 +656,7 @@ def get_deploy_kwargs(
     training_config_name: Optional[str] = None,
     config_name: Optional[str] = None,
     routing_config: Optional[Dict[str, Any]] = None,
+    model_access_configs: Optional[Dict[str, ModelAccessConfig]] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
@@ -683,6 +693,7 @@ def get_deploy_kwargs(
         resources=resources,
         config_name=config_name,
         routing_config=routing_config,
+        model_access_configs=model_access_configs,
     )
     deploy_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(kwargs=deploy_kwargs)
     deploy_kwargs.specs = verify_model_region_and_return_specs(
@@ -756,6 +767,7 @@ def get_register_kwargs(
     data_input_configuration: Optional[str] = None,
     skip_model_validation: Optional[str] = None,
     source_uri: Optional[str] = None,
+    model_life_cycle: Optional[ModelLifeCycle] = None,
     config_name: Optional[str] = None,
     model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
     accept_eula: Optional[bool] = None,
@@ -794,6 +806,7 @@ def get_register_kwargs(
         data_input_configuration=data_input_configuration,
         skip_model_validation=skip_model_validation,
         source_uri=source_uri,
+        model_life_cycle=model_life_cycle,
         model_card=model_card,
         accept_eula=accept_eula,
     )
