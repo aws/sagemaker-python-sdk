@@ -22,7 +22,7 @@ from unittest.mock import patch, MagicMock
 
 from sagemaker_core.main.resources import TrainingJob
 
-from sagemaker.session import Session
+from sagemaker.modules import Session
 from sagemaker.modules.train.model_trainer import ModelTrainer
 from sagemaker.modules.constants import (
     DEFAULT_INSTANCE_TYPE,
@@ -80,7 +80,7 @@ UNSUPPORTED_SOURCE_CODE = SourceCode(
 
 @pytest.fixture(scope="module", autouse=True)
 def modules_session():
-    with patch("sagemaker.session.Session", spec=Session) as session_mock:
+    with patch("sagemaker.modules.Session", spec=Session) as session_mock:
         session_instance = session_mock.return_value
         session_instance.default_bucket.return_value = DEFAULT_BUCKET
         session_instance.get_caller_identity_arn.return_value = DEFAULT_ROLE

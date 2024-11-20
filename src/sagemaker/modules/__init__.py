@@ -14,5 +14,6 @@
 from __future__ import absolute_import
 
 from sagemaker_core.main.utils import logger as sagemaker_core_logger
+from sagemaker_core.helper.session_helper import Session, get_execution_role  # noqa: F401
 
 logger = sagemaker_core_logger
