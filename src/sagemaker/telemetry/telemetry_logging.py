@@ -63,7 +63,8 @@ STATUS_TO_CODE = {
 
 
 def _telemetry_emitter(feature: str, func_name: str):
-    """
+    """Telemetry Emitter
+
     Decorator to emit telemetry logs for SageMaker Python SDK functions. This class needs
     sagemaker_session object as a member. Default session object is a pysdk v2 Session object
     in this repo. When collecting telemetry for classes using sagemaker-core Session object,

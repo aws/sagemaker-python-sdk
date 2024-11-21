@@ -893,7 +893,7 @@ class ModelTrainer(BaseModel):
             sagemaker_session = Session()
             logger.warning("SageMaker session not provided. Using default Session.")
         if role is None:
-            role = get_execution_role(sagemaker_session=session)
+            role = get_execution_role(sagemaker_session=sagemaker_session)
             logger.warning(f"Role not provided. Using default role:\n{role}")
 
         # The training recipe is used to prepare the following args:

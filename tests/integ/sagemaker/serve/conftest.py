@@ -10,64 +10,48 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-# from __future__ import absolute_import
+from __future__ import absolute_import
 
-# import os
-# import pytest
-# import platform
-# import collections
-# from numpy import loadtxt
-# from sagemaker.serve.spec.inference_spec import InferenceSpec
+import pytest
+import os
+import boto3
+import sagemaker
+import sagemaker_core.helper.session_helper as core_session
 
-# if platform.python_version_tuple()[1] == "8":
-#     from xgboost import XGBClassifier
-#     from sklearn.model_selection import train_test_split
-
-# from tests.integ.sagemaker.serve.constants import XGB_RESOURCE_DIR
+DEFAULT_REGION = "us-west-2"
 
 
-# XgbTestSplit = collections.namedtuple("XgbTrainTestSplit", "x_test y_test")
+@pytest.fixture(scope="module")
+def mb_sagemaker_session():
+    region = os.environ.get("AWS_DEFAULT_REGION")
+    if not region:
+        os.environ["AWS_DEFAULT_REGION"] = DEFAULT_REGION
+        region_manual_set = True
+    else:
+        region_manual_set = True
+
+    boto_session = boto3.Session(region_name=os.environ["AWS_DEFAULT_REGION"])
+    sagemaker_session = sagemaker.Session(boto_session=boto_session)
+
+    yield sagemaker_session
+
+    if region_manual_set and "AWS_DEFAULT_REGION" in os.environ:
+        del os.environ["AWS_DEFAULT_REGION"]
 
 
-# @pytest.fixture(scope="session")
-# def loaded_xgb_model():
-#     model = XGBClassifier()
-#     model.load_model(XGB_RESOURCE_DIR + "/model.xgb")
-#     return model
+@pytest.fixture(scope="module")
+def mb_sagemaker_core_session():
+    region = os.environ.get("AWS_DEFAULT_REGION")
+    if not region:
+        os.environ["AWS_DEFAULT_REGION"] = DEFAULT_REGION
+        region_manual_set = True
+    else:
+        region_manual_set = True
 
+    boto_session = boto3.Session(region_name=os.environ["AWS_DEFAULT_REGION"])
+    sagemaker_session = core_session.Session(boto_session=boto_session)
 
-# @pytest.fixture(scope="session")
-# def xgb_inference_spec():
-#     class MyXGBoostModel(InferenceSpec):
-#         def load(self, model_dir: str):
-#             model = XGBClassifier()
-#             model.load_model(model_dir + "/model.xgb")
-#             return model
+    yield sagemaker_session
 
-#         def invoke(
-#             self,
-#             input: object,
-#             model: object,
-#         ):
-#             y_pred = model.predict(input)
-#             predictions = [round(value) for value in y_pred]
-#             return predictions
-
-#     return MyXGBoostModel()
-
-
-# @pytest.fixture(scope="session")
-# def xgb_test_sets():
-#     dataset = loadtxt(
-#         os.path.join(XGB_RESOURCE_DIR, "classification_training_data.data.csv"), delimiter=","
-#     )
-
-#     X = dataset[:, 0:8]
-#     Y = dataset[:, 8]
-
-#     seed = 7
-#     test_size = 0.33
-
-#     _, x_test, _, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
-
-#     return XgbTestSplit(x_test, y_test)
+    if region_manual_set and "AWS_DEFAULT_REGION" in os.environ:
+        del os.environ["AWS_DEFAULT_REGION"]

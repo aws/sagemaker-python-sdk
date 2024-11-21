@@ -105,7 +105,7 @@ def test_load_base_recipe_types(
     if recipe_type == "sagemaker":
         mock_clone.side_effect = _run_clone_command_silent
         load_recipe = _load_base_recipe(
-            training_recipe="training/llama/hf_llama3_8b_seq8192_gpu",
+            training_recipe="training/llama/p4_hf_llama3_70b_seq8k_gpu",
             recipe_overrides=None,
             training_recipes_cfg=training_recipes_cfg,
         )

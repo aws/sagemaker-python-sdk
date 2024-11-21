@@ -39,8 +39,9 @@ def model_input():
 
 
 @pytest.fixture
-def model_builder_model_schema_builder():
+def model_builder_model_schema_builder(sagemaker_session):
     return ModelBuilder(
+        sagemaker_session=sagemaker_session,
         model_path=HF_DIR,
         model="BAAI/bge-m3",
         schema_builder=SchemaBuilder(sample_input, loaded_response),

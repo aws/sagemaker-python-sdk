@@ -838,14 +838,17 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
     @_capture_telemetry("ModelBuilder.build_training_job")
     def _collect_training_job_model_telemetry(self):
+        """Dummy method to collect telemetry for training job handshake"""
         return
 
     @_capture_telemetry("ModelBuilder.build_model_trainer")
     def _collect_model_trainer_model_telemetry(self):
+        """Dummy method to collect telemetry for model trainer handshake"""
         return
 
     @_capture_telemetry("ModelBuilder.build_estimator")
     def _collect_estimator_model_telemetry(self):
+        """Dummy method to collect telemetry for estimator handshake"""
         return
 
     # Model Builder is a class to build the model for deployment.
