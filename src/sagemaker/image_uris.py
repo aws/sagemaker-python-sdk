@@ -460,7 +460,6 @@ def _get_inference_tool(inference_tool, instance_type):
 
 def _get_latest_versions(list_of_versions):
     """Extract the latest version from the input list of available versions."""
-    print("SORT")
     return sorted(list_of_versions, reverse=True)[0]
 
 
