@@ -119,7 +119,7 @@ class ModelTrainer(BaseModel):
     ```
 
     Attributes:
-        session (Optiona(Session)):
+        sagemaker_session (Optiona(Session)):
             The SageMakerCore session. For convinience, can be imported like:
             `from sagemaker.modules import Session`.
             If not specified, a new session will be created.
