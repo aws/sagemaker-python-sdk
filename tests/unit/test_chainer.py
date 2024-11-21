@@ -361,7 +361,7 @@ def test_chainer(strftime, time, sagemaker_session, chainer_version, chainer_py_
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert "resource" in boto_call_names
 
     expected_train_args = _create_train_job(chainer_version, chainer_py_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs

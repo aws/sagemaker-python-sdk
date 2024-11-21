@@ -44,7 +44,7 @@ def test_hp_contract_basic_py_script(modules_sagemaker_session):
     )
 
     model_trainer = ModelTrainer(
-        session=modules_sagemaker_session,
+        sagemaker_session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
         source_code=source_code,
@@ -60,7 +60,7 @@ def test_hp_contract_basic_sh_script(modules_sagemaker_session):
         entry_script="train.sh",
     )
     model_trainer = ModelTrainer(
-        session=modules_sagemaker_session,
+        sagemaker_session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
         source_code=source_code,
@@ -77,7 +77,7 @@ def test_hp_contract_mpi_script(modules_sagemaker_session):
     )
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(
-        session=modules_sagemaker_session,
+        sagemaker_session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         compute=compute,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
@@ -96,7 +96,7 @@ def test_hp_contract_torchrun_script(modules_sagemaker_session):
     )
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(
-        session=modules_sagemaker_session,
+        sagemaker_session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         compute=compute,
         hyperparameters=EXPECTED_HYPERPARAMETERS,

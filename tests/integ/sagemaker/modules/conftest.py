@@ -36,5 +36,5 @@ def modules_sagemaker_session():
 
     yield sagemaker_session
 
-    if region_manual_set:
+    if region_manual_set and "AWS_DEFAULT_REGION" in os.environ:
         del os.environ["AWS_DEFAULT_REGION"]
