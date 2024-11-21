@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.235.1 (2024-11-20)
+
+### Bug Fixes and Other Changes
+
+ * Update sagemaker-core dep
+ * update image_uri_configs  11-20-2024 06:17:41 PST
+
 ## v2.235.0 (2024-11-19)
 
 ### Features
