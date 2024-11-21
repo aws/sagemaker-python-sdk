@@ -26,7 +26,7 @@ from sagemaker.modules.train.container_drivers.scripts.environment import (
     mask_sensitive_info,
     HIDDEN_VALUE,
 )
-from sagemaker.modules.train.container_drivers.utils import safe_serialize
+from sagemaker.modules.train.container_drivers.utils import safe_serialize, safe_deserialize
 
 RESOURCE_CONFIG = dict(
     current_host="algo-1",
@@ -92,11 +92,11 @@ export SM_MASTER_PORT='7777'
 export SM_CHANNEL_TRAIN='/opt/ml/input/data/train'
 export SM_CHANNEL_VALIDATION='/opt/ml/input/data/validation'
 export SM_CHANNELS='["train", "validation"]'
-export SM_HPS='{"batch_size": 32, "learning_rate": 0.001, "hosts": ["algo-1", "algo-2"], "mp_parameters": {"microbatches": 2, "partitions": 2, "pipeline": "interleaved", "optimize": "memory", "horovod": true}}'
 export SM_HP_BATCH_SIZE='32'
 export SM_HP_LEARNING_RATE='0.001'
 export SM_HP_HOSTS='["algo-1", "algo-2"]'
 export SM_HP_MP_PARAMETERS='{"microbatches": 2, "partitions": 2, "pipeline": "interleaved", "optimize": "memory", "horovod": true}'
+export SM_HPS='{"batch_size": 32, "learning_rate": 0.001, "hosts": ["algo-1", "algo-2"], "mp_parameters": {"microbatches": 2, "partitions": 2, "pipeline": "interleaved", "optimize": "memory", "horovod": true}}'
 export SM_CURRENT_HOST='algo-1'
 export SM_CURRENT_INSTANCE_TYPE='ml.p3.16xlarge'
 export SM_HOSTS='["algo-1", "algo-2", "algo-3"]'
@@ -119,7 +119,13 @@ export SM_TRAINING_ENV='{"channel_input_dirs": {"train": "/opt/ml/input/data/tra
     "sagemaker.modules.train.container_drivers.scripts.environment.safe_serialize",
     side_effect=safe_serialize,
 )
-def test_set_env(mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons):
+@patch(
+    "sagemaker.modules.train.container_drivers.scripts.environment.safe_deserialize",
+    side_effect=safe_deserialize,
+)
+def test_set_env(
+    mock_safe_deserialize, mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
         set_env(
             resource_config=RESOURCE_CONFIG,

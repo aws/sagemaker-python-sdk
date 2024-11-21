@@ -99,6 +99,43 @@ def main():
     assert json.loads(os.environ["SM_HP_LIST"]) == EXPECTED_HYPERPARAMETERS["list"]
     assert json.loads(os.environ["SM_HP_DICT"]) == EXPECTED_HYPERPARAMETERS["dict"]
 
+    params = json.loads(os.environ["SM_HPS"])
+    print(f"SM_HPS: {params}")
+    assert params["string"] == EXPECTED_HYPERPARAMETERS["string"]
+    assert params["integer"] == EXPECTED_HYPERPARAMETERS["integer"]
+    assert params["boolean"] == EXPECTED_HYPERPARAMETERS["boolean"]
+    assert params["float"] == EXPECTED_HYPERPARAMETERS["float"]
+    assert params["list"] == EXPECTED_HYPERPARAMETERS["list"]
+    assert params["dict"] == EXPECTED_HYPERPARAMETERS["dict"]
+
+    assert isinstance(params, dict)
+    assert isinstance(params["string"], str)
+    assert isinstance(params["integer"], int)
+    assert isinstance(params["boolean"], bool)
+    assert isinstance(params["float"], float)
+    assert isinstance(params["list"], list)
+    assert isinstance(params["dict"], dict)
+
+    params = json.loads(os.environ["SM_TRAINING_ENV"])["hyperparameters"]
+    print(params)
+    assert params["string"] == EXPECTED_HYPERPARAMETERS["string"]
+    assert params["integer"] == EXPECTED_HYPERPARAMETERS["integer"]
+    assert params["boolean"] == EXPECTED_HYPERPARAMETERS["boolean"]
+    assert params["float"] == EXPECTED_HYPERPARAMETERS["float"]
+    assert params["list"] == EXPECTED_HYPERPARAMETERS["list"]
+    assert params["dict"] == EXPECTED_HYPERPARAMETERS["dict"]
+
+    assert isinstance(params, dict)
+    assert isinstance(params["string"], str)
+    assert isinstance(params["integer"], int)
+    assert isinstance(params["boolean"], bool)
+    assert isinstance(params["float"], float)
+    assert isinstance(params["list"], list)
+    assert isinstance(params["dict"], dict)
+    print(f"SM_TRAINING_ENV -> hyperparameters: {params}")
+
+    print("Test passed.")
+
 
 if __name__ == "__main__":
     main()

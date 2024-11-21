@@ -24,7 +24,7 @@ import logging
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, parent_dir)
 
-from utils import safe_serialize  # noqa: E402 # pylint: disable=C0413
+from utils import safe_serialize, safe_deserialize  # noqa: E402 # pylint: disable=C0413
 
 # Initialize logger
 SM_LOG_LEVEL = os.environ.get("SM_LOG_LEVEL", 20)
@@ -115,6 +115,21 @@ def num_neurons() -> int:
         return 0
 
 
+def deserialize_hyperparameters(hyperparameters: Dict[str, str]) -> Dict[str, Any]:
+    """Deserialize hyperparameters from string to their original types.
+
+    Args:
+        hyperparameters (Dict[str, str]): Hyperparameters as strings.
+
+    Returns:
+        Dict[str, Any]: Hyperparameters as their original types.
+    """
+    deserialized_hyperparameters = {}
+    for key, value in hyperparameters.items():
+        deserialized_hyperparameters[key] = safe_deserialize(value)
+    return deserialized_hyperparameters
+
+
 def set_env(
     resource_config: Dict[str, Any],
     input_data_config: Dict[str, Any],
@@ -150,10 +165,11 @@ def set_env(
     env_vars["SM_CHANNELS"] = channels
 
     # Hyperparameters
-    env_vars["SM_HPS"] = hyperparameters_config
-    for key, value in hyperparameters_config.items():
+    hps = deserialize_hyperparameters(hyperparameters_config)
+    for key, value in hps.items():
         key_upper = key.replace("-", "_").upper()
-        env_vars[f"SM_HP_{key_upper}"] = safe_serialize(value)
+        env_vars[f"SM_HP_{key_upper}"] = value
+    env_vars["SM_HPS"] = hps
 
     # Host Variables
     current_host = resource_config["current_host"]
