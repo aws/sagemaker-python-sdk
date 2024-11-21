@@ -1613,6 +1613,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 "Loading of model requires network access."
             )
 
+        if self._is_sharded_model:
+            if resources.num_cpus and resources.num_cpus > 0:
+                logger.warning(
+                    "NumberOfCpuCoresRequired should be 0 for the best experience with SageMaker "
+                    "Fast Model Loading. Configure by setting `num_cpus` to 0 in `resources`."
+                )
+
         # Support multiple models on same endpoint
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             if endpoint_name:
