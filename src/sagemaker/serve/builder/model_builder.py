@@ -150,6 +150,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
             * ``Mode.SAGEMAKER_ENDPOINT``: Launch on a SageMaker endpoint
             * ``Mode.LOCAL_CONTAINER``: Launch locally with a container
+            * ``Mode.IN_PROCESS``: Launch locally to a FastAPI server instead of using a container.
         shared_libs (List[str]): Any shared libraries you want to bring into
             the model packaging.
         dependencies (Optional[Dict[str, Any]): The dependencies of the model
@@ -613,7 +614,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 )
 
         if "endpoint_logging" not in kwargs:
-            kwargs["endpoint_logging"] = False
+            kwargs["endpoint_logging"] = True
+        kwargs.pop("mode", None)
+        self.pysdk_model.role = kwargs.pop("role", self.pysdk_model.role)
         predictor = self._original_deploy(
             *args,
             instance_type=instance_type,
