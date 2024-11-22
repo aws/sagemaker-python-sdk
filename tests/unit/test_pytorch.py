@@ -836,6 +836,7 @@ def test_predictor_with_component_name(sagemaker_session, component_name):
     assert predictor._get_component_name() == component_name
 
 
+@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 def test_training_recipe_for_cpu(sagemaker_session):
     container_log_level = '"logging.INFO"'
 
@@ -864,17 +865,18 @@ def test_training_recipe_for_cpu(sagemaker_session):
             instance_type=INSTANCE_TYPE,
             base_job_name="job",
             container_log_level=container_log_level,
-            training_recipe="training/llama/hf_llama3_8b_seq8192_gpu",
+            training_recipe="training/llama/hf_llama3_8b_seq8k_gpu_p5x16_pretrain",
             recipe_overrides=recipe_overrides,
         )
 
 
+@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 @pytest.mark.parametrize(
     "recipe, model",
     [
-        ("hf_llama3_8b_seq8192_gpu", "llama"),
-        ("hf_mistral_gpu", "mistral"),
-        ("hf_mixtral_gpu", "mixtral"),
+        ("hf_llama3_8b_seq8k_gpu_p5x16_pretrain", "llama"),
+        ("hf_mistral_7b_seq8k_gpu_p5x16_pretrain", "mistral"),
+        ("hf_mixtral_8x7b_seq8k_gpu_p5x16_pretrain", "mixtral"),
     ],
 )
 def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
@@ -925,6 +927,7 @@ def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
     assert pytorch.distribution.items() == expected_distribution.items()
 
 
+@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 def test_training_recipe_with_override(sagemaker_session):
     container_log_level = '"logging.INFO"'
 
@@ -953,7 +956,7 @@ def test_training_recipe_with_override(sagemaker_session):
         instance_type=INSTANCE_TYPE_GPU,
         base_job_name="job",
         container_log_level=container_log_level,
-        training_recipe="training/llama/hf_llama3_8b_seq8192_gpu",
+        training_recipe="training/llama/hf_llama3_8b_seq8k_gpu_p5x16_pretrain",
         recipe_overrides=recipe_overrides,
     )
 
@@ -962,6 +965,7 @@ def test_training_recipe_with_override(sagemaker_session):
     assert pytorch.image_uri == IMAGE_URI
 
 
+@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 def test_training_recipe_gpu_custom_source_dir(sagemaker_session):
     container_log_level = '"logging.INFO"'
 
@@ -992,7 +996,7 @@ def test_training_recipe_gpu_custom_source_dir(sagemaker_session):
         instance_type=INSTANCE_TYPE_GPU,
         base_job_name="job",
         container_log_level=container_log_level,
-        training_recipe="training/llama/hf_llama3_8b_seq8192_gpu",
+        training_recipe="training/llama/hf_llama3_8b_seq8k_gpu_p5x16_pretrain",
         recipe_overrides=recipe_overrides,
     )
 

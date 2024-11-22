@@ -651,7 +651,7 @@ class PyTorch(Framework):
                     )
         else:
             launcher_repo = os.environ.get(
-                "training_launcher_git", None
+                "TRAINING_LAUNCHER_GIT", None
             ) or training_recipes_cfg.get("launcher_repo")
             _run_clone_command(launcher_repo, recipe_launcher_dir.name)
             recipe = os.path.join(
@@ -697,7 +697,7 @@ class PyTorch(Framework):
         # [TODO] Add image uris to image_uri_config/_.json and use image_uris.retrieve
         # to retrieve the image uri below before we go GA.
         if device_type == "gpu":
-            adapter_repo = os.environ.get("training_adapter_git", None) or training_recipes_cfg.get(
+            adapter_repo = os.environ.get("TRAINING_ADAPTER_GIT", None) or training_recipes_cfg.get(
                 "adapter_repo"
             )
             _run_clone_command(adapter_repo, recipe_train_dir.name)
