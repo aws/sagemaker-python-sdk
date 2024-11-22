@@ -333,10 +333,14 @@ class InProcessModePredictor(PredictorBase):
 
     def predict(self, data):
         """Placeholder docstring"""
-        return self._mode_obj._invoke_serving(
-            self.serializer.serialize(data),
-            self.content_type,
-            self.deserializer.ACCEPT[0],
+        return self.deserializer.deserialize(
+            io.BytesIO(
+                self._mode_obj._invoke_serving(
+                    self.serializer.serialize(data),
+                    self.content_type,
+                    self.accept[0],
+                )
+            )
         )
 
     @property
@@ -357,8 +361,8 @@ class InProcessModePredictor(PredictorBase):
 def _get_in_process_mode_predictor(
     # model_server: ModelServer,
     mode_obj: Type[InProcessMode],
-    serializer=IdentitySerializer(),
-    deserializer=BytesDeserializer(),
+    serializer=JSONSerializer(),
+    deserializer=JSONDeserializer(),
 ) -> Type[PredictorBase]:
     """Returns Predictor for IN_PROCESS mode"""
     return InProcessModePredictor(
