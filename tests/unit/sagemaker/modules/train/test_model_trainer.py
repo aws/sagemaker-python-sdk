@@ -18,10 +18,15 @@ import tempfile
 import json
 import os
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, ANY
 
 from sagemaker_core.main.resources import TrainingJob
+from sagemaker_core.main.shapes import ResourceConfig
 
+from sagemaker.config import SAGEMAKER, PYTHON_SDK, MODULES
+from sagemaker.config.config_schema import (MODEL_TRAINER,
+                                            _simple_path,
+                                            TRAINING_JOB_RESOURCE_CONFIG_PATH)
 from sagemaker.modules import Session
 from sagemaker.modules.train.model_trainer import ModelTrainer
 from sagemaker.modules.constants import (
@@ -168,6 +173,87 @@ def test_train_with_default_params(mock_training_job, model_trainer):
 
 
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
+@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
+def test_train_with_intelligent_defaults(mock_resolve_value_from_config,
+                                         mock_training_job,
+                                         model_trainer):
+    source_code_path = _simple_path(SAGEMAKER,
+                                    PYTHON_SDK,
+                                    MODULES,
+                                    MODEL_TRAINER,
+                                    "sourceCode")
+
+    mock_resolve_value_from_config.side_effect = lambda **kwargs: {"command": "echo 'Hello World' && env"} \
+        if kwargs['config_path'] == source_code_path else None
+
+    model_trainer.train()
+
+    mock_training_job.create.assert_called_once()
+
+    training_job_instance = mock_training_job.create.return_value
+    training_job_instance.wait.assert_called_once_with(logs=True)
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
+def test_train_with_intelligent_defaults_training_job_space(mock_resolve_value_from_config,
+                                                            mock_training_job,
+                                                            model_trainer):
+    mock_resolve_value_from_config.side_effect = lambda **kwargs: {
+        "instanceType": DEFAULT_INSTANCE_TYPE,
+        "instanceCount": 1,
+        "volumeSizeInGB": 30,
+    } if kwargs['config_path'] == TRAINING_JOB_RESOURCE_CONFIG_PATH else None
+
+    model_trainer.train()
+
+    mock_training_job.create.assert_called_once_with(training_job_name=ANY,
+                                                     algorithm_specification=ANY,
+                                                     hyper_parameters={},
+                                                     input_data_config=[],
+                                                     resource_config=ResourceConfig(
+                                                         volume_size_in_gb=30,
+                                                         instance_type='ml.m5.xlarge',
+                                                         instance_count=1,
+                                                         volume_kms_key_id=None,
+                                                         keep_alive_period_in_seconds=None,
+                                                         instance_groups=None),
+                                                     vpc_config=None,
+                                                     session=ANY,
+                                                     role_arn='arn:aws:iam::000000000000:'
+                                                              'role/test-role',
+                                                     tags=None,
+                                                     stopping_condition=StoppingCondition(
+                                                         max_runtime_in_seconds=3600,
+                                                         max_wait_time_in_seconds=None,
+                                                         max_pending_time_in_seconds=None),
+                                                     output_data_config=OutputDataConfig(
+                                                         s3_output_path='s3://'
+                                                                        'sagemaker-us-west-2'
+                                                                        '-000000000000/d'
+                                                                        'ummy-image-job',
+                                                         kms_key_id=None, compression_type='GZIP'),
+                                                     checkpoint_config=None,
+                                                     environment=None,
+                                                     enable_managed_spot_training=None,
+                                                     enable_inter_container_traffic_encryption=None,
+                                                     enable_network_isolation=None,
+                                                     debug_hook_config=None,
+                                                     debug_rule_configurations=None,
+                                                     remote_debug_config=None,
+                                                     profiler_config=None,
+                                                     profiler_rule_configurations=None,
+                                                     tensor_board_output_config=None,
+                                                     retry_strategy=None,
+                                                     experiment_config=None,
+                                                     infra_check_config=None,
+                                                     session_chaining_config=None)
+
+    training_job_instance = mock_training_job.create.return_value
+    training_job_instance.wait.assert_called_once_with(logs=True)
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch.object(ModelTrainer, "_get_input_data_config")
 def test_train_with_input_data_channels(mock_get_input_config, mock_training_job, model_trainer):
     train_data = InputData(channel_name="train", data_source="train/dir")
@@ -251,13 +337,17 @@ def test_create_input_data_channel(mock_upload_data, model_trainer, test_case):
 
 
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
-def test_metric_settings(mock_training_job, modules_session):
+@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
+def test_metric_settings(resolve_value_from_config,
+                         mock_training_job,
+                         modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
     metric_definition = MetricDefinition(
         name="test-metric",
         regex="test-regex",
     )
+    resolve_value_from_config.return_value = None
 
     model_trainer = ModelTrainer(
         training_image=image_uri,
@@ -285,9 +375,13 @@ def test_metric_settings(mock_training_job, modules_session):
 
 
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
-def test_debugger_settings(mock_training_job, modules_session):
+@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
+def test_debugger_settings(mock_resolve_value_from_config,
+                           mock_training_job,
+                           modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
+    mock_resolve_value_from_config.return_value = None
 
     debug_hook_config = DebugHookConfig(s3_output_path="s3://dummy-bucket/dummy-prefix")
     debug_rule_config = DebugRuleConfiguration(
@@ -345,9 +439,13 @@ def test_debugger_settings(mock_training_job, modules_session):
 
 
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
-def test_additional_settings(mock_training_job, modules_session):
+@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
+def test_additional_settings(mock_resolve_value_from_config,
+                             mock_training_job,
+                             modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
+    mock_resolve_value_from_config.return_value = None
 
     retry_strategy = RetryStrategy(
         maximum_retry_attempts=3,
@@ -449,9 +547,16 @@ def test_additional_settings(mock_training_job, modules_session):
 )
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch("sagemaker.modules.train.model_trainer.TemporaryDirectory")
+@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
 def test_train_with_distributed_runner(
-    mock_tmp_dir, mock_training_job, test_case, request, modules_session
+        mock_resolve_value_from_config,
+        mock_tmp_dir,
+        mock_training_job,
+        test_case,
+        request,
+        modules_session
 ):
+    mock_resolve_value_from_config.return_value = None
     modules_session.upload_data.return_value = (
         f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/test"
     )

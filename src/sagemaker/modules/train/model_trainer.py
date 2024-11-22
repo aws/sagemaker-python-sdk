@@ -19,13 +19,31 @@ import json
 import shutil
 from tempfile import TemporaryDirectory
 
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict, Any, ClassVar
+
+from graphene.utils.str_converters import to_camel_case, to_snake_case
+
 from sagemaker_core.main import resources
 from sagemaker_core.resources import TrainingJob
 from sagemaker_core.shapes import AlgorithmSpecification
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 
+from sagemaker.config.config_schema import (_simple_path, SAGEMAKER,
+                                            MODEL_TRAINER, MODULES,
+                                            PYTHON_SDK,
+                                            TRAINING_JOB_ENVIRONMENT_PATH,
+                                            TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+                                            TRAINING_JOB_VPC_CONFIG_PATH,
+                                            TRAINING_JOB_SUBNETS_PATH,
+                                            TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
+                                            TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
+                                            TRAINING_JOB_PROFILE_CONFIG_PATH,
+                                            TRAINING_JOB_RESOURCE_CONFIG_PATH,
+                                            TRAINING_JOB_ROLE_ARN_PATH,
+                                            TRAINING_JOB_TAGS_PATH)
+
+from sagemaker.utils import resolve_value_from_config
 from sagemaker.modules import Session, get_execution_role
 from sagemaker.modules.configs import (
     Compute,
@@ -204,6 +222,125 @@ class ModelTrainer(BaseModel):
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
 
+    CONFIGURABLE_ATTRIBUTES: ClassVar[List[str]] = ["role",
+                                                    "base_job_name",
+                                                    "source_code",
+                                                    "distributed_runner",
+                                                    "compute",
+                                                    "networking",
+                                                    "stopping_condition",
+                                                    "training_image",
+                                                    "training_image_config",
+                                                    "algorithm_name",
+                                                    "output_data_config",
+                                                    "checkpoint_config",
+                                                    "training_input_mode",
+                                                    "environment",
+                                                    "hyperparameters"]
+
+    SERIALIZABLE_CONFIG_ATTRIBUTES: ClassVar[Any] = {
+        "source_code": SourceCode,
+        "distributed_runner": type(DistributedRunner),
+        "compute": type(Compute),
+        "networking": type(Networking),
+        "stopping_condition": type(StoppingCondition),
+        "training_image_config": type(TrainingImageConfig),
+        "output_data_config": type(OutputDataConfig),
+        "checkpoint_config": type(CheckpointConfig)
+    }
+
+    def _populate_intelligent_defaults(self):
+        """Function to populate all the possible default configs
+
+        Model Trainer specific configs take precedence over the generic training job ones.
+        """
+        self._populate_intelligent_defaults_from_model_trainer_space()
+        self._populate_intelligent_defaults_from_training_job_space()
+
+    def _populate_intelligent_defaults_from_training_job_space(self):
+        """Function to populate all the possible default configs from Training Job Space"""
+        if not self.environment:
+            self.environment = resolve_value_from_config(
+                config_path=TRAINING_JOB_ENVIRONMENT_PATH,
+                sagemaker_session=self.sagemaker_session)
+
+        default_enable_network_isolation = resolve_value_from_config(
+            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session)
+        default_vpc_config = resolve_value_from_config(
+            config_path=TRAINING_JOB_VPC_CONFIG_PATH,
+            sagemaker_session=self.sagemaker_session)
+
+        if not self.networking:
+            if (default_enable_network_isolation is not None
+                    or default_vpc_config is not None):
+                self.networking = Networking(
+                    default_enable_network_isolation=default_enable_network_isolation,
+                    subnets=resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH),
+                    security_group_ids=resolve_value_from_config(
+                        config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH),
+                )
+        else:
+            if self.networking.enable_network_isolation is None:
+                self.networking.enable_network_isolation = default_enable_network_isolation
+            if self.networking.subnets is None:
+                self.networking.subnets = (
+                    resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH))
+            if self.networking.security_group_ids is None:
+                self.networking.subnets = (
+                    resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH))
+
+        if not self.output_data_config:
+            default_output_data_config = resolve_value_from_config(
+                config_path=TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH)
+            if default_output_data_config:
+                self.output_data_config = OutputDataConfig(
+                    **self._convert_keys_to_snake(default_output_data_config))
+
+        if not self._profiler_config:
+            default_profiler_config = resolve_value_from_config(
+                config_path=TRAINING_JOB_PROFILE_CONFIG_PATH)
+            if default_profiler_config:
+                self._profiler_config = ProfilerConfig(
+                    **self._convert_keys_to_snake(default_profiler_config))
+
+        if not self.compute:
+            default_resource_config = resolve_value_from_config(
+                config_path=TRAINING_JOB_RESOURCE_CONFIG_PATH)
+            if default_resource_config:
+                self.compute = Compute(**self._convert_keys_to_snake(default_resource_config))
+
+        if not self.role:
+            self.role = resolve_value_from_config(config_path=TRAINING_JOB_ROLE_ARN_PATH)
+
+        if not self.tags:
+            self.tags = resolve_value_from_config(config_path=TRAINING_JOB_TAGS_PATH)
+
+    def _convert_keys_to_snake(self, config: dict) -> dict:
+        """Utility helper function that converts the keys of a dictionary into snake case"""
+        return {
+            to_snake_case(key): value
+            for key, value in config.items()
+        }
+
+    def _populate_intelligent_defaults_from_model_trainer_space(self):
+        """Function to populate all the possible default configs from Model Trainer Space"""
+
+        for configurable_attribute in self.CONFIGURABLE_ATTRIBUTES:
+            if getattr(self, configurable_attribute) is None:
+                default_config = resolve_value_from_config(
+                    config_path=_simple_path(SAGEMAKER,
+                                             PYTHON_SDK,
+                                             MODULES,
+                                             MODEL_TRAINER,
+                                             to_camel_case(configurable_attribute)),
+                    sagemaker_session=self.sagemaker_session)
+                if default_config is not None:
+                    if configurable_attribute in self.SERIALIZABLE_CONFIG_ATTRIBUTES:
+                        default_config = (self.SERIALIZABLE_CONFIG_ATTRIBUTES
+                                          .get(configurable_attribute)(**default_config))  # noqa
+                    setattr(self, configurable_attribute, default_config)
+
     # Created Artifacts
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
 
@@ -374,6 +511,7 @@ class ModelTrainer(BaseModel):
                 Whether to display the training container logs while training.
                 Defaults to True.
         """
+        self._populate_intelligent_defaults()
         if input_data_config:
             self.input_data_config = input_data_config
 
@@ -745,7 +883,8 @@ class ModelTrainer(BaseModel):
             debug_hook_config (Optional[DebugHookConfig]):
                 Configuration information for the Amazon SageMaker Debugger hook parameters,
                 metric and tensor collections, and storage paths.
-                To learn more see: https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-createtrainingjob-api.html
+                To learn more see:
+                 https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-createtrainingjob-api.html
             debug_rule_configurations (Optional[List[DebugRuleConfiguration]]):
                 Configuration information for Amazon SageMaker Debugger rules for debugging
                 output ensors.
