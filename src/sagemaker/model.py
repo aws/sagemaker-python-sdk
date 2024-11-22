@@ -1662,7 +1662,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     vpc_config=self.vpc_config,
                     enable_network_isolation=self._enable_network_isolation,
                     role=self.role,
-                    live_logging=endpoint_logging,
+                    live_logging=False,  # TODO: enable when IC supports this
                     wait=wait,
                 )
 
