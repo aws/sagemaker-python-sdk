@@ -24,14 +24,16 @@ from sagemaker_core.main.resources import TrainingJob
 from sagemaker_core.main.shapes import ResourceConfig
 
 from sagemaker.config import SAGEMAKER, PYTHON_SDK, MODULES
-from sagemaker.config.config_schema import (MODEL_TRAINER,
-                                            _simple_path,
-                                            TRAINING_JOB_RESOURCE_CONFIG_PATH)
+from sagemaker.config.config_schema import (
+    MODEL_TRAINER,
+    _simple_path,
+    TRAINING_JOB_RESOURCE_CONFIG_PATH,
+)
 from sagemaker.modules import Session
 from sagemaker.modules.train.model_trainer import ModelTrainer
 from sagemaker.modules.constants import (
     DEFAULT_INSTANCE_TYPE,
-    DISTRIBUTED_RUNNER_JSON,
+    DISTRIBUTED_JSON,
     SOURCE_CODE_JSON,
     TRAIN_SCRIPT,
 )
@@ -43,14 +45,8 @@ from sagemaker.modules.configs import (
     SourceCode,
     S3DataSource,
     FileSystemDataSource,
-    MetricDefinition,
-    DebugHookConfig,
-    DebugRuleConfiguration,
     RemoteDebugConfig,
-    ProfilerConfig,
-    ProfilerRuleConfiguration,
     TensorBoardOutputConfig,
-    ExperimentConfig,
     InfraCheckConfig,
     SessionChainingConfig,
     InputData,
@@ -174,17 +170,16 @@ def test_train_with_default_params(mock_training_job, model_trainer):
 
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
-def test_train_with_intelligent_defaults(mock_resolve_value_from_config,
-                                         mock_training_job,
-                                         model_trainer):
-    source_code_path = _simple_path(SAGEMAKER,
-                                    PYTHON_SDK,
-                                    MODULES,
-                                    MODEL_TRAINER,
-                                    "sourceCode")
+def test_train_with_intelligent_defaults(
+    mock_resolve_value_from_config, mock_training_job, model_trainer
+):
+    source_code_path = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, MODEL_TRAINER, "sourceCode")
 
-    mock_resolve_value_from_config.side_effect = lambda **kwargs: {"command": "echo 'Hello World' && env"} \
-        if kwargs['config_path'] == source_code_path else None
+    mock_resolve_value_from_config.side_effect = lambda **kwargs: (
+        {"command": "echo 'Hello World' && env"}
+        if kwargs["config_path"] == source_code_path
+        else None
+    )
 
     model_trainer.train()
 
@@ -196,58 +191,59 @@ def test_train_with_intelligent_defaults(mock_resolve_value_from_config,
 
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
-def test_train_with_intelligent_defaults_training_job_space(mock_resolve_value_from_config,
-                                                            mock_training_job,
-                                                            model_trainer):
-    mock_resolve_value_from_config.side_effect = lambda **kwargs: {
-        "instanceType": DEFAULT_INSTANCE_TYPE,
-        "instanceCount": 1,
-        "volumeSizeInGB": 30,
-    } if kwargs['config_path'] == TRAINING_JOB_RESOURCE_CONFIG_PATH else None
+def test_train_with_intelligent_defaults_training_job_space(
+    mock_resolve_value_from_config, mock_training_job, model_trainer
+):
+    mock_resolve_value_from_config.side_effect = lambda **kwargs: (
+        {
+            "instanceType": DEFAULT_INSTANCE_TYPE,
+            "instanceCount": 1,
+            "volumeSizeInGB": 30,
+        }
+        if kwargs["config_path"] == TRAINING_JOB_RESOURCE_CONFIG_PATH
+        else None
+    )
 
     model_trainer.train()
 
-    mock_training_job.create.assert_called_once_with(training_job_name=ANY,
-                                                     algorithm_specification=ANY,
-                                                     hyper_parameters={},
-                                                     input_data_config=[],
-                                                     resource_config=ResourceConfig(
-                                                         volume_size_in_gb=30,
-                                                         instance_type='ml.m5.xlarge',
-                                                         instance_count=1,
-                                                         volume_kms_key_id=None,
-                                                         keep_alive_period_in_seconds=None,
-                                                         instance_groups=None),
-                                                     vpc_config=None,
-                                                     session=ANY,
-                                                     role_arn='arn:aws:iam::000000000000:'
-                                                              'role/test-role',
-                                                     tags=None,
-                                                     stopping_condition=StoppingCondition(
-                                                         max_runtime_in_seconds=3600,
-                                                         max_wait_time_in_seconds=None,
-                                                         max_pending_time_in_seconds=None),
-                                                     output_data_config=OutputDataConfig(
-                                                         s3_output_path='s3://'
-                                                                        'sagemaker-us-west-2'
-                                                                        '-000000000000/d'
-                                                                        'ummy-image-job',
-                                                         kms_key_id=None, compression_type='GZIP'),
-                                                     checkpoint_config=None,
-                                                     environment=None,
-                                                     enable_managed_spot_training=None,
-                                                     enable_inter_container_traffic_encryption=None,
-                                                     enable_network_isolation=None,
-                                                     debug_hook_config=None,
-                                                     debug_rule_configurations=None,
-                                                     remote_debug_config=None,
-                                                     profiler_config=None,
-                                                     profiler_rule_configurations=None,
-                                                     tensor_board_output_config=None,
-                                                     retry_strategy=None,
-                                                     experiment_config=None,
-                                                     infra_check_config=None,
-                                                     session_chaining_config=None)
+    mock_training_job.create.assert_called_once_with(
+        training_job_name=ANY,
+        algorithm_specification=ANY,
+        hyper_parameters={},
+        input_data_config=[],
+        resource_config=ResourceConfig(
+            volume_size_in_gb=30,
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+            volume_kms_key_id=None,
+            keep_alive_period_in_seconds=None,
+            instance_groups=None,
+        ),
+        vpc_config=None,
+        session=ANY,
+        role_arn="arn:aws:iam::000000000000:" "role/test-role",
+        tags=None,
+        stopping_condition=StoppingCondition(
+            max_runtime_in_seconds=3600,
+            max_wait_time_in_seconds=None,
+            max_pending_time_in_seconds=None,
+        ),
+        output_data_config=OutputDataConfig(
+            s3_output_path="s3://" "sagemaker-us-west-2" "-000000000000/d" "ummy-image-job",
+            kms_key_id=None,
+            compression_type="GZIP",
+        ),
+        checkpoint_config=None,
+        environment=None,
+        enable_managed_spot_training=None,
+        enable_inter_container_traffic_encryption=None,
+        enable_network_isolation=None,
+        remote_debug_config=None,
+        tensor_board_output_config=None,
+        retry_strategy=None,
+        infra_check_config=None,
+        session_chaining_config=None,
+    )
 
     training_job_instance = mock_training_job.create.return_value
     training_job_instance.wait.assert_called_once_with(logs=True)
@@ -336,181 +332,18 @@ def test_create_input_data_channel(mock_upload_data, model_trainer, test_case):
             assert channel.data_source.s3_data_source.s3_uri == expected_s3_uri
 
 
-@patch("sagemaker.modules.train.model_trainer.TrainingJob")
-@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
-def test_metric_settings(resolve_value_from_config,
-                         mock_training_job,
-                         modules_session):
-    image_uri = DEFAULT_IMAGE
-    role = DEFAULT_ROLE
-    metric_definition = MetricDefinition(
-        name="test-metric",
-        regex="test-regex",
-    )
-    resolve_value_from_config.return_value = None
-
-    model_trainer = ModelTrainer(
-        training_image=image_uri,
-        sagemaker_session=modules_session,
-        role=role,
-    ).with_metric_settings(
-        enable_sage_maker_metrics_time_series=True, metric_definitions=[metric_definition]
-    )
-
-    assert model_trainer._enable_sage_maker_metrics_time_series
-    assert model_trainer._metric_definitions == [metric_definition]
-
-    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
-        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
-        model_trainer.train()
-
-        mock_training_job.create.assert_called_once()
-        assert mock_training_job.create.call_args.kwargs[
-            "algorithm_specification"
-        ].metric_definitions == [metric_definition]
-
-        assert mock_training_job.create.call_args.kwargs[
-            "algorithm_specification"
-        ].enable_sage_maker_metrics_time_series
-
-
-@patch("sagemaker.modules.train.model_trainer.TrainingJob")
-@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
-def test_debugger_settings(mock_resolve_value_from_config,
-                           mock_training_job,
-                           modules_session):
-    image_uri = DEFAULT_IMAGE
-    role = DEFAULT_ROLE
-    mock_resolve_value_from_config.return_value = None
-
-    debug_hook_config = DebugHookConfig(s3_output_path="s3://dummy-bucket/dummy-prefix")
-    debug_rule_config = DebugRuleConfiguration(
-        rule_configuration_name="rule-name",
-        rule_evaluator_image=image_uri,
-        rule_parameters={"parameter": "value"},
-    )
-    profiler_config = ProfilerConfig(s3_output_path="s3://dummy-bucket/dummy-prefix")
-    profiler_rule_config = ProfilerRuleConfiguration(
-        rule_configuration_name="rule-name",
-        rule_evaluator_image=image_uri,
-    )
-    tensor_board_output_config = TensorBoardOutputConfig(
-        s3_output_path="s3://dummy-bucket/dummy-prefix"
-    )
-
-    model_trainer = ModelTrainer(
-        training_image=image_uri,
-        sagemaker_session=modules_session,
-        role=role,
-    ).with_debugger_settings(
-        debug_hook_config=debug_hook_config,
-        debug_rule_configurations=debug_rule_config,
-        profiler_config=profiler_config,
-        profiler_rule_configurations=profiler_rule_config,
-        tensor_board_output_config=tensor_board_output_config,
-    )
-
-    assert model_trainer._debug_hook_config == debug_hook_config
-    assert model_trainer._debug_rule_configurations == debug_rule_config
-
-    assert model_trainer._profiler_config == profiler_config
-    assert model_trainer._profiler_rule_configurations == profiler_rule_config
-    assert model_trainer._tensor_board_output_config == tensor_board_output_config
-
-    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
-        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
-        model_trainer.train()
-
-        mock_training_job.create.assert_called_once()
-        assert mock_training_job.create.call_args.kwargs["debug_hook_config"] == debug_hook_config
-        assert (
-            mock_training_job.create.call_args.kwargs["debug_rule_configurations"]
-            == debug_rule_config
-        )
-        assert mock_training_job.create.call_args.kwargs["profiler_config"] == profiler_config
-        assert (
-            mock_training_job.create.call_args.kwargs["profiler_rule_configurations"]
-            == profiler_rule_config
-        )
-        assert (
-            mock_training_job.create.call_args.kwargs["tensor_board_output_config"]
-            == tensor_board_output_config
-        )
-
-
-@patch("sagemaker.modules.train.model_trainer.TrainingJob")
-@patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
-def test_additional_settings(mock_resolve_value_from_config,
-                             mock_training_job,
-                             modules_session):
-    image_uri = DEFAULT_IMAGE
-    role = DEFAULT_ROLE
-    mock_resolve_value_from_config.return_value = None
-
-    retry_strategy = RetryStrategy(
-        maximum_retry_attempts=3,
-    )
-    remote_debug_config = RemoteDebugConfig(
-        enable_remote_debug=True,
-    )
-    experiment_config = ExperimentConfig(
-        experiment_name="experiment-name",
-        trial_name="trial-name",
-    )
-    infra_check_config = InfraCheckConfig(
-        enable_infra_check=True,
-    )
-    session_chaining_config = SessionChainingConfig(
-        enable_session_tag_chaining=True,
-    )
-    model_trainer = ModelTrainer(
-        training_image=image_uri,
-        sagemaker_session=modules_session,
-        role=role,
-    ).with_additional_settings(
-        retry_strategy=retry_strategy,
-        experiment_config=experiment_config,
-        remote_debug_config=remote_debug_config,
-        infra_check_config=infra_check_config,
-        session_chaining_config=session_chaining_config,
-    )
-
-    assert model_trainer._retry_strategy == retry_strategy
-    assert model_trainer._experiment_config == experiment_config
-    assert model_trainer._infra_check_config == infra_check_config
-    assert model_trainer._session_chaining_config == session_chaining_config
-    assert model_trainer._remote_debug_config == remote_debug_config
-
-    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
-        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
-        model_trainer.train()
-
-        mock_training_job.create.assert_called_once()
-
-        assert mock_training_job.create.call_args.kwargs["retry_strategy"] == retry_strategy
-        assert mock_training_job.create.call_args.kwargs["experiment_config"] == experiment_config
-        assert mock_training_job.create.call_args.kwargs["infra_check_config"] == infra_check_config
-        assert (
-            mock_training_job.create.call_args.kwargs["session_chaining_config"]
-            == session_chaining_config
-        )
-        assert (
-            mock_training_job.create.call_args.kwargs["remote_debug_config"] == remote_debug_config
-        )
-
-
 @pytest.mark.parametrize(
     "test_case",
     [
         {
             "source_code": DEFAULT_SOURCE_CODE,
-            "distributed_runner": Torchrun(),
+            "distributed": Torchrun(),
             "expected_template": EXEUCTE_TORCHRUN_DRIVER,
             "expected_hyperparameters": {},
         },
         {
             "source_code": DEFAULT_SOURCE_CODE,
-            "distributed_runner": Torchrun(
+            "distributed": Torchrun(
                 smp=SMP(
                     hybrid_shard_degree=3,
                     sm_activation_offloading=True,
@@ -532,7 +365,7 @@ def test_additional_settings(mock_resolve_value_from_config,
         },
         {
             "source_code": DEFAULT_SOURCE_CODE,
-            "distributed_runner": MPI(
+            "distributed": MPI(
                 custom_mpi_options=["-x", "VAR1", "-x", "VAR2"],
             ),
             "expected_template": EXECUTE_MPI_DRIVER,
@@ -548,13 +381,13 @@ def test_additional_settings(mock_resolve_value_from_config,
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch("sagemaker.modules.train.model_trainer.TemporaryDirectory")
 @patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
-def test_train_with_distributed_runner(
-        mock_resolve_value_from_config,
-        mock_tmp_dir,
-        mock_training_job,
-        test_case,
-        request,
-        modules_session
+def test_train_with_distributed_config(
+    mock_resolve_value_from_config,
+    mock_tmp_dir,
+    mock_training_job,
+    test_case,
+    request,
+    modules_session,
 ):
     mock_resolve_value_from_config.return_value = None
     modules_session.upload_data.return_value = (
@@ -567,7 +400,7 @@ def test_train_with_distributed_runner(
     mock_tmp_dir.return_value = tmp_dir
 
     expected_train_script_path = os.path.join(tmp_dir.name, TRAIN_SCRIPT)
-    expected_runner_json_path = os.path.join(tmp_dir.name, DISTRIBUTED_RUNNER_JSON)
+    expected_runner_json_path = os.path.join(tmp_dir.name, DISTRIBUTED_JSON)
     expected_source_code_json_path = os.path.join(tmp_dir.name, SOURCE_CODE_JSON)
 
     try:
@@ -575,7 +408,7 @@ def test_train_with_distributed_runner(
             sagemaker_session=modules_session,
             training_image=DEFAULT_IMAGE,
             source_code=test_case["source_code"],
-            distributed_runner=test_case["distributed_runner"],
+            distributed=test_case["distributed"],
         )
 
         model_trainer.train()
@@ -592,7 +425,7 @@ def test_train_with_distributed_runner(
         assert os.path.exists(expected_runner_json_path)
         with open(expected_runner_json_path, "r") as f:
             runner_json_content = f.read()
-            assert test_case["distributed_runner"].model_dump(exclude_none=True) == (
+            assert test_case["distributed"].model_dump(exclude_none=True) == (
                 json.loads(runner_json_content)
             )
         assert os.path.exists(expected_source_code_json_path)
@@ -618,3 +451,132 @@ def test_train_stores_created_training_job(mock_training_job, model_trainer):
     model_trainer.train(wait=False)
     assert model_trainer._latest_training_job is not None
     assert model_trainer._latest_training_job == TrainingJob(training_job_name="Created-job")
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_tensorboard_output_config(mock_training_job, modules_session):
+    image_uri = DEFAULT_IMAGE
+    role = DEFAULT_ROLE
+    tensorboard_output_config = TensorBoardOutputConfig(
+        s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}",
+        local_path="/opt/ml/output/tensorboard",
+    )
+
+    model_trainer = ModelTrainer(
+        training_image=image_uri,
+        sagemaker_session=modules_session,
+        role=role,
+    ).with_tensorboard_output_config(tensorboard_output_config)
+
+    assert model_trainer._tensorboard_output_config == tensorboard_output_config
+
+    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
+        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
+        model_trainer.train()
+
+        mock_training_job.create.assert_called_once()
+        assert (
+            mock_training_job.create.call_args.kwargs["tensor_board_output_config"]
+            == tensorboard_output_config
+        )
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_retry_strategy(mock_training_job, modules_session):
+    image_uri = DEFAULT_IMAGE
+    role = DEFAULT_ROLE
+    retry_strategy = RetryStrategy(
+        maximum_retry_attempts=3,
+    )
+
+    model_trainer = ModelTrainer(
+        training_image=image_uri,
+        sagemaker_session=modules_session,
+        role=role,
+    ).with_retry_strategy(retry_strategy)
+
+    assert model_trainer._retry_strategy == retry_strategy
+
+    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
+        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
+        model_trainer.train()
+
+        mock_training_job.create.assert_called_once()
+        assert mock_training_job.create.call_args.kwargs["retry_strategy"] == retry_strategy
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_infra_check_config(mock_training_job, modules_session):
+    image_uri = DEFAULT_IMAGE
+    role = DEFAULT_ROLE
+    infra_check_config = InfraCheckConfig(
+        enable_infra_check=True,
+    )
+
+    model_trainer = ModelTrainer(
+        training_image=image_uri,
+        sagemaker_session=modules_session,
+        role=role,
+    ).with_infra_check_config(infra_check_config)
+
+    assert model_trainer._infra_check_config == infra_check_config
+
+    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
+        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
+        model_trainer.train()
+
+        mock_training_job.create.assert_called_once()
+        assert mock_training_job.create.call_args.kwargs["infra_check_config"] == infra_check_config
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_session_chaining_config(mock_training_job, modules_session):
+    image_uri = DEFAULT_IMAGE
+    role = DEFAULT_ROLE
+    session_chaining_config = SessionChainingConfig(
+        enable_session_tag_chaining=True,
+    )
+
+    model_trainer = ModelTrainer(
+        training_image=image_uri,
+        sagemaker_session=modules_session,
+        role=role,
+    ).with_session_chaining_config(session_chaining_config)
+
+    assert model_trainer._session_chaining_config == session_chaining_config
+
+    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
+        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
+        model_trainer.train()
+
+        mock_training_job.create.assert_called_once()
+        assert (
+            mock_training_job.create.call_args.kwargs["session_chaining_config"]
+            == session_chaining_config
+        )
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_remote_debug_config(mock_training_job, modules_session):
+    image_uri = DEFAULT_IMAGE
+    role = DEFAULT_ROLE
+    remote_debug_config = RemoteDebugConfig(
+        enable_remote_debug=True,
+    )
+
+    model_trainer = ModelTrainer(
+        training_image=image_uri,
+        sagemaker_session=modules_session,
+        role=role,
+    ).with_remote_debug_config(remote_debug_config)
+
+    assert model_trainer._remote_debug_config == remote_debug_config
+
+    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
+        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
+        model_trainer.train()
+
+        mock_training_job.create.assert_called_once()
+        assert (
+            mock_training_job.create.call_args.kwargs["remote_debug_config"] == remote_debug_config
+        )

@@ -44,7 +44,7 @@ DUMMY_SOURCE_CODE = {
     "source_code": "source_code",
     "entry_script": "script.py",
 }
-DUMMY_DISTRIBUTED_RUNNER = {
+DUMMY_DISTRIBUTED = {
     "_type": "mpi",
     "process_count_per_node": 2,
     "mpi_additional_options": [
@@ -64,7 +64,7 @@ DUMMY_DISTRIBUTED_RUNNER = {
         "SM_HOST_COUNT": "2",
     },
 )
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.read_distributed_runner_json")
+@patch("sagemaker.modules.train.container_drivers.mpi_driver.read_distributed_json")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.read_source_code_json")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.write_env_vars_to_file")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.start_sshd_daemon")
@@ -82,11 +82,11 @@ def test_mpi_driver_worker(
     mock_start_sshd_daemon,
     mock_write_env_vars_to_file,
     mock_read_source_code_json,
-    mock_read_distributed_runner_json,
+    mock_read_distributed_json,
 ):
     mock_hyperparameters_to_cli_args.return_value = []
     mock_read_source_code_json.return_value = DUMMY_SOURCE_CODE
-    mock_read_distributed_runner_json.return_value = DUMMY_DISTRIBUTED_RUNNER
+    mock_read_distributed_json.return_value = DUMMY_DISTRIBUTED
 
     mpi_driver.main()
 
@@ -108,7 +108,7 @@ def test_mpi_driver_worker(
         "SM_HOST_COUNT": "2",
     },
 )
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.read_distributed_runner_json")
+@patch("sagemaker.modules.train.container_drivers.mpi_driver.read_distributed_json")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.read_source_code_json")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.write_env_vars_to_file")
 @patch("sagemaker.modules.train.container_drivers.mpi_driver.start_sshd_daemon")
@@ -130,11 +130,11 @@ def test_mpi_driver_master(
     mock_start_sshd_daemon,
     mock_write_env_vars_to_file,
     mock_read_source_code_config_json,
-    mock_read_distributed_runner_json,
+    mock_read_distributed_json,
 ):
     mock_hyperparameters_to_cli_args.return_value = []
     mock_read_source_code_config_json.return_value = DUMMY_SOURCE_CODE
-    mock_read_distributed_runner_json.return_value = DUMMY_DISTRIBUTED_RUNNER
+    mock_read_distributed_json.return_value = DUMMY_DISTRIBUTED
     mock_get_mpirun_command.return_value = DUMMY_MPI_COMMAND
     mock_get_process_count.return_value = 2
     mock_execute_commands.return_value = (0, "")

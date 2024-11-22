@@ -38,7 +38,7 @@ TrainingJob - {training_job_name}
 
 USER_CODE_PATH = "/opt/ml/input/data/sm_code"
 SOURCE_CODE_JSON = "/opt/ml/input/data/sm_drivers/sourcecode.json"
-DISTRIBUTED_RUNNER_JSON = "/opt/ml/input/data/sm_drivers/distributed_runner.json"
+DISTRIBUTED_JSON = "/opt/ml/input/data/sm_drivers/distributed.json"
 
 HYPERPARAMETERS_JSON = "/opt/ml/input/config/hyperparameters.json"
 
@@ -79,14 +79,14 @@ def read_source_code_json(source_code_json: Dict[str, Any] = SOURCE_CODE_JSON):
     return source_code_dict
 
 
-def read_distributed_runner_json(distributed_json: Dict[str, Any] = DISTRIBUTED_RUNNER_JSON):
+def read_distributed_json(distributed_json: Dict[str, Any] = DISTRIBUTED_JSON):
     """Read the distribution config json file."""
     try:
         with open(distributed_json, "r") as f:
-            distributed_runner_dict = json.load(f) or {}
+            distributed_dict = json.load(f) or {}
     except FileNotFoundError:
-        distributed_runner_dict = {}
-    return distributed_runner_dict
+        distributed_dict = {}
+    return distributed_dict
 
 
 def read_hyperparameters_json(hyperparameters_json: Dict[str, Any] = HYPERPARAMETERS_JSON):
@@ -99,10 +99,10 @@ def read_hyperparameters_json(hyperparameters_json: Dict[str, Any] = HYPERPARAME
     return hyperparameters_dict
 
 
-def get_process_count(distributed_runner_dict: Dict[str, Any]) -> int:
+def get_process_count(distributed_dict: Dict[str, Any]) -> int:
     """Get the number of processes to run on each node in the training job."""
     return (
-        int(distributed_runner_dict.get("process_count_per_node", 0))
+        int(distributed_dict.get("process_count_per_node", 0))
         or int(os.environ.get("SM_NUM_GPUS", 0))
         or int(os.environ.get("SM_NUM_NEURONS", 0))
         or 1

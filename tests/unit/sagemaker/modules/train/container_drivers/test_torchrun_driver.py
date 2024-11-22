@@ -27,7 +27,7 @@ DUMMY_SOURCE_CODE = {
     "entry_script": "script.py",
 }
 
-DUMMY_DISTRIBUTED_RUNNER = {"_type": "torchrun", "process_count_per_node": 2}
+DUMMY_distributed = {"_type": "torchrun", "process_count_per_node": 2}
 
 
 @patch(
@@ -83,8 +83,8 @@ def test_get_base_pytorch_command_torch_distributed_launch(
     return_value=DUMMY_SOURCE_CODE,
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_runner_json",
-    return_value=DUMMY_DISTRIBUTED_RUNNER,
+    "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_json",
+    return_value=DUMMY_distributed,
 )
 @patch(
     "sagemaker.modules.train.container_drivers.torchrun_driver.hyperparameters_to_cli_args",
@@ -92,7 +92,7 @@ def test_get_base_pytorch_command_torch_distributed_launch(
 )
 def test_create_commands_single_node(
     mock_hyperparameters_to_cli_args,
-    mock_read_distributed_runner_json,
+    mock_read_distributed_json,
     mock_read_source_code_json,
     mock_get_base_pytorch_command,
     mock_pytorch_version,
@@ -139,8 +139,8 @@ def test_create_commands_single_node(
     return_value=DUMMY_SOURCE_CODE,
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_runner_json",
-    return_value=DUMMY_DISTRIBUTED_RUNNER,
+    "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_json",
+    return_value=DUMMY_distributed,
 )
 @patch(
     "sagemaker.modules.train.container_drivers.torchrun_driver.hyperparameters_to_cli_args",
@@ -148,7 +148,7 @@ def test_create_commands_single_node(
 )
 def test_create_commands_multi_node(
     mock_hyperparameters_to_cli_args,
-    mock_read_distributed_runner_json,
+    mock_read_distributed_json,
     mock_read_source_code_json,
     mock_get_base_pytorch_command,
     mock_pytorch_version,

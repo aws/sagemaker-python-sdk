@@ -76,14 +76,6 @@ echo "/opt/ml/input/config/inputdataconfig.json:"
 cat /opt/ml/input/config/inputdataconfig.json
 echo
 
-echo "/opt/ml/input/data/sm_drivers/sourcecode.json"
-cat /opt/ml/input/data/sm_drivers/sourcecode.json
-echo
-
-echo "/opt/ml/input/data/sm_drivers/distributed_runner.json"
-cat /opt/ml/input/data/sm_drivers/distributed_runner.json
-echo
-
 echo "Setting up environment variables"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/scripts/environment.py
 source /opt/ml/input/sm_training.env

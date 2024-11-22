@@ -177,7 +177,7 @@ def _configure_gpu_args(
         {
             "source_code": source_code,
             "training_image": training_image,
-            "distributed_runner": torch_distributed,
+            "distributed": torch_distributed,
         }
     )
     return args
@@ -212,7 +212,7 @@ def _configure_trainium_args(
         {
             "source_code": source_code,
             "training_image": training_image,
-            "distributed_runner": Torchrun(),
+            "distributed": Torchrun(),
         }
     )
     return args
@@ -232,7 +232,7 @@ def _get_args_from_recipe(
     {
         "source_code": SourceCode,
         "training_image": str,
-        "distributed_runner": DistributedRunner,
+        "distributed": DistributedConfig,
         "compute": Compute,
         "hyperparameters": Dict[str, Any],
     }
@@ -275,7 +275,7 @@ def _get_args_from_recipe(
     if requirements and not os.path.isfile(requirements):
         raise ValueError(f"Recipe requirements file {requirements} not found.")
 
-    # Get Training Image, SourceCode, and DistributedRunner args
+    # Get Training Image, SourceCode, and distributed args
     device_type = _determine_device_type(compute.instance_type)
     recipe_train_dir = tempfile.TemporaryDirectory(prefix="training_")
     if device_type == "gpu":

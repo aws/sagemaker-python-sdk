@@ -20,7 +20,7 @@ import json
 from utils import (
     logger,
     read_source_code_json,
-    read_distributed_runner_json,
+    read_distributed_json,
     read_hyperparameters_json,
     hyperparameters_to_cli_args,
     get_process_count,
@@ -59,7 +59,7 @@ def main():
 
     """
     source_code = read_source_code_json()
-    distribution = read_distributed_runner_json()
+    distribution = read_distributed_json()
     hyperparameters = read_hyperparameters_json()
 
     sm_current_host = os.environ["SM_CURRENT_HOST"]

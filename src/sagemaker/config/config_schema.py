@@ -664,58 +664,19 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "minLength": 20,
             "maxLength": 2048,
         },
-        "baseJobName": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "sourceCode": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "distributed_runner": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "compute": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "networking": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "stoppingCondition": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "trainingImage": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "trainingImageConfig": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "algorithmName": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "outputDataConfig": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "trainingInputMode": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "environment": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
-        "hyperparameters": {
-            TYPE: OBJECT,
-            ADDITIONAL_PROPERTIES: True
-        },
+        "baseJobName": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "sourceCode": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "distributed": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "compute": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "networking": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "stoppingCondition": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "trainingImage": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "trainingImageConfig": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "algorithmName": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "outputDataConfig": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "trainingInputMode": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "environment": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "hyperparameters": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
     },
     PROPERTIES: {
         SCHEMA_VERSION: {
@@ -769,10 +730,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         },
                                     },
                                 },
-                                MODEL_TRAINER: {
-                                    TYPE: OBJECT,
-                                    ADDITIONAL_PROPERTIES: True
-                                },
+                                MODEL_TRAINER: {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
                                 ESTIMATOR: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
