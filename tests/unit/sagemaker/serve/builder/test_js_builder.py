@@ -1686,3 +1686,80 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
             "OPTION_TENSOR_PARALLEL_DEGREE": "4",  # should be overridden from 8 to 4
             "OPTION_QUANTIZE": "fp8",  # should be added to the env
         }
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_gated_model",
+        return_value=True,
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_fine_tuned_model",
+        return_value=False,
+    )
+    def test_optimize_on_js_model_should_ignore_pre_optimized_configurations_no_override(
+        self,
+        mock_is_fine_tuned,
+        mock_is_jumpstart_model,
+        mock_js_model,
+        mock_is_gated_model,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+        mock_sagemaker_session = Mock()
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = (
+            lambda *args: mock_optimization_job_response
+        )
+
+        mock_lmi_js_model = MagicMock()
+        mock_lmi_js_model.image_uri = mock_djl_image_uri
+        mock_lmi_js_model.env = {
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "ENDPOINT_SERVER_TIMEOUT": "3600",
+            "MODEL_CACHE_ROOT": "/opt/ml/model",
+            "SAGEMAKER_ENV": "1",
+            "HF_MODEL_ID": "/opt/ml/model",
+            "OPTION_ENFORCE_EAGER": "true",
+            "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+        }
+
+        mock_js_model.return_value = mock_lmi_js_model
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-1-70b-instruct",
+            schema_builder=SchemaBuilder("test", "test"),
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        optimized_model = model_builder.optimize(
+            accept_eula=True,
+            instance_type="ml.g5.24xlarge",
+            quantization_config={
+                "OverrideEnvironment": {
+                    "OPTION_QUANTIZE": "fp8",
+                },
+            },
+            output_path="s3://bucket/code/",
+        )
+
+        assert mock_lmi_js_model.set_deployment_config.call_args_list[0].kwargs == {
+            "instance_type": "ml.g5.24xlarge",
+            "config_name": "lmi",
+        }
+        assert optimized_model.env == {
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "ENDPOINT_SERVER_TIMEOUT": "3600",
+            "MODEL_CACHE_ROOT": "/opt/ml/model",
+            "SAGEMAKER_ENV": "1",
+            "HF_MODEL_ID": "/opt/ml/model",
+            "OPTION_ENFORCE_EAGER": "true",
+            "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+            "OPTION_QUANTIZE": "fp8",  # should be added to the env
+        }
