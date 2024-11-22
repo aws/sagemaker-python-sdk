@@ -171,6 +171,7 @@ def local_sagemaker_session(boto_session):
     # For tests which doesn't verify config file injection, operate with empty config
 
     local_session_mock.sagemaker_config = {}
+    local_session_mock.endpoint_arn = None
     return local_session_mock
 
 

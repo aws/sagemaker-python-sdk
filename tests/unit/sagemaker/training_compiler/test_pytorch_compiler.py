@@ -344,7 +344,7 @@ def test_pytorchxla_distribution(
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert boto_call_names == ["resource", "client"]
 
     expected_train_args = _create_train_job(
         pytorch_training_compiler_version,
@@ -403,7 +403,7 @@ def test_default_compiler_config(
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert boto_call_names == ["resource", "client"]
 
     expected_train_args = _create_train_job(
         pytorch_training_compiler_version,
@@ -458,7 +458,7 @@ def test_debug_compiler_config(
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert boto_call_names == ["resource", "client"]
 
     expected_train_args = _create_train_job(
         pytorch_training_compiler_version,
@@ -513,7 +513,7 @@ def test_disable_compiler_config(
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert boto_call_names == ["resource", "client"]
 
     expected_train_args = _create_train_job(
         pytorch_training_compiler_version,
