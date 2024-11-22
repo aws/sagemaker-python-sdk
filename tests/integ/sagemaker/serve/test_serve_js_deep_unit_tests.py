@@ -25,7 +25,9 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
     sagemaker_session,
 ):
     with (
-        patch.object(Session, "create_model", return_value="mock_model") as mock_create_model,
+        patch.object(
+            Session, "create_model", return_value="mock_model"
+        ) as mock_create_model,  # flake8: disable=E999
         patch.object(
             Session, "endpoint_from_production_variants"
         ) as mock_endpoint_from_production_variants,
