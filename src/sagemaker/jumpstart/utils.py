@@ -1595,9 +1595,10 @@ def _add_model_access_configs_to_model_data_sources(
             )
             acked_model_data_sources.append(mutable_model_data_source)
         else:
-            mutable_model_data_source.pop(
-                "HostingEulaKey"
-            )  # pop when model access config is not applicable
+            if "HostingEulaKey" in mutable_model_data_source:
+                mutable_model_data_source.pop(
+                    "HostingEulaKey"
+                )  # pop when model access config is not applicable
             acked_model_data_sources.append(mutable_model_data_source)
     return acked_model_data_sources
 

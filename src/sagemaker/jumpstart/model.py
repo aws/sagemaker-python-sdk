@@ -817,6 +817,20 @@ class JumpStartModel(Model):
                 f"{EndpointType.INFERENCE_COMPONENT_BASED} is not supported for Proprietary models."
             )
 
+        # No resources given to deploy() but present 'resources' key in deploy_kwargs means default
+        # JumpStart resource requirements are being used
+        if hasattr(self, "_is_sharded_model") and not resources and deploy_kwargs.resources:
+            if (
+                self._is_sharded_model
+                and deploy_kwargs.resources.num_cpus
+                and deploy_kwargs.resources.num_cpus > 0
+            ):
+                JUMPSTART_LOGGER.warning(
+                    "NumOfCpuCoresRequired should be 0 for the best experience with SageMaker Fast "
+                    "Model Loading. Overriding the requested `num_cpus` to 0."
+                )
+                deploy_kwargs.resources.num_cpus = 0
+
         self.additional_model_data_sources = _add_model_access_configs_to_model_data_sources(
             self.additional_model_data_sources,
             deploy_kwargs.model_access_configs,
