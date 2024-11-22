@@ -1303,7 +1303,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self._is_jumpstart_model_id():
             self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
             if self.pysdk_model:
-                self.pysdk_model.set_deployment_config(instance_type=instance_type, config_name="lmi")
+                self.pysdk_model.set_deployment_config(
+                    instance_type=instance_type, config_name="lmi"
+                )
             input_args = self._optimize_for_jumpstart(
                 output_path=output_path,
                 instance_type=instance_type,
