@@ -1,5 +1,7 @@
 # Changelog
 
+## v2.235.2 (2024-11-22)
+
 ## v2.235.1 (2024-11-20)
 
 ### Bug Fixes and Other Changes
