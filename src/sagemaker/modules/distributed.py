@@ -72,8 +72,8 @@ class SMP(BaseModel):
         return hyperparameters
 
 
-class DistributedRunner(BaseModel):
-    """Base class for DistributedRunner Class"""
+class DistributedConfig(BaseModel):
+    """Base class for distributed training configurations."""
 
     _type: str = PrivateAttr()
 
@@ -84,11 +84,11 @@ class DistributedRunner(BaseModel):
         return result
 
 
-class Torchrun(DistributedRunner):
-    """TorchDistributed.
+class Torchrun(DistributedConfig):
+    """Torchrun.
 
-    The Torchrun runner uses `torchrun` or `torch.distributed.launch` in the backend to
-    launch distributed training.
+    The Torchrun class configures a job that uses `torchrun` or
+    `torch.distributed.launch` in the backend to launch distributed training.
 
     Attributes:
         process_count_per_node (int):
@@ -104,10 +104,11 @@ class Torchrun(DistributedRunner):
     smp: Optional["SMP"] = None
 
 
-class MPI(DistributedRunner):
+class MPI(DistributedConfig):
     """MPI.
 
-    The MPI runner uses `mpirun` in the backend to launch distributed training.
+    The MPI class configures a job that uses `mpirun` in the backend to launch
+    distributed training.
 
     Attributes:
         process_count_per_node (int):

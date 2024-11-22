@@ -82,7 +82,7 @@ def test_hp_contract_mpi_script(modules_sagemaker_session):
         compute=compute,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
         source_code=source_code,
-        distributed_runner=MPI(),
+        distributed=MPI(),
         base_job_name="hp-contract-mpi-script",
     )
 
@@ -101,7 +101,7 @@ def test_hp_contract_torchrun_script(modules_sagemaker_session):
         compute=compute,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
         source_code=source_code,
-        distributed_runner=Torchrun(),
+        distributed=Torchrun(),
         base_job_name="hp-contract-torchrun-script",
     )
 

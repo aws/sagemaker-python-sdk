@@ -21,7 +21,7 @@ from typing import List, Tuple
 from utils import (
     logger,
     read_source_code_json,
-    read_distributed_runner_json,
+    read_distributed_json,
     read_hyperparameters_json,
     hyperparameters_to_cli_args,
     get_process_count,
@@ -66,7 +66,7 @@ def setup_env():
 def create_commands():
     """Create the Torch Distributed command to execute"""
     source_code = read_source_code_json()
-    distribution = read_distributed_runner_json()
+    distribution = read_distributed_json()
     hyperparameters = read_hyperparameters_json()
 
     process_count = get_process_count(distribution)

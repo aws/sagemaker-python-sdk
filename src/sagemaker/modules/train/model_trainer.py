@@ -29,19 +29,22 @@ from sagemaker_core.shapes import AlgorithmSpecification
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 
-from sagemaker.config.config_schema import (_simple_path, SAGEMAKER,
-                                            MODEL_TRAINER, MODULES,
-                                            PYTHON_SDK,
-                                            TRAINING_JOB_ENVIRONMENT_PATH,
-                                            TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-                                            TRAINING_JOB_VPC_CONFIG_PATH,
-                                            TRAINING_JOB_SUBNETS_PATH,
-                                            TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
-                                            TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
-                                            TRAINING_JOB_PROFILE_CONFIG_PATH,
-                                            TRAINING_JOB_RESOURCE_CONFIG_PATH,
-                                            TRAINING_JOB_ROLE_ARN_PATH,
-                                            TRAINING_JOB_TAGS_PATH)
+from sagemaker.config.config_schema import (
+    _simple_path,
+    SAGEMAKER,
+    MODEL_TRAINER,
+    MODULES,
+    PYTHON_SDK,
+    TRAINING_JOB_ENVIRONMENT_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_VPC_CONFIG_PATH,
+    TRAINING_JOB_SUBNETS_PATH,
+    TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
+    TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
+    TRAINING_JOB_RESOURCE_CONFIG_PATH,
+    TRAINING_JOB_ROLE_ARN_PATH,
+    TRAINING_JOB_TAGS_PATH,
+)
 
 from sagemaker.utils import resolve_value_from_config
 from sagemaker.modules import Session, get_execution_role
@@ -58,13 +61,7 @@ from sagemaker.modules.configs import (
     FileSystemDataSource,
     Networking,
     Tag,
-    MetricDefinition,
-    DebugHookConfig,
-    DebugRuleConfiguration,
-    ExperimentConfig,
     InfraCheckConfig,
-    ProfilerConfig,
-    ProfilerRuleConfiguration,
     RemoteDebugConfig,
     SessionChainingConfig,
     TensorBoardOutputConfig,
@@ -73,10 +70,7 @@ from sagemaker.modules.configs import (
 )
 
 from sagemaker.modules.local_core.local_container import _LocalContainer
-from sagemaker.modules.distributed import (
-    DistributedRunner,
-    Torchrun,
-)
+from sagemaker.modules.distributed import Torchrun, MPI, DistributedConfig
 from sagemaker.modules.utils import (
     _get_repo_name_from_image,
     _get_unique_name,
@@ -95,7 +89,7 @@ from sagemaker.modules.constants import (
     DEFAULT_CONTAINER_ENTRYPOINT,
     DEFAULT_CONTAINER_ARGUMENTS,
     SOURCE_CODE_JSON,
-    DISTRIBUTED_RUNNER_JSON,
+    DISTRIBUTED_JSON,
 )
 from sagemaker.modules.templates import (
     TRAIN_SCRIPT_TEMPLATE,
@@ -151,7 +145,7 @@ class ModelTrainer(BaseModel):
         source_code (Optional[SourceCode]):
             The source code configuration. This is used to configure the source code for
             running the training job.
-        distributed_runner (Optional[DistributedRunner]):
+        distributed (Optional[Union[MPI, Torchrun]]):
             The distributed runner for the training job. This is used to configure
             a distributed training job. If specifed, `source_code` must also
             be provided.
@@ -206,7 +200,7 @@ class ModelTrainer(BaseModel):
     role: Optional[str] = None
     base_job_name: Optional[str] = None
     source_code: Optional[SourceCode] = None
-    distributed_runner: Optional[DistributedRunner] = None
+    distributed: Optional[Union[MPI, Torchrun]] = None
     compute: Optional[Compute] = None
     networking: Optional[Networking] = None
     stopping_condition: Optional[StoppingCondition] = None
@@ -222,31 +216,45 @@ class ModelTrainer(BaseModel):
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
 
-    CONFIGURABLE_ATTRIBUTES: ClassVar[List[str]] = ["role",
-                                                    "base_job_name",
-                                                    "source_code",
-                                                    "distributed_runner",
-                                                    "compute",
-                                                    "networking",
-                                                    "stopping_condition",
-                                                    "training_image",
-                                                    "training_image_config",
-                                                    "algorithm_name",
-                                                    "output_data_config",
-                                                    "checkpoint_config",
-                                                    "training_input_mode",
-                                                    "environment",
-                                                    "hyperparameters"]
+    # Created Artifacts
+    _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
+
+    # Private TrainingJob Parameters
+    _tensorboard_output_config: Optional[TensorBoardOutputConfig] = PrivateAttr(default=None)
+    _retry_strategy: Optional[RetryStrategy] = PrivateAttr(default=None)
+    _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
+    _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
+    _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
+
+    _temp_recipe_train_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
+
+    CONFIGURABLE_ATTRIBUTES: ClassVar[List[str]] = [
+        "role",
+        "base_job_name",
+        "source_code",
+        "distributed",
+        "compute",
+        "networking",
+        "stopping_condition",
+        "training_image",
+        "training_image_config",
+        "algorithm_name",
+        "output_data_config",
+        "checkpoint_config",
+        "training_input_mode",
+        "environment",
+        "hyperparameters",
+    ]
 
     SERIALIZABLE_CONFIG_ATTRIBUTES: ClassVar[Any] = {
         "source_code": SourceCode,
-        "distributed_runner": type(DistributedRunner),
-        "compute": type(Compute),
-        "networking": type(Networking),
-        "stopping_condition": type(StoppingCondition),
-        "training_image_config": type(TrainingImageConfig),
-        "output_data_config": type(OutputDataConfig),
-        "checkpoint_config": type(CheckpointConfig)
+        "distributed": DistributedConfig,
+        "compute": Compute,
+        "networking": Networking,
+        "stopping_condition": StoppingCondition,
+        "training_image_config": TrainingImageConfig,
+        "output_data_config": OutputDataConfig,
+        "checkpoint_config": CheckpointConfig,
     }
 
     def _populate_intelligent_defaults(self):
@@ -261,52 +269,51 @@ class ModelTrainer(BaseModel):
         """Function to populate all the possible default configs from Training Job Space"""
         if not self.environment:
             self.environment = resolve_value_from_config(
-                config_path=TRAINING_JOB_ENVIRONMENT_PATH,
-                sagemaker_session=self.sagemaker_session)
+                config_path=TRAINING_JOB_ENVIRONMENT_PATH, sagemaker_session=self.sagemaker_session
+            )
 
         default_enable_network_isolation = resolve_value_from_config(
             config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-            sagemaker_session=self.sagemaker_session)
+            sagemaker_session=self.sagemaker_session,
+        )
         default_vpc_config = resolve_value_from_config(
-            config_path=TRAINING_JOB_VPC_CONFIG_PATH,
-            sagemaker_session=self.sagemaker_session)
+            config_path=TRAINING_JOB_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
+        )
 
         if not self.networking:
-            if (default_enable_network_isolation is not None
-                    or default_vpc_config is not None):
+            if default_enable_network_isolation is not None or default_vpc_config is not None:
                 self.networking = Networking(
                     default_enable_network_isolation=default_enable_network_isolation,
                     subnets=resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH),
                     security_group_ids=resolve_value_from_config(
-                        config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH),
+                        config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
+                    ),
                 )
         else:
             if self.networking.enable_network_isolation is None:
                 self.networking.enable_network_isolation = default_enable_network_isolation
             if self.networking.subnets is None:
-                self.networking.subnets = (
-                    resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH))
+                self.networking.subnets = resolve_value_from_config(
+                    config_path=TRAINING_JOB_SUBNETS_PATH
+                )
             if self.networking.security_group_ids is None:
-                self.networking.subnets = (
-                    resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH))
+                self.networking.subnets = resolve_value_from_config(
+                    config_path=TRAINING_JOB_SUBNETS_PATH
+                )
 
         if not self.output_data_config:
             default_output_data_config = resolve_value_from_config(
-                config_path=TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH)
+                config_path=TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH
+            )
             if default_output_data_config:
                 self.output_data_config = OutputDataConfig(
-                    **self._convert_keys_to_snake(default_output_data_config))
-
-        if not self._profiler_config:
-            default_profiler_config = resolve_value_from_config(
-                config_path=TRAINING_JOB_PROFILE_CONFIG_PATH)
-            if default_profiler_config:
-                self._profiler_config = ProfilerConfig(
-                    **self._convert_keys_to_snake(default_profiler_config))
+                    **self._convert_keys_to_snake(default_output_data_config)
+                )
 
         if not self.compute:
             default_resource_config = resolve_value_from_config(
-                config_path=TRAINING_JOB_RESOURCE_CONFIG_PATH)
+                config_path=TRAINING_JOB_RESOURCE_CONFIG_PATH
+            )
             if default_resource_config:
                 self.compute = Compute(**self._convert_keys_to_snake(default_resource_config))
 
@@ -318,10 +325,7 @@ class ModelTrainer(BaseModel):
 
     def _convert_keys_to_snake(self, config: dict) -> dict:
         """Utility helper function that converts the keys of a dictionary into snake case"""
-        return {
-            to_snake_case(key): value
-            for key, value in config.items()
-        }
+        return {to_snake_case(key): value for key, value in config.items()}
 
     def _populate_intelligent_defaults_from_model_trainer_space(self):
         """Function to populate all the possible default configs from Model Trainer Space"""
@@ -329,42 +333,23 @@ class ModelTrainer(BaseModel):
         for configurable_attribute in self.CONFIGURABLE_ATTRIBUTES:
             if getattr(self, configurable_attribute) is None:
                 default_config = resolve_value_from_config(
-                    config_path=_simple_path(SAGEMAKER,
-                                             PYTHON_SDK,
-                                             MODULES,
-                                             MODEL_TRAINER,
-                                             to_camel_case(configurable_attribute)),
-                    sagemaker_session=self.sagemaker_session)
+                    config_path=_simple_path(
+                        SAGEMAKER,
+                        PYTHON_SDK,
+                        MODULES,
+                        MODEL_TRAINER,
+                        to_camel_case(configurable_attribute),
+                    ),
+                    sagemaker_session=self.sagemaker_session,
+                )
                 if default_config is not None:
                     if configurable_attribute in self.SERIALIZABLE_CONFIG_ATTRIBUTES:
-                        default_config = (self.SERIALIZABLE_CONFIG_ATTRIBUTES
-                                          .get(configurable_attribute)(**default_config))  # noqa
+                        default_config = self.SERIALIZABLE_CONFIG_ATTRIBUTES.get(
+                            configurable_attribute
+                        )(
+                            **default_config  # pylint: disable=E1134
+                        )  # noqa
                     setattr(self, configurable_attribute, default_config)
-
-    # Created Artifacts
-    _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
-
-    # Metrics settings
-    _enable_sage_maker_metrics_time_series: Optional[bool] = PrivateAttr(default=False)
-    _metric_definitions: Optional[List[MetricDefinition]] = PrivateAttr(default=None)
-
-    # Debugger settings
-    _debug_hook_config: Optional[DebugHookConfig] = PrivateAttr(default=None)
-    _debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = PrivateAttr(default=None)
-    _profiler_config: Optional[ProfilerConfig] = PrivateAttr(default=None)
-    _profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = PrivateAttr(
-        default=None
-    )
-    _tensor_board_output_config: Optional[TensorBoardOutputConfig] = PrivateAttr(default=None)
-
-    # Additional settings
-    _retry_strategy: Optional[RetryStrategy] = PrivateAttr(default=None)
-    _experiment_config: Optional[ExperimentConfig] = PrivateAttr(default=None)
-    _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
-    _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
-    _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
-
-    _temp_recipe_train_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
 
     def __del__(self):
         """Destructor method to clean up the temporary directory."""
@@ -385,13 +370,13 @@ class ModelTrainer(BaseModel):
                 "Only one of 'training_image' or 'algorithm_name' must be provided.",
             )
 
-    def _validate_distributed_runner(
+    def _validate_distributed_config(
         self,
         source_code: Optional[SourceCode],
-        distributed_runner: Optional[DistributedRunner],
+        distributed: Optional[DistributedConfig],
     ):
         """Validate the distribution configuration."""
-        if distributed_runner and not source_code.entry_script:
+        if distributed and not source_code.entry_script:
             raise ValueError(
                 "Must provide 'entry_script' if 'distribution' " + "is provided in 'source_code'.",
             )
@@ -436,7 +421,7 @@ class ModelTrainer(BaseModel):
         """Post init method to perform custom validation and set default values."""
         self._validate_training_image_and_algorithm_name(self.training_image, self.algorithm_name)
         self._validate_source_code(self.source_code)
-        self._validate_distributed_runner(self.source_code, self.distributed_runner)
+        self._validate_distributed_config(self.source_code, self.distributed)
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
             if self.sagemaker_session is None:
@@ -546,17 +531,15 @@ class ModelTrainer(BaseModel):
             self._prepare_train_script(
                 tmp_dir=drivers_dir,
                 source_code=self.source_code,
-                distributed_runner=self.distributed_runner,
+                distributed=self.distributed,
             )
 
-            if isinstance(self.distributed_runner, Torchrun) and self.distributed_runner.smp:
-                mp_parameters = self.distributed_runner.smp._to_mp_hyperparameters()
+            if isinstance(self.distributed, Torchrun) and self.distributed.smp:
+                mp_parameters = self.distributed.smp._to_mp_hyperparameters()
                 string_hyper_parameters.update(mp_parameters)
 
             self._write_source_code_json(tmp_dir=drivers_dir, source_code=self.source_code)
-            self._write_distributed_runner_json(
-                tmp_dir=drivers_dir, distributed_runner=self.distributed_runner
-            )
+            self._write_distributed_json(tmp_dir=drivers_dir, distributed=self.distributed)
 
             # Create an input channel for drivers packaged by the sdk
             sm_drivers_channel = self.create_input_data_channel(SM_DRIVERS, drivers_dir.name)
@@ -577,8 +560,6 @@ class ModelTrainer(BaseModel):
             training_image_config=self.training_image_config,
             container_entrypoint=container_entrypoint,
             container_arguments=container_arguments,
-            metric_definitions=self._metric_definitions,
-            enable_sage_maker_metrics_time_series=self._enable_sage_maker_metrics_time_series,
         )
 
         resource_config = self.compute._to_resource_config()
@@ -610,14 +591,9 @@ class ModelTrainer(BaseModel):
                     self.networking.enable_network_isolation if self.networking else None
                 ),
                 # Private Instance Attributes
-                debug_hook_config=self._debug_hook_config,
-                debug_rule_configurations=self._debug_rule_configurations,
                 remote_debug_config=self._remote_debug_config,
-                profiler_config=self._profiler_config,
-                profiler_rule_configurations=self._profiler_rule_configurations,
-                tensor_board_output_config=self._tensor_board_output_config,
+                tensor_board_output_config=self._tensorboard_output_config,
                 retry_strategy=self._retry_strategy,
-                experiment_config=self._experiment_config,
                 infra_check_config=self._infra_check_config,
                 session_chaining_config=self._session_chaining_config,
             )
@@ -747,22 +723,22 @@ class ModelTrainer(BaseModel):
             dump = source_code.model_dump(exclude_none=True) if source_code else {}
             f.write(json.dumps(dump))
 
-    def _write_distributed_runner_json(
+    def _write_distributed_json(
         self,
         tmp_dir: TemporaryDirectory,
-        distributed_runner: Optional[DistributedRunner] = None,
+        distributed: Optional[DistributedConfig] = None,
     ):
         """Write the distributed runner configuration to a JSON file."""
-        file_path = os.path.join(tmp_dir.name, DISTRIBUTED_RUNNER_JSON)
+        file_path = os.path.join(tmp_dir.name, DISTRIBUTED_JSON)
         with open(file_path, "w") as f:
-            dump = distributed_runner.model_dump(exclude_none=True) if distributed_runner else {}
+            dump = distributed.model_dump(exclude_none=True) if distributed else {}
             f.write(json.dumps(dump))
 
     def _prepare_train_script(
         self,
         tmp_dir: TemporaryDirectory,
         source_code: SourceCode,
-        distributed_runner: Optional[DistributedRunner] = None,
+        distributed: Optional[DistributedConfig] = None,
     ):
         """Prepare the training script to be executed in the training job container.
 
@@ -791,15 +767,15 @@ class ModelTrainer(BaseModel):
 
         if base_command:
             execute_driver = EXECUTE_BASE_COMMANDS.format(base_command=base_command)
-        elif distributed_runner:
-            distribution_type = distributed_runner._type
+        elif distributed:
+            distribution_type = distributed._type
             if distribution_type == "mpi":
                 execute_driver = EXECUTE_MPI_DRIVER
             elif distribution_type == "torchrun":
                 execute_driver = EXEUCTE_TORCHRUN_DRIVER
             else:
                 raise ValueError(f"Unsupported distribution type: {distribution_type}.")
-        elif source_code.entry_script and not source_code.command and not distributed_runner:
+        elif source_code.entry_script and not source_code.command and not distributed:
             if not source_code.entry_script.endswith((".py", ".sh")):
                 raise ValueError(
                     f"Unsupported entry script: {source_code.entry_script}."
@@ -815,139 +791,6 @@ class ModelTrainer(BaseModel):
 
         with open(os.path.join(tmp_dir.name, TRAIN_SCRIPT), "w") as f:
             f.write(train_script)
-
-    def with_metric_settings(
-        self,
-        enable_sage_maker_metrics_time_series: bool = True,
-        metric_definitions: Optional[List[MetricDefinition]] = None,
-    ) -> "ModelTrainer":
-        """Set the metrics configuration for the training job.
-
-        Example:
-        ```python
-        model_trainer = ModelTrainer(...).with_metric_settings(
-            enable_sage_maker_metrics_time_series=True,
-            metric_definitions=[
-                MetricDefinition(
-                    name="loss",
-                    regex="Loss: (.*?),",
-                ),
-                MetricDefinition(
-                    name="accuracy",
-                    regex="Accuracy: (.*?),",
-                ),
-            ]
-        )
-        ```
-
-        Args:
-            enable_sage_maker_metrics_time_series (Optional[bool]):
-                Whether to enable SageMaker metrics time series. Defaults to True.
-            metric_definitions (Optional[List[MetricDefinition]]):
-                A list of metric definition objects. Each object specifies
-                the metric name and regular expressions used to parse algorithm logs.
-                SageMaker publishes each metric to Amazon CloudWatch.
-        """
-        self._enable_sage_maker_metrics_time_series = enable_sage_maker_metrics_time_series
-        self._metric_definitions = metric_definitions
-        return self
-
-    def with_debugger_settings(
-        self,
-        debug_hook_config: Optional[DebugHookConfig] = None,
-        debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = None,
-        profiler_config: Optional[ProfilerConfig] = None,
-        profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = None,
-        tensor_board_output_config: Optional[TensorBoardOutputConfig] = None,
-    ) -> "ModelTrainer":
-        """Set the configuration for settings related to Amazon SageMaker Debugger.
-
-        Example:
-        ```python
-        model_trainer = ModelTrainer(...).with_debugger_settings(
-            debug_hook_config=DebugHookConfig(
-                s3_output_path="s3://bucket/path",
-                collection_configurations=[
-                    CollectionConfiguration(
-                        collection_name="some_collection",
-                        collection_parameters={
-                            "include_regex": ".*",
-                        }
-                    )
-                ]
-            )
-        )
-        ```
-
-        Args:
-            debug_hook_config (Optional[DebugHookConfig]):
-                Configuration information for the Amazon SageMaker Debugger hook parameters,
-                metric and tensor collections, and storage paths.
-                To learn more see:
-                 https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-createtrainingjob-api.html
-            debug_rule_configurations (Optional[List[DebugRuleConfiguration]]):
-                Configuration information for Amazon SageMaker Debugger rules for debugging
-                output ensors.
-            profiler_config (ProfilerConfig):
-                Configuration information for Amazon SageMaker Debugger system monitoring,
-                framework profiling, and storage paths.
-            profiler_rule_configurations (List[ProfilerRuleConfiguration]):
-                Configuration information for Amazon SageMaker Debugger rules for profiling
-                system and framework metrics.
-            tensor_board_output_config (Optional[TensorBoardOutputConfig]):
-                Configuration of storage locations for the Amazon SageMaker Debugger TensorBoard
-                output data.
-        """
-        self._debug_hook_config = debug_hook_config
-        self._debug_rule_configurations = debug_rule_configurations
-        self._profiler_config = profiler_config
-        self._profiler_rule_configurations = profiler_rule_configurations
-        self._tensor_board_output_config = tensor_board_output_config
-        return self
-
-    def with_additional_settings(
-        self,
-        retry_strategy: Optional[RetryStrategy] = None,
-        experiment_config: Optional[ExperimentConfig] = None,
-        infra_check_config: Optional[InfraCheckConfig] = None,
-        session_chaining_config: Optional[SessionChainingConfig] = None,
-        remote_debug_config: Optional[RemoteDebugConfig] = None,
-    ) -> "ModelTrainer":
-        """Set any additional settings for the training job.
-
-        Example:
-        ```python
-        model_trainer = ModelTrainer(...).with_additional_settings(
-            experiment_config=ExperimentConfig(
-                experiment_name="my-experiment",
-                trial_name="my-trial",
-            )
-        )
-        ```
-
-        Args:
-            retry_strategy (Optional[RetryStrategy]):
-                The number of times to retry the job when the job fails due to an
-                `InternalServerError`.
-            experiment_config (Optional[ExperimentConfig]):
-                Configuration information for the Amazon SageMaker Experiment.
-                Associates a SageMaker job as a trial component with an experiment and trial
-            infra_check_config (Optional[InfraCheckConfig]):
-                Contains information about the infrastructure health check configuration for the
-                training job.
-            session_chaining_config (Optional[SessionChainingConfig]):
-                Contains information about attribute-based access control (ABAC) for the training
-                job.
-            remote_debug_config (Optional[RemoteDebugConfig]):
-                Configuration for remote debugging through AWS Systems Manager. To learn more see:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/train-remote-debugging.html
-        """
-        self._retry_strategy = retry_strategy
-        self._experiment_config = experiment_config
-        self._infra_check_config = infra_check_config
-        self._session_chaining_config = session_chaining_config
-        self._remote_debug_config = remote_debug_config
-        return self
 
     @classmethod
     def from_recipe(
@@ -1038,7 +881,7 @@ class ModelTrainer(BaseModel):
         # The training recipe is used to prepare the following args:
         # - source_code
         # - training_image
-        # - distributed_runner
+        # - distributed
         # - compute
         # - hyperparameters
         model_trainer_args, recipe_train_dir = _get_args_from_recipe(
@@ -1067,3 +910,57 @@ class ModelTrainer(BaseModel):
 
         model_trainer._temp_recipe_train_dir = recipe_train_dir
         return model_trainer
+
+    def with_tensorboard_output_config(
+        self, tensorboard_output_config: TensorBoardOutputConfig
+    ) -> "ModelTrainer":
+        """Set the TensorBoard output configuration.
+
+        Args:
+            tensorboard_output_config (TensorBoardOutputConfig):
+                The TensorBoard output configuration.
+        """
+        self._tensorboard_output_config = tensorboard_output_config
+        return self
+
+    def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":
+        """Set the retry strategy for the training job.
+
+        Args:
+            retry_strategy (RetryStrategy):
+                The retry strategy for the training job.
+        """
+        self._retry_strategy = retry_strategy
+        return self
+
+    def with_infra_check_config(self, infra_check_config: InfraCheckConfig) -> "ModelTrainer":
+        """Set the infra check configuration for the training job.
+
+        Args:
+            infra_check_config (InfraCheckConfig):
+                The infra check configuration for the training job.
+        """
+        self._infra_check_config = infra_check_config
+        return self
+
+    def with_session_chaining_config(
+        self, session_chaining_config: SessionChainingConfig
+    ) -> "ModelTrainer":
+        """Set the session chaining configuration for the training job.
+
+        Args:
+            session_chaining_config (SessionChainingConfig):
+                The session chaining configuration for the training job.
+        """
+        self._session_chaining_config = session_chaining_config
+        return self
+
+    def with_remote_debug_config(self, remote_debug_config: RemoteDebugConfig) -> "ModelTrainer":
+        """Set the remote debug configuration for the training job.
+
+        Args:
+            remote_debug_config (RemoteDebugConfig):
+                The remote debug configuration for the training job.
+        """
+        self._remote_debug_config = remote_debug_config
+        return self
