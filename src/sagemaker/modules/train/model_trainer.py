@@ -135,6 +135,8 @@ class ModelTrainer(BaseModel):
             The SageMakerCore session. For convinience, can be imported like:
             `from sagemaker.modules import Session`.
             If not specified, a new session will be created.
+            If the default bucket for the artifacts needs to be updated, it can be done by
+            passing it in the Session object.
         role (Optional(str)):
             The IAM role ARN for the training job.
             If not specified, the default SageMaker execution role will be used.
@@ -173,7 +175,8 @@ class ModelTrainer(BaseModel):
         output_data_config (Optional[OutputDataConfig]):
             The output data configuration. This is used to specify the output data location
             for the training job.
-            If not specified, will default to `s3://<default_bucket>/<base_job_name>/output/`.
+            If not specified in the session, will default to
+            `s3://<default_bucket>/<default_prefix>/<base_job_name>/`.
         input_data_config (Optional[List[Union[Channel, InputData]]]):
             The input data config for the training job.
             Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
@@ -348,7 +351,7 @@ class ModelTrainer(BaseModel):
                             configurable_attribute
                         )(
                             **default_config  # pylint: disable=E1134
-                        )  # noqa
+                        )
                     setattr(self, configurable_attribute, default_config)
 
     def __del__(self):
@@ -461,7 +464,8 @@ class ModelTrainer(BaseModel):
             session = self.sagemaker_session
             base_job_name = self.base_job_name
             self.output_data_config = OutputDataConfig(
-                s3_output_path=f"s3://{session.default_bucket()}/{base_job_name}",
+                s3_output_path=f"s3://{self._fetch_bucket_name_and_prefix(session)}"
+                f"/{base_job_name}",
                 compression_type="GZIP",
                 kms_key_id=None,
             )
@@ -472,6 +476,12 @@ class ModelTrainer(BaseModel):
         # TODO: Autodetect which image to use if source_code is provided
         if self.training_image:
             logger.info(f"Training image URI: {self.training_image}")
+
+    def _fetch_bucket_name_and_prefix(self, session: Session) -> str:
+        """Helper function to get the bucket name with the corresponding prefix if applicable"""
+        if session.default_bucket_prefix is not None:
+            return f"{session.default_bucket()}/{session.default_bucket_prefix}"
+        return session.default_bucket()
 
     @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
     @validate_call
@@ -497,12 +507,16 @@ class ModelTrainer(BaseModel):
                 Defaults to True.
         """
         self._populate_intelligent_defaults()
+        current_training_job_name = _get_unique_name(self.base_job_name)
+        input_data_key_prefix = f"{self.base_job_name}/{current_training_job_name}/input"
         if input_data_config:
             self.input_data_config = input_data_config
 
         input_data_config = []
         if self.input_data_config:
-            input_data_config = self._get_input_data_config(self.input_data_config)
+            input_data_config = self._get_input_data_config(
+                self.input_data_config, input_data_key_prefix
+            )
 
         string_hyper_parameters = {}
         if self.hyperparameters:
@@ -524,7 +538,9 @@ class ModelTrainer(BaseModel):
             # The source code will be mounted at /opt/ml/input/data/sm_code in the container
             if self.source_code.source_dir:
                 source_code_channel = self.create_input_data_channel(
-                    SM_CODE, self.source_code.source_dir
+                    channel_name=SM_CODE,
+                    data_source=self.source_code.source_dir,
+                    key_prefix=input_data_key_prefix,
                 )
                 input_data_config.append(source_code_channel)
 
@@ -542,7 +558,11 @@ class ModelTrainer(BaseModel):
             self._write_distributed_json(tmp_dir=drivers_dir, distributed=self.distributed)
 
             # Create an input channel for drivers packaged by the sdk
-            sm_drivers_channel = self.create_input_data_channel(SM_DRIVERS, drivers_dir.name)
+            sm_drivers_channel = self.create_input_data_channel(
+                channel_name=SM_DRIVERS,
+                data_source=drivers_dir.name,
+                key_prefix=input_data_key_prefix,
+            )
             input_data_config.append(sm_drivers_channel)
 
             # If source_code is provided, we will always use
@@ -567,7 +587,7 @@ class ModelTrainer(BaseModel):
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
             training_job = TrainingJob.create(
-                training_job_name=_get_unique_name(self.base_job_name),
+                training_job_name=current_training_job_name,
                 algorithm_specification=algorithm_specification,
                 hyper_parameters=string_hyper_parameters,
                 input_data_config=input_data_config,
@@ -621,7 +641,9 @@ class ModelTrainer(BaseModel):
             )
             local_container.train(wait)
 
-    def create_input_data_channel(self, channel_name: str, data_source: DataSourceType) -> Channel:
+    def create_input_data_channel(
+        self, channel_name: str, data_source: DataSourceType, key_prefix: Optional[str] = None
+    ) -> Channel:
         """Create an input data channel for the training job.
 
         Args:
@@ -629,6 +651,12 @@ class ModelTrainer(BaseModel):
             data_source (DataSourceType): The data source for the input data channel.
                 DataSourceType can be an S3 URI string, local file path string,
                 S3DataSource object, or FileSystemDataSource object.
+            key_prefix (Optional[str]): The key prefix to use when uploading data to S3.
+                Only applicable when data_source is a local file path string.
+                If not specified, local data will be uploaded to:
+                    s3://<default_bucket_path>/<base_job_name>/input/<channel_name>/
+                If specified, local data will be uploaded to:
+                    s3://<default_bucket_path>/<key_prefix>/<channel_name>/
         """
         channel = None
         if isinstance(data_source, str):
@@ -644,6 +672,10 @@ class ModelTrainer(BaseModel):
                     ),
                     input_mode="File",
                 )
+                if key_prefix:
+                    logger.warning(
+                        "key_prefix is only applicable when data_source is a local file path."
+                    )
             elif _is_valid_path(data_source):
                 if self.training_mode == Mode.LOCAL_CONTAINER:
                     channel = Channel(
@@ -657,10 +689,17 @@ class ModelTrainer(BaseModel):
                         input_mode="File",
                     )
                 else:
+                    key_prefix = (
+                        f"{key_prefix}/{channel_name}"
+                        if key_prefix
+                        else f"{self.base_job_name}/input/{channel_name}"
+                    )
+                    if self.sagemaker_session.default_bucket_prefix:
+                        key_prefix = f"{self.sagemaker_session.default_bucket_prefix}/{key_prefix}"
                     s3_uri = self.sagemaker_session.upload_data(
                         path=data_source,
                         bucket=self.sagemaker_session.default_bucket(),
-                        key_prefix=f"{self.base_job_name}/input/{channel_name}",
+                        key_prefix=key_prefix,
                     )
                     channel = Channel(
                         channel_name=channel_name,
@@ -687,7 +726,9 @@ class ModelTrainer(BaseModel):
         return channel
 
     def _get_input_data_config(
-        self, input_data_channels: Optional[List[Union[Channel, InputData]]]
+        self,
+        input_data_channels: Optional[List[Union[Channel, InputData]]],
+        key_prefix: Optional[str] = None,
     ) -> List[Channel]:
         """Get the input data configuration for the training job.
 
@@ -706,7 +747,7 @@ class ModelTrainer(BaseModel):
                 channels.append(input_data)
             elif isinstance(input_data, InputData):
                 channel = self.create_input_data_channel(
-                    input_data.channel_name, input_data.data_source
+                    input_data.channel_name, input_data.data_source, key_prefix=key_prefix
                 )
                 channels.append(channel)
             else:
@@ -850,7 +891,7 @@ class ModelTrainer(BaseModel):
                 An array of key-value pairs. You can use tags to categorize your AWS resources
                 in different ways, for example, by purpose, owner, or environment.
             sagemaker_session (Optional[Session]):
-                The SageMaker session.
+                The SageMakerCore session.
                 If not specified, a new session will be created.
             role (Optional[str]):
                 The IAM role ARN for the training job.

@@ -59,9 +59,10 @@ DEFAULT_BASE_NAME = "dummy-image-job"
 DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest"
 DEFAULT_BUCKET = "sagemaker-us-west-2-000000000000"
 DEFAULT_ROLE = "arn:aws:iam::000000000000:role/test-role"
+DEFAULT_BUCKET_PREFIX = "sample-prefix"
 DEFAULT_COMPUTE_CONFIG = Compute(instance_type=DEFAULT_INSTANCE_TYPE, instance_count=1)
 DEFAULT_OUTPUT_DATA_CONFIG = OutputDataConfig(
-    s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}",
+    s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{DEFAULT_BASE_NAME}",
     compression_type="GZIP",
     kms_key_id=None,
 )
@@ -85,6 +86,7 @@ def modules_session():
         session_instance = session_mock.return_value
         session_instance.default_bucket.return_value = DEFAULT_BUCKET
         session_instance.get_caller_identity_arn.return_value = DEFAULT_ROLE
+        session_instance.default_bucket_prefix = DEFAULT_BUCKET_PREFIX
         session_instance.boto_session = MagicMock(spec="boto3.session.Session")
         yield session_instance
 
@@ -170,8 +172,9 @@ def test_train_with_default_params(mock_training_job, model_trainer):
 
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
+@patch("sagemaker.modules.train.model_trainer.ModelTrainer.create_input_data_channel")
 def test_train_with_intelligent_defaults(
-    mock_resolve_value_from_config, mock_training_job, model_trainer
+    mock_create_input_data_channel, mock_resolve_value_from_config, mock_training_job, model_trainer
 ):
     source_code_path = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, MODEL_TRAINER, "sourceCode")
 
@@ -229,7 +232,11 @@ def test_train_with_intelligent_defaults_training_job_space(
             max_pending_time_in_seconds=None,
         ),
         output_data_config=OutputDataConfig(
-            s3_output_path="s3://" "sagemaker-us-west-2" "-000000000000/d" "ummy-image-job",
+            s3_output_path="s3://"
+            "sagemaker-us-west-2"
+            "-000000000000/"
+            "sample-prefix/"
+            "dummy-image-job",
             kms_key_id=None,
             compression_type="GZIP",
         ),
@@ -258,7 +265,7 @@ def test_train_with_input_data_channels(mock_get_input_config, mock_training_job
 
     model_trainer.train(input_data_config=mock_input_data_config)
 
-    mock_get_input_config.assert_called_once_with(mock_input_data_config)
+    mock_get_input_config.assert_called_once_with(mock_input_data_config, ANY)
     mock_training_job.create.assert_called_once()
 
 
@@ -309,10 +316,11 @@ def test_train_with_input_data_channels(mock_get_input_config, mock_training_job
     ],
 )
 @patch("sagemaker.modules.train.model_trainer.Session.upload_data")
-def test_create_input_data_channel(mock_upload_data, model_trainer, test_case):
+@patch("sagemaker.modules.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_trainer, test_case):
     expected_s3_uri = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/test"
     mock_upload_data.return_value = expected_s3_uri
-
+    mock_default_bucket.return_value = DEFAULT_BUCKET
     if not test_case["valid"]:
         with pytest.raises(ValueError):
             model_trainer.create_input_data_channel(
@@ -323,7 +331,6 @@ def test_create_input_data_channel(mock_upload_data, model_trainer, test_case):
             test_case["channel_name"], test_case["data_source"]
         )
         assert channel.channel_name == test_case["channel_name"]
-
         if isinstance(test_case["data_source"], S3DataSource):
             assert channel.data_source.s3_data_source == test_case["data_source"]
         elif isinstance(test_case["data_source"], FileSystemDataSource):
