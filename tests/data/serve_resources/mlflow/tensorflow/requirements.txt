@@ -1,4 +1,4 @@
 mlflow==2.13.2
 cloudpickle==2.2.1
-numpy==1.26.4
+numpy==2.0
 tensorflow==2.16.1
