@@ -177,7 +177,7 @@ class PyTorch(Framework):
                 a directory with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker.
+                when training on Amazon SageMaker. Must be a local path when using training_recipe.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
                 that will be used for training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
@@ -635,6 +635,10 @@ class PyTorch(Framework):
         if source_dir is None:
             args["source_dir"] = "."
         else:
+            if not os.path.exists(source_dir):
+                raise ValueError(
+                    "When using training_recipe, source_dir must be a local directory."
+                )
             args["source_dir"] = source_dir
 
         recipe_name = os.path.splitext(os.path.basename(training_recipe))[0]

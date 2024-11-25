@@ -23,6 +23,7 @@ import tempfile
 from sagemaker import image_uris
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch, PyTorchPredictor, PyTorchModel
+from sagemaker.pytorch.estimator import _get_training_recipe_image_uri
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.session_settings import SessionSettings
 
@@ -66,6 +67,13 @@ NEURON_RECIPE = (
     "https://raw.githubusercontent.com/aws-neuron/"
     "neuronx-distributed-training/refs/heads/main/examples/"
     "conf/hf_llama3_8B_config.yaml"
+)
+RECIPE_GPU_IMAGE = (
+    "658645717510.dkr.ecr.us-west-2.amazonaws.com/smdistributed-modelparallel:2.4.1-gpu-py311"
+)
+RECIPE_NEURON_IMAGE = (
+    "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+    "pytorch-training-neuronx:2.1.2-neuronx-py310-sdk2.20.2-ubuntu20.04"
 )
 
 
@@ -1085,3 +1093,16 @@ def test_training_recipe_for_trainium_custom_source_dir(sagemaker_session):
         },
     }
     assert pytorch.distribution == expected_distribution
+
+
+def test_training_recipe_images_uri():
+    gpu_image_cfg = {"framework": "pytorch-smp", "version": "2.4.1", "additional_args": {}}
+    gpu_image_uri = _get_training_recipe_image_uri(gpu_image_cfg, "us-west-2")
+    assert gpu_image_uri == RECIPE_GPU_IMAGE
+    neuron_image_cfg = {
+        "framework": "hyperpod-recipes-neuron",
+        "version": "2.1.2",
+        "additional_args": {},
+    }
+    neuron_image_uri = _get_training_recipe_image_uri(neuron_image_cfg, "us-west-2")
+    assert neuron_image_uri == RECIPE_NEURON_IMAGE
