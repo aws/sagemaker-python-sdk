@@ -87,7 +87,7 @@ def _load_base_recipe(
     else:
         recipe_launcher_dir = tempfile.TemporaryDirectory(prefix="launcher_")
 
-        launcher_repo = os.environ.get("training_launcher_git", None) or training_recipes_cfg.get(
+        launcher_repo = os.environ.get("TRAINING_LAUNCHER_GIT", None) or training_recipes_cfg.get(
             "launcher_repo"
         )
         _run_clone_command_silent(launcher_repo, recipe_launcher_dir.name)
@@ -135,7 +135,7 @@ def _configure_gpu_args(
     source_code = SourceCode()
     args = dict()
 
-    adapter_repo = os.environ.get("training_adapter_git", None) or training_recipes_cfg.get(
+    adapter_repo = os.environ.get("TRAINING_ADAPTER_GIT", None) or training_recipes_cfg.get(
         "adapter_repo"
     )
     _run_clone_command_silent(adapter_repo, recipe_train_dir.name)
