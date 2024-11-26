@@ -20,8 +20,13 @@ import os
 import pytest
 from unittest.mock import patch, MagicMock, ANY
 
+from sagemaker import image_uris
 from sagemaker_core.main.resources import TrainingJob
-from sagemaker_core.main.shapes import ResourceConfig
+from sagemaker_core.main.shapes import (
+    ResourceConfig,
+    VpcConfig,
+    AlgorithmSpecification,
+)
 
 from sagemaker.config import SAGEMAKER, PYTHON_SDK, MODULES
 from sagemaker.config.config_schema import (
@@ -30,7 +35,7 @@ from sagemaker.config.config_schema import (
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
 )
 from sagemaker.modules import Session
-from sagemaker.modules.train.model_trainer import ModelTrainer
+from sagemaker.modules.train.model_trainer import ModelTrainer, Mode
 from sagemaker.modules.constants import (
     DEFAULT_INSTANCE_TYPE,
     DISTRIBUTED_JSON,
@@ -43,15 +48,23 @@ from sagemaker.modules.configs import (
     RetryStrategy,
     OutputDataConfig,
     SourceCode,
-    S3DataSource,
-    FileSystemDataSource,
     RemoteDebugConfig,
     TensorBoardOutputConfig,
     InfraCheckConfig,
     SessionChainingConfig,
     InputData,
+    Networking,
+    TrainingImageConfig,
+    TrainingRepositoryAuthConfig,
+    CheckpointConfig,
+    Tag,
+    S3DataSource,
+    FileSystemDataSource,
+    Channel,
+    DataSource,
 )
 from sagemaker.modules.distributed import Torchrun, SMP, MPI
+from sagemaker.modules.train.sm_recipes.utils import _load_recipes_cfg
 from sagemaker.modules.templates import EXEUCTE_TORCHRUN_DRIVER, EXECUTE_MPI_DRIVER
 from tests.unit import DATA_DIR
 
@@ -60,6 +73,8 @@ DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest
 DEFAULT_BUCKET = "sagemaker-us-west-2-000000000000"
 DEFAULT_ROLE = "arn:aws:iam::000000000000:role/test-role"
 DEFAULT_BUCKET_PREFIX = "sample-prefix"
+DEFAULT_REGION = "us-west-2"
+DEFAULT_SOURCE_DIR = f"{DATA_DIR}/modules/script_mode"
 DEFAULT_COMPUTE_CONFIG = Compute(instance_type=DEFAULT_INSTANCE_TYPE, instance_count=1)
 DEFAULT_OUTPUT_DATA_CONFIG = OutputDataConfig(
     s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{DEFAULT_BASE_NAME}",
@@ -72,12 +87,20 @@ DEFAULT_STOPPING_CONDITION = StoppingCondition(
     max_wait_time_in_seconds=None,
 )
 DEFAULT_SOURCE_CODE = SourceCode(
-    source_dir=f"{DATA_DIR}/modules/script_mode",
+    source_dir=DEFAULT_SOURCE_DIR,
     entry_script="custom_script.py",
 )
 UNSUPPORTED_SOURCE_CODE = SourceCode(
     entry_script="train.py",
 )
+DEFAULT_ENTRYPOINT = ["/bin/bash"]
+DEFAULT_ARGUMENTS = [
+    "-c",
+    (
+        "chmod +x /opt/ml/input/data/sm_drivers/sm_train.sh "
+        + "&& /opt/ml/input/data/sm_drivers/sm_train.sh"
+    ),
+]
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -88,6 +111,7 @@ def modules_session():
         session_instance.get_caller_identity_arn.return_value = DEFAULT_ROLE
         session_instance.default_bucket_prefix = DEFAULT_BUCKET_PREFIX
         session_instance.boto_session = MagicMock(spec="boto3.session.Session")
+        session_instance.boto_region_name = DEFAULT_REGION
         yield session_instance
 
 
@@ -587,3 +611,276 @@ def test_remote_debug_config(mock_training_job, modules_session):
         assert (
             mock_training_job.create.call_args.kwargs["remote_debug_config"] == remote_debug_config
         )
+
+
+@patch("sagemaker.modules.train.model_trainer._get_unique_name")
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        return f"s3://{bucket}/{key_prefix}"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+
+    training_mode = Mode.SAGEMAKER_TRAINING_JOB
+    role = DEFAULT_ROLE
+    source_code = DEFAULT_SOURCE_CODE
+    distributed = Torchrun()
+    compute = Compute(
+        instance_type=DEFAULT_INSTANCE_TYPE,
+        instance_count=1,
+        volume_size_in_gb=30,
+        volume_kms_key_id="key-id",
+        keep_alive_period_in_seconds=3600,
+        enable_managed_spot_training=True,
+    )
+    networking = Networking(
+        security_group_ids=["sg-000000000000"],
+        subnets=["subnet-000000000000"],
+        enable_network_isolation=True,
+        enable_inter_container_traffic_encryption=True,
+    )
+    stopping_condition = DEFAULT_STOPPING_CONDITION
+    training_image = DEFAULT_IMAGE
+    training_image_config = TrainingImageConfig(
+        training_repository_access_mode="Platform",
+        training_repository_auth_config=TrainingRepositoryAuthConfig(
+            training_repository_credentials_provider_arn="arn:aws:lambda:us-west-2:000000000000:function:dummy-function"
+        ),
+    )
+    output_data_config = DEFAULT_OUTPUT_DATA_CONFIG
+
+    local_input_data = InputData(
+        channel_name="train", data_source=f"{DEFAULT_SOURCE_DIR}/data/train"
+    )
+    s3_data_source_input = InputData(
+        channel_name="test",
+        data_source=S3DataSource(
+            s3_data_type="S3Prefix",
+            s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}/data/test",
+            s3_data_distribution_type="FullyReplicated",
+            attribute_names=["label"],
+            instance_group_names=["instance-group"],
+        ),
+    )
+    file_system_input = InputData(
+        channel_name="validation",
+        data_source=FileSystemDataSource(
+            file_system_id="fs-000000000000",
+            file_system_access_mode="ro",
+            file_system_type="EFS",
+            directory_path="/data/validation",
+        ),
+    )
+    input_data_config = [local_input_data, s3_data_source_input, file_system_input]
+    checkpoint_config = CheckpointConfig(
+        local_path="/opt/ml/checkpoints",
+        s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}/checkpoints",
+    )
+    training_input_mode = "File"
+    environment = {"ENV_VAR": "value"}
+    hyperparameters = {"key": "value"}
+    tags = [Tag(key="key", value="value")]
+
+    model_trainer = ModelTrainer(
+        training_mode=training_mode,
+        sagemaker_session=modules_session,
+        role=role,
+        source_code=source_code,
+        distributed=distributed,
+        compute=compute,
+        networking=networking,
+        stopping_condition=stopping_condition,
+        training_image=training_image,
+        training_image_config=training_image_config,
+        output_data_config=output_data_config,
+        input_data_config=input_data_config,
+        checkpoint_config=checkpoint_config,
+        training_input_mode=training_input_mode,
+        environment=environment,
+        hyperparameters=hyperparameters,
+        tags=tags,
+    )
+
+    assert model_trainer.training_mode == training_mode
+    assert model_trainer.sagemaker_session == modules_session
+    assert model_trainer.role == role
+    assert model_trainer.source_code == source_code
+    assert model_trainer.distributed == distributed
+    assert model_trainer.compute == compute
+    assert model_trainer.networking == networking
+    assert model_trainer.stopping_condition == stopping_condition
+    assert model_trainer.training_image == training_image
+    assert model_trainer.training_image_config == training_image_config
+    assert model_trainer.output_data_config == output_data_config
+    assert model_trainer.input_data_config == input_data_config
+    assert model_trainer.checkpoint_config == checkpoint_config
+    assert model_trainer.training_input_mode == training_input_mode
+    assert model_trainer.environment == environment
+    assert model_trainer.hyperparameters == hyperparameters
+    assert model_trainer.tags == tags
+
+    unique_name = "training-job"
+    mock_unique_name.return_value = unique_name
+
+    model_trainer.train()
+
+    mock_training_job.create.assert_called_once_with(
+        training_job_name=unique_name,
+        algorithm_specification=AlgorithmSpecification(
+            training_input_mode=training_input_mode,
+            training_image=training_image,
+            algorithm_name=None,
+            container_entrypoint=DEFAULT_ENTRYPOINT,
+            container_arguments=DEFAULT_ARGUMENTS,
+            training_image_config=training_image_config,
+        ),
+        hyper_parameters=hyperparameters,
+        input_data_config=[
+            Channel(
+                channel_name=local_input_data.channel_name,
+                data_source=DataSource(
+                    s3_data_source=S3DataSource(
+                        s3_data_type="S3Prefix",
+                        s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{DEFAULT_BASE_NAME}/{unique_name}/input/train",  # noqa: E501
+                        s3_data_distribution_type="FullyReplicated",
+                    )
+                ),
+                input_mode="File",
+            ),
+            Channel(
+                channel_name=s3_data_source_input.channel_name,
+                data_source=DataSource(s3_data_source=s3_data_source_input.data_source),
+            ),
+            Channel(
+                channel_name=file_system_input.channel_name,
+                data_source=DataSource(file_system_data_source=file_system_input.data_source),
+            ),
+            Channel(
+                channel_name="sm_code",
+                data_source=DataSource(
+                    s3_data_source=S3DataSource(
+                        s3_data_type="S3Prefix",
+                        s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{DEFAULT_BASE_NAME}/{unique_name}/input/sm_code",  # noqa: E501
+                        s3_data_distribution_type="FullyReplicated",
+                    )
+                ),
+                input_mode="File",
+            ),
+            Channel(
+                channel_name="sm_drivers",
+                data_source=DataSource(
+                    s3_data_source=S3DataSource(
+                        s3_data_type="S3Prefix",
+                        s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{DEFAULT_BASE_NAME}/{unique_name}/input/sm_drivers",  # noqa: E501
+                        s3_data_distribution_type="FullyReplicated",
+                    ),
+                ),
+                input_mode="File",
+            ),
+        ],
+        resource_config=ResourceConfig(
+            instance_type=compute.instance_type,
+            instance_count=compute.instance_count,
+            volume_size_in_gb=compute.volume_size_in_gb,
+            volume_kms_key_id=compute.volume_kms_key_id,
+            keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
+            instance_groups=None,
+        ),
+        vpc_config=VpcConfig(
+            security_group_ids=networking.security_group_ids,
+            subnets=networking.subnets,
+        ),
+        session=ANY,
+        role_arn=role,
+        tags=tags,
+        stopping_condition=stopping_condition,
+        output_data_config=output_data_config,
+        checkpoint_config=checkpoint_config,
+        environment=environment,
+        enable_managed_spot_training=compute.enable_managed_spot_training,
+        enable_inter_container_traffic_encryption=(
+            networking.enable_inter_container_traffic_encryption
+        ),
+        enable_network_isolation=networking.enable_network_isolation,
+        remote_debug_config=None,
+        tensor_board_output_config=None,
+        retry_strategy=None,
+        infra_check_config=None,
+        session_chaining_config=None,
+    )
+
+
+def test_model_trainer_gpu_recipe_full_init(modules_session):
+    training_recipe = "training/llama/p4_hf_llama3_70b_seq8k_gpu"
+    recipe_overrides = {"run": {"results_dir": "/opt/ml/model"}}
+    compute = Compute(instance_type="ml.p4d.24xlarge", instance_count="2")
+
+    gpu_image_cfg = _load_recipes_cfg().get("gpu_image")
+    if isinstance(gpu_image_cfg, str):
+        expected_training_image = gpu_image_cfg
+    else:
+        expected_training_image = image_uris.retrieve(
+            gpu_image_cfg.get("framework"),
+            region=modules_session.boto_region_name,
+            version=gpu_image_cfg.get("version"),
+            image_scope="training",
+            **gpu_image_cfg.get("additional_args"),
+        )
+
+    expected_distributed = Torchrun(smp=SMP(random_seed=123456))
+    expected_hyperparameters = {"config-path": ".", "config-name": "recipe.yaml"}
+
+    networking = Networking(
+        security_group_ids=["sg-000000000000"],
+        subnets=["subnet-000000000000"],
+        enable_network_isolation=True,
+        enable_inter_container_traffic_encryption=True,
+    )
+    stopping_condition = DEFAULT_STOPPING_CONDITION
+    output_data_config = DEFAULT_OUTPUT_DATA_CONFIG
+    local_input_data = InputData(
+        channel_name="train", data_source=f"{DEFAULT_SOURCE_DIR}/data/train"
+    )
+    input_data_config = [local_input_data]
+    checkpoint_config = CheckpointConfig(
+        local_path="/opt/ml/checkpoints",
+        s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}/checkpoints",
+    )
+    training_input_mode = "File"
+    environment = {"ENV_VAR": "value"}
+    tags = [Tag(key="key", value="value")]
+    requirements = f"{DEFAULT_SOURCE_DIR}/requirements.txt"
+
+    model_trainer = ModelTrainer.from_recipe(
+        training_recipe=training_recipe,
+        recipe_overrides=recipe_overrides,
+        compute=compute,
+        networking=networking,
+        stopping_condition=stopping_condition,
+        requirements=requirements,
+        output_data_config=output_data_config,
+        input_data_config=input_data_config,
+        checkpoint_config=checkpoint_config,
+        training_input_mode=training_input_mode,
+        environment=environment,
+        tags=tags,
+        sagemaker_session=modules_session,
+        role=DEFAULT_ROLE,
+        base_job_name=DEFAULT_BASE_NAME,
+    )
+
+    assert model_trainer.training_image == expected_training_image
+    assert model_trainer.distributed == expected_distributed
+    assert model_trainer.hyperparameters == expected_hyperparameters
+    assert model_trainer.source_code is not None
+    assert model_trainer.source_code.requirements == "requirements.txt"
+
+    assert model_trainer.compute == compute
+    assert model_trainer.networking == networking
+    assert model_trainer.stopping_condition == stopping_condition
+    assert model_trainer.output_data_config == output_data_config
+    assert model_trainer.input_data_config == input_data_config
+    assert model_trainer.checkpoint_config == checkpoint_config
+    assert model_trainer.training_input_mode == training_input_mode
+    assert model_trainer.environment == environment
+    assert model_trainer.tags == tags

@@ -839,6 +839,8 @@ class ModelTrainer(BaseModel):
         training_recipe: str,
         compute: Compute,
         recipe_overrides: Optional[Dict[str, Any]] = None,
+        networking: Optional[Networking] = None,
+        stopping_condition: Optional[StoppingCondition] = None,
         requirements: Optional[str] = None,
         training_image: Optional[str] = None,
         training_image_config: Optional[TrainingImageConfig] = None,
@@ -863,6 +865,13 @@ class ModelTrainer(BaseModel):
                 the training job. If not specified, will default to 1 instance of ml.m5.xlarge.
             recipe_overrides (Optional[Dict[str, Any]]):
                 The recipe overrides. This is used to override the default recipe parameters.
+            networking (Optional[Networking]):
+                The networking configuration. This is used to specify the networking settings
+                for the training job.
+            stopping_condition (Optional[StoppingCondition]):
+                The stopping condition. This is used to specify the different stopping
+                conditions for the training job.
+                If not specified, will default to 1 hour max run time.
             requirements (Optional[str]):
                 The path to a requirements file to install in the training job container.
             training_image (Optional[str]):
@@ -912,6 +921,9 @@ class ModelTrainer(BaseModel):
                 + "Please provide a GPU or Tranium instance type."
             )
 
+        if training_image_config and training_image is None:
+            raise ValueError("training_image must be provided when using training_image_config.")
+
         if sagemaker_session is None:
             sagemaker_session = Session()
             logger.warning("SageMaker session not provided. Using default Session.")
@@ -939,6 +951,8 @@ class ModelTrainer(BaseModel):
             sagemaker_session=sagemaker_session,
             role=role,
             base_job_name=base_job_name,
+            networking=networking,
+            stopping_condition=stopping_condition,
             training_image_config=training_image_config,
             output_data_config=output_data_config,
             input_data_config=input_data_config,
