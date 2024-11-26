@@ -48,6 +48,8 @@ def temporary_recipe():
         yield f.name
 
 
+# TODO: To be removed on 12/5/2024
+@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 def test_load_base_recipe_with_overrides(temporary_recipe, training_recipes_cfg):
     expected_epochs = 20
     expected_layers = 15
@@ -69,6 +71,8 @@ def test_load_base_recipe_with_overrides(temporary_recipe, training_recipes_cfg)
     )
 
 
+# TODO: To be removed on 12/5/2024
+@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 @pytest.mark.parametrize(
     "test_case",
     [
@@ -126,6 +130,8 @@ def test_load_base_recipe_types(
         assert mock_retrieve.call_args.args[0] == url
 
 
+# TODO: To be removed on 12/5/2024
+@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 @pytest.mark.parametrize(
     "test_case",
     [
