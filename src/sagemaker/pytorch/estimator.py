@@ -334,12 +334,13 @@ class PyTorch(Framework):
                 compiler_config (:class:`~sagemaker.pytorch.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 
-            training_recipe (str): Training recipe to use. This is a local file path,
-                                   a url to fetch, or a recipe provided by Saagemaker
-                                   training.
-
+            training_recipe (str): Training recipe to use. This is a local file path, a url,
+                                   or a recipe provided by Amazon SageMaker HyperPod recipes,
+                                   such as training/llama/hf_llama3_70b_seq8k_gpu_p5x64_pretrain.
+                                   This is required when using recipes.
             recipe_overrides (Dict): Dictionary specifying key values to override in the
-                                     training_recipe.
+                                     training_recipe. This is optional when using
+                                     Amazon SageMaker HyperPod recipes.
 
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
