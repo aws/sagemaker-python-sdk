@@ -1,7 +1,0 @@
-Host github.com-launcher
-        Hostname github.com
-        IdentityFile=~/.ssh/launcher_deploy_key
-
-Host github.com-adapter
-        Hostname github.com
-        IdentityFile=~/.ssh/adapter_deploy_key
