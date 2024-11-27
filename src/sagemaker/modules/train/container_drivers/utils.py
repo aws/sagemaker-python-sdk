@@ -36,7 +36,7 @@ For more details, see CloudWatch logs at 'aws/sagemaker/TrainingJobs'.
 TrainingJob - {training_job_name}
 """
 
-USER_CODE_PATH = "/opt/ml/input/data/sm_code"
+USER_CODE_PATH = "/opt/ml/input/data/code"
 SOURCE_CODE_JSON = "/opt/ml/input/data/sm_drivers/sourcecode.json"
 DISTRIBUTED_JSON = "/opt/ml/input/data/sm_drivers/distributed.json"
 

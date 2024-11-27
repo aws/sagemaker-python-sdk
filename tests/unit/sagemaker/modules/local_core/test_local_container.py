@@ -28,7 +28,10 @@ CONTAINER_ROOT = os.getcwd()
 CONTAINER_ENTRYPOINT = ["/bin/bash"]
 CONTAINER_ARGUMENTS = [
     "-c",
-    "chmod +x /opt/ml/input/data/sm_code/train.sh && /opt/ml/input/data/sm_code/train.sh",
+    (
+        "chmod +x /opt/ml/input/data/sm_drivers/sm_train.sh "
+        + "&& /opt/ml/input/data/sm_drivers/sm_train.sh"
+    ),
 ]
 
 
@@ -97,8 +100,8 @@ def expected_host_config(shared_volumes, host):
         "entrypoint": [
             "/bin/bash",
             "-c",
-            "chmod +x /opt/ml/input/data/sm_code/train.sh && "
-            "/opt/ml/input/data/sm_code/train.sh",
+            "chmod +x /opt/ml/input/data/sm_drivers/sm_train.sh && "
+            "/opt/ml/input/data/sm_drivers/sm_train.sh",
         ],
         "environment": [
             "SM_OUTPUT_DIR=/opt/ml/output",

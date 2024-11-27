@@ -16,8 +16,8 @@ import os
 
 DEFAULT_INSTANCE_TYPE = "ml.m5.xlarge"
 
-SM_CODE = "sm_code"
-SM_CODE_CONTAINER_PATH = "/opt/ml/input/data/sm_code"
+SM_CODE = "code"
+SM_CODE_CONTAINER_PATH = "/opt/ml/input/data/code"
 
 SM_DRIVERS = "sm_drivers"
 SM_DRIVERS_CONTAINER_PATH = "/opt/ml/input/data/sm_drivers"
