@@ -756,11 +756,11 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
                 data_source=DataSource(file_system_data_source=file_system_input.data_source),
             ),
             Channel(
-                channel_name="sm_code",
+                channel_name="code",
                 data_source=DataSource(
                     s3_data_source=S3DataSource(
                         s3_data_type="S3Prefix",
-                        s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{DEFAULT_BASE_NAME}/{unique_name}/input/sm_code",  # noqa: E501
+                        s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{DEFAULT_BASE_NAME}/{unique_name}/input/code",  # noqa: E501
                         s3_data_distribution_type="FullyReplicated",
                     )
                 ),
@@ -886,3 +886,136 @@ def test_model_trainer_gpu_recipe_full_init(modules_session):
     assert model_trainer.training_input_mode == training_input_mode
     assert model_trainer.environment == environment
     assert model_trainer.tags == tags
+
+
+@patch("sagemaker.modules.train.model_trainer._LocalContainer")
+@patch("sagemaker.modules.train.model_trainer._get_unique_name")
+@patch("sagemaker.modules.local_core.local_container.download_folder")
+def test_model_trainer_local_full_init(
+    mock_download_folder, mock_unique_name, mock_local_container, modules_session
+):
+    def mock_upload_data(path, bucket, key_prefix):
+        return f"s3://{bucket}/{key_prefix}"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_download_folder.return_value = f"{DEFAULT_SOURCE_DIR}/data/test"
+    mock_local_container.train.return_value = None
+
+    training_mode = Mode.LOCAL_CONTAINER
+    role = DEFAULT_ROLE
+    source_code = DEFAULT_SOURCE_CODE
+    distributed = Torchrun()
+    compute = Compute(
+        instance_type=DEFAULT_INSTANCE_TYPE,
+        instance_count=1,
+        volume_size_in_gb=30,
+        volume_kms_key_id="key-id",
+        keep_alive_period_in_seconds=3600,
+        enable_managed_spot_training=True,
+    )
+    networking = Networking(
+        security_group_ids=["sg-000000000000"],
+        subnets=["subnet-000000000000"],
+        enable_network_isolation=True,
+        enable_inter_container_traffic_encryption=True,
+    )
+    stopping_condition = DEFAULT_STOPPING_CONDITION
+    training_image = DEFAULT_IMAGE
+    training_image_config = TrainingImageConfig(
+        training_repository_access_mode="Platform",
+        training_repository_auth_config=TrainingRepositoryAuthConfig(
+            training_repository_credentials_provider_arn="arn:aws:lambda:us-west-2:000000000000:function:dummy-function"
+        ),
+    )
+    output_data_config = DEFAULT_OUTPUT_DATA_CONFIG
+
+    local_input_data = InputData(
+        channel_name="train", data_source=f"{DEFAULT_SOURCE_DIR}/data/train"
+    )
+    s3_data_source_input = InputData(
+        channel_name="test",
+        data_source=S3DataSource(
+            s3_data_type="S3Prefix",
+            s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}/data/test",
+            s3_data_distribution_type="FullyReplicated",
+            attribute_names=["label"],
+            instance_group_names=["instance-group"],
+        ),
+    )
+    file_system_input = InputData(
+        channel_name="validation",
+        data_source=FileSystemDataSource(
+            file_system_id="fs-000000000000",
+            file_system_access_mode="ro",
+            file_system_type="EFS",
+            directory_path="/data/validation",
+        ),
+    )
+    input_data_config = [local_input_data, s3_data_source_input, file_system_input]
+    checkpoint_config = CheckpointConfig(
+        local_path="/opt/ml/checkpoints",
+        s3_uri=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}/checkpoints",
+    )
+    training_input_mode = "File"
+    environment = {"ENV_VAR": "value"}
+    hyperparameters = {"key": "value"}
+    tags = [Tag(key="key", value="value")]
+
+    local_container_root = os.getcwd()
+
+    model_trainer = ModelTrainer(
+        training_mode=training_mode,
+        sagemaker_session=modules_session,
+        role=role,
+        source_code=source_code,
+        distributed=distributed,
+        compute=compute,
+        networking=networking,
+        stopping_condition=stopping_condition,
+        training_image=training_image,
+        training_image_config=training_image_config,
+        output_data_config=output_data_config,
+        input_data_config=input_data_config,
+        checkpoint_config=checkpoint_config,
+        training_input_mode=training_input_mode,
+        environment=environment,
+        hyperparameters=hyperparameters,
+        tags=tags,
+        local_container_root=local_container_root,
+    )
+
+    assert model_trainer.training_mode == training_mode
+    assert model_trainer.sagemaker_session == modules_session
+    assert model_trainer.role == role
+    assert model_trainer.source_code == source_code
+    assert model_trainer.distributed == distributed
+    assert model_trainer.compute == compute
+    assert model_trainer.networking == networking
+    assert model_trainer.stopping_condition == stopping_condition
+    assert model_trainer.training_image == training_image
+    assert model_trainer.training_image_config == training_image_config
+    assert model_trainer.output_data_config == output_data_config
+    assert model_trainer.input_data_config == input_data_config
+    assert model_trainer.checkpoint_config == checkpoint_config
+    assert model_trainer.training_input_mode == training_input_mode
+    assert model_trainer.environment == environment
+    assert model_trainer.hyperparameters == hyperparameters
+    assert model_trainer.tags == tags
+
+    unique_name = "training-job"
+    mock_unique_name.return_value = unique_name
+
+    model_trainer.train()
+
+    assert mock_local_container.train.called_once_with(
+        training_job_name=unique_name,
+        instance_type=compute.instance_type,
+        instance_count=compute.instance_count,
+        image=training_image,
+        container_root=local_container_root,
+        sagemaker_session=modules_session,
+        container_entry_point=DEFAULT_ENTRYPOINT,
+        container_arguments=DEFAULT_ARGUMENTS,
+        hyper_parameters=hyperparameters,
+        environment=environment,
+    )

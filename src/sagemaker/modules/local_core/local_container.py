@@ -32,9 +32,8 @@ from sagemaker.local.image import (
 )
 from sagemaker.local.utils import check_for_studio, recursive_copy
 from sagemaker.model import DIR_PARAM_NAME
-from sagemaker.modules import logger
+from sagemaker.modules import logger, Session
 from sagemaker.modules.configs import Channel
-from sagemaker.session import Session
 from sagemaker.utils import ECR_URI_PATTERN, create_tar_file, _module_import_error, download_folder
 from sagemaker_core.main.utils import Unassigned
 from sagemaker_core.shapes import DataSource
@@ -105,13 +104,17 @@ class _LocalContainer(BaseModel):
     input_data_config: Optional[List[Channel]]
     environment: Optional[Dict[str, str]]
     hyper_parameters: Optional[Dict[str, str]]
-    sagemaker_session: Optional[Session]
+    sagemaker_session: Optional[Session] = None
     container_entrypoint: Optional[List[str]]
     container_arguments: Optional[List[str]]
 
     def model_post_init(self, __context: Any):
         """Post init method to perform custom validation and set default values."""
         self.hosts = [f"algo-{i}" for i in range(1, self.instance_count + 1)]
+        if self.environment is None:
+            self.environment = {}
+        if self.hyper_parameters is None:
+            self.hyper_parameters = {}
 
         for channel in self.input_data_config:
             if channel.data_source and channel.data_source.s3_data_source != Unassigned():

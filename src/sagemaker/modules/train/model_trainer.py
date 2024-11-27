@@ -535,7 +535,7 @@ class ModelTrainer(BaseModel):
             shutil.copytree(SM_DRIVERS_LOCAL_PATH, drivers_dir.name, dirs_exist_ok=True)
 
             # If source code is provided, create a channel for the source code
-            # The source code will be mounted at /opt/ml/input/data/sm_code in the container
+            # The source code will be mounted at /opt/ml/input/data/code in the container
             if self.source_code.source_dir:
                 source_code_channel = self.create_input_data_channel(
                     channel_name=SM_CODE,

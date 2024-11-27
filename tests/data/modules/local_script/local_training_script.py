@@ -11,10 +11,12 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from pytorch_model_def import get_model
 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 current_dir = os.path.dirname(os.path.abspath(__file__))
+data_dir = "/opt/ml/input/data"
 
 
 def get_train_data(train_dir):
@@ -81,8 +83,8 @@ def train():
     Train the PyTorch model
     """
     # Directories: train, test and model
-    train_dir = os.path.join(current_dir, "data/train")
-    test_dir = os.path.join(current_dir, "data/test")
+    train_dir = os.path.join(data_dir, "train")
+    test_dir = os.path.join(data_dir, "test")
     model_dir = os.environ.get("SM_MODEL_DIR", os.path.join(current_dir, "data/model"))
 
     # Load the training and testing data
@@ -132,7 +134,7 @@ def train():
         os.mkdir(inference_code_path)
         logger.info("Created a folder at {}!".format(inference_code_path))
 
-    shutil.copy("custom_script.py", inference_code_path)
+    shutil.copy("local_training_script.py", inference_code_path)
     shutil.copy("pytorch_model_def.py", inference_code_path)
     logger.info("Saving models files to {}".format(inference_code_path))
 
