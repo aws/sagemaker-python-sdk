@@ -35,7 +35,7 @@ from sagemaker.estimator import Estimator
 from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.s3 import S3Downloader
-from sagemaker import Session, utils
+from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
@@ -112,7 +112,7 @@ from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
 from sagemaker.serverless import ServerlessInferenceConfig
-from sagemaker.utils import Tags
+from sagemaker.utils import Tags, unique_name_from_base
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import (
     get_huggingface_model_metadata,
@@ -1621,7 +1621,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """
         if not hasattr(self, "built_model"):
             raise ValueError("Model Needs to be built before deploying")
-        endpoint_name = utils.unique_name_from_base(endpoint_name)
+        endpoint_name = unique_name_from_base(endpoint_name)
         if not inference_config:  # Real-time Deployment
             return self.built_model.deploy(
                 instance_type=self.instance_type,

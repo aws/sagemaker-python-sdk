@@ -235,7 +235,6 @@ class ModelTrainer(BaseModel):
         "role",
         "base_job_name",
         "source_code",
-        "distributed",
         "compute",
         "networking",
         "stopping_condition",
@@ -251,7 +250,6 @@ class ModelTrainer(BaseModel):
 
     SERIALIZABLE_CONFIG_ATTRIBUTES: ClassVar[Any] = {
         "source_code": SourceCode,
-        "distributed": DistributedConfig,
         "compute": Compute,
         "networking": Networking,
         "stopping_condition": StoppingCondition,
