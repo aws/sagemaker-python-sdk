@@ -49,3 +49,4 @@ uvicorn>=0.30.1
 fastapi==0.115.4
 nest-asyncio
 sagemaker-mlflow>=0.1.0
+deepdiff>=8.0.0

@@ -194,17 +194,57 @@ def test_train_with_default_params(mock_training_job, model_trainer):
     training_job_instance.wait.assert_called_once_with(logs=True)
 
 
+@pytest.mark.parametrize(
+    "default_config",
+    [
+        {
+            "path_name": "sourceCode",
+            "config_value": {"command": "echo 'Hello World' && env"},
+        },
+        {
+            "path_name": "compute",
+            "config_value": {"volume_size_in_gb": 45},
+        },
+        {
+            "path_name": "networking",
+            "config_value": {
+                "enable_network_isolation": True,
+                "security_group_ids": ["sg-1"],
+                "subnets": ["subnet-1"],
+            },
+        },
+        {
+            "path_name": "stoppingCondition",
+            "config_value": {"max_runtime_in_seconds": 15},
+        },
+        {
+            "path_name": "trainingImageConfig",
+            "config_value": {"training_repository_access_mode": "private"},
+        },
+        {
+            "path_name": "outputDataConfig",
+            "config_value": {"s3_output_path": "Sample S3 path"},
+        },
+        {
+            "path_name": "checkpointConfig",
+            "config_value": {"s3_uri": "sample uri"},
+        },
+    ],
+)
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch("sagemaker.modules.train.model_trainer.resolve_value_from_config")
 @patch("sagemaker.modules.train.model_trainer.ModelTrainer.create_input_data_channel")
 def test_train_with_intelligent_defaults(
-    mock_create_input_data_channel, mock_resolve_value_from_config, mock_training_job, model_trainer
+    mock_create_input_data_channel,
+    mock_resolve_value_from_config,
+    mock_training_job,
+    default_config,
+    model_trainer,
 ):
-    source_code_path = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, MODEL_TRAINER, "sourceCode")
-
     mock_resolve_value_from_config.side_effect = lambda **kwargs: (
-        {"command": "echo 'Hello World' && env"}
-        if kwargs["config_path"] == source_code_path
+        default_config["config_value"]
+        if kwargs["config_path"]
+        == _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, MODEL_TRAINER, default_config["path_name"])
         else None
     )
 
