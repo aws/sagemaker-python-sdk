@@ -28,7 +28,8 @@ def test_jumpstart_huggingface_image_uri(patched_get_model_specs, session):
     patched_get_model_specs.side_effect = get_prototype_model_spec
 
     model_id, model_version = "huggingface-spc-bert-base-cased", "*"
-    instance_type = "ml.p2.xlarge"
+    instance_type = "ml.m5.xlarge"
+    training_instance_type = "ml.p3.2xlarge"
     region = "us-west-2"
 
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(region, model_id, model_version)
@@ -55,7 +56,7 @@ def test_jumpstart_huggingface_image_uri(patched_get_model_specs, session):
 
     assert (
         uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
-        "1.7.1-transformers4.6.1-gpu-py36-cu110-ubuntu18.04"
+        "1.7.1-transformers4.6.1-cpu-py36-ubuntu18.04"
     )
 
     # training
@@ -65,7 +66,7 @@ def test_jumpstart_huggingface_image_uri(patched_get_model_specs, session):
         image_scope="training",
         model_id=model_id,
         model_version=model_version,
-        instance_type=instance_type,
+        instance_type=training_instance_type,
     )
 
     framework_class_uri = HuggingFace(
@@ -75,7 +76,7 @@ def test_jumpstart_huggingface_image_uri(patched_get_model_specs, session):
         entry_point="some_entry_point",
         transformers_version=model_specs.training_ecr_specs.huggingface_transformers_version,
         pytorch_version=model_specs.training_ecr_specs.framework_version,
-        instance_type=instance_type,
+        instance_type=training_instance_type,
         instance_count=1,
         sagemaker_session=session,
     ).training_image_uri(region=region)

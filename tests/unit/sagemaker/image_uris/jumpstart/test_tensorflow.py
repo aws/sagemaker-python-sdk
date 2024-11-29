@@ -52,7 +52,7 @@ def test_jumpstart_tensorflow_image_uri(patched_get_model_specs, session):
     ).serving_image_uri(region, instance_type)
 
     assert uri == framework_class_uri
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:2.3-gpu"
+    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:2.8-gpu"
 
     # training
     uri = image_uris.retrieve(
@@ -75,4 +75,4 @@ def test_jumpstart_tensorflow_image_uri(patched_get_model_specs, session):
     ).training_image_uri(region=region)
 
     assert uri == framework_class_uri
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:2.3-gpu-py37"
+    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:2.9-gpu-py39"

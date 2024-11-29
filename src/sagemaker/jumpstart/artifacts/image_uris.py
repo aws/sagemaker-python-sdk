@@ -14,14 +14,12 @@
 from __future__ import absolute_import
 
 from typing import Optional
-from sagemaker import image_uris
 from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.enums import (
     JumpStartModelType,
     JumpStartScriptScope,
-    ModelFramework,
 )
 from sagemaker.jumpstart.utils import (
     get_region_fallback,
@@ -142,13 +140,11 @@ def _retrieve_image_uri(
             ecr_uri = model_specs.hosting_ecr_uri
             return ecr_uri
 
-        ecr_specs = model_specs.hosting_ecr_specs
-        if ecr_specs is None:
-            raise ValueError(
-                f"No inference ECR configuration found for JumpStart model ID '{model_id}' "
-                f"with {instance_type} instance type in {region}. "
-                "Please try another instance type or region."
-            )
+        raise ValueError(
+            f"No inference ECR configuration found for JumpStart model ID '{model_id}' "
+            f"with {instance_type} instance type in {region}. "
+            "Please try another instance type or region."
+        )
     elif image_scope == JumpStartScriptScope.TRAINING:
         training_instance_type_variants = model_specs.training_instance_type_variants
         if training_instance_type_variants:
@@ -161,65 +157,8 @@ def _retrieve_image_uri(
             ecr_uri = model_specs.training_ecr_uri
             return ecr_uri
 
-        ecr_specs = model_specs.training_ecr_specs
-        if ecr_specs is None:
-            raise ValueError(
-                f"No training ECR configuration found for JumpStart model ID '{model_id}' "
-                f"with {instance_type} instance type in {region}. "
-                "Please try another instance type or region."
-            )
-    if framework is not None and framework != ecr_specs.framework:
         raise ValueError(
-            f"Incorrect container framework '{framework}' for JumpStart model ID '{model_id}' "
-            f"and version '{model_version}'."
+            f"No training ECR configuration found for JumpStart model ID '{model_id}' "
+            f"with {instance_type} instance type in {region}. "
+            "Please try another instance type or region."
         )
-
-    if version is not None and version != ecr_specs.framework_version:
-        raise ValueError(
-            f"Incorrect container framework version '{version}' for JumpStart model ID "
-            f"'{model_id}' and version '{model_version}'."
-        )
-
-    if py_version is not None and py_version != ecr_specs.py_version:
-        raise ValueError(
-            f"Incorrect python version '{py_version}' for JumpStart model ID '{model_id}' "
-            f"and version '{model_version}'."
-        )
-
-    base_framework_version_override: Optional[str] = None
-    version_override: Optional[str] = None
-    if ecr_specs.framework == ModelFramework.HUGGINGFACE:
-        base_framework_version_override = ecr_specs.framework_version
-        version_override = ecr_specs.huggingface_transformers_version
-
-    if image_scope == JumpStartScriptScope.TRAINING:
-        return image_uris.get_training_image_uri(
-            region=region,
-            framework=ecr_specs.framework,
-            framework_version=version_override or ecr_specs.framework_version,
-            py_version=ecr_specs.py_version,
-            image_uri=None,
-            distribution=None,
-            compiler_config=None,
-            tensorflow_version=None,
-            pytorch_version=base_framework_version_override or base_framework_version,
-            instance_type=instance_type,
-        )
-    if base_framework_version_override is not None:
-        base_framework_version_override = f"pytorch{base_framework_version_override}"
-
-    return image_uris.retrieve(
-        framework=ecr_specs.framework,
-        region=region,
-        version=version_override or ecr_specs.framework_version,
-        py_version=ecr_specs.py_version,
-        instance_type=instance_type,
-        hub_arn=hub_arn,
-        accelerator_type=accelerator_type,
-        image_scope=image_scope,
-        container_version=container_version,
-        distribution=distribution,
-        base_framework_version=base_framework_version_override or base_framework_version,
-        training_compiler_config=training_compiler_config,
-        config_name=config_name,
-    )

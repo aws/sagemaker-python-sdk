@@ -47,7 +47,7 @@ def test_jumpstart_common_image_uri(
         image_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
-        instance_type="ml.p2.xlarge",
+        instance_type="ml.m5.xlarge",
         sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
@@ -70,7 +70,7 @@ def test_jumpstart_common_image_uri(
         image_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
-        instance_type="ml.p2.xlarge",
+        instance_type="ml.m5.xlarge",
         sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
@@ -93,7 +93,7 @@ def test_jumpstart_common_image_uri(
         image_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
-        instance_type="ml.p2.xlarge",
+        instance_type="ml.m5.xlarge",
         sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
@@ -116,7 +116,7 @@ def test_jumpstart_common_image_uri(
         image_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
-        instance_type="ml.p2.xlarge",
+        instance_type="ml.m5.xlarge",
         sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
@@ -137,7 +137,7 @@ def test_jumpstart_common_image_uri(
             image_scope="BAD_SCOPE",
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(KeyError):
@@ -147,7 +147,7 @@ def test_jumpstart_common_image_uri(
             image_scope="training",
             model_id="blah",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(ValueError):
@@ -157,7 +157,7 @@ def test_jumpstart_common_image_uri(
             image_scope="training",
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(ValueError):
@@ -166,7 +166,7 @@ def test_jumpstart_common_image_uri(
             region="us-west-2",
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(ValueError):
@@ -175,7 +175,7 @@ def test_jumpstart_common_image_uri(
             region="us-west-2",
             image_scope="training",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(ValueError):
@@ -184,5 +184,5 @@ def test_jumpstart_common_image_uri(
             framework=None,
             image_scope="training",
             model_id="pytorch-ic-mobilenet-v2",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )

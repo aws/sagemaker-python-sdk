@@ -29,22 +29,22 @@ def test_jumpstart_pytorch_script_uri(patched_get_model_specs):
     uri = script_uris.retrieve(
         region="us-west-2",
         script_scope="inference",
-        model_id="pytorch-eqa-bert-base-cased",
+        model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
     )
     assert (
-        uri == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
-        "inference/eqa/v1.0.0/sourcedir.tar.gz"
+        uri
+        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/inference/ic/v2.0.0/sourcedir.tar.gz"
     )
 
     # training
     uri = script_uris.retrieve(
         region="us-west-2",
         script_scope="training",
-        model_id="pytorch-eqa-bert-base-cased",
+        model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
     )
     assert (
-        uri == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
-        "transfer_learning/eqa/v1.0.0/sourcedir.tar.gz"
+        uri
+        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz"
     )
