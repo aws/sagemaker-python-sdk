@@ -45,6 +45,6 @@ def test_jumpstart_pytorch_script_uri(patched_get_model_specs):
         model_version="*",
     )
     assert (
-        uri
-        == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz"
+        uri == "s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+        "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz"
     )

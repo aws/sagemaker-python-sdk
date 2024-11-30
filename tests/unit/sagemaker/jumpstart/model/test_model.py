@@ -282,7 +282,9 @@ class ModelTest(unittest.TestCase):
             "1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04",
             model_data={
                 "S3DataSource": {
-                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-txt2img/huggingface-txt2img-conflictx-complex-lineart/artifacts/inference-prepack/v1.0.0/",
+                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/"
+                    "huggingface-txt2img/huggingface-txt2img-conflictx"
+                    "-complex-lineart/artifacts/inference-prepack/v1.0.0/",
                     "S3DataType": "S3Prefix",
                     "CompressionType": "None",
                 }
@@ -370,7 +372,9 @@ class ModelTest(unittest.TestCase):
             "1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04",
             model_data={
                 "S3DataSource": {
-                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-txt2img/huggingface-txt2img-conflictx-complex-lineart/artifacts/inference-prepack/v1.0.0/",
+                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/"
+                    "huggingface-txt2img/huggingface-txt2img-conflictx"
+                    "-complex-lineart/artifacts/inference-prepack/v1.0.0/",
                     "S3DataType": "S3Prefix",
                     "CompressionType": "None",
                 }
@@ -1188,7 +1192,8 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(
             mock_session.create_model.call_args[0][2],
             {
-                "ModelPackageName": "arn:aws:sagemaker:us-west-2:594846645681:model-package/llama2-7b-f-v4-71eeccf76ddf33f2a18d2e16b9c7f302"
+                "ModelPackageName": "arn:aws:sagemaker:us-west-2:594846645681:"
+                "model-package/llama2-7b-f-v4-71eeccf76ddf33f2a18d2e16b9c7f302"
             },
         )
 
@@ -1269,7 +1274,8 @@ class ModelTest(unittest.TestCase):
             JumpStartModel(model_id=model_id, region="us-west-1")
         assert (
             str(e.value) == "Model package arn for 'js-model-package-arn' not supported in "
-            "us-west-1. Please try one of the following regions: us-west-2, us-east-2, us-east-1, eu-west-1, ap-southeast-1, ap-southeast-2."
+            "us-west-1. Please try one of the following regions: "
+            "us-west-2, us-east-2, us-east-1, eu-west-1, ap-southeast-1, ap-southeast-2."
         )
 
     @mock.patch(
@@ -1383,8 +1389,10 @@ class ModelTest(unittest.TestCase):
         JumpStartModel(model_id=model_id, instance_type="ml.p2.xlarge")
 
         mock_model_init.assert_called_once_with(
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
-            model_data="s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/v1.1.2/infer-prepack-huggingface-text2text-flan-t5-xxl-fp16.tar.gz",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-"
+            "pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+            model_data="s3://jumpstart-cache-prod-us-west-2/huggingface-infer/"
+            "prepack/v1.1.2/infer-prepack-huggingface-text2text-flan-t5-xxl-fp16.tar.gz",
             env={
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -1463,10 +1471,12 @@ class ModelTest(unittest.TestCase):
         JumpStartModel(model_id=model_id, instance_type="ml.p3.2xlarge")
 
         mock_model_init.assert_called_once_with(
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "pytorch-inference:1.10.0-gpu-py38",
             model_data={
                 "S3DataSource": {
-                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference-prepack/v1.0.0/",
+                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/"
+                    "pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference-prepack/v1.0.0/",
                     "S3DataType": "S3Prefix",
                     "CompressionType": "None",
                 }
@@ -1949,7 +1959,8 @@ class ModelTest(unittest.TestCase):
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
             model_data={
                 "S3DataSource": {
-                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference-prepack/v1.0.0/",
+                    "S3Uri": "s3://jumpstart-cache-prod-us-west-2/pytorch-ic"
+                    "/pytorch-ic-mobilenet-v2/artifacts/inference-prepack/v1.0.0/",
                     "S3DataType": "S3Prefix",
                     "CompressionType": "None",
                 }

@@ -243,10 +243,13 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_init.assert_called_once_with(
             instance_type="ml.p3.16xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
-            model_uri="s3://jumpstart-cache-prod-us-west-2/huggingface-training/train-huggingface"
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface"
+            "-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/huggingface-training"
+            "/train-huggingface"
             "-text2text-flan-t5-base.tar.gz",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/transfer_learning/text2text/prepack/v2.0.0/sourcedir.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs"
+            "/huggingface/transfer_learning/text2text/prepack/v2.0.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             hyperparameters={
                 "epochs": "1",
@@ -323,7 +326,8 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_deploy.assert_called_once_with(
             instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",
             env={
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -412,8 +416,10 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_init.assert_called_once_with(
             instance_type="ml.g5.12xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/meta/transfer_learning/textgeneration/v1.0.6/sourcedir.tar.gz",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-"
+            "pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "meta/transfer_learning/textgeneration/v1.0.6/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             hyperparameters={
                 "int8_quantization": "False",
@@ -457,7 +463,8 @@ class EstimatorTest(unittest.TestCase):
             encrypt_inter_container_traffic=True,
             environment={
                 "accept_eula": "true",
-                "SageMakerGatedModelS3Uri": "s3://sagemaker-repository-pdx/model-data-model-package_llama2-7b-f-v4-71eeccf76ddf33f2a18d2e16b9c7f302",
+                "SageMakerGatedModelS3Uri": "s3://sagemaker-repository-pdx/"
+                "model-data-model-package_llama2-7b-f-v4-71eeccf76ddf33f2a18d2e16b9c7f302",
             },
             tags=[
                 {
@@ -1919,7 +1926,8 @@ class EstimatorTest(unittest.TestCase):
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
             model_uri="s3://jumpstart-cache-prod-us-west-2/hello-world-1",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             hyperparameters={
                 "train_only_top_layer": "True",
@@ -1950,8 +1958,10 @@ class EstimatorTest(unittest.TestCase):
             instance_type="ml.p3.2xlarge",
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38",
-            model_uri="s3://jumpstart-cache-prod-us-west-2/pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/pytorch-training/"
+            "v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             hyperparameters={
                 "train_only_top_layer": "True",
@@ -2061,9 +2071,12 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_init.assert_called_with(
             instance_type="ml.p2.xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
-            model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/meta-textgeneration-llama-2-7b/gpu-training/model/",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-pytorch-training:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/"
+            "meta-textgeneration-llama-2-7b/gpu-training/model/",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             hyperparameters={
                 "train_only_top_layer": "True",
@@ -2131,7 +2144,8 @@ class EstimatorTest(unittest.TestCase):
             "pytorch-training:1.13.1-py310-sdk2.14.1-ubuntu20.04",
             model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/meta-textgeneration-llama-2-7b/"
             "gpu-training-budget/model/",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             hyperparameters={
                 "train_only_top_layer": "True",

@@ -58,8 +58,8 @@ def test_jumpstart_xgboost_image_uri(patched_get_model_specs, session):
         == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1"
     )
     assert (
-        uri
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost@sha256:ba417ec6d8d3e0c6b5f463bc9202e3b498b42260a29b61875f34beb6d99d8444"
+        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost@sha256:"
+        "ba417ec6d8d3e0c6b5f463bc9202e3b498b42260a29b61875f34beb6d99d8444"
     )
 
     # training
@@ -89,6 +89,6 @@ def test_jumpstart_xgboost_image_uri(patched_get_model_specs, session):
         == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1"
     )
     assert (
-        uri
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost@sha256:ba417ec6d8d3e0c6b5f463bc9202e3b498b42260a29b61875f34beb6d99d8444"
+        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost"
+        "@sha256:ba417ec6d8d3e0c6b5f463bc9202e3b498b42260a29b61875f34beb6d99d8444"
     )

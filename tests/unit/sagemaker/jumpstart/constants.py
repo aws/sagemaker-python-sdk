@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+# flake8: noqa: E501
 
 SPECIAL_MODEL_SPECS_DICT = {
     "js-model-class-model-prepacked": {

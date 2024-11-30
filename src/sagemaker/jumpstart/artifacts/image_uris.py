@@ -33,16 +33,8 @@ def _retrieve_image_uri(
     model_version: str,
     image_scope: str,
     hub_arn: Optional[str] = None,
-    framework: Optional[str] = None,
     region: Optional[str] = None,
-    version: Optional[str] = None,
-    py_version: Optional[str] = None,
     instance_type: Optional[str] = None,
-    accelerator_type: Optional[str] = None,
-    container_version: Optional[str] = None,
-    distribution: Optional[str] = None,
-    base_framework_version: Optional[str] = None,
-    training_compiler_config: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -64,29 +56,10 @@ def _retrieve_image_uri(
         image_scope (str): The image type, i.e. what it is used for.
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.
-        framework (str): The name of the framework or algorithm.
         region (str): The AWS region. (Default: None).
-        version (str): The framework or algorithm version. This is required if there is
-            more than one supported version for the given framework or algorithm.
-            (Default: None).
-        py_version (str): The Python version. This is required if there is
-            more than one supported Python version for the given framework version.
         instance_type (str): The SageMaker instance type. For supported types, see
             https://aws.amazon.com/sagemaker/pricing/instance-types. This is required if
             there are different images for different processor types.
-            (Default: None).
-        accelerator_type (str): Elastic Inference accelerator type. For more, see
-            https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
-            (Default: None).
-        container_version (str): the version of docker image.
-            Ideally the value of parameter should be created inside the framework.
-            For custom use, see the list of supported container versions:
-            https://github.com/aws/deep-learning-containers/blob/master/available_images.md.
-            (Default: None).
-        distribution (dict): A dictionary with information on how to run distributed training.
-            (Default: None).
-        training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
-            A configuration class for the SageMaker Training Compiler.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
@@ -145,7 +118,7 @@ def _retrieve_image_uri(
             f"with {instance_type} instance type in {region}. "
             "Please try another instance type or region."
         )
-    elif image_scope == JumpStartScriptScope.TRAINING:
+    if image_scope == JumpStartScriptScope.TRAINING:
         training_instance_type_variants = model_specs.training_instance_type_variants
         if training_instance_type_variants:
             image_uri = training_instance_type_variants.get_image_uri(
@@ -162,3 +135,5 @@ def _retrieve_image_uri(
             f"with {instance_type} instance type in {region}. "
             "Please try another instance type or region."
         )
+
+    raise ValueError(f"Invalid scope: {image_scope}")

@@ -34,7 +34,7 @@ from sagemaker.jumpstart.artifacts.model_packages import _retrieve_model_package
 from sagemaker.jumpstart.artifacts.model_uris import _retrieve_model_uri
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
+from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 from tests.unit.sagemaker.workflow.conftest import mock_client
 
 

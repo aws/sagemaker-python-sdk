@@ -21,7 +21,7 @@ from sagemaker.jumpstart.enums import HyperparameterValidationMode, JumpStartMod
 from sagemaker.jumpstart.exceptions import JumpStartHyperparametersError
 from sagemaker.jumpstart.types import JumpStartHyperparameter
 
-from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec, get_spec_from_base_spec
+from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec
 
 region = "us-west-2"
 mock_client = boto3.client("s3")
