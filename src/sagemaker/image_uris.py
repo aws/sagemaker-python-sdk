@@ -161,7 +161,7 @@ def retrieve(
             and value is not None
         }:
             JUMPSTART_LOGGER.info(
-                "Ignoring the following fields when retriving image uri "
+                "Ignoring the following arguments when retrieving image uri "
                 "for JumpStart model id '%s': %s",
                 model_id,
                 str(non_none_fields),

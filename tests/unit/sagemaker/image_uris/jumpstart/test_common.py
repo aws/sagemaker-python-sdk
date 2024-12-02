@@ -231,8 +231,8 @@ def test_jumpstart_image_uri_logging_extra_fields(
     )
 
     patched_info_log.assert_called_once_with(
-        "Ignoring the following fields "
-        "when retriving image uri for "
+        "Ignoring the following arguments "
+        "when retrieving image uri for "
         "JumpStart model id '%s': %s",
         "pytorch-ic-mobilenet-v2",
         "{'framework': 'framework', 'container_version': '1.2.3'}",
