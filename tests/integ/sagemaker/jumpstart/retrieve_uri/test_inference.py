@@ -46,13 +46,6 @@ def test_jumpstart_inference_retrieve_functions(setup):
         tolerate_vulnerable_model=True,
     )
 
-    script_uri = script_uris.retrieve(
-        model_id=model_id,
-        model_version=model_version,
-        script_scope="inference",
-        tolerate_vulnerable_model=True,
-    )
-
     model_uri = model_uris.retrieve(
         model_id=model_id,
         model_version=model_version,
@@ -68,7 +61,7 @@ def test_jumpstart_inference_retrieve_functions(setup):
 
     inference_job = InferenceJobLauncher(
         image_uri=image_uri,
-        script_uri=script_uri,
+        script_uri=None,
         model_uri=model_uri,
         instance_type=instance_type,
         base_name="catboost",
