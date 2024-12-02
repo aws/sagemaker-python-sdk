@@ -17,7 +17,6 @@ from tests.integ.sagemaker.jumpstart.retrieve_uri.inference import (
     InferenceJobLauncher,
 )
 from sagemaker import environment_variables, image_uris
-from sagemaker import script_uris
 from sagemaker import model_uris
 
 from tests.integ.sagemaker.jumpstart.constants import InferenceTabularDataname
