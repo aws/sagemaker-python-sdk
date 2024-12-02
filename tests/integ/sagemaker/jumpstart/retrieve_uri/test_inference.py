@@ -31,8 +31,8 @@ from tests.integ.sagemaker.jumpstart.utils import (
 
 def test_jumpstart_inference_retrieve_functions(setup):
 
-    model_id, model_version = "catboost-classification-model", "1.0.0"
-    instance_type = "ml.m5.xlarge"
+    model_id, model_version = "catboost-classification-model", "2.1.6"
+    instance_type = "ml.m5.4xlarge"
 
     print("Starting inference...")
 
