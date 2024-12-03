@@ -43,7 +43,7 @@ dependencies = [
   "pandas",
   "pathos",
   "platformdirs",
-  "protobuf>=3.12,<5.0",
+  "protobuf>=3.12,<6.0",
   "psutil",
   "PyYAML~=6.0",
   "requests",
