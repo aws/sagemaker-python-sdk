@@ -844,7 +844,6 @@ def test_predictor_with_component_name(sagemaker_session, component_name):
     assert predictor._get_component_name() == component_name
 
 
-@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 def test_training_recipe_for_cpu(sagemaker_session):
     container_log_level = '"logging.INFO"'
 
@@ -878,7 +877,6 @@ def test_training_recipe_for_cpu(sagemaker_session):
         )
 
 
-@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 @pytest.mark.parametrize(
     "recipe, model",
     [
@@ -935,7 +933,6 @@ def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
     assert pytorch.distribution.items() == expected_distribution.items()
 
 
-@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 def test_training_recipe_with_override(sagemaker_session):
     container_log_level = '"logging.INFO"'
 
@@ -973,7 +970,6 @@ def test_training_recipe_with_override(sagemaker_session):
     assert pytorch.image_uri == IMAGE_URI
 
 
-@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 def test_training_recipe_gpu_custom_source_dir(sagemaker_session):
     container_log_level = '"logging.INFO"'
 

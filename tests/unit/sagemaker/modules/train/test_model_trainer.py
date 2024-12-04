@@ -850,8 +850,6 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
     )
 
 
-# TODO: To be removed on 12/5/2024
-@pytest.mark.skip(reason="Hyperpod recipe code unavailable")
 def test_model_trainer_gpu_recipe_full_init(modules_session):
     training_recipe = "training/llama/p4_hf_llama3_70b_seq8k_gpu"
     recipe_overrides = {"run": {"results_dir": "/opt/ml/model"}}
