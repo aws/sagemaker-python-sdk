@@ -219,43 +219,42 @@ def get_hub_model_version(
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    marketplace_hub_content_version = _get_hub_model_version_for_marketplace_version(
-        hub_content_summaries, hub_model_version
-    )
 
->>>>>>> ff3eae05 (feat: Adding Bedrock Store model support for HubService (#1539))
-=======
->>>>>>> 42acb4f4 (chore: Merge from main (#1600))
+def get_hub_model_version(
+    hub_name: str,
+    hub_model_name: str,
+    hub_model_type: str,
+    hub_model_version: Optional[str] = None,
+    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> str:
+    """Returns available Jumpstart hub model version.
+
+    It will attempt both a semantic HubContent version search and Marketplace version search.
+    If the Marketplace version is also semantic, this function will default to HubContent version.
+
+    Raises:
+        ClientError: If the specified model is not found in the hub.
+        KeyError: If the specified model version is not found.
+    """
+
+    try:
+        hub_content_summaries = sagemaker_session.list_hub_content_versions(
+            hub_name=hub_name, hub_content_name=hub_model_name, hub_content_type=hub_model_type
+        ).get("HubContentSummaries")
+    except Exception as ex:
+        raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
+
     try:
         return _get_hub_model_version_for_open_weight_version(
             hub_content_summaries, hub_model_version
         )
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 42acb4f4 (chore: Merge from main (#1600))
     except KeyError:
         marketplace_hub_content_version = _get_hub_model_version_for_marketplace_version(
             hub_content_summaries, hub_model_version
         )
-<<<<<<< HEAD
         if marketplace_hub_content_version:
             return marketplace_hub_content_version
         raise
-=======
-    except KeyError as e:
-        if marketplace_hub_content_version:
-            return marketplace_hub_content_version
-        raise e
->>>>>>> ff3eae05 (feat: Adding Bedrock Store model support for HubService (#1539))
-=======
-        if marketplace_hub_content_version:
-            return marketplace_hub_content_version
-        raise
->>>>>>> 42acb4f4 (chore: Merge from main (#1600))
 
 
 def _get_hub_model_version_for_open_weight_version(
