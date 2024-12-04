@@ -115,25 +115,31 @@ class ModelTrainer(BaseModel):
     """Class that trains a model using AWS SageMaker.
 
     Example:
-    ```python
-    from sagemaker.modules.train import ModelTrainer
-    from sagemaker.modules.configs import SourceCode, Compute, InputData
 
-    source_code = SourceCode(source_dir="source", entry_script="train.py")
-    training_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-training-image"
-    model_trainer = ModelTrainer(
-        training_image=training_image,
-        source_code=source_code,
-    )
+    .. code:: python
 
-    train_data = InputData(channel_name="train", data_source="s3://bucket/train")
-    model_trainer.train(input_data_config=[train_data])
-    ```
+        from sagemaker.modules.train import ModelTrainer
+        from sagemaker.modules.configs import SourceCode, Compute, InputData
 
-    Attributes:
+        source_code = SourceCode(source_dir="source", entry_script="train.py")
+        training_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-training-image"
+        model_trainer = ModelTrainer(
+            training_image=training_image,
+            source_code=source_code,
+        )
+
+        train_data = InputData(channel_name="train", data_source="s3://bucket/train")
+        model_trainer.train(input_data_config=[train_data])
+
+        training_job = model_trainer._latest_training_job
+
+    Parameters:
+        training_mode (Mode):
+            The training mode. Valid values are "Mode.LOCAL_CONTAINER" or
+            "Mode.SAGEMAKER_TRAINING_JOB".
         sagemaker_session (Optiona(Session)):
             The SageMakerCore session. For convinience, can be imported like:
-            `from sagemaker.modules import Session`.
+            ``from sagemaker.modules import Session``.
             If not specified, a new session will be created.
             If the default bucket for the artifacts needs to be updated, it can be done by
             passing it in the Session object.
@@ -149,7 +155,7 @@ class ModelTrainer(BaseModel):
             running the training job.
         distributed (Optional[Union[MPI, Torchrun]]):
             The distributed runner for the training job. This is used to configure
-            a distributed training job. If specifed, `source_code` must also
+            a distributed training job. If specifed, ``source_code`` must also
             be provided.
         compute (Optional[Compute]):
             The compute configuration. This is used to specify the compute resources for
@@ -176,7 +182,7 @@ class ModelTrainer(BaseModel):
             The output data configuration. This is used to specify the output data location
             for the training job.
             If not specified in the session, will default to
-            `s3://<default_bucket>/<default_prefix>/<base_job_name>/`.
+            ``s3://<default_bucket>/<default_prefix>/<base_job_name>/``.
         input_data_config (Optional[List[Union[Channel, InputData]]]):
             The input data config for the training job.
             Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
@@ -194,6 +200,9 @@ class ModelTrainer(BaseModel):
         tags (Optional[List[Tag]]):
             An array of key-value pairs. You can use tags to categorize your AWS resources
             in different ways, for example, by purpose, owner, or environment.
+        local_container_root (Optional[str]):
+            The local root directory to store artifacts from a training job launched in
+            "LOCAL_CONTAINER" mode.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
@@ -652,9 +661,10 @@ class ModelTrainer(BaseModel):
             key_prefix (Optional[str]): The key prefix to use when uploading data to S3.
                 Only applicable when data_source is a local file path string.
                 If not specified, local data will be uploaded to:
-                    s3://<default_bucket_path>/<base_job_name>/input/<channel_name>/
+                ``s3://<default_bucket_path>/<base_job_name>/input/<channel_name>/``
+
                 If specified, local data will be uploaded to:
-                    s3://<default_bucket_path>/<key_prefix>/<channel_name>/
+                ``s3://<default_bucket_path>/<key_prefix>/<channel_name>/``
         """
         channel = None
         if isinstance(data_source, str):
@@ -881,7 +891,7 @@ class ModelTrainer(BaseModel):
             output_data_config (Optional[OutputDataConfig]):
                 The output data configuration. This is used to specify the output data location
                 for the training job.
-                If not specified, will default to `s3://<default_bucket>/<base_job_name>/output/`.
+                If not specified, will default to ``s3://<default_bucket>/<base_job_name>/output/``.
             input_data_config (Optional[List[Union[Channel, InputData]]]):
                 The input data config for the training job.
                 Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
@@ -910,7 +920,7 @@ class ModelTrainer(BaseModel):
         """
         if compute.instance_type is None:
             raise ValueError(
-                "Must set `instance_type` in compute_config when using training recipes."
+                "Must set ``instance_type`` in compute_config when using training recipes."
             )
         device_type = _determine_device_type(compute.instance_type)
         if device_type == "cpu":
@@ -970,7 +980,7 @@ class ModelTrainer(BaseModel):
         """Set the TensorBoard output configuration.
 
         Args:
-            tensorboard_output_config (TensorBoardOutputConfig):
+            tensorboard_output_config (sagemaker.modules.configs.TensorBoardOutputConfig):
                 The TensorBoard output configuration.
         """
         self._tensorboard_output_config = tensorboard_output_config
