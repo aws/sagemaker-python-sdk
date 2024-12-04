@@ -32,7 +32,7 @@ classifiers = [
 ]
 dependencies = [
   "attrs>=23.1.0,<24",
-  "boto3>=1.34.142,<2.0",
+  "boto3>=1.35.75,<2.0",
   "cloudpickle==2.2.1",
   "docker",
   "fastapi",
@@ -49,7 +49,7 @@ dependencies = [
   "psutil",
   "PyYAML~=6.0",
   "requests",
-  "sagemaker-core>=1.0.15,<2.0.0",
+  "sagemaker-core>=1.0.17,<2.0.0",
   "schema",
   "smdebug_rulesconfig==1.0.1",
   "tblib>=1.7.0,<4",
