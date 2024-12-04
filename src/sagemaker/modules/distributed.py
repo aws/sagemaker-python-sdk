@@ -25,7 +25,7 @@ class SMP(BaseModel):
     For more information on the model parallelism parameters, see:
     https://docs.aws.amazon.com/sagemaker/latest/dg/distributed-model-parallel-v2-reference.html#distributed-model-parallel-v2-reference-init-config
 
-    Attributes:
+    Parameters:
         hybrid_shard_degree (Optional[int]):
             Specifies a sharded parallelism degree for the model.
         sm_activation_offloading (Optional[bool]):
@@ -87,10 +87,10 @@ class DistributedConfig(BaseModel):
 class Torchrun(DistributedConfig):
     """Torchrun.
 
-    The Torchrun class configures a job that uses `torchrun` or
-    `torch.distributed.launch` in the backend to launch distributed training.
+    The Torchrun class configures a job that uses ``torchrun`` or
+    ``torch.distributed.launch`` in the backend to launch distributed training.
 
-    Attributes:
+    Parameters:
         process_count_per_node (int):
             The number of processes to run on each node in the training job.
             Will default to the number of GPUs available in the container.
@@ -107,10 +107,10 @@ class Torchrun(DistributedConfig):
 class MPI(DistributedConfig):
     """MPI.
 
-    The MPI class configures a job that uses `mpirun` in the backend to launch
+    The MPI class configures a job that uses ``mpirun`` in the backend to launch
     distributed training.
 
-    Attributes:
+    Parameters:
         process_count_per_node (int):
             The number of processes to run on each node in the training job.
             Will default to the number of GPUs available in the container.

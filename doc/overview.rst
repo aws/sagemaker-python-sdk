@@ -4,6 +4,7 @@ Using the SageMaker Python SDK
 
 SageMaker Python SDK provides several high-level abstractions for working with Amazon SageMaker. These are:
 
+- **ModelTrainer**: New interface encapsulating training on SageMaker.
 - **Estimators**: Encapsulate training on SageMaker.
 - **Models**: Encapsulate built ML models.
 - **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker endpoint.
@@ -24,8 +25,8 @@ Train a Model with the SageMaker Python SDK
 To train a model by using the SageMaker Python SDK, you:
 
 1. Prepare a training script
-2. Create an estimator
-3. Call the ``fit`` method of the estimator
+2. Create a ModelTrainer or Estimator
+3. Call the ``train`` method of the ModelTrainer or the ``fit`` method of the Estimator
 
 After you train a model, you can save it, and then serve the model as an endpoint to get real-time inferences or get inferences for an entire dataset by using batch transform.
 
@@ -84,6 +85,46 @@ If you want to use, for example, boolean hyperparameters, you need to specify ``
 
 For more on training environment variables, please visit `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
 
+
+Using ModelTrainer
+==================
+
+To use the ModelTrainer class, you need to provide a few essential parameters such as the training image URI and the source code configuration. The class allows you to spin up a SageMaker training job with minimal parameters, particularly by specifying the source code and training image.
+
+For more information about class definitions see `ModelTrainer <https://sagemaker.readthedocs.io/en/stable/api/training/model_trainer.html>`_.
+
+Example: Launching a Training Job with Custom Script
+
+.. code:: python
+
+    from sagemaker.modules.train import ModelTrainer
+    from sagemaker.modules.configs import SourceCode, InputData
+
+    # Image URI for the training job
+    pytorch_image = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py310"
+
+    # Define the script to be run
+    source_code = SourceCode(
+        source_dir="basic-script-mode",
+        requirements="requirements.txt",
+        entry_script="custom_script.py",
+    )
+
+    # Define the ModelTrainer
+    model_trainer = ModelTrainer(
+        training_image=pytorch_image,
+        source_code=source_code,
+        base_job_name="script-mode",
+    )
+
+    # Pass the input data
+    input_data = InputData(
+        channel_name="train",
+        data_source=training_input_path, # S3 path where training data is stored
+    )
+
+    # Start the training job
+    model_trainer.train(input_data_config=[input_data], wait=False)
 
 Using Estimators
 ================

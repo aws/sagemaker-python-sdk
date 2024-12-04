@@ -10,12 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module provides the configuration classes used in `sagemaker.modules`.
+"""This module provides the configuration classes used in ``sagemaker.modules``.
 
-Some of these classes are re-exported from `sagemaker_core.shapes`. For convinence,
-users can import these classes directly from `sagemaker.modules.configs`.
+Some of these classes are re-exported from ``sagemaker_core.shapes``. For convinence,
+users can import these classes directly from ``sagemaker.modules.configs``.
 
-For more documentation on `sagemaker_core.shapes`, see:
+For more documentation on ``sagemaker_core.shapes``, see:
     - https://sagemaker-core.readthedocs.io/en/stable/#sagemaker-core-shapes
 """
 
@@ -80,14 +80,14 @@ class SourceCode(BaseModel):
     The SourceCode class allows the user to specify the source code location, dependencies,
     entry script, or commands to be executed in the training job container.
 
-    Attributes:
+    Parameters:
         source_dir (Optional[str]):
             The local directory containing the source code to be used in the training job container.
         requirements (Optional[str]):
-            The path within `source_dir` to a `requirements.txt` file. If specified, the listed
+            The path within ``source_dir`` to a ``requirements.txt`` file. If specified, the listed
             requirements will be installed in the training job container.
         entry_script (Optional[str]):
-            The path within `source_dir` to the entry script that will be executed in the training
+            The path within ``source_dir`` to the entry script that will be executed in the training
             job container. If not specified, command must be provided.
         command (Optional[str]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
@@ -103,10 +103,10 @@ class SourceCode(BaseModel):
 class Compute(shapes.ResourceConfig):
     """Compute.
 
-    The Compute class is a subclass of `sagemaker_core.shapes.ResourceConfig`
+    The Compute class is a subclass of ``sagemaker_core.shapes.ResourceConfig``
     and allows the user to specify the compute resources for the training job.
 
-    Attributes:
+    Parameters:
         instance_type (Optional[str]):
             The ML compute instance type. For information about available instance types,
             see https://aws.amazon.com/sagemaker/pricing/.
@@ -152,10 +152,10 @@ class Compute(shapes.ResourceConfig):
 class Networking(shapes.VpcConfig):
     """Networking.
 
-    The Networking class is a subclass of `sagemaker_core.shapes.VpcConfig ` and
+    The Networking class is a subclass of ``sagemaker_core.shapes.VpcConfig`` and
     allows the user to specify the networking configuration for the training job.
 
-    Attributes:
+    Parameters:
         security_group_ids (Optional[List[str]]):
             The VPC security group IDs, in the form sg-xxxxxxxx. Specify the
             security groups for the VPC that is specified in the Subnets field.
@@ -199,15 +199,15 @@ class InputData(BaseModel):
 
     This config allows the user to specify an input data source for the training job.
 
-    Will be found at `/opt/ml/input/data/<channel_name>` within the training container.
+    Will be found at ``/opt/ml/input/data/<channel_name>`` within the training container.
     For convience, can be referenced inside the training container like:
 
-    ```python
-    import os
-    input_data_dir = os.environ['SM_CHANNEL_<channel_name>']
-    ```
+    .. code:: python
 
-    Attributes:
+        import os
+        input_data_dir = os.environ['SM_CHANNEL_<channel_name>']
+
+    Parameters:
         channel_name (str):
             The name of the input data source channel.
         data_source (Union[str, S3DataSource, FileSystemDataSource]):
