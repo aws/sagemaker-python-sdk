@@ -5,7 +5,9 @@
     "gpu_image" : {
         "framework": "pytorch-smp",
         "version":  "2.4.1",
-        "additional_args": {}
+        "additional_args": {
+          "container_version": "cu121"
+        }
     },
     "neuron_image" : {
         "framework": "hyperpod-recipes-neuron",
