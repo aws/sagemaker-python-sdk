@@ -219,31 +219,6 @@ def get_hub_model_version(
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
 
-
-def get_hub_model_version(
-    hub_name: str,
-    hub_model_name: str,
-    hub_model_type: str,
-    hub_model_version: Optional[str] = None,
-    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> str:
-    """Returns available Jumpstart hub model version.
-
-    It will attempt both a semantic HubContent version search and Marketplace version search.
-    If the Marketplace version is also semantic, this function will default to HubContent version.
-
-    Raises:
-        ClientError: If the specified model is not found in the hub.
-        KeyError: If the specified model version is not found.
-    """
-
-    try:
-        hub_content_summaries = sagemaker_session.list_hub_content_versions(
-            hub_name=hub_name, hub_content_name=hub_model_name, hub_content_type=hub_model_type
-        ).get("HubContentSummaries")
-    except Exception as ex:
-        raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
-
     try:
         return _get_hub_model_version_for_open_weight_version(
             hub_content_summaries, hub_model_version
