@@ -66,6 +66,7 @@ def get_sm_session_with_override() -> Session:
         sagemaker_client=sagemaker,
     )
 
+
 def get_training_dataset_for_model_and_version(model_id: str, version: str) -> dict:
     return TRAINING_DATASET_MODEL_DICT[(model_id, version)]
 
