@@ -53,9 +53,6 @@ def get_sm_session() -> Session:
     return Session(boto_session=boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME))
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 def get_sm_session_with_override() -> Session:
     # [TODO]: Remove service endpoint override before GA
     # boto3.set_stream_logger(name='botocore', level=logging.DEBUG)
@@ -69,10 +66,6 @@ def get_sm_session_with_override() -> Session:
         sagemaker_client=sagemaker,
     )
 
-
->>>>>>> ff3eae05 (feat: Adding Bedrock Store model support for HubService (#1539))
-=======
->>>>>>> 42acb4f4 (chore: Merge from main (#1600))
 def get_training_dataset_for_model_and_version(model_id: str, version: str) -> dict:
     return TRAINING_DATASET_MODEL_DICT[(model_id, version)]
 
