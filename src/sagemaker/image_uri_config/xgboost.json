@@ -1,7 +1,7 @@
 {
     "inference": {
         "version_aliases": {
-            "latest": "1.7-1"
+            "latest": "1"
         },
         "versions": {
             "1": {
