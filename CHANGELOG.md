@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.237.0 (2024-12-05)
+
+### Features
+
+ * Support SageMakerTrainingPlan for training jobs
+ * AMI support for BRM
+ * Adding Bedrock Store model support for HubService
+
+### Bug Fixes and Other Changes
+
+ * Fix unit tests
+ * update boto3 and sagemaker-core version
+ * fix gpu_image uri
+ * Hotfix to construct rubik uri correctly
+ * fix codestyles
+ * fix merge artifact
+ * fix merge artifact
+ * fix test_requiremenets.txt
+ * chore: Merge from main
+
 ## v2.236.0 (2024-12-04)
 
 ### Features
