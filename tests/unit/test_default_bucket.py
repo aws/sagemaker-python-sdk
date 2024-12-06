@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import datetime
+import unittest
 from unittest.mock import Mock
 
 import pytest
@@ -173,3 +174,31 @@ def test_bucket_creation_other_error(sagemaker_session):
 
         sagemaker_session.default_bucket()
     assert sagemaker_session._default_bucket is None
+
+
+def test_default_bucket_s3_create_call_creation_date(sagemaker_session):
+    error = ClientError(
+        error_response={"Error": {"Code": "403", "Message": "Forbidden"}},
+        operation_name="foo",
+    )
+    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = Mock(
+        side_effect=error
+    )
+
+    with pytest.raises(ClientError):
+        sagemaker_session.default_bucket()
+
+
+def test_default_bucket_s3_create_call_default_bucket_set_by_sdk(sagemaker_session):
+    sagemaker_session._default_bucket_set_by_sdk = True
+    sagemaker_session.boto_session.resource("s3").Bucket().creation_date = 1733509801
+    error = ClientError(
+        error_response={"Error": {"Code": "403", "Message": "Forbidden"}},
+        operation_name="foo",
+    )
+    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = Mock(
+        side_effect=error
+    )
+
+    with pytest.raises(ClientError):
+        sagemaker_session.default_bucket()
