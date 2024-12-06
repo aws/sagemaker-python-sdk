@@ -32,13 +32,15 @@ classifiers = [
 ]
 dependencies = [
   "attrs>=23.1.0,<24",
-  "boto3>=1.34.142,<2.0",
-  "cloudpickle==2.2.1",
+  "boto3>=1.35.75,<2.0",
+  "cloudpickle>=2.2.1",
   "docker",
+  "fastapi",
   "google-pasta",
   "importlib-metadata>=1.4.0,<7.0",
   "jsonschema",
   "numpy>=1.9.0,<2.0",
+  "omegaconf>=2.2,<2.3",
   "packaging>=20.0",
   "pandas",
   "pathos",
@@ -47,12 +49,13 @@ dependencies = [
   "psutil",
   "PyYAML~=6.0",
   "requests",
-  "sagemaker-core>=1.0.15,<2.0.0",
+  "sagemaker-core>=1.0.17,<2.0.0",
   "schema",
   "smdebug_rulesconfig==1.0.1",
   "tblib>=1.7.0,<4",
   "tqdm",
   "urllib3>=1.26.8,<3.0.0",
+  "uvicorn"
 ]
 
 [project.scripts]

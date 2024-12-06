@@ -72,7 +72,11 @@ def get_model_spec_arg_keys(
     """
     arg_keys: List[str] = []
     if arg_type == ModelSpecKwargType.DEPLOY:
-        arg_keys = ["ModelDataDownloadTimeout", "ContainerStartupHealthCheckTimeout"]
+        arg_keys = [
+            "ModelDataDownloadTimeout",
+            "ContainerStartupHealthCheckTimeout",
+            "InferenceAmiVersion",
+        ]
     elif arg_type == ModelSpecKwargType.ESTIMATOR:
         arg_keys = [
             "EncryptInterContainerTraffic",
