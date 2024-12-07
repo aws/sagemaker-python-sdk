@@ -25,6 +25,8 @@ class Feature(Enum):
     SDK_DEFAULTS = 1
     LOCAL_MODE = 2
     REMOTE_FUNCTION = 3
+    MODEL_TRAINER = 4
+    ESTIMATOR = 5
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""

@@ -24,7 +24,7 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelOutOfMemoryException,
     LocalModelInvocationException,
 )
-from sagemaker.serve.utils.predictors import DjlLocalModePredictor
+from sagemaker.serve.utils.predictors import DjlLocalModePredictor, InProcessModePredictor
 from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 mock_model_id = "TheBloke/Llama-2-7b-chat-fp16"
@@ -46,6 +46,8 @@ mock_most_performant_serving_properties = {
     "OPTION_DTYPE": "bf16",
     "MODEL_LOADING_TIMEOUT": "1800",
 }
+mock_inference_spec = MagicMock()
+mock_inference_spec.get_model = "TheBloke/Llama-2-7b-chat-fp16"
 
 mock_schema_builder = MagicMock()
 mock_schema_builder.sample_input = mock_sample_input
@@ -114,6 +116,59 @@ class TestDjlBuilder(unittest.TestCase):
 
         with self.assertRaises(ValueError) as _:
             model.deploy(mode=Mode.IN_PROCESS)
+
+    @patch("sagemaker.serve.builder.djl_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=False,
+    )
+    @patch("sagemaker.serve.builder.djl_builder._get_ram_usage_mb", return_value=1024)
+    @patch("sagemaker.serve.builder.djl_builder._get_nb_instance", return_value="ml.g5.24xlarge")
+    @patch(
+        "sagemaker.serve.builder.djl_builder._get_default_djl_configurations",
+        return_value=(mock_default_configs, 128),
+    )
+    def test_build_deploy_for_djl_in_process(
+        self,
+        mock_default_djl_config,
+        mock_get_nb_instance,
+        mock_get_ram_usage_mb,
+        mock_is_jumpstart_model,
+        mock_telemetry,
+    ):
+        builder = ModelBuilder(
+            model=mock_model_id,
+            name="mock_model_name",
+            schema_builder=mock_schema_builder,
+            mode=Mode.IN_PROCESS,
+            model_server=ModelServer.DJL_SERVING,
+            image_config=MOCK_IMAGE_CONFIG,
+            vpc_config=MOCK_VPC_CONFIG,
+        )
+
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.side_effect = None
+
+        model = builder.build()
+        assert model.name == "mock_model_name"
+
+        builder.serve_settings.telemetry_opt_out = True
+
+        assert isinstance(model, DJLModel)
+        assert builder.schema_builder.sample_input["parameters"]["max_new_tokens"] == 128
+        assert builder.nb_instance_type == "ml.g5.24xlarge"
+        assert model.image_config == MOCK_IMAGE_CONFIG
+        assert model.vpc_config == MOCK_VPC_CONFIG
+        assert "lmi" in builder.image_uri
+
+        builder.modes[str(Mode.IN_PROCESS)] = MagicMock()
+        predictor = model.deploy(model_data_download_timeout=1800)
+
+        assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
+        assert isinstance(predictor, InProcessModePredictor)
+
+        builder._original_deploy = MagicMock()
+        builder._prepare_for_mode.return_value = (None, {})
 
     @patch("sagemaker.serve.builder.djl_builder._capture_telemetry", side_effect=None)
     @patch(

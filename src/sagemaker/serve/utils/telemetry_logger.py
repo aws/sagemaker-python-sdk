@@ -122,13 +122,12 @@ def _capture_telemetry(func_name: str):
                 extra += f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
 
             if self.image_uri:
-                image_uri_tail = self.image_uri.split("/")[1]
                 image_uri_option = _get_image_uri_option(
                     self.image_uri, getattr(self, "_is_custom_image_uri", False)
                 )
-
-            if self.image_uri:
-                extra += f"&x-imageTag={image_uri_tail}"
+                split_image_uri = self.image_uri.split("/")
+                if len(split_image_uri) > 1:
+                    extra += f"&x-imageTag={split_image_uri[1]}"
 
             extra += f"&x-sdkVersion={SDK_VERSION}"
 
@@ -171,7 +170,7 @@ def _capture_telemetry(func_name: str):
 
             extra += f"&x-latency={round(elapsed, 2)}"
 
-            if not self.serve_settings.telemetry_opt_out:
+            if hasattr(self, "serve_settings") and not self.serve_settings.telemetry_opt_out:
                 _send_telemetry(
                     status,
                     MODE_TO_CODE[str(self.mode)],

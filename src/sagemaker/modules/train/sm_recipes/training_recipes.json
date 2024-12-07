@@ -1,0 +1,17 @@
+{
+    "adapter_repo": "https://github.com/aws/sagemaker-training-adapter-for-nemo.git",
+    "launcher_repo": "https://github.com/aws/sagemaker-hyperpod-recipes.git",
+    "neuron_dist_repo": "https://github.com/aws-neuron/neuronx-distributed-training.git",
+    "gpu_image" : {
+        "framework": "pytorch-smp",
+        "version":  "2.4.1",
+        "additional_args": {
+            "container_version": "cu121"
+          }
+    },
+    "neuron_image": {
+        "framework": "hyperpod-recipes-neuron",
+        "version":  "2.1.2",
+        "additional_args": {}
+    }
+}

@@ -72,11 +72,12 @@ def model_input():
 
 
 @pytest.fixture
-def model_builder_model_schema_builder():
+def model_builder_model_schema_builder(sagemaker_session):
     return ModelBuilder(
         model_path=HF_DIR,
         model="bert-base-uncased",
         schema_builder=SchemaBuilder(sample_input, loaded_response),
+        sagemaker_session=sagemaker_session,
     )
 
 

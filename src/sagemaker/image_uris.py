@@ -192,7 +192,7 @@ def retrieve(
         config = _config_for_framework_and_scope(_framework, final_image_scope, accelerator_type)
 
     original_version = version
-    version = _validate_version_and_set_if_needed(version, config, framework)
+    version = _validate_version_and_set_if_needed(version, config, framework, image_scope)
     version_config = config["versions"][_version_for_config(version, config)]
 
     if framework == HUGGING_FACE_FRAMEWORK:
@@ -224,7 +224,7 @@ def retrieve(
         container_version = version_config["container_version"][processor]
 
     # Append sdk version in case of trainium instances
-    if repo in ["pytorch-training-neuron"]:
+    if repo in ["pytorch-training-neuron", "pytorch-training-neuronx"]:
         if not sdk_version:
             sdk_version = _get_latest_versions(version_config["sdk_versions"])
         container_version = sdk_version + "-" + container_version
@@ -463,6 +463,23 @@ def _get_latest_versions(list_of_versions):
     return sorted(list_of_versions, reverse=True)[0]
 
 
+def _get_latest_version(framework, version, image_scope):
+    """Get the latest version from the input framework"""
+    if version:
+        return version
+    try:
+        framework_config = config_for_framework(framework)
+    except FileNotFoundError:
+        raise ValueError("Invalid framework {}".format(framework))
+
+    if not framework_config:
+        raise ValueError("Invalid framework {}".format(framework))
+
+    if not version:
+        version = _fetch_latest_version_from_config(framework_config, image_scope)
+    return version
+
+
 def _validate_accelerator_type(accelerator_type):
     """Raises a ``ValueError`` if ``accelerator_type`` is invalid."""
     if not accelerator_type.startswith("ml.eia") and accelerator_type != "local_sagemaker_notebook":
@@ -472,32 +489,16 @@ def _validate_accelerator_type(accelerator_type):
         )
 
 
-def _validate_version_and_set_if_needed(version, config, framework):
+def _validate_version_and_set_if_needed(version, config, framework, image_scope):
     """Checks if the framework/algorithm version is one of the supported versions."""
+    if not config:
+        config = config_for_framework(framework)
     available_versions = list(config["versions"].keys())
     aliased_versions = list(config.get("version_aliases", {}).keys())
-
     if len(available_versions) == 1 and version not in aliased_versions:
-        log_message = "Defaulting to the only supported framework/algorithm version: {}.".format(
-            available_versions[0]
-        )
-        if version and version != available_versions[0]:
-            logger.warning("%s Ignoring framework/algorithm version: %s.", log_message, version)
-        elif not version:
-            logger.info(log_message)
-
         return available_versions[0]
-
-    if version is None and framework in [
-        DATA_WRANGLER_FRAMEWORK,
-        HUGGING_FACE_LLM_FRAMEWORK,
-        HUGGING_FACE_TEI_GPU_FRAMEWORK,
-        HUGGING_FACE_TEI_CPU_FRAMEWORK,
-        HUGGING_FACE_LLM_NEURONX_FRAMEWORK,
-        STABILITYAI_FRAMEWORK,
-    ]:
-        version = _get_latest_versions(available_versions)
-
+    if not version:
+        version = _get_latest_version(framework, version, image_scope)
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
     return version
 
@@ -746,3 +747,55 @@ def get_base_python_image_uri(region, py_version="310") -> str:
     repo_and_tag = repo + ":" + version
 
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo_and_tag)
+
+
+def _fetch_latest_version_from_config(  # pylint: disable=R0911
+    framework_config: dict, image_scope: Optional[str] = None
+) -> Optional[str]:
+    """Helper function to fetch the latest version as a string from a framework's config
+
+    Args:
+        framework_config (dict): A framework config dict.
+        image_scope (str): Scope of the image, eg: training, inference
+    Returns:
+        Version string if latest version found else None
+    """
+    if image_scope in framework_config:
+        if image_scope_config := framework_config[image_scope]:
+            if "version_aliases" in image_scope_config:
+                if "latest" in image_scope_config["version_aliases"]:
+                    return image_scope_config["version_aliases"]["latest"]
+    top_version = None
+    bottom_version = None
+
+    if "versions" in framework_config:
+        versions = list(framework_config["versions"].keys())
+        if len(versions) == 1:
+            return versions[0]
+        top_version = versions[0]
+        bottom_version = versions[-1]
+        if top_version == "latest" or bottom_version == "latest":
+            return None
+    elif (
+        image_scope is not None
+        and image_scope in framework_config
+        and "versions" in framework_config[image_scope]
+    ):
+        versions = list(framework_config[image_scope]["versions"].keys())
+        top_version = versions[0]
+        bottom_version = versions[-1]
+    elif "processing" in framework_config and "versions" in framework_config["processing"]:
+        versions = list(framework_config["processing"]["versions"].keys())
+        top_version = versions[0]
+        bottom_version = versions[-1]
+    if top_version and bottom_version:
+        if top_version.endswith(".x") or bottom_version.endswith(".x"):
+            top_number = int(top_version[:-2])
+            bottom_number = int(bottom_version[:-2])
+            max_version = max(top_number, bottom_number)
+            return f"{max_version}.x"
+        if Version(top_version) >= Version(bottom_version):
+            return top_version
+        return bottom_version
+
+    return None
