@@ -29,7 +29,7 @@ def test_jumpstart_sklearn_image_uri(patched_get_model_specs, session):
     patched_get_model_specs.side_effect = get_prototype_model_spec
 
     model_id, model_version = "sklearn-classification-linear", "*"
-    instance_type = "ml.m2.xlarge"
+    instance_type = "ml.m5.xlarge"
     region = "us-west-2"
 
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(region, model_id, model_version)
@@ -53,9 +53,15 @@ def test_jumpstart_sklearn_image_uri(patched_get_model_specs, session):
         sagemaker_session=session,
     ).serving_image_uri(region, instance_type)
 
-    assert uri == framework_class_uri
+    # framework classes dont use digest.
     assert (
-        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+        framework_class_uri
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1"
+        "-cpu-py3"
+    )
+    assert (
+        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn@"
+        "sha256:e09bbb7686077a1db23d316b699020a786a6e1636b2b89384be9651368c40f95"
     )
 
     # training
@@ -79,9 +85,14 @@ def test_jumpstart_sklearn_image_uri(patched_get_model_specs, session):
         sagemaker_session=session,
     ).training_image_uri(region=region)
 
-    assert uri == framework_class_uri
+    # framework classes dont use digest.
     assert (
-        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+        framework_class_uri
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3"
+    )
+    assert (
+        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn"
+        "@sha256:e09bbb7686077a1db23d316b699020a786a6e1636b2b89384be9651368c40f95"
     )
 
     with pytest.raises(ValueError):

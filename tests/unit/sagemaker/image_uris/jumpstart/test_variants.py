@@ -52,9 +52,8 @@ def test_jumpstart_variants_image_uri(
         instance_type="ml.c2.xlarge",
     )
 
-    assert (
-        "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.5.0-cpu-py3"
-        == image_uris.retrieve(
+    with pytest.raises(ValueError):
+        image_uris.retrieve(
             framework=None,
             region="us-west-2",
             image_scope="inference",
@@ -62,7 +61,6 @@ def test_jumpstart_variants_image_uri(
             model_version="*",
             instance_type="ml.c200000.xlarge",
         )
-    )
 
     with pytest.raises(ValueError):
         image_uris.retrieve(
@@ -74,9 +72,8 @@ def test_jumpstart_variants_image_uri(
             instance_type="ml.c2.xlarge",
         )
 
-    assert (
-        "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3"
-        == image_uris.retrieve(
+    with pytest.raises(ValueError):
+        image_uris.retrieve(
             framework=None,
             region="us-west-2",
             image_scope="training",
@@ -84,4 +81,3 @@ def test_jumpstart_variants_image_uri(
             model_version="*",
             instance_type="ml.g4dn.2xlarge",
         )
-    )

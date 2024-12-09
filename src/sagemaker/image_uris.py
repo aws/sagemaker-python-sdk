@@ -21,7 +21,7 @@ from typing import Optional
 from packaging.version import Version
 
 from sagemaker import utils
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
@@ -154,23 +154,27 @@ def retrieve(
             )
 
     if is_jumpstart_model_input(model_id, model_version):
+        if non_none_fields := {
+            key: value
+            for key, value in args.items()
+            if key in {"version", "framework", "container_version", "py_version"}
+            and value is not None
+        }:
+            JUMPSTART_LOGGER.info(
+                "Ignoring the following arguments when retrieving image uri "
+                "for JumpStart model id '%s': %s",
+                model_id,
+                str(non_none_fields),
+            )
         return artifacts._retrieve_image_uri(
-            model_id,
-            model_version,
-            image_scope,
-            hub_arn,
-            framework,
-            region,
-            version,
-            py_version,
-            instance_type,
-            accelerator_type,
-            container_version,
-            distribution,
-            base_framework_version,
-            training_compiler_config,
-            tolerate_vulnerable_model,
-            tolerate_deprecated_model,
+            model_id=model_id,
+            model_version=model_version,
+            image_scope=image_scope,
+            hub_arn=hub_arn,
+            region=region,
+            instance_type=instance_type,
+            tolerate_vulnerable_model=tolerate_vulnerable_model,
+            tolerate_deprecated_model=tolerate_deprecated_model,
             sagemaker_session=sagemaker_session,
             config_name=config_name,
             model_type=model_type,

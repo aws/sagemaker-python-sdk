@@ -17,7 +17,6 @@ from tests.integ.sagemaker.jumpstart.retrieve_uri.inference import (
     InferenceJobLauncher,
 )
 from sagemaker import environment_variables, image_uris
-from sagemaker import script_uris
 from sagemaker import model_uris
 
 from tests.integ.sagemaker.jumpstart.constants import InferenceTabularDataname
@@ -31,8 +30,8 @@ from tests.integ.sagemaker.jumpstart.utils import (
 
 def test_jumpstart_inference_retrieve_functions(setup):
 
-    model_id, model_version = "catboost-classification-model", "1.0.0"
-    instance_type = "ml.m5.xlarge"
+    model_id, model_version = "catboost-classification-model", "2.1.6"
+    instance_type = "ml.m5.4xlarge"
 
     print("Starting inference...")
 
@@ -43,13 +42,6 @@ def test_jumpstart_inference_retrieve_functions(setup):
         model_id=model_id,
         model_version=model_version,
         instance_type=instance_type,
-        tolerate_vulnerable_model=True,
-    )
-
-    script_uri = script_uris.retrieve(
-        model_id=model_id,
-        model_version=model_version,
-        script_scope="inference",
         tolerate_vulnerable_model=True,
     )
 
@@ -68,7 +60,7 @@ def test_jumpstart_inference_retrieve_functions(setup):
 
     inference_job = InferenceJobLauncher(
         image_uri=image_uri,
-        script_uri=script_uri,
+        script_uri=None,
         model_uri=model_uri,
         instance_type=instance_type,
         base_name="catboost",
