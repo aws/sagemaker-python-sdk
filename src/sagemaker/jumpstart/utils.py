@@ -455,6 +455,21 @@ def add_hub_content_arn_tags(
     return tags
 
 
+def add_bedrock_store_tags(
+    tags: Optional[List[TagsDict]],
+    compatibility: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        compatibility,
+        enums.JumpStartTag.BEDROCK,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,

@@ -44,13 +44,19 @@ def input_fn(input_data, content_type):
     """Deserializes the bytes that were received from the model server"""
     try:
         if hasattr(schema_builder, "custom_input_translator"):
-            return schema_builder.custom_input_translator.deserialize(
+            deserialized_data = schema_builder.custom_input_translator.deserialize(
                 io.BytesIO(input_data), content_type
             )
         else:
-            return schema_builder.input_deserializer.deserialize(
+            deserialized_data = schema_builder.input_deserializer.deserialize(
                 io.BytesIO(input_data), content_type[0]
             )
+
+        # Check if preprocess method is defined and call it
+        if hasattr(inference_spec, "preprocess"):
+            return inference_spec.preprocess(deserialized_data)
+
+        return deserialized_data
     except Exception as e:
         logger.error("Encountered error: %s in deserialize_response." % e)
         raise Exception("Encountered error in deserialize_request.") from e
@@ -64,6 +70,8 @@ def predict_fn(input_data, predict_callable):
 def output_fn(predictions, accept_type):
     """Prediction is serialized to bytes and sent back to the customer"""
     try:
+        if hasattr(inference_spec, "postprocess"):
+            predictions = inference_spec.postprocess(predictions)
         if hasattr(schema_builder, "custom_output_translator"):
             return schema_builder.custom_output_translator.serialize(predictions, accept_type)
         else:
