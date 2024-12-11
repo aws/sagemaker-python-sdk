@@ -102,6 +102,7 @@ def boto_session(request):
     with patch("sagemaker.user_agent.get_user_agent_extra_suffix", return_value=user_agent_suffix):
         client_mock._client_config.user_agent = user_agent
     boto_mock.client.return_value = client_mock
+    boto_mock.client("sts").get_caller_identity.return_value = {"Account": "Account-001"}
     return boto_mock
 
 
