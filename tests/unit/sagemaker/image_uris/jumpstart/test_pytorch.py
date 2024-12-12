@@ -27,7 +27,7 @@ def test_jumpstart_pytorch_image_uri(patched_get_model_specs, session):
 
     patched_get_model_specs.side_effect = get_prototype_model_spec
 
-    model_id, model_version = "pytorch-eqa-bert-base-cased", "*"
+    model_id, model_version = "pytorch-ic-mobilenet-v2", "*"
     instance_type = "ml.p2.xlarge"
     region = "us-west-2"
 
@@ -53,7 +53,7 @@ def test_jumpstart_pytorch_image_uri(patched_get_model_specs, session):
     ).serving_image_uri(region, instance_type)
 
     assert uri == framework_class_uri
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.5.0-gpu-py3"
+    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
 
     # training
     uri = image_uris.retrieve(
@@ -76,4 +76,4 @@ def test_jumpstart_pytorch_image_uri(patched_get_model_specs, session):
     ).training_image_uri(region=region)
 
     assert uri == framework_class_uri
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3"
+    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"

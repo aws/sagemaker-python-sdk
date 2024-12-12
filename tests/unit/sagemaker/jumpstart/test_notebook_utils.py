@@ -48,7 +48,7 @@ def test_list_jumpstart_scripts(
     )
     patched_generate_jumpstart_models.side_effect = _generate_jumpstart_model_versions
     patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
-        get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
+        get_prototype_model_spec(None, "pytorch-ic-mobilenet-v2").to_json()
     )
 
     assert list_jumpstart_scripts() == sorted(["inference", "training"])
@@ -109,7 +109,6 @@ def test_list_jumpstart_tasks(
     assert list_jumpstart_tasks() == sorted(
         [
             "classification",
-            "eqa",
             "ic",
             "semseg",
             "spc",
@@ -183,7 +182,6 @@ def test_list_jumpstart_frameworks(
             "huggingface",
             "lightgbm",
             "mxnet",
-            "pytorch",
             "sklearn",
             "xgboost",
         ]
@@ -220,7 +218,7 @@ class ListJumpStartModels(TestCase):
             ("huggingface-spc-bert-base-cased", "1.0.0"),
             ("lightgbm-classification-model", "1.0.0"),
             ("mxnet-semseg-fcn-resnet50-ade", "1.0.0"),
-            ("pytorch-eqa-bert-base-cased", "1.0.0"),
+            ("pytorch-ic-mobilenet-v2", "1.0.0"),
             ("sklearn-classification-linear", "1.0.0"),
             ("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
@@ -236,7 +234,7 @@ class ListJumpStartModels(TestCase):
         self, patched_read_s3_file: Mock, patched_get_manifest: Mock
     ):
         patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
-            get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
+            get_prototype_model_spec(None, "pytorch-ic-mobilenet-v2").to_json()
         )
         patched_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region)
@@ -269,7 +267,7 @@ class ListJumpStartModels(TestCase):
             ("huggingface-spc-bert-base-cased", "1.0.0"),
             ("lightgbm-classification-model", "1.0.0"),
             ("mxnet-semseg-fcn-resnet50-ade", "1.0.0"),
-            ("pytorch-eqa-bert-base-cased", "1.0.0"),
+            ("pytorch-ic-mobilenet-v2", "1.0.0"),
             ("sklearn-classification-linear", "1.0.0"),
             ("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
@@ -326,7 +324,7 @@ class ListJumpStartModels(TestCase):
             ("huggingface-spc-bert-base-cased", "1.0.0"),
             ("lightgbm-classification-model", "1.0.0"),
             ("mxnet-semseg-fcn-resnet50-ade", "1.0.0"),
-            ("pytorch-eqa-bert-base-cased", "1.0.0"),
+            ("pytorch-ic-mobilenet-v2", "1.0.0"),
             ("sklearn-classification-linear", "1.0.0"),
             ("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
@@ -349,7 +347,7 @@ class ListJumpStartModels(TestCase):
         self, patched_read_s3_file: Mock, patched_get_manifest: Mock
     ):
         patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
-            get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
+            get_prototype_model_spec(None, "pytorch-ic-mobilenet-v2").to_json()
         )
         patched_get_manifest.side_effect = lambda region, *args, **kwargs: get_prototype_manifest(
             region
@@ -387,7 +385,7 @@ class ListJumpStartModels(TestCase):
             ("huggingface-spc-bert-base-cased", "1.0.0"),
             ("lightgbm-classification-model", "1.0.0"),
             ("mxnet-semseg-fcn-resnet50-ade", "1.0.0"),
-            ("pytorch-eqa-bert-base-cased", "1.0.0"),
+            ("pytorch-ic-mobilenet-v2", "1.0.0"),
             ("sklearn-classification-linear", "1.0.0"),
             ("xgboost-classification-model", "1.0.0"),
         ]
@@ -481,10 +479,10 @@ class ListJumpStartModels(TestCase):
             ("mxnet-semseg-fcn-resnet50-ade", "2.5.1"),
             ("mxnet-semseg-fcn-resnet50-ade", "1.300.0"),
             ("mxnet-semseg-fcn-resnet50-ade", "1.4.0"),
-            ("pytorch-eqa-bert-base-cased", "2.400.0"),
-            ("pytorch-eqa-bert-base-cased", "2.5.1"),
-            ("pytorch-eqa-bert-base-cased", "1.300.0"),
-            ("pytorch-eqa-bert-base-cased", "1.4.0"),
+            ("pytorch-ic-mobilenet-v2", "2.400.0"),
+            ("pytorch-ic-mobilenet-v2", "2.5.1"),
+            ("pytorch-ic-mobilenet-v2", "1.300.0"),
+            ("pytorch-ic-mobilenet-v2", "1.4.0"),
             ("sklearn-classification-linear", "2.400.0"),
             ("sklearn-classification-linear", "2.5.1"),
             ("sklearn-classification-linear", "1.300.0"),
@@ -510,7 +508,7 @@ class ListJumpStartModels(TestCase):
             ("huggingface-spc-bert-base-cased", "2.400.0"),
             ("lightgbm-classification-model", "2.400.0"),
             ("mxnet-semseg-fcn-resnet50-ade", "2.400.0"),
-            ("pytorch-eqa-bert-base-cased", "2.400.0"),
+            ("pytorch-ic-mobilenet-v2", "2.400.0"),
             ("sklearn-classification-linear", "2.400.0"),
             ("tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "2.400.0"),
             ("xgboost-classification-model", "2.400.0"),
@@ -536,12 +534,12 @@ class ListJumpStartModels(TestCase):
         )
 
         def vulnerable_inference_model_spec(bucket, key, *args, **kwargs) -> str:
-            spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
+            spec = get_prototype_model_spec(None, "catboost-classification-model")
             spec.inference_vulnerable = True
             return json.dumps(spec.to_json())
 
         def vulnerable_training_model_spec(bucket, key, *args, **kwargs):
-            spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
+            spec = get_prototype_model_spec(None, "catboost-classification-model")
             spec.training_vulnerable = True
             return json.dumps(spec.to_json())
 
@@ -596,7 +594,7 @@ class ListJumpStartModels(TestCase):
         )
 
         def deprecated_model_spec(bucket, key, *args, **kwargs) -> str:
-            spec = get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased")
+            spec = get_prototype_model_spec(None, "pytorch-ic-mobilenet-v2")
             spec.deprecated = True
             return json.dumps(spec.to_json())
 
@@ -634,7 +632,7 @@ class ListJumpStartModels(TestCase):
             "huggingface-spc-bert-base-cased",
             "lightgbm-classification-model",
             "mxnet-semseg-fcn-resnet50-ade",
-            "pytorch-eqa-bert-base-cased",
+            "pytorch-ic-mobilenet-v2",
             "sklearn-classification-linear",
             "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1",
             "xgboost-classification-model",
@@ -668,7 +666,7 @@ class ListJumpStartModels(TestCase):
             "huggingface-spc-bert-base-cased",
             "lightgbm-classification-model",
             "mxnet-semseg-fcn-resnet50-ade",
-            "pytorch-eqa-bert-base-cased",
+            "pytorch-ic-mobilenet-v2",
             "sklearn-classification-linear",
             "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1",
             "xgboost-classification-model",
@@ -690,7 +688,7 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest: Mock,
     ):
         patched_read_s3_file.side_effect = lambda *args, **kwargs: json.dumps(
-            get_prototype_model_spec(None, "pytorch-eqa-bert-base-cased").to_json()
+            get_prototype_model_spec(None, "pytorch-ic-mobilenet-v2").to_json()
         )
         patched_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
@@ -707,7 +705,7 @@ class ListJumpStartModels(TestCase):
                 "false",
                 "unknown",
             )
-        ) == ["tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1"]
+        ) == ["pytorch-ic-mobilenet-v2", "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1"]
 
         assert list_jumpstart_models(
             Or(
@@ -716,7 +714,7 @@ class ListJumpStartModels(TestCase):
                     "framework==tensorflow",
                     Identity(
                         And(
-                            And("incremental_training_supported==falSE"),
+                            And("incremental_training_supported==true"),
                             "true",
                             Or("unknown", "version equals 1.0.0"),
                         )
@@ -763,15 +761,15 @@ def test_get_model_url(
     region = "us-west-2"
     mock_session = Mock(s3_client=mock_client, boto_region_name=region)
 
-    model_id, version = "xgboost-classification-model", "1.0.0"
-    assert "https://xgboost.readthedocs.io/en/latest/" == get_model_url(model_id, version)
+    model_id, version = "xgboost-classification-model", "*"
+    assert "https://xgboost.readthedocs.io/en/release_1.7.0/" == get_model_url(model_id, version)
 
     model_id, version = "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"
     assert "https://tfhub.dev/google/bit/m-r101x1/ilsvrc2012_classification/1" == get_model_url(
         model_id, version
     )
 
-    model_id, version = "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"
+    model_id, version = "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "*"
 
     patched_get_model_specs.reset_mock()
     patched_get_model_specs.side_effect = lambda *largs, **kwargs: get_prototype_model_spec(

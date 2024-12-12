@@ -28,7 +28,7 @@ def test_jumpstart_lightgbm_image_uri(patched_get_model_specs, session):
     patched_get_model_specs.side_effect = get_prototype_model_spec
 
     model_id, model_version = "lightgbm-classification-model", "*"
-    instance_type = "ml.p2.xlarge"
+    instance_type = "ml.m5.xlarge"
     region = "us-west-2"
 
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(region, model_id, model_version)
@@ -53,7 +53,7 @@ def test_jumpstart_lightgbm_image_uri(patched_get_model_specs, session):
     ).serving_image_uri(region, instance_type)
 
     assert uri == framework_class_uri
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.9.0-gpu-py38"
+    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:2.0.1-cpu-py310"
 
     # training
     uri = image_uris.retrieve(
@@ -76,4 +76,4 @@ def test_jumpstart_lightgbm_image_uri(patched_get_model_specs, session):
     ).training_image_uri(region=region)
 
     assert uri == framework_class_uri
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
+    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-cpu-py38"

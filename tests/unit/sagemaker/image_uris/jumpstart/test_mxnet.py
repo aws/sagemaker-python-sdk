@@ -28,7 +28,7 @@ def test_jumpstart_mxnet_image_uri(patched_get_model_specs, session):
     patched_get_model_specs.side_effect = get_prototype_model_spec
 
     model_id, model_version = "mxnet-semseg-fcn-resnet50-ade", "*"
-    instance_type = "ml.p2.xlarge"
+    instance_type = "ml.m5.xlarge"
     region = "us-west-2"
 
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(region, model_id, model_version)
@@ -53,7 +53,7 @@ def test_jumpstart_mxnet_image_uri(patched_get_model_specs, session):
     ).serving_image_uri(region, instance_type)
 
     assert uri == framework_class_uri
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.7.0-gpu-py3"
+    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.9.0-cpu-py38"
 
     # training
     uri = image_uris.retrieve(
@@ -76,4 +76,4 @@ def test_jumpstart_mxnet_image_uri(patched_get_model_specs, session):
     ).training_image_uri(region=region)
 
     assert uri == framework_class_uri
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:1.7.0-gpu-py3"
+    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:1.9.0-cpu-py38"

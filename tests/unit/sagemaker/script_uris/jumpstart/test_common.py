@@ -185,6 +185,6 @@ def test_jumpstart_artifact_bucket_override(
         model_version="*",
     )
     assert (
-        uri
-        == "s3://some-cool-bucket-name/source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+        uri == "s3://some-cool-bucket-name/source-directory-tarballs/pytorch/"
+        "transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz"
     )
