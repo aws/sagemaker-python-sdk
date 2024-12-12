@@ -77,6 +77,10 @@ class InferenceJobLauncher:
 
         self.model_name = self.get_model_name()
 
+        if self.script_uri is None:
+            print("No script uri provided. Not performing prepack")
+            return self.model_uri
+
         cache_bucket_uri = f"s3://{get_test_artifact_bucket()}"
         repacked_model_uri = "/".join(
             [
@@ -147,16 +151,26 @@ class InferenceJobLauncher:
         return f"{non_timestamped_name}{self.suffix}"
 
     def create_model(self) -> None:
+        primary_container = {
+            "Image": self.image_uri,
+            "Mode": "SingleModel",
+            "Environment": self.environment_variables,
+        }
+        if self.repacked_model_uri.endswith(".tar.gz"):
+            primary_container["ModelDataUrl"] = self.repacked_model_uri
+        else:
+            primary_container["ModelDataSource"] = {
+                "S3DataSource": {
+                    "S3Uri": self.repacked_model_uri,
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            }
         self.sagemaker_client.create_model(
             ModelName=self.model_name,
             EnableNetworkIsolation=True,
             ExecutionRoleArn=self.execution_role,
-            PrimaryContainer={
-                "Image": self.image_uri,
-                "ModelDataUrl": self.repacked_model_uri,
-                "Mode": "SingleModel",
-                "Environment": self.environment_variables,
-            },
+            PrimaryContainer=primary_container,
         )
 
     def create_endpoint_config(self) -> None:
