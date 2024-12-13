@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.237.1 (2024-12-12)
+
+### Bug Fixes and Other Changes
+
+ * chore: remove support for ecr spec fallbacks for jumpstart models
+ * Cloudpickle Revert
+ * Cloudpickle update
+ * Numpy update
+ * Protobuf update
+ * Update to fetch latest Cloudpickle version
+
 ## v2.237.0 (2024-12-05)
 
 ### Features
