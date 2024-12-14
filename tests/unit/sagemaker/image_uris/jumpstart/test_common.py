@@ -47,7 +47,7 @@ def test_jumpstart_common_image_uri(
         image_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
-        instance_type="ml.p2.xlarge",
+        instance_type="ml.m5.xlarge",
         sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
@@ -70,7 +70,7 @@ def test_jumpstart_common_image_uri(
         image_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
-        instance_type="ml.p2.xlarge",
+        instance_type="ml.m5.xlarge",
         sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
@@ -93,7 +93,7 @@ def test_jumpstart_common_image_uri(
         image_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
-        instance_type="ml.p2.xlarge",
+        instance_type="ml.m5.xlarge",
         sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
@@ -116,7 +116,7 @@ def test_jumpstart_common_image_uri(
         image_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
-        instance_type="ml.p2.xlarge",
+        instance_type="ml.m5.xlarge",
         sagemaker_session=mock_session,
     )
     patched_get_model_specs.assert_called_once_with(
@@ -137,7 +137,7 @@ def test_jumpstart_common_image_uri(
             image_scope="BAD_SCOPE",
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(KeyError):
@@ -147,7 +147,7 @@ def test_jumpstart_common_image_uri(
             image_scope="training",
             model_id="blah",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(ValueError):
@@ -157,7 +157,7 @@ def test_jumpstart_common_image_uri(
             image_scope="training",
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(ValueError):
@@ -166,7 +166,7 @@ def test_jumpstart_common_image_uri(
             region="us-west-2",
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(ValueError):
@@ -175,7 +175,7 @@ def test_jumpstart_common_image_uri(
             region="us-west-2",
             image_scope="training",
             model_version="*",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
 
     with pytest.raises(ValueError):
@@ -184,5 +184,56 @@ def test_jumpstart_common_image_uri(
             framework=None,
             image_scope="training",
             model_id="pytorch-ic-mobilenet-v2",
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
         )
+
+
+@patch("sagemaker.image_uris.JUMPSTART_LOGGER.info")
+@patch("sagemaker.jumpstart.utils.validate_model_id_and_get_type")
+@patch("sagemaker.jumpstart.artifacts.image_uris.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_image_uri_logging_extra_fields(
+    patched_get_model_specs,
+    patched_verify_model_region_and_return_specs,
+    patched_validate_model_id_and_get_type,
+    patched_info_log,
+):
+
+    patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
+    patched_get_model_specs.side_effect = get_spec_from_base_spec
+    patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
+
+    region = "us-west-2"
+    mock_client = boto3.client("s3")
+    mock_session = Mock(s3_client=mock_client, boto_region_name=region)
+
+    image_uris.retrieve(
+        framework=None,
+        region="us-west-2",
+        image_scope="training",
+        model_id="pytorch-ic-mobilenet-v2",
+        model_version="*",
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=mock_session,
+    )
+
+    patched_info_log.assert_not_called()
+
+    image_uris.retrieve(
+        framework="framework",
+        container_version="1.2.3",
+        region="us-west-2",
+        image_scope="training",
+        model_id="pytorch-ic-mobilenet-v2",
+        model_version="*",
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=mock_session,
+    )
+
+    patched_info_log.assert_called_once_with(
+        "Ignoring the following arguments "
+        "when retrieving image uri for "
+        "JumpStart model id '%s': %s",
+        "pytorch-ic-mobilenet-v2",
+        "{'framework': 'framework', 'container_version': '1.2.3'}",
+    )

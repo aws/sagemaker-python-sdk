@@ -350,7 +350,7 @@ def _select_container_for_mlflow_model(
     )
 
     image_uri = None
-    for casted_version in casted_versions:
+    for casted_version in filter(None, casted_versions):
         try:
             image_uri = image_uris.retrieve(
                 framework=framework_to_use,
