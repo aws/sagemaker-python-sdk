@@ -82,7 +82,7 @@ def test_repack_model_step(estimator):
     assert hyperparameters["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
     assert (
         hyperparameters["sagemaker_submit_directory"]
-        == '"s3://my-bucket/MyRepackModelStep-b5ea77f701b47a8d075605497462ccc2/source/sourcedir.tar.gz"'
+        == '"s3://my-bucket/MyRepackModelStep-717d7bdd388168c27e9ad2938ff0314e35be50b3157cf2498688c7525ea27e1e/source/sourcedir.tar.gz"'
     )
 
     del request_dict["Arguments"]["HyperParameters"]
