@@ -268,29 +268,29 @@ def get_config_hash(step: Entity):
 
 
 def hash_object(obj) -> str:
-    """Get the MD5 hash of an object.
+    """Get the SHA256 hash of an object.
 
     Args:
         obj (dict): The object
     Returns:
-        str: The MD5 hash of the object
+        str: The SHA256 hash of the object
     """
-    return hashlib.md5(str(obj).encode()).hexdigest()
+    return hashlib.sha256(str(obj).encode()).hexdigest()
 
 
 def hash_file(path: str) -> str:
-    """Get the MD5 hash of a file.
+    """Get the SHA256 hash of a file.
 
     Args:
         path (str): The local path for the file.
     Returns:
-        str: The MD5 hash of the file.
+        str: The SHA256 hash of the file.
     """
-    return _hash_file(path, hashlib.md5()).hexdigest()
+    return _hash_file(path, hashlib.sha256()).hexdigest()
 
 
 def hash_files_or_dirs(paths: List[str]) -> str:
-    """Get the MD5 hash of the contents of a list of files or directories.
+    """Get the SHA256 hash of the contents of a list of files or directories.
 
     Hash is changed if:
        * input list is changed
@@ -301,58 +301,58 @@ def hash_files_or_dirs(paths: List[str]) -> str:
     Args:
         paths: List of file or directory paths
     Returns:
-        str: The MD5 hash of the list of files or directories.
+        str: The SHA256 hash of the list of files or directories.
     """
-    md5 = hashlib.md5()
+    sha256 = hashlib.sha256()
     for path in sorted(paths):
-        md5 = _hash_file_or_dir(path, md5)
-    return md5.hexdigest()
+        sha256 = _hash_file_or_dir(path, sha256)
+    return sha256.hexdigest()
 
 
-def _hash_file_or_dir(path: str, md5: Hash) -> Hash:
+def _hash_file_or_dir(path: str, sha256: Hash) -> Hash:
     """Updates the inputted Hash with the contents of the current path.
 
     Args:
         path: path of file or directory
     Returns:
-        str: The MD5 hash of the file or directory
+        str: The SHA256 hash of the file or directory
     """
     if isinstance(path, str) and path.lower().startswith("file://"):
         path = unquote(urlparse(path).path)
-    md5.update(path.encode())
+    sha256.update(path.encode())
     if Path(path).is_dir():
-        md5 = _hash_dir(path, md5)
+        sha256 = _hash_dir(path, sha256)
     elif Path(path).is_file():
-        md5 = _hash_file(path, md5)
-    return md5
+        sha256 = _hash_file(path, sha256)
+    return sha256
 
 
-def _hash_dir(directory: Union[str, Path], md5: Hash) -> Hash:
+def _hash_dir(directory: Union[str, Path], sha256: Hash) -> Hash:
     """Updates the inputted Hash with the contents of the current path.
 
     Args:
         directory: path of the directory
     Returns:
-        str: The MD5 hash of the directory
+        str: The SHA256 hash of the directory
     """
     if not Path(directory).is_dir():
         raise ValueError(str(directory) + " is not a valid directory")
     for path in sorted(Path(directory).iterdir()):
-        md5.update(path.name.encode())
+        sha256.update(path.name.encode())
         if path.is_file():
-            md5 = _hash_file(path, md5)
+            sha256 = _hash_file(path, sha256)
         elif path.is_dir():
-            md5 = _hash_dir(path, md5)
-    return md5
+            sha256 = _hash_dir(path, sha256)
+    return sha256
 
 
-def _hash_file(file: Union[str, Path], md5: Hash) -> Hash:
+def _hash_file(file: Union[str, Path], sha256: Hash) -> Hash:
     """Updates the inputted Hash with the contents of the current path.
 
     Args:
         file: path of the file
     Returns:
-        str: The MD5 hash of the file
+        str: The SHA256 hash of the file
     """
     if isinstance(file, str) and file.lower().startswith("file://"):
         file = unquote(urlparse(file).path)
@@ -363,8 +363,8 @@ def _hash_file(file: Union[str, Path], md5: Hash) -> Hash:
             data = f.read(BUF_SIZE)
             if not data:
                 break
-            md5.update(data)
-    return md5
+            sha256.update(data)
+    return sha256
 
 
 def validate_step_args_input(
