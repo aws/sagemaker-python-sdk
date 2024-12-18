@@ -1433,15 +1433,14 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
             # HF Model ID format = "meta-llama/Meta-Llama-3.1-8B"
             # JS Model ID format = "meta-textgeneration-llama-3-1-8b"
-            llama_3_1_keywords = ["llama-3.1", "llama-3-1"]
-            is_llama_3_1 = self.model and any(
-                keyword in self.model.lower() for keyword in llama_3_1_keywords
+            is_llama_3_plus = self.model and bool(
+                re.search(r"llama-3[\.\-][1-9]\d*", self.model.lower())
             )
 
             if is_gpu_instance and self.model and self.is_compiled:
-                if is_llama_3_1:
+                if is_llama_3_plus:
                     raise ValueError(
-                        "Compilation is not supported for Llama-3.1 with a GPU instance."
+                        "Compilation is not supported for models greater than Llama-3.0 with a GPU instance."
                     )
                 if speculative_decoding_config:
                     raise ValueError(
