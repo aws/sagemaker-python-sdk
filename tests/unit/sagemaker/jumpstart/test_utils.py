@@ -1364,7 +1364,7 @@ class TestIsValidModelId(TestCase):
             )
 
             assert (
-                utils.validate_model_id_and_get_type("pytorch-eqa-bert-base-cased")
+                utils.validate_model_id_and_get_type("pytorch-ic-mobilenet-v2")
                 == JumpStartModelType.OPEN_WEIGHTS
             )
             mock_get_manifest.assert_called_with(
