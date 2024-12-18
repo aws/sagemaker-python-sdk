@@ -148,7 +148,7 @@ class DJLModel(Model):
             return self.engine
 
         if self.task == "text-embedding":
-            return "OnnxRuntime"
+            return "Rust"
         return "Python"
 
     def _infer_image_uri(self):
