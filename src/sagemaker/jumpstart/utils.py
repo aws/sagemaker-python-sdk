@@ -455,6 +455,21 @@ def add_hub_content_arn_tags(
     return tags
 
 
+def add_bedrock_store_tags(
+    tags: Optional[List[TagsDict]],
+    compatibility: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        compatibility,
+        enums.JumpStartTag.BEDROCK,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
@@ -1595,9 +1610,10 @@ def _add_model_access_configs_to_model_data_sources(
             )
             acked_model_data_sources.append(mutable_model_data_source)
         else:
-            mutable_model_data_source.pop(
-                "HostingEulaKey"
-            )  # pop when model access config is not applicable
+            if "HostingEulaKey" in mutable_model_data_source:
+                mutable_model_data_source.pop(
+                    "HostingEulaKey"
+                )  # pop when model access config is not applicable
             acked_model_data_sources.append(mutable_model_data_source)
     return acked_model_data_sources
 

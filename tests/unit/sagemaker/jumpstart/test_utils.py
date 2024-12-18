@@ -1364,7 +1364,7 @@ class TestIsValidModelId(TestCase):
             )
 
             assert (
-                utils.validate_model_id_and_get_type("pytorch-eqa-bert-base-cased")
+                utils.validate_model_id_and_get_type("pytorch-ic-mobilenet-v2")
                 == JumpStartModelType.OPEN_WEIGHTS
             )
             mock_get_manifest.assert_called_with(
@@ -2316,6 +2316,28 @@ class TestAcceptEulaModelAccessConfig(TestCase):
         assert additional_model_data_sources == (
             self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
             + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_gated_additional_model_data_source_already_accepted_with_no_hosting_eula_key_should_pass_through(
+        self,
+    ):
+        mock_gated_deploy_config_additional_model_data_pre_accepted = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://jumpstart_bucket/path/to/gated/resources/",
+                    "ModelAccessConfig": {"AcceptEula": True},
+                },
+            }
+        ]
+
+        utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=mock_gated_deploy_config_additional_model_data_pre_accepted,
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=False)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
         )
 
     # Mixed Positive Cases

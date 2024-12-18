@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import importlib.util
+import json
 import uuid
 from typing import Any, Type, List, Dict, Optional, Union
 from dataclasses import dataclass, field
@@ -23,9 +24,17 @@ import re
 
 from pathlib import Path
 
-from sagemaker.enums import Tag
-from sagemaker.s3 import S3Downloader
+from sagemaker_core.main.resources import TrainingJob
 
+from sagemaker.transformer import Transformer
+from sagemaker.async_inference import AsyncInferenceConfig
+from sagemaker.batch_inference.batch_transform_inference_config import BatchTransformInferenceConfig
+from sagemaker.compute_resource_requirements import ResourceRequirements
+from sagemaker.enums import Tag, EndpointType
+from sagemaker.estimator import Estimator
+from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.s3 import S3Downloader
 from sagemaker import Session
 from sagemaker.model import Model
 from sagemaker.base_predictor import PredictorBase
@@ -78,7 +87,10 @@ from sagemaker.serve.utils.optimize_utils import (
     _extract_speculative_draft_model_provider,
     _jumpstart_speculative_decoding,
 )
-from sagemaker.serve.utils.predictors import _get_local_mode_predictor
+from sagemaker.serve.utils.predictors import (
+    _get_local_mode_predictor,
+    _get_in_process_mode_predictor,
+)
 from sagemaker.serve.utils.hardware_detector import (
     _get_gpu_info,
     _get_gpu_info_fallback,
@@ -99,15 +111,16 @@ from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import get_met
 from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
-from sagemaker.utils import Tags
+from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.utils import Tags, unique_name_from_base
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import (
     get_huggingface_model_metadata,
     download_huggingface_model_metadata,
 )
 from sagemaker.serve.validations.optimization import _validate_optimization_configuration
-
-logger = logging.getLogger(__name__)
+from sagemaker.modules.train import ModelTrainer
+from sagemaker.modules import logger
 
 # Any new server type should be added here
 supported_model_servers = {
@@ -137,6 +150,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
             * ``Mode.SAGEMAKER_ENDPOINT``: Launch on a SageMaker endpoint
             * ``Mode.LOCAL_CONTAINER``: Launch locally with a container
+            * ``Mode.IN_PROCESS``: Launch locally to a FastAPI server instead of using a container.
         shared_libs (List[str]): Any shared libraries you want to bring into
             the model packaging.
         dependencies (Optional[Dict[str, Any]): The dependencies of the model
@@ -173,8 +187,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             The schema builder can be omitted for HuggingFace models with task types TextGeneration,
             TextClassification, and QuestionAnswering. Omitting SchemaBuilder is in
             beta for FillMask, and AutomaticSpeechRecognition use-cases.
-        model (Optional[Union[object, str]): Model object (with ``predict`` method to perform
-            inference) or a HuggingFace/JumpStart Model ID. Either ``model`` or ``inference_spec``
+        model (Optional[Union[object, str, ModelTrainer, TrainingJob, Estimator]]):
+            Define object from which training artifacts can be extracted.
+            Either ``model`` or ``inference_spec``
             is required for the model builder to build the artifact.
         inference_spec (InferenceSpec): The inference spec file with your customized
             ``invoke`` and ``load`` functions.
@@ -265,14 +280,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     schema_builder: Optional[SchemaBuilder] = field(
         default=None, metadata={"help": "Defines the i/o schema of the model"}
     )
-    model: Optional[Union[object, str]] = field(
+    model: Optional[Union[object, str, ModelTrainer, TrainingJob, Estimator]] = field(
         default=None,
-        metadata={
-            "help": (
-                'Model object with "predict" method to perform inference '
-                "or HuggingFace/JumpStart Model ID"
-            )
-        },
+        metadata={"help": "Define object from which training artifacts can be extracted"},
     )
     inference_spec: InferenceSpec = field(
         default=None,
@@ -429,11 +439,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             # init the InProcessMode object
             self.modes[str(Mode.IN_PROCESS)] = InProcessMode(
                 inference_spec=self.inference_spec,
+                model=self.model,
                 schema_builder=self.schema_builder,
                 session=self.sagemaker_session,
                 model_path=self.model_path,
                 env_vars=self.env_vars,
-                model_server=self.model_server,
             )
             self.modes[str(Mode.IN_PROCESS)].prepare()
             return None
@@ -471,7 +481,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         return serializer, deserializer
 
-    def _get_predictor(self, endpoint_name: str, sagemaker_session: Session) -> Predictor:
+    def _get_predictor(
+        self, endpoint_name: str, sagemaker_session: Session, component_name: Optional[str] = None
+    ) -> Predictor:
         """Placeholder docstring"""
         serializer, deserializer = self._get_client_translators()
 
@@ -480,6 +492,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             sagemaker_session=sagemaker_session,
             serializer=serializer,
             deserializer=deserializer,
+            component_name=component_name,
         )
 
     def _create_model(self):
@@ -563,6 +576,18 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if mode and mode != self.mode:
             self._overwrite_mode_in_deploy(overwrite_mode=mode)
 
+        if self.mode == Mode.IN_PROCESS:
+            serializer, deserializer = self._get_client_translators()
+
+            predictor = _get_in_process_mode_predictor(
+                self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
+            )
+
+            self.modes[str(Mode.IN_PROCESS)].create_server(
+                predictor,
+            )
+            return predictor
+
         if self.mode == Mode.LOCAL_CONTAINER:
             serializer, deserializer = self._get_client_translators()
             predictor = _get_local_mode_predictor(
@@ -576,14 +601,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 self.image_uri, container_timeout_in_second, self.secret_key, predictor
             )
             return predictor
+
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
             # Validate parameters
-            if not instance_type:
-                raise ValueError("Missing required parameter `instance_type`")
-
-            if not initial_instance_count:
-                raise ValueError("Missing required parameter `initial_instance_count`")
-
+            # Instance type and instance count parameter validation is done based on deployment type
+            # and will be done inside Model.deploy()
             if is_1p_image_uri(image_uri=self.image_uri):
                 validate_image_uri_and_hardware(
                     image_uri=self.image_uri,
@@ -592,7 +614,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 )
 
         if "endpoint_logging" not in kwargs:
-            kwargs["endpoint_logging"] = False
+            kwargs["endpoint_logging"] = True
+        kwargs.pop("mode", None)
+        self.pysdk_model.role = kwargs.pop("role", self.pysdk_model.role)
         predictor = self._original_deploy(
             *args,
             instance_type=instance_type,
@@ -633,20 +657,21 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """Build the model for torchserve"""
         self._save_model_inference_spec()
 
-        self._auto_detect_container()
+        if self.mode != Mode.IN_PROCESS:
+            self._auto_detect_container()
 
-        self.secret_key = prepare_for_torchserve(
-            model_path=self.model_path,
-            shared_libs=self.shared_libs,
-            dependencies=self.dependencies,
-            session=self.sagemaker_session,
-            image_uri=self.image_uri,
-            inference_spec=self.inference_spec,
-        )
+            self.secret_key = prepare_for_torchserve(
+                model_path=self.model_path,
+                shared_libs=self.shared_libs,
+                dependencies=self.dependencies,
+                session=self.sagemaker_session,
+                image_uri=self.image_uri,
+                inference_spec=self.inference_spec,
+            )
 
         self._prepare_for_mode()
-
-        return self._create_model()
+        self.model = self._create_model()
+        return self.model
 
     def _user_agent_decorator(self, func):
         """Placeholder docstring"""
@@ -814,11 +839,27 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         self.env_vars.update({"MLFLOW_MODEL_FLAVOR": f"{deployment_flavor}"})
         self.dependencies.update({"requirements": mlflow_model_dependency_path})
 
+    @_capture_telemetry("ModelBuilder.build_training_job")
+    def _collect_training_job_model_telemetry(self):
+        """Dummy method to collect telemetry for training job handshake"""
+        return
+
+    @_capture_telemetry("ModelBuilder.build_model_trainer")
+    def _collect_model_trainer_model_telemetry(self):
+        """Dummy method to collect telemetry for model trainer handshake"""
+        return
+
+    @_capture_telemetry("ModelBuilder.build_estimator")
+    def _collect_estimator_model_telemetry(self):
+        """Dummy method to collect telemetry for estimator handshake"""
+        return
+
     # Model Builder is a class to build the model for deployment.
     # It supports three modes of deployment
     # 1/ SageMaker Endpoint
     # 2/ Local launch with container
     # 3/ In process mode with Transformers server in beta release
+    @_capture_telemetry("ModelBuilder.build")
     def build(  # pylint: disable=R0911
         self,
         mode: Type[Mode] = None,
@@ -837,12 +878,28 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             Type[Model]: A deployable ``Model`` object.
         """
+
         self.modes = dict()
 
         if mode:
             self.mode = mode
         if role_arn:
             self.role_arn = role_arn
+
+        self.serve_settings = self._get_serve_setting()
+
+        if isinstance(self.model, TrainingJob):
+            self.model_path = self.model.model_artifacts.s3_model_artifacts
+            self.model = None
+            self._collect_training_job_model_telemetry()
+        elif isinstance(self.model, ModelTrainer):
+            self.model_path = self.model._latest_training_job.model_artifacts.s3_model_artifacts
+            self.model = None
+            self._collect_model_trainer_model_telemetry()
+        elif isinstance(self.model, Estimator):
+            self.model_path = self.model.output_path
+            self.model = None
+            self._collect_estimator_model_telemetry()
 
         self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
 
@@ -865,7 +922,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             self.sagemaker_session.sagemaker_client._user_agent_creator.to_string
         )
 
-        self.serve_settings = self._get_serve_setting()
         self._is_custom_image_uri = self.image_uri is not None
 
         self._handle_mlflow_input()
@@ -875,13 +931,30 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if (
             not (isinstance(self.model, str) and self._is_jumpstart_model_id())
         ) and self.model_server:
-            return self._build_for_model_server()
+            self.built_model = self._build_for_model_server()
+            return self.built_model
 
         if isinstance(self.model, str):
             model_task = None
+
             if self._is_jumpstart_model_id():
+                if self.mode == Mode.IN_PROCESS:
+                    raise ValueError(
+                        f"{self.mode} is not supported for Jumpstart models. "
+                        "Please use LOCAL_CONTAINER mode to deploy a Jumpstart model"
+                        " on your local machine."
+                    )
                 self.model_hub = ModelHub.JUMPSTART
-                return self._build_for_jumpstart()
+                logger.debug("Building for Jumpstart model Id...")
+                self.built_model = self._build_for_jumpstart()
+                return self.built_model
+
+            if self.mode != Mode.IN_PROCESS:
+                if self._use_jumpstart_equivalent():
+                    self.model_hub = ModelHub.JUMPSTART
+                    logger.debug("Building for Jumpstart equiavalent model Id...")
+                    self.built_model = self._build_for_jumpstart()
+                    return self.built_model
             self.model_hub = ModelHub.HUGGINGFACE
 
             if self.model_metadata:
@@ -899,28 +972,28 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 if self.schema_builder is None and model_task is not None:
                     self._hf_schema_builder_init(model_task)
                 if model_task == "text-generation":
-                    return self._build_for_tgi()
-                if model_task == "sentence-similarity":
-                    return self._build_for_tei()
+                    self.built_model = self._build_for_tgi()
+                    return self.built_model
+                if model_task in ["sentence-similarity", "feature-extraction"]:
+                    self.built_model = self._build_for_tei()
+                    return self.built_model
                 elif self._can_fit_on_single_gpu():
-                    return self._build_for_transformers()
+                    self.built_model = self._build_for_transformers()
+                    return self.built_model
                 else:
-                    return self._build_for_transformers()
+                    self.built_model = self._build_for_transformers()
+                    return self.built_model
 
         # Set TorchServe as default model server
         if not self.model_server:
             self.model_server = ModelServer.TORCHSERVE
-            return self._build_for_torchserve()
+            self.built_model = self._build_for_torchserve()
+            return self.built_model
 
         raise ValueError("%s model server is not supported" % self.model_server)
 
     def _build_validations(self):
         """Validations needed for model server overrides, or auto-detection or fallback"""
-        if self.mode == Mode.IN_PROCESS and self.model_server is not ModelServer.MMS:
-            raise ValueError(
-                "IN_PROCESS mode is only supported for MMS/Transformers server in beta release."
-            )
-
         if self.inference_spec and self.model:
             raise ValueError("Can only set one of the following: model, inference_spec.")
 
@@ -966,6 +1039,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.model_server == ModelServer.MMS:
             return self._build_for_transformers()
 
+    @_capture_telemetry("ModelBuilder.save")
     def save(
         self,
         save_path: Optional[str] = None,
@@ -1302,6 +1376,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
         if self._is_jumpstart_model_id():
             self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
+            if self.pysdk_model:
+                self.pysdk_model.set_deployment_config(
+                    instance_type=instance_type, config_name="lmi"
+                )
             input_args = self._optimize_for_jumpstart(
                 output_path=output_path,
                 instance_type=instance_type,
@@ -1510,3 +1588,211 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             should_upload_artifacts=True,
         )
         self.pysdk_model.env.update(env)
+
+    @_capture_telemetry("ModelBuilder.deploy")
+    def deploy(
+        self,
+        endpoint_name: str = None,
+        initial_instance_count: Optional[int] = 1,
+        inference_config: Optional[
+            Union[
+                ServerlessInferenceConfig,
+                AsyncInferenceConfig,
+                BatchTransformInferenceConfig,
+                ResourceRequirements,
+            ]
+        ] = None,
+    ) -> Union[Predictor, Transformer]:
+        """Deploys the built Model.
+
+        Depending on the type of config provided, this function will call deployment accordingly.
+        Args:
+            endpoint_name (str): Name of the endpoint to deploy.
+             The supplied base name is used as a prefix and
+             a unique ID is appended to guarantee uniqueness.
+            initial_instance_count (int): Number of instances to deploy.
+            inference_config (Optional[Union[ServerlessInferenceConfig,
+               AsyncInferenceConfig, BatchTransformInferenceConfig, ResourceRequirements]]) :
+                Additional Config for different deployment types such as
+                serverless, async, batch and multi-model/container
+        Returns:
+            Transformer for Batch Deployments
+            Predictors for all others
+        """
+        if not hasattr(self, "built_model"):
+            raise ValueError("Model Needs to be built before deploying")
+        endpoint_name = unique_name_from_base(endpoint_name)
+        if not inference_config:  # Real-time Deployment
+            return self.built_model.deploy(
+                instance_type=self.instance_type,
+                initial_instance_count=initial_instance_count,
+                endpoint_name=endpoint_name,
+            )
+
+        if isinstance(inference_config, ServerlessInferenceConfig):
+            return self.built_model.deploy(
+                serverless_inference_config=inference_config,
+                endpoint_name=endpoint_name,
+            )
+
+        if isinstance(inference_config, AsyncInferenceConfig):
+            return self.built_model.deploy(
+                instance_type=self.instance_type,
+                initial_instance_count=initial_instance_count,
+                async_inference_config=inference_config,
+                endpoint_name=endpoint_name,
+            )
+
+        if isinstance(inference_config, BatchTransformInferenceConfig):
+            transformer = self.built_model.transformer(
+                instance_type=inference_config.instance_type,
+                output_path=inference_config.output_path,
+                instance_count=inference_config.instance_count,
+            )
+            return transformer
+
+        if isinstance(inference_config, ResourceRequirements):
+            # Multi Model and MultiContainer endpoints with Inference Component
+            return self.built_model.deploy(
+                instance_type=self.instance_type,
+                mode=Mode.SAGEMAKER_ENDPOINT,
+                endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+                resources=inference_config,
+                initial_instance_count=initial_instance_count,
+                role=self.role_arn,
+            )
+
+        raise ValueError("Deployment Options not supported")
+
+    def display_benchmark_metrics(self, **kwargs):
+        """Display Markdown Benchmark Metrics for deployment configs."""
+        if not isinstance(self.model, str):
+            raise ValueError("Benchmarking is only supported for JumpStart or HuggingFace models")
+        if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+            return super().display_benchmark_metrics(**kwargs)
+        else:
+            raise ValueError("This model does not have benchmark metrics yet")
+
+    def get_deployment_config(self) -> Optional[Dict[str, Any]]:
+        """Gets the deployment config to apply to the model.
+
+        Returns:
+            Optional[Dict[str, Any]]: Deployment config to apply to this model.
+        """
+        if not isinstance(self.model, str):
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
+        if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+            return super().get_deployment_config()
+        else:
+            raise ValueError("This model does not have any deployment config yet")
+
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for the model in the current region.
+
+        Returns:
+            List[Dict[str, Any]]: A list of deployment configs.
+        """
+        if not isinstance(self.model, str):
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
+        if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+            return super().list_deployment_configs()
+        else:
+            raise ValueError("This model does not have any deployment config yet")
+
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
+        """Sets the deployment config to apply to the model.
+
+        Args:
+            config_name (str):
+                The name of the deployment config to apply to the model.
+                Call list_deployment_configs to see the list of config names.
+            instance_type (str):
+                The instance_type that the model will use after setting
+                the config.
+        """
+        if not isinstance(self.model, str):
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
+        if self._is_jumpstart_model_id() or self._use_jumpstart_equivalent():
+            logger.warning(
+                "If there are existing deployment configurations, "
+                "they will be overwritten by the config %s",
+                config_name,
+            )
+            return super().set_deployment_config(config_name, instance_type)
+        else:
+            raise ValueError(f"The deployment config {config_name} cannot be set on this model")
+
+    def _use_jumpstart_equivalent(self):
+        """Check if the HuggingFace model has a JumpStart equivalent.
+
+        Replace it with the equivalent if there's one
+        """
+        # Do not use the equivalent JS model if image_uri or env_vars is provided
+        if self.image_uri or self.env_vars:
+            return False
+        if not hasattr(self, "_has_jumpstart_equivalent"):
+            self._jumpstart_mapping = self._retrieve_hugging_face_model_mapping()
+            self._has_jumpstart_equivalent = self.model in self._jumpstart_mapping
+        if self._has_jumpstart_equivalent:
+            # Use schema builder from HF model metadata
+            if not self.schema_builder:
+                model_task = None
+                if self.model_metadata:
+                    model_task = self.model_metadata.get("HF_TASK")
+                hf_model_md = get_huggingface_model_metadata(self.model)
+                if not model_task:
+                    model_task = hf_model_md.get("pipeline_tag")
+                if model_task:
+                    self._hf_schema_builder_init(model_task)
+
+            huggingface_model_id = self.model
+            jumpstart_model_id = self._jumpstart_mapping[huggingface_model_id]["jumpstart-model-id"]
+            self.model = jumpstart_model_id
+            merged_date = self._jumpstart_mapping[huggingface_model_id].get("merged-at")
+            self._build_for_jumpstart()
+            compare_model_diff_message = (
+                "If you want to identify the differences between the two, "
+                "please use model_uris.retrieve() to retrieve the model "
+                "artifact S3 URI and compare them."
+            )
+            logger.warning(  # pylint: disable=logging-fstring-interpolation
+                "Please note that for this model we are using the JumpStart's "
+                f'local copy "{jumpstart_model_id}" '
+                f'of the HuggingFace model "{huggingface_model_id}" you chose. '
+                "We strive to keep our local copy synced with the HF model hub closely. "
+                "This model was synced "
+                f"{f'on {merged_date}' if merged_date else 'before 11/04/2024'}. "
+                f"{compare_model_diff_message if not self._is_gated_model() else ''}"
+            )
+            return True
+        return False
+
+    def _retrieve_hugging_face_model_mapping(self):
+        """Retrieve the HuggingFace/JumpStart model mapping and preprocess it."""
+        converted_mapping = {}
+        region = self.sagemaker_session.boto_region_name
+        try:
+            mapping_json_object = JumpStartS3PayloadAccessor.get_object_cached(
+                bucket=get_jumpstart_content_bucket(region),
+                key="hf_model_id_map_cache.json",
+                region=region,
+                s3_client=self.sagemaker_session.s3_client,
+            )
+            mapping = json.loads(mapping_json_object)
+        except Exception:  # pylint: disable=broad-except
+            return converted_mapping
+
+        for k, v in mapping.items():
+            converted_mapping[v["hf-model-id"]] = {
+                "jumpstart-model-id": k,
+                "jumpstart-model-version": v["jumpstart-model-version"],
+                "merged-at": v.get("merged-at"),
+                "hf-model-repo-sha": v.get("hf-model-repo-sha"),
+            }
+        return converted_mapping

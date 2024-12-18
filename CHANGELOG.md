@@ -1,5 +1,129 @@
 # Changelog
 
+## v2.237.2 (2024-12-17)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-13-2024 17:07:12 PST
+ * Cloudpickle upgrade
+
+## v2.237.1 (2024-12-12)
+
+### Bug Fixes and Other Changes
+
+ * chore: remove support for ecr spec fallbacks for jumpstart models
+ * Cloudpickle Revert
+ * Cloudpickle update
+ * Numpy update
+ * Protobuf update
+ * Update to fetch latest Cloudpickle version
+
+## v2.237.0 (2024-12-05)
+
+### Features
+
+ * Support SageMakerTrainingPlan for training jobs
+ * AMI support for BRM
+ * Adding Bedrock Store model support for HubService
+
+### Bug Fixes and Other Changes
+
+ * Fix unit tests
+ * update boto3 and sagemaker-core version
+ * fix gpu_image uri
+ * Hotfix to construct rubik uri correctly
+ * fix codestyles
+ * fix merge artifact
+ * fix merge artifact
+ * fix test_requiremenets.txt
+ * chore: Merge from main
+
+## v2.236.0 (2024-12-04)
+
+### Features
+
+ * Partner App Auth Provider for SDK support
+ * add pre-processing and post-processing logic to inference_spec
+ * add utility function to capture local snapshot
+ * support script mode with local train.sh
+
+### Bug Fixes and Other Changes
+
+ * Add graphene to doc requirements
+ * Add graphne to the doc requirements
+ * Enable the Recipe tests marked with @pytest.mark.skip(reason="Hyperpod recipe code unavailable"
+ * Add model trainer documentation
+ * Usage docs for training recipes
+ * Neuron URIs update
+ * Update URIs to public for training recipes
+ * Changes for SMP v2.7.0
+ * Change default source directory to current, add option to specify source dir
+ * Remove default values for fields in recipe_overrides and fix recipe path.
+ * Update MANIFEST.in so that wheel builds correctly
+ * fix the file uploading signature verification error
+ * remove example notebooks artifacts
+ * Morpheus tests
+ * Integ tests for local mode model trainer
+ * Update hyperpod recipe uris
+ * Add interface units for ModelTrainer
+ * Model Trainer Bucket improvements
+ * Update ModelTrainer Interface Parameters
+ * add in-process mode definition to docs
+ * Intelligent defaults for Model Trainer
+ * Fix tests and codestyle
+ * add integ test for base_model_builder_deploy and remove print statement
+ * Revert image builder
+ * pin xgboost dlc to 1.7.1 to fix test
+ * Skip JS model mapping with env vars or image URI provided
+ * Use sagemaker core Session
+ * Integration tests for Model Builder Handshake
+ * [Updated] Add telemetry to ModelTrainer, Estimator and ModelBuilder
+ * Update kandinsky in ModelTrainer and allow setting requirements
+ * add modelID support to model builder InProcess model
+ * Add Rich Logging to Model Builder
+ * Notebooks update for Bugbash
+ * Add bugbash bootstrapping
+ * add inference morpheus nbs
+ * Update ModelTrainer Notebooks
+ * Bug fixes
+ * Single container local training
+ * update notebooks
+ * update notebooks
+ * Add recipes examples
+ * Unified Deployment interface in Model Builder
+ * Use exact python path in trainer template
+ * Support building image from Dockerfile
+ * Add Support for Training Recipes
+ * Trainer handshake
+ * Pass hyperparameters as CLI args
+ * Add in_process mode support for DJL and TorchServe servers
+ * Remove ignored files
+ * Simplify Config Class Names and DistributedRunner structures
+ * Fix bug in script mode setup ModelTrainer
+ * Mask Sensitive Env Logs in Container
+ * Add path to set Additional Settings in ModelTrainer
+ * Add Distributed Training Support Model Trainer
+ * Cleanup ModelTrainer code
+ * Latest Container Image
+ * General image builder
+ * Cleanup ModelTrainer
+ * Revert Image Spec
+ * Support intelligent parameters
+ * Add enviornment variable bootstrapping script
+ * Add example notebook
+ * Add unit tests for ModelTrainer
+ * Image Spec refactoring and updates
+ * Base model trainer
+
+## v2.235.2 (2024-11-22)
+
+## v2.235.1 (2024-11-20)
+
+### Bug Fixes and Other Changes
+
+ * Update sagemaker-core dep
+ * update image_uri_configs  11-20-2024 06:17:41 PST
+
 ## v2.235.0 (2024-11-19)
 
 ### Features

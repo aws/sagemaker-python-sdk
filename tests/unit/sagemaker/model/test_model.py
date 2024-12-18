@@ -1482,3 +1482,47 @@ def test_model_source(
     )
 
     assert model_1._get_model_uri() == "s3://tmybuckaet"
+
+
+@patch("sagemaker.utils.repack_model")
+@patch("sagemaker.fw_utils.tar_and_upload_dir")
+def test_deploy_sharded_model_with_cpus_requested_raises_warning(
+    repack_model, tar_and_upload_dir, sagemaker_session
+):
+    framework_model_classes_to_kwargs = {
+        HuggingFaceModel: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+        },
+    }
+
+    sagemaker_session.settings = SessionSettings(include_jumpstart_tags=False)
+
+    source_dir = "s3://blah/blah/blah"
+    for framework_model_class, kwargs in framework_model_classes_to_kwargs.items():
+        test_sharded_model = framework_model_class(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_data=source_dir,
+            **kwargs,
+        )
+        test_sharded_model._is_sharded_model = True
+        from unittest import mock
+
+        with mock.patch("sagemaker.model.logger") as mock_logger:
+            mock_logger.warning.reset_mock()
+            test_sharded_model.deploy(
+                instance_type="ml.m2.xlarge",
+                initial_instance_count=INSTANCE_COUNT,
+                endpoint_type=EndpointType.MODEL_BASED,
+                resources=ResourceRequirements(
+                    requests={"num_accelerators": 1, "memory": 8192, "copies": 1, "num_cpus": 1},
+                    limits={},
+                ),
+            )
+            mock_logger.warning.assert_called_once_with(
+                "NumberOfCpuCoresRequired should be 0 for the best experience with SageMaker "
+                "Fast Model Loading. Configure by setting `num_cpus` to 0 in `resources`."
+            )

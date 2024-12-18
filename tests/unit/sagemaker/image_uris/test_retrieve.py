@@ -221,7 +221,6 @@ def test_retrieve_default_version_if_possible(config_for_framework, caplog):
         image_scope="training",
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
-    assert "Ignoring framework/algorithm version: invalid-version." in caplog.text
 
 
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
@@ -237,18 +236,6 @@ def test_retrieve_unsupported_version(config_for_framework):
         )
 
     assert "Unsupported some-framework version: 1." in str(e.value)
-    assert "Supported some-framework version(s): 1.0.0, 1.1.0." in str(e.value)
-
-    with pytest.raises(ValueError) as e:
-        image_uris.retrieve(
-            framework="some-framework",
-            py_version="py3",
-            instance_type="ml.c4.xlarge",
-            region="us-west-2",
-            image_scope="training",
-        )
-
-    assert "Unsupported some-framework version: None." in str(e.value)
     assert "Supported some-framework version(s): 1.0.0, 1.1.0." in str(e.value)
 
 
@@ -780,3 +767,105 @@ def test_retrieve_with_pipeline_variable():
         ),
         image_scope="training",
     )
+
+
+@patch("sagemaker.image_uris.config_for_framework")
+def test_get_latest_version_function_with_invalid_framework(config_for_framework):
+    config_for_framework.side_effect = FileNotFoundError
+
+    with pytest.raises(Exception) as e:
+        image_uris.retrieve("xgboost", "inference")
+        assert "No framework config for framework" in str(e.exception)
+
+
+@patch("sagemaker.image_uris.config_for_framework")
+def test_get_latest_version_function_with_no_framework(config_for_framework):
+    config_for_framework.side_effect = {}
+
+    with pytest.raises(Exception) as e:
+        image_uris.retrieve("xgboost", "inference")
+        assert "No framework config for framework" in str(e.exception)
+
+
+@pytest.mark.parametrize(
+    "framework",
+    [
+        "object-detection",
+        "instance_gpu_info",
+        "object2vec",
+        "pytorch",
+        "djl-lmi",
+        "mxnet",
+        "debugger",
+        "data-wrangler",
+        "spark",
+        "blazingtext",
+        "pytorch-neuron",
+        "forecasting-deepar",
+        "huggingface-neuron",
+        "ntm",
+        "neo-mxnet",
+        "image-classification",
+        "xgboost",
+        "autogluon",
+        "sparkml-serving",
+        "clarify",
+        "inferentia-pytorch",
+        "neo-tensorflow",
+        "huggingface-tei-cpu",
+        "huggingface",
+        "sagemaker-tritonserver",
+        "pytorch-smp",
+        "knn",
+        "linear-learner",
+        "model-monitor",
+        "ray-tensorflow",
+        "djl-neuronx",
+        "huggingface-llm-neuronx",
+        "image-classification-neo",
+        "lda",
+        "stabilityai",
+        "ray-pytorch",
+        "chainer",
+        "coach-mxnet",
+        "pca",
+        "sagemaker-geospatial",
+        "djl-tensorrtllm",
+        "huggingface-training-compiler",
+        "pytorch-training-compiler",
+        "vw",
+        "huggingface-neuronx",
+        "ipinsights",
+        "detailed-profiler",
+        "inferentia-tensorflow",
+        "semantic-segmentation",
+        "inferentia-mxnet",
+        "xgboost-neo",
+        "neo-pytorch",
+        "djl-deepspeed",
+        "djl-fastertransformer",
+        "sklearn",
+        "tensorflow",
+        "randomcutforest",
+        "huggingface-llm",
+        "factorization-machines",
+        "huggingface-tei",
+        "coach-tensorflow",
+        "seq2seq",
+        "kmeans",
+        "sagemaker-base-python",
+    ],
+)
+@patch("sagemaker.image_uris.config_for_framework")
+@patch("sagemaker.image_uris.retrieve")
+def test_retrieve_with_parameterized(mock_image_retrieve, mock_config_for_framework, framework):
+    try:
+        image_uris.retrieve(
+            framework=framework,
+            region="us-east-1",
+            version=None,
+            instance_type="ml.c4.xlarge",
+            image_scope="inference",
+        )
+    except ValueError as e:
+        pytest.fail(e.value)

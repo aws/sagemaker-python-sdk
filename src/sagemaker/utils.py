@@ -1160,7 +1160,7 @@ def get_sagemaker_config_value(sagemaker_session, key, sagemaker_config: dict = 
     Returns:
         object: The corresponding default value in the configuration file.
     """
-    if sagemaker_session:
+    if sagemaker_session and hasattr(sagemaker_session, "sagemaker_config"):
         config_to_check = sagemaker_session.sagemaker_config
     else:
         config_to_check = sagemaker_config

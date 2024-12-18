@@ -666,6 +666,7 @@ class JumpStartModel(Model):
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         routing_config: Optional[Dict[str, Any]] = None,
         model_access_configs: Optional[Dict[str, ModelAccessConfig]] = None,
+        inference_ami_version: Optional[str] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -808,6 +809,7 @@ class JumpStartModel(Model):
             config_name=self.config_name,
             routing_config=routing_config,
             model_access_configs=model_access_configs,
+            inference_ami_version=inference_ami_version,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY
@@ -816,6 +818,20 @@ class JumpStartModel(Model):
             raise ValueError(
                 f"{EndpointType.INFERENCE_COMPONENT_BASED} is not supported for Proprietary models."
             )
+
+        # No resources given to deploy() but present 'resources' key in deploy_kwargs means default
+        # JumpStart resource requirements are being used
+        if hasattr(self, "_is_sharded_model") and not resources and deploy_kwargs.resources:
+            if (
+                self._is_sharded_model
+                and deploy_kwargs.resources.num_cpus
+                and deploy_kwargs.resources.num_cpus > 0
+            ):
+                JUMPSTART_LOGGER.warning(
+                    "NumOfCpuCoresRequired should be 0 for the best experience with SageMaker Fast "
+                    "Model Loading. Overriding the requested `num_cpus` to 0."
+                )
+                deploy_kwargs.resources.num_cpus = 0
 
         self.additional_model_data_sources = _add_model_access_configs_to_model_data_sources(
             self.additional_model_data_sources,

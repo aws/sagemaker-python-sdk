@@ -106,7 +106,8 @@ from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
-
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +185,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         disable_output_compression: bool = False,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
+        training_plan: Optional[Union[str, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -553,6 +555,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 Specifies whether RemoteDebug is enabled for the training job.
             enable_session_tag_chaining (bool or PipelineVariable): Optional.
                 Specifies whether SessionTagChaining is enabled for the training job.
+            training_plan (str or PipelineVariable): Optional.
+                Specifies which training plan arn to use for the training job
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -761,8 +765,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.tensorboard_output_config = tensorboard_output_config
 
-        self.debugger_rule_configs = None
-        self.collection_configs = None
+        self.debugger_rule_configs, self.collection_configs = None, None
 
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
@@ -773,6 +776,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             sagemaker_session=self.sagemaker_session,
         )
 
+        self.profiler_rule_configs, self.profiler_rules = None, None
         self.profiler_config = profiler_config
         self.disable_profiler = resolve_value_from_config(
             direct_input=disable_profiler,
@@ -795,8 +799,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         ) or _instance_type_supports_profiler(self.instance_type):
             self.disable_profiler = True
 
-        self.profiler_rule_configs = None
-        self.profiler_rules = None
         self.debugger_rules = None
         self.disable_output_compression = disable_output_compression
         validate_source_code_input_against_pipeline_variables(
@@ -805,6 +807,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             git_config=git_config,
             enable_network_isolation=self._enable_network_isolation,
         )
+
+        self.training_plan = training_plan
 
         # Internal flag
         self._is_output_path_set_from_default_bucket_and_prefix = False
@@ -1297,6 +1301,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             )
         return None
 
+    @_telemetry_emitter(feature=Feature.ESTIMATOR, func_name="estimator.fit")
     @runnable_by_pipeline
     def fit(
         self,
@@ -1957,6 +1962,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             init_params["keep_alive_period_in_seconds"] = job_details["ResourceConfig"][
                 "KeepAlivePeriodInSeconds"
             ]
+
+        if "TrainingPlanArn" in job_details["ResourceConfig"]:
+            init_params["training_plan"] = job_details["ResourceConfig"]["TrainingPlanArn"]
 
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
@@ -2838,6 +2846,7 @@ class Estimator(EstimatorBase):
         enable_infra_check: Optional[Union[bool, PipelineVariable]] = None,
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
+        training_plan: Optional[Union[str, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -3203,6 +3212,8 @@ class Estimator(EstimatorBase):
                 Specifies whether RemoteDebug is enabled for the training job
             enable_session_tag_chaining (bool or PipelineVariable): Optional.
                  Specifies whether SessionTagChaining is enabled for the training job
+            training_plan (str or PipelineVariable): Optional.
+                Specifies which training plan arn to use for the training job
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -3256,6 +3267,7 @@ class Estimator(EstimatorBase):
             disable_output_compression=disable_output_compression,
             enable_remote_debug=enable_remote_debug,
             enable_session_tag_chaining=enable_session_tag_chaining,
+            training_plan=training_plan,
             **kwargs,
         )
 
