@@ -1440,7 +1440,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             if is_gpu_instance and self.model and self.is_compiled:
                 if is_llama_3_plus:
                     raise ValueError(
-                        "Compilation is not supported for models greater than Llama-3.0 with a GPU instance."
+                        "Compilation is not supported for models greater "
+                        "than Llama-3.0 with a GPU instance."
                     )
                 if speculative_decoding_config:
                     raise ValueError(
