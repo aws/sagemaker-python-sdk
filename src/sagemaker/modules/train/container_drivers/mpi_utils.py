@@ -14,12 +14,11 @@
 from __future__ import absolute_import
 
 import os
-import time
 import subprocess
-
+import time
 from typing import List
 
-from utils import logger, SM_EFA_NCCL_INSTANCES, SM_EFA_RDMA_INSTANCES, get_python_executable
+from utils import SM_EFA_NCCL_INSTANCES, SM_EFA_RDMA_INSTANCES, get_python_executable, logger
 
 FINISHED_STATUS_FILE = "/tmp/done.algo-1"
 READY_FILE = "/tmp/ready.%s"
@@ -83,7 +82,7 @@ def _can_connect(host: str, port: int = DEFAULT_SSH_PORT) -> bool:
         logger.debug("Testing connection to host %s", host)
         client = paramiko.SSHClient()
         client.load_system_host_keys()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.set_missing_host_key_policy(paramiko.RejectPolicy())
         client.connect(host, port=port)
         client.close()
         logger.info("Can connect to host %s", host)
