@@ -106,7 +106,7 @@ def construct_hub_model_reference_arn_from_inputs(
     info = get_info_from_hub_resource_arn(hub_arn)
     arn = (
         f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/"
-        f"{info.hub_name}/{HubContentType.MODEL_REFERENCE}/{model_name}/{version}"
+        f"{info.hub_name}/{HubContentType.MODEL_REFERENCE.value}/{model_name}/{version}"
     )
 
     return arn
