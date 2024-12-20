@@ -33,7 +33,7 @@ import pytest
 
 def test_jumpstart_transfer_learning_retrieve_functions(setup):
 
-    model_id, model_version = "huggingface-spc-bert-base-cased", "1.0.0"
+    model_id, model_version = "huggingface-spc-bert-base-cased", "2.0.3"
     training_instance_type = "ml.p3.2xlarge"
     inference_instance_type = "ml.p2.xlarge"
 
