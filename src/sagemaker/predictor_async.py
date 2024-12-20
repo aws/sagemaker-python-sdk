@@ -271,6 +271,7 @@ class AsyncPredictor:
 
         output_file_found = threading.Event()
         failure_file_found = threading.Event()
+        waiter_error_catched = threading.Event()
 
         def check_output_file():
             try:
@@ -282,6 +283,7 @@ class AsyncPredictor:
                 )
                 output_file_found.set()
             except WaiterError:
+                waiter_error_catched.set()
                 pass
 
         def check_failure_file():
@@ -294,6 +296,7 @@ class AsyncPredictor:
                 )
                 failure_file_found.set()
             except WaiterError:
+                waiter_error_catched.set()
                 pass
 
         output_thread = threading.Thread(target=check_output_file)
@@ -302,7 +305,7 @@ class AsyncPredictor:
         output_thread.start()
         failure_thread.start()
 
-        while not output_file_found.is_set() and not failure_file_found.is_set():
+        while not output_file_found.is_set() and not failure_file_found.is_set() and not waiter_error_catched.is_set():
             time.sleep(1)
 
         if output_file_found.is_set():
@@ -310,18 +313,16 @@ class AsyncPredictor:
             result = self.predictor._handle_response(response=s3_object)
             return result
 
-        failure_object = self.s3_client.get_object(Bucket=failure_bucket, Key=failure_key)
-        failure_response = self.predictor._handle_response(response=failure_object)
+        if failure_file_found.is_set():
+            failure_object = self.s3_client.get_object(Bucket=failure_bucket, Key=failure_key)
+            failure_response = self.predictor._handle_response(response=failure_object)
+            raise AsyncInferenceModelError(message=failure_response)
 
-        raise (
-            AsyncInferenceModelError(message=failure_response)
-            if failure_file_found.is_set()
-            else PollingTimeoutError(
+        raise PollingTimeoutError(
                 message="Inference could still be running",
                 output_path=output_path,
                 seconds=waiter_config.delay * waiter_config.max_attempts,
             )
-        )
 
     def update_endpoint(
         self,
