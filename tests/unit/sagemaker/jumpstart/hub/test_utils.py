@@ -100,13 +100,13 @@ def test_construct_hub_model_reference_arn_from_inputs():
     hub_arn = "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub"
 
     assert (
-        utils.construct_hub_model_arn_from_inputs(hub_arn, model_name, version)
+        utils.construct_hub_model_arn_reference_from_inputs(hub_arn, model_name, version)
         == "arn:aws:sagemaker:us-west-2:123456789123:hub-content/my-mock-hub/ModelReference/pytorch-ic-imagenet-v2/1.0.2"
     )
 
     version = "*"
     assert (
-        utils.construct_hub_model_arn_from_inputs(hub_arn, model_name, version)
+        utils.construct_hub_model_arn_reference_from_inputs(hub_arn, model_name, version)
         == "arn:aws:sagemaker:us-west-2:123456789123:hub-content/my-mock-hub/ModelReference/pytorch-ic-imagenet-v2/*"
     )
 
