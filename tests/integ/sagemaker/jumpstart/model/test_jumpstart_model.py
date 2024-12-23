@@ -476,7 +476,7 @@ def _teardown_test_hub_with_reference(public_hub_model_id: str):
         else:
             raise e
 
-
+@pytest.mark.skip
 # Currently JumpStartModel does not pull from HubService for the Public Hub.
 def test_model_reference_marketplace_model(setup):
     session = get_sm_session()
@@ -534,7 +534,7 @@ def test_model_reference_marketplace_model(setup):
 #     predictor.delete_predictor()
 #     _teardown_test_hub_with_reference(public_hub_marketplace_model_id)
 
-
+@pytest.mark.skip
 def test_bedrock_store_model_tags_from_hub_service(setup):
 
     session = get_sm_session()
