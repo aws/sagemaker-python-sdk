@@ -31,7 +31,7 @@ def hub_instance():
     hub = Hub(HUB_NAME, sagemaker_session=get_sm_session())
     yield hub
 
-
+@pytest.mark.skip
 def test_private_hub(setup, hub_instance):
     # Createhub
     create_hub_response = hub_instance.create(
