@@ -108,6 +108,8 @@ class _LocalContainer(BaseModel):
     container_entrypoint: Optional[List[str]]
     container_arguments: Optional[List[str]]
 
+    _temperary_folders: List[str] = []
+
     def model_post_init(self, __context: Any):
         """Post init method to perform custom validation and set default values."""
         self.hosts = [f"algo-{i}" for i in range(1, self.instance_count + 1)]
@@ -146,12 +148,15 @@ class _LocalContainer(BaseModel):
     def train(
         self,
         wait: bool,
+        remove_inputs_and_container_artifacts: Optional[bool] = True,
     ) -> str:
         """Run a training job locally using docker-compose.
 
         Args:
             wait (bool):
                 Whether to wait the training output before exiting.
+            remove_inputs_and_container_artifacts (Optional[bool]):
+                Whether to remove inputs and container artifacts after training.
         """
         # create output/data folder since sagemaker-containers 2.0 expects it
         os.makedirs(os.path.join(self.container_root, "output", "data"), exist_ok=True)
@@ -201,6 +206,13 @@ class _LocalContainer(BaseModel):
 
         # Print our Job Complete line
         logger.info("Local training job completed, output artifacts saved to %s", artifacts)
+
+        if remove_inputs_and_container_artifacts:
+            shutil.rmtree(os.path.join(self.container_root, "input"))
+            for host in self.hosts:
+                shutil.rmtree(os.path.join(self.container_root, host))
+            for folder in self._temperary_folders:
+                shutil.rmtree(os.path.join(self.container_root, folder))
         return artifacts
 
     def retrieve_artifacts(
@@ -540,6 +552,7 @@ class _LocalContainer(BaseModel):
             uri = data_source.s3_data_source.s3_uri
             parsed_uri = urlparse(uri)
             local_dir = TemporaryDirectory(prefix=os.path.join(self.container_root + "/")).name
+            self._temperary_folders.append(local_dir)
             download_folder(parsed_uri.netloc, parsed_uri.path, local_dir, self.sagemaker_session)
             return local_dir
         else:
