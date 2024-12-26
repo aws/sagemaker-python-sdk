@@ -209,6 +209,7 @@ class _LocalContainer(BaseModel):
 
         if remove_inputs_and_container_artifacts:
             shutil.rmtree(os.path.join(self.container_root, "input"))
+            shutil.rmtree(os.path.join(self.container_root, "shared"))
             for host in self.hosts:
                 shutil.rmtree(os.path.join(self.container_root, host))
             for folder in self._temperary_folders:
