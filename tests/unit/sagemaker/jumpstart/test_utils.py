@@ -20,6 +20,7 @@ from mock.mock import Mock, patch
 import pytest
 import boto3
 import random
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
@@ -1363,7 +1364,7 @@ class TestIsValidModelId(TestCase):
             )
 
             assert (
-                utils.validate_model_id_and_get_type("pytorch-eqa-bert-base-cased")
+                utils.validate_model_id_and_get_type("pytorch-ic-mobilenet-v2")
                 == JumpStartModelType.OPEN_WEIGHTS
             )
             mock_get_manifest.assert_called_with(
@@ -2168,3 +2169,250 @@ class TestGetEulaMessage(TestCase):
             " https://jumpstart-cache-prod-cn-north-1.s3.cn-north-1.amazonaws.com.cn/some-eula-key "
             "for terms of use.",
         )
+
+
+class TestAcceptEulaModelAccessConfig(TestCase):
+    MOCK_PUBLIC_MODEL_ID = "mock_public_model_id"
+    MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL = [
+        {
+            "ChannelName": "draft_model",
+            "S3DataSource": {
+                "CompressionType": "None",
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://jumpstart_bucket/path/to/public/resources/",
+            },
+            "HostingEulaKey": None,
+        }
+    ]
+    MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL = [
+        {
+            "ChannelName": "draft_model",
+            "S3DataSource": {
+                "CompressionType": "None",
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://jumpstart_bucket/path/to/public/resources/",
+            },
+        }
+    ]
+    MOCK_GATED_MODEL_ID = "mock_gated_model_id"
+    MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL = [
+        {
+            "ChannelName": "draft_model",
+            "S3DataSource": {
+                "CompressionType": "None",
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://jumpstart_bucket/path/to/gated/resources/",
+            },
+            "HostingEulaKey": "fmhMetadata/eula/llama3_2Eula.txt",
+        }
+    ]
+    MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL = [
+        {
+            "ChannelName": "draft_model",
+            "S3DataSource": {
+                "CompressionType": "None",
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://jumpstart_bucket/path/to/gated/resources/",
+                "ModelAccessConfig": {"AcceptEula": True},
+            },
+        }
+    ]
+
+    # Public Positive Cases
+
+    def test_public_additional_model_data_source_should_pass_through(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+            model_access_configs=None,
+            model_id=self.MOCK_PUBLIC_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert (
+            additional_model_data_sources
+            == self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_multiple_public_additional_model_data_source_should_pass_through_both(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=(
+                self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                + self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+            ),
+            model_access_configs=None,
+            model_id=self.MOCK_PUBLIC_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert additional_model_data_sources == (
+            self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+            + self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_public_additional_model_data_source_with_model_access_config_should_ignore_it(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert (
+            additional_model_data_sources
+            == self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_no_additional_model_data_source_should_pass_through(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=None,
+            model_access_configs=None,
+            model_id=self.MOCK_PUBLIC_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert not additional_model_data_sources
+
+    # Gated Positive Cases
+
+    def test_gated_additional_model_data_source_should_accept_it(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert (
+            additional_model_data_sources
+            == self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_multiple_gated_additional_model_data_source_should_accept_both(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=(
+                self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+            ),
+            model_access_configs={
+                self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True),
+                self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True),
+            },
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert additional_model_data_sources == (
+            self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+            + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_gated_additional_model_data_source_already_accepted_with_no_hosting_eula_key_should_pass_through(
+        self,
+    ):
+        mock_gated_deploy_config_additional_model_data_pre_accepted = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://jumpstart_bucket/path/to/gated/resources/",
+                    "ModelAccessConfig": {"AcceptEula": True},
+                },
+            }
+        ]
+
+        utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=mock_gated_deploy_config_additional_model_data_pre_accepted,
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=False)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+    # Mixed Positive Cases
+
+    def test_multiple_mixed_additional_model_data_source_should_pass_through_one_accept_the_other(
+        self,
+    ):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=(
+                self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+            ),
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert additional_model_data_sources == (
+            self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+            + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    # Test Gated Negative Tests
+
+    def test_gated_additional_model_data_source_no_model_access_config_should_raise_value_error(
+        self,
+    ):
+        # WHERE / WHEN / THEN
+        with self.assertRaises(ValueError):
+            utils._add_model_access_configs_to_model_data_sources(
+                model_data_sources=self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+                model_access_configs=None,
+                model_id=self.MOCK_GATED_MODEL_ID,
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+            )
+
+    def test_multiple_mixed_additional_no_model_data_source_should_raise_value_error(self):
+        # WHERE / WHEN / THEN
+        with self.assertRaises(ValueError):
+            utils._add_model_access_configs_to_model_data_sources(
+                model_data_sources=(
+                    self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                    + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                ),
+                model_access_configs=None,
+                model_id=self.MOCK_GATED_MODEL_ID,
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+            )
+
+    def test_gated_additional_model_data_source_wrong_model_access_config_should_raise_value_error(
+        self,
+    ):
+        # WHERE / WHEN / THEN
+        with self.assertRaises(ValueError):
+            utils._add_model_access_configs_to_model_data_sources(
+                model_data_sources=self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+                model_access_configs={
+                    self.MOCK_PUBLIC_MODEL_ID: ModelAccessConfig(accept_eula=True)
+                },
+                model_id=self.MOCK_GATED_MODEL_ID,
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+            )
+
+    def test_gated_additional_model_data_source_false_model_access_config_should_raise_value_error(
+        self,
+    ):
+        # WHERE / WHEN / THEN
+        with self.assertRaises(ValueError):
+            utils._add_model_access_configs_to_model_data_sources(
+                model_data_sources=self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+                model_access_configs={
+                    self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=False)
+                },
+                model_id=self.MOCK_GATED_MODEL_ID,
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+            )

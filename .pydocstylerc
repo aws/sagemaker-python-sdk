@@ -2,3 +2,4 @@
 inherit = false
 ignore = D104,D107,D202,D203,D213,D214,D400,D401,D404,D406,D407,D411,D413,D414,D415,D417
 match = (?!record_pb2).*\.py
+match-dir = (?!.*test).*

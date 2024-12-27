@@ -66,13 +66,29 @@ def input_fn(input_data, content_type):
     """Placeholder docstring"""
     try:
         if hasattr(schema_builder, "custom_input_translator"):
-            return schema_builder.custom_input_translator.deserialize(
-                io.BytesIO(input_data), content_type
+            deserialized_data = schema_builder.custom_input_translator.deserialize(
+                (
+                    io.BytesIO(input_data)
+                    if type(input_data) == bytes
+                    else io.BytesIO(input_data.encode("utf-8"))
+                ),
+                content_type,
             )
         else:
-            return schema_builder.input_deserializer.deserialize(
-                io.BytesIO(input_data), content_type[0]
+            deserialized_data = schema_builder.input_deserializer.deserialize(
+                (
+                    io.BytesIO(input_data)
+                    if type(input_data) == bytes
+                    else io.BytesIO(input_data.encode("utf-8"))
+                ),
+                content_type[0],
             )
+
+        # Check if preprocess method is defined and call it
+        if hasattr(inference_spec, "preprocess"):
+            return inference_spec.preprocess(deserialized_data)
+
+        return deserialized_data
     except Exception as e:
         raise Exception("Encountered error in deserialize_request.") from e
 
@@ -85,6 +101,8 @@ def predict_fn(input_data, predict_callable):
 def output_fn(predictions, accept_type):
     """Placeholder docstring"""
     try:
+        if hasattr(inference_spec, "postprocess"):
+            predictions = inference_spec.postprocess(predictions)
         if hasattr(schema_builder, "custom_output_translator"):
             return schema_builder.custom_output_translator.serialize(predictions, accept_type)
         else:

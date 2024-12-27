@@ -344,65 +344,86 @@ def test_jumpstart_model_specs():
     specs1 = JumpStartModelSpecs(BASE_SPEC)
 
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
-    assert specs1.version == "1.0.0"
-    assert specs1.min_sdk_version == "2.49.0"
+    assert specs1.version == "3.0.6"
+    assert specs1.min_sdk_version == "2.189.0"
     assert specs1.training_supported
     assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
-    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
-    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.hosting_artifact_key
+        == "pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference/v2.0.0/"
+    )
+    assert (
+        specs1.training_artifact_key
+        == "pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz"
+    )
     assert (
         specs1.hosting_script_key
-        == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/inference/ic/v2.0.0/sourcedir.tar.gz"
     )
     assert (
         specs1.training_script_key
-        == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/transfer_learning/ic/v2.3.0/sourcedir.tar.gz"
     )
     assert specs1.hyperparameters == [
         JumpStartHyperparameter(
             {
+                "name": "train_only_top_layer",
+                "type": "text",
+                "options": ["True", "False"],
+                "default": "True",
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
                 "name": "epochs",
                 "type": "int",
-                # "_is_hub_content": False,
-                "default": 3,
+                "default": 5,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1000,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "adam-learning-rate",
+                "name": "learning_rate",
                 "type": "float",
-                # "_is_hub_content": False,
-                "default": 0.05,
+                "default": 0.001,
+                "scope": "algorithm",
                 "min": 1e-08,
                 "max": 1,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "batch-size",
+                "name": "batch_size",
                 "type": "int",
-                # "_is_hub_content": False,
                 "default": 4,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1024,
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "reinitialize_top_layer",
+                "type": "text",
+                "options": ["Auto", "True", "False"],
+                "default": "Auto",
                 "scope": "algorithm",
             }
         ),
@@ -410,7 +431,6 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_submit_directory",
                 "type": "text",
-                # "_is_hub_content": False,
                 "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
                 "scope": "container",
             }
@@ -419,7 +439,6 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_program",
                 "type": "text",
-                # "_is_hub_content": False,
                 "default": "transfer_learning.py",
                 "scope": "container",
             }
@@ -428,13 +447,13 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_container_log_level",
                 "type": "text",
-                # "_is_hub_content": False,
                 "default": "20",
                 "scope": "container",
             }
         ),
     ]
 
+    print(specs1.to_json())
     assert specs1.to_json() == BASE_SPEC
 
     BASE_SPEC_COPY = copy.deepcopy(BASE_SPEC)
@@ -993,8 +1012,8 @@ def test_inference_configs_parsing():
 
     # Non-overrided fields in top config
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
-    assert specs1.version == "1.0.0"
-    assert specs1.min_sdk_version == "2.49.0"
+    assert specs1.version == "3.0.6"
+    assert specs1.min_sdk_version == "2.189.0"
     assert specs1.training_supported
     assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
@@ -1007,51 +1026,72 @@ def test_inference_configs_parsing():
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
     assert (
         specs1.hosting_artifact_key
         == "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/"
     )
-    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.training_artifact_key
+        == "pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz"
+    )
     assert (
         specs1.hosting_script_key
-        == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/inference/ic/v2.0.0/sourcedir.tar.gz"
     )
     assert (
         specs1.training_script_key
-        == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/transfer_learning/ic/v2.3.0/sourcedir.tar.gz"
     )
     assert specs1.hyperparameters == [
         JumpStartHyperparameter(
             {
+                "name": "train_only_top_layer",
+                "type": "text",
+                "options": ["True", "False"],
+                "default": "True",
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
                 "name": "epochs",
                 "type": "int",
-                "default": 3,
+                "default": 5,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1000,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "adam-learning-rate",
+                "name": "learning_rate",
                 "type": "float",
-                "default": 0.05,
+                "default": 0.001,
+                "scope": "algorithm",
                 "min": 1e-08,
                 "max": 1,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "batch-size",
+                "name": "batch_size",
                 "type": "int",
                 "default": 4,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1024,
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "reinitialize_top_layer",
+                "type": "text",
+                "options": ["Auto", "True", "False"],
+                "default": "Auto",
                 "scope": "algorithm",
             }
         ),
@@ -1255,62 +1295,86 @@ def test_training_configs_parsing():
     # Non-overrided fields in top config
     # By default training config is not applied to model spec
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
-    assert specs1.version == "1.0.0"
-    assert specs1.min_sdk_version == "2.49.0"
+    assert specs1.version == "3.0.6"
+    assert specs1.min_sdk_version == "2.189.0"
     assert specs1.training_supported
     assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
-    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
-    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.hosting_artifact_key
+        == "pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference/v2.0.0/"
+    )
+    assert (
+        specs1.training_artifact_key
+        == "pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz"
+    )
     assert (
         specs1.hosting_script_key
-        == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/inference/ic/v2.0.0/sourcedir.tar.gz"
     )
     assert (
         specs1.training_script_key
-        == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/transfer_learning/ic/v2.3.0/sourcedir.tar.gz"
     )
     assert specs1.hyperparameters == [
         JumpStartHyperparameter(
             {
+                "name": "train_only_top_layer",
+                "type": "text",
+                "options": ["True", "False"],
+                "default": "True",
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
                 "name": "epochs",
                 "type": "int",
-                "default": 3,
+                "default": 5,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1000,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "adam-learning-rate",
+                "name": "learning_rate",
                 "type": "float",
-                "default": 0.05,
+                "default": 0.001,
+                "scope": "algorithm",
                 "min": 1e-08,
                 "max": 1,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "batch-size",
+                "name": "batch_size",
                 "type": "int",
                 "default": 4,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1024,
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "reinitialize_top_layer",
+                "type": "text",
+                "options": ["Auto", "True", "False"],
+                "default": "Auto",
                 "scope": "algorithm",
             }
         ),
@@ -1477,11 +1541,9 @@ def test_set_training_config():
     specs1 = JumpStartModelSpecs(spec)
 
     assert specs1.supported_training_instance_types == [
-        "ml.p3.2xlarge",
-        "ml.p2.xlarge",
-        "ml.g4dn.2xlarge",
         "ml.m5.xlarge",
         "ml.c5.2xlarge",
+        "ml.m4.xlarge",
     ]
     specs1.set_config("gpu-training-budget", scope=JumpStartScriptScope.TRAINING)
 

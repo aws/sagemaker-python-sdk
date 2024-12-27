@@ -16,6 +16,7 @@ import json
 
 
 from typing import Any, Dict, List, Optional, Union
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import environment_variables, image_uris, instance_types, model_uris, script_uris
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -41,7 +42,7 @@ from sagemaker.jumpstart.hub.utils import (
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.drift_check_baselines import DriftCheckBaselines
-from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
+from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType, HubContentCapability
 from sagemaker.jumpstart.types import (
     HubContentType,
     JumpStartModelDeployKwargs,
@@ -52,12 +53,13 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.utils import (
     add_hub_content_arn_tags,
     add_jumpstart_model_info_tags,
+    add_bedrock_store_tags,
     get_default_jumpstart_session_with_user_agent_suffix,
-    get_neo_content_bucket,
     get_top_ranked_config_name,
     update_dict_if_key_not_present,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
+    get_draft_model_content_bucket,
 )
 
 from sagemaker.jumpstart.factory.utils import (
@@ -70,7 +72,12 @@ from sagemaker import accept_types, content_types, serializers, deserializers
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
-from sagemaker.utils import camel_case_to_pascal_case, name_from_base, format_tags, Tags
+from sagemaker.utils import (
+    camel_case_to_pascal_case,
+    name_from_base,
+    format_tags,
+    Tags,
+)
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 from sagemaker import resource_requirements
@@ -489,6 +496,10 @@ def _add_tags_to_kwargs(kwargs: JumpStartModelDeployKwargs) -> Dict[str, Any]:
             )
         kwargs.tags = add_hub_content_arn_tags(kwargs.tags, hub_content_arn=hub_content_arn)
 
+    if hasattr(kwargs.specs, "capabilities") and kwargs.specs.capabilities is not None:
+        if HubContentCapability.BEDROCK_CONSOLE in kwargs.specs.capabilities:
+            kwargs.tags = add_bedrock_store_tags(kwargs.tags, compatibility="compatible")
+
     return kwargs
 
 
@@ -565,7 +576,9 @@ def _add_additional_model_data_sources_to_kwargs(
     # Append speculative decoding data source from metadata
     speculative_decoding_data_sources = specs.get_speculative_decoding_s3_data_sources()
     for data_source in speculative_decoding_data_sources:
-        data_source.s3_data_source.set_bucket(get_neo_content_bucket(region=kwargs.region))
+        data_source.s3_data_source.set_bucket(
+            get_draft_model_content_bucket(provider=data_source.provider, region=kwargs.region)
+        )
     api_shape_additional_model_data_sources = (
         [
             camel_case_to_pascal_case(data_source.to_json())
@@ -648,6 +661,8 @@ def get_deploy_kwargs(
     training_config_name: Optional[str] = None,
     config_name: Optional[str] = None,
     routing_config: Optional[Dict[str, Any]] = None,
+    model_access_configs: Optional[Dict[str, ModelAccessConfig]] = None,
+    inference_ami_version: Optional[str] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
@@ -684,6 +699,8 @@ def get_deploy_kwargs(
         resources=resources,
         config_name=config_name,
         routing_config=routing_config,
+        model_access_configs=model_access_configs,
+        inference_ami_version=inference_ami_version,
     )
     deploy_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(kwargs=deploy_kwargs)
     deploy_kwargs.specs = verify_model_region_and_return_specs(

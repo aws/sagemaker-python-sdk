@@ -2,8 +2,6 @@
 
 from __future__ import absolute_import
 
-import json
-
 import requests
 import logging
 import platform
@@ -11,7 +9,6 @@ from pathlib import Path
 
 from sagemaker import Session, fw_utils
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
-from sagemaker.serve.utils.exceptions import InProcessDeepPingException
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_path_join
 from sagemaker.s3 import S3Uploader
@@ -22,62 +19,6 @@ MODE_DIR_BINDING = "/opt/ml/model/"
 _DEFAULT_ENV_VARS = {}
 
 logger = logging.getLogger(__name__)
-
-
-class InProcessMultiModelServer:
-    """In Process Mode Multi Model server instance"""
-
-    def _start_serving(self):
-        """Initializes the start of the server"""
-        from sagemaker.serve.app import InProcessServer
-
-        if hasattr(self, "inference_spec"):
-            model_id = self.inference_spec.get_model()
-            if not model_id:
-                raise ValueError("Model id was not provided in Inference Spec.")
-        else:
-            model_id = None
-        self.server = InProcessServer(model_id=model_id)
-
-        self.server.start_server()
-
-    def _stop_serving(self):
-        """Stops the server"""
-        self.server.stop_server()
-
-    def _invoke_multi_model_server_serving(self, request: bytes, content_type: str, accept: str):
-        """Placeholder docstring"""
-        try:
-            response = requests.post(
-                f"http://{self.server.host}:{self.server.port}/generate",
-                data=request,
-                headers={"Content-Type": content_type, "Accept": accept},
-                timeout=600,
-            )
-            response.raise_for_status()
-            if isinstance(response.content, bytes):
-                return json.loads(response.content.decode("utf-8"))
-            return response.content
-        except Exception as e:
-            if "Connection refused" in str(e):
-                raise Exception(
-                    "Unable to send request to the local server: Connection refused."
-                ) from e
-            raise Exception("Unable to send request to the local server.") from e
-
-    def _multi_model_server_deep_ping(self, predictor: PredictorBase):
-        """Sends a deep ping to ensure prediction"""
-        healthy = False
-        response = None
-        try:
-            response = predictor.predict(self.schema_builder.sample_input)
-            healthy = response is not None
-            # pylint: disable=broad-except
-        except Exception as e:
-            if "422 Client Error: Unprocessable Entity for url" in str(e):
-                raise InProcessDeepPingException(str(e))
-
-        return healthy, response
 
 
 class LocalMultiModelServer:

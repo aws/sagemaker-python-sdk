@@ -17,6 +17,7 @@ import re
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from sagemaker_core.shapes import ModelAccessConfig as CoreModelAccessConfig
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.utils import (
     S3_PREFIX,
@@ -1081,9 +1082,9 @@ class S3DataSource(JumpStartDataHolderType):
 class AdditionalModelDataSource(JumpStartDataHolderType):
     """Data class of additional model data source mirrors CreateModel API."""
 
-    SERIALIZATION_EXCLUSION_SET: Set[str] = set()
+    SERIALIZATION_EXCLUSION_SET = {"provider"}
 
-    __slots__ = ["channel_name", "s3_data_source"]
+    __slots__ = ["channel_name", "s3_data_source", "hosting_eula_key"]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a AdditionalModelDataSource object.
@@ -1101,6 +1102,8 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
         """
         self.channel_name: str = json_obj["channel_name"]
         self.s3_data_source: S3DataSource = S3DataSource(json_obj["s3_data_source"])
+        self.hosting_eula_key: str = json_obj.get("hosting_eula_key")
+        self.provider: Dict = json_obj.get("provider", {})
 
     def to_json(self, exclude_keys=True) -> Dict[str, Any]:
         """Returns json representation of AdditionalModelDataSource object."""
@@ -1119,7 +1122,9 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
 class JumpStartModelDataSource(AdditionalModelDataSource):
     """Data class JumpStart additional model data source."""
 
-    SERIALIZATION_EXCLUSION_SET = {"artifact_version"}
+    SERIALIZATION_EXCLUSION_SET = AdditionalModelDataSource.SERIALIZATION_EXCLUSION_SET.union(
+        {"artifact_version"}
+    )
 
     __slots__ = list(SERIALIZATION_EXCLUSION_SET) + AdditionalModelDataSource.__slots__
 
@@ -1384,6 +1389,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.hosting_model_package_arns: Optional[Dict] = (
             model_package_arns if model_package_arns is not None else {}
         )
+
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
@@ -2239,6 +2245,8 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "config_name",
         "routing_config",
         "specs",
+        "model_access_configs",
+        "inference_ami_version",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2252,6 +2260,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "sagemaker_session",
         "training_instance_type",
         "config_name",
+        "model_access_configs",
     }
 
     def __init__(
@@ -2290,6 +2299,8 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_type: Optional[EndpointType] = None,
         config_name: Optional[str] = None,
         routing_config: Optional[Dict[str, Any]] = None,
+        model_access_configs: Optional[Dict[str, CoreModelAccessConfig]] = None,
+        inference_ami_version: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -2327,6 +2338,8 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_type = endpoint_type
         self.config_name = config_name
         self.routing_config = routing_config
+        self.model_access_configs = model_access_configs
+        self.inference_ami_version = inference_ami_version
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -2393,6 +2406,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "hub_content_type",
         "model_reference_arn",
         "specs",
+        "training_plan",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2466,6 +2480,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
+        training_plan: Optional[Union[str, PipelineVariable]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2528,6 +2543,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_remote_debug = enable_remote_debug
         self.config_name = config_name
         self.enable_session_tag_chaining = enable_session_tag_chaining
+        self.training_plan = training_plan
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
