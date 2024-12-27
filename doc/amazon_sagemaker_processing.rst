@@ -83,7 +83,7 @@ First you need to create a :class:`PySparkProcessor` object
 
 .. code:: python
 
-    from sagemaker.processing import PySparkProcessor, ProcessingInput
+    from sagemaker.spark.processing import PySparkProcessor
 
     spark_processor = PySparkProcessor(
         base_job_name="sm-spark",
@@ -158,9 +158,11 @@ SparkJarProcessor
 ---------------------
 
 Supposed that you have the jar file "preprocessing.jar" stored in the same directory as you are now, and the java package is ``com.path.to.your.class.PreProcessing.java``
-Here's an example of using PySparkProcessor.
+Here's an example of using SparkJarProcessor.
 
 .. code:: python
+
+    from sagemaker.spark.processing import SparkJarProcessor
 
     spark = SparkJarProcessor(
         base_job_name="sm-spark-java",
