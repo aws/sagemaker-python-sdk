@@ -157,7 +157,8 @@ To successfully run the history server, first you need to make sure ``docker`` i
 SparkJarProcessor
 ---------------------
 
-Supposed that you have the jar file "preprocessing.jar" stored in the same directory as you are now, and the java package is ``com.path.to.your.class.PreProcessing.java``
+Suppose that you have the jar file "preprocessing.jar" stored in the same directory as you are now, and the java package is ``com.path.to.your.class.PreProcessing.java``.
+
 Here's an example of using SparkJarProcessor.
 
 .. code:: python
