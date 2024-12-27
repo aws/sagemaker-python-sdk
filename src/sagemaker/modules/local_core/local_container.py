@@ -108,7 +108,7 @@ class _LocalContainer(BaseModel):
     container_entrypoint: Optional[List[str]]
     container_arguments: Optional[List[str]]
 
-    _temperary_folders: List[str] = []
+    _temporary_folders: List[str] = []
 
     def model_post_init(self, __context: Any):
         """Post init method to perform custom validation and set default values."""
@@ -212,7 +212,7 @@ class _LocalContainer(BaseModel):
             shutil.rmtree(os.path.join(self.container_root, "shared"))
             for host in self.hosts:
                 shutil.rmtree(os.path.join(self.container_root, host))
-            for folder in self._temperary_folders:
+            for folder in self._temporary_folders:
                 shutil.rmtree(os.path.join(self.container_root, folder))
         return artifacts
 
@@ -553,7 +553,7 @@ class _LocalContainer(BaseModel):
             uri = data_source.s3_data_source.s3_uri
             parsed_uri = urlparse(uri)
             local_dir = TemporaryDirectory(prefix=os.path.join(self.container_root + "/")).name
-            self._temperary_folders.append(local_dir)
+            self._temporary_folders.append(local_dir)
             download_folder(parsed_uri.netloc, parsed_uri.path, local_dir, self.sagemaker_session)
             return local_dir
         else:
