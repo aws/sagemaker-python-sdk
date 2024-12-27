@@ -95,6 +95,7 @@ def test_construct_hub_model_arn_from_inputs():
         == "arn:aws:sagemaker:us-west-2:123456789123:hub-content/my-mock-hub/Model/pytorch-ic-imagenet-v2/*"
     )
 
+
 def test_construct_hub_model_reference_arn_from_inputs():
     model_name, version = "pytorch-ic-imagenet-v2", "1.0.2"
     hub_arn = "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub"
@@ -109,6 +110,7 @@ def test_construct_hub_model_reference_arn_from_inputs():
         utils.construct_hub_model_reference_arn_from_inputs(hub_arn, model_name, version)
         == "arn:aws:sagemaker:us-west-2:123456789123:hub-content/my-mock-hub/ModelReference/pytorch-ic-imagenet-v2/*"
     )
+
 
 def test_generate_hub_arn_for_init_kwargs():
     hub_name = "my-hub-name"
