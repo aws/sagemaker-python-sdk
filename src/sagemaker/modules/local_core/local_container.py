@@ -148,15 +148,12 @@ class _LocalContainer(BaseModel):
     def train(
         self,
         wait: bool,
-        remove_inputs_and_container_artifacts: Optional[bool] = True,
     ) -> str:
         """Run a training job locally using docker-compose.
 
         Args:
             wait (bool):
                 Whether to wait the training output before exiting.
-            remove_inputs_and_container_artifacts (Optional[bool]):
-                Whether to remove inputs and container artifacts after training.
         """
         # create output/data folder since sagemaker-containers 2.0 expects it
         os.makedirs(os.path.join(self.container_root, "output", "data"), exist_ok=True)
@@ -207,13 +204,12 @@ class _LocalContainer(BaseModel):
         # Print our Job Complete line
         logger.info("Local training job completed, output artifacts saved to %s", artifacts)
 
-        if remove_inputs_and_container_artifacts:
-            shutil.rmtree(os.path.join(self.container_root, "input"))
-            shutil.rmtree(os.path.join(self.container_root, "shared"))
-            for host in self.hosts:
-                shutil.rmtree(os.path.join(self.container_root, host))
-            for folder in self._temporary_folders:
-                shutil.rmtree(os.path.join(self.container_root, folder))
+        shutil.rmtree(os.path.join(self.container_root, "input"))
+        shutil.rmtree(os.path.join(self.container_root, "shared"))
+        for host in self.hosts:
+            shutil.rmtree(os.path.join(self.container_root, host))
+        for folder in self._temporary_folders:
+            shutil.rmtree(os.path.join(self.container_root, folder))
         return artifacts
 
     def retrieve_artifacts(

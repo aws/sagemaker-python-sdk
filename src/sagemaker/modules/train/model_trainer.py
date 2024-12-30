@@ -203,8 +203,6 @@ class ModelTrainer(BaseModel):
         local_container_root (Optional[str]):
             The local root directory to store artifacts from a training job launched in
             "LOCAL_CONTAINER" mode.
-        remove_inputs_and_container_artifacts (Optional[bool]):
-                Whether to remove inputs and container artifacts after training.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
@@ -229,7 +227,6 @@ class ModelTrainer(BaseModel):
     hyperparameters: Optional[Dict[str, Any]] = {}
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
-    remove_inputs_and_container_artifacts: Optional[bool] = True
 
     # Created Artifacts
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
@@ -649,7 +646,7 @@ class ModelTrainer(BaseModel):
                 hyper_parameters=string_hyper_parameters,
                 environment=self.environment,
             )
-            local_container.train(wait, self.remove_inputs_and_container_artifacts)
+            local_container.train(wait)
 
     def create_input_data_channel(
         self, channel_name: str, data_source: DataSourceType, key_prefix: Optional[str] = None
