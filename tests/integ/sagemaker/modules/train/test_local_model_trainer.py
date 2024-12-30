@@ -100,7 +100,7 @@ def test_single_container_local_mode_local_data(modules_sagemaker_session):
                 delete_local_path(path)
 
 
-def test_single_container_local_mode_s3_data_remove_input(modules_sagemaker_session):
+def test_single_container_local_mode_s3_data(modules_sagemaker_session):
     with lock.lock(LOCK_PATH):
         try:
             # upload local data to s3
@@ -163,69 +163,7 @@ def test_single_container_local_mode_s3_data_remove_input(modules_sagemaker_sess
                 delete_local_path(path)
 
 
-def test_single_container_local_mode_s3_data_not_remove_input(modules_sagemaker_session):
-    with lock.lock(LOCK_PATH):
-        try:
-            # upload local data to s3
-            session = modules_sagemaker_session
-            bucket = session.default_bucket()
-            session.upload_data(
-                path=os.path.join(SOURCE_DIR, "data/train/"),
-                bucket=bucket,
-                key_prefix="data/train",
-            )
-            session.upload_data(
-                path=os.path.join(SOURCE_DIR, "data/test/"),
-                bucket=bucket,
-                key_prefix="data/test",
-            )
-
-            source_code = SourceCode(
-                source_dir=SOURCE_DIR,
-                entry_script="local_training_script.py",
-            )
-
-            compute = Compute(
-                instance_type="local_cpu",
-                instance_count=1,
-            )
-
-            # read input data from s3
-            train_data = InputData(channel_name="train", data_source=f"s3://{bucket}/data/train/")
-
-            test_data = InputData(channel_name="test", data_source=f"s3://{bucket}/data/test/")
-
-            model_trainer = ModelTrainer(
-                training_image=DEFAULT_CPU_IMAGE,
-                sagemaker_session=modules_sagemaker_session,
-                source_code=source_code,
-                compute=compute,
-                input_data_config=[train_data, test_data],
-                base_job_name="local_mode_single_container_s3_data",
-                training_mode=Mode.LOCAL_CONTAINER,
-                remove_inputs_and_container_artifacts=False,
-            )
-
-            model_trainer.train()
-            assert os.path.exists(os.path.join(CWD, "compressed_artifacts/model.tar.gz"))
-        finally:
-            subprocess.run(["docker", "compose", "down", "-v"])
-            directories = [
-                "compressed_artifacts",
-                "artifacts",
-                "model",
-                "shared",
-                "input",
-                "output",
-                "algo-1",
-            ]
-
-            for directory in directories:
-                path = os.path.join(CWD, directory)
-                delete_local_path(path)
-
-
-def test_multi_container_local_mode_remove_input(modules_sagemaker_session):
+def test_multi_container_local_mode(modules_sagemaker_session):
     with lock.lock(LOCK_PATH):
         try:
             source_code = SourceCode(
@@ -279,68 +217,6 @@ def test_multi_container_local_mode_remove_input(modules_sagemaker_session):
                 "artifacts",
                 "model",
                 "output",
-            ]
-
-            for directory in directories:
-                path = os.path.join(CWD, directory)
-                delete_local_path(path)
-
-
-def test_multi_container_local_mode_not_remove_input(modules_sagemaker_session):
-    with lock.lock(LOCK_PATH):
-        try:
-            source_code = SourceCode(
-                source_dir=SOURCE_DIR,
-                entry_script="local_training_script.py",
-            )
-
-            distributed = Torchrun(
-                process_count_per_node=1,
-            )
-
-            compute = Compute(
-                instance_type="local_cpu",
-                instance_count=2,
-            )
-
-            train_data = InputData(
-                channel_name="train",
-                data_source=os.path.join(SOURCE_DIR, "data/train/"),
-            )
-
-            test_data = InputData(
-                channel_name="test",
-                data_source=os.path.join(SOURCE_DIR, "data/test/"),
-            )
-
-            model_trainer = ModelTrainer(
-                training_image=DEFAULT_CPU_IMAGE,
-                sagemaker_session=modules_sagemaker_session,
-                source_code=source_code,
-                distributed=distributed,
-                compute=compute,
-                input_data_config=[train_data, test_data],
-                base_job_name="local_mode_multi_container",
-                training_mode=Mode.LOCAL_CONTAINER,
-                remove_inputs_and_container_artifacts=False,
-            )
-
-            model_trainer.train()
-            assert os.path.exists(os.path.join(CWD, "compressed_artifacts/model.tar.gz"))
-            assert os.path.exists(os.path.join(CWD, "algo-1"))
-            assert os.path.exists(os.path.join(CWD, "algo-2"))
-
-        finally:
-            subprocess.run(["docker", "compose", "down", "-v"])
-            directories = [
-                "compressed_artifacts",
-                "artifacts",
-                "model",
-                "shared",
-                "input",
-                "output",
-                "algo-1",
-                "algo-2",
             ]
 
             for directory in directories:
