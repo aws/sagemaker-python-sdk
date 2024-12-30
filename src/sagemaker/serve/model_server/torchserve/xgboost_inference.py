@@ -70,11 +70,21 @@ def input_fn(input_data, content_type):
     try:
         if hasattr(schema_builder, "custom_input_translator"):
             return schema_builder.custom_input_translator.deserialize(
-                io.BytesIO(input_data) if type(input_data)== bytes else io.BytesIO(input_data.encode('utf-8')), content_type
+                (
+                    io.BytesIO(input_data)
+                    if type(input_data) == bytes
+                    else io.BytesIO(input_data.encode("utf-8"))
+                ),
+                content_type,
             )
         else:
             return schema_builder.input_deserializer.deserialize(
-                io.BytesIO(input_data) if type(input_data)== bytes else io.BytesIO(input_data.encode('utf-8')), content_type[0]
+                (
+                    io.BytesIO(input_data)
+                    if type(input_data) == bytes
+                    else io.BytesIO(input_data.encode("utf-8"))
+                ),
+                content_type[0],
             )
     except Exception as e:
         raise Exception("Encountered error in deserialize_request.") from e
