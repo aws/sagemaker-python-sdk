@@ -220,7 +220,7 @@ If `**kwargs` is part of the function signature, link to the parent class(es) or
 For an example file with docstrings, see [the `processing` module](https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/processing.py).
 
 To have a class's docstrings included in the API reference, it needs to be included in one of the files in the `doc/` folder.
-For example, see the [Processing API reference](https://github.com/aws/sagemaker-python-sdk/blob/master/doc/processing.rst).
+For example, see the [Processing API reference](https://github.com/aws/sagemaker-python-sdk/blob/master/doc/api/training/processing.rst).
 
 
 ### Build and Test Documentation
