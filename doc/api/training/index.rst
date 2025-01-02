@@ -5,6 +5,7 @@ Training APIs
 .. toctree::
    :maxdepth: 4
 
+   model_trainer
    algorithm
    analytics
    automl

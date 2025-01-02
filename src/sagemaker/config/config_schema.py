@@ -116,6 +116,7 @@ CONTAINER_ROOT = "container_root"
 REGION_NAME = "region_name"
 TELEMETRY_OPT_OUT = "TelemetryOptOut"
 NOTEBOOK_JOB = "NotebookJob"
+MODEL_TRAINER = "ModelTrainer"
 
 
 def _simple_path(*args: str):
@@ -142,6 +143,7 @@ TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
 )
 TRAINING_JOB_ROLE_ARN_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, ROLE_ARN)
 TRAINING_JOB_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, VPC_CONFIG)
+TRAINING_JOB_TAGS_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, TAGS)
 TRAINING_JOB_SECURITY_GROUP_IDS_PATH = _simple_path(
     TRAINING_JOB_VPC_CONFIG_PATH, SECURITY_GROUP_IDS
 )
@@ -656,6 +658,25 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "minItems": 1,
             "maxItems": 15,
         },
+        "role": {
+            TYPE: "string",
+            "pattern": r"^arn:aws[a-z\-]*:iam::\d{12}:role/?[a-zA-Z_0-9+=,.@\-_/]+$",
+            "minLength": 20,
+            "maxLength": 2048,
+        },
+        "baseJobName": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "sourceCode": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "distributed": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "compute": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "networking": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "stoppingCondition": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "trainingImage": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "trainingImageConfig": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "algorithmName": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "outputDataConfig": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "trainingInputMode": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "environment": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "hyperparameters": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
     },
     PROPERTIES: {
         SCHEMA_VERSION: {
@@ -709,6 +730,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         },
                                     },
                                 },
+                                MODEL_TRAINER: {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
                                 ESTIMATOR: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,

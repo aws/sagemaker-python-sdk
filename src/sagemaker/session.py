@@ -2470,6 +2470,75 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         return self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
 
+    def describe_training_plan(self, training_plan_name):
+        """Calls the DescribeTrainingPlan API for the given training plan and returns the response.
+
+        Args:
+            training_plan_name (str): The name of the training plan to describe.
+
+        Returns:
+            dict: A dictionary response with the training plan description.
+        """
+        return self.sagemaker_client.describe_training_plan(TrainingPlanName=training_plan_name)
+
+    def list_training_plans(
+        self,
+        filters=None,
+        requested_start_time_after=None,
+        requested_start_time_before=None,
+        start_time_after=None,
+        start_time_before=None,
+        sort_order=None,
+        sort_by=None,
+        max_results=None,
+        next_token=None,
+    ):
+        """Calls the ListrTrainingPlan API for the given filters and returns the response.
+
+        Args:
+            filters (dict): A dictionary of key-value pairs used to filter the training plans.
+                Default to None.
+            requested_start_time_after (datetime): A timestamp that filters the results
+                to only include training plans with a requested start time after this timestamp.
+            requested_start_time_before (datetime): A timestamp that filters the results
+                to only include training plans with a requested start time before this timestamp.
+            start_time_after (datetime): A timestamp that filters the results
+                to only include training plans with an actual start time after this timestamp.
+            start_time_before (datetime): A timestamp that filters the results
+                to only include training plans with an actual start time before this timestamp.
+            sort_order (str): The order that the training plans will be listed in result.
+                Default to None.
+            sort_by (str): The value that the training plans will be sorted by.
+                Default to None.
+            max_results (int): The number of candidates will be listed in results,
+                between 1 and 100. Default to None. If None, will return all the training_plans.
+            next_token (str): The pagination token. Default to None.
+
+        Returns:
+            dict: A dictionary containing the following keys:
+                - "TrainingPlanSummaries": A list of dictionaries, where each dictionary represents
+                  a training plan.
+                - "NextToken": A token to retrieve the next set of results, if there are more
+                  than the maximum number of results returned.
+        """
+        list_training_plan_args = {}
+
+        def check_object(key, value):
+            if value is not None:
+                list_training_plan_args[key] = value
+
+        check_object("Filters", filters)
+        check_object("SortBy", sort_by)
+        check_object("SortOrder", sort_order)
+        check_object("RequestedStartTimeAfter", requested_start_time_after)
+        check_object("RequestedStartTimeBefore", requested_start_time_before)
+        check_object("StartTimeAfter", start_time_after)
+        check_object("StartTimeBefore", start_time_before)
+        check_object("NextToken", next_token)
+        check_object("MaxResults", max_results)
+
+        return self.sagemaker_client.list_training_plans(**list_training_plan_args)
+
     def auto_ml(
         self,
         input_config,
@@ -7735,6 +7804,7 @@ def production_variant(
     container_startup_health_check_timeout=None,
     managed_instance_scaling=None,
     routing_config=None,
+    inference_ami_version=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -7798,6 +7868,9 @@ def production_variant(
             ContainerStartupHealthCheckTimeoutInSeconds=container_startup_health_check_timeout,
             RoutingConfig=routing_config,
         )
+
+    if inference_ami_version:
+        production_variant_configuration["InferenceAmiVersion"] = inference_ami_version
 
     return production_variant_configuration
 

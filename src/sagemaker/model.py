@@ -372,6 +372,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.endpoint_name = None
         self.inference_component_name = None
         self._is_compiled_model = False
+        self._is_sharded_model = False
         self._compilation_job_name = None
         self._is_edge_packaged_model = False
         self.inference_recommender_job_results = None
@@ -1382,6 +1383,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         inference_component_name=None,
         routing_config: Optional[Dict[str, Any]] = None,
         model_reference_arn: Optional[str] = None,
+        inference_ami_version: Optional[str] = None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1599,6 +1601,26 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
+        if self._is_sharded_model:
+            if endpoint_type != EndpointType.INFERENCE_COMPONENT_BASED:
+                logging.warning(
+                    "Forcing INFERENCE_COMPONENT_BASED endpoint for sharded model. ADVISORY - "
+                    "Use INFERENCE_COMPONENT_BASED endpoints over MODEL_BASED endpoints."
+                )
+                endpoint_type = EndpointType.INFERENCE_COMPONENT_BASED
+
+            if self._enable_network_isolation:
+                raise ValueError(
+                    "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
+                    "Loading of model requires network access."
+                )
+
+            if resources and resources.num_cpus and resources.num_cpus > 0:
+                logger.warning(
+                    "NumberOfCpuCoresRequired should be 0 for the best experience with SageMaker "
+                    "Fast Model Loading. Configure by setting `num_cpus` to 0 in `resources`."
+                )
+
         # Support multiple models on same endpoint
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             if endpoint_name:
@@ -1631,6 +1653,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     container_startup_health_check_timeout=container_startup_health_check_timeout,
                     managed_instance_scaling=managed_instance_scaling_config,
                     routing_config=routing_config,
+                    inference_ami_version=inference_ami_version,
                 )
 
                 self.sagemaker_session.endpoint_from_production_variants(
@@ -1641,7 +1664,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     vpc_config=self.vpc_config,
                     enable_network_isolation=self._enable_network_isolation,
                     role=self.role,
-                    live_logging=endpoint_logging,
+                    live_logging=False,  # TODO: enable when IC supports this
                     wait=wait,
                 )
 

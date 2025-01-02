@@ -18,7 +18,8 @@ from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.predictors import TgiLocalModePredictor
 
-MOCK_MODEL_ID = "meta-llama/Meta-Llama-3-8B"
+MOCK_MODEL_ID_GATED = "meta-llama/Meta-Llama-3-8B"
+MOCK_MODEL_ID_NON_GATED = "openai-community/gpt2.0"
 MOCK_PROMPT = "The man worked as a [MASK]."
 MOCK_SAMPLE_INPUT = {"inputs": "Hello, I'm a language model", "parameters": {"max_new_tokens": 128}}
 MOCK_SAMPLE_OUTPUT = [{"generated_text": "Hello, I'm a language modeler."}]
@@ -60,7 +61,7 @@ class TestTGIBuilder(TestCase):
     ):
         # verify SAGEMAKER_ENDPOINT deploy
         builder = ModelBuilder(
-            model=MOCK_MODEL_ID,
+            model=MOCK_MODEL_ID_NON_GATED,
             name="mock_model_name",
             schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.SAGEMAKER_ENDPOINT,
@@ -109,7 +110,7 @@ class TestTGIBuilder(TestCase):
     ):
         # verify LOCAL_CONTAINER deploy
         builder = ModelBuilder(
-            model=MOCK_MODEL_ID,
+            model=MOCK_MODEL_ID_NON_GATED,
             schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.LOCAL_CONTAINER,
             model_path=MOCK_MODEL_PATH,
@@ -169,7 +170,7 @@ class TestTGIBuilder(TestCase):
     ):
         # verify LOCAL_CONTAINER deploy
         builder = ModelBuilder(
-            model=MOCK_MODEL_ID,
+            model=MOCK_MODEL_ID_NON_GATED,
             schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.LOCAL_CONTAINER,
             model_path=MOCK_MODEL_PATH,
@@ -189,6 +190,50 @@ class TestTGIBuilder(TestCase):
 
         model.deploy(mode=Mode.SAGEMAKER_ENDPOINT, role="mock_role_arn")
 
+        # verify that if optimized, no s3 upload occurs
+        builder._prepare_for_mode.assert_called_with()
+
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
+    @patch("sagemaker.serve.builder.tgi_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.model_builder.get_huggingface_model_metadata",
+        return_value={"pipeline_tag": "text-generation"},
+    )
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_model_config_properties_from_hf",
+        return_value=({}, None),
+    )
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_default_tgi_configurations",
+        return_value=({}, None),
+    )
+    def test_tgi_builder_in_process_mode(
+        self,
+        mock_default_tgi_configurations,
+        mock_hf_model_config,
+        mock_hf_model_md,
+        mock_get_nb_instance,
+        mock_telemetry,
+    ):
+        # verify IN_PROCESS deploy
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID_GATED, schema_builder=MOCK_SCHEMA_BUILDER, mode=Mode.IN_PROCESS
+        )
+
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.side_effect = None
+        model = builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+        builder.modes[str(Mode.IN_PROCESS)] = MagicMock()
+
+        model.deploy()
+
+        # verify SAGEMAKER_ENDPOINT overwritten deploy
+        builder._original_deploy = MagicMock()
+        builder._prepare_for_mode.return_value = (None, {})
         # verify that if optimized, no s3 upload occurs
         builder._prepare_for_mode.assert_called_with()
 
@@ -238,7 +283,7 @@ class TestTGIBuilder(TestCase):
         mock_concurrent_benchmark.side_effect = [(10, 10), (50, 5)]
 
         builder = ModelBuilder(
-            model=MOCK_MODEL_ID,
+            model=MOCK_MODEL_ID_NON_GATED,
             schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.LOCAL_CONTAINER,
             model_path=MOCK_MODEL_PATH,

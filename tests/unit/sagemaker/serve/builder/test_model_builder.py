@@ -11,11 +11,25 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from unittest.mock import MagicMock, patch, Mock, mock_open
+
+from unittest.mock import MagicMock, patch, Mock, mock_open, ANY
 
 import unittest
 from pathlib import Path
 from copy import deepcopy
+
+import deepdiff
+import pytest
+from sagemaker.enums import EndpointType
+
+from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
+from sagemaker.batch_inference.batch_transform_inference_config import BatchTransformInferenceConfig
+
+from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+
+from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
+
+from sagemaker.model import Model
 
 from sagemaker.serve import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder
@@ -25,6 +39,7 @@ from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.predictors import TensorflowServingLocalPredictor
 from sagemaker.serve.utils.types import ModelServer
+from sagemaker.serve.validations.optimization import _validate_optimization_configuration
 from tests.unit.sagemaker.serve.constants import MOCK_IMAGE_CONFIG, MOCK_VPC_CONFIG
 
 schema_builder = MagicMock()
@@ -63,20 +78,17 @@ supported_model_servers = {
 
 mock_session = MagicMock()
 
+RESOURCE_REQUIREMENTS = ResourceRequirements(
+    requests={
+        "num_cpus": 0.5,
+        "memory": 512,
+        "copies": 2,
+    },
+    limits={},
+)
+
 
 class TestModelBuilder(unittest.TestCase):
-    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
-    def test_validation_in_progress_mode_supported(self, mock_serveSettings):
-        builder = ModelBuilder(model_server=ModelServer.TORCHSERVE)
-        self.assertRaisesRegex(
-            Exception,
-            "IN_PROCESS mode is only supported for MMS/Transformers server in beta release.",
-            builder.build,
-            Mode.IN_PROCESS,
-            mock_role_arn,
-            mock_session,
-        )
-
     @patch("sagemaker.serve.builder.model_builder._ServeSettings")
     def test_validation_cannot_set_both_model_and_inference_spec(self, mock_serveSettings):
         builder = ModelBuilder(inference_spec="some value", model=Mock(spec=object))
@@ -2383,11 +2395,11 @@ class TestModelBuilder(unittest.TestCase):
         builder.pysdk_model = pysdk_model
 
         job_name = "my-optimization-job"
-        instance_type = "ml.inf1.xlarge"
+        instance_type = "ml.g5.24xlarge"
         output_path = "s3://my-bucket/output"
         quantization_config = {
             "Image": "quantization-image-uri",
-            "OverrideEnvironment": {"ENV_VAR": "value"},
+            "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
         }
         env_vars = {"Var1": "value", "Var2": "value"}
         kms_key = "arn:aws:kms:us-west-2:123456789012:key/my-key-id"
@@ -2422,10 +2434,10 @@ class TestModelBuilder(unittest.TestCase):
         self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
         self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
 
-        mock_send_telemetry.assert_called_once()
+        assert mock_send_telemetry.call_count == 2
         mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
             OptimizationJobName="my-optimization-job",
-            DeploymentInstanceType="ml.inf1.xlarge",
+            DeploymentInstanceType="ml.g5.24xlarge",
             RoleArn="arn:aws:iam::123456789012:role/SageMakerRole",
             OptimizationEnvironment={"Var1": "value", "Var2": "value"},
             ModelSource={"S3": {"S3Uri": "s3://uri"}},
@@ -2433,7 +2445,7 @@ class TestModelBuilder(unittest.TestCase):
                 {
                     "ModelQuantizationConfig": {
                         "Image": "quantization-image-uri",
-                        "OverrideEnvironment": {"ENV_VAR": "value"},
+                        "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
                     }
                 }
             ],
@@ -2646,12 +2658,84 @@ class TestModelBuilder(unittest.TestCase):
             ValueError,
             "Model optimization is only supported in Sagemaker Endpoint Mode.",
             lambda: model_builder.optimize(
-                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}}
+                instance_type="ml.g5.24xlarge",
+                quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
             ),
         )
 
+    @patch.object(ModelBuilder, "_prepare_for_mode")
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
-    def test_optimize_exclusive_args(self, mock_get_serve_setting):
+    def test_optimize_for_hf_with_both_quantization_and_compilation(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-8B-Instruc"}
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        out_put = model_builder._optimize_for_hf(
+            job_name="job_name-123",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
+            output_path="s3://bucket/code/",
+        )
+
+        self.assertEqual(model_builder.env_vars["HF_TOKEN"], "token")
+        self.assertEqual(model_builder.role_arn, "role-arn")
+        self.assertEqual(model_builder.instance_type, "ml.g5.2xlarge")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_QUANTIZE"], "awq")
+        self.assertEqual(model_builder.pysdk_model.env["OPTION_TENSOR_PARALLEL_DEGREE"], "2")
+        self.assertEqual(
+            out_put,
+            {
+                "OptimizationJobName": "job_name-123",
+                "DeploymentInstanceType": "ml.g5.2xlarge",
+                "RoleArn": "role-arn",
+                "ModelSource": {"S3": {"S3Uri": "s3://bucket/code/code/"}},
+                "OptimizationConfigs": [
+                    {
+                        "ModelQuantizationConfig": {
+                            "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}
+                        }
+                    },
+                    {
+                        "ModelCompilationConfig": {
+                            "OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}
+                        }
+                    },
+                ],
+                "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
+            },
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_exclusive_sharding(self, mock_get_serve_setting):
         mock_sagemaker_session = Mock()
         model_builder = ModelBuilder(
             model="meta-textgeneration-llama-3-70b",
@@ -2660,10 +2744,29 @@ class TestModelBuilder(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError,
-            "Quantization config and compilation config are mutually exclusive.",
+            "Optimizations that use Compilation and Sharding are not supported for GPU instances.",
             lambda: model_builder.optimize(
+                instance_type="ml.g5.24xlarge",
                 quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
                 compilation_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+                sharding_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_exclusive_sharding_args(self, mock_get_serve_setting):
+        mock_sagemaker_session = Mock()
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-70b",
+            sagemaker_session=mock_sagemaker_session,
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "OPTION_TENSOR_PARALLEL_DEGREE is a required environment variable with sharding config.",
+            lambda: model_builder.optimize(
+                instance_type="ml.g5.24xlarge",
+                sharding_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
             ),
         )
 
@@ -2786,3 +2889,1229 @@ class TestModelBuilder(unittest.TestCase):
                 "OutputConfig": {"S3OutputLocation": "s3://bucket/code/"},
             },
         )
+
+    def test_deploy_invalid_inputs(self):
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-8B-Instruct",
+            env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+        inputs = {"endpoint_name": "endpoint-001"}
+
+        try:
+            model_builder.deploy(**inputs)
+        except ValueError as e:
+            assert "Model Needs to be built before deploying" in str(e)
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    def test_display_benchmark_metrics_non_string_model(self, mock_is_jumpstart):
+        """Test that ValueError is raised when model is not a string"""
+        builder = ModelBuilder(model=Mock())  # Non-string model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Benchmarking is only supported for JumpStart or HuggingFace models",
+            builder.display_benchmark_metrics,
+        )
+        mock_is_jumpstart.assert_not_called()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.display_benchmark_metrics")
+    def test_display_benchmark_metrics_jumpstart_model(
+        self, mock_display_benchmark_metrics, mock_is_jumpstart
+    ):
+        """Test successful execution for jumpstart model"""
+        mock_is_jumpstart.return_value = True
+
+        builder = ModelBuilder(model="jumpstart-model-id")
+        builder.display_benchmark_metrics()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_display_benchmark_metrics.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.display_benchmark_metrics")
+    def test_display_benchmark_metrics_with_jumpstart_equivalent(
+        self, mock_display_benchmark_metrics, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test successful execution for model with jumpstart equivalent"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = True
+
+        builder = ModelBuilder(model="hf-model-id")
+        builder.display_benchmark_metrics()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_has_equivalent.assert_called_once()
+        mock_display_benchmark_metrics.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    def test_display_benchmark_metrics_unsupported_model(
+        self, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test that ValueError is raised for unsupported models"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = False
+
+        builder = ModelBuilder(model="huggingface-model-id")
+
+        self.assertRaisesRegex(
+            ValueError,
+            "This model does not have benchmark metrics yet",
+            builder.display_benchmark_metrics,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    def test_get_deployment_config_non_string_model(self, mock_is_jumpstart):
+        """Test that ValueError is raised when model is not a string"""
+        builder = ModelBuilder(model=Mock())  # Non-string model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Deployment config is only supported for JumpStart or HuggingFace models",
+            builder.get_deployment_config,
+        )
+        mock_is_jumpstart.assert_not_called()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.get_deployment_config")
+    def test_get_deployment_config_jumpstart_model(
+        self, mock_get_deployment_config, mock_is_jumpstart
+    ):
+        """Test successful execution for jumpstart model"""
+        mock_is_jumpstart.return_value = True
+
+        builder = ModelBuilder(model="jumpstart-model-id")
+        builder.get_deployment_config()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_get_deployment_config.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.get_deployment_config")
+    def test_get_deployment_config_with_jumpstart_equivalent(
+        self, mock_get_deployment_config, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test successful execution for model with jumpstart equivalent"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = True
+
+        builder = ModelBuilder(model="hf-model-id")
+        builder.get_deployment_config()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_has_equivalent.assert_called_once()
+        mock_get_deployment_config.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    def test_get_deployment_config_unsupported_model(self, mock_has_equivalent, mock_is_jumpstart):
+        """Test that ValueError is raised for unsupported models"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = False
+
+        builder = ModelBuilder(model="huggingface-model-id")
+
+        self.assertRaisesRegex(
+            ValueError,
+            "This model does not have any deployment config yet",
+            builder.get_deployment_config,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    def test_list_deployment_configs_non_string_model(self, mock_is_jumpstart):
+        """Test that ValueError is raised when model is not a string"""
+        builder = ModelBuilder(model=Mock())  # Non-string model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Deployment config is only supported for JumpStart or HuggingFace models",
+            builder.list_deployment_configs,
+        )
+        mock_is_jumpstart.assert_not_called()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.list_deployment_configs")
+    def test_list_deployment_configs_jumpstart_model(
+        self, mock_list_deployment_configs, mock_is_jumpstart
+    ):
+        """Test successful execution for jumpstart model"""
+        mock_is_jumpstart.return_value = True
+
+        builder = ModelBuilder(model="jumpstart-model-id")
+        builder.list_deployment_configs()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_list_deployment_configs.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.list_deployment_configs")
+    def test_list_deployment_configs_with_jumpstart_equivalent(
+        self, mock_list_deployment_configs, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test successful execution for model with jumpstart equivalent"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = True
+
+        builder = ModelBuilder(model="hf-model-id")
+        builder.list_deployment_configs()
+
+        mock_is_jumpstart.assert_called_once()
+        mock_has_equivalent.assert_called_once()
+        mock_list_deployment_configs.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    def test_list_deployment_configs_unsupported_model(
+        self, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test that ValueError is raised for unsupported models"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = False
+
+        builder = ModelBuilder(model="huggingface-model-id")
+
+        self.assertRaisesRegex(
+            ValueError,
+            "This model does not have any deployment config yet",
+            builder.list_deployment_configs,
+        )
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    def test_set_deployment_config_non_string_model(self, mock_is_jumpstart):
+        """Test that ValueError is raised when model is not a string"""
+        builder = ModelBuilder(model=Mock())  # Non-string model
+        instance_type = "ml.g5.xlarge"
+        config_name = "config-name"
+        self.assertRaisesRegex(
+            ValueError,
+            "Deployment config is only supported for JumpStart or HuggingFace models",
+            builder.set_deployment_config,
+            config_name,
+            instance_type,
+        )
+        mock_is_jumpstart.assert_not_called()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.set_deployment_config")
+    def test_set_deployment_config_jumpstart_model(
+        self, mock_set_deployment_config, mock_is_jumpstart
+    ):
+        """Test successful execution for jumpstart model"""
+        mock_is_jumpstart.return_value = True
+        instance_type = "ml.g5.xlarge"
+        config_name = "config-name"
+
+        builder = ModelBuilder(model="jumpstart-model-id")
+        builder.set_deployment_config(config_name, instance_type)
+
+        mock_is_jumpstart.assert_called_once()
+        mock_set_deployment_config.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStart.set_deployment_config")
+    def test_set_deployment_config_with_jumpstart_equivalent(
+        self, mock_set_deployment_config, mock_has_equivalent, mock_is_jumpstart
+    ):
+        """Test successful execution for model with jumpstart equivalent"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = True
+        instance_type = "ml.g5.xlarge"
+        config_name = "config-name"
+
+        builder = ModelBuilder(model="hf-model-id")
+        builder.set_deployment_config(config_name, instance_type)
+
+        mock_is_jumpstart.assert_called_once()
+        mock_has_equivalent.assert_called_once()
+        mock_set_deployment_config.assert_called_once()
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._use_jumpstart_equivalent")
+    def test_set_deployment_config_unsupported_model(self, mock_has_equivalent, mock_is_jumpstart):
+        """Test that ValueError is raised for unsupported models"""
+        mock_is_jumpstart.return_value = False
+        mock_has_equivalent.return_value = False
+        instance_type = "ml.g5.xlarge"
+        config_name = "config-name"
+
+        builder = ModelBuilder(model="huggingface-model-id")
+
+        self.assertRaisesRegex(
+            ValueError,
+            f"The deployment config {config_name} cannot be set on this model",
+            builder.set_deployment_config,
+            config_name,
+            instance_type,
+        )
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._retrieve_hugging_face_model_mapping"
+    )
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_gated_model")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_jumpstart")
+    def test_use_jumpstart_equivalent_return_true(
+        self, mock_build_for_jumpstart, mock_is_gated_model, mock_retrieve_mapping
+    ):
+        """Test that _use_jumpstart_equivalent returns True when equivalent exists"""
+        mock_retrieve_mapping.return_value = {
+            "HuggingFaceH4/zephyr-7b-beta": {
+                "jumpstart-model-id": "js-model",
+                "jumpstart-model-version": "1.0.0",
+                "hf-model-repo-sha": None,
+            }
+        }
+        mock_is_gated_model.return_value = False
+
+        builder = ModelBuilder(model="HuggingFaceH4/zephyr-7b-beta")
+
+        self.assertTrue(builder._use_jumpstart_equivalent())
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._retrieve_hugging_face_model_mapping"
+    )
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_gated_model")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_jumpstart")
+    def test_use_jumpstart_equivalent_return_true_with_schema_builder(
+        self, mock_build_for_jumpstart, mock_is_gated_model, mock_retrieve_mapping
+    ):
+        """Test that _use_jumpstart_equivalent returns True when equivalent exists"""
+        mock_retrieve_mapping.return_value = {
+            "HuggingFaceH4/zephyr-7b-beta": {
+                "jumpstart-model-id": "js-model",
+                "jumpstart-model-version": "1.0.0",
+                "hf-model-repo-sha": None,
+            }
+        }
+        mock_is_gated_model.return_value = False
+
+        builder = ModelBuilder(model="HuggingFaceH4/zephyr-7b-beta", sagemaker_session=mock_session)
+
+        self.assertTrue(builder._use_jumpstart_equivalent())
+        self.assertIsNotNone(builder.schema_builder)
+        inputs, outputs = task.retrieve_local_schemas("text-generation")
+        self.assertEqual(builder.schema_builder.sample_input["inputs"], inputs["inputs"])
+        self.assertEqual(builder.schema_builder.sample_output, outputs)
+
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._retrieve_hugging_face_model_mapping"
+    )
+    def test_use_jumpstart_equivalent_return_false(self, mock_retrieve_mapping):
+        """Test that _use_jumpstart_equivalent returns false when equivalent doesn't exist"""
+        mock_retrieve_mapping.return_value = {
+            "hf-model-id": {
+                "jumpstart-model-id": "js-model",
+                "jumpstart-model-version": "1.0.0",
+                "hf-model-repo-sha": None,
+            }
+        }
+
+        builder = ModelBuilder(model="model-id")
+
+        self.assertFalse(builder._use_jumpstart_equivalent())
+
+    def test_use_jumpstart_equivalent_return_false_with_env_vars(self):
+        """Test that _use_jumpstart_equivalent returns false when env_vars is provided"""
+        builder = ModelBuilder(model="model-id", env_vars={"mock-key": "mock-value"})
+
+        self.assertFalse(builder._use_jumpstart_equivalent())
+
+    def test_use_jumpstart_equivalent_return_false_with_image_uri(self):
+        """Test that _use_jumpstart_equivalent returns false when image_uri is provided"""
+        builder = ModelBuilder(model="model-id", image_uri="mock-uri")
+
+        self.assertFalse(builder._use_jumpstart_equivalent())
+
+    @patch("sagemaker.serve.builder.model_builder.JumpStartS3PayloadAccessor")
+    @patch("sagemaker.serve.builder.model_builder.get_jumpstart_content_bucket")
+    def test_retrieve_hugging_face_model_mapping(self, mock_content_bucket, mock_payload_accessor):
+        """Test that _retrieve_hugging_face_model_mapping returns the correct mapping"""
+        mock_get_object = Mock()
+        mock_get_object.return_value = (
+            '{"js-model-id": {"hf-model-id": "hf-model", "jumpstart-model-version": "1.0.0"}}'
+        )
+        mock_payload_accessor.get_object_cached = mock_get_object
+        expected_mapping = {
+            "hf-model": {
+                "jumpstart-model-id": "js-model-id",
+                "jumpstart-model-version": "1.0.0",
+                "hf-model-repo-sha": None,
+                "merged-at": None,
+            }
+        }
+
+        builder = ModelBuilder(model="hf-model", sagemaker_session=mock_session)
+
+        self.assertEqual(builder._retrieve_hugging_face_model_mapping(), expected_mapping)
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_with_gpu_instance_and_llama_3_1_and_compilation(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "meta-llama/Meta-Llama-3-2-8B-Instruct"}
+
+        sample_input = {"inputs": "dummy prompt", "parameters": {}}
+
+        sample_output = [{"generated_text": "dummy response"}]
+
+        dummy_schema_builder = SchemaBuilder(sample_input, sample_output)
+
+        model_builder = ModelBuilder(
+            model="meta-llama/Meta-Llama-3-2-8B-Instruct",
+            schema_builder=dummy_schema_builder,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Compilation is not supported for models greater than Llama-3.0 with a GPU instance.",
+            lambda: model_builder.optimize(
+                job_name="job_name-123",
+                instance_type="ml.g5.24xlarge",
+                compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
+                output_path="s3://bucket/code/",
+            ),
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    def test_optimize_with_gpu_instance_and_compilation_with_speculative_decoding(
+        self,
+        mock_get_serve_setting,
+        mock_prepare_for_mode,
+    ):
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://bucket/code/code/",
+                }
+            },
+            {"DTYPE": "bfloat16"},
+        )
+
+        mock_pysdk_model = Mock()
+        mock_pysdk_model.model_data = None
+        mock_pysdk_model.env = {"HF_MODEL_ID": "modelid"}
+
+        sample_input = {"inputs": "dummy prompt", "parameters": {}}
+
+        sample_output = [{"generated_text": "dummy response"}]
+
+        dummy_schema_builder = SchemaBuilder(sample_input, sample_output)
+
+        model_builder = ModelBuilder(
+            model="modelid",
+            schema_builder=dummy_schema_builder,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={
+                "CUSTOM_MODEL_PATH": "s3://bucket/path/",
+            },
+            role_arn="role-arn",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        model_builder.pysdk_model = mock_pysdk_model
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Optimizations that use Compilation and Speculative Decoding are not supported for GPU instances.",
+            lambda: model_builder.optimize(
+                job_name="job_name-123",
+                instance_type="ml.g5.24xlarge",
+                speculative_decoding_config={
+                    "ModelProvider": "custom",
+                    "ModelSource": "s3://data-source",
+                },
+                compilation_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "2"}},
+                output_path="s3://bucket/code/",
+            ),
+        )
+
+
+class TestModelBuilderOptimizationSharding(unittest.TestCase):
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_build_for_djl")
+    @patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=False)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
+    def test_optimize_sharding_with_env_vars(
+        self,
+        mock_send_telemetry,
+        mock_get_serve_setting,
+        mock_is_jumpstart_model_id,
+        mock_build_for_djl,
+        mock_prepare_for_mode,
+    ):
+        mock_sagemaker_session = Mock()
+
+        mock_settings = Mock()
+        mock_settings.telemetry_opt_out = False
+        mock_get_serve_setting.return_value = mock_settings
+
+        pysdk_model = Mock()
+        pysdk_model.env = {"key": "val"}
+        pysdk_model.add_tags.side_effect = lambda *arg, **kwargs: None
+
+        mock_build_for_djl.side_effect = lambda **kwargs: pysdk_model
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "S3Uri": "s3://uri",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            {"key": "val"},
+        )
+
+        builder = ModelBuilder(
+            schema_builder=SchemaBuilder(
+                sample_input={"inputs": "Hello", "parameters": {}},
+                sample_output=[{"generated_text": "Hello"}],
+            ),
+            model="meta-llama/Meta-Llama-3-8B",
+            sagemaker_session=mock_sagemaker_session,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={"CUSTOM_MODEL_PATH": "/tmp/modelbuilders/code"},
+        )
+        builder.pysdk_model = pysdk_model
+
+        job_name = "my-optimization-job"
+        instance_type = "ml.g5.24xlarge"
+        output_path = "s3://my-bucket/output"
+        sharding_config = {"key": "value"}
+        env_vars = {"OPTION_TENSOR_PARALLEL_DEGREE": "1"}
+        kms_key = "arn:aws:kms:us-west-2:123456789012:key/my-key-id"
+        max_runtime_in_sec = 3600
+        tags = [
+            {"Key": "Project", "Value": "my-project"},
+            {"Key": "Environment", "Value": "production"},
+        ]
+        vpc_config = {
+            "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+            "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+        }
+
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = lambda *args, **kwargs: {
+            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job",
+            "OptimizationJobName": "my-optimization-job",
+        }
+
+        # With override
+        builder.optimize(
+            instance_type=instance_type,
+            output_path=output_path,
+            role_arn=mock_role_arn,
+            job_name=job_name,
+            sharding_config=sharding_config,
+            env_vars=env_vars,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            tags=tags,
+            vpc_config=vpc_config,
+        )
+
+        self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
+        self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
+
+        assert mock_send_telemetry.call_count == 2
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
+            OptimizationJobName="my-optimization-job",
+            DeploymentInstanceType="ml.g5.24xlarge",
+            RoleArn="arn:aws:iam::123456789012:role/SageMakerRole",
+            OptimizationEnvironment={"OPTION_TENSOR_PARALLEL_DEGREE": "1"},
+            ModelSource={"S3": {"S3Uri": "s3://uri"}},
+            OptimizationConfigs=[{"ModelShardingConfig": {"key": "value"}}],
+            OutputConfig={
+                "S3OutputLocation": "s3://my-bucket/output",
+                "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/my-key-id",
+            },
+            StoppingCondition={"MaxRuntimeInSeconds": 3600},
+            Tags=[
+                {"Key": "Project", "Value": "my-project"},
+                {"Key": "Environment", "Value": "production"},
+            ],
+            VpcConfig={
+                "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+                "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+            },
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_build_for_djl")
+    @patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=False)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
+    def test_optimize_sharding_with_override_and_env_var(
+        self,
+        mock_send_telemetry,
+        mock_get_serve_setting,
+        mock_is_jumpstart_model_id,
+        mock_build_for_djl,
+        mock_prepare_for_mode,
+    ):
+        mock_sagemaker_session = Mock()
+
+        mock_settings = Mock()
+        mock_settings.telemetry_opt_out = False
+        mock_get_serve_setting.return_value = mock_settings
+
+        pysdk_model = Mock()
+        pysdk_model.env = {"key": "val"}
+        pysdk_model.add_tags.side_effect = lambda *arg, **kwargs: None
+
+        mock_build_for_djl.side_effect = lambda **kwargs: pysdk_model
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "S3Uri": "s3://uri",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            {"key": "val"},
+        )
+
+        builder = ModelBuilder(
+            schema_builder=SchemaBuilder(
+                sample_input={"inputs": "Hello", "parameters": {}},
+                sample_output=[{"generated_text": "Hello"}],
+            ),
+            model="meta-llama/Meta-Llama-3-8B",
+            sagemaker_session=mock_sagemaker_session,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={"CUSTOM_MODEL_PATH": "/tmp/modelbuilders/code"},
+        )
+        builder.pysdk_model = pysdk_model
+
+        job_name = "my-optimization-job"
+        instance_type = "ml.g5.24xlarge"
+        output_path = "s3://my-bucket/output"
+        sharding_config = {"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "1"}}
+        env_vars = {"OPTION_TENSOR_PARALLEL_DEGREE": "1"}
+        kms_key = "arn:aws:kms:us-west-2:123456789012:key/my-key-id"
+        max_runtime_in_sec = 3600
+        tags = [
+            {"Key": "Project", "Value": "my-project"},
+            {"Key": "Environment", "Value": "production"},
+        ]
+        vpc_config = {
+            "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+            "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+        }
+
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = lambda *args, **kwargs: {
+            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job",
+            "OptimizationJobName": "my-optimization-job",
+        }
+
+        # With override
+        builder.optimize(
+            instance_type=instance_type,
+            output_path=output_path,
+            role_arn=mock_role_arn,
+            job_name=job_name,
+            sharding_config=sharding_config,
+            env_vars=env_vars,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            tags=tags,
+            vpc_config=vpc_config,
+        )
+
+        self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
+        self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
+
+        assert mock_send_telemetry.call_count == 2
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
+            OptimizationJobName="my-optimization-job",
+            DeploymentInstanceType="ml.g5.24xlarge",
+            RoleArn="arn:aws:iam::123456789012:role/SageMakerRole",
+            OptimizationEnvironment={"OPTION_TENSOR_PARALLEL_DEGREE": "1"},
+            ModelSource={"S3": {"S3Uri": "s3://uri"}},
+            OptimizationConfigs=[
+                {
+                    "ModelShardingConfig": {
+                        "OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "1"}
+                    }
+                }
+            ],
+            OutputConfig={
+                "S3OutputLocation": "s3://my-bucket/output",
+                "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/my-key-id",
+            },
+            StoppingCondition={"MaxRuntimeInSeconds": 3600},
+            Tags=[
+                {"Key": "Project", "Value": "my-project"},
+                {"Key": "Environment", "Value": "production"},
+            ],
+            VpcConfig={
+                "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+                "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+            },
+        )
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_build_for_djl")
+    @patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=False)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
+    def test_optimize_sharding_with_override(
+        self,
+        mock_send_telemetry,
+        mock_get_serve_setting,
+        mock_is_jumpstart_model_id,
+        mock_build_for_djl,
+        mock_prepare_for_mode,
+    ):
+        mock_sagemaker_session = Mock()
+
+        mock_settings = Mock()
+        mock_settings.telemetry_opt_out = False
+        mock_get_serve_setting.return_value = mock_settings
+
+        pysdk_model = Mock()
+        pysdk_model.env = {"key": "val"}
+        pysdk_model.add_tags.side_effect = lambda *arg, **kwargs: None
+
+        mock_build_for_djl.side_effect = lambda **kwargs: pysdk_model
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "S3Uri": "s3://uri",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            {"key": "val"},
+        )
+
+        builder = ModelBuilder(
+            schema_builder=SchemaBuilder(
+                sample_input={"inputs": "Hello", "parameters": {}},
+                sample_output=[{"generated_text": "Hello"}],
+            ),
+            model="meta-llama/Meta-Llama-3-8B",
+            sagemaker_session=mock_sagemaker_session,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={"CUSTOM_MODEL_PATH": "/tmp/modelbuilders/code"},
+        )
+        builder.pysdk_model = pysdk_model
+
+        job_name = "my-optimization-job"
+        instance_type = "ml.g5.24xlarge"
+        output_path = "s3://my-bucket/output"
+        sharding_config = {"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "1"}}
+        env_vars = {"Var1": "value", "Var2": "value"}
+        kms_key = "arn:aws:kms:us-west-2:123456789012:key/my-key-id"
+        max_runtime_in_sec = 3600
+        tags = [
+            {"Key": "Project", "Value": "my-project"},
+            {"Key": "Environment", "Value": "production"},
+        ]
+        vpc_config = {
+            "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+            "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+        }
+
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = lambda *args, **kwargs: {
+            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job",
+            "OptimizationJobName": "my-optimization-job",
+        }
+
+        # With override
+        builder.optimize(
+            instance_type=instance_type,
+            output_path=output_path,
+            role_arn=mock_role_arn,
+            job_name=job_name,
+            sharding_config=sharding_config,
+            env_vars=env_vars,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            tags=tags,
+            vpc_config=vpc_config,
+        )
+
+        self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
+        self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
+
+        assert mock_send_telemetry.call_count == 2
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
+            OptimizationJobName="my-optimization-job",
+            DeploymentInstanceType="ml.g5.24xlarge",
+            RoleArn="arn:aws:iam::123456789012:role/SageMakerRole",
+            OptimizationEnvironment={"Var1": "value", "Var2": "value"},
+            ModelSource={"S3": {"S3Uri": "s3://uri"}},
+            OptimizationConfigs=[
+                {
+                    "ModelShardingConfig": {
+                        "OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "1"}
+                    }
+                }
+            ],
+            OutputConfig={
+                "S3OutputLocation": "s3://my-bucket/output",
+                "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/my-key-id",
+            },
+            StoppingCondition={"MaxRuntimeInSeconds": 3600},
+            Tags=[
+                {"Key": "Project", "Value": "my-project"},
+                {"Key": "Environment", "Value": "production"},
+            ],
+            VpcConfig={
+                "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+                "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+            },
+        )
+
+        # squeeze in some validations
+        with self.assertRaises(ValueError):
+            builder.enable_network_isolation = True
+            builder.optimize(sharding_config={})
+
+    @patch.object(ModelBuilder, "_prepare_for_mode")
+    @patch.object(ModelBuilder, "_build_for_jumpstart")
+    @patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=True)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch("sagemaker.serve.utils.telemetry_logger._send_telemetry")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_gated_model", return_value=False
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._find_compatible_deployment_config",
+        return_value=Mock(),
+    )
+    def test_optimize_sharding_with_override_for_js(
+        self,
+        mock_find_compatible_deployment_config,
+        mock_is_gated_model,
+        mock_send_telemetry,
+        mock_get_serve_setting,
+        mock_is_jumpstart_model_id,
+        mock_build_for_jumpstart,
+        mock_prepare_for_mode,
+    ):
+        mock_sagemaker_session = Mock()
+
+        mock_settings = Mock()
+        mock_settings.telemetry_opt_out = False
+        mock_get_serve_setting.return_value = mock_settings
+
+        pysdk_model = Mock()
+        pysdk_model.env = {"key": "val"}
+        pysdk_model._enable_network_isolation = True
+        pysdk_model.add_tags.side_effect = lambda *arg, **kwargs: None
+
+        mock_build_for_jumpstart.side_effect = lambda **kwargs: pysdk_model
+        mock_prepare_for_mode.side_effect = lambda *args, **kwargs: (
+            {
+                "S3DataSource": {
+                    "S3Uri": "s3://uri",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                }
+            },
+            {"key": "val"},
+        )
+
+        builder = ModelBuilder(
+            schema_builder=SchemaBuilder(
+                sample_input={"inputs": "Hello", "parameters": {}},
+                sample_output=[{"generated_text": "Hello"}],
+            ),
+            model="meta-llama/Meta-Llama-3-8B",
+            sagemaker_session=mock_sagemaker_session,
+            env_vars={"HF_TOKEN": "token"},
+            model_metadata={"CUSTOM_MODEL_PATH": "/tmp/modelbuilders/code"},
+        )
+        builder.pysdk_model = pysdk_model
+
+        job_name = "my-optimization-job"
+        instance_type = "ml.g5.24xlarge"
+        output_path = "s3://my-bucket/output"
+        sharding_config = {"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "1"}}
+        env_vars = {"Var1": "value", "Var2": "value"}
+        kms_key = "arn:aws:kms:us-west-2:123456789012:key/my-key-id"
+        max_runtime_in_sec = 3600
+        tags = [
+            {"Key": "Project", "Value": "my-project"},
+            {"Key": "Environment", "Value": "production"},
+        ]
+        vpc_config = {
+            "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+            "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+        }
+
+        mock_sagemaker_session.wait_for_optimization_job.side_effect = lambda *args, **kwargs: {
+            "OptimizationJobArn": "arn:aws:sagemaker:us-west-2:123456789012:optimization-job/my-optimization-job",
+            "OptimizationJobName": "my-optimization-job",
+        }
+
+        # With override
+        model = builder.optimize(
+            instance_type=instance_type,
+            output_path=output_path,
+            role_arn=mock_role_arn,
+            job_name=job_name,
+            sharding_config=sharding_config,
+            env_vars=env_vars,
+            kms_key=kms_key,
+            max_runtime_in_sec=max_runtime_in_sec,
+            tags=tags,
+            vpc_config=vpc_config,
+        )
+
+        self.assertEqual(builder.env_vars["HUGGING_FACE_HUB_TOKEN"], "token")
+
+        assert mock_send_telemetry.call_count == 2
+        mock_sagemaker_session.sagemaker_client.create_optimization_job.assert_called_once_with(
+            OptimizationJobName="my-optimization-job",
+            ModelSource={"S3": {"S3Uri": ANY}},
+            DeploymentInstanceType="ml.g5.24xlarge",
+            OptimizationConfigs=[
+                {
+                    "ModelShardingConfig": {
+                        "OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "1"}
+                    }
+                }
+            ],
+            OutputConfig={
+                "S3OutputLocation": "s3://my-bucket/output",
+                "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/my-key-id",
+            },
+            RoleArn="arn:aws:iam::123456789012:role/SageMakerRole",
+            OptimizationEnvironment={
+                "key": "val",
+                "Var1": "value",
+                "Var2": "value",
+                "OPTION_TENSOR_PARALLEL_DEGREE": "1",
+            },
+            StoppingCondition={"MaxRuntimeInSeconds": 3600},
+            Tags=[
+                {"Key": "Project", "Value": "my-project"},
+                {"Key": "Environment", "Value": "production"},
+            ],
+            VpcConfig={
+                "SecurityGroupIds": ["sg-01234567890abcdef", "sg-fedcba9876543210"],
+                "Subnets": ["subnet-01234567", "subnet-89abcdef"],
+            },
+        )
+
+        assert not model._enable_network_isolation
+
+    def test_model_sharding_with_eni_fails(self):
+        test_model = Model(role="mock role")
+        test_model._is_sharded_model = True
+        test_model._enable_network_isolation = True
+        self.assertRaisesRegex(
+            ValueError,
+            (
+                "EnableNetworkIsolation cannot be set to True since "
+                "SageMaker Fast Model Loading of model requires network access."
+            ),
+            lambda: test_model.deploy(initial_instance_count=1, instance_type="ml.g5.24xlarge"),
+        )
+
+
+class TestModelBuilderOptimizeValidations(unittest.TestCase):
+
+    def test_corner_cases_throw_errors(self):
+        self.assertRaisesRegex(
+            ValueError,
+            "Optimizations that uses None instance type are not currently supported",
+            lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
+                sharding_config={"key": "value"},
+                instance_type=None,
+                quantization_config=None,
+                speculative_decoding_config=None,
+                compilation_config=None,
+            ),
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            (
+                "Optimizations that provide no optimization configs "
+                "are currently not support on both GPU and Neuron instances."
+            ),
+            lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
+                instance_type="ml.g5.24xlarge",
+                quantization_config=None,
+                speculative_decoding_config=None,
+                compilation_config=None,
+                sharding_config=None,
+            ),
+        )
+
+        _validate_optimization_configuration(
+            is_jumpstart=True,
+            instance_type="ml.inf2.xlarge",
+            quantization_config=None,
+            speculative_decoding_config=None,
+            compilation_config=None,
+            sharding_config=None,
+        )
+
+    def test_trt_and_vllm_configurations_throw_errors_for_rule_set(self):
+        # Quantization:smoothquant without compilation
+        self.assertRaisesRegex(
+            ValueError,
+            "Optimizations that use Quantization:smoothquant must be provided with Compilation for GPU instances.",
+            lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
+                instance_type="ml.g5.24xlarge",
+                quantization_config={
+                    "OverrideEnvironment": {"OPTION_QUANTIZE": "smoothquant"},
+                },
+                sharding_config=None,
+                speculative_decoding_config=None,
+                compilation_config=None,
+            ),
+        )
+
+        # Invalid quantization technique
+        self.assertRaisesRegex(
+            ValueError,
+            "Optimizations that use Quantization:test are not supported for GPU instances.",
+            lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
+                instance_type="ml.g5.24xlarge",
+                quantization_config={
+                    "OverrideEnvironment": {"OPTION_QUANTIZE": "test"},
+                },
+                sharding_config=None,
+                speculative_decoding_config=None,
+                compilation_config=None,
+            ),
+        )
+
+    def test_neuron_configurations_throw_errors_for_rule_set(self):
+        self.assertRaisesRegex(
+            ValueError,
+            "Optimizations that use Speculative Decoding are not supported on Neuron instances.",
+            lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
+                instance_type="ml.inf2.xlarge",
+                quantization_config=None,
+                speculative_decoding_config={"key": "value"},
+                compilation_config=None,
+                sharding_config=None,
+            ),
+        )
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Optimizations that use Sharding are not supported on Neuron instances.",
+            lambda: _validate_optimization_configuration(
+                is_jumpstart=False,
+                instance_type="ml.inf2.xlarge",
+                quantization_config=None,
+                speculative_decoding_config=None,
+                compilation_config=None,
+                sharding_config={"key": "value"},
+            ),
+        )
+
+    def test_trt_configurations_rule_set(self):
+        # Can be compiled with quantization
+        _validate_optimization_configuration(
+            is_jumpstart=False,
+            instance_type="ml.g5.24xlarge",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "smoothquant"},
+            },
+            sharding_config=None,
+            speculative_decoding_config=None,
+            compilation_config={"key": "value"},
+        ),
+
+        # Can be just compiled
+        _validate_optimization_configuration(
+            is_jumpstart=False,
+            instance_type="ml.g5.24xlarge",
+            quantization_config=None,
+            sharding_config=None,
+            speculative_decoding_config=None,
+            compilation_config={"key": "value"},
+        )
+
+        # Can be just compiled with empty dict
+        _validate_optimization_configuration(
+            is_jumpstart=False,
+            instance_type="ml.g5.24xlarge",
+            quantization_config=None,
+            sharding_config=None,
+            speculative_decoding_config=None,
+            compilation_config={},
+        )
+
+    def test_vllm_configurations_rule_set(self):
+        # Can use speculative decoding
+        _validate_optimization_configuration(
+            is_jumpstart=False,
+            instance_type="ml.g5.24xlarge",
+            quantization_config=None,
+            sharding_config=None,
+            speculative_decoding_config={"key": "value"},
+            compilation_config=None,
+        )
+
+        # Can be quantized
+        _validate_optimization_configuration(
+            is_jumpstart=False,
+            instance_type="ml.g5.24xlarge",
+            quantization_config={
+                "OverrideEnvironment": {"OPTION_QUANTIZE": "awq"},
+            },
+            sharding_config=None,
+            speculative_decoding_config=None,
+            compilation_config=None,
+        )
+
+        # Can be sharded
+        _validate_optimization_configuration(
+            is_jumpstart=False,
+            instance_type="ml.g5.24xlarge",
+            quantization_config=None,
+            sharding_config={"key": "value"},
+            speculative_decoding_config=None,
+            compilation_config=None,
+        )
+
+    def test_neuron_configurations_rule_set(self):
+        # Can be compiled
+        _validate_optimization_configuration(
+            is_jumpstart=False,
+            instance_type="ml.inf2.xlarge",
+            quantization_config=None,
+            sharding_config=None,
+            speculative_decoding_config=None,
+            compilation_config={"key": "value"},
+        )
+
+        # Can be compiled with empty dict
+        _validate_optimization_configuration(
+            is_jumpstart=False,
+            instance_type="ml.inf2.xlarge",
+            quantization_config=None,
+            sharding_config=None,
+            speculative_decoding_config=None,
+            compilation_config={},
+        )
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "input_args": {"endpoint_name": "test"},
+            "call_params": {
+                "instance_type": "ml.g5.2xlarge",
+                "initial_instance_count": 1,
+                "endpoint_name": "test",
+            },
+        },
+        {
+            "input_args": {
+                "endpoint_name": "test",
+                "inference_config": ServerlessInferenceConfig(),
+            },
+            "call_params": {
+                "serverless_inference_config": ServerlessInferenceConfig(),
+                "endpoint_name": "test",
+            },
+        },
+        {
+            "input_args": {
+                "endpoint_name": "test",
+                "inference_config": AsyncInferenceConfig(output_path="op-path"),
+            },
+            "call_params": {
+                "async_inference_config": AsyncInferenceConfig(output_path="op-path"),
+                "instance_type": "ml.g5.2xlarge",
+                "initial_instance_count": 1,
+                "endpoint_name": "test",
+            },
+        },
+        {
+            "input_args": {"endpoint_name": "test", "inference_config": RESOURCE_REQUIREMENTS},
+            "call_params": {
+                "resources": RESOURCE_REQUIREMENTS,
+                "role": "role-arn",
+                "initial_instance_count": 1,
+                "instance_type": "ml.g5.2xlarge",
+                "mode": Mode.SAGEMAKER_ENDPOINT,
+                "endpoint_type": EndpointType.INFERENCE_COMPONENT_BASED,
+            },
+        },
+        {
+            "input_args": {
+                "inference_config": BatchTransformInferenceConfig(
+                    instance_count=1, instance_type="ml.m5.large", output_path="op-path"
+                )
+            },
+            "call_params": {
+                "instance_count": 1,
+                "instance_type": "ml.m5.large",
+                "output_path": "op-path",
+            },
+            "id": "Batch",
+        },
+    ],
+    ids=["Real Time", "Serverless", "Async", "Multi-Model", "Batch"],
+)
+@patch("sagemaker.serve.builder.model_builder.unique_name_from_base")
+def test_deploy(mock_unique_name_from_base, test_case):
+    mock_unique_name_from_base.return_value = "test"
+    model: Model = MagicMock()
+    model_builder = ModelBuilder(
+        model="meta-llama/Meta-Llama-3-8B-Instruct",
+        env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+        role_arn="role-arn",
+        instance_type="ml.g5.2xlarge",
+    )
+    setattr(model_builder, "built_model", model)
+
+    model_builder.deploy(**test_case["input_args"])
+
+    if "id" in test_case and test_case["id"] == "Batch":
+        args, kwargs = model.transformer.call_args_list[0]
+    else:
+        args, kwargs = model.deploy.call_args_list[0]
+
+    diff = deepdiff.DeepDiff(kwargs, test_case["call_params"])
+    assert diff == {}

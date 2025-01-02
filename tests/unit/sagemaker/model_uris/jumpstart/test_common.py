@@ -184,4 +184,7 @@ def test_jumpstart_artifact_bucket_override(
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
     )
-    assert uri == "s3://some-cool-bucket-name/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        uri
+        == "s3://some-cool-bucket-name/pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz"
+    )
