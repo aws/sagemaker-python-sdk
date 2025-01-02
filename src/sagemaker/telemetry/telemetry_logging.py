@@ -230,9 +230,17 @@ def _construct_url(
 ) -> str:
     """Construct the URL for the telemetry request"""
 
+    # base_url = (
+    #     f"https://sm-pysdk-t-{region}.s3.{region}.amazonaws.com/telemetry?"
+    #     f"x-accountId={accountId}"
+    #     f"&x-status={status}"
+    #     f"&x-feature={feature}"
+    # )
+
+    # Change telemetry emitter to point to Molly's personal stack
     base_url = (
-        f"https://sm-pysdk-t-{region}.s3.{region}.amazonaws.com/telemetry?"
-        f"x-accountId={accountId}"
+        f"https://sm-pysdk-t-personal-mollyhe-pia.s3.us-west-2.amazonaws.com/telemetry?"
+        f"x-accountId=879381237580"
         f"&x-status={status}"
         f"&x-feature={feature}"
     )
