@@ -376,8 +376,6 @@ def test_start(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         hmac_key=HMAC_KEY,
         s3_kms_key=None,
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
@@ -391,8 +389,6 @@ def test_start(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=None,
         sagemaker_session=session(),
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     mock_dependency_upload.assert_called_once_with(
@@ -510,8 +506,6 @@ def test_start_with_checkpoint_location(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         hmac_key=HMAC_KEY,
         s3_kms_key=None,
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     mock_stored_function().save.assert_called_once_with(
@@ -665,8 +659,6 @@ def test_start_with_complete_job_settings(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         hmac_key=HMAC_KEY,
         s3_kms_key=KMS_KEY_ARN,
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     local_dependencies_path = mock_runtime_manager().snapshot()
@@ -678,8 +670,6 @@ def test_start_with_complete_job_settings(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     mock_user_workspace_upload.assert_called_once_with(
@@ -838,8 +828,6 @@ def test_get_train_args_under_pipeline_context(
             step_name=MOCKED_PIPELINE_CONFIG.step_name,
             func_step_s3_dir=MOCKED_PIPELINE_CONFIG.pipeline_build_time,
         ),
-        use_torchrun=False,
-        nproc_per_node=1,
     )
     mock_stored_function.save_pipeline_step_function.assert_called_once_with(mocked_serialized_data)
 
@@ -852,8 +840,6 @@ def test_get_train_args_under_pipeline_context(
         s3_base_uri=s3_base_uri,
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     mock_user_workspace_upload.assert_called_once_with(
@@ -1028,8 +1014,6 @@ def test_start_with_spark(
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         s3_kms_key=None,
         sagemaker_session=session(),
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
@@ -1184,8 +1168,6 @@ def test_prepare_and_upload_runtime_scripts(session, mock_copy, mock_s3_upload):
         s3_base_uri=S3_URI,
         s3_kms_key=KMS_KEY_ARN,
         sagemaker_session=session(),
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     assert s3_path == mock_s3_upload.return_value

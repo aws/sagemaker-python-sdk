@@ -91,7 +91,6 @@ def remote(
     use_spot_instances=False,
     max_wait_time_in_seconds=None,
     use_torchrun=False,
-    nproc_per_node=1,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -283,9 +282,6 @@ def remote(
 
         use_torchrun (bool): Specifies whether to use torchrun for distributed training.
           Defaults to ``False``.
-
-        nproc_per_node (int): Specifies the number of processes per node for distributed training.
-          Defaults to ``1``.
     """
 
     def _remote(func):
@@ -319,15 +315,18 @@ def remote(
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
             use_torchrun=use_torchrun,
-            nproc_per_node=nproc_per_node,
         )
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
 
-            if instance_count > 1 and not spark_config:
+            if instance_count > 1 and not (
+                (spark_config is not None and not use_torchrun)
+                or (spark_config is None and use_torchrun)
+            ):
                 raise ValueError(
-                    "Remote function do not support training on multi instances. "
+                    "Remote function do not support training on multi instances "
+                    + "without spark_config or use_torchrun. "
                     + "Please provide instance_count = 1"
                 )
 
@@ -532,7 +531,6 @@ class RemoteExecutor(object):
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
         use_torchrun=False,
-        nproc_per_node=1,
     ):
         """Constructor for RemoteExecutor
 
@@ -724,18 +722,19 @@ class RemoteExecutor(object):
 
             use_torchrun (bool): Specifies whether to use torchrun for distributed training.
               Defaults to ``False``.
-
-            nproc_per_node (int): Specifies the number of processes per node.
-              Defaults to ``1``.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
         if self.max_parallel_jobs <= 0:
             raise ValueError("max_parallel_jobs must be greater than 0.")
 
-        if instance_count > 1 and not spark_config:
+        if instance_count > 1 and not (
+                (spark_config is not None and not use_torchrun)
+                or (spark_config is None and use_torchrun)
+        ):
             raise ValueError(
-                "Remote function do not support training on multi instances. "
+                "Remote function do not support training on multi instances "
+                + "without spark_config or use_torchrun. "
                 + "Please provide instance_count = 1"
             )
 
@@ -768,7 +767,6 @@ class RemoteExecutor(object):
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
             use_torchrun=use_torchrun,
-            nproc_per_node=nproc_per_node,
         )
 
         self._state_condition = threading.Condition()

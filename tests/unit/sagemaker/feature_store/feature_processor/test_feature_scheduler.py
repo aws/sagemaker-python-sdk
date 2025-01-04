@@ -908,7 +908,6 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
         "max_wait_time_in_seconds",
         "custom_file_filter",
         "use_torchrun",
-        "nproc_per_node",
     }
 
     job_settings = _JobSettings(
