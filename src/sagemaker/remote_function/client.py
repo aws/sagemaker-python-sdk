@@ -729,8 +729,8 @@ class RemoteExecutor(object):
             raise ValueError("max_parallel_jobs must be greater than 0.")
 
         if instance_count > 1 and not (
-                (spark_config is not None and not use_torchrun)
-                or (spark_config is None and use_torchrun)
+            (spark_config is not None and not use_torchrun)
+            or (spark_config is None and use_torchrun)
         ):
             raise ValueError(
                 "Remote function do not support training on multi instances "

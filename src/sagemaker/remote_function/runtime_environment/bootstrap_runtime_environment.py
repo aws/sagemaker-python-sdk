@@ -496,9 +496,6 @@ def main(sys_args=None):
     exit_code = DEFAULT_FAILURE_CODE
 
     try:
-        with open(RESOURCE_CONFIG, "r") as f:
-            resource_config = json.load(f)
-
         args = _parse_args(sys_args)
         client_python_version = args.client_python_version
         client_sagemaker_pysdk_version = args.client_sagemaker_pysdk_version
@@ -535,7 +532,15 @@ def main(sys_args=None):
             client_sagemaker_pysdk_version
         )
 
-        set_env(resource_config=resource_config)
+        if os.path.exists(RESOURCE_CONFIG):
+            try:
+                logger.info(f"Found {RESOURCE_CONFIG}")
+                with open(RESOURCE_CONFIG, "r") as f:
+                    resource_config = json.load(f)
+                set_env(resource_config=resource_config)
+            except (json.JSONDecodeError, FileNotFoundError) as e:
+                # Optionally, you might want to log this error
+                logger.info(f"Error processing {RESOURCE_CONFIG}: {str(e)}")
 
         exit_code = SUCCESS_EXIT_CODE
     except Exception as e:  # pylint: disable=broad-except

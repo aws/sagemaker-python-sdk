@@ -281,7 +281,7 @@ class _JobSettings:
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
-        use_torchrun=False,
+        use_torchrun: bool = False,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
