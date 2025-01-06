@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.237.2 (2024-12-17)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-13-2024 17:07:12 PST
+ * Cloudpickle upgrade
+
 ## v2.237.1 (2024-12-12)
 
 ### Bug Fixes and Other Changes
