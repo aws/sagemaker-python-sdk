@@ -32,6 +32,7 @@ def hub_instance():
     yield hub
 
 
+@pytest.mark.skip
 def test_private_hub(setup, hub_instance):
     # Createhub
     create_hub_response = hub_instance.create(

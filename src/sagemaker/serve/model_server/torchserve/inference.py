@@ -67,11 +67,31 @@ def input_fn(input_data, content_type):
     try:
         if hasattr(schema_builder, "custom_input_translator"):
             deserialized_data = schema_builder.custom_input_translator.deserialize(
-                io.BytesIO(input_data), content_type
+                (
+                    io.BytesIO(input_data.encode("utf-8"))
+                    if not any(
+                        [
+                            isinstance(input_data, bytes),
+                            isinstance(input_data, bytearray),
+                        ]
+                    )
+                    else io.BytesIO(input_data)
+                ),
+                content_type,
             )
         else:
             deserialized_data = schema_builder.input_deserializer.deserialize(
-                io.BytesIO(input_data), content_type[0]
+                (
+                    io.BytesIO(input_data.encode("utf-8"))
+                    if not any(
+                        [
+                            isinstance(input_data, bytes),
+                            isinstance(input_data, bytearray),
+                        ]
+                    )
+                    else io.BytesIO(input_data)
+                ),
+                content_type[0],
             )
 
         # Check if preprocess method is defined and call it
