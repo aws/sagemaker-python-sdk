@@ -444,8 +444,10 @@ def set_env(
 
     if int(env_vars["SM_NUM_GPUS"]) > 0:
         env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_GPUS"])
-    else:
+    elif int(env_vars["SM_NUM_NEURONS"]) > 0:
         env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_NEURONS"])
+    else:
+        env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_CPUS"])
 
     # All Training Environment Variables
     env_vars["SM_TRAINING_ENV"] = {
