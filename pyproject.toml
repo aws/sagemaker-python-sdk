@@ -73,6 +73,7 @@ pattern = "(?P<version>.+)"
 [tool.hatch.metadata.hooks.custom]
 
 [tool.hatch.build.targets.wheel]
+core-metadata-version = "2.3"
 packages = ["src/sagemaker"]
 exclude = ["src/sagemaker/serve/model_server/triton/pack_conda_env.sh"]
 
@@ -80,6 +81,7 @@ exclude = ["src/sagemaker/serve/model_server/triton/pack_conda_env.sh"]
 "src/sagemaker/serve/model_server/triton/pack_conda_env.sh" = "pack_conda_env.sh"
 
 [tool.hatch.build.targets.sdist]
+core-metadata-version = "2.3"
 only-include = [
   "/requirements/extras",
   "/src",
