@@ -46,18 +46,28 @@ def input_fn(input_data, content_type, context=None):
         if hasattr(schema_builder, "custom_input_translator"):
             deserialized_data = schema_builder.custom_input_translator.deserialize(
                 (
-                    io.BytesIO(input_data)
-                    if type(input_data) == bytes
-                    else io.BytesIO(input_data.encode("utf-8"))
+                    io.BytesIO(input_data.encode("utf-8"))
+                    if not any(
+                        [
+                            isinstance(input_data, bytes),
+                            isinstance(input_data, bytearray),
+                        ]
+                    )
+                    else io.BytesIO(input_data)
                 ),
                 content_type,
             )
         else:
             deserialized_data = schema_builder.input_deserializer.deserialize(
                 (
-                    io.BytesIO(input_data)
-                    if type(input_data) == bytes
-                    else io.BytesIO(input_data.encode("utf-8"))
+                    io.BytesIO(input_data.encode("utf-8"))
+                    if not any(
+                        [
+                            isinstance(input_data, bytes),
+                            isinstance(input_data, bytearray),
+                        ]
+                    )
+                    else io.BytesIO(input_data)
                 ),
                 content_type[0],
             )
