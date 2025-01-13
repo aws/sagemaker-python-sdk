@@ -32,6 +32,8 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
         iam_client = sagemaker_session.boto_session.client("iam")
         role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
 
+        sagemaker_session.sagemaker_client.create_optimization_job = MagicMock()
+
         schema_builder = SchemaBuilder("test", "test")
         model_builder = ModelBuilder(
             model="meta-textgeneration-llama-3-1-8b-instruct",
@@ -49,6 +51,8 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
             },
             accept_eula=True,
         )
+
+        assert not sagemaker_session.sagemaker_client.create_optimization_job.called
 
         optimized_model.deploy()
 
@@ -124,6 +128,13 @@ def test_js_model_with_optimize_sharding_and_resource_requirements_requests_are_
             instance_type="ml.g5.xlarge",  # set to small instance in case a network call is made
             sharding_config={"OverrideEnvironment": {"OPTION_TENSOR_PARALLEL_DEGREE": "8"}},
             accept_eula=True,
+        )
+
+        assert (
+            sagemaker_session.sagemaker_client.create_optimization_job.call_args_list[0][1][
+                "OptimizationConfigs"
+            ][0]["ModelShardingConfig"]["Image"]
+            is not None
         )
 
         optimized_model.deploy(
@@ -204,6 +215,13 @@ def test_js_model_with_optimize_quantization_on_pre_optimized_model_requests_are
                 },
             },
             accept_eula=True,
+        )
+
+        assert (
+            sagemaker_session.sagemaker_client.create_optimization_job.call_args_list[0][1][
+                "OptimizationConfigs"
+            ][0]["ModelQuantizationConfig"]["Image"]
+            is not None
         )
 
         optimized_model.deploy()
