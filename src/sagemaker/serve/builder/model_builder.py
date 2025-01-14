@@ -883,6 +883,16 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         if mode:
             self.mode = mode
+        
+        if self.mode == Mode.LOCAL_CONTAINER and (
+            self.model_metadata and (
+                "MLFLOW_MODEL_PATH" in self.model_metadata or
+                "MLFLOW_TRACKING_ARN" in self.model_metadata
+            )
+        ):
+            raise ValueError("MLflow model support is not available in Local Container mode. "
+                         "Please use SageMaker Endpoint mode for MLflow models.")
+        
         if role_arn:
             self.role_arn = role_arn
 
