@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.237.3 (2025-01-09)
+
+### Bug Fixes and Other Changes
+
+ * pin metadata-version to 2.3
+ * model server might have already done a serialization. honor that by not decoding the request again if it is not already bytes or bytestream
+ * Disable jumpstart tests missing clean up logic
+ * Jumpstart ap southeast 5
+ * add autogluon 1.2
+ * updated inference script to cover context
+ * security update -> use sha256 instead of md5 for file hashing
+ * Fix Flake8 Violations
+ * Added parsing string support for situations where custom code might be used (ie. mlflow)
+ * Updating Inference Optimization Validations
+
 ## v2.237.2 (2024-12-17)
 
 ### Bug Fixes and Other Changes
