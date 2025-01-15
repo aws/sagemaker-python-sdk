@@ -1081,8 +1081,7 @@ def _prepare_and_upload_runtime_scripts(
 
             if nproc_per_node is not None and nproc_per_node > 0:
                 entry_point_script = entry_point_script.replace(
-                    "$SM_NPROC_PER_NODE",
-                    str(nproc_per_node)
+                    "$SM_NPROC_PER_NODE", str(nproc_per_node)
                 )
 
         with open(entrypoint_script_path, "w", newline="\n") as file:
