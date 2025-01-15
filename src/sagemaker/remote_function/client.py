@@ -92,7 +92,6 @@ def remote(
     max_wait_time_in_seconds=None,
     use_torchrun=False,
     nproc_per_node=1,
-
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
