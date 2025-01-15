@@ -284,8 +284,9 @@ def remote(
         use_torchrun (bool): Specifies whether to use torchrun for distributed training.
           Defaults to ``False``.
 
-        nproc_per_node (int): Specifies the number of processes per node for distributed training.
-          Defaults to ``1``. This is defined automatically configured on the instance type.
+        nproc_per_node (int): Specifies the number of processes per node for
+          distributed training. Defaults to ``1``.
+          This is defined automatically configured on the instance type.
     """
 
     def _remote(func):
@@ -728,8 +729,9 @@ class RemoteExecutor(object):
             use_torchrun (bool): Specifies whether to use torchrun for distributed training.
               Defaults to ``False``.
 
-            nproc_per_node (int): Specifies the number of processes per node for distributed training.
-              Defaults to ``1``. This is defined automatically configured on the instance type.
+            nproc_per_node (int): Specifies the number of processes per node for
+              distributed training. Defaults to ``1``.
+              This is defined automatically configured on the instance type.
         """
         self.max_parallel_jobs = max_parallel_jobs
 

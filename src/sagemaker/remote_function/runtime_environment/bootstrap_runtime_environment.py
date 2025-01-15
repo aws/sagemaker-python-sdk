@@ -536,13 +536,13 @@ def main(sys_args=None):
 
         if os.path.exists(RESOURCE_CONFIG):
             try:
-                logger.info(f"Found {RESOURCE_CONFIG}")
+                logger.info("Found %s", RESOURCE_CONFIG)
                 with open(RESOURCE_CONFIG, "r") as f:
                     resource_config = json.load(f)
                 set_env(resource_config=resource_config)
             except (json.JSONDecodeError, FileNotFoundError) as e:
                 # Optionally, you might want to log this error
-                logger.info(f"Error processing {RESOURCE_CONFIG}: {str(e)}")
+                logger.info("ERROR: Error processing %s: %s", RESOURCE_CONFIG, str(e))
 
         exit_code = SUCCESS_EXIT_CODE
     except Exception as e:  # pylint: disable=broad-except
