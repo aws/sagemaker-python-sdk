@@ -282,6 +282,7 @@ class _JobSettings:
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
         use_torchrun: bool = False,
+        nproc_per_node: Optional[int] = None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -463,6 +464,13 @@ class _JobSettings:
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot
               training job to complete. Defaults to ``None``.
+
+            use_torchrun (bool): Specifies whether to use torchrun for distributed training.
+              Defaults to ``False``.
+
+            nproc_per_node (Optional int): Specifies the number of processes per node for
+              distributed training. Defaults to ``None``.
+              This is defined automatically configured on the instance type.
         """
         self.sagemaker_session = sagemaker_session or Session()
         self.environment_variables = resolve_value_from_config(
@@ -622,6 +630,7 @@ class _JobSettings:
         self.tags = self.sagemaker_session._append_sagemaker_config_tags(tags, REMOTE_FUNCTION_TAGS)
 
         self.use_torchrun = use_torchrun
+        self.nproc_per_node = nproc_per_node
 
     @staticmethod
     def _get_default_image(session):
@@ -749,7 +758,6 @@ class _Job:
         )
 
         logger.info("Creating job: %s", job_name)
-        logger.info("Environment variables: %s", training_job_request["Environment"])
 
         job_settings.sagemaker_session.sagemaker_client.create_training_job(**training_job_request)
 
@@ -1027,6 +1035,7 @@ def _prepare_and_upload_runtime_scripts(
     s3_kms_key: str,
     sagemaker_session: Session,
     use_torchrun: bool = False,
+    nproc_per_node: Optional[int] = None,
 ):
     """Copy runtime scripts to a folder and upload to S3.
 
@@ -1044,6 +1053,8 @@ def _prepare_and_upload_runtime_scripts(
         sagemaker_session (str): SageMaker boto client session.
 
         use_torchrun (bool): Whether to use torchrun or not.
+
+        nproc_per_node (Optional[int]): Number of processes per node
     """
 
     from sagemaker.workflow.utilities import load_step_compilation_context
@@ -1067,6 +1078,12 @@ def _prepare_and_upload_runtime_scripts(
 
         if use_torchrun:
             entry_point_script = ENTRYPOINT_TORCHRUN_SCRIPT
+
+            if nproc_per_node is not None and nproc_per_node > 0:
+                entry_point_script = entry_point_script.replace(
+                    "$SM_NPROC_PER_NODE",
+                    str(nproc_per_node)
+                )
 
         with open(entrypoint_script_path, "w", newline="\n") as file:
             file.writelines(entry_point_script)
@@ -1106,6 +1123,7 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=job_settings.sagemaker_session,
         use_torchrun=job_settings.use_torchrun,
+        nproc_per_node=job_settings.nproc_per_node,
     )
 
     input_data_config = [

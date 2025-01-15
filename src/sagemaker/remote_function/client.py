@@ -91,7 +91,7 @@ def remote(
     use_spot_instances=False,
     max_wait_time_in_seconds=None,
     use_torchrun=False,
-    nproc_per_node=1,
+    nproc_per_node: Optional[int] = None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -284,8 +284,8 @@ def remote(
         use_torchrun (bool): Specifies whether to use torchrun for distributed training.
           Defaults to ``False``.
 
-        nproc_per_node (int): Specifies the number of processes per node for
-          distributed training. Defaults to ``1``.
+        nproc_per_node (Optional int): Specifies the number of processes per node for
+          distributed training. Defaults to ``None``.
           This is defined automatically configured on the instance type.
     """
 
@@ -320,6 +320,7 @@ def remote(
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
             use_torchrun=use_torchrun,
+            nproc_per_node=nproc_per_node,
         )
 
         @functools.wraps(func)
@@ -536,7 +537,7 @@ class RemoteExecutor(object):
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
         use_torchrun=False,
-        nproc_per_node=1,
+        nproc_per_node: Optional[int] = None,
     ):
         """Constructor for RemoteExecutor
 
@@ -729,8 +730,8 @@ class RemoteExecutor(object):
             use_torchrun (bool): Specifies whether to use torchrun for distributed training.
               Defaults to ``False``.
 
-            nproc_per_node (int): Specifies the number of processes per node for
-              distributed training. Defaults to ``1``.
+            nproc_per_node (Optional int): Specifies the number of processes per node for
+              distributed training. Defaults to ``None``.
               This is defined automatically configured on the instance type.
         """
         self.max_parallel_jobs = max_parallel_jobs
@@ -777,6 +778,7 @@ class RemoteExecutor(object):
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
             use_torchrun=use_torchrun,
+            nproc_per_node=nproc_per_node,
         )
 
         self._state_condition = threading.Condition()

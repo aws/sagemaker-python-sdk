@@ -390,6 +390,7 @@ def test_start(
         s3_kms_key=None,
         sagemaker_session=session(),
         use_torchrun=False,
+        nproc_per_node=None,
     )
 
     mock_dependency_upload.assert_called_once_with(
@@ -672,6 +673,7 @@ def test_start_with_complete_job_settings(
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
         use_torchrun=False,
+        nproc_per_node=None,
     )
 
     mock_user_workspace_upload.assert_called_once_with(
@@ -843,6 +845,7 @@ def test_get_train_args_under_pipeline_context(
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
         use_torchrun=False,
+        nproc_per_node=None,
     )
 
     mock_user_workspace_upload.assert_called_once_with(
@@ -1018,6 +1021,7 @@ def test_start_with_spark(
         s3_kms_key=None,
         sagemaker_session=session(),
         use_torchrun=False,
+        nproc_per_node=None,
     )
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
@@ -1633,6 +1637,7 @@ def test_start_with_torchrun_single_node(
         instance_type="ml.g5.12xlarge",
         encrypt_inter_container_traffic=True,
         use_torchrun=True,
+        nproc_per_node=None,
     )
 
     job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
@@ -1658,6 +1663,7 @@ def test_start_with_torchrun_single_node(
         s3_kms_key=None,
         sagemaker_session=session(),
         use_torchrun=True,
+        nproc_per_node=None,
     )
 
     mock_dependency_upload.assert_called_once_with(
@@ -1759,6 +1765,7 @@ def test_start_with_torchrun_multi_node(
         instance_type="ml.g5.2xlarge",
         encrypt_inter_container_traffic=True,
         use_torchrun=True,
+        nproc_per_node=None,
     )
 
     job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
@@ -1784,6 +1791,7 @@ def test_start_with_torchrun_multi_node(
         s3_kms_key=None,
         sagemaker_session=session(),
         use_torchrun=True,
+        nproc_per_node=None,
     )
 
     mock_dependency_upload.assert_called_once_with(
