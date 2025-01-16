@@ -159,12 +159,10 @@ then
 
     printf "INFO: Invoking remote function inside conda environment: $conda_env.\\n"
     printf "INFO: $conda_exe run -n $conda_env python -m sagemaker.remote_function.invoke_function \\n"
-    
     $conda_exe run -n $conda_env python -m sagemaker.remote_function.invoke_function "$@"
 else
     printf "INFO: No conda env provided. Invoking remote function\\n"
     printf "INFO: python -m sagemaker.remote_function.invoke_function \\n"
-    
     python -m sagemaker.remote_function.invoke_function "$@"
 fi
 """
@@ -213,7 +211,6 @@ then
     printf "INFO: $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
     --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
     -m sagemaker.remote_function.invoke_function \\n"
-    
     $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
     --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
     -m sagemaker.remote_function.invoke_function "$@"
@@ -221,7 +218,6 @@ else
     printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
     printf "INFO: torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
     --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.remote_function.invoke_function \\n"
-
     torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
     --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.remote_function.invoke_function "$@"
 fi
