@@ -49,6 +49,11 @@ from sagemaker.remote_function.job import (
     _prepare_dependencies_and_pre_execution_scripts,
 )
 
+from sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment import (
+    set_env,
+    safe_serialize,
+)
+
 
 REGION = "us-west-2"
 TRAINING_JOB_ARN = "training-job-arn"
@@ -68,6 +73,87 @@ EXPECTED_FUNCTION_URI = S3_URI + "/function.pkl"
 EXPECTED_OUTPUT_URI = S3_URI + "/output"
 EXPECTED_DEPENDENCIES_URI = S3_URI + "/additional_dependencies/requirements.txt"
 
+# flake8: noqa
+EXPECTED_ENV_SINGLE_NODE_CPU = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.t3.xlarge'
+export SM_HOSTS='["algo-1"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='1'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='4'
+export SM_NUM_GPUS='0'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.t3.xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.t3.xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='4'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.t3.xlarge", "hosts": ["algo-1"], "host_count": 1, "nproc_per_node": 4, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 4, "num_gpus": 0, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.t3.xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.t3.xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}}'
+export NCCL_SOCKET_IFNAME='eth0'
+export NCCL_PROTO='simple'
+"""
+
+# flake8: noqa
+EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.g5.12xlarge'
+export SM_HOSTS='["algo-1"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='1'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='48'
+export SM_NUM_GPUS='4'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.12xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='4'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"], "host_count": 1, "nproc_per_node": 4, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 48, "num_gpus": 4, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.12xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}}'
+export NCCL_SOCKET_IFNAME='eth0'
+export NCCL_PROTO='simple'
+"""
+
+# flake8: noqa
+EXPECTED_ENV_MULTI_NODE_MULTI_GPUS = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.g5.2xlarge'
+export SM_HOSTS='["algo-1", "algo-2", "algo-3", "algo-4"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='4'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='8'
+export SM_NUM_GPUS='1'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.2xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.2xlarge", "hosts": ["algo-4", "algo-2", "algo-1", "algo-3"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='1'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.g5.2xlarge", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "host_count": 4, "nproc_per_node": 1, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 8, "num_gpus": 1, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.2xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.2xlarge", "hosts": ["algo-4", "algo-2", "algo-1", "algo-3"]}], "network_interface_name": "eth0"}}'
+export NCCL_SOCKET_IFNAME='eth0'
+export NCCL_PROTO='simple'
+"""
+
 DESCRIBE_TRAINING_JOB_RESPONSE = {
     "TrainingJobArn": TRAINING_JOB_ARN,
     "TrainingJobStatus": "{}",
@@ -78,6 +164,8 @@ DESCRIBE_TRAINING_JOB_RESPONSE = {
     },
     "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
 }
+
+OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "sm_training.env")
 
 TEST_JOB_NAME = "my-job-name"
 TEST_PIPELINE_NAME = "my-pipeline"
@@ -1866,3 +1954,164 @@ def test_start_with_torchrun_multi_node(
         EnableManagedSpotTraining=False,
         Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
     )
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=4,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=0,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.modules.train.container_drivers.scripts.environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_single_node_cpu(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        set_env(
+            resource_config=dict(
+                current_host="algo-1",
+                hosts=["algo-1"],
+                current_group_name="homogeneousCluster",
+                current_instance_type="ml.t3.xlarge",
+                instance_groups=[
+                    dict(
+                        instance_group_name="homogeneousCluster",
+                        instance_type="ml.t3.xlarge",
+                        hosts=["algo-1"],
+                    )
+                ],
+                network_interface_name="eth0",
+            ),
+            output_file=OUTPUT_FILE,
+        )
+
+        mock_num_cpus.assert_called_once()
+        mock_num_gpus.assert_called_once()
+        mock_num_neurons.assert_called_once()
+
+        with open(OUTPUT_FILE, "r") as f:
+            env_file = f.read().strip()
+            expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_CPU)
+            env_file = _remove_extra_lines(env_file)
+
+            assert env_file == expected_env
+        os.remove(OUTPUT_FILE)
+        assert not os.path.exists(OUTPUT_FILE)
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=48,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=4,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.modules.train.container_drivers.scripts.environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_single_node_multi_gpu(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        set_env(
+            resource_config=dict(
+                current_host="algo-1",
+                hosts=["algo-1"],
+                current_group_name="homogeneousCluster",
+                current_instance_type="ml.g5.12xlarge",
+                instance_groups=[
+                    dict(
+                        instance_group_name="homogeneousCluster",
+                        instance_type="ml.g5.12xlarge",
+                        hosts=["algo-1"],
+                    )
+                ],
+                network_interface_name="eth0",
+            ),
+            output_file=OUTPUT_FILE,
+        )
+
+        mock_num_cpus.assert_called_once()
+        mock_num_gpus.assert_called_once()
+        mock_num_neurons.assert_called_once()
+
+        with open(OUTPUT_FILE, "r") as f:
+            env_file = f.read().strip()
+            expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS)
+            env_file = _remove_extra_lines(env_file)
+
+            assert env_file == expected_env
+        os.remove(OUTPUT_FILE)
+        assert not os.path.exists(OUTPUT_FILE)
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=8,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=1,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.modules.train.container_drivers.scripts.environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_multi_node_multi_gpu(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        set_env(
+            resource_config=dict(
+                current_host="algo-1",
+                hosts=["algo-1", "algo-2", "algo-3", "algo-4"],
+                current_group_name="homogeneousCluster",
+                current_instance_type="ml.g5.2xlarge",
+                instance_groups=[
+                    dict(
+                        instance_group_name="homogeneousCluster",
+                        instance_type="ml.g5.2xlarge",
+                        hosts=["algo-4", "algo-2", "algo-1", "algo-3"],
+                    )
+                ],
+                network_interface_name="eth0",
+            ),
+            output_file=OUTPUT_FILE,
+        )
+
+        mock_num_cpus.assert_called_once()
+        mock_num_gpus.assert_called_once()
+        mock_num_neurons.assert_called_once()
+
+        with open(OUTPUT_FILE, "r") as f:
+            env_file = f.read().strip()
+            expected_env = _remove_extra_lines(EXPECTED_ENV_MULTI_NODE_MULTI_GPUS)
+            env_file = _remove_extra_lines(env_file)
+
+            assert env_file == expected_env
+        os.remove(OUTPUT_FILE)
+        assert not os.path.exists(OUTPUT_FILE)
+
+
+def _remove_extra_lines(string):
+    """Removes extra blank lines from a string."""
+    return "\n".join([line for line in string.splitlines() if line.strip()])
