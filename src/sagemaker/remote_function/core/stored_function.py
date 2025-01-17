@@ -55,8 +55,6 @@ class StoredFunction:
         hmac_key: str,
         s3_kms_key: str = None,
         context: Context = Context(),
-        use_torchrun: bool = False,
-        nproc_per_node: int = 1,
     ):
         """Construct a StoredFunction object.
 
@@ -67,16 +65,12 @@ class StoredFunction:
             s3_kms_key: KMS key used to encrypt artifacts uploaded to S3.
             hmac_key: Key used to encrypt serialized and deserialized function and arguments.
             context: Build or run context of a pipeline step.
-            use_torchrun: Whether to use torchrun for distributed training.
-            nproc_per_node: Number of processes per node for distributed training.
         """
         self.sagemaker_session = sagemaker_session
         self.s3_base_uri = s3_base_uri
         self.s3_kms_key = s3_kms_key
         self.hmac_key = hmac_key
         self.context = context
-        self.use_torchrun = use_torchrun
-        self.nproc_per_node = nproc_per_node
 
         self.func_upload_path = s3_path_join(
             s3_base_uri, context.step_name, context.func_step_s3_dir
