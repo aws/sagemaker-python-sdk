@@ -91,7 +91,7 @@ def remote(
     use_spot_instances=False,
     max_wait_time_in_seconds=None,
     use_torchrun=False,
-    nproc_per_node=1,
+    nproc_per_node: Optional[int] = None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -284,8 +284,9 @@ def remote(
         use_torchrun (bool): Specifies whether to use torchrun for distributed training.
           Defaults to ``False``.
 
-        nproc_per_node (int): Specifies the number of processes per node for distributed training.
-          Defaults to ``1``.
+        nproc_per_node (Optional int): Specifies the number of processes per node for
+          distributed training. Defaults to ``None``.
+          This is defined automatically configured on the instance type.
     """
 
     def _remote(func):
@@ -325,9 +326,13 @@ def remote(
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
 
-            if instance_count > 1 and not spark_config:
+            if instance_count > 1 and not (
+                (spark_config is not None and not use_torchrun)
+                or (spark_config is None and use_torchrun)
+            ):
                 raise ValueError(
-                    "Remote function do not support training on multi instances. "
+                    "Remote function do not support training on multi instances "
+                    + "without spark_config or use_torchrun. "
                     + "Please provide instance_count = 1"
                 )
 
@@ -532,7 +537,7 @@ class RemoteExecutor(object):
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
         use_torchrun=False,
-        nproc_per_node=1,
+        nproc_per_node: Optional[int] = None,
     ):
         """Constructor for RemoteExecutor
 
@@ -725,17 +730,22 @@ class RemoteExecutor(object):
             use_torchrun (bool): Specifies whether to use torchrun for distributed training.
               Defaults to ``False``.
 
-            nproc_per_node (int): Specifies the number of processes per node.
-              Defaults to ``1``.
+            nproc_per_node (Optional int): Specifies the number of processes per node for
+              distributed training. Defaults to ``None``.
+              This is defined automatically configured on the instance type.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
         if self.max_parallel_jobs <= 0:
             raise ValueError("max_parallel_jobs must be greater than 0.")
 
-        if instance_count > 1 and not spark_config:
+        if instance_count > 1 and not (
+            (spark_config is not None and not use_torchrun)
+            or (spark_config is None and use_torchrun)
+        ):
             raise ValueError(
-                "Remote function do not support training on multi instances. "
+                "Remote function do not support training on multi instances "
+                + "without spark_config or use_torchrun. "
                 + "Please provide instance_count = 1"
             )
 
