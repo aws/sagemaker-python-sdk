@@ -304,8 +304,8 @@ class AsyncPredictor:
         failure_thread.start()
 
         while not output_file_found.is_set() and \
-               not failure_file_found.is_set() and \
-               not waiter_error_catched.is_set():
+            not failure_file_found.is_set() and \
+            not waiter_error_catched.is_set():
             time.sleep(1)
 
         if output_file_found.is_set():
