@@ -284,7 +284,6 @@ class AsyncPredictor:
                 output_file_found.set()
             except WaiterError:
                 waiter_error_catched.set()
-                pass
 
         def check_failure_file():
             try:
@@ -297,7 +296,6 @@ class AsyncPredictor:
                 failure_file_found.set()
             except WaiterError:
                 waiter_error_catched.set()
-                pass
 
         output_thread = threading.Thread(target=check_output_file)
         failure_thread = threading.Thread(target=check_failure_file)
@@ -305,7 +303,9 @@ class AsyncPredictor:
         output_thread.start()
         failure_thread.start()
 
-        while not output_file_found.is_set() and not failure_file_found.is_set() and not waiter_error_catched.is_set():
+        while (not output_file_found.is_set() and 
+               not failure_file_found.is_set() 
+               and not waiter_error_catched.is_set()):
             time.sleep(1)
 
         if output_file_found.is_set():
