@@ -304,8 +304,8 @@ class AsyncPredictor:
         failure_thread.start()
 
         while (not output_file_found.is_set() and
-               not failure_file_found.is_set()
-               and not waiter_error_catched.is_set()):
+               not failure_file_found.is_set() and 
+               not waiter_error_catched.is_set()):
             time.sleep(1)
 
         if output_file_found.is_set():
@@ -319,10 +319,10 @@ class AsyncPredictor:
             raise AsyncInferenceModelError(message=failure_response)
 
         raise PollingTimeoutError(
-                message="Inference could still be running",
-                output_path=output_path,
-                seconds=waiter_config.delay * waiter_config.max_attempts,
-            )
+            message="Inference could still be running",
+            output_path=output_path,
+            seconds=waiter_config.delay * waiter_config.max_attempts,
+        )
 
     def update_endpoint(
         self,
