@@ -90,7 +90,8 @@ def remote(
     spark_config: SparkConfig = None,
     use_spot_instances=False,
     max_wait_time_in_seconds=None,
-    use_torchrun=False,
+    use_torchrun: bool = False,
+    use_mpirun: bool = False,
     nproc_per_node: Optional[int] = None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
@@ -284,6 +285,9 @@ def remote(
         use_torchrun (bool): Specifies whether to use torchrun for distributed training.
           Defaults to ``False``.
 
+        use_mpirun (bool): Specifies whether to use mpirun for distributed training.
+          Defaults to ``False``.
+
         nproc_per_node (Optional int): Specifies the number of processes per node for
           distributed training. Defaults to ``None``.
           This is defined automatically configured on the instance type.
@@ -320,6 +324,7 @@ def remote(
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
             use_torchrun=use_torchrun,
+            use_mpirun=use_mpirun,
             nproc_per_node=nproc_per_node,
         )
 
@@ -327,12 +332,13 @@ def remote(
         def wrapper(*args, **kwargs):
 
             if instance_count > 1 and not (
-                (spark_config is not None and not use_torchrun)
-                or (spark_config is None and use_torchrun)
+                (spark_config is not None and not use_torchrun and not use_mpirun)
+                or (spark_config is None and use_torchrun and not use_mpirun)
+                or (spark_config is None and not use_torchrun and use_mpirun)
             ):
                 raise ValueError(
                     "Remote function do not support training on multi instances "
-                    + "without spark_config or use_torchrun. "
+                    + "without spark_config or use_torchrun or use_mpirun. "
                     + "Please provide instance_count = 1"
                 )
 
@@ -536,7 +542,8 @@ class RemoteExecutor(object):
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
-        use_torchrun=False,
+        use_torchrun: bool = False,
+        use_mpirun: bool = False,
         nproc_per_node: Optional[int] = None,
     ):
         """Constructor for RemoteExecutor
@@ -730,6 +737,9 @@ class RemoteExecutor(object):
             use_torchrun (bool): Specifies whether to use torchrun for distributed training.
               Defaults to ``False``.
 
+            use_mpirun (bool): Specifies whether to use mpirun for distributed training.
+              Defaults to ``False``.
+
             nproc_per_node (Optional int): Specifies the number of processes per node for
               distributed training. Defaults to ``None``.
               This is defined automatically configured on the instance type.
@@ -740,12 +750,13 @@ class RemoteExecutor(object):
             raise ValueError("max_parallel_jobs must be greater than 0.")
 
         if instance_count > 1 and not (
-            (spark_config is not None and not use_torchrun)
-            or (spark_config is None and use_torchrun)
+            (spark_config is not None and not use_torchrun and not use_mpirun)
+            or (spark_config is None and use_torchrun and not use_mpirun)
+            or (spark_config is None and not use_torchrun and use_mpirun)
         ):
             raise ValueError(
                 "Remote function do not support training on multi instances "
-                + "without spark_config or use_torchrun. "
+                + "without spark_config or use_torchrun or use_mpirun. "
                 + "Please provide instance_count = 1"
             )
 
@@ -778,6 +789,7 @@ class RemoteExecutor(object):
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
             use_torchrun=use_torchrun,
+            use_mpirun=use_mpirun,
             nproc_per_node=nproc_per_node,
         )
 
