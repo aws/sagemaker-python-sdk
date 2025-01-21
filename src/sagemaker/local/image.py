@@ -520,8 +520,8 @@ class _SageMakerContainer(object):
         config_path = os.path.join(self.container_root, host, "input", "config")
 
         resource_config = {
-            "current_host": host, 
-            "hosts": self.hosts, 
+            "current_host": host,
+            "hosts": self.hosts,
             "network_interface_name": "eth0",
             "current_instance_type": self.instance_type,
         }
