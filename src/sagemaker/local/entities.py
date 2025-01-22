@@ -615,6 +615,10 @@ class _LocalEndpoint(object):
         self.container = _SageMakerContainer(
             instance_type, instance_count, image, self.local_session
         )
+        
+        if "ModelDataUrl" not in  self.primary_container.keys():
+            self.primary_container["ModelDataUrl"] = None
+            
         self.container.serve(
             self.primary_container["ModelDataUrl"], self.primary_container["Environment"]
         )
