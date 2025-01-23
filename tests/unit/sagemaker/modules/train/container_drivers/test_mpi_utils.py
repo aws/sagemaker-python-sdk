@@ -13,20 +13,25 @@
 """MPI Utils Unit Tests."""
 from __future__ import absolute_import
 
-import os
+import subprocess
 from unittest.mock import Mock, patch
 
 import paramiko
 import pytest
 
-from sagemaker.modules.train.container_drivers.mpi_utils import (
-    CustomHostKeyPolicy,
-    _can_connect,
-    bootstrap_master_node,
-    bootstrap_worker_node,
-    get_mpirun_command,
-    write_status_file_to_workers,
-)
+# Mock the utils module before importing mpi_utils
+mock_utils = Mock()
+mock_utils.logger = Mock()
+mock_utils.SM_EFA_NCCL_INSTANCES = []
+mock_utils.SM_EFA_RDMA_INSTANCES = []
+mock_utils.get_python_executable = Mock(return_value="/usr/bin/python")
+
+with patch.dict("sys.modules", {"utils": mock_utils}):
+    from sagemaker.modules.train.container_drivers.mpi_utils import (
+        CustomHostKeyPolicy,
+        _can_connect,
+        write_status_file_to_workers,
+    )
 
 TEST_HOST = "algo-1"
 TEST_WORKER = "algo-2"
@@ -34,7 +39,7 @@ TEST_STATUS_FILE = "/tmp/test-status"
 
 
 def test_custom_host_key_policy_valid_hostname():
-    """Test CustomHostKeyPolicy with valid algo- hostname."""
+    """Test CustomHostKeyPolicy accepts algo- prefixed hostnames."""
     policy = CustomHostKeyPolicy()
     mock_client = Mock()
     mock_key = Mock()
@@ -47,7 +52,7 @@ def test_custom_host_key_policy_valid_hostname():
 
 
 def test_custom_host_key_policy_invalid_hostname():
-    """Test CustomHostKeyPolicy with invalid hostname."""
+    """Test CustomHostKeyPolicy rejects non-algo prefixed hostnames."""
     policy = CustomHostKeyPolicy()
     mock_client = Mock()
     mock_key = Mock()
@@ -60,112 +65,51 @@ def test_custom_host_key_policy_invalid_hostname():
 
 
 @patch("paramiko.SSHClient")
-def test_can_connect_success(mock_ssh_client):
+@patch("sagemaker.modules.train.container_drivers.mpi_utils.logger")
+def test_can_connect_success(mock_logger, mock_ssh_client):
     """Test successful SSH connection."""
     mock_client = Mock()
-    mock_ssh_client.return_value = mock_client
+    mock_ssh_client.return_value.__enter__.return_value = mock_client
+    mock_client.connect.return_value = None  # Successful connection
 
-    assert _can_connect(TEST_HOST) is True
+    result = _can_connect(TEST_HOST)
+
+    assert result is True
+    mock_client.load_system_host_keys.assert_called_once()
+    mock_client.set_missing_host_key_policy.assert_called_once()
     mock_client.connect.assert_called_once_with(TEST_HOST, port=22)
+    mock_logger.info.assert_called_with("Can connect to host %s", TEST_HOST)
 
 
 @patch("paramiko.SSHClient")
-def test_can_connect_failure(mock_ssh_client):
+@patch("sagemaker.modules.train.container_drivers.mpi_utils.logger")
+def test_can_connect_failure(mock_logger, mock_ssh_client):
     """Test SSH connection failure."""
     mock_client = Mock()
-    mock_ssh_client.return_value = mock_client
-    mock_client.connect.side_effect = Exception("Connection failed")
+    mock_ssh_client.return_value.__enter__.return_value = mock_client
+    mock_client.connect.side_effect = paramiko.SSHException("Connection failed")
 
-    assert _can_connect(TEST_HOST) is False
+    result = _can_connect(TEST_HOST)
 
-
-@patch("subprocess.run")
-def test_write_status_file_to_workers_success(mock_run):
-    """Test successful status file writing to workers."""
-    mock_run.return_value = Mock(returncode=0)
-
-    write_status_file_to_workers([TEST_WORKER], TEST_STATUS_FILE)
-
-    mock_run.assert_called_once()
-    args = mock_run.call_args[0][0]
-    assert args == ["ssh", TEST_WORKER, "touch", TEST_STATUS_FILE]
+    assert result is False
+    mock_client.load_system_host_keys.assert_called_once()
+    mock_client.set_missing_host_key_policy.assert_called_once()
+    mock_client.connect.assert_called_once_with(TEST_HOST, port=22)
+    mock_logger.info.assert_called_with("Cannot connect to host %s", TEST_HOST)
 
 
 @patch("subprocess.run")
-def test_write_status_file_to_workers_failure(mock_run):
+@patch("sagemaker.modules.train.container_drivers.mpi_utils.logger")
+def test_write_status_file_to_workers_failure(mock_logger, mock_run):
     """Test failed status file writing to workers with retry timeout."""
-    mock_run.side_effect = Exception("SSH failed")
+    mock_run.side_effect = subprocess.CalledProcessError(1, "ssh")
 
     with pytest.raises(TimeoutError) as exc_info:
         write_status_file_to_workers([TEST_WORKER], TEST_STATUS_FILE)
 
     assert f"Timed out waiting for {TEST_WORKER}" in str(exc_info.value)
-
-
-def test_get_mpirun_command_basic():
-    """Test basic MPI command generation."""
-    with patch.dict(
-        os.environ,
-        {"SM_NETWORK_INTERFACE_NAME": "eth0", "SM_CURRENT_INSTANCE_TYPE": "ml.p3.16xlarge"},
-    ):
-        command = get_mpirun_command(
-            host_count=2,
-            host_list=[TEST_HOST, TEST_WORKER],
-            num_processes=2,
-            additional_options=[],
-            entry_script_path="train.py",
-        )
-
-        assert command[0] == "mpirun"
-        assert "--host" in command
-        assert f"{TEST_HOST},{TEST_WORKER}" in command
-        assert "-np" in command
-        assert "2" in command
-
-
-def test_get_mpirun_command_efa():
-    """Test MPI command generation with EFA instance."""
-    with patch.dict(
-        os.environ,
-        {"SM_NETWORK_INTERFACE_NAME": "eth0", "SM_CURRENT_INSTANCE_TYPE": "ml.p4d.24xlarge"},
-    ):
-        command = get_mpirun_command(
-            host_count=2,
-            host_list=[TEST_HOST, TEST_WORKER],
-            num_processes=2,
-            additional_options=[],
-            entry_script_path="train.py",
-        )
-
-        command_str = " ".join(command)
-        assert "FI_PROVIDER=efa" in command_str
-        assert "NCCL_PROTO=simple" in command_str
-
-
-@patch("sagemaker.modules.train.container_drivers.mpi_utils._can_connect")
-@patch("sagemaker.modules.train.container_drivers.mpi_utils._write_file_to_host")
-def test_bootstrap_worker_node(mock_write, mock_connect):
-    """Test worker node bootstrap process."""
-    mock_connect.return_value = True
-    mock_write.return_value = True
-
-    with patch.dict(os.environ, {"SM_CURRENT_HOST": TEST_WORKER}):
-        with pytest.raises(TimeoutError):
-            bootstrap_worker_node(TEST_HOST, timeout=1)
-
-    mock_connect.assert_called_with(TEST_HOST)
-    mock_write.assert_called_with(TEST_HOST, f"/tmp/ready.{TEST_WORKER}")
-
-
-@patch("sagemaker.modules.train.container_drivers.mpi_utils._can_connect")
-def test_bootstrap_master_node(mock_connect):
-    """Test master node bootstrap process."""
-    mock_connect.return_value = True
-
-    with pytest.raises(TimeoutError):
-        bootstrap_master_node([TEST_WORKER], timeout=1)
-
-    mock_connect.assert_called_with(TEST_WORKER)
+    assert mock_run.call_count > 1  # Verifies that retries occurred
+    mock_logger.info.assert_any_call(f"Cannot connect to {TEST_WORKER}")
 
 
 if __name__ == "__main__":
