@@ -77,23 +77,35 @@ def test_can_connect_failure(mock_ssh_client):
 
 def test_get_mpirun_command():
     """Test MPI command generation."""
-    os.environ["SM_NETWORK_INTERFACE_NAME"] = "eth0"
-    os.environ["SM_CURRENT_INSTANCE_TYPE"] = "ml.p4d.24xlarge"
+    test_network_interface = "eth0"
+    test_instance_type = "ml.p4d.24xlarge"
 
-    command = get_mpirun_command(
-        host_count=2,
-        host_list=["algo-1", "algo-2"],
-        num_processes=2,
-        additional_options=[],
-        entry_script_path="train.py",
-    )
+    with patch.dict(
+        os.environ,
+        {
+            "SM_NETWORK_INTERFACE_NAME": test_network_interface,
+            "SM_CURRENT_INSTANCE_TYPE": test_instance_type,
+        },
+    ):
+        command = get_mpirun_command(
+            host_count=2,
+            host_list=["algo-1", "algo-2"],
+            num_processes=2,
+            additional_options=[],
+            entry_script_path="train.py",
+        )
 
-    assert command[0] == "mpirun"
-    assert "--host" in command
-    assert "algo-1,algo-2" in command
-    assert "-np" in command
-    assert "2" in command
-    assert f"NCCL_SOCKET_IFNAME=eth0" in " ".join(command)
+        # Basic command structure checks
+        assert command[0] == "mpirun"
+        assert "--host" in command
+        assert "algo-1,algo-2" in command
+        assert "-np" in command
+        assert "2" in command
+
+        # Network interface check
+        expected_nccl_config = f"NCCL_SOCKET_IFNAME={test_network_interface}"
+        command_str = " ".join(command)
+        assert expected_nccl_config in command_str
 
 
 @patch("sagemaker.modules.train.container_drivers.mpi_utils._can_connect")
