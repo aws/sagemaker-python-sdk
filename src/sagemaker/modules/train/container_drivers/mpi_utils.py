@@ -76,6 +76,16 @@ def start_sshd_daemon():
 
 
 class CustomHostKeyPolicy(paramiko.client.MissingHostKeyPolicy):
+    """Class to handle host key policy for SageMaker distributed training SSH connections.
+    Example:
+    >>> client = paramiko.SSHClient()
+    >>> client.set_missing_host_key_policy(CustomHostKeyPolicy())
+    >>> # Will succeed for SageMaker algorithm containers
+    >>> client.connect('algo-1234.internal')
+    >>> # Will raise SSHException for other unknown hosts
+    >>> client.connect('unknown-host')  # raises SSHException
+    """
+
     def missing_host_key(self, client, hostname, key):
         """Accept host keys for algo-* hostnames, reject others.
 
