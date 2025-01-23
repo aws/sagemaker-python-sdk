@@ -106,16 +106,13 @@ class CustomHostKeyPolicy(paramiko.client.MissingHostKeyPolicy):
 def _can_connect(host: str, port: int = DEFAULT_SSH_PORT) -> bool:
     """Check if the connection to the provided host and port is possible."""
     try:
-        import paramiko
-
         logger.debug("Testing connection to host %s", host)
-        client = paramiko.SSHClient()
-        client.load_system_host_keys()
-        client.set_missing_host_key_policy(CustomHostKeyPolicy())
-        client.connect(host, port=port)
-        client.close()
-        logger.info("Can connect to host %s", host)
-        return True
+        with paramiko.SSHClient() as client:
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(CustomHostKeyPolicy())
+            client.connect(host, port=port)
+            logger.info("Can connect to host %s", host)
+            return True
     except Exception as e:  # pylint: disable=W0703
         logger.info("Cannot connect to host %s", host)
         logger.debug(f"Connection failed with exception: {e}")
@@ -211,9 +208,9 @@ def validate_smddpmprun() -> bool:
 
 def write_env_vars_to_file():
     """Write environment variables to /etc/environment file."""
-    with open("/etc/environment", "a") as f:
+    with open("/etc/environment", "a", encoding="utf-8") as f:
         for name in os.environ:
-            f.write("{}={}\n".format(name, os.environ.get(name)))
+            f.write(f"{name}={os.environ.get(name)}\n")
 
 
 def get_mpirun_command(
