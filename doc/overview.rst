@@ -2565,6 +2565,9 @@ set default values for. For the full schema, see `sagemaker.config.config_schema
           KmsKeyId: 'kmskeyid10'
         TransformResources:
           VolumeKmsKeyId: 'volumekmskeyid4'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value
       CompilationJob:
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateCompilationJob.html
         OutputConfig:
