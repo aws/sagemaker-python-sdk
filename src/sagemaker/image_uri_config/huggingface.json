@@ -1022,7 +1022,7 @@
             },
             "4.46.1": {
                 "version_aliases": {
-                    "pytorch2.3.0": "pytorch2.3.0"
+                    "pytorch2.3": "pytorch2.3.0"
                 },
                 "pytorch2.3.0": {
                     "py_versions": [
