@@ -592,7 +592,7 @@ def test_model_registration_with_drift_check_baselines_and_model_metrics(
 def test_model_registration_with_tensorflow_model_with_pipeline_model(
     pipeline_session, role, tf_full_version, tf_full_py_version, pipeline_name
 ):
-    if Version(tf_full_version) in SpecifierSet("==2.16.*"):
+    if Version(tf_full_version) >= Version("2.16"):
         pytest.skip(
             "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
             "https://github.com/tensorflow/io/issues/2039"
