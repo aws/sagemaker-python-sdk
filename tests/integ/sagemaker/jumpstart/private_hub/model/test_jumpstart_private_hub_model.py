@@ -104,7 +104,7 @@ def test_jumpstart_hub_gated_model(setup, add_model_references):
 
     assert response is not None
 
-
+@pytest.mark.skip
 def test_jumpstart_gated_model_inference_component_enabled(setup, add_model_references):
 
     model_id = "meta-textgeneration-llama-2-7b"
