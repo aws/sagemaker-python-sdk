@@ -293,6 +293,8 @@ def huggingface_pytorch_training_version(huggingface_training_version):
 
 @pytest.fixture(scope="module")
 def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
+    if Version(huggingface_pytorch_training_version) >= Version("2.3"):
+        return "py311"
     if Version(huggingface_pytorch_training_version) >= Version("2.0"):
         return "py310"
     elif Version(huggingface_pytorch_training_version) >= Version("1.13"):
