@@ -26,7 +26,6 @@ import re
 import pytest
 
 from packaging.version import Version
-from packaging.specifiers import SpecifierSet
 
 from sagemaker.model_card.model_card import ModelCard, ModelOverview, ModelPackageModelCard
 from sagemaker.model_card.schema_constraints import ModelCardStatusEnum

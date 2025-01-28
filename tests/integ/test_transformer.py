@@ -19,7 +19,6 @@ import time
 import pytest
 
 from packaging.version import Version
-from packaging.specifiers import SpecifierSet
 
 from sagemaker import KMeans, s3, get_execution_role
 from sagemaker.mxnet import MXNet

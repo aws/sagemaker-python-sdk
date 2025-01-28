@@ -18,7 +18,6 @@ import os
 import pytest
 
 from packaging.version import Version
-from packaging.specifiers import SpecifierSet
 
 from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.workflow.fail_step import FailStep
