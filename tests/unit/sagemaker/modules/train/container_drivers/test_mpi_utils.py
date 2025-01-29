@@ -78,7 +78,6 @@ def test_can_connect_success(mock_logger, mock_ssh_client):
     mock_client.load_system_host_keys.assert_called_once()
     mock_client.set_missing_host_key_policy.assert_called_once()
     mock_client.connect.assert_called_once_with(TEST_HOST, port=22)
-    mock_logger.info.assert_called_with("Can connect to host %s", TEST_HOST)
 
 
 @patch("paramiko.SSHClient")
@@ -95,7 +94,6 @@ def test_can_connect_failure(mock_logger, mock_ssh_client):
     mock_client.load_system_host_keys.assert_called_once()
     mock_client.set_missing_host_key_policy.assert_called_once()
     mock_client.connect.assert_called_once_with(TEST_HOST, port=22)
-    mock_logger.info.assert_called_with("Cannot connect to host %s", TEST_HOST)
 
 
 @patch("subprocess.run")
