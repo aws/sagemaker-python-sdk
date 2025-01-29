@@ -75,7 +75,7 @@ mock_invalid_image_uri = (
     "-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04"
 )
 mock_djl_image_uri = (
-    "123456789712.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.24.0-neuronx-sdk2.14.1"
+    "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.31.0-lmi13.0.0-cu124"
 )
 
 mock_model_data = {
@@ -1166,6 +1166,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         mock_pysdk_model.image_uri = mock_tgi_image_uri
         mock_pysdk_model.list_deployment_configs.return_value = DEPLOYMENT_CONFIGS
         mock_pysdk_model.deployment_config = DEPLOYMENT_CONFIGS[0]
+        mock_pysdk_model.init_kwargs = {
+            "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi11.0.0-cu124"
+        }
 
         sample_input = {
             "inputs": "The diamondback terrapin or simply terrapin is a species "
@@ -1201,6 +1204,10 @@ class TestJumpStartBuilder(unittest.TestCase):
         )
 
         self.assertIsNotNone(out_put)
+        self.assertEqual(
+            out_put["OptimizationConfigs"][0]["ModelQuantizationConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.31.0-lmi13.0.0-cu124",
+        )
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
@@ -1287,6 +1294,9 @@ class TestJumpStartBuilder(unittest.TestCase):
         mock_pysdk_model.deployment_config = DEPLOYMENT_CONFIGS[0]
         mock_pysdk_model.config_name = "config_name"
         mock_pysdk_model._metadata_configs = {"config_name": mock_metadata_config}
+        mock_pysdk_model.init_kwargs = {
+            "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi11.0.0-cu124"
+        }
 
         sample_input = {
             "inputs": "The diamondback terrapin or simply terrapin is a species "
@@ -1319,6 +1329,8 @@ class TestJumpStartBuilder(unittest.TestCase):
         )
 
         self.assertIsNotNone(out_put)
+        self.assertIsNone(out_put["OptimizationConfigs"][1]["ModelCompilationConfig"].get("Image"))
+        self.assertIsNone(out_put["OptimizationConfigs"][0]["ModelQuantizationConfig"].get("Image"))
 
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
@@ -1633,13 +1645,17 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
         mock_serve_settings,
         mock_telemetry,
     ):
-        mock_sagemaker_session = Mock()
+        mock_sagemaker_session = MagicMock()
+        mock_sagemaker_session.sagemaker_client.create_optimization_job = MagicMock()
         mock_sagemaker_session.wait_for_optimization_job.side_effect = (
             lambda *args: mock_optimization_job_response
         )
 
         mock_lmi_js_model = MagicMock()
         mock_lmi_js_model.image_uri = mock_djl_image_uri
+        mock_lmi_js_model.init_kwargs = {
+            "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi11.0.0-cu124"
+        }
         mock_lmi_js_model.env = {
             "SAGEMAKER_PROGRAM": "inference.py",
             "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -1669,6 +1685,13 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
                 },
             },
             output_path="s3://bucket/code/",
+        )
+
+        assert (
+            mock_sagemaker_session.sagemaker_client.create_optimization_job.call_args_list[0][1][
+                "OptimizationConfigs"
+            ][0]["ModelQuantizationConfig"]["Image"]
+            == "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.31.0-lmi13.0.0-cu124"
         )
 
         assert mock_lmi_js_model.set_deployment_config.call_args_list[0].kwargs == {
@@ -1711,13 +1734,17 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
         mock_serve_settings,
         mock_telemetry,
     ):
-        mock_sagemaker_session = Mock()
+        mock_sagemaker_session = MagicMock()
+        mock_sagemaker_session.sagemaker_client.create_optimization_job = MagicMock()
         mock_sagemaker_session.wait_for_optimization_job.side_effect = (
             lambda *args: mock_optimization_job_response
         )
 
         mock_lmi_js_model = MagicMock()
         mock_lmi_js_model.image_uri = mock_djl_image_uri
+        mock_lmi_js_model.init_kwargs = {
+            "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi27.0.0-cu124"
+        }
         mock_lmi_js_model.env = {
             "SAGEMAKER_PROGRAM": "inference.py",
             "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -1748,6 +1775,13 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
             output_path="s3://bucket/code/",
         )
 
+        assert (
+            mock_sagemaker_session.sagemaker_client.create_optimization_job.call_args_list[0][1][
+                "OptimizationConfigs"
+            ][0]["ModelQuantizationConfig"]["Image"]
+            == "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi27.0.0-cu124"
+        )
+
         assert mock_lmi_js_model.set_deployment_config.call_args_list[0].kwargs == {
             "instance_type": "ml.g5.24xlarge",
             "config_name": "lmi",
@@ -1763,3 +1797,163 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
             "OPTION_TENSOR_PARALLEL_DEGREE": "8",
             "OPTION_QUANTIZE": "fp8",  # should be added to the env
         }
+
+    @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
+    @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_gated_model",
+        return_value=True,
+    )
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._is_fine_tuned_model",
+        return_value=False,
+    )
+    def test_optimize_on_js_model_test_image_defaulting_scenarios(
+        self,
+        mock_is_fine_tuned,
+        mock_is_jumpstart_model,
+        mock_js_model,
+        mock_is_gated_model,
+        mock_serve_settings,
+        mock_telemetry,
+    ):
+
+        mock_lmi_js_model = MagicMock()
+        mock_lmi_js_model.image_uri = mock_djl_image_uri
+        mock_lmi_js_model.init_kwargs = {
+            "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi11.0.0-cu124"
+        }
+
+        model_builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-1-70b-instruct",
+            schema_builder=SchemaBuilder("test", "test"),
+            sagemaker_session=MagicMock(),
+        )
+        model_builder.pysdk_model = mock_lmi_js_model
+
+        # assert lmi version is upgraded to hardcoded default
+        optimization_args = model_builder._set_optimization_image_default(
+            {
+                "OptimizationConfigs": [
+                    {
+                        "ModelQuantizationConfig": {
+                            "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi11.0.0-cu124"
+                        }
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(
+            optimization_args["OptimizationConfigs"][0]["ModelQuantizationConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.31.0-lmi13.0.0-cu124",
+        )
+
+        # assert lmi version is left as is
+        optimization_args = model_builder._set_optimization_image_default(
+            {
+                "OptimizationConfigs": [
+                    {
+                        "ModelQuantizationConfig": {
+                            "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi21.0.0-cu124"
+                        }
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(
+            optimization_args["OptimizationConfigs"][0]["ModelQuantizationConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi21.0.0-cu124",
+        )
+
+        # assert lmi version is upgraded to the highest provided version
+        optimization_args = model_builder._set_optimization_image_default(
+            {
+                "OptimizationConfigs": [
+                    {
+                        "ModelShardingConfig": {
+                            "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi11.0.0-cu124"
+                        }
+                    },
+                    {
+                        "ModelQuantizationConfig": {
+                            "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi30.0.0-cu124"
+                        }
+                    },
+                ]
+            }
+        )
+
+        self.assertEqual(
+            optimization_args["OptimizationConfigs"][0]["ModelShardingConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi30.0.0-cu124",
+        )
+        self.assertEqual(
+            optimization_args["OptimizationConfigs"][1]["ModelQuantizationConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi30.0.0-cu124",
+        )
+
+        # assert lmi version is upgraded to the highest provided version and sets empty image config
+        optimization_args = model_builder._set_optimization_image_default(
+            {
+                "OptimizationConfigs": [
+                    {
+                        "ModelQuantizationConfig": {
+                            "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi30.0.0-cu124"
+                        }
+                    },
+                    {"ModelShardingConfig": {}},
+                ]
+            }
+        )
+
+        self.assertEqual(
+            optimization_args["OptimizationConfigs"][0]["ModelQuantizationConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi30.0.0-cu124",
+        )
+        self.assertEqual(
+            optimization_args["OptimizationConfigs"][1]["ModelShardingConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi30.0.0-cu124",
+        )
+
+        # assert lmi version is left as is on minor version bump
+        optimization_args = model_builder._set_optimization_image_default(
+            {
+                "OptimizationConfigs": [
+                    {
+                        "ModelQuantizationConfig": {
+                            "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi13.1.0-cu124"
+                        }
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(
+            optimization_args["OptimizationConfigs"][0]["ModelQuantizationConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi13.1.0-cu124",
+        )
+
+        # assert lmi version is left as is on patch version bump
+        optimization_args = model_builder._set_optimization_image_default(
+            {
+                "OptimizationConfigs": [
+                    {
+                        "ModelQuantizationConfig": {
+                            "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi13.0.1-cu124"
+                        }
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(
+            optimization_args["OptimizationConfigs"][0]["ModelQuantizationConfig"]["Image"],
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi13.0.1-cu124",
+        )
