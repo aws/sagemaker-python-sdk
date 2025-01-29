@@ -197,7 +197,7 @@ class _SyncMetricsSink(object):
             response = self._metrics_client.batch_put_metrics(**request)
             errors = response["Errors"] if "Errors" in response else None
             if errors:
-                message = errors[0]["Message"]
+                message = errors[0]["Code"]
                 raise Exception(f'{len(errors)} errors with message "{message}"')
 
     def _construct_batch_put_metrics_request(self, batch):
