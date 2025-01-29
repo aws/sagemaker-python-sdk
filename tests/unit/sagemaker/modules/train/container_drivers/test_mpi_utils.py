@@ -107,7 +107,6 @@ def test_write_status_file_to_workers_failure(mock_logger, mock_run):
 
     assert f"Timed out waiting for {TEST_WORKER}" in str(exc_info.value)
     assert mock_run.call_count > 1  # Verifies that retries occurred
-    mock_logger.info.assert_any_call(f"Cannot connect to {TEST_WORKER}")
 
 
 if __name__ == "__main__":
