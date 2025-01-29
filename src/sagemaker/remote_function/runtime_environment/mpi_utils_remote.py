@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""An entry point for runtime environment. This must be kept independent of SageMaker PySDK"""
+"""An utils function for runtime environment. This must be kept independent of SageMaker PySDK"""
 from __future__ import absolute_import
 
 import argparse
@@ -20,6 +20,8 @@ import subprocess
 import sys
 import time
 from typing import List
+
+import paramiko
 
 if __package__ is None or __package__ == "":
     from runtime_environment_manager import (
@@ -43,6 +45,34 @@ FINISHED_STATUS_FILE = "/tmp/done.algo-1"
 logger = get_logger()
 
 
+class CustomHostKeyPolicy(paramiko.client.MissingHostKeyPolicy):
+    """Class to handle host key policy for SageMaker distributed training SSH connections.
+
+    Example:
+    >>> client = paramiko.SSHClient()
+    >>> client.set_missing_host_key_policy(CustomHostKeyPolicy())
+    >>> # Will succeed for SageMaker algorithm containers
+    >>> client.connect('algo-1234.internal')
+    >>> # Will raise SSHException for other unknown hosts
+    >>> client.connect('unknown-host')  # raises SSHException
+    """
+
+    def missing_host_key(self, client, hostname, key):
+        """Accept host keys for algo-* hostnames, reject others.
+
+        Args:
+            client: The SSHClient instance
+            hostname: The hostname attempting to connect
+            key: The host key
+        Raises:
+            paramiko.SSHException: If hostname doesn't match algo-* pattern
+        """
+        if hostname.startswith("algo-"):
+            client.get_host_keys().add(hostname, key.get_name(), key)
+            return
+        raise paramiko.SSHException(f"Unknown host key for {hostname}")
+
+
 def _parse_args(sys_args):
     """Parses CLI arguments."""
     parser = argparse.ArgumentParser()
@@ -54,16 +84,12 @@ def _parse_args(sys_args):
 def _can_connect(host: str, port: int = DEFAULT_SSH_PORT) -> bool:
     """Check if the connection to the provided host and port is possible."""
     try:
-        import paramiko
-
-        logger.debug("Testing connection to host %s", host)
-        client = paramiko.SSHClient()
-        client.load_system_host_keys()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(host, port=port)
-        client.close()
-        logger.info("Can connect to host %s", host)
-        return True
+        with paramiko.SSHClient() as client:
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(CustomHostKeyPolicy())
+            client.connect(host, port=port)
+            logger.info("Can connect to host %s", host)
+            return True
     except Exception as e:  # pylint: disable=W0703
         logger.info("Cannot connect to host %s", host)
         logger.debug("Connection failed with exception: %s", e)
