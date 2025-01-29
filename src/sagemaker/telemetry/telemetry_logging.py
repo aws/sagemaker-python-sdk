@@ -27,6 +27,7 @@ from sagemaker.config.config_schema import TELEMETRY_OPT_OUT_PATH
 from sagemaker.telemetry.constants import (
     Feature,
     Status,
+    Region,
     DEFAULT_AWS_REGION,
 )
 from sagemaker.user_agent import SDK_VERSION, process_studio_metadata_file
@@ -189,8 +190,19 @@ def _send_telemetry_request(
     """Make GET request to an empty object in S3 bucket"""
     try:
         accountId = _get_accountId(session) if session else "NotAvailable"
-        # telemetry will be sent to us-west-2 if no session availale
-        region = _get_region_or_default(session) if session else DEFAULT_AWS_REGION
+
+        # Validate region if session exists
+        if session:
+            region = _get_region_or_default(session)
+            try:
+                Region(region)
+            except ValueError:
+                logger.debug(
+                    "Region not found in supported regions. Telemetry request will not be emitted."
+                )
+                return
+        else:  # telemetry will be sent to us-west-2 if no session available
+            region = DEFAULT_AWS_REGION
         url = _construct_url(
             accountId,
             region,
