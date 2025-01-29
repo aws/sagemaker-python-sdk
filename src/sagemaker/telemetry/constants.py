@@ -79,4 +79,3 @@ class Region(str, Enum):
     EU_SOUTH_2 = "eu-south-2"  # ZAZ
     IL_CENTRAL_1 = "il-central-1"  # TLV
     ME_CENTRAL_1 = "me-central-1"  # DXB
-
