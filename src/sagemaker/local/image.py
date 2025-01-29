@@ -476,7 +476,12 @@ class _SageMakerContainer(object):
         """
         config_path = os.path.join(self.container_root, host, "config")
 
-        resource_config = {"current_host": host, "hosts": self.hosts}
+        resource_config = {
+            "current_host": host,
+            "hosts": self.hosts,
+            "network_interface_name": "eth0",
+            "current_instance_type": self.instance_type,
+        }
         _write_json_file(os.path.join(config_path, "resourceconfig.json"), resource_config)
 
         processing_job_config = {
@@ -522,7 +527,12 @@ class _SageMakerContainer(object):
         """
         config_path = os.path.join(self.container_root, host, "input", "config")
 
-        resource_config = {"current_host": host, "hosts": self.hosts}
+        resource_config = {
+            "current_host": host,
+            "hosts": self.hosts,
+            "network_interface_name": "eth0",
+            "current_instance_type": self.instance_type,
+        }
 
         json_input_data_config = {}
         for c in input_data_config:
