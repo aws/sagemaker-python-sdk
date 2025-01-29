@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.238.0 (2025-01-29)
+
+### Features
+
+ * use jumpstart deployment config image as default optimization image
+
+### Bug Fixes and Other Changes
+
+ * chore: add new images for HF TGI
+ * update image_uri_configs  01-29-2025 06:18:08 PST
+ * skip TF tests for unsupported versions
+ * Merge branch 'master-rba' into local_merge
+ * Add missing attributes to local resourceconfig
+ * update image_uri_configs  01-27-2025 06:18:13 PST
+ * update image_uri_configs  01-24-2025 06:18:11 PST
+ * add missing schema definition in docs
+ * Omegaconf upgrade
+ * SageMaker @remote function: Added multi-node functionality
+ * remove option
+ * fix typo
+ * fix tests
+ * Add an option for user to remove inputs and container artifacts when using local model trainer
+
 ## v2.237.3 (2025-01-09)
 
 ### Bug Fixes and Other Changes
