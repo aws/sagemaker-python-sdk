@@ -197,7 +197,7 @@ def _send_telemetry_request(
             try:
                 Region(region)
             except ValueError:
-                logger.debug(
+                logger.warning(
                     "Region not found in supported regions. Telemetry request will not be emitted."
                 )
                 return
