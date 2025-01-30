@@ -208,7 +208,8 @@ def remote(
           files are accepted and uploaded to S3.
 
         instance_count (int): The number of instances to use. Defaults to 1.
-          NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
+          NOTE: Remote function supports instance_count > 1 for Spark jobs, torchrun and
+          mpirun utilities
 
         instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
           the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
@@ -657,7 +658,8 @@ class RemoteExecutor(object):
               files are accepted and uploaded to S3.
 
             instance_count (int): The number of instances to use. Defaults to 1.
-              NOTE: Remote function does not support instance_count > 1 for non Spark jobs.
+              NOTE: Remote function supports instance_count > 1 for Spark jobs, torchrun and
+              mpirun utilities
 
             instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
               the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
