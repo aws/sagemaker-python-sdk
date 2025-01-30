@@ -190,19 +190,16 @@ def _send_telemetry_request(
     """Make GET request to an empty object in S3 bucket"""
     try:
         accountId = _get_accountId(session) if session else "NotAvailable"
+        region = _get_region_or_default(session)
 
-        # Validate region if session exists
-        if session:
-            region = _get_region_or_default(session)
-            try:
-                Region(region)
-            except ValueError:
-                logger.warning(
-                    "Region not found in supported regions. Telemetry request will not be emitted."
-                )
-                return
-        else:  # telemetry will be sent to us-west-2 if no session available
-            region = DEFAULT_AWS_REGION
+        try:
+            Region(region)  # Validate the region
+        except ValueError:
+            logger.warning(
+                "Region not found in supported regions. Telemetry request will not be emitted."
+            )
+            return
+
         url = _construct_url(
             accountId,
             region,
@@ -280,6 +277,7 @@ def _get_region_or_default(session):
 
 def _get_default_sagemaker_session():
     """Return the default sagemaker session"""
+
     boto_session = boto3.Session(region_name=DEFAULT_AWS_REGION)
     sagemaker_session = Session(boto_session=boto_session)
 
