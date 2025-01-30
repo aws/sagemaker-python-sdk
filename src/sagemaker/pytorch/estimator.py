@@ -104,7 +104,7 @@ def _get_training_recipe_gpu_script(code_dir, recipe, source_dir):
         raise ValueError("Supplied recipe does not contain required field model_type.")
     model_type = recipe["model"]["model_type"]
 
-    for key in model_type_to_script.keys():
+    for key in model_type_to_script:
         if model_type.startswith(key):
             model_type = key
             break

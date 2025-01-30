@@ -135,7 +135,7 @@ def _get_trainining_recipe_gpu_model_name_and_script(model_type: str):
         "deepseek": ("deepseek", "deepseek_pretrain.py"),
     }
 
-    for key in model_type_to_script.keys():
+    for key in model_type_to_script:
         if model_type.startswith(key):
             model_type = key
             break
