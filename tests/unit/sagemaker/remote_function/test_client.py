@@ -1505,6 +1505,7 @@ def test_consistency_between_remote_and_step_decorator():
         "s3_root_uri",
         "sagemaker_session",
         "use_torchrun",
+        "use_mpirun",
         "nproc_per_node",
     ]
 
