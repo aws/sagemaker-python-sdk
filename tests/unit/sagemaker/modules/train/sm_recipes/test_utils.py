@@ -26,6 +26,7 @@ from sagemaker.modules.train.sm_recipes.utils import (
     _load_recipes_cfg,
     _configure_gpu_args,
     _configure_trainium_args,
+    _get_trainining_recipe_gpu_model_name_and_script,
 )
 from sagemaker.modules.utils import _run_clone_command_silent
 from sagemaker.modules.configs import Compute
@@ -178,3 +179,37 @@ def test_get_args_from_recipe_compute(
             assert mock_gpu_args.call_count == 0
             assert mock_trainium_args.call_count == 0
             assert args is None
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            {
+                "model_type": "llama_v3",
+                "script": "llama_pretrain.py",
+                "model_base_name": "llama_v3",
+            },
+            {
+                "model_type": "mistral",
+                "script": "mistral_pretrain.py",
+                "model_base_name": "mistral",
+            },
+            {
+                "model_type": "deepseek_llamav3",
+                "script": "deepseek_pretrain.py",
+                "model_base_name": "deepseek",
+            },
+            {
+                "model_type": "deepseek_qwenv2",
+                "script": "deepseek_pretrain.py",
+                "model_base_name": "deepseek",
+            },
+        ],
+    )
+    def test_get_trainining_recipe_gpu_model_name_and_script(test_case):
+        model_type = test_case["model_type"]
+        script = test_case["script"]
+        model_base_name, script = _get_trainining_recipe_gpu_model_name_and_script(
+            model_type, script
+        )
+        assert model_base_name == test_case["model_base_name"]
+        assert script == test_case["script"]
