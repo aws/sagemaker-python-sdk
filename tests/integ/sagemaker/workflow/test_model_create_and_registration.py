@@ -26,7 +26,6 @@ import re
 import pytest
 
 from packaging.version import Version
-from packaging.specifiers import SpecifierSet
 
 from sagemaker.model_card.model_card import ModelCard, ModelOverview, ModelPackageModelCard
 from sagemaker.model_card.schema_constraints import ModelCardStatusEnum
@@ -1422,7 +1421,7 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
     pipeline_name,
     region_name,
 ):
-    if Version(tf_full_version) in SpecifierSet("==2.16.*"):
+    if Version(tf_full_version) >= Version("2.16"):
         pytest.skip(
             "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
             "https://github.com/tensorflow/io/issues/2039"

@@ -22,7 +22,7 @@ import pathlib
 import shutil
 import subprocess
 import sys
-from typing import Dict, Any
+from typing import Any, Dict
 
 if __package__ is None or __package__ == "":
     from runtime_environment_manager import (
@@ -271,6 +271,8 @@ def _parse_args(sys_args):
     parser.add_argument("--pipeline_execution_id", type=str)
     parser.add_argument("--dependency_settings", type=str)
     parser.add_argument("--func_step_s3_dir", type=str)
+    parser.add_argument("--distribution", type=str, default=None)
+    parser.add_argument("--user_nproc_per_node", type=str, default=None)
     args, _ = parser.parse_known_args(sys_args)
     return args
 
@@ -401,6 +403,8 @@ def safe_serialize(data):
 
 def set_env(
     resource_config: Dict[str, Any],
+    distribution: str = None,
+    user_nproc_per_node: bool = None,
     output_file: str = ENV_OUTPUT_FILE,
 ):
     """Set environment variables for the training job container.
@@ -442,12 +446,15 @@ def set_env(
     # Misc.
     env_vars["SM_RESOURCE_CONFIG"] = resource_config
 
-    if int(env_vars["SM_NUM_GPUS"]) > 0:
-        env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_GPUS"])
-    elif int(env_vars["SM_NUM_NEURONS"]) > 0:
-        env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_NEURONS"])
+    if user_nproc_per_node is not None and int(user_nproc_per_node) > 0:
+        env_vars["SM_NPROC_PER_NODE"] = int(user_nproc_per_node)
     else:
-        env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_CPUS"])
+        if int(env_vars["SM_NUM_GPUS"]) > 0:
+            env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_GPUS"])
+        elif int(env_vars["SM_NUM_NEURONS"]) > 0:
+            env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_NEURONS"])
+        else:
+            env_vars["SM_NPROC_PER_NODE"] = int(env_vars["SM_NUM_CPUS"])
 
     # All Training Environment Variables
     env_vars["SM_TRAINING_ENV"] = {
@@ -471,18 +478,45 @@ def set_env(
         "resource_config": env_vars["SM_RESOURCE_CONFIG"],
     }
 
-    instance_type = env_vars["SM_CURRENT_INSTANCE_TYPE"]
-    network_interface_name = env_vars.get("SM_NETWORK_INTERFACE_NAME", "eth0")
+    if distribution and distribution == "torchrun":
+        logger.info("Distribution: torchrun")
 
-    if instance_type in SM_EFA_NCCL_INSTANCES:
-        # Enable EFA use
-        env_vars["FI_PROVIDER"] = "efa"
-    if instance_type in SM_EFA_RDMA_INSTANCES:
-        # Use EFA's RDMA functionality for one-sided and two-sided transfer
-        env_vars["FI_EFA_USE_DEVICE_RDMA"] = "1"
-        env_vars["RDMAV_FORK_SAFE"] = "1"
-    env_vars["NCCL_SOCKET_IFNAME"] = str(network_interface_name)
-    env_vars["NCCL_PROTO"] = "simple"
+        instance_type = env_vars["SM_CURRENT_INSTANCE_TYPE"]
+        network_interface_name = env_vars.get("SM_NETWORK_INTERFACE_NAME", "eth0")
+
+        if instance_type in SM_EFA_NCCL_INSTANCES:
+            # Enable EFA use
+            env_vars["FI_PROVIDER"] = "efa"
+        if instance_type in SM_EFA_RDMA_INSTANCES:
+            # Use EFA's RDMA functionality for one-sided and two-sided transfer
+            env_vars["FI_EFA_USE_DEVICE_RDMA"] = "1"
+            env_vars["RDMAV_FORK_SAFE"] = "1"
+        env_vars["NCCL_SOCKET_IFNAME"] = str(network_interface_name)
+        env_vars["NCCL_PROTO"] = "simple"
+    elif distribution and distribution == "mpirun":
+        logger.info("Distribution: mpirun")
+
+        env_vars["MASTER_ADDR"] = env_vars["SM_MASTER_ADDR"]
+        env_vars["MASTER_PORT"] = str(env_vars["SM_MASTER_PORT"])
+
+        host_list = [
+            "{}:{}".format(host, int(env_vars["SM_NPROC_PER_NODE"])) for host in sorted_hosts
+        ]
+        env_vars["SM_HOSTS_LIST"] = ",".join(host_list)
+
+        instance_type = env_vars["SM_CURRENT_INSTANCE_TYPE"]
+
+        if instance_type in SM_EFA_NCCL_INSTANCES:
+            env_vars["SM_FI_PROVIDER"] = "-x FI_PROVIDER=efa"
+            env_vars["SM_NCCL_PROTO"] = "-x NCCL_PROTO=simple"
+        else:
+            env_vars["SM_FI_PROVIDER"] = ""
+            env_vars["SM_NCCL_PROTO"] = ""
+
+        if instance_type in SM_EFA_RDMA_INSTANCES:
+            env_vars["SM_FI_EFA_USE_DEVICE_RDMA"] = "-x FI_EFA_USE_DEVICE_RDMA=1"
+        else:
+            env_vars["SM_FI_EFA_USE_DEVICE_RDMA"] = ""
 
     with open(output_file, "w") as f:
         for key, value in env_vars.items():
@@ -499,12 +533,19 @@ def main(sys_args=None):
 
     try:
         args = _parse_args(sys_args)
+
+        logger.info("Arguments:")
+        for arg in vars(args):
+            logger.info("%s=%s", arg, getattr(args, arg))
+
         client_python_version = args.client_python_version
         client_sagemaker_pysdk_version = args.client_sagemaker_pysdk_version
         job_conda_env = args.job_conda_env
         pipeline_execution_id = args.pipeline_execution_id
         dependency_settings = _DependencySettings.from_string(args.dependency_settings)
         func_step_workspace = args.func_step_s3_dir
+        distribution = args.distribution
+        user_nproc_per_node = args.user_nproc_per_node
 
         conda_env = job_conda_env or os.getenv("SAGEMAKER_JOB_CONDA_ENV")
 
@@ -539,7 +580,11 @@ def main(sys_args=None):
                 logger.info("Found %s", RESOURCE_CONFIG)
                 with open(RESOURCE_CONFIG, "r") as f:
                     resource_config = json.load(f)
-                set_env(resource_config=resource_config)
+                set_env(
+                    resource_config=resource_config,
+                    distribution=distribution,
+                    user_nproc_per_node=user_nproc_per_node,
+                )
             except (json.JSONDecodeError, FileNotFoundError) as e:
                 # Optionally, you might want to log this error
                 logger.info("ERROR: Error processing %s: %s", RESOURCE_CONFIG, str(e))

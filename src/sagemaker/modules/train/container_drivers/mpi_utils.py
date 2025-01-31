@@ -14,12 +14,12 @@
 from __future__ import absolute_import
 
 import os
-import time
 import subprocess
-
+import time
 from typing import List
 
-from utils import logger, SM_EFA_NCCL_INSTANCES, SM_EFA_RDMA_INSTANCES, get_python_executable
+import paramiko
+from utils import SM_EFA_NCCL_INSTANCES, SM_EFA_RDMA_INSTANCES, get_python_executable, logger
 
 FINISHED_STATUS_FILE = "/tmp/done.algo-1"
 READY_FILE = "/tmp/ready.%s"
@@ -75,19 +75,45 @@ def start_sshd_daemon():
     logger.info("Started SSH daemon.")
 
 
+class CustomHostKeyPolicy(paramiko.client.MissingHostKeyPolicy):
+    """Class to handle host key policy for SageMaker distributed training SSH connections.
+
+    Example:
+    >>> client = paramiko.SSHClient()
+    >>> client.set_missing_host_key_policy(CustomHostKeyPolicy())
+    >>> # Will succeed for SageMaker algorithm containers
+    >>> client.connect('algo-1234.internal')
+    >>> # Will raise SSHException for other unknown hosts
+    >>> client.connect('unknown-host')  # raises SSHException
+    """
+
+    def missing_host_key(self, client, hostname, key):
+        """Accept host keys for algo-* hostnames, reject others.
+
+        Args:
+            client: The SSHClient instance
+            hostname: The hostname attempting to connect
+            key: The host key
+
+        Raises:
+            paramiko.SSHException: If hostname doesn't match algo-* pattern
+        """
+        if hostname.startswith("algo-"):
+            client.get_host_keys().add(hostname, key.get_name(), key)
+            return
+        raise paramiko.SSHException(f"Unknown host key for {hostname}")
+
+
 def _can_connect(host: str, port: int = DEFAULT_SSH_PORT) -> bool:
     """Check if the connection to the provided host and port is possible."""
     try:
-        import paramiko
-
         logger.debug("Testing connection to host %s", host)
-        client = paramiko.SSHClient()
-        client.load_system_host_keys()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(host, port=port)
-        client.close()
-        logger.info("Can connect to host %s", host)
-        return True
+        with paramiko.SSHClient() as client:
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(CustomHostKeyPolicy())
+            client.connect(host, port=port)
+            logger.info("Can connect to host %s", host)
+            return True
     except Exception as e:  # pylint: disable=W0703
         logger.info("Cannot connect to host %s", host)
         logger.debug(f"Connection failed with exception: {e}")
@@ -183,9 +209,9 @@ def validate_smddpmprun() -> bool:
 
 def write_env_vars_to_file():
     """Write environment variables to /etc/environment file."""
-    with open("/etc/environment", "a") as f:
+    with open("/etc/environment", "a", encoding="utf-8") as f:
         for name in os.environ:
-            f.write("{}={}\n".format(name, os.environ.get(name)))
+            f.write(f"{name}={os.environ.get(name)}\n")
 
 
 def get_mpirun_command(

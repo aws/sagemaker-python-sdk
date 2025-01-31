@@ -19,7 +19,6 @@ import time
 import pytest
 
 from packaging.version import Version
-from packaging.specifiers import SpecifierSet
 
 from sagemaker import KMeans, s3, get_execution_role
 from sagemaker.mxnet import MXNet
@@ -556,7 +555,7 @@ def test_transform_mxnet_logs(
 def test_transform_tf_kms_network_isolation(
     sagemaker_session, cpu_instance_type, tmpdir, tf_full_version, tf_full_py_version
 ):
-    if Version(tf_full_version) in SpecifierSet("==2.16.*"):
+    if Version(tf_full_version) >= Version("2.16"):
         pytest.skip(
             "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
             "https://github.com/tensorflow/io/issues/2039"

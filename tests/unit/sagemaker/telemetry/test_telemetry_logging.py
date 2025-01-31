@@ -300,3 +300,39 @@ class TestTelemetryLogging(unittest.TestCase):
         assert "Must setup local AWS configuration with a region supported by SageMaker." in str(
             context.exception
         )
+
+    @patch("sagemaker.telemetry.telemetry_logging._get_accountId")
+    @patch("sagemaker.telemetry.telemetry_logging._get_region_or_default")
+    def test_send_telemetry_request_valid_region(self, mock_get_region, mock_get_accountId):
+        """Test to verify telemetry request is sent when region is valid"""
+        mock_get_accountId.return_value = "testAccountId"
+        mock_session = MagicMock()
+
+        # Test with valid region
+        mock_get_region.return_value = "us-east-1"
+        with patch(
+            "sagemaker.telemetry.telemetry_logging._requests_helper"
+        ) as mock_requests_helper:
+            _send_telemetry_request(1, [1, 2], mock_session)
+            # Assert telemetry request was sent
+            mock_requests_helper.assert_called_once_with(
+                "https://sm-pysdk-t-us-east-1.s3.us-east-1.amazonaws.com/telemetry?"
+                "x-accountId=testAccountId&x-status=1&x-feature=1,2",
+                2,
+            )
+
+    @patch("sagemaker.telemetry.telemetry_logging._get_accountId")
+    @patch("sagemaker.telemetry.telemetry_logging._get_region_or_default")
+    def test_send_telemetry_request_invalid_region(self, mock_get_region, mock_get_accountId):
+        """Test to verify telemetry request is not sent when region is invalid"""
+        mock_get_accountId.return_value = "testAccountId"
+        mock_session = MagicMock()
+
+        # Test with invalid region
+        mock_get_region.return_value = "invalid-region"
+        with patch(
+            "sagemaker.telemetry.telemetry_logging._requests_helper"
+        ) as mock_requests_helper:
+            _send_telemetry_request(1, [1, 2], mock_session)
+            # Assert telemetry request was not sent
+            mock_requests_helper.assert_not_called()
