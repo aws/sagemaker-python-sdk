@@ -289,3 +289,4 @@ def test_sklearn_local_model_train_inference():
     assert type(test_preds) == np.ndarray, f"predictions are not in a np.ndarray format: {test_preds}"
     assert type(test_y) == np.ndarray, f"Y ground truth are not in a np.ndarray format: {test_y}"
     assert type(test_mse) == float, f"MSE is not a number: {test_mse}"
+
