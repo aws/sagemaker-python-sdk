@@ -344,6 +344,12 @@ class _SageMakerContainer(object):
             volumes = self._prepare_serving_volumes(model_dir)
         else:
             volumes = None
+            # if model_data is None, then force create ../sagemaker-local under 
+            # contianer root
+            os.makedirs(
+                os.path.join(self.container_root, self.hosts[0]), 
+                exist_ok=True
+            )
 
         # If the user script was passed as a file:// mount it to the container.
         if sagemaker.estimator.DIR_PARAM_NAME.upper() in environment:
