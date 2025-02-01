@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.239.0 (2025-02-01)
+
+### Features
+
+ * Add support for deepseek recipes
+
+### Bug Fixes and Other Changes
+
+ * mpirun protocol - distributed training with @remote decorator
+ * Allow telemetry only in supported regions
+ * Fix ssh host policy
+
 ## v2.238.0 (2025-01-29)
 
 ### Features
