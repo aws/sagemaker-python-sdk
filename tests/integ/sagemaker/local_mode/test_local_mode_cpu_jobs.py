@@ -92,12 +92,9 @@ Local Model: ProcessingJob
 def test_scikit_learn_local_processing():
     """
     Test local mode processing with a scikit-learn processor.
-    This uses the same logic as scikit_learn_local_processing.py but in a pytest test function.
-
-    Requirements/Assumptions:
-      - Docker must be installed and running on the local machine.
-      - 'processing_script.py' must be in the current working directory (or specify the correct path).
-      - There should be some local input data if 'processing_script.py' needs it (see ProcessingInput below).
+    This uses the same logic as scikit_learn_local_processing.py but in 
+    a pytest test function. This test deploys the model locally via Docker, 
+    and asserts that the output is received.
     """
     ensure_docker_compose_installed()
     
@@ -154,9 +151,9 @@ Local Model: Inference
 @pytest.mark.local
 def test_pytorch_local_model_inference():
     """
-    Test local mode inference for a TensorFlow NLP model using PyTorch. 
+    Test local mode inference with NLP model using PyTorch. 
     This test deploys the model locally via Docker, performs an inference 
-    on a sample image URL, and asserts that the output is received.
+    on a sample dataset, and asserts that the output is received.
     """
     ensure_docker_compose_installed()
 
@@ -247,6 +244,11 @@ Local Model: TrainingJob and Inference
 """
 @pytest.mark.local
 def test_sklearn_local_model_train_inference():
+    """
+    Test local mode training and inference with sagemaker SKLearn. 
+    This test runs the model locally via Docker, performs an inference with 
+    sample dataset, and asserts that the output is received.
+    """
 
     download_training_and_eval_data()
     
