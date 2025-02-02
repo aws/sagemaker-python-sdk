@@ -2143,6 +2143,14 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
 def test_has_instance_rate_stat(stats, expected):
     assert utils.has_instance_rate_stat(stats) is expected
 
+def test_get_latest_version():
+    assert utils.get_latest_version(["2.9.1", "2.16.0", "1.0.0"]) == "2.16.0"
+
+def test_get_latest_version_empty_list_is_none():
+    assert utils.get_latest_version([]) == None
+
+def test_get_latest_version_none_is_none():
+    assert utils.get_latest_version(None) == None
 
 @pytest.mark.parametrize(
     "data, expected",
