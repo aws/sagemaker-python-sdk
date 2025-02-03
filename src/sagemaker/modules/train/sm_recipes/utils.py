@@ -125,6 +125,27 @@ def _register_custom_resolvers():
         OmegaConf.register_new_resolver("add", lambda *numbers: sum(numbers))
 
 
+def _get_trainining_recipe_gpu_model_name_and_script(model_type: str):
+    """Get the model base name and script for the training recipe."""
+
+    model_type_to_script = {
+        "llama_v3": ("llama", "llama_pretrain.py"),
+        "mistral": ("mistral", "mistral_pretrain.py"),
+        "mixtral": ("mixtral", "mixtral_pretrain.py"),
+        "deepseek": ("deepseek", "deepseek_pretrain.py"),
+    }
+
+    for key in model_type_to_script:
+        if model_type.startswith(key):
+            model_type = key
+            break
+
+    if model_type not in model_type_to_script:
+        raise ValueError(f"Model type {model_type} not supported")
+
+    return model_type_to_script[model_type][0], model_type_to_script[model_type][1]
+
+
 def _configure_gpu_args(
     training_recipes_cfg: Dict[str, Any],
     region_name: str,
@@ -140,24 +161,16 @@ def _configure_gpu_args(
     )
     _run_clone_command_silent(adapter_repo, recipe_train_dir.name)
 
-    model_type_to_entry = {
-        "llama_v3": ("llama", "llama_pretrain.py"),
-        "mistral": ("mistral", "mistral_pretrain.py"),
-        "mixtral": ("mixtral", "mixtral_pretrain.py"),
-    }
-
     if "model" not in recipe:
         raise ValueError("Supplied recipe does not contain required field model.")
     if "model_type" not in recipe["model"]:
         raise ValueError("Supplied recipe does not contain required field model_type.")
     model_type = recipe["model"]["model_type"]
-    if model_type not in model_type_to_entry:
-        raise ValueError(f"Model type {model_type} not supported")
 
-    source_code.source_dir = os.path.join(
-        recipe_train_dir.name, "examples", model_type_to_entry[model_type][0]
-    )
-    source_code.entry_script = model_type_to_entry[model_type][1]
+    model_base_name, script = _get_trainining_recipe_gpu_model_name_and_script(model_type)
+
+    source_code.source_dir = os.path.join(recipe_train_dir.name, "examples", model_base_name)
+    source_code.entry_script = script
 
     gpu_image_cfg = training_recipes_cfg.get("gpu_image")
     if isinstance(gpu_image_cfg, str):
