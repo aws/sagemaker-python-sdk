@@ -1142,12 +1142,12 @@ def _test_data_quality_monitor_update_schedule(data_quality_monitor, sagemaker_s
     sagemaker_session.sagemaker_client.describe_data_quality_job_definition = MagicMock()
     sagemaker_session.sagemaker_client.create_data_quality_job_definition = MagicMock()
 
-    # Test updating monitoring schedule with schedule_cron_expression set to NOW 
+    # Test updating monitoring schedule with schedule_cron_expression set to NOW
     sagemaker_session.sagemaker_client.update_monitoring_schedule = Mock()
     data_quality_monitor.update_monitoring_schedule(
         data_analysis_start_time="-PT24H",
         data_analysis_end_time="-PT0H",
-        schedule_cron_expression=CRON_NOW
+        schedule_cron_expression=CRON_NOW,
     )
 
     sagemaker_session.sagemaker_client.update_monitoring_schedule.assert_called_once_with(
@@ -1159,7 +1159,7 @@ def _test_data_quality_monitor_update_schedule(data_quality_monitor, sagemaker_s
                 "ScheduleExpression": CRON_NOW,
                 "DataAnalysisStartTime": "-PT24H",
                 "DataAnalysisEndTime": "-PT0H",
-            }
+            },
         },
     )
 
