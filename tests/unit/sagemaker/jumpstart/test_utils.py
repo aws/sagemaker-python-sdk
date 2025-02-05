@@ -2152,6 +2152,9 @@ def test_get_latest_version_empty_list_is_none():
 def test_get_latest_version_none_is_none():
     assert utils.get_latest_version(None) == None
 
+def test_get_latest_version_with_invalid_sem_ver():
+    assert utils.get_latest_version(["2.9.1", "2.16.0", "1.0.0", "abc"]) == "abc"
+
 @pytest.mark.parametrize(
     "data, expected",
     [(None, []), ([], []), (get_base_deployment_configs_metadata(), get_base_deployment_configs())],

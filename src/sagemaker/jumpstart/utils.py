@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
 import botocore
 from sagemaker_core.shapes import ModelAccessConfig
 import sagemaker
@@ -1632,5 +1632,6 @@ def get_draft_model_content_bucket(provider: Dict, region: str) -> str:
     return neo_bucket
 
 def get_latest_version(versions: List[str]) -> Optional[str]:
-    return None if not versions else max(versions, key=Version)
-
+    try: return None if not versions else max(versions, key=Version)
+    except InvalidVersion as e:
+        return max(versions)
