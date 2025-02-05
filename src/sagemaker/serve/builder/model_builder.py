@@ -1621,7 +1621,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """
         if not hasattr(self, "built_model"):
             raise ValueError("Model Needs to be built before deploying")
-        endpoint_name = unique_name_from_base(endpoint_name)
         if not inference_config:  # Real-time Deployment
             return self.built_model.deploy(
                 instance_type=self.instance_type,
@@ -1655,6 +1654,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             # Multi Model and MultiContainer endpoints with Inference Component
             return self.built_model.deploy(
                 instance_type=self.instance_type,
+                endpoint_name=endpoint_name,
                 mode=Mode.SAGEMAKER_ENDPOINT,
                 endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
                 resources=inference_config,
