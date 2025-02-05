@@ -71,7 +71,6 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.utils import (
     add_hub_content_arn_tags,
     add_jumpstart_model_info_tags,
-    get_eula_message,
     get_default_jumpstart_session_with_user_agent_suffix,
     get_top_ranked_config_name,
     update_dict_if_key_not_present,
@@ -265,6 +264,7 @@ def get_fit_kwargs(
     tolerate_deprecated_model: Optional[bool] = None,
     sagemaker_session: Optional[Session] = None,
     config_name: Optional[str] = None,
+    hub_access_config: Optional[Dict] = None,
 ) -> JumpStartEstimatorFitKwargs:
     """Returns kwargs required call `fit` on `sagemaker.estimator.Estimator` object."""
 
@@ -301,8 +301,30 @@ def get_fit_kwargs(
     estimator_fit_kwargs = _add_region_to_kwargs(estimator_fit_kwargs)
     estimator_fit_kwargs = _add_training_job_name_to_kwargs(estimator_fit_kwargs)
     estimator_fit_kwargs = _add_fit_extra_kwargs(estimator_fit_kwargs)
+    estimator_fit_kwargs = _add_hub_access_config_to_kwargs_inputs(
+        estimator_fit_kwargs, hub_access_config
+    )
 
     return estimator_fit_kwargs
+
+
+def _add_hub_access_config_to_kwargs_inputs(
+    kwargs: JumpStartEstimatorFitKwargs, hub_access_config=None
+):
+    """Adds HubAccessConfig to kwargs inputs"""
+
+    if isinstance(kwargs.inputs, str):
+        kwargs.inputs = TrainingInput(s3_data=kwargs.inputs, hub_access_config=hub_access_config)
+    elif isinstance(kwargs.inputs, TrainingInput):
+        kwargs.inputs.add_hub_access_config(hub_access_config=hub_access_config)
+    elif isinstance(kwargs.inputs, dict):
+        for k, v in kwargs.inputs.items():
+            if isinstance(v, str):
+                kwargs.inputs[k] = TrainingInput(s3_data=v, hub_access_config=hub_access_config)
+            elif isinstance(kwargs.inputs, TrainingInput):
+                kwargs.inputs[k].add_hub_access_config(hub_access_config=hub_access_config)
+
+    return kwargs
 
 
 def get_deploy_kwargs(
@@ -667,18 +689,6 @@ def _add_env_to_kwargs(
             key,
             value,
         )
-
-    environment = getattr(kwargs, "environment", {}) or {}
-    if (
-        environment.get(SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY)
-        and str(environment.get("accept_eula", "")).lower() != "true"
-    ):
-        model_specs = kwargs.specs
-        if model_specs.is_gated_model():
-            raise ValueError(
-                "Need to define ‘accept_eula'='true' within Environment. "
-                f"{get_eula_message(model_specs, kwargs.region)}"
-            )
 
     return kwargs
 

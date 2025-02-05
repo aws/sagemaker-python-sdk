@@ -65,6 +65,7 @@ class _Job(object):
     @staticmethod
     def _load_config(inputs, estimator, expand_role=True, validate_uri=True):
         """Placeholder docstring"""
+        model_access_config, hub_access_config = _Job._get_access_configs(estimator)
         input_config = _Job._format_inputs_to_input_config(inputs, validate_uri)
         role = (
             estimator.sagemaker_session.expand_role(estimator.role)
@@ -95,14 +96,20 @@ class _Job(object):
             validate_uri,
             content_type="application/x-sagemaker-model",
             input_mode="File",
+            model_access_config=model_access_config,
+            hub_access_config=hub_access_config,
         )
         if model_channel:
             input_config = [] if input_config is None else input_config
             input_config.append(model_channel)
 
-        if estimator.enable_network_isolation():
+        # Don't create code channel when access configs are used
+        if estimator.enable_network_isolation() and hub_access_config is None:
             code_channel = _Job._prepare_channel(
-                input_config, estimator.code_uri, estimator.code_channel_name, validate_uri
+                input_config,
+                estimator.code_uri,
+                estimator.code_channel_name,
+                validate_uri,
             )
 
             if code_channel:
@@ -117,6 +124,23 @@ class _Job(object):
             "stop_condition": stop_condition,
             "vpc_config": vpc_config,
         }
+
+    @staticmethod
+    def _get_access_configs(estimator):
+        """Return access configs from estimator object.
+
+        JumpStartEstimator uses access configs which need to be added to the model channel,
+        so they are passed down to the job level.
+
+        Args:
+            estimator (EstimatorBase): estimator object with access config field if applicable
+        """
+        model_access_config, hub_access_config = None, None
+        if hasattr(estimator, "model_access_config"):
+            model_access_config = estimator.model_access_config
+        if hasattr(estimator, "hub_access_config"):
+            hub_access_config = estimator.hub_access_config
+        return model_access_config, hub_access_config
 
     @staticmethod
     def _format_inputs_to_input_config(inputs, validate_uri=True):
@@ -173,6 +197,8 @@ class _Job(object):
         input_mode=None,
         compression=None,
         target_attribute_name=None,
+        model_access_config=None,
+        hub_access_config=None,
     ):
         """Placeholder docstring"""
         s3_input_result = TrainingInput(
@@ -181,6 +207,8 @@ class _Job(object):
             input_mode=input_mode,
             compression=compression,
             target_attribute_name=target_attribute_name,
+            model_access_config=model_access_config,
+            hub_access_config=hub_access_config,
         )
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
             return s3_input_result
@@ -193,7 +221,11 @@ class _Job(object):
             )
         if isinstance(uri_input, str):
             return s3_input_result
-        if isinstance(uri_input, (TrainingInput, file_input, FileSystemInput)):
+        if isinstance(uri_input, (file_input, FileSystemInput)):
+            return uri_input
+        if isinstance(uri_input, TrainingInput):
+            uri_input.add_hub_access_config(hub_access_config=hub_access_config)
+            uri_input.add_model_access_config(model_access_config=model_access_config)
             return uri_input
         if is_pipeline_variable(uri_input):
             return s3_input_result
@@ -211,6 +243,8 @@ class _Job(object):
         validate_uri=True,
         content_type=None,
         input_mode=None,
+        model_access_config=None,
+        hub_access_config=None,
     ):
         """Placeholder docstring"""
         if not channel_uri:
@@ -226,7 +260,12 @@ class _Job(object):
                     raise ValueError("Duplicate channel {} not allowed.".format(channel_name))
 
         channel_input = _Job._format_string_uri_input(
-            channel_uri, validate_uri, content_type, input_mode
+            channel_uri,
+            validate_uri,
+            content_type,
+            input_mode,
+            model_access_config=model_access_config,
+            hub_access_config=hub_access_config,
         )
         channel = _Job._convert_input_to_channel(channel_name, channel_input)
 

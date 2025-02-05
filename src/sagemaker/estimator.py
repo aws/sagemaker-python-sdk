@@ -2550,7 +2550,6 @@ class _TrainingJob(_Job):
                 raise ValueError(
                     "File URIs are supported in local mode only. Please use a S3 URI instead."
                 )
-
         config = _Job._load_config(inputs, estimator)
 
         current_hyperparameters = estimator.hyperparameters()

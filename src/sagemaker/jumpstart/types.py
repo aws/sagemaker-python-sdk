@@ -619,6 +619,19 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             instance_type=instance_type, property_name="artifact_key"
         )
 
+    def get_instance_specific_training_artifact_key(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific training artifact key.
+
+        Returns None if a model, instance type tuple does not have specific
+        training artifact key.
+        """
+
+        return self._get_instance_specific_property(
+            instance_type=instance_type, property_name="training_artifact_uri"
+        ) or self._get_instance_specific_property(
+            instance_type=instance_type, property_name="training_artifact_key"
+        )
+
     def get_instance_specific_resource_requirements(self, instance_type: str) -> Optional[str]:
         """Returns instance specific resource requirements.
 
