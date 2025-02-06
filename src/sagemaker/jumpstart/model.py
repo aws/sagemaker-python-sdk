@@ -178,7 +178,7 @@ class JumpStartModel(Model):
             source_dir (Optional[str]): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
                 point file (Default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory is preserved
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
