@@ -1631,7 +1631,9 @@ def get_draft_model_content_bucket(provider: Dict, region: str) -> str:
         return get_jumpstart_content_bucket(region=region)
     return neo_bucket
 
+
 def get_latest_version(versions: List[str]) -> Optional[str]:
-    try: return None if not versions else max(versions, key=Version)
+    try:
+        return None if not versions else max(versions, key=Version)
     except InvalidVersion as e:
         return max(versions)
