@@ -6502,7 +6502,7 @@
 
 ### Documentation changes
 
- * add mandatory sagemaker_role argument to Local mode example. 
+ * add mandatory sagemaker_role argument to Local mode example.
 
 ## v1.18.6 (2019-03-20)
 
