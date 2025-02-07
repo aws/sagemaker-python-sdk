@@ -110,8 +110,7 @@ class JumpStartModelsCache:
             sagemaker_session: sagemaker session object to use.
                 Default: session object from default region us-west-2.
         """
-        # if sagemaker_session is None:
-        #     sagemaker_session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+
         self._region = region or utils.get_region_fallback(
             s3_bucket_name=s3_bucket_name, s3_client=s3_client
         )
