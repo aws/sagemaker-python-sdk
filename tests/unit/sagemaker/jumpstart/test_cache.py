@@ -1127,7 +1127,7 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
 
 @patch.object(JumpStartModelsCache, "_retrieval_function")
 def test_jumpstart_cache_handles_versioning_correctly_for_open_source_weights(
-    retrieval_function: Mock
+    retrieval_function: Mock,
 ):
     sm_version = Version(utils.get_sagemaker_version())
     new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
@@ -1138,7 +1138,7 @@ def test_jumpstart_cache_handles_versioning_correctly_for_open_source_weights(
             "model_id": "test-model",
             "version": version,
             "min_version": "2.49.0",
-            "spec_key": "spec_key"
+            "spec_key": "spec_key",
         }
         for version in versions
     ]
@@ -1148,7 +1148,7 @@ def test_jumpstart_cache_handles_versioning_correctly_for_open_source_weights(
             "model_id": "test-model",
             "version": "3.0.0",
             "min_version": str(new_sm_version),
-            "spec_key": "spec_key"
+            "spec_key": "spec_key",
         }
     )
 
@@ -1158,9 +1158,7 @@ def test_jumpstart_cache_handles_versioning_correctly_for_open_source_weights(
         manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
             header_obj
         )
-    retrieval_function.return_value = JumpStartCachedContentValue(
-        formatted_content=manifest_dict
-    )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
     key = JumpStartVersionedModelId("test-model", "*")
 
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
@@ -1173,7 +1171,7 @@ def test_jumpstart_cache_handles_versioning_correctly_for_open_source_weights(
 
 @patch.object(JumpStartModelsCache, "_retrieval_function")
 def test_jumpstart_cache_handles_versioning_correctly_for_proprietary_weights(
-    retrieval_function: Mock
+    retrieval_function: Mock,
 ):
     sm_version = Version(utils.get_sagemaker_version())
     new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
@@ -1184,7 +1182,7 @@ def test_jumpstart_cache_handles_versioning_correctly_for_proprietary_weights(
             "model_id": "test-model",
             "version": version,
             "min_version": "2.49.0",
-            "spec_key": "spec_key"
+            "spec_key": "spec_key",
         }
         for version in versions
     ]
@@ -1194,7 +1192,7 @@ def test_jumpstart_cache_handles_versioning_correctly_for_proprietary_weights(
             "model_id": "test-model",
             "version": "3.0.0",
             "min_version": str(new_sm_version),
-            "spec_key": "spec_key"
+            "spec_key": "spec_key",
         }
     )
 
@@ -1204,9 +1202,7 @@ def test_jumpstart_cache_handles_versioning_correctly_for_proprietary_weights(
         manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
             header_obj
         )
-    retrieval_function.return_value = JumpStartCachedContentValue(
-        formatted_content=manifest_dict
-    )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
     key = JumpStartVersionedModelId("test-model", "*")
 
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
@@ -1218,9 +1214,7 @@ def test_jumpstart_cache_handles_versioning_correctly_for_proprietary_weights(
 
 
 @patch.object(JumpStartModelsCache, "_retrieval_function")
-def test_jumpstart_cache_handles_versioning_correctly_non_sem_ver(
-    retrieval_function: Mock
-):
+def test_jumpstart_cache_handles_versioning_correctly_non_sem_ver(retrieval_function: Mock):
     sm_version = Version(utils.get_sagemaker_version())
     new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
     print(str(new_sm_version))
@@ -1230,7 +1224,7 @@ def test_jumpstart_cache_handles_versioning_correctly_non_sem_ver(
             "model_id": "test-model",
             "version": version,
             "min_version": "2.49.0",
-            "spec_key": "spec_key"
+            "spec_key": "spec_key",
         }
         for version in versions
     ]
@@ -1241,9 +1235,7 @@ def test_jumpstart_cache_handles_versioning_correctly_non_sem_ver(
         manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
             header_obj
         )
-    retrieval_function.return_value = JumpStartCachedContentValue(
-        formatted_content=manifest_dict
-    )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
     key = JumpStartVersionedModelId("test-model", "*")
 
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
