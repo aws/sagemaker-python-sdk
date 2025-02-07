@@ -14,7 +14,10 @@ from __future__ import absolute_import
 
 from unittest.mock import patch, Mock
 from sagemaker.jumpstart.types import HubArnExtractedInfo
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_DEFAULT_REGION_NAME, 
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+)
 from sagemaker.jumpstart.hub import parser_utils, utils
 
 
@@ -77,6 +80,17 @@ def test_construct_hub_arn_from_name():
             hub_name=hub_name, region="us-east-1", session=mock_sagemaker_session
         )
         == "arn:aws:sagemaker:us-east-1:123456789123:hub/my-cool-hub"
+    )
+
+
+def test_construct_hub_arn_from_name_with_session_none():
+    hub_name = "my-cool-hub"
+    account_id = DEFAULT_JUMPSTART_SAGEMAKER_SESSION.account_id()
+    boto_region_name = DEFAULT_JUMPSTART_SAGEMAKER_SESSION.boto_region_name
+
+    assert (
+        utils.construct_hub_arn_from_name(hub_name=hub_name, session=None)
+        == f"arn:aws:sagemaker:{boto_region_name}:{account_id}:hub/{hub_name}"
     )
 
 
