@@ -15,8 +15,8 @@ from __future__ import absolute_import
 from unittest.mock import patch, Mock
 from sagemaker.jumpstart.types import HubArnExtractedInfo
 from sagemaker.jumpstart.constants import (
-    JUMPSTART_DEFAULT_REGION_NAME, 
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    JUMPSTART_DEFAULT_REGION_NAME,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.hub import parser_utils, utils
 
