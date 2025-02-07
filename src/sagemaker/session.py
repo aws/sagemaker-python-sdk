@@ -5286,7 +5286,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 resource_tag_response = self.resource_group_tagging_client.get_resources(
                     TagFilters=tag_filters,
                     ResourceTypeFilters=resource_type_filters,
-                    NextToken=next_token,
+                    PaginationToken=next_token,
                 )
                 resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
                 next_token = resource_tag_response.get("PaginationToken")
