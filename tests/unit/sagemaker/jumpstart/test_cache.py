@@ -54,7 +54,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_PROPRIETARY_SPEC,
     BASE_PROPRIETARY_MANIFEST,
 )
-from sagemaker.jumpstart.utils import get_formatted_manifest, get_jumpstart_content_bucket
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 
 @patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
