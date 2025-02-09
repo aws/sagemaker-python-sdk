@@ -1633,9 +1633,7 @@ def get_draft_model_content_bucket(provider: Dict, region: str) -> str:
 
 
 def get_latest_version(versions: List[str]) -> Optional[str]:
-    """Returns the latest version using sem-ver.
-    falls-back to string ordering when not using sem-ver.
-    """
+    """Returns the latest version using sem-ver. Falls-back to string ordering when not using sem-ver."""
     try:
         return None if not versions else max(versions, key=Version)
     except InvalidVersion:
