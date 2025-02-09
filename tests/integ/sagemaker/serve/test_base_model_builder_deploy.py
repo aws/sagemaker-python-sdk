@@ -45,30 +45,37 @@ from tests.integ.utils import cleanup_model_resources
 @pytest.fixture(autouse=True)
 def cleanup_endpoints(mb_sagemaker_session) -> Generator[None, None, None]:
     """Clean up any existing endpoints before and after tests."""
+    sagemaker_client = mb_sagemaker_session.sagemaker_client
+
     # Pre-test cleanup
-    endpoints = mb_sagemaker_session.list_endpoints()
-    for endpoint in endpoints["Endpoints"]:
-        try:
-            mb_sagemaker_session.delete_endpoint(endpoint_name=endpoint["EndpointName"])
-            mb_sagemaker_session.delete_endpoint_config(
-                endpoint_config_name=endpoint["EndpointConfigName"]
-            )
-        except Exception as e:
-            print(f"Error cleaning up endpoint {endpoint['EndpointName']}: {e}")
+    try:
+        endpoints = sagemaker_client.list_endpoints()
+        for endpoint in endpoints["Endpoints"]:
+            try:
+                sagemaker_client.delete_endpoint(EndpointName=endpoint["EndpointName"])
+                sagemaker_client.delete_endpoint_config(
+                    EndpointConfigName=endpoint["EndpointConfigName"]
+                )
+            except Exception as e:
+                print(f"Error cleaning up endpoint {endpoint['EndpointName']}: {e}")
+    except Exception as e:
+        print(f"Error listing endpoints: {e}")
 
     yield
 
-    # Post-test cleanup - this is technically redundant with the existing cleanup_model_resources
-    # but serves as a safety net
-    endpoints = mb_sagemaker_session.list_endpoints()
-    for endpoint in endpoints["Endpoints"]:
-        try:
-            mb_sagemaker_session.delete_endpoint(endpoint_name=endpoint["EndpointName"])
-            mb_sagemaker_session.delete_endpoint_config(
-                endpoint_config_name=endpoint["EndpointConfigName"]
-            )
-        except Exception as e:
-            print(f"Error cleaning up endpoint {endpoint['EndpointName']}: {e}")
+    # Post-test cleanup
+    try:
+        endpoints = sagemaker_client.list_endpoints()
+        for endpoint in endpoints["Endpoints"]:
+            try:
+                sagemaker_client.delete_endpoint(EndpointName=endpoint["EndpointName"])
+                sagemaker_client.delete_endpoint_config(
+                    EndpointConfigName=endpoint["EndpointConfigName"]
+                )
+            except Exception as e:
+                print(f"Error cleaning up endpoint {endpoint['EndpointName']}: {e}")
+    except Exception as e:
+        print(f"Error listing endpoints: {e}")
 
 
 @pytest.fixture(scope="module")
