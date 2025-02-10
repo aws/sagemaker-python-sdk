@@ -262,7 +262,7 @@ class JumpStartModelsCache:
             return JumpStartVersionedModelId(model_id, sm_compatible_model_version)
 
         versions_incompatible_with_sagemaker = [
-            Version(header.version)
+            header.version
             for header in manifest.values()  # type: ignore
             if header.model_id == model_id
         ]
@@ -540,9 +540,7 @@ class JumpStartModelsCache:
         """
 
         if version_str == "*":
-            if len(available_versions) == 0:
-                return None
-            return str(max(available_versions))
+            return utils.get_latest_version(available_versions)
 
         if model_type == JumpStartModelType.PROPRIETARY:
             if "*" in version_str:
