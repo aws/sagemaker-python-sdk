@@ -252,7 +252,7 @@ def validate_source_code_input_against_pipeline_variables(
         logger.warning(
             "The source_dir is a pipeline variable: %s. During pipeline execution, "
             "the interpreted value of source_dir has to be an S3 URI and "
-            "must point to a tar.gz file",
+            "must point to a file with name ``sourcedir.tar.gz``",
             type(source_dir),
         )
 
