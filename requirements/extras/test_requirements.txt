@@ -33,7 +33,7 @@ pillow>=10.0.1,<=11
 opentelemetry-proto==1.27.0
 protobuf==4.25.5
 tensorboard>=2.9.0,<=2.15.2
-transformers==4.46.1
+transformers==4.48.0
 sentencepiece==0.1.99
 # https://github.com/triton-inference-server/server/issues/6246
 tritonclient[http]<2.37.0
