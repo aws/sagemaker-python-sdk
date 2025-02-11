@@ -22,7 +22,10 @@ import botocore
 from mock.mock import MagicMock
 import pytest
 from mock import patch
+from packaging.version import Version
 
+
+from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.cache import (
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY,
@@ -34,6 +37,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
 )
 from sagemaker.jumpstart.types import (
+    JumpStartCachedContentValue,
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
@@ -1139,3 +1143,124 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
             ),
         ]
     )
+
+
+@patch.object(JumpStartModelsCache, "_retrieval_function")
+def test_jumpstart_cache_handles_versioning_correctly_for_open_source_weights(
+    retrieval_function: Mock,
+):
+    sm_version = Version(utils.get_sagemaker_version())
+    new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
+    print(str(new_sm_version))
+    versions = ["1.0.0", "2.9.1", "2.16.0"]
+    manifest = [
+        {
+            "model_id": "test-model",
+            "version": version,
+            "min_version": "2.49.0",
+            "spec_key": "spec_key",
+        }
+        for version in versions
+    ]
+
+    manifest.append(
+        {
+            "model_id": "test-model",
+            "version": "3.0.0",
+            "min_version": str(new_sm_version),
+            "spec_key": "spec_key",
+        }
+    )
+
+    manifest_dict = {}
+    for header in manifest:
+        header_obj = JumpStartModelHeader(header)
+        manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
+            header_obj
+        )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
+    key = JumpStartVersionedModelId("test-model", "*")
+
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    result = cache._get_open_weight_manifest_key_from_model_id(key=key, value=None)
+
+    assert_key = JumpStartVersionedModelId("test-model", "2.16.0")
+
+    assert result == assert_key
+
+
+@patch.object(JumpStartModelsCache, "_retrieval_function")
+def test_jumpstart_cache_handles_versioning_correctly_for_proprietary_weights(
+    retrieval_function: Mock,
+):
+    sm_version = Version(utils.get_sagemaker_version())
+    new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
+    print(str(new_sm_version))
+    versions = ["1.0.0", "2.9.1", "2.16.0"]
+    manifest = [
+        {
+            "model_id": "test-model",
+            "version": version,
+            "min_version": "2.49.0",
+            "spec_key": "spec_key",
+        }
+        for version in versions
+    ]
+
+    manifest.append(
+        {
+            "model_id": "test-model",
+            "version": "3.0.0",
+            "min_version": str(new_sm_version),
+            "spec_key": "spec_key",
+        }
+    )
+
+    manifest_dict = {}
+    for header in manifest:
+        header_obj = JumpStartModelHeader(header)
+        manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
+            header_obj
+        )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
+    key = JumpStartVersionedModelId("test-model", "*")
+
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    result = cache._get_proprietary_manifest_key_from_model_id(key=key, value=None)
+
+    assert_key = JumpStartVersionedModelId("test-model", "2.16.0")
+
+    assert result == assert_key
+
+
+@patch.object(JumpStartModelsCache, "_retrieval_function")
+def test_jumpstart_cache_handles_versioning_correctly_non_sem_ver(retrieval_function: Mock):
+    sm_version = Version(utils.get_sagemaker_version())
+    new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
+    print(str(new_sm_version))
+    versions = ["abc", "2.9.1", "2.16.0"]
+    manifest = [
+        {
+            "model_id": "test-model",
+            "version": version,
+            "min_version": "2.49.0",
+            "spec_key": "spec_key",
+        }
+        for version in versions
+    ]
+
+    manifest_dict = {}
+    for header in manifest:
+        header_obj = JumpStartModelHeader(header)
+        manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
+            header_obj
+        )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
+    key = JumpStartVersionedModelId("test-model", "*")
+
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    result = cache._get_open_weight_manifest_key_from_model_id(key=key, value=None)
+
+    assert_key = JumpStartVersionedModelId("test-model", "abc")
+
+    assert result == assert_key

@@ -2144,6 +2144,22 @@ def test_has_instance_rate_stat(stats, expected):
     assert utils.has_instance_rate_stat(stats) is expected
 
 
+def test_get_latest_version():
+    assert utils.get_latest_version(["2.9.1", "2.16.0", "1.0.0"]) == "2.16.0"
+
+
+def test_get_latest_version_empty_list_is_none():
+    assert utils.get_latest_version([]) is None
+
+
+def test_get_latest_version_none_is_none():
+    assert utils.get_latest_version(None) is None
+
+
+def test_get_latest_version_with_invalid_sem_ver():
+    assert utils.get_latest_version(["2.9.1", "2.16.0", "1.0.0", "abc"]) == "abc"
+
+
 @pytest.mark.parametrize(
     "data, expected",
     [(None, []), ([], []), (get_base_deployment_configs_metadata(), get_base_deployment_configs())],
