@@ -246,7 +246,7 @@ Training with parameter servers
 
 If you specify parameter_server as the value of the distribution parameter, the container launches a parameter server
 thread on each instance in the training cluster, and then executes your training code. You can find more information on
-TensorFlow distributed training at `TensorFlow docs <https://www.tensorflow.org/deploy/distributed>`__.
+TensorFlow distributed training at `TensorFlow docs <https://www.tensorflow.org/guide/distributed_training>`__.
 To enable parameter server training:
 
 .. code:: python
