@@ -113,8 +113,8 @@ class XGBoostModel(FrameworkModel):
                 (default: 'py3').
             framework_version (str): XGBoost version you want to use for executing your model
                 training code.
-            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function to call to create
-                a predictor with an endpoint name and SageMaker ``Session``.
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function to call
+                to create a predictor with an endpoint name and SageMaker ``Session``.
                 If specified, ``deploy()`` returns the result of invoking this function on the
                 created endpoint name.
             model_server_workers (int or PipelineVariable): Optional. The number of worker processes

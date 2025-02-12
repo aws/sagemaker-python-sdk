@@ -97,10 +97,10 @@ class DJLModel(Model):
                 None. If not provided, the default is 240 seconds.
             prediction_timeout (int): The worker predict call (handler) timeout in seconds.
                 Defaults to None. If not provided, the default is 120 seconds.
-            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function to call to create a
-                predictor with an endpoint name and SageMaker ``Session``. If specified,
-                ``deploy()`` returns
-                the result of invoking this function on the created endpoint name.
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function to call
+                to create a predictor with an endpoint name and SageMaker ``Session``. If
+                specified, ``deploy()`` returns the result of invoking this function on the created
+                endpoint name.
             huggingface_hub_token (str): The HuggingFace Hub token to use for downloading the model
                 artifacts for a model stored on the huggingface hub.
                 Defaults to None. If not provided, the token must be specified in the
