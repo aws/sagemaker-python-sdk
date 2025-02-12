@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Callable, Optional, Dict, Any
 
 from sagemaker import image_uris
 from sagemaker.model import Model
@@ -54,7 +54,7 @@ class DJLModel(Model):
         parallel_loading: bool = False,
         model_loading_timeout: Optional[int] = None,
         prediction_timeout: Optional[int] = None,
-        predictor_cls: callable = DJLPredictor,
+        predictor_cls: Optional[Callable] = DJLPredictor,
         huggingface_hub_token: Optional[str] = None,
         **kwargs,
     ):
@@ -97,7 +97,7 @@ class DJLModel(Model):
                 None. If not provided, the default is 240 seconds.
             prediction_timeout (int): The worker predict call (handler) timeout in seconds.
                 Defaults to None. If not provided, the default is 120 seconds.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function to call to create a
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function to call to create a
                 predictor with an endpoint name and SageMaker ``Session``. If specified,
                 ``deploy()`` returns
                 the result of invoking this function on the created endpoint name.
