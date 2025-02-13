@@ -20,7 +20,7 @@ import logging
 import os
 import re
 import copy
-from typing import List, Dict, Optional, Union, Any
+from typing import Callable, List, Dict, Optional, Union, Any
 
 import sagemaker
 from sagemaker import (
@@ -154,7 +154,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
@@ -186,7 +186,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 It can be null if this is being used to create a Model to pass
                 to a ``PipelineModel`` which has its own Role field. (default:
                 None)
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
@@ -1501,7 +1501,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     inference config or
                 - If inference recommendation id is specified along with incompatible parameters
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of
+            Callable[[string, sagemaker.session.Session], Any] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
@@ -1959,7 +1959,7 @@ class FrameworkModel(Model):
         role: Optional[str] = None,
         entry_point: Optional[str] = None,
         source_dir: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         name: Optional[str] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
@@ -2012,7 +2012,7 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='inference.py', source_dir='src'.
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
