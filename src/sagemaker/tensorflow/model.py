@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, s3, ModelMetrics
@@ -62,9 +62,9 @@ class TensorFlowPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            serializer (callable): Optional. Default serializes input data to
+            serializer (Callable): Optional. Default serializes input data to
                 json. Handles dicts, lists, and numpy arrays.
-            deserializer (callable): Optional. Default parses the response using
+            deserializer (Callable): Optional. Default parses the response using
                 ``json.load(...)``.
             model_name (str): Optional. The name of the SavedModel model that
                 should handle the request. If not specified, the endpoint's
@@ -146,7 +146,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         framework_version: Optional[str] = None,
         container_log_level: Optional[int] = None,
-        predictor_cls: callable = TensorFlowPredictor,
+        predictor_cls: Optional[Callable] = TensorFlowPredictor,
         **kwargs,
     ):
         """Initialize a Model.
@@ -174,7 +174,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             container_log_level (int): Log level to use within the container
                 (default: logging.ERROR). Valid values are defined in the Python
                 logging module.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.

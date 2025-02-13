@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional, Union, List, Dict
+from typing import Callable, Optional, Union, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
@@ -96,7 +96,7 @@ class ChainerModel(FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
-        predictor_cls: callable = ChainerPredictor,
+        predictor_cls: Optional[Callable] = ChainerPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs,
     ):
@@ -125,7 +125,7 @@ class ChainerModel(FrameworkModel):
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.

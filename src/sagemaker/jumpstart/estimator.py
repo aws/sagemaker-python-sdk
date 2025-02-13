@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 from sagemaker import session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -817,7 +817,7 @@ class JumpStartEstimator(Estimator):
         explainer_config: Optional[ExplainerConfig] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         model_name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
@@ -918,7 +918,7 @@ class JumpStartEstimator(Estimator):
                 It can be null if this is being used to create a Model to pass
                 to a ``PipelineModel`` which has its own Role field. (Default:
                 None).
-            predictor_cls (Optional[callable[string, sagemaker.session.Session]]): A
+            predictor_cls (Optional[Callable[[string, sagemaker.session.Session], Any]]): A
                 function to call to create a predictor (Default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name. (Default: None).
