@@ -324,7 +324,7 @@ The follow serializer/deserializer classes have been renamed and/or moved:
 +--------------------------------------------------------+-------------------------------------------------------+
 | ``sagemaker.predictor._NPYSerializer``                 | ``sagemaker.serializers.NumpySerializer``             |
 +--------------------------------------------------------+-------------------------------------------------------+
-| ``sagemaker.amazon.common.numpy_to_record_serializer`` | ``sagemaker.serializers.RecordSerializer``          |
+| ``sagemaker.amazon.common.numpy_to_record_serializer`` | ``sagemaker.serializers.RecordSerializer``            |
 +--------------------------------------------------------+-------------------------------------------------------+
 | ``sagemaker.amazon.common.record_deserializer``        | ``sagemaker.deserializers.RecordDeserializer``        |
 +--------------------------------------------------------+-------------------------------------------------------+
