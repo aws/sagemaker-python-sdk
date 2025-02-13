@@ -29,6 +29,7 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.cache import (
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JumpStartModelsCache,
 )
 from sagemaker.jumpstart.constants import (
@@ -55,6 +56,25 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_PROPRIETARY_MANIFEST,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+@patch("boto3.client")
+def test_jumpstart_cache_init(mock_boto3_client):
+    cache = JumpStartModelsCache()
+    assert cache._region == "dummy-region"
+    assert cache.s3_bucket_name == "dummy-bucket"
+    assert cache._manifest_file_s3_key == JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
+    assert cache._proprietary_manifest_s3_key == JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY
+    assert cache._sagemaker_session == DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    mock_boto3_client.assert_called_once_with("s3", region_name="dummy-region")
+
+    # Some callers override the session to None, should still be set to default
+    cache = JumpStartModelsCache(sagemaker_session=None)
+    assert cache._sagemaker_session == DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 
 @patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
