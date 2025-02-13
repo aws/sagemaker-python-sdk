@@ -150,7 +150,8 @@ class JumpStartModelsCache:
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
         )
-        self._sagemaker_session = sagemaker_session
+        # Fallback in case a caller overrides sagemaker_session to None
+        self._sagemaker_session = sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     def set_region(self, region: str) -> None:
         """Set region for cache. Clears cache after new region is set."""
