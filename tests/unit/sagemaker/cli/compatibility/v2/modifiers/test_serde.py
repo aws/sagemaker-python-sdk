@@ -34,8 +34,8 @@ from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import as
         ("sagemaker.predictor._NumpyDeserializer()", True),
         ("sagemaker.predictor._JsonDeserializer()", True),
         ("sagemaker.predictor.OtherClass()", False),
-        ("sagemaker.serializers.numpy_to_record_serializer()", True),
-        ("sagemaker.deserializers.record_deserializer()", True),
+        ("sagemaker.amazon.common.numpy_to_record_serializer()", True),
+        ("sagemaker.amazon.common.record_deserializer()", True),
         ("_CsvSerializer()", True),
         ("_JsonSerializer()", True),
         ("_NpySerializer()", True),
@@ -250,8 +250,8 @@ def test_import_from_predictor_modify_node(src, expected):
 @pytest.mark.parametrize(
     "import_statement, expected",
     [
-        ("from sagemaker.serializers import numpy_to_record_serializer", True),
-        ("from sagemaker.deserializers import record_deserializer", True),
+        ("from sagemaker.amazon.common import numpy_to_record_serializer", True),
+        ("from sagemaker.amazon.common import record_deserializer", True),
         ("from sagemaker.amazon.common import write_spmatrix_to_sparse_tensor", False),
     ],
 )
