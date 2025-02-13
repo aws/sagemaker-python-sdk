@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import re
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Union
 from sagemaker_core.shapes import ModelAccessConfig as CoreModelAccessConfig
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.utils import (
@@ -2150,7 +2150,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         image_uri: Optional[Union[str, Any]] = None,
         model_data: Optional[Union[str, Any, dict]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, Any]]] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, Any]]]] = None,
@@ -2698,7 +2698,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         explainer_config: Optional[Any] = None,
         image_uri: Optional[Union[str, Any]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, Any]]] = None,
         model_name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, Any]]]] = None,

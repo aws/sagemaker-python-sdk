@@ -726,7 +726,7 @@ def retry_with_backoff(callable_func, num_attempts=8, botocore_client_error_code
     """Retry with backoff until maximum attempts are reached
 
     Args:
-        callable_func (callable): The callable function to retry.
+        callable_func (Callable): The callable function to retry.
         num_attempts (int): The maximum number of attempts to retry.(Default: 8)
         botocore_client_error_code (str): The specific Botocore ClientError exception error code
             on which to retry on.
