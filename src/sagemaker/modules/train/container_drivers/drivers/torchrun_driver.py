@@ -69,7 +69,7 @@ def create_commands():
     distributed_config = json.loads(os.environ["SM_DISTRIBUTED_CONFIG"])
     hyperparameters = json.loads(os.environ["SM_HPS"])
 
-    process_count = int(distributed_config.get("process_count_per_node", 0))
+    process_count = int(distributed_config["process_count_per_node"] or 0)
     process_count = get_process_count(process_count)
     host_count = int(os.environ["SM_HOST_COUNT"])
 

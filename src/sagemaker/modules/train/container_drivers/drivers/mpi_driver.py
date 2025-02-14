@@ -77,7 +77,7 @@ def main():
 
         host_list = json.loads(os.environ["SM_HOSTS"])
         host_count = int(os.environ["SM_HOST_COUNT"])
-        process_count = int(distributed_config.get("process_count_per_node", 0))
+        process_count = int(distributed_config["process_count_per_node"] or 0)
         process_count = get_process_count(process_count)
 
         if process_count > 1:
@@ -87,7 +87,7 @@ def main():
             host_count=host_count,
             host_list=host_list,
             num_processes=process_count,
-            additional_options=distributed_config.get("mpi_additional_options", []),
+            additional_options=distributed_config["mpi_additional_options"] or [],
             entry_script_path=entry_script,
         )
 

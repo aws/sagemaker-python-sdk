@@ -776,7 +776,7 @@ class ModelTrainer(BaseModel):
         """Write the source code configuration to a JSON file."""
         file_path = os.path.join(tmp_dir.name, SOURCE_CODE_JSON)
         with open(file_path, "w") as f:
-            dump = source_code.model_dump(exclude_none=True) if source_code else {}
+            dump = source_code.model_dump() if source_code else {}
             f.write(json.dumps(dump))
 
     def _write_distributed_json(
@@ -787,7 +787,7 @@ class ModelTrainer(BaseModel):
         """Write the distributed runner configuration to a JSON file."""
         file_path = os.path.join(tmp_dir.name, DISTRIBUTED_JSON)
         with open(file_path, "w") as f:
-            dump = distributed.model_dump(exclude_none=True) if distributed else {}
+            dump = distributed.model_dump() if distributed else {}
             f.write(json.dumps(dump))
 
     def _prepare_train_script(

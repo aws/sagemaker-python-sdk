@@ -12,11 +12,13 @@
 # language governing permissions and limitations under the License.
 """Container Utils Unit Tests."""
 from __future__ import absolute_import
+import os
 
 from sagemaker.modules.train.container_drivers.common.utils import (
     safe_deserialize,
     safe_serialize,
     hyperparameters_to_cli_args,
+    get_process_count,
 )
 
 SM_HPS = {
@@ -119,3 +121,18 @@ def test_safe_serialize_empty_data():
     assert safe_serialize("") == ""
     assert safe_serialize([]) == "[]"
     assert safe_serialize({}) == "{}"
+
+
+def test_get_process_count():
+    assert get_process_count() == 1
+    assert get_process_count(2) == 2
+    os.environ["SM_NUM_GPUS"] = "4"
+    assert get_process_count() == 4
+    os.environ["SM_NUM_GPUS"] = "0"
+    os.environ["SM_NUM_NEURONS"] = "8"
+    assert get_process_count() == 8
+    os.environ["SM_NUM_NEURONS"] = "0"
+    assert get_process_count() == 1
+    del os.environ["SM_NUM_GPUS"]
+    del os.environ["SM_NUM_NEURONS"]
+    assert get_process_count() == 1

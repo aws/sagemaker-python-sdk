@@ -128,10 +128,20 @@ class Torchrun(DistributedConfig):
 
     @property
     def driver_dir(self) -> str:
+        """Directory containing the driver script.
+
+        Returns:
+            str: Path to directory containing the driver script
+        """
         return os.path.join(SM_DRIVERS_LOCAL_PATH, "drivers")
 
     @property
     def driver_script(self) -> str:
+        """Name of the driver script.
+
+        Returns:
+            str: Name of the driver script file
+        """
         return "torchrun_driver.py"
 
 
@@ -154,8 +164,18 @@ class MPI(DistributedConfig):
 
     @property
     def driver_dir(self) -> str:
+        """Directory containing the driver script.
+
+        Returns:
+            str: Path to directory containing the driver script
+        """
         return os.path.join(SM_DRIVERS_LOCAL_PATH, "drivers")
 
     @property
     def driver_script(self) -> str:
+        """Name of the driver script.
+
+        Returns:
+            str: Name of the driver script
+        """
         return "mpi_driver.py"
