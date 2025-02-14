@@ -205,7 +205,9 @@ class ModelTrainer(BaseModel):
             "LOCAL_CONTAINER" mode.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
+    )
 
     training_mode: Mode = Mode.SAGEMAKER_TRAINING_JOB
     sagemaker_session: Optional[Session] = None
@@ -363,9 +365,10 @@ class ModelTrainer(BaseModel):
 
     def __del__(self):
         """Destructor method to clean up the temporary directory."""
-        # Clean up the temporary directory if it exists
-        if self._temp_recipe_train_dir is not None:
-            self._temp_recipe_train_dir.cleanup()
+        # Clean up the temporary directory if it exists and class was initialized
+        if hasattr(self, "__pydantic_fields_set__"):
+            if self._temp_recipe_train_dir is not None:
+                self._temp_recipe_train_dir.cleanup()
 
     def _validate_training_image_and_algorithm_name(
         self, training_image: Optional[str], algorithm_name: Optional[str]

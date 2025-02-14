@@ -18,6 +18,7 @@ import tempfile
 import json
 import os
 import pytest
+from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY
 
 from sagemaker import image_uris
@@ -1068,3 +1069,27 @@ def test_safe_configs():
     # Test invalid type fails
     with pytest.raises(ValueError):
         SourceCode(entry_script=1)
+
+
+@patch("sagemaker.modules.train.model_trainer.TemporaryDirectory")
+def test_destructor_cleanup(mock_tmp_dir, modules_session):
+    
+    with pytest.raises(ValidationError):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute="test"
+        )
+    mock_tmp_dir.cleanup.assert_not_called()
+
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+    )
+    model_trainer._temp_recipe_train_dir = mock_tmp_dir
+    mock_tmp_dir.assert_not_called()
+    del model_trainer
+    mock_tmp_dir.cleanup.assert_called_once()
