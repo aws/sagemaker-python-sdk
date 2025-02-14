@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.239.1 (2025-02-14)
+
+### Bug Fixes and Other Changes
+
+ * keep sagemaker_session from being overridden to None
+ * Fix all type hint and docstrings for callable
+ * Fix the workshop link for Step Functions
+ * Fix Tensorflow doc link
+ * Fix FeatureGroup docstring
+ * Add type hint for ProcessingOutput
+ * Fix sourcedir.tar.gz filenames in docstrings
+ * Fix documentation for local mode
+ * bug in get latest version was getting the max sorted alphabetically
+ * Add cleanup logic to model builder integ tests for endpoints
+ * Fixed pagination failing while listing collections
+ * fix ValueError when updating a data quality monitoring schedule
+ * Add docstring for image_uris.retrieve
+ * Create GitHub action to trigger canaries
+ * update image_uri_configs  02-04-2025 06:18:00 PST
+
 ## v2.239.0 (2025-02-01)
 
 ### Features
