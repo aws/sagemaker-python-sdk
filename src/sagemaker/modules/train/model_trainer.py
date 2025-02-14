@@ -979,7 +979,7 @@ class ModelTrainer(BaseModel):
 
     def with_tensorboard_output_config(
         self, tensorboard_output_config: TensorBoardOutputConfig
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the TensorBoard output configuration.
 
         Example:
@@ -998,7 +998,6 @@ class ModelTrainer(BaseModel):
                 ...
             ).with_tensorboard_output_config(tensorboard_output_config)
 
-
         Args:
             tensorboard_output_config (sagemaker.modules.configs.TensorBoardOutputConfig):
                 The TensorBoard output configuration.
@@ -1006,7 +1005,7 @@ class ModelTrainer(BaseModel):
         self._tensorboard_output_config = tensorboard_output_config
         return self
 
-    def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":
+    def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":  # noqa: D412
         """Set the retry strategy for the training job.
 
         Example:
@@ -1031,7 +1030,9 @@ class ModelTrainer(BaseModel):
         self._retry_strategy = retry_strategy
         return self
 
-    def with_infra_check_config(self, infra_check_config: InfraCheckConfig) -> "ModelTrainer":
+    def with_infra_check_config(
+        self, infra_check_config: InfraCheckConfig
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the infra check configuration for the training job.
 
         Example:
@@ -1058,7 +1059,7 @@ class ModelTrainer(BaseModel):
 
     def with_session_chaining_config(
         self, session_chaining_config: SessionChainingConfig
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the session chaining configuration for the training job.
 
         Example:
@@ -1083,8 +1084,24 @@ class ModelTrainer(BaseModel):
         self._session_chaining_config = session_chaining_config
         return self
 
-    def with_remote_debug_config(self, remote_debug_config: RemoteDebugConfig) -> "ModelTrainer":
+    def with_remote_debug_config(
+        self, remote_debug_config: RemoteDebugConfig
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the remote debug configuration for the training job.
+
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import RemoteDebugConfig
+
+            remote_debug_config = RemoteDebugConfig(
+                enable_remote_debug=True,
+            )
+            model_trainer = ModelTrainer(
+                ...
+            ).with_remote_debug_config(remote_debug_config)
 
         Args:
             remote_debug_config (RemoteDebugConfig):
@@ -1093,7 +1110,9 @@ class ModelTrainer(BaseModel):
         self._remote_debug_config = remote_debug_config
         return self
 
-    def with_metric_definitions(self, metric_definitions: List[MetricDefinition]) -> "ModelTrainer":
+    def with_metric_definitions(
+        self, metric_definitions: List[MetricDefinition]
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the metric definitions for the training job.
 
         Example:
@@ -1106,7 +1125,7 @@ class ModelTrainer(BaseModel):
             metric_definitions = [
                 MetricDefinition(
                     name="loss",
-                    regex="Loss: (.*?);",
+                    regex="Loss: (.*?)",
                 )
             ]
 
