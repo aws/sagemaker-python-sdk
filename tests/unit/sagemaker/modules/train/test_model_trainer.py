@@ -504,21 +504,15 @@ def test_train_with_distributed_config(
         assert os.path.exists(expected_runner_json_path)
         with open(expected_runner_json_path, "r") as f:
             runner_json_content = f.read()
-            assert test_case["distributed"].model_dump() == (
-                json.loads(runner_json_content)
-            )
+            assert test_case["distributed"].model_dump() == (json.loads(runner_json_content))
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
-            assert test_case["source_code"].model_dump() == (
-                json.loads(source_code_json_content)
-            )
+            assert test_case["source_code"].model_dump() == (json.loads(source_code_json_content))
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
-            assert test_case["source_code"].model_dump() == (
-                json.loads(source_code_json_content)
-            )
+            assert test_case["source_code"].model_dump() == (json.loads(source_code_json_content))
     finally:
         shutil.rmtree(tmp_dir.name)
         assert not os.path.exists(tmp_dir.name)
