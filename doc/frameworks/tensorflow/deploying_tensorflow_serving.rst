@@ -64,7 +64,7 @@ If you already have existing model artifacts in S3, you can skip training and de
 
   from sagemaker.tensorflow import TensorFlowModel
 
-  model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole', framework_version='MyFrameworkVersion')
+  model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole', framework_version='x.x.x')
 
   predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge')
 
@@ -74,7 +74,7 @@ Python-based TensorFlow serving on SageMaker has support for `Elastic Inference 
 
     from sagemaker.tensorflow import TensorFlowModel
 
-    model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole', framework_version='MyFrameworkVersion')
+    model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole', framework_version='x.x.x')
 
     predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge', accelerator_type='ml.eia1.medium')
 

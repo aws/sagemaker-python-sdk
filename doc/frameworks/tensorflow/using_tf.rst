@@ -468,7 +468,7 @@ If you already have existing model artifacts in S3, you can skip training and de
 
   from sagemaker.tensorflow import TensorFlowModel
 
-  model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole', framework_version='MyFrameworkVersion')
+  model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole', framework_version='x.x.x')
 
   predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge')
 
@@ -478,7 +478,7 @@ Python-based TensorFlow serving on SageMaker has support for `Elastic Inference 
 
     from sagemaker.tensorflow import TensorFlowModel
 
-    model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole', framework_version='MyFrameworkVersion')
+    model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole', framework_version='x.x.x')
 
     predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge', accelerator_type='ml.eia1.medium')
 
@@ -768,7 +768,7 @@ This customized Python code must be named ``inference.py`` and is specified thro
     model = TensorFlowModel(entry_point='inference.py',
                             model_data='s3://mybucket/model.tar.gz',
                             role='MySageMakerRole',
-                            framework_version='MyFrameworkVersion')
+                            framework_version='x.x.x')
 
 In the example above, ``inference.py`` is assumed to be a file inside ``model.tar.gz``. If you want to use a local file instead, you must add the ``source_dir`` argument. See the documentation on `TensorFlowModel <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/sagemaker.tensorflow.html#sagemaker.tensorflow.model.TensorFlowModel>`_.
 
@@ -925,7 +925,7 @@ processing. There are 2 ways to do this:
                             dependencies=['requirements.txt'],
                             model_data='s3://mybucket/model.tar.gz',
                             role='MySageMakerRole',
-                            framework_version='MyFrameworkVersion')
+                            framework_version='x.x.x')
 
 
 2. If you are working in a network-isolation situation or if you don't
@@ -944,7 +944,7 @@ processing. There are 2 ways to do this:
                            dependencies=['/path/to/folder/named/lib'],
                            model_data='s3://mybucket/model.tar.gz',
                            role='MySageMakerRole',
-                           framework_version='MyFrameworkVersion')
+                           framework_version='x.x.x')
 
 For more information, see: https://github.com/aws/sagemaker-tensorflow-serving-container#prepost-processing
 
