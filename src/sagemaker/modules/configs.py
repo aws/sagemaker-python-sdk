@@ -22,7 +22,7 @@ For more documentation on ``sagemaker_core.shapes``, see:
 from __future__ import absolute_import
 
 from typing import Optional, Union
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, ConfigDict
 
 import sagemaker_core.shapes as shapes
 
@@ -93,6 +93,8 @@ class SourceCode(BaseModel):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
     """
+
+    model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
     source_dir: Optional[str] = None
     requirements: Optional[str] = None
@@ -214,6 +216,8 @@ class InputData(BaseModel):
             The data source for the channel. Can be an S3 URI string, local file path string,
             S3DataSource object, or FileSystemDataSource object.
     """
+
+    model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
     channel_name: str = None
     data_source: Union[str, FileSystemDataSource, S3DataSource] = None

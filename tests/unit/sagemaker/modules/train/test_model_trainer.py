@@ -438,7 +438,7 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
         {
             "source_code": DEFAULT_SOURCE_CODE,
             "distributed": MPI(
-                custom_mpi_options=["-x", "VAR1", "-x", "VAR2"],
+                mpi_additional_options=["-x", "VAR1", "-x", "VAR2"],
             ),
             "expected_template": EXECUTE_MPI_DRIVER,
             "expected_hyperparameters": {},
@@ -1059,3 +1059,12 @@ def test_model_trainer_local_full_init(
         hyper_parameters=hyperparameters,
         environment=environment,
     )
+
+
+def test_safe_configs():
+    # Test extra fails
+    with pytest.raises(ValueError):
+        SourceCode(entry_point="train.py")
+    # Test invalid type fails
+    with pytest.raises(ValueError):
+        SourceCode(entry_script=1)

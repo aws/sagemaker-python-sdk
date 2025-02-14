@@ -792,14 +792,14 @@ class ModelTrainer(BaseModel):
         """Prepare the training script to be executed in the training job container.
 
         Args:
-            source_code (SourceCodeConfig): The source code configuration.
+            source_code (SourceCode): The source code configuration.
         """
 
         base_command = ""
         if source_code.command:
             if source_code.entry_script:
                 logger.warning(
-                    "Both 'command' and 'entry_script' are provided in the SourceCodeConfig. "
+                    "Both 'command' and 'entry_script' are provided in the SourceCode. "
                     + "Defaulting to 'command'."
                 )
             base_command = source_code.command.split()
@@ -831,6 +831,10 @@ class ModelTrainer(BaseModel):
                     + "Only .py and .sh scripts are supported."
                 )
             execute_driver = EXECUTE_BASIC_SCRIPT_DRIVER
+        else:
+            raise ValueError(
+                f"Invalid configuration, please provide a valid SourceCode: {source_code}"
+            )
 
         train_script = TRAIN_SCRIPT_TEMPLATE.format(
             working_dir=working_dir,
