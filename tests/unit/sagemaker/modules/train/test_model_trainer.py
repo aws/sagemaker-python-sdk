@@ -1073,13 +1073,13 @@ def test_safe_configs():
 
 @patch("sagemaker.modules.train.model_trainer.TemporaryDirectory")
 def test_destructor_cleanup(mock_tmp_dir, modules_session):
-    
+
     with pytest.raises(ValidationError):
         model_trainer = ModelTrainer(
             training_image=DEFAULT_IMAGE,
             role=DEFAULT_ROLE,
             sagemaker_session=modules_session,
-            compute="test"
+            compute="test",
         )
     mock_tmp_dir.cleanup.assert_not_called()
 
