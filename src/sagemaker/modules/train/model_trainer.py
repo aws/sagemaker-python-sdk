@@ -67,6 +67,7 @@ from sagemaker.modules.configs import (
     TensorBoardOutputConfig,
     CheckpointConfig,
     InputData,
+    MetricDefinition,
 )
 
 from sagemaker.modules.local_core.local_container import _LocalContainer
@@ -237,6 +238,7 @@ class ModelTrainer(BaseModel):
     _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
     _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
     _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
+    _metric_definitions: Optional[List[MetricDefinition]] = PrivateAttr(default=None)
 
     _temp_recipe_train_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
 
@@ -587,6 +589,7 @@ class ModelTrainer(BaseModel):
             training_image_config=self.training_image_config,
             container_entrypoint=container_entrypoint,
             container_arguments=container_arguments,
+            metric_definitions=self._metric_definitions,
         )
 
         resource_config = self.compute._to_resource_config()
@@ -979,6 +982,23 @@ class ModelTrainer(BaseModel):
     ) -> "ModelTrainer":
         """Set the TensorBoard output configuration.
 
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import TensorBoardOutputConfig
+
+            tensorboard_output_config = TensorBoardOutputConfig(
+                s3_output_path="s3://bucket-name/tensorboard",
+                local_path="/opt/ml/output/tensorboard"
+            )
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_tensorboard_output_config(tensorboard_output_config)
+
+
         Args:
             tensorboard_output_config (sagemaker.modules.configs.TensorBoardOutputConfig):
                 The TensorBoard output configuration.
@@ -989,6 +1009,21 @@ class ModelTrainer(BaseModel):
     def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":
         """Set the retry strategy for the training job.
 
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import RetryStrategy
+
+            retry_strategy = RetryStrategy(
+                maximum_retry_attempts=3,
+            )
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_retry_strategy(retry_strategy)
+
         Args:
             retry_strategy (RetryStrategy):
                 The retry strategy for the training job.
@@ -998,6 +1033,21 @@ class ModelTrainer(BaseModel):
 
     def with_infra_check_config(self, infra_check_config: InfraCheckConfig) -> "ModelTrainer":
         """Set the infra check configuration for the training job.
+
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import InfraCheckConfig
+
+            infra_check_config = InfraCheckConfig(
+                enable_infra_check=True,
+            )
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_infra_check_config(infra_check_config)
 
         Args:
             infra_check_config (InfraCheckConfig):
@@ -1010,6 +1060,21 @@ class ModelTrainer(BaseModel):
         self, session_chaining_config: SessionChainingConfig
     ) -> "ModelTrainer":
         """Set the session chaining configuration for the training job.
+
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import SessionChainingConfig
+
+            session_chaining_config = SessionChainingConfig(
+                enable_session_tag_chaining=True,
+            )
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_session_chaining_config(session_chaining_config
 
         Args:
             session_chaining_config (SessionChainingConfig):
@@ -1026,4 +1091,32 @@ class ModelTrainer(BaseModel):
                 The remote debug configuration for the training job.
         """
         self._remote_debug_config = remote_debug_config
+        return self
+
+    def with_metric_definitions(self, metric_definitions: List[MetricDefinition]) -> "ModelTrainer":
+        """Set the metric definitions for the training job.
+
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import MetricDefinition
+
+            metric_definitions = [
+                MetricDefinition(
+                    name="loss",
+                    regex="Loss: (.*?);",
+                )
+            ]
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_metric_definitions(metric_definitions)
+
+        Args:
+            metric_definitions (List[MetricDefinition]):
+                The metric definitions for the training job.
+        """
+        self._metric_definitions = metric_definitions
         return self
