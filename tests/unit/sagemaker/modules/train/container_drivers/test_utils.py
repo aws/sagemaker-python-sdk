@@ -13,7 +13,7 @@
 """Container Utils Unit Tests."""
 from __future__ import absolute_import
 
-from sagemaker.modules.train.container_drivers.utils import (
+from sagemaker.modules.train.container_drivers.common.utils import (
     safe_deserialize,
     safe_serialize,
     hyperparameters_to_cli_args,

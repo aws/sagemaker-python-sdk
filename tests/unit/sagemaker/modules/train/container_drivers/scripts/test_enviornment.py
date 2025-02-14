@@ -21,12 +21,10 @@ from unittest.mock import patch
 
 from sagemaker.modules.train.container_drivers.scripts.environment import (
     set_env,
-    log_key_value,
     log_env_variables,
-    mask_sensitive_info,
     HIDDEN_VALUE,
 )
-from sagemaker.modules.train.container_drivers.utils import safe_serialize, safe_deserialize
+from sagemaker.modules.train.container_drivers.common.utils import safe_serialize, safe_deserialize
 
 RESOURCE_CONFIG = dict(
     current_host="algo-1",

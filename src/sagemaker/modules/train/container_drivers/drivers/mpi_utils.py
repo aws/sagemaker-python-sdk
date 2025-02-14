@@ -14,12 +14,22 @@
 from __future__ import absolute_import
 
 import os
+import sys
 import subprocess
 import time
+import paramiko
+
+from pathlib import Path
 from typing import List
 
-import paramiko
-from utils import SM_EFA_NCCL_INSTANCES, SM_EFA_RDMA_INSTANCES, get_python_executable, logger
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from common.utils import (  # noqa: E402
+    SM_EFA_NCCL_INSTANCES,
+    SM_EFA_RDMA_INSTANCES,
+    get_python_executable,
+    logger,
+)
 
 FINISHED_STATUS_FILE = "/tmp/done.algo-1"
 READY_FILE = "/tmp/ready.%s"

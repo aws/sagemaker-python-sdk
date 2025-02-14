@@ -13,16 +13,19 @@
 """This module is the entry point for the Basic Script Driver."""
 from __future__ import absolute_import
 
+import os
 import sys
+import json
 import shlex
 
+from pathlib import Path
 from typing import List
 
-from utils import (
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from common.utils import (  # noqa: E402
     logger,
     get_python_executable,
-    read_source_code_json,
-    read_hyperparameters_json,
     execute_commands,
     write_failure_file,
     hyperparameters_to_cli_args,
@@ -31,11 +34,10 @@ from utils import (
 
 def create_commands() -> List[str]:
     """Create the commands to execute."""
-    source_code = read_source_code_json()
-    hyperparameters = read_hyperparameters_json()
+    entry_script = os.environ["SM_ENTRY_SCRIPT"]
+    hyperparameters = json.loads(os.environ["SM_HPS"])
     python_executable = get_python_executable()
 
-    entry_script = source_code["entry_script"]
     args = hyperparameters_to_cli_args(hyperparameters)
     if entry_script.endswith(".py"):
         commands = [python_executable, entry_script]

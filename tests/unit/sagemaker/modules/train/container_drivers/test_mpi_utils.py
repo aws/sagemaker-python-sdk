@@ -27,7 +27,7 @@ mock_utils.SM_EFA_RDMA_INSTANCES = []
 mock_utils.get_python_executable = Mock(return_value="/usr/bin/python")
 
 with patch.dict("sys.modules", {"utils": mock_utils}):
-    from sagemaker.modules.train.container_drivers.mpi_utils import (
+    from sagemaker.modules.train.container_drivers.drivers.mpi_utils import (
         CustomHostKeyPolicy,
         _can_connect,
         write_status_file_to_workers,
@@ -65,7 +65,7 @@ def test_custom_host_key_policy_invalid_hostname():
 
 
 @patch("paramiko.SSHClient")
-@patch("sagemaker.modules.train.container_drivers.mpi_utils.logger")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_utils.logger")
 def test_can_connect_success(mock_logger, mock_ssh_client):
     """Test successful SSH connection."""
     mock_client = Mock()
@@ -81,7 +81,7 @@ def test_can_connect_success(mock_logger, mock_ssh_client):
 
 
 @patch("paramiko.SSHClient")
-@patch("sagemaker.modules.train.container_drivers.mpi_utils.logger")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_utils.logger")
 def test_can_connect_failure(mock_logger, mock_ssh_client):
     """Test SSH connection failure."""
     mock_client = Mock()
@@ -97,7 +97,7 @@ def test_can_connect_failure(mock_logger, mock_ssh_client):
 
 
 @patch("subprocess.run")
-@patch("sagemaker.modules.train.container_drivers.mpi_utils.logger")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_utils.logger")
 def test_write_status_file_to_workers_failure(mock_logger, mock_run):
     """Test failed status file writing to workers with retry timeout."""
     mock_run.side_effect = subprocess.CalledProcessError(1, "ssh")

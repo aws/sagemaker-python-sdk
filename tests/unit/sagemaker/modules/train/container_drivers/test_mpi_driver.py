@@ -15,13 +15,14 @@ from __future__ import absolute_import
 
 import os
 import sys
+import json
 
 from unittest.mock import patch, MagicMock
 
 sys.modules["utils"] = MagicMock()
 sys.modules["mpi_utils"] = MagicMock()
 
-from sagemaker.modules.train.container_drivers import mpi_driver  # noqa: E402
+from sagemaker.modules.train.container_drivers.drivers import mpi_driver  # noqa: E402
 
 
 DUMMY_MPI_COMMAND = [
@@ -40,12 +41,7 @@ DUMMY_MPI_COMMAND = [
     "script.py",
 ]
 
-DUMMY_SOURCE_CODE = {
-    "source_code": "source_code",
-    "entry_script": "script.py",
-}
 DUMMY_DISTRIBUTED = {
-    "_type": "mpi",
     "process_count_per_node": 2,
     "mpi_additional_options": [
         "--verbose",
@@ -62,17 +58,18 @@ DUMMY_DISTRIBUTED = {
         "SM_HOSTS": '["algo-1", "algo-2"]',
         "SM_MASTER_ADDR": "algo-1",
         "SM_HOST_COUNT": "2",
+        "SM_HPS": json.dumps({}),
+        "SM_DISTRIBUTED_CONFIG": json.dumps(DUMMY_DISTRIBUTED),
+        "SM_ENTRY_SCRIPT": "/opt/ml/input/data/code/script.py",
     },
 )
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.read_distributed_json")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.read_source_code_json")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.write_env_vars_to_file")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.start_sshd_daemon")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.bootstrap_master_node")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.bootstrap_worker_node")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.hyperparameters_to_cli_args")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.get_mpirun_command")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.execute_commands")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.write_env_vars_to_file")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.start_sshd_daemon")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.bootstrap_master_node")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.bootstrap_worker_node")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.hyperparameters_to_cli_args")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.get_mpirun_command")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.execute_commands")
 def test_mpi_driver_worker(
     mock_execute_commands,
     mock_get_mpirun_command,
@@ -81,12 +78,8 @@ def test_mpi_driver_worker(
     mock_bootstrap_master_node,
     mock_start_sshd_daemon,
     mock_write_env_vars_to_file,
-    mock_read_source_code_json,
-    mock_read_distributed_json,
 ):
     mock_hyperparameters_to_cli_args.return_value = []
-    mock_read_source_code_json.return_value = DUMMY_SOURCE_CODE
-    mock_read_distributed_json.return_value = DUMMY_DISTRIBUTED
 
     mpi_driver.main()
 
@@ -106,19 +99,20 @@ def test_mpi_driver_worker(
         "SM_HOSTS": '["algo-1", "algo-2"]',
         "SM_MASTER_ADDR": "algo-1",
         "SM_HOST_COUNT": "2",
+        "SM_HPS": json.dumps({}),
+        "SM_DISTRIBUTED_CONFIG": json.dumps(DUMMY_DISTRIBUTED),
+        "SM_ENTRY_SCRIPT": "script.py",
     },
 )
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.read_distributed_json")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.read_source_code_json")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.write_env_vars_to_file")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.start_sshd_daemon")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.bootstrap_master_node")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.bootstrap_worker_node")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.get_process_count")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.hyperparameters_to_cli_args")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.get_mpirun_command")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.execute_commands")
-@patch("sagemaker.modules.train.container_drivers.mpi_driver.write_status_file_to_workers")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.write_env_vars_to_file")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.start_sshd_daemon")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.bootstrap_master_node")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.bootstrap_worker_node")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.get_process_count")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.hyperparameters_to_cli_args")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.get_mpirun_command")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.execute_commands")
+@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.write_status_file_to_workers")
 def test_mpi_driver_master(
     mock_write_status_file_to_workers,
     mock_execute_commands,
@@ -129,12 +123,8 @@ def test_mpi_driver_master(
     mock_bootstrap_master_node,
     mock_start_sshd_daemon,
     mock_write_env_vars_to_file,
-    mock_read_source_code_config_json,
-    mock_read_distributed_json,
 ):
     mock_hyperparameters_to_cli_args.return_value = []
-    mock_read_source_code_config_json.return_value = DUMMY_SOURCE_CODE
-    mock_read_distributed_json.return_value = DUMMY_DISTRIBUTED
     mock_get_mpirun_command.return_value = DUMMY_MPI_COMMAND
     mock_get_process_count.return_value = 2
     mock_execute_commands.return_value = (0, "")

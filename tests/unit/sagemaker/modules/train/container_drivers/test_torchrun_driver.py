@@ -15,38 +15,36 @@ from __future__ import absolute_import
 
 import os
 import sys
+import json
 
 from unittest.mock import patch, MagicMock
 
 sys.modules["utils"] = MagicMock()
 
-from sagemaker.modules.train.container_drivers import torchrun_driver  # noqa: E402
+from sagemaker.modules.train.container_drivers.drivers import torchrun_driver  # noqa: E402
 
-DUMMY_SOURCE_CODE = {
-    "source_code": "source_code",
-    "entry_script": "script.py",
-}
-
-DUMMY_distributed = {"_type": "torchrun", "process_count_per_node": 2}
+DUMMY_DISTRIBUTED = {"process_count_per_node": 2}
 
 
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.get_python_executable",
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.get_python_executable",
     return_value="python3",
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.pytorch_version", return_value=(2, 0)
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.pytorch_version",
+    return_value=(2, 0),
 )
 def test_get_base_pytorch_command_torchrun(mock_pytorch_version, mock_get_python_executable):
     assert torchrun_driver.get_base_pytorch_command() == ["torchrun"]
 
 
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.get_python_executable",
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.get_python_executable",
     return_value="python3",
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.pytorch_version", return_value=(1, 8)
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.pytorch_version",
+    return_value=(1, 8),
 )
 def test_get_base_pytorch_command_torch_distributed_launch(
     mock_pytorch_version, mock_get_python_executable
@@ -62,38 +60,29 @@ def test_get_base_pytorch_command_torch_distributed_launch(
         "SM_CURRENT_INSTANCE_TYPE": "ml.p4d.24xlarge",
         "SM_NETWORK_INTERFACE_NAME": "eth0",
         "SM_HOST_COUNT": "1",
+        "SM_HPS": json.dumps({}),
+        "SM_DISTRIBUTED_CONFIG": json.dumps(DUMMY_DISTRIBUTED),
+        "SM_ENTRY_SCRIPT": "script.py",
     },
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.USER_CODE_PATH",
-    "/opt/ml/input/data/code",
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.get_process_count",
+    return_value=2,
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.get_process_count", return_value=2
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.pytorch_version",
+    return_value=(2, 0),
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.pytorch_version", return_value=(2, 0)
-)
-@patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.get_base_pytorch_command",
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.get_base_pytorch_command",
     return_value=["torchrun"],
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.read_source_code_json",
-    return_value=DUMMY_SOURCE_CODE,
-)
-@patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_json",
-    return_value=DUMMY_distributed,
-)
-@patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.hyperparameters_to_cli_args",
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.hyperparameters_to_cli_args",
     return_value=[],
 )
 def test_create_commands_single_node(
     mock_hyperparameters_to_cli_args,
-    mock_read_distributed_json,
-    mock_read_source_code_json,
     mock_get_base_pytorch_command,
     mock_pytorch_version,
     mock_get_process_count,
@@ -102,7 +91,7 @@ def test_create_commands_single_node(
         "torchrun",
         "--nnodes=1",
         "--nproc_per_node=2",
-        "/opt/ml/input/data/code/script.py",
+        "script.py",
     ]
 
     command = torchrun_driver.create_commands()
@@ -118,38 +107,29 @@ def test_create_commands_single_node(
         "SM_MASTER_ADDR": "algo-1",
         "SM_MASTER_PORT": "7777",
         "SM_CURRENT_HOST_RANK": "0",
+        "SM_HPS": json.dumps({}),
+        "SM_DISTRIBUTED_CONFIG": json.dumps(DUMMY_DISTRIBUTED),
+        "SM_ENTRY_SCRIPT": "script.py",
     },
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.USER_CODE_PATH",
-    "/opt/ml/input/data/code",
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.get_process_count",
+    return_value=2,
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.get_process_count", return_value=2
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.pytorch_version",
+    return_value=(2, 0),
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.pytorch_version", return_value=(2, 0)
-)
-@patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.get_base_pytorch_command",
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.get_base_pytorch_command",
     return_value=["torchrun"],
 )
 @patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.read_source_code_json",
-    return_value=DUMMY_SOURCE_CODE,
-)
-@patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.read_distributed_json",
-    return_value=DUMMY_distributed,
-)
-@patch(
-    "sagemaker.modules.train.container_drivers.torchrun_driver.hyperparameters_to_cli_args",
+    "sagemaker.modules.train.container_drivers.drivers.torchrun_driver.hyperparameters_to_cli_args",
     return_value=[],
 )
 def test_create_commands_multi_node(
     mock_hyperparameters_to_cli_args,
-    mock_read_distributed_json,
-    mock_read_source_code_json,
     mock_get_base_pytorch_command,
     mock_pytorch_version,
     mock_get_process_count,
@@ -161,7 +141,7 @@ def test_create_commands_multi_node(
         "--master_addr=algo-1",
         "--master_port=7777",
         "--node_rank=0",
-        "/opt/ml/input/data/code/script.py",
+        "script.py",
     ]
 
     command = torchrun_driver.create_commands()

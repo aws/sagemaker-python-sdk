@@ -70,7 +70,7 @@ from sagemaker.modules.configs import (
 )
 
 from sagemaker.modules.local_core.local_container import _LocalContainer
-from sagemaker.modules.distributed import Torchrun, MPI, DistributedConfig
+from sagemaker.modules.distributed import Torchrun, DistributedConfig
 from sagemaker.modules.utils import (
     _get_repo_name_from_image,
     _get_unique_name,
@@ -94,8 +94,7 @@ from sagemaker.modules.constants import (
 from sagemaker.modules.templates import (
     TRAIN_SCRIPT_TEMPLATE,
     EXECUTE_BASE_COMMANDS,
-    EXECUTE_MPI_DRIVER,
-    EXEUCTE_TORCHRUN_DRIVER,
+    EXEUCTE_DISTRIBUTED_DRIVER,
     EXECUTE_BASIC_SCRIPT_DRIVER,
 )
 from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
@@ -153,7 +152,7 @@ class ModelTrainer(BaseModel):
         source_code (Optional[SourceCode]):
             The source code configuration. This is used to configure the source code for
             running the training job.
-        distributed (Optional[Union[MPI, Torchrun]]):
+        distributed (Optional[Union[DistributedConfig]]):
             The distributed runner for the training job. This is used to configure
             a distributed training job. If specifed, ``source_code`` must also
             be provided.
@@ -214,7 +213,7 @@ class ModelTrainer(BaseModel):
     role: Optional[str] = None
     base_job_name: Optional[str] = None
     source_code: Optional[SourceCode] = None
-    distributed: Optional[Union[MPI, Torchrun]] = None
+    distributed: Optional[Union[DistributedConfig]] = None
     compute: Optional[Compute] = None
     networking: Optional[Networking] = None
     stopping_condition: Optional[StoppingCondition] = None
@@ -537,12 +536,17 @@ class ModelTrainer(BaseModel):
         container_arguments = None
         if self.source_code:
             if self.training_mode == Mode.LOCAL_CONTAINER:
-                drivers_dir = TemporaryDirectory(
-                    prefix=os.path.join(self.local_container_root + "/")
-                )
+                tmp_dir = TemporaryDirectory(prefix=os.path.join(self.local_container_root + "/"))
             else:
-                drivers_dir = TemporaryDirectory()
-            shutil.copytree(SM_DRIVERS_LOCAL_PATH, drivers_dir.name, dirs_exist_ok=True)
+                tmp_dir = TemporaryDirectory()
+            # Copy everything under container_drivers/ to a temporary directory
+            shutil.copytree(SM_DRIVERS_LOCAL_PATH, tmp_dir.name, dirs_exist_ok=True)
+
+            # If distributed is provided, overwrite code under <root>/drivers
+            if self.distributed:
+                distributed_driver_dir = self.distributed.driver_dir
+                driver_dir = os.path.join(tmp_dir.name, "drivers")
+                shutil.copytree(distributed_driver_dir, driver_dir, dirs_exist_ok=True)
 
             # If source code is provided, create a channel for the source code
             # The source code will be mounted at /opt/ml/input/data/code in the container
@@ -555,7 +559,7 @@ class ModelTrainer(BaseModel):
                 input_data_config.append(source_code_channel)
 
             self._prepare_train_script(
-                tmp_dir=drivers_dir,
+                tmp_dir=tmp_dir,
                 source_code=self.source_code,
                 distributed=self.distributed,
             )
@@ -564,13 +568,13 @@ class ModelTrainer(BaseModel):
                 mp_parameters = self.distributed.smp._to_mp_hyperparameters()
                 string_hyper_parameters.update(mp_parameters)
 
-            self._write_source_code_json(tmp_dir=drivers_dir, source_code=self.source_code)
-            self._write_distributed_json(tmp_dir=drivers_dir, distributed=self.distributed)
+            self._write_source_code_json(tmp_dir=tmp_dir, source_code=self.source_code)
+            self._write_distributed_json(tmp_dir=tmp_dir, distributed=self.distributed)
 
             # Create an input channel for drivers packaged by the sdk
             sm_drivers_channel = self.create_input_data_channel(
                 channel_name=SM_DRIVERS,
-                data_source=drivers_dir.name,
+                data_source=tmp_dir.name,
                 key_prefix=input_data_key_prefix,
             )
             input_data_config.append(sm_drivers_channel)
@@ -820,13 +824,10 @@ class ModelTrainer(BaseModel):
         if base_command:
             execute_driver = EXECUTE_BASE_COMMANDS.format(base_command=base_command)
         elif distributed:
-            distribution_type = distributed._type
-            if distribution_type == "mpi":
-                execute_driver = EXECUTE_MPI_DRIVER
-            elif distribution_type == "torchrun":
-                execute_driver = EXEUCTE_TORCHRUN_DRIVER
-            else:
-                raise ValueError(f"Unsupported distribution type: {distribution_type}.")
+            execute_driver = EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name=distributed.__class__.__name__,
+                driver_script=distributed.driver_script,
+            )
         elif source_code.entry_script and not source_code.command and not distributed:
             if not source_code.entry_script.endswith((".py", ".sh")):
                 raise ValueError(
