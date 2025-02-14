@@ -17,14 +17,15 @@ import os
 import sys
 import subprocess
 import time
-import paramiko
 
 from pathlib import Path
 from typing import List
 
+import paramiko
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from common.utils import (  # noqa: E402
+from common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
     SM_EFA_NCCL_INSTANCES,
     SM_EFA_RDMA_INSTANCES,
     get_python_executable,

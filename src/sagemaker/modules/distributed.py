@@ -95,7 +95,6 @@ class DistributedConfig(BaseModel, ABC):
         Returns:
             str: Path to directory containing the driver script
         """
-        pass
 
     @property
     @abstractmethod
@@ -108,7 +107,6 @@ class DistributedConfig(BaseModel, ABC):
         Returns:
             str: Name of the driver script file
         """
-        pass
 
 
 class Torchrun(DistributedConfig):

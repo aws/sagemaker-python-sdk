@@ -29,7 +29,7 @@ from mpi_utils import (
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from common.utils import (  # noqa: E402
+from common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
     logger,
     hyperparameters_to_cli_args,
     get_process_count,
