@@ -835,8 +835,10 @@ class ModelTrainer(BaseModel):
                 )
             execute_driver = EXECUTE_BASIC_SCRIPT_DRIVER
         else:
+            # This should never be reached, as the source_code should have been validated.
             raise ValueError(
-                f"Invalid configuration, please provide a valid SourceCode: {source_code}"
+                f"Unsupported SourceCode or DistributedConfig: {source_code}, {distributed}."
+                + f"Please provide a valid configuration with atleast one of 'command' or entry_script'."
             )
 
         train_script = TRAIN_SCRIPT_TEMPLATE.format(
