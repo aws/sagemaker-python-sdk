@@ -4080,6 +4080,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
                 "instance_type": "ml.g5.2xlarge",
                 "mode": Mode.SAGEMAKER_ENDPOINT,
                 "endpoint_type": EndpointType.INFERENCE_COMPONENT_BASED,
+                "endpoint_name": "test",
             },
         },
         {
