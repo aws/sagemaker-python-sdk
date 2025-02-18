@@ -1492,6 +1492,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     }
             model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
                 content (default: None).
+            inference_ami_version (Optional [str]): Specifies an option from a collection of preconfigured
+             Amazon Machine Image (AMI) images. For a full list of options, see:
+             https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1743,6 +1746,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 model_data_download_timeout=model_data_download_timeout,
                 container_startup_health_check_timeout=container_startup_health_check_timeout,
                 routing_config=routing_config,
+                inference_ami_version=inference_ami_version,
             )
             if endpoint_name:
                 self.endpoint_name = endpoint_name
