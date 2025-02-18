@@ -375,6 +375,8 @@ To initialize distributed training in your script, call
 `torch.distributed.init_process_group
 <https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
 with the desired backend and the rank of the current host.
+Warning: ``torch.nn.SyncBatchNorm`` is not supported and its existence in 
+``init_process_group`` will cause an exception during distributed training.
 
 .. code:: python
 
