@@ -143,6 +143,11 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-5",
         ),
         JumpStartLaunchedRegionInfo(
+            region_name="ap-southeast-7",
+            content_bucket="jumpstart-cache-prod-ap-southeast-7",
+            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-7",
+        ),
+        JumpStartLaunchedRegionInfo(
             region_name="eu-west-2",
             content_bucket="jumpstart-cache-prod-eu-west-2",
             gated_content_bucket="jumpstart-private-cache-prod-eu-west-2",
@@ -197,6 +202,11 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="il-central-1",
             content_bucket="jumpstart-cache-prod-il-central-1",
             gated_content_bucket="jumpstart-private-cache-prod-il-central-1",
+        ),
+        JumpStartLaunchedRegionInfo(
+            region_name="mx-central-1",
+            content_bucket="jumpstart-cache-prod-mx-central-1",
+            gated_content_bucket="jumpstart-private-cache-prod-mx-central-1",
         ),
         JumpStartLaunchedRegionInfo(
             region_name="us-gov-east-1",
