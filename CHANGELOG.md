@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.239.3 (2025-02-19)
+
+### Bug Fixes and Other Changes
+
+ * added ap-southeast-7 and mx-central-1 for Jumpstart
+ * update image_uri_configs  02-19-2025 06:18:15 PST
+
 ## v2.239.2 (2025-02-18)
 
 ### Bug Fixes and Other Changes
