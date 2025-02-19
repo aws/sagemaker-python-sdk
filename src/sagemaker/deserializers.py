@@ -31,8 +31,10 @@ from sagemaker.base_deserializers import (  # noqa: F401 # pylint: disable=W0611
     StreamDeserializer,
     StringDeserializer,
     TorchTensorDeserializer,
+    RecordDeserializer,
 )
 
+from sagemaker.deprecations import deprecated_class
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -150,3 +152,6 @@ def retrieve_default(
         model_type=model_type,
         config_name=config_name,
     )
+
+
+record_deserializer = deprecated_class(RecordDeserializer, "record_deserializer")

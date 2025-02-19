@@ -17,11 +17,12 @@ from typing import Union, Optional, List
 
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
-from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt, isin, ge, le
+from sagemaker.deserializers import RecordDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
+from sagemaker.serializers import RecordSerializer
 from sagemaker.session import Session
 from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
