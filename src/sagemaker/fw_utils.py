@@ -17,23 +17,22 @@ import json
 import logging
 import os
 import re
-import time
 import shutil
 import tempfile
+import time
 from collections import namedtuple
-from typing import List, Optional, Union, Dict
+from typing import Dict, List, Optional, Union
+
 from packaging import version
 
 import sagemaker.image_uris
+import sagemaker.utils
+from sagemaker.deprecations import deprecation_warn_base, renamed_kwargs, renamed_warning
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.session_settings import SessionSettings
-import sagemaker.utils
 from sagemaker.workflow import is_pipeline_variable
-
-from sagemaker.deprecations import renamed_warning, renamed_kwargs
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.deprecations import deprecation_warn_base
 
 logger = logging.getLogger(__name__)
 
@@ -691,7 +690,7 @@ def validate_smdistributed(
         instance_type (str): A string representing the type of training instance selected.
         framework_name (str): A string representing the name of framework selected.
         framework_version (str): A string representing the framework version selected.
-        py_version (str): A string representing the python version selected.
+        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
         distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) For example:
 
@@ -763,7 +762,7 @@ def _validate_smdataparallel_args(
         instance_type (str): A string representing the type of training instance selected. Ex: `ml.p3.16xlarge`
         framework_name (str): A string representing the name of framework selected. Ex: `tensorflow`
         framework_version (str): A string representing the framework version selected. Ex: `2.3.1`
-        py_version (str): A string representing the python version selected. Ex: `py3`
+        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
         distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) Ex:
 
@@ -846,7 +845,7 @@ def validate_distribution(
         instance_groups ([InstanceGroup]): A list contains instance groups used for training.
         framework_name (str): A string representing the name of framework selected.
         framework_version (str): A string representing the framework version selected.
-        py_version (str): A string representing the python version selected.
+        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
         image_uri (str): A string representing a Docker image URI.
         kwargs(dict): Additional kwargs passed to this function
 
@@ -1009,7 +1008,7 @@ def validate_torch_distributed_distribution(
                     }
                 }
         framework_version (str): A string representing the framework version selected.
-        py_version (str): A string representing the python version selected.
+        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
         image_uri (str): A string representing a Docker image URI.
         entry_point (str or PipelineVariable): The absolute or relative path to the local Python
             source file that should be executed as the entry point to
@@ -1162,7 +1161,7 @@ def validate_version_or_image_args(framework_version, py_version, image_uri):
 
     Args:
         framework_version (str): The version of the framework.
-        py_version (str): The version of Python.
+        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
         image_uri (str): The URI of the image.
 
     Raises:
@@ -1194,9 +1193,8 @@ def create_image_uri(
         instance_type (str): SageMaker instance type. Used to determine device
             type (cpu/gpu/family-specific optimized).
         framework_version (str): The version of the framework.
-        py_version (str): Optional. Python version. If specified, should be one
-            of 'py2' or 'py3'. If not specified, image uri will not include a
-            python component.
+        py_version (str): Optional. Python version Ex: `py38, py39, py310, py311`.
+            If not specified, image uri will not include a python component.
         account (str): AWS account that contains the image. (default:
             '520713654638')
         accelerator_type (str): SageMaker Elastic Inference accelerator type.
