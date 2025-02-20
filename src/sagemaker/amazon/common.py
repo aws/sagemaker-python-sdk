@@ -21,4 +21,5 @@ from sagemaker.serializer_utils import (  # noqa: F401 # pylint: disable=W0611
     read_records,
     write_numpy_to_dense_tensor,
     write_spmatrix_to_sparse_tensor,
+    _write_recordio,
 )
