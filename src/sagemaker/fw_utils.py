@@ -585,7 +585,6 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     The location returned is a potential concatenation of 2 parts
         1. code_location_key_prefix if it exists
         2. model_name or a name derived from the image
-
     Args:
         code_location_key_prefix (str): the s3 key prefix from code_location
         model_name (str): the name of the model
@@ -690,7 +689,8 @@ def validate_smdistributed(
         instance_type (str): A string representing the type of training instance selected.
         framework_name (str): A string representing the name of framework selected.
         framework_version (str): A string representing the framework version selected.
-        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
+        py_version (str): A string representing the python version selected.
+        Ex: `py38, py39, py310, py311`
         distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) For example:
 
@@ -762,7 +762,8 @@ def _validate_smdataparallel_args(
         instance_type (str): A string representing the type of training instance selected. Ex: `ml.p3.16xlarge`
         framework_name (str): A string representing the name of framework selected. Ex: `tensorflow`
         framework_version (str): A string representing the framework version selected. Ex: `2.3.1`
-        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
+        py_version (str): A string representing the python version selected.
+        Ex: `py38, py39, py310, py311`
         distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) Ex:
 
@@ -845,7 +846,8 @@ def validate_distribution(
         instance_groups ([InstanceGroup]): A list contains instance groups used for training.
         framework_name (str): A string representing the name of framework selected.
         framework_version (str): A string representing the framework version selected.
-        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
+        py_version (str): A string representing the python version selected.
+        Ex: `py38, py39, py310, py311`
         image_uri (str): A string representing a Docker image URI.
         kwargs(dict): Additional kwargs passed to this function
 
@@ -1008,7 +1010,8 @@ def validate_torch_distributed_distribution(
                     }
                 }
         framework_version (str): A string representing the framework version selected.
-        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
+        py_version (str): A string representing the python version selected.
+        Ex: `py38, py39, py310, py311`
         image_uri (str): A string representing a Docker image URI.
         entry_point (str or PipelineVariable): The absolute or relative path to the local Python
             source file that should be executed as the entry point to
@@ -1159,7 +1162,8 @@ def validate_version_or_image_args(framework_version, py_version, image_uri):
 
     Args:
         framework_version (str): The version of the framework.
-        py_version (str): A string representing the python version selected. Ex: `py38, py39, py310, py311`
+        py_version (str): A string representing the python version selected.
+        Ex: `py38, py39, py310, py311`
         image_uri (str): The URI of the image.
 
     Raises:
