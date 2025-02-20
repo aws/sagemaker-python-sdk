@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.239.3 (2025-02-19)
+
+### Bug Fixes and Other Changes
+
+ * added ap-southeast-7 and mx-central-1 for Jumpstart
+ * update image_uri_configs  02-19-2025 06:18:15 PST
+
+## v2.239.2 (2025-02-18)
+
+### Bug Fixes and Other Changes
+
+ * Add warning about not supporting torch.nn.SyncBatchNorm
+ * pass in inference_ami_version to model_based endpoint type
+ * Fix hyperparameter strategy docs
+ * Add framework_version to all TensorFlowModel examples
+ * Move RecordSerializer and RecordDeserializer to sagemaker.serializers and sagemaker.deserialzers
+
 ## v2.239.1 (2025-02-14)
 
 ### Bug Fixes and Other Changes
