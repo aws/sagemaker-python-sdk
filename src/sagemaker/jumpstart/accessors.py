@@ -320,7 +320,7 @@ class JumpStartModelsAccessor(object):
                     return model_specs
                 except Exception as ex:
                     # Failed with both, throw a custom error message
-                    raise Exception(
+                    raise RuntimeError(
                         f"Cannot get details for {model_id} in Hub {hub_arn}. \
                             {model_id} does not exist as a Model or ModelReference: \n"
                         + str(ex)

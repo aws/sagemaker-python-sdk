@@ -273,7 +273,7 @@ class Hub:
         self, model_name: str, hub_name: Optional[str] = None, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
         """Describe Model or ModelReference in a Hub."""
-        hub_name = self.hub_name if not hub_name else hub_name
+        hub_name = hub_name or self.hub_name
 
         # Users only input model id, not contentType, so first try to describe with ModelReference, then with Model
         try:
@@ -319,7 +319,7 @@ class Hub:
 
             except Exception as ex:
                 # Failed with both, throw a custom error message
-                raise Exception(
+                raise RuntimeError(
                     f"Cannot get details for {model_name} in Hub {hub_name}. \
                         {model_name} does not exist as a Model or ModelReference in {hub_name}: \n"
                     + str(ex)
