@@ -287,9 +287,9 @@ class JumpStartModelsAccessor(object):
             {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
-        
+
         # Users only input model id, not contentType, so first try to describe with ModelReference, then with Model
-        if hub_arn:    
+        if hub_arn:
             try:
                 hub_model_arn = construct_hub_model_reference_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version

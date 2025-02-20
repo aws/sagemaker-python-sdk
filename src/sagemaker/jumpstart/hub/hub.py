@@ -308,13 +308,15 @@ class Hub:
                     hub_model_version=model_version,
                 )
 
-                hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                    hub_name=hub_name,
-                    hub_content_name=model_name,
-                    hub_content_version=model_version,
-                    hub_content_type=HubContentType.MODEL.value,
+                hub_content_description: Dict[str, Any] = (
+                    self._sagemaker_session.describe_hub_content(
+                        hub_name=hub_name,
+                        hub_content_name=model_name,
+                        hub_content_version=model_version,
+                        hub_content_type=HubContentType.MODEL.value,
+                    )
                 )
-            
+
             except Exception as ex:
                 # Failed with both, throw a custom error message
                 raise Exception(
