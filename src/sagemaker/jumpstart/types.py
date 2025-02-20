@@ -1363,9 +1363,9 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
             JumpStartPredictorSpecs(
-                json_obj.get("predictor_specs"), is_hub_content=self._is_hub_content
+                json_obj.get("sage_maker_sdk_predictor_specifications"), is_hub_content=self._is_hub_content
             )
-            if json_obj.get("predictor_specs")
+            if json_obj.get("sage_maker_sdk_predictor_specifications")
             else None
         )
         self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
