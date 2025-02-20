@@ -16,7 +16,9 @@ from __future__ import absolute_import
 # these imports ensure backward compatibility.
 from sagemaker.deserializers import RecordDeserializer  # noqa: F401 # pylint: disable=W0611
 from sagemaker.serializers import RecordSerializer  # noqa: F401 # pylint: disable=W0611
-from sagemaker.serializer_utils import (
+from sagemaker.serializer_utils import (  # noqa: F401 # pylint: disable=W0611
+    read_recordio,
+    read_records,
     write_numpy_to_dense_tensor,
     write_spmatrix_to_sparse_tensor,
-)  # noqa: F401 # pylint: disable=W0611
+)
