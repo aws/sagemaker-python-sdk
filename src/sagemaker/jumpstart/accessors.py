@@ -287,8 +287,9 @@ class JumpStartModelsAccessor(object):
             {**JumpStartModelsAccessor._cache_kwargs, **additional_kwargs}
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
-
-        if hub_arn:
+        
+        # Users only input model id, not contentType, so first try to describe with ModelReference, then with Model
+        if hub_arn:    
             try:
                 hub_model_arn = construct_hub_model_reference_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
@@ -308,11 +309,22 @@ class JumpStartModelsAccessor(object):
                 hub_model_arn = construct_hub_model_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
-                model_specs = JumpStartModelsAccessor._cache.get_hub_model(
-                    hub_model_arn=hub_model_arn
-                )
-                model_specs.set_hub_content_type(HubContentType.MODEL)
-                return model_specs
+
+                # Failed to describe ModelReference, try with Model
+                try:
+                    model_specs = JumpStartModelsAccessor._cache.get_hub_model(
+                        hub_model_arn=hub_model_arn
+                    )
+                    model_specs.set_hub_content_type(HubContentType.MODEL)
+
+                    return model_specs
+                except Exception as ex:
+                    # Failed with both, throw a custom error message
+                    raise Exception(
+                        f"Cannot get details for {model_id} in Hub {hub_arn}. \
+                            {model_id} does not exist as a Model or ModelReference: \n"
+                        + str(ex)
+                    )
 
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, version_str=version, model_type=model_type
