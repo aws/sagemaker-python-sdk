@@ -218,7 +218,10 @@ def test_describe_model_one_thrown_error(mock_describe_hub_content_response, sag
 
         mock_describe_hub_content.asssert_called_times(2)
         mock_describe_hub_content.assert_called_with(
-            hub_name=HUB_NAME, hub_content_name="test-model", hub_content_version="3.0", hub_content_type="Model"
+            hub_name=HUB_NAME,
+            hub_content_name="test-model",
+            hub_content_version="3.0",
+            hub_content_type="Model",
         )
 
 
