@@ -643,8 +643,7 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 def profiler_config_deprecation_warning(
     profiler_config, image_uri, framework_name, framework_version
 ):
-    """Put out a deprecation message for if framework profiling is specified TF >= 2.12 and PT >=
-    2.0."""
+    """Deprecation message if framework profiling is specified TF >= 2.12 and PT >= 2.0."""
     if profiler_config is None or profiler_config.framework_profile_params is None:
         return
 
