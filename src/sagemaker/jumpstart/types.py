@@ -1538,7 +1538,7 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
 
         # Handle custom fields
         for custom_field, field in self.CUSTOM_FIELD_MAP.items():
-            if field in json_obj:
+            if custom_field in json_obj:
                 setattr(self, field, json_obj.get(custom_field))
 
 
