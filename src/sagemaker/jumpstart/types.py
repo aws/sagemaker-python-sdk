@@ -1363,10 +1363,10 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
             JumpStartPredictorSpecs(
-                json_obj.get("sage_maker_sdk_predictor_specifications"),
+                json_obj.get("predictor_specs"),
                 is_hub_content=self._is_hub_content,
             )
-            if json_obj.get("sage_maker_sdk_predictor_specifications")
+            if json_obj.get("predictor_specs")
             else None
         )
         self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
@@ -1502,6 +1502,9 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         "incremental_training_supported",
     ]
 
+    # Map of HubContent fields that map to custom names in MetadataBaseFields
+    CUSTOM_FIELD_MAP = {"sage_maker_sdk_predictor_specifications": "predictor_specs"}
+
     __slots__ = slots + JumpStartMetadataBaseFields.__slots__
 
     def __init__(
@@ -1532,6 +1535,11 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         for field in json_obj.keys():
             if field in self.__slots__:
                 setattr(self, field, json_obj[field])
+        
+        # Handle custom fields
+        for field, custom_field in self.CUSTOM_FIELD_MAP.items():
+            if field in json_obj:
+                setattr(self, custom_field, json_obj[field])
 
 
 class JumpStartMetadataConfig(JumpStartDataHolderType):
