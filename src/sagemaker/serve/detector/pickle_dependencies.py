@@ -102,8 +102,8 @@ def get_currently_used_packages():
 
 def get_requirements_for_pkl_file(pkl_path: Path, dest: Path):
     """Placeholder docstring"""
-    with open(pkl_path, mode="rb") as file:
-        cloudpickle.load(file)
+    with open(pkl_path, mode="rb") as new_file:
+        cloudpickle.load(new_file)
 
     currently_used_packages = get_currently_used_packages()
 
