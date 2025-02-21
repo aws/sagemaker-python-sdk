@@ -1416,7 +1416,7 @@ class RunArgs(object):
 class FeatureStoreOutput(ApiObject):
     """Configuration for processing job outputs in Amazon SageMaker Feature Store."""
 
-    feature_group_name = None
+    feature_group_name: Optional[str] = None
 
 
 class FrameworkProcessor(ScriptProcessor):

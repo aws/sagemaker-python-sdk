@@ -1,5 +1,92 @@
 # Changelog
 
+## v2.239.3 (2025-02-19)
+
+### Bug Fixes and Other Changes
+
+ * added ap-southeast-7 and mx-central-1 for Jumpstart
+ * update image_uri_configs  02-19-2025 06:18:15 PST
+
+## v2.239.2 (2025-02-18)
+
+### Bug Fixes and Other Changes
+
+ * Add warning about not supporting torch.nn.SyncBatchNorm
+ * pass in inference_ami_version to model_based endpoint type
+ * Fix hyperparameter strategy docs
+ * Add framework_version to all TensorFlowModel examples
+ * Move RecordSerializer and RecordDeserializer to sagemaker.serializers and sagemaker.deserialzers
+
+## v2.239.1 (2025-02-14)
+
+### Bug Fixes and Other Changes
+
+ * keep sagemaker_session from being overridden to None
+ * Fix all type hint and docstrings for callable
+ * Fix the workshop link for Step Functions
+ * Fix Tensorflow doc link
+ * Fix FeatureGroup docstring
+ * Add type hint for ProcessingOutput
+ * Fix sourcedir.tar.gz filenames in docstrings
+ * Fix documentation for local mode
+ * bug in get latest version was getting the max sorted alphabetically
+ * Add cleanup logic to model builder integ tests for endpoints
+ * Fixed pagination failing while listing collections
+ * fix ValueError when updating a data quality monitoring schedule
+ * Add docstring for image_uris.retrieve
+ * Create GitHub action to trigger canaries
+ * update image_uri_configs  02-04-2025 06:18:00 PST
+
+## v2.239.0 (2025-02-01)
+
+### Features
+
+ * Add support for deepseek recipes
+
+### Bug Fixes and Other Changes
+
+ * mpirun protocol - distributed training with @remote decorator
+ * Allow telemetry only in supported regions
+ * Fix ssh host policy
+
+## v2.238.0 (2025-01-29)
+
+### Features
+
+ * use jumpstart deployment config image as default optimization image
+
+### Bug Fixes and Other Changes
+
+ * chore: add new images for HF TGI
+ * update image_uri_configs  01-29-2025 06:18:08 PST
+ * skip TF tests for unsupported versions
+ * Merge branch 'master-rba' into local_merge
+ * Add missing attributes to local resourceconfig
+ * update image_uri_configs  01-27-2025 06:18:13 PST
+ * update image_uri_configs  01-24-2025 06:18:11 PST
+ * add missing schema definition in docs
+ * Omegaconf upgrade
+ * SageMaker @remote function: Added multi-node functionality
+ * remove option
+ * fix typo
+ * fix tests
+ * Add an option for user to remove inputs and container artifacts when using local model trainer
+
+## v2.237.3 (2025-01-09)
+
+### Bug Fixes and Other Changes
+
+ * pin metadata-version to 2.3
+ * model server might have already done a serialization. honor that by not decoding the request again if it is not already bytes or bytestream
+ * Disable jumpstart tests missing clean up logic
+ * Jumpstart ap southeast 5
+ * add autogluon 1.2
+ * updated inference script to cover context
+ * security update -> use sha256 instead of md5 for file hashing
+ * Fix Flake8 Violations
+ * Added parsing string support for situations where custom code might be used (ie. mlflow)
+ * Updating Inference Optimization Validations
+
 ## v2.237.2 (2024-12-17)
 
 ### Bug Fixes and Other Changes

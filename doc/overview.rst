@@ -1958,7 +1958,7 @@ Make sure to have a Compose Version compatible with your Docker Engine installat
 Local mode configuration
 ========================
 
-The local mode uses a YAML configuration file located at ``~/.sagemaker/config.yaml`` to define the default values that are automatically passed to the ``config`` attribute of ``LocalSession``. This is an example of the configuration, for the full schema, see `sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/config/config_schema.py>`_.
+The local mode uses a YAML configuration file located at ``${user_config_directory}/sagemaker/config.yaml`` to define the default values that are automatically passed to the ``config`` attribute of ``LocalSession``. This is an example of the configuration, for the full schema, see `sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/config/config_schema.py>`_.
 
 .. code:: yaml
 
@@ -1966,7 +1966,7 @@ The local mode uses a YAML configuration file located at ``~/.sagemaker/config.y
         local_code: true # Using everything locally
         region_name: "us-west-2" # Name of the region
         container_config: # Additional docker container config
-            shm_size: "128M
+            shm_size: "128M"
 
 If you want to keep everything local, and not use Amazon S3 either, you can enable "local code" in one of two ways:
 
@@ -2565,6 +2565,9 @@ set default values for. For the full schema, see `sagemaker.config.config_schema
           KmsKeyId: 'kmskeyid10'
         TransformResources:
           VolumeKmsKeyId: 'volumekmskeyid4'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value
       CompilationJob:
       # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateCompilationJob.html
         OutputConfig:

@@ -14,7 +14,10 @@ from __future__ import absolute_import
 
 from unittest.mock import patch, Mock
 from sagemaker.jumpstart.types import HubArnExtractedInfo
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_DEFAULT_REGION_NAME,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+)
 from sagemaker.jumpstart.hub import parser_utils, utils
 
 
@@ -80,6 +83,17 @@ def test_construct_hub_arn_from_name():
     )
 
 
+def test_construct_hub_arn_from_name_with_session_none():
+    hub_name = "my-cool-hub"
+    account_id = DEFAULT_JUMPSTART_SAGEMAKER_SESSION.account_id()
+    boto_region_name = DEFAULT_JUMPSTART_SAGEMAKER_SESSION.boto_region_name
+
+    assert (
+        utils.construct_hub_arn_from_name(hub_name=hub_name, session=None)
+        == f"arn:aws:sagemaker:{boto_region_name}:{account_id}:hub/{hub_name}"
+    )
+
+
 def test_construct_hub_model_arn_from_inputs():
     model_name, version = "pytorch-ic-imagenet-v2", "1.0.2"
     hub_arn = "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub"
@@ -93,6 +107,23 @@ def test_construct_hub_model_arn_from_inputs():
     assert (
         utils.construct_hub_model_arn_from_inputs(hub_arn, model_name, version)
         == "arn:aws:sagemaker:us-west-2:123456789123:hub-content/my-mock-hub/Model/pytorch-ic-imagenet-v2/*"
+    )
+
+
+def test_construct_hub_model_reference_arn_from_inputs():
+    model_name, version = "pytorch-ic-imagenet-v2", "1.0.2"
+    hub_arn = "arn:aws:sagemaker:us-west-2:123456789123:hub/my-mock-hub"
+    hub_content_arn_prefix = "arn:aws:sagemaker:us-west-2:123456789123:hub-content/my-mock-hub"
+
+    assert (
+        utils.construct_hub_model_reference_arn_from_inputs(hub_arn, model_name, version)
+        == hub_content_arn_prefix + "/ModelReference/pytorch-ic-imagenet-v2/1.0.2"
+    )
+
+    version = "*"
+    assert (
+        utils.construct_hub_model_reference_arn_from_inputs(hub_arn, model_name, version)
+        == hub_content_arn_prefix + "/ModelReference/pytorch-ic-imagenet-v2/*"
     )
 
 

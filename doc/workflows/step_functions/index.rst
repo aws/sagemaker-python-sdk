@@ -11,5 +11,5 @@ without having to provision and integrate the AWS services separately.
 The AWS Step Functions Python SDK uses the SageMaker Python SDK as a dependency.
 To get started with step functions, try the workshop or visit the SDK's website:
 
-* `Workshop on using AWS Step Functions with SageMaker <https://www.sagemakerworkshop.com/step/>`__
+* `Create and manage Amazon SageMaker AI jobs with Step Functions <https://docs.aws.amazon.com/step-functions/latest/dg/connect-sagemaker.html>`__
 * `AWS Step Functions Python SDK website <https://aws-step-functions-data-science-sdk.readthedocs.io/en/stable/>`__
