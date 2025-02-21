@@ -144,7 +144,6 @@ def get_special_model_spec(
     """
 
     specs = JumpStartModelSpecs(SPECIAL_MODEL_SPECS_DICT[model_id])
-    print(f"HERE {specs.predictor_specs}")
     return specs
 
 

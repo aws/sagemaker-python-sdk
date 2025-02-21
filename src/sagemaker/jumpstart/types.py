@@ -1285,7 +1285,6 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
-        print("HEYHEYHEY")
         if self._is_hub_content:
             json_obj = walk_and_apply_json(json_obj, camel_to_snake)
         self.model_id: str = json_obj.get("model_id")
@@ -1362,7 +1361,6 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             )
         self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
-        print(f'HUH {json_obj.get("predictor_specs")}')
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
             JumpStartPredictorSpecs(
                 json_obj.get("predictor_specs"),
@@ -1541,7 +1539,7 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         # Handle custom fields
         for custom_field, field in self.CUSTOM_FIELD_MAP.items():
             if field in json_obj:
-                setattr(self, field, json_obj[custom_field])
+                setattr(self, field, json_obj.get(custom_field))
 
 
 class JumpStartMetadataConfig(JumpStartDataHolderType):
@@ -1734,9 +1732,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
             spec (Dict[str, Any]): Dictionary representation of spec.
             is_hub_content (Optional[bool]): Whether the model is from a private hub.
         """
-        print("here?")
         super().__init__(spec, is_hub_content)
-        print("hi")
         self.from_json(spec)
         if self.inference_configs and self.inference_configs.get_top_config_from_ranking():
             super().from_json(self.inference_configs.get_top_config_from_ranking().resolved_config)
