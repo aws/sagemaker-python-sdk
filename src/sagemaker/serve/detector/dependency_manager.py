@@ -34,27 +34,7 @@ def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool =
     """Placeholder docstring"""
     path = work_dir.joinpath("requirements.txt")
     if "auto" in dependencies and dependencies["auto"]:
-        command = [
-            sys.executable,
-            Path(__file__).parent.joinpath("pickle_dependencies.py"),
-            "--pkl_path",
-            work_dir.joinpath(PKL_FILE_NAME),
-            "--dest",
-            path,
-        ]
-
-        if capture_all:
-            command.append("--capture_all")
-
-        subprocess.run(
-            command,
-            env={"SETUPTOOLS_USE_DISTUTILS": "stdlib"},
-            check=True,
-        )
-
-        with open(path, "r") as f:
-            autodetect_depedencies = f.read().splitlines()
-        autodetect_depedencies.append("sagemaker[huggingface]>=2.199")
+        raise ValueError("Auto requirements.txt generation is temporarily disabled in this version of sagemaker")
     else:
         autodetect_depedencies = ["sagemaker[huggingface]>=2.199"]
 

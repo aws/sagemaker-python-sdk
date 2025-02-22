@@ -100,25 +100,6 @@ def get_currently_used_packages():
     return currently_used_packages
 
 
-def get_requirements_for_pkl_file(pkl_path: Path, dest: Path):
-    """Placeholder docstring"""
-    with open(pkl_path, mode="rb") as file:
-        cloudpickle.load(file)
-
-    currently_used_packages = get_currently_used_packages()
-
-    with open(dest, mode="w+") as out:
-        for x in get_all_installed_packages():
-            name = x["name"]
-            version = x["version"]
-            # skip only for dev
-            if name == "boto3":
-                boto3_version = boto3.__version__
-                out.write(f"boto3=={boto3_version}\n")
-            elif name in currently_used_packages:
-                out.write(f"{name}=={version}\n")
-
-
 def get_all_requirements(dest: Path):
     """Placeholder docstring"""
     all_installed_packages = get_all_installed_packages()
@@ -146,15 +127,3 @@ def parse_args():
     args = parser.parse_args()
     return (Path(args.pkl_path), Path(args.dest), args.capture_all)
 
-
-def main():
-    """Placeholder docstring"""
-    pkl_path, dest, capture_all = parse_args()
-    if capture_all:
-        get_all_requirements(dest)
-    else:
-        get_requirements_for_pkl_file(pkl_path, dest)
-
-
-if __name__ == "__main__":
-    main()
