@@ -192,6 +192,39 @@ def test_describe_model_success(mock_describe_hub_content_response, sagemaker_se
         )
 
 
+@patch("sagemaker.jumpstart.hub.interfaces.DescribeHubContentResponse.from_json")
+def test_describe_model_one_thrown_error(mock_describe_hub_content_response, sagemaker_session):
+    mock_describe_hub_content_response.return_value = Mock()
+    mock_list_hub_content_versions = sagemaker_session.list_hub_content_versions
+    mock_list_hub_content_versions.return_value = {
+        "HubContentSummaries": [
+            {"HubContentVersion": "1.0"},
+            {"HubContentVersion": "2.0"},
+            {"HubContentVersion": "3.0"},
+        ]
+    }
+    mock_describe_hub_content = sagemaker_session.describe_hub_content
+    mock_describe_hub_content.side_effect = [
+        Exception("Some exception"),
+        {"HubContentName": "test-model", "HubContentVersion": "3.0"},
+    ]
+
+    hub = Hub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
+
+    with patch("sagemaker.jumpstart.hub.utils.get_hub_model_version") as mock_get_hub_model_version:
+        mock_get_hub_model_version.return_value = "3.0"
+
+        hub.describe_model("test-model")
+
+        mock_describe_hub_content.asssert_called_times(2)
+        mock_describe_hub_content.assert_called_with(
+            hub_name=HUB_NAME,
+            hub_content_name="test-model",
+            hub_content_version="3.0",
+            hub_content_type="Model",
+        )
+
+
 def test_create_hub_content_reference(sagemaker_session):
     hub = Hub(hub_name=HUB_NAME, sagemaker_session=sagemaker_session)
     model_name = "mock-model-one-huggingface"
