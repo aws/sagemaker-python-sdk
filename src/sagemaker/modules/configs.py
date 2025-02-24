@@ -74,7 +74,13 @@ __all__ = [
 ]
 
 
-class SourceCode(BaseModel):
+class BaseConfig(BaseModel):
+    """BaseConfig"""
+
+    model_config = ConfigDict(validate_assignment=True, extra="forbid")
+
+
+class SourceCode(BaseConfig):
     """SourceCode.
 
     The SourceCode class allows the user to specify the source code location, dependencies,
@@ -93,8 +99,6 @@ class SourceCode(BaseModel):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
     """
-
-    model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
     source_dir: Optional[str] = None
     requirements: Optional[str] = None
@@ -196,7 +200,7 @@ class Networking(shapes.VpcConfig):
         return shapes.VpcConfig(**filtered_dict)
 
 
-class InputData(BaseModel):
+class InputData(BaseConfig):
     """InputData.
 
     This config allows the user to specify an input data source for the training job.
@@ -216,8 +220,6 @@ class InputData(BaseModel):
             The data source for the channel. Can be an S3 URI string, local file path string,
             S3DataSource object, or FileSystemDataSource object.
     """
-
-    model_config = ConfigDict(validate_assignment=True, extra="forbid")
 
     channel_name: str = None
     data_source: Union[str, FileSystemDataSource, S3DataSource] = None
