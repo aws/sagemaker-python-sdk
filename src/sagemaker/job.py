@@ -103,18 +103,16 @@ class _Job(object):
             input_config = [] if input_config is None else input_config
             input_config.append(model_channel)
 
-        # Don't create code channel when access configs are used
-        if estimator.enable_network_isolation() and hub_access_config is None:
-            code_channel = _Job._prepare_channel(
-                input_config,
-                estimator.code_uri,
-                estimator.code_channel_name,
-                validate_uri,
-            )
+        code_channel = _Job._prepare_channel(
+            input_config,
+            estimator.code_uri,
+            estimator.code_channel_name,
+            validate_uri,
+        )
 
-            if code_channel:
-                input_config = [] if input_config is None else input_config
-                input_config.append(code_channel)
+        if code_channel:
+            input_config = [] if input_config is None else input_config
+            input_config.append(code_channel)
 
         return {
             "input_config": input_config,
