@@ -1046,6 +1046,21 @@ def test_is_repack_with_code_location(repack_model, sagemaker_session):
     assert model.is_repack()
 
 
+@patch("sagemaker.utils.repack_model")
+def test_is_repack_with_none_type(repack_model, sagemaker_session):
+    """Test is_repack() returns a boolean value when source_dir and entry_point are None"""
+
+    model = Model(
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=SCRIPT_URI,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+
+    assert model.is_repack() is False
+
+
 @patch("sagemaker.git_utils.git_clone_repo")
 @patch("sagemaker.model.fw_utils.tar_and_upload_dir")
 def test_is_repack_with_git_config(tar_and_upload_dir, git_clone_repo, sagemaker_session):

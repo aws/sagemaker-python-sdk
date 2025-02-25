@@ -745,6 +745,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         Returns:
             bool: if the source need to be repacked or not
         """
+        if self.source_dir is None or self.entry_point is None:
+            return False
         return self.source_dir and self.entry_point and not self.git_config
 
     def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
@@ -2143,6 +2145,8 @@ class FrameworkModel(Model):
         Returns:
             bool: if the source need to be repacked or not
         """
+        if self.source_dir is None or self.entry_point is None:
+            return False
         return self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
 
 
