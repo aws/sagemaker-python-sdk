@@ -129,32 +129,3 @@ def get_all_requirements(dest: Path):
             version = package_info.get("version")
 
             out.write(f"{name}=={version}\n")
-
-
-def parse_args():
-    """Placeholder docstring"""
-    parser = argparse.ArgumentParser(
-        prog="pkl_requirements", description="Generates a requirements.txt for a cloudpickle file"
-    )
-    parser.add_argument("--pkl_path", required=True, help="path of the pkl file")
-    parser.add_argument("--dest", required=True, help="path of the destination requirements.txt")
-    parser.add_argument(
-        "--capture_all",
-        action="store_true",
-        help="capture all dependencies in current environment",
-    )
-    args = parser.parse_args()
-    return (Path(args.pkl_path), Path(args.dest), args.capture_all)
-
-
-def main():
-    """Placeholder docstring"""
-    pkl_path, dest, capture_all = parse_args()
-    if capture_all:
-        get_all_requirements(dest)
-    else:
-        get_requirements_for_pkl_file(pkl_path, dest)
-
-
-if __name__ == "__main__":
-    main()
