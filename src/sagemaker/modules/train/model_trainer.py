@@ -17,10 +17,9 @@ from enum import Enum
 import os
 import json
 import shutil
-import yaml
 from tempfile import TemporaryDirectory
-
 from typing import Optional, List, Union, Dict, Any, ClassVar
+import yaml
 
 from graphene.utils.str_converters import to_camel_case, to_snake_case
 
