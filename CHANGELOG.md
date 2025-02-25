@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.240.0 (2025-02-25)
+
+### Features
+
+ * Add support for TGI Neuronx 0.0.27 and HF PT 2.3.0 image in PySDK
+
+### Bug Fixes and Other Changes
+
+ * Remove main function entrypoint in ModelBuilder dependency manager.
+ * forbid extras in Configs
+ * altconfig hubcontent and reenable integ test
+ * Merge branch 'master-rba' into local_merge
+ * py_version doc fixes
+ * Add backward compatbility for RecordSerializer and RecordDeserializer
+ * update image_uri_configs  02-21-2025 06:18:10 PST
+ * update image_uri_configs  02-20-2025 06:18:08 PST
+
+### Documentation Changes
+
+ * Removed a line about python version requirements of training script which can misguide users.
+
 ## v2.239.3 (2025-02-19)
 
 ### Bug Fixes and Other Changes
