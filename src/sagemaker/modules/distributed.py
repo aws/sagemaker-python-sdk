@@ -17,9 +17,9 @@ import os
 
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
 from sagemaker.modules.utils import safe_serialize
 from sagemaker.modules.constants import SM_DRIVERS_LOCAL_PATH
+from sagemaker.modules.configs import BaseConfig
 
 
 class SMP(BaseConfig):
