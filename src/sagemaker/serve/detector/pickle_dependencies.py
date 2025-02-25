@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 from pathlib import Path
 from typing import List
-import argparse
 import email.parser
 import email.policy
 import json
