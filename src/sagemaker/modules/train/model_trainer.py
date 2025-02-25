@@ -17,6 +17,7 @@ from enum import Enum
 import os
 import json
 import shutil
+import yaml
 from tempfile import TemporaryDirectory
 
 from typing import Optional, List, Union, Dict, Any, ClassVar
@@ -195,8 +196,9 @@ class ModelTrainer(BaseModel):
             Defaults to "File".
         environment (Optional[Dict[str, str]]):
             The environment variables for the training job.
-        hyperparameters (Optional[Dict[str, Any]]):
-            The hyperparameters for the training job.
+        hyperparameters (Optional[Union[Dict[str, Any], str]):
+            The hyperparameters for the training job. Can be a dictionary of hyperparameters
+            or a path to hyperparameters json/yaml file.
         tags (Optional[List[Tag]]):
             An array of key-value pairs. You can use tags to categorize your AWS resources
             in different ways, for example, by purpose, owner, or environment.
@@ -226,7 +228,7 @@ class ModelTrainer(BaseModel):
     checkpoint_config: Optional[CheckpointConfig] = None
     training_input_mode: Optional[str] = "File"
     environment: Optional[Dict[str, str]] = {}
-    hyperparameters: Optional[Dict[str, Any]] = {}
+    hyperparameters: Optional[Union[Dict[str, Any], str]] = {}
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
 
@@ -469,6 +471,17 @@ class ModelTrainer(BaseModel):
             logger.warning(
                 f"StoppingCondition not provided. Using default:\n{self.stopping_condition}"
             )
+
+        if self.hyperparameters and isinstance(self.hyperparameters, str):
+            if not os.path.exists(self.hyperparameters):
+                raise ValueError(f"Hyperparameters file not found: {self.hyperparameters}")
+            logger.info(f"Loading hyperparameters from file: {self.hyperparameters}")
+            if self.hyperparameters.endswith(".json"):
+                with open(self.hyperparameters, "r") as f:
+                    self.hyperparameters = json.load(f)
+            elif self.hyperparameters.endswith(".yaml"):
+                with open(self.hyperparameters, "r") as f:
+                    self.hyperparameters = yaml.safe_load(f)
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
             session = self.sagemaker_session
