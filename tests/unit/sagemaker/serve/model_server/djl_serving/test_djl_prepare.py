@@ -52,8 +52,8 @@ class DjlPrepareTests(TestCase):
         mock_disk_space.assert_called_once_with(mock_model_path)
         mock_disk_usage.assert_called_once()
 
-        self.assertEquals(ret_model_path, mock_model_path)
-        self.assertEquals(ret_code_dir, mock_code_dir)
+        self.assertEqual(ret_model_path, mock_model_path)
+        self.assertEqual(ret_code_dir, mock_code_dir)
 
     @patch("sagemaker.serve.model_server.djl_serving.prepare.Path")
     def test_create_dir_structure_invalid_path(self, mock_path):
@@ -65,7 +65,7 @@ class DjlPrepareTests(TestCase):
         with self.assertRaises(ValueError) as context:
             _create_dir_structure(mock_model_path)
 
-        self.assertEquals("model_dir is not a valid directory", str(context.exception))
+        self.assertEqual("model_dir is not a valid directory", str(context.exception))
 
     @patch("sagemaker.serve.model_server.djl_serving.prepare.S3Downloader")
     @patch("builtins.open", new_callable=mock_open, read_data="data")

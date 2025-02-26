@@ -14360,7 +14360,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
             "jmespath==1.0.1",
             "jsonschema==4.17.3",
             "multiprocess==0.70.14",
-            "numpy==1.24.3",
+            "numpy==1.26.4",
             "oscrypto==1.3.0",
             "packaging==23.1",
             "pandas==2.0.2",
