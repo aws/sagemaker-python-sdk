@@ -563,7 +563,6 @@ class PipelineModel(object):
 
         self.sagemaker_session.delete_model(self.name)
 
-    
     def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
         """Set ``self.sagemaker_session`` to ``LocalSession`` or ``Session`` if it's not already.
 
