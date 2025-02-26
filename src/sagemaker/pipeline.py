@@ -17,6 +17,8 @@ from typing import Callable, Optional, Dict, List, Union
 
 import sagemaker
 from sagemaker import ModelMetrics, Model
+from sagemaker import local
+from sagemaker import session
 from sagemaker.config import (
     ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
     MODEL_VPC_CONFIG_PATH,
@@ -560,3 +562,17 @@ class PipelineModel(object):
             raise ValueError("The SageMaker model must be created before attempting to delete.")
 
         self.sagemaker_session.delete_model(self.name)
+
+    
+    def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
+        """Set ``self.sagemaker_session`` to ``LocalSession`` or ``Session`` if it's not already.
+
+        The type of session object is determined by the instance type.
+        """
+        if self.sagemaker_session:
+            return
+
+        if instance_type in ("local", "local_gpu"):
+            self.sagemaker_session = local.LocalSession(sagemaker_config=self._sagemaker_config)
+        else:
+            self.sagemaker_session = session.Session(sagemaker_config=self._sagemaker_config)
