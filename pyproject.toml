@@ -40,7 +40,7 @@ dependencies = [
   "google-pasta",
   "importlib-metadata>=1.4.0,<7.0",
   "jsonschema",
-  "numpy>=1.26.4,<2.0",
+  "numpy>=1.26.4,<3.0",
   "omegaconf>=2.2,<=2.3",
   "packaging>=20.0",
   "pandas",
