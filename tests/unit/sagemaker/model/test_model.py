@@ -1053,7 +1053,6 @@ def test_is_repack_with_none_type(repack_model, sagemaker_session):
     model = Model(
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        source_dir=SCRIPT_URI,
         image_uri=IMAGE_URI,
         model_data=MODEL_DATA,
     )
