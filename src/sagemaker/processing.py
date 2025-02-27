@@ -1465,7 +1465,7 @@ class FrameworkProcessor(ScriptProcessor):
             instance_type (str or PipelineVariable): The type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             py_version (str): Python version you want to use for executing your
-                model training code. Ex `py38, py39, py310, py311`. Value
+                model training code. Ex `py38, py39, py310, py311, py312`. Value
                 is ignored when ``image_uri`` is provided.
             image_uri (str or PipelineVariable): The URI of the Docker image to use for the
                 processing jobs (default: None).

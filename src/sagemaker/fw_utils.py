@@ -689,7 +689,7 @@ def validate_smdistributed(
         framework_name (str): A string representing the name of framework selected.
         framework_version (str): A string representing the framework version selected.
         py_version (str): A string representing the python version selected.
-        Ex: `py38, py39, py310, py311`
+        Ex: `py38, py39, py310, py311, py312`
         distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) For example:
 
@@ -762,7 +762,7 @@ def _validate_smdataparallel_args(
         framework_name (str): A string representing the name of framework selected. Ex: `tensorflow`
         framework_version (str): A string representing the framework version selected. Ex: `2.3.1`
         py_version (str): A string representing the python version selected.
-        Ex: `py38, py39, py310, py311`
+        Ex: `py38, py39, py310, py311, py312`
         distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) Ex:
 
@@ -846,7 +846,7 @@ def validate_distribution(
         framework_name (str): A string representing the name of framework selected.
         framework_version (str): A string representing the framework version selected.
         py_version (str): A string representing the python version selected.
-        Ex: `py38, py39, py310, py311`
+        Ex: `py38, py39, py310, py311, py312`
         image_uri (str): A string representing a Docker image URI.
         kwargs(dict): Additional kwargs passed to this function
 
@@ -1010,7 +1010,7 @@ def validate_torch_distributed_distribution(
                 }
         framework_version (str): A string representing the framework version selected.
         py_version (str): A string representing the python version selected.
-        Ex: `py38, py39, py310, py311`
+        Ex: `py38, py39, py310, py311, py312`
         image_uri (str): A string representing a Docker image URI.
         entry_point (str or PipelineVariable): The absolute or relative path to the local Python
             source file that should be executed as the entry point to
@@ -1162,7 +1162,7 @@ def validate_version_or_image_args(framework_version, py_version, image_uri):
     Args:
         framework_version (str): The version of the framework.
         py_version (str): A string representing the python version selected.
-        Ex: `py38, py39, py310, py311`
+        Ex: `py38, py39, py310, py311, py312`
         image_uri (str): The URI of the image.
 
     Raises:
@@ -1194,7 +1194,7 @@ def create_image_uri(
         instance_type (str): SageMaker instance type. Used to determine device
             type (cpu/gpu/family-specific optimized).
         framework_version (str): The version of the framework.
-        py_version (str): Optional. Python version Ex: `py38, py39, py310, py311`.
+        py_version (str): Optional. Python version Ex: `py38, py39, py310, py311, py312`.
             If not specified, image uri will not include a python component.
         account (str): AWS account that contains the image. (default:
             '520713654638')
