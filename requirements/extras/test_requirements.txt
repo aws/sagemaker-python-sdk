@@ -1,5 +1,5 @@
 tox==3.24.5
-numpy>=1.24.0
+numpy>=1.26.4
 build[virtualenv]==1.2.1
 flake8==4.0.1
 pytest==6.2.5
