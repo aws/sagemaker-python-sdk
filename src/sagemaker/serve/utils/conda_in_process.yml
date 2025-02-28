@@ -20,7 +20,7 @@ dependencies:
     - pandas
     - pathos
     - schema
-    - PyYAML~=6.0
+    - PyYAML>=6.0.1
     - jsonschema
     - platformdirs
     - tblib>=1.7.0,<4
