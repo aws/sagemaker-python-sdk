@@ -475,12 +475,22 @@ class ModelTrainer(BaseModel):
             if not os.path.exists(self.hyperparameters):
                 raise ValueError(f"Hyperparameters file not found: {self.hyperparameters}")
             logger.info(f"Loading hyperparameters from file: {self.hyperparameters}")
-            if self.hyperparameters.endswith(".json"):
-                with open(self.hyperparameters, "r") as f:
-                    self.hyperparameters = json.load(f)
-            elif self.hyperparameters.endswith(".yaml"):
-                with open(self.hyperparameters, "r") as f:
-                    self.hyperparameters = yaml.safe_load(f)
+            with open(self.hyperparameters, "r") as f:
+                contents = f.read()
+                try:
+                    self.hyperparameters = json.loads(contents)
+                    logger.debug("Hyperparameters loaded as JSON")
+                except json.JSONDecodeError:
+                    try:
+                        self.hyperparameters = yaml.safe_load(contents)
+                        if not isinstance(self.hyperparameters, dict):
+                            raise ValueError("YAML content is not a valid mapping.")
+                        logger.debug("Hyperparameters loaded as YAML")
+                    except (yaml.YAMLError, ValueError) as e:
+                        raise ValueError(
+                            f"Invalid hyperparameters file: {self.hyperparameters}. "
+                            "Must be a valid JSON or YAML file."
+                        )
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
             session = self.sagemaker_session
