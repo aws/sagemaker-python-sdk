@@ -486,7 +486,7 @@ class ModelTrainer(BaseModel):
                         if not isinstance(self.hyperparameters, dict):
                             raise ValueError("YAML content is not a valid mapping.")
                         logger.debug("Hyperparameters loaded as YAML")
-                    except (yaml.YAMLError, ValueError) as e:
+                    except (yaml.YAMLError, ValueError):
                         raise ValueError(
                             f"Invalid hyperparameters file: {self.hyperparameters}. "
                             "Must be a valid JSON or YAML file."
