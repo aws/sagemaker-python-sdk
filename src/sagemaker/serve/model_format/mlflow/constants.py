@@ -19,8 +19,6 @@ DEFAULT_PYTORCH_VERSION = {
     "py39": "1.13.1",
     "py310": "2.2.0",
     "py311": "2.3.0",
-    "py312": "2.5.0",
-
 }
 MODEL_PACKAGE_ARN_REGEX = (
     r"^arn:aws:sagemaker:[a-z0-9\-]+:[0-9]{12}:model-package\/(.*?)(?:/(\d+))?$"
