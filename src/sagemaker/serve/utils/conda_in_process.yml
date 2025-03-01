@@ -43,7 +43,7 @@ dependencies:
             - colorama>=0.4.4
             - contextlib2>=21.6.0
             - decorator>=5.1.1
-            - dill>=0.3.6
+            - dill>=0.3.9
             - docutils>=0.16
             - entrypoints>=0.4
             - filelock>=3.11.0
