@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 from sagemaker import (
     environment_variables,
     hyperparameters as hyperparameters_utils,
@@ -352,7 +352,7 @@ def get_deploy_kwargs(
     explainer_config: Optional[ExplainerConfig] = None,
     image_uri: Optional[Union[str, PipelineVariable]] = None,
     role: Optional[str] = None,
-    predictor_cls: Optional[callable] = None,
+    predictor_cls: Optional[Callable] = None,
     env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
     vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
     sagemaker_session: Optional[Session] = None,

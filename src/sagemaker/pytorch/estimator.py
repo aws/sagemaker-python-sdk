@@ -182,8 +182,8 @@ class PyTorch(Framework):
                 unless ``image_uri`` is provided.
             source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI) to
                 a directory with any other training source code dependencies aside from the entry
-                point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
+                point file (default: None). If ``source_dir`` is an S3 URI, it must point to a
+                file with name ``sourcedir.tar.gz``. Structure within this directory are preserved
                 when training on Amazon SageMaker. Must be a local path when using training_recipe.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
                 that will be used for training (default: None). The hyperparameters are made

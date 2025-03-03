@@ -387,8 +387,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             source_dir (str or PipelineVariable): The absolute, relative, or S3 URI Path to
                 a directory with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. The structure within this directory is preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
+                point to a file with name ``sourcedir.tar.gz``. The structure within this directory
+                is preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
                 repo.
                 With the following GitHub repo directory structure:
@@ -3420,8 +3420,8 @@ class Framework(EstimatorBase):
             source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI)
                 to a directory with any other training source code dependencies aside from
                 the entry point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory
+                are preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
                 repo.
 

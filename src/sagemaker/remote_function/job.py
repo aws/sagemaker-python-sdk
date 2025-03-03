@@ -870,7 +870,7 @@ class _Job:
         job_settings: _JobSettings,
         job_name: str,
         s3_base_uri: str,
-        func: callable,
+        func: Callable,
         func_args: tuple,
         func_kwargs: dict,
         run_info=None,

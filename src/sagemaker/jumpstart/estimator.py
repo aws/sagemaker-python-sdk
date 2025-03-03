@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 from sagemaker import session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -353,8 +353,8 @@ class JumpStartEstimator(Estimator):
             source_dir (Optional[Union[str, PipelineVariable]]): The absolute, relative, or
                 S3 URI Path to a directory with any other training source code dependencies
                 aside from the entry point file. If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory is preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory
+                is preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
                 repo.
                 (Default: None).
@@ -835,7 +835,7 @@ class JumpStartEstimator(Estimator):
         explainer_config: Optional[ExplainerConfig] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         model_name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
@@ -936,7 +936,7 @@ class JumpStartEstimator(Estimator):
                 It can be null if this is being used to create a Model to pass
                 to a ``PipelineModel`` which has its own Role field. (Default:
                 None).
-            predictor_cls (Optional[callable[string, sagemaker.session.Session]]): A
+            predictor_cls (Optional[Callable[[string, sagemaker.session.Session], Any]]): A
                 function to call to create a predictor (Default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name. (Default: None).
@@ -965,8 +965,8 @@ class JumpStartEstimator(Estimator):
             source_dir (Optional[str]): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
                 point file (Default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory is preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory is
+                preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
                 is used instead. (Default: None).

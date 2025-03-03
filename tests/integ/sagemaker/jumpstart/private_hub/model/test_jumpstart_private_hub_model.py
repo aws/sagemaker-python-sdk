@@ -82,6 +82,23 @@ def test_jumpstart_hub_model(setup, add_model_references):
     assert sagemaker_session.endpoint_in_service_or_not(predictor.endpoint_name)
 
 
+def test_jumpstart_hub_model_with_default_session(setup, add_model_references):
+    model_version = "*"
+    hub_name = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
+
+    model_id = "catboost-classification-model"
+
+    sagemaker_session = get_sm_session()
+
+    model = JumpStartModel(model_id=model_id, model_version=model_version, hub_name=hub_name)
+
+    predictor = model.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
+
+    assert sagemaker_session.endpoint_in_service_or_not(predictor.endpoint_name)
+
+
 def test_jumpstart_hub_gated_model(setup, add_model_references):
 
     model_id = "meta-textgeneration-llama-3-2-1b"
