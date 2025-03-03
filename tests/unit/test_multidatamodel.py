@@ -321,6 +321,6 @@ def test_list_models(multi_data_model):
     multi_data_model.list_models()
 
     multi_data_model.sagemaker_session.list_s3_files.assert_called()
-    assert multi_data_model.sagemaker_session.list_s3_files.called_with(
+    assert multi_data_model.sagemaker_session.list_s3_files.assert_called_once_with(
         Bucket=S3_URL_SOURCE_BUCKET, Prefix=S3_URL_SOURCE_PREFIX
     )

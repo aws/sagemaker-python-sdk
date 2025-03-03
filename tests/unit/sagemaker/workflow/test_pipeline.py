@@ -99,7 +99,7 @@ def test_pipeline_create_and_update_with_config_injection(sagemaker_session_mock
         RoleArn=pipeline_role_arn,
     )
     pipeline.upsert()
-    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_once_with(
         PipelineName="MyPipeline",
         PipelineDefinition=pipeline.definition(),
         RoleArn=pipeline_role_arn,
@@ -130,7 +130,7 @@ def test_pipeline_create_with_parallelism_config(sagemaker_session_mock, role_ar
         role_arn=role_arn,
         parallelism_config=dict(MaxParallelExecutionSteps=10),
     )
-    assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_once_with(
         PipelineName="MyPipeline",
         PipelineDefinition=pipeline.definition(),
         RoleArn=role_arn,
@@ -149,7 +149,7 @@ def test_pipeline_create_and_start_with_parallelism_config(sagemaker_session_moc
         role_arn=role_arn,
         parallelism_config=dict(MaxParallelExecutionSteps=10),
     )
-    assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_once_with(
         PipelineName="MyPipeline",
         PipelineDefinition=pipeline.definition(),
         RoleArn=role_arn,
@@ -168,7 +168,7 @@ def test_pipeline_create_and_start_with_parallelism_config(sagemaker_session_moc
 
     # Specify ParallelismConfiguration to another value which will be honored in backend
     pipeline.start(parallelism_config=dict(MaxParallelExecutionSteps=20))
-    assert sagemaker_session_mock.sagemaker_client.start_pipeline_execution.called_with(
+    assert sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_once_with(
         PipelineName="MyPipeline",
         ParallelismConfiguration={"MaxParallelExecutionSteps": 20},
     )
@@ -187,11 +187,11 @@ def test_large_pipeline_create(sagemaker_session_mock, role_arn):
 
     pipeline.create(role_arn=role_arn)
 
-    assert s3.S3Uploader.upload_string_as_file_body.called_with(
+    assert s3.S3Uploader.upload_string_as_file_body.assert_called_once_with(
         body=pipeline.definition(), s3_uri="s3://s3_bucket/MyPipeline"
     )
 
-    assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_once_with(
         PipelineName="MyPipeline",
         PipelineDefinitionS3Location={"Bucket": "s3_bucket", "ObjectKey": "MyPipeline"},
         RoleArn=role_arn,
@@ -209,7 +209,7 @@ def test_pipeline_update(sagemaker_session_mock, role_arn):
     assert not pipeline.steps
     pipeline.update(role_arn=role_arn)
     assert len(json.loads(pipeline.definition())["Steps"]) == 0
-    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_once_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
 
@@ -253,7 +253,7 @@ def test_pipeline_update(sagemaker_session_mock, role_arn):
 
     pipeline.update(role_arn=role_arn)
     assert len(json.loads(pipeline.definition())["Steps"]) == 3
-    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_once_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
 
@@ -345,7 +345,7 @@ def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_ar
         role_arn=role_arn,
         parallelism_config=dict(MaxParallelExecutionSteps=10),
     )
-    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_once_with(
         PipelineName="MyPipeline",
         PipelineDefinition=pipeline.definition(),
         RoleArn=role_arn,
@@ -366,11 +366,11 @@ def test_large_pipeline_update(sagemaker_session_mock, role_arn):
 
     pipeline.create(role_arn=role_arn)
 
-    assert s3.S3Uploader.upload_string_as_file_body.called_with(
+    assert s3.S3Uploader.upload_string_as_file_body.assert_called_once_with(
         body=pipeline.definition(), s3_uri="s3://s3_bucket/MyPipeline"
     )
 
-    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_once_with(
         PipelineName="MyPipeline",
         PipelineDefinitionS3Location={"Bucket": "s3_bucket", "ObjectKey": "MyPipeline"},
         RoleArn=role_arn,
@@ -418,12 +418,12 @@ def test_pipeline_upsert_resource_already_exists(sagemaker_session_mock, role_ar
     sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_once_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
-    assert sagemaker_session_mock.sagemaker_client.list_tags.called_with(
+    assert sagemaker_session_mock.sagemaker_client.list_tags.assert_called_once_with(
         ResourceArn="mock_pipeline_arn"
     )
 
     tags.append({"Key": "dummy", "Value": "dummy_tag"})
-    assert sagemaker_session_mock.sagemaker_client.add_tags.called_with(
+    assert sagemaker_session_mock.sagemaker_client.add_tags.assert_called_once_with(
         ResourceArn="mock_pipeline_arn", Tags=tags
     )
 
@@ -523,7 +523,7 @@ def test_pipeline_delete(sagemaker_session_mock):
         sagemaker_session=sagemaker_session_mock,
     )
     pipeline.delete()
-    assert sagemaker_session_mock.sagemaker_client.delete_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.delete_pipeline.assert_called_once_with(
         PipelineName="MyPipeline",
     )
 
@@ -536,7 +536,7 @@ def test_pipeline_describe(sagemaker_session_mock):
         sagemaker_session=sagemaker_session_mock,
     )
     pipeline.describe()
-    assert sagemaker_session_mock.sagemaker_client.describe_pipeline.called_with(
+    assert sagemaker_session_mock.sagemaker_client.describe_pipeline.assert_called_once_with(
         PipelineName="MyPipeline",
     )
 
@@ -552,17 +552,17 @@ def test_pipeline_start(sagemaker_session_mock):
         sagemaker_session=sagemaker_session_mock,
     )
     pipeline.start()
-    assert sagemaker_session_mock.start_pipeline_execution.called_with(
+    assert sagemaker_session_mock.start_pipeline_execution.assert_called_once_with(
         PipelineName="MyPipeline",
     )
 
     pipeline.start(execution_display_name="pipeline-execution")
-    assert sagemaker_session_mock.start_pipeline_execution.called_with(
+    assert sagemaker_session_mock.start_pipeline_execution.assert_called_once_with(
         PipelineName="MyPipeline", PipelineExecutionDisplayName="pipeline-execution"
     )
 
     pipeline.start(parameters=dict(alpha="epsilon"))
-    assert sagemaker_session_mock.start_pipeline_execution.called_with(
+    assert sagemaker_session_mock.start_pipeline_execution.assert_called_once_with(
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
     )
 
@@ -822,7 +822,7 @@ def test_pipeline_build_parameters_from_execution(sagemaker_session_mock):
         parameter_value_overrides=parameter_value_overrides,
     )
     assert (
-        sagemaker_session_mock.sagemaker_client.list_pipeline_parameters_for_execution.called_with(
+        sagemaker_session_mock.sagemaker_client.list_pipeline_parameters_for_execution.assert_called_once_with(
             PipelineExecutionArn=reference_execution_arn
         )
     )
@@ -851,7 +851,7 @@ def test_pipeline_build_parameters_from_execution_with_invalid_overrides(sagemak
         in str(error)
     )
     assert (
-        sagemaker_session_mock.sagemaker_client.list_pipeline_parameters_for_execution.called_with(
+        sagemaker_session_mock.sagemaker_client.list_pipeline_parameters_for_execution.assert_called_once_with(
             PipelineExecutionArn=reference_execution_arn
         )
     )
@@ -908,21 +908,21 @@ def test_pipeline_execution_basics(sagemaker_session_mock):
     )
     execution = pipeline.start()
     execution.stop()
-    assert sagemaker_session_mock.sagemaker_client.stop_pipeline_execution.called_with(
+    assert sagemaker_session_mock.sagemaker_client.stop_pipeline_execution.assert_called_once_with(
         PipelineExecutionArn="my:arn"
     )
     execution.describe()
-    assert sagemaker_session_mock.sagemaker_client.describe_pipeline_execution.called_with(
+    assert sagemaker_session_mock.sagemaker_client.describe_pipeline_execution.assert_called_once_with(
         PipelineExecutionArn="my:arn"
     )
     steps = execution.list_steps()
-    assert sagemaker_session_mock.sagemaker_client.describe_pipeline_execution_steps.called_with(
+    assert sagemaker_session_mock.sagemaker_client.describe_pipeline_execution_steps.assert_called_once_with(
         PipelineExecutionArn="my:arn"
     )
     assert len(steps) == 1
     list_parameters_response = execution.list_parameters()
     assert (
-        sagemaker_session_mock.sagemaker_client.list_pipeline_parameters_for_execution.called_with(
+        sagemaker_session_mock.sagemaker_client.list_pipeline_parameters_for_execution.assert_called_once_with(
             PipelineExecutionArn="my:arn"
         )
     )

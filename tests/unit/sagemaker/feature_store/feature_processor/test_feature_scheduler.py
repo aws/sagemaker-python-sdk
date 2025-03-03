@@ -269,7 +269,7 @@ def test_to_pipeline(
     )
     assert pipeline_arn == PIPELINE_ARN
 
-    assert mock_upload_callable.called_once_with(job_function)
+    assert mock_upload_callable.assert_called_once_with(job_function)
     local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     container_args.extend(["--client_python_version", mock_python_version])

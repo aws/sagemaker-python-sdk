@@ -296,7 +296,7 @@ def test_async_predict_call_pass_through_output_failure_paths():
 
     assert result == RETURN_VALUE
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.called
-    assert sagemaker_session.s3_client.get_waiter.called_with("object_exists")
+    assert sagemaker_session.s3_client.get_waiter.assert_called_once_with("object_exists")
     assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
     assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
 
@@ -332,7 +332,7 @@ def test_async_predict_call_pass_through_with_null_failure_path():
 
     assert result == RETURN_VALUE
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.called
-    assert sagemaker_session.s3_client.get_waiter.called_with("object_exists")
+    assert sagemaker_session.s3_client.get_waiter.assert_called_once_with("object_exists")
     assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
     assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
 
