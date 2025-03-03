@@ -483,8 +483,6 @@ class ModelTrainer(BaseModel):
                 except json.JSONDecodeError:
                     try:
                         self.hyperparameters = yaml.safe_load(contents)
-                        if not isinstance(self.hyperparameters, dict):
-                            raise ValueError("YAML content is not a valid mapping.")
                         logger.debug("Hyperparameters loaded as YAML")
                     except (yaml.YAMLError, ValueError):
                         raise ValueError(
