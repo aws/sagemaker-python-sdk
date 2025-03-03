@@ -106,3 +106,37 @@ def test_hp_contract_torchrun_script(modules_sagemaker_session):
     )
 
     model_trainer.train()
+
+
+def test_hp_contract_hyperparameter_json(modules_sagemaker_session):
+    source_dir = f"{DATA_DIR}/modules/params_script"
+    source_code = SourceCode(
+        source_dir=source_dir,
+        entry_script="train.py",
+    )
+    model_trainer = ModelTrainer(
+        sagemaker_session=modules_sagemaker_session,
+        training_image=DEFAULT_CPU_IMAGE,
+        hyperparameters_file=f"{source_dir}/hyperparameters.json",
+        source_code=source_code,
+        base_job_name="hp-contract-hyperparameter-json",
+    )
+    assert model_trainer.hyperparameters == EXPECTED_HYPERPARAMETERS
+    model_trainer.train()
+
+
+def test_hp_contract_hyperparameter_yaml(modules_sagemaker_session):
+    source_dir = f"{DATA_DIR}/modules/params_script"
+    source_code = SourceCode(
+        source_dir=source_dir,
+        entry_script="train.py",
+    )
+    model_trainer = ModelTrainer(
+        sagemaker_session=modules_sagemaker_session,
+        training_image=DEFAULT_CPU_IMAGE,
+        hyperparameters_file=f"{source_dir}/hyperparameters.yaml",
+        source_code=source_code,
+        base_job_name="hp-contract-hyperparameter-yaml",
+    )
+    assert model_trainer.hyperparameters == EXPECTED_HYPERPARAMETERS
+    model_trainer.train()
