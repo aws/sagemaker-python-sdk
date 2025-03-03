@@ -9,6 +9,7 @@ list:
 dict:
   string: value
   integer: 3
+  float: 3.14
   list:
     - 1
     - 2

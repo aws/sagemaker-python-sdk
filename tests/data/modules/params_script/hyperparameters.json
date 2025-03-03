@@ -7,6 +7,7 @@
     "dict": {
         "string": "value",
         "integer": 3,
+        "float": 3.14,
         "list": [1, 2, 3],
         "dict": {"key": "value"},
         "boolean": true

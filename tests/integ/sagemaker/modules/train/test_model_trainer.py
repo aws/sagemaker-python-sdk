@@ -28,6 +28,7 @@ EXPECTED_HYPERPARAMETERS = {
     "dict": {
         "string": "value",
         "integer": 3,
+        "float": 3.14,
         "list": [1, 2, 3],
         "dict": {"key": "value"},
         "boolean": True,
@@ -40,6 +41,7 @@ DEFAULT_CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-traini
 def test_hp_contract_basic_py_script(modules_sagemaker_session):
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/modules/params_script",
+        requirements="requirements.txt",
         entry_script="train.py",
     )
 
