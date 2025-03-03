@@ -1672,6 +1672,7 @@ def get_model_access_config(accept_eula: Optional[bool]):
 
     return model_access_config
 
+
 def get_latest_version(versions: List[str]) -> Optional[str]:
     """Returns the latest version using sem-ver when possible."""
     try:
