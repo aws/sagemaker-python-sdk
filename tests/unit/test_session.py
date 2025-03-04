@@ -5599,7 +5599,7 @@ def test_feature_group_create(sagemaker_session, feature_group_dummy_definitions
         feature_definitions=feature_group_dummy_definitions,
         role_arn="dummy_role",
     )
-    assert sagemaker_session.sagemaker_client.create_feature_group.called_with(
+    assert sagemaker_session.sagemaker_client.create_feature_group.assert_called_with(
         FeatureGroupName="MyFeatureGroup",
         RecordIdentifierFeatureName="feature1",
         EventTimeFeatureName="feature2",
@@ -5781,7 +5781,7 @@ def test_start_query_execution(sagemaker_session):
         query_string="query",
         output_location="s3://results",
     )
-    assert athena_mock.start_query_execution.called_once_with(
+    athena_mock.start_query_execution.assert_called_once_with(
         QueryString="query",
         QueryExecutionContext={"Catalog": "catalog", "Database": "database"},
         OutputLocation="s3://results",
