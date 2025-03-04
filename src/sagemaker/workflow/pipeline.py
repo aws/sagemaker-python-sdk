@@ -382,7 +382,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             sagemaker_session=self.sagemaker_session,
         )
 
-    def definition(self) -> str:
+    def definition(self) -> Dict[str, Any]:
         """Converts a request structure to string representation for workflow service calls."""
         compiled_steps = StepsCompiler(
             pipeline_name=self.name,
