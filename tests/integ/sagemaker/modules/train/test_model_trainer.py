@@ -42,7 +42,7 @@ PARAM_SCRIPT_SOURCE_CODE = SourceCode(
     entry_script="train.py",
 )
 
-DEFAULT_CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py31"
+DEFAULT_CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py310"
 
 
 def test_hp_contract_basic_py_script(modules_sagemaker_session):
