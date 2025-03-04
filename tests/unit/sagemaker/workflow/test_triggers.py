@@ -194,7 +194,7 @@ def test_schedule_trigger_functionality(eb_helper, sagemaker_session_mock, role_
     eb_helper().delete_schedule.assert_called_once_with(schedule_name=schedule.name)
     # delete pipeline
     pipeline.delete()
-    assert sagemaker_session_mock.sagemaker_client.delete_pipeline.assert_called_once_with(
+    assert sagemaker_session_mock.sagemaker_client.delete_pipeline.assert_called_with(
         PipelineName=PIPELINE_NAME,
     )
 

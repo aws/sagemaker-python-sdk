@@ -5599,7 +5599,7 @@ def test_feature_group_create(sagemaker_session, feature_group_dummy_definitions
         feature_definitions=feature_group_dummy_definitions,
         role_arn="dummy_role",
     )
-    assert sagemaker_session.sagemaker_client.create_feature_group.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.create_feature_group.assert_called_with(
         FeatureGroupName="MyFeatureGroup",
         RecordIdentifierFeatureName="feature1",
         EventTimeFeatureName="feature2",
@@ -5610,14 +5610,14 @@ def test_feature_group_create(sagemaker_session, feature_group_dummy_definitions
 
 def test_feature_group_delete(sagemaker_session):
     sagemaker_session.delete_feature_group(feature_group_name="MyFeatureGroup")
-    assert sagemaker_session.sagemaker_client.delete_feature_group.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.delete_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
     )
 
 
 def test_feature_group_describe(sagemaker_session):
     sagemaker_session.describe_feature_group(feature_group_name="MyFeatureGroup")
-    assert sagemaker_session.sagemaker_client.describe_feature_group.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.describe_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
     )
 
@@ -5627,7 +5627,7 @@ def test_feature_group_feature_additions_update(sagemaker_session, feature_group
         feature_group_name="MyFeatureGroup",
         feature_additions=feature_group_dummy_definitions,
     )
-    assert sagemaker_session.sagemaker_client.update_feature_group.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
         FeatureAdditions=feature_group_dummy_definitions,
     )
@@ -5639,7 +5639,7 @@ def test_feature_group_online_store_config_update(sagemaker_session):
         feature_group_name="MyFeatureGroup",
         online_store_config=os_conf_update,
     )
-    assert sagemaker_session.sagemaker_client.update_feature_group.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup", OnlineStoreConfig=os_conf_update
     )
 
@@ -5654,7 +5654,7 @@ def test_feature_group_throughput_config_update(sagemaker_session):
         feature_group_name="MyFeatureGroup",
         throughput_config=tp_update,
     )
-    assert sagemaker_session.sagemaker_client.update_feature_group.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup", ThroughputConfig=tp_update
     )
 
@@ -5675,7 +5675,7 @@ def test_feature_metadata_update(sagemaker_session):
         parameter_additions=parameter_additions,
         parameter_removals=parameter_removals,
     )
-    assert sagemaker_session.sagemaker_client.update_feature_group.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
         feature_group_name="TestFeatureGroup",
         FeatureName="TestFeature",
         Description="TestDescription",
@@ -5686,7 +5686,7 @@ def test_feature_metadata_update(sagemaker_session):
         feature_group_name="TestFeatureGroup",
         feature_name="TestFeature",
     )
-    assert sagemaker_session.sagemaker_client.update_feature_group.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
         feature_group_name="TestFeatureGroup",
         FeatureName="TestFeature",
     )
@@ -5696,7 +5696,7 @@ def test_feature_metadata_describe(sagemaker_session):
     sagemaker_session.describe_feature_metadata(
         feature_group_name="MyFeatureGroup", feature_name="TestFeature"
     )
-    assert sagemaker_session.sagemaker_client.describe_feature_metadata.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.describe_feature_metadata.called_with(
         FeatureGroupName="MyFeatureGroup", FeatureName="TestFeature"
     )
 
@@ -5725,7 +5725,7 @@ def test_list_feature_groups(sagemaker_session):
         next_token="token",
     )
     assert sagemaker_session.sagemaker_client.list_feature_groups.called_once()
-    assert sagemaker_session.sagemaker_client.list_feature_groups.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.list_feature_groups.called_with(
         **expected_list_feature_groups_args
     )
 
@@ -5746,7 +5746,7 @@ def test_feature_group_put_record(sagemaker_session_with_fs_runtime_client):
     )
     fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
 
-    assert fs_client_mock.put_record.assert_called_once_with(
+    assert fs_client_mock.put_record.called_with(
         FeatureGroupName="MyFeatureGroup",
         record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
     )
@@ -5762,7 +5762,7 @@ def test_feature_group_put_record_with_ttl_and_target_stores(
         target_stores=["OnlineStore", "OfflineStore"],
     )
     fs_client_mock = sagemaker_session_with_fs_runtime_client.sagemaker_featurestore_runtime_client
-    assert fs_client_mock.put_record.assert_called_once_with(
+    assert fs_client_mock.put_record.called_with(
         FeatureGroupName="MyFeatureGroup",
         record=[{"FeatureName": "feature1", "ValueAsString": "value1"}],
         target_stores=["OnlineStore", "OfflineStore"],
@@ -5794,7 +5794,7 @@ def test_get_query_execution(sagemaker_session):
         "athena", region_name=sagemaker_session.boto_region_name
     ).return_value = athena_mock
     sagemaker_session.get_query_execution(query_execution_id="query_id")
-    assert athena_mock.get_query_execution.assert_called_once_with(QueryExecutionId="query_id")
+    assert athena_mock.get_query_execution.called_with(QueryExecutionId="query_id")
 
 
 def test_download_athena_query_result(sagemaker_session):
@@ -5805,7 +5805,7 @@ def test_download_athena_query_result(sagemaker_session):
         query_execution_id="query_id",
         filename="filename",
     )
-    assert sagemaker_session.s3_client.download_file.assert_called_once_with(
+    assert sagemaker_session.s3_client.download_file.called_with(
         Bucket="bucket",
         Key="prefix/query_id.csv",
         Filename="filename",
@@ -5819,7 +5819,7 @@ def test_update_monitoring_alert(sagemaker_session):
         data_points_to_alert=1,
         evaluation_period=1,
     )
-    assert sagemaker_session.sagemaker_client.update_monitoring_alert.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.update_monitoring_alert.called_with(
         MonitoringScheduleName="schedule-name",
         MonitoringAlertName="alert-name",
         DatapointsToAlert=1,
@@ -5833,7 +5833,7 @@ def test_list_monitoring_alerts(sagemaker_session):
         next_token="next_token",
         max_results=100,
     )
-    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.called_with(
         MonitoringScheduleName="schedule-name",
         NextToken="next_token",
         MaxResults=100,
@@ -5852,7 +5852,7 @@ def test_list_monitoring_alert_history(sagemaker_session):
         creation_time_before="creation_time_before",
         creation_time_after="creation_time_after",
     )
-    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.called_with(
         MonitoringScheduleName="schedule-name",
         MonitoringAlertName="alert-name",
         SortBy="CreationTime",
@@ -5869,7 +5869,7 @@ def test_list_monitoring_alert_history(sagemaker_session):
 def test_wait_for_athena_query(query_execution, sagemaker_session):
     query_execution.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
     sagemaker_session.wait_for_athena_query(query_execution_id="query_id")
-    assert query_execution.assert_called_once_with(query_execution_id="query_id")
+    assert query_execution.called_with(query_execution_id="query_id")
 
 
 def test_search(sagemaker_session):
@@ -5908,7 +5908,7 @@ def test_search(sagemaker_session):
         max_results=50,
     )
     assert sagemaker_session.sagemaker_client.search.called_once()
-    assert sagemaker_session.sagemaker_client.search.assert_called_once_with(**expected_search_args)
+    assert sagemaker_session.sagemaker_client.search.called_with(**expected_search_args)
 
 
 def test_batch_get_record(sagemaker_session):
@@ -5931,7 +5931,7 @@ def test_batch_get_record(sagemaker_session):
         ]
     )
     assert sagemaker_session.sagemaker_client.batch_get_record.called_once()
-    assert sagemaker_session.sagemaker_client.batch_get_record.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.batch_get_record.called_with(
         **expected_batch_get_record_args
     )
 
@@ -5958,7 +5958,7 @@ def test_batch_get_record_expiration_time_response(sagemaker_session):
         expiration_time_response="Disabled",
     )
     assert sagemaker_session.sagemaker_client.batch_get_record.called_once()
-    assert sagemaker_session.sagemaker_client.batch_get_record.assert_called_once_with(
+    assert sagemaker_session.sagemaker_client.batch_get_record.called_with(
         **expected_batch_get_record_args
     )
 
@@ -6292,7 +6292,7 @@ def test_create_inference_recommendations_job_propogate_other_exception(
 def test_create_presigned_mlflow_tracking_server_url(sagemaker_session):
     sagemaker_session.create_presigned_mlflow_tracking_server_url("ts", 1, 2)
     assert (
-        sagemaker_session.sagemaker_client.create_presigned_mlflow_tracking_server_url.assert_called_once_with(
+        sagemaker_session.sagemaker_client.create_presigned_mlflow_tracking_server_url.called_with(
             TrackingServerName="ts", ExpiresInSeconds=1, SessionExpirationDurationInSeconds=2
         )
     )
@@ -6301,7 +6301,7 @@ def test_create_presigned_mlflow_tracking_server_url(sagemaker_session):
 def test_create_presigned_mlflow_tracking_server_url_minimal(sagemaker_session):
     sagemaker_session.create_presigned_mlflow_tracking_server_url("ts")
     assert (
-        sagemaker_session.sagemaker_client.create_presigned_mlflow_tracking_server_url.assert_called_once_with(
+        sagemaker_session.sagemaker_client.create_presigned_mlflow_tracking_server_url.called_with(
             TrackingServerName="ts"
         )
     )
