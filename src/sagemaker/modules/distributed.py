@@ -14,11 +14,12 @@
 from __future__ import absolute_import
 
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, PrivateAttr
+from pydantic import PrivateAttr
 from sagemaker.modules.utils import safe_serialize
+from sagemaker.modules.configs import BaseConfig
 
 
-class SMP(BaseModel):
+class SMP(BaseConfig):
     """SMP.
 
     This class is used for configuring the SageMaker Model Parallelism v2 parameters.
@@ -72,7 +73,7 @@ class SMP(BaseModel):
         return hyperparameters
 
 
-class DistributedConfig(BaseModel):
+class DistributedConfig(BaseConfig):
     """Base class for distributed training configurations."""
 
     _type: str = PrivateAttr()

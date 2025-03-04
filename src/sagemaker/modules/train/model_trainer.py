@@ -205,7 +205,9 @@ class ModelTrainer(BaseModel):
             "LOCAL_CONTAINER" mode.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, validate_assignment=True, extra="forbid"
+    )
 
     training_mode: Mode = Mode.SAGEMAKER_TRAINING_JOB
     sagemaker_session: Optional[Session] = None
@@ -363,9 +365,10 @@ class ModelTrainer(BaseModel):
 
     def __del__(self):
         """Destructor method to clean up the temporary directory."""
-        # Clean up the temporary directory if it exists
-        if self._temp_recipe_train_dir is not None:
-            self._temp_recipe_train_dir.cleanup()
+        # Clean up the temporary directory if it exists and class was initialized
+        if hasattr(self, "__pydantic_fields_set__"):
+            if self._temp_recipe_train_dir is not None:
+                self._temp_recipe_train_dir.cleanup()
 
     def _validate_training_image_and_algorithm_name(
         self, training_image: Optional[str], algorithm_name: Optional[str]
@@ -792,14 +795,14 @@ class ModelTrainer(BaseModel):
         """Prepare the training script to be executed in the training job container.
 
         Args:
-            source_code (SourceCodeConfig): The source code configuration.
+            source_code (SourceCode): The source code configuration.
         """
 
         base_command = ""
         if source_code.command:
             if source_code.entry_script:
                 logger.warning(
-                    "Both 'command' and 'entry_script' are provided in the SourceCodeConfig. "
+                    "Both 'command' and 'entry_script' are provided in the SourceCode. "
                     + "Defaulting to 'command'."
                 )
             base_command = source_code.command.split()
@@ -831,6 +834,13 @@ class ModelTrainer(BaseModel):
                     + "Only .py and .sh scripts are supported."
                 )
             execute_driver = EXECUTE_BASIC_SCRIPT_DRIVER
+        else:
+            # This should never be reached, as the source_code should have been validated.
+            raise ValueError(
+                f"Unsupported SourceCode or DistributedConfig: {source_code}, {distributed}."
+                + "Please provide a valid configuration with atleast one of 'command'"
+                + " or entry_script'."
+            )
 
         train_script = TRAIN_SCRIPT_TEMPLATE.format(
             working_dir=working_dir,

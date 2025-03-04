@@ -30,8 +30,10 @@ from sagemaker.base_serializers import (  # noqa: F401 # pylint: disable=W0611
     SparseMatrixSerializer,
     TorchTensorSerializer,
     StringSerializer,
+    RecordSerializer,
 )
 
+from sagemaker.deprecations import deprecated_class
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -152,3 +154,6 @@ def retrieve_default(
         model_type=model_type,
         config_name=config_name,
     )
+
+
+numpy_to_record_serializer = deprecated_class(RecordSerializer, "numpy_to_record_serializer")

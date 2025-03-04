@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional, Union, List, Dict
+from typing import Callable, Optional, Union, List, Dict
 
 import packaging.version
 
@@ -99,7 +99,7 @@ class PyTorchModel(FrameworkModel):
         framework_version: str = "1.3",
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = PyTorchPredictor,
+        predictor_cls: Optional[Callable] = PyTorchPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs,
     ):
@@ -128,7 +128,7 @@ class PyTorchModel(FrameworkModel):
                 If ``framework_version`` or ``py_version`` are
                 ``None``, then ``image_uri`` is required. If ``image_uri`` is also ``None``, then a
                 ``ValueError`` will be raised.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.

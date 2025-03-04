@@ -28,8 +28,6 @@ To train a PyTorch model by using the SageMaker Python SDK:
 Prepare a PyTorch Training Script
 =================================
 
-Your PyTorch training script must be a Python 3.6 compatible source file.
-
 Prepare your script in a separate source file than the notebook, terminal session, or source file you're
 using to submit the script to SageMaker via a ``PyTorch`` Estimator. This will be discussed in further detail below.
 
@@ -375,6 +373,9 @@ To initialize distributed training in your script, call
 `torch.distributed.init_process_group
 <https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
 with the desired backend and the rank of the current host.
+Warning: Some torch features, such as (and likely not limited to) ``torch.nn.SyncBatchNorm``
+is not supported and its existence in ``init_process_group`` will cause an exception during
+distributed training.
 
 .. code:: python
 

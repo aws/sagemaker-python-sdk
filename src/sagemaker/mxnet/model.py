@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import packaging.version
 
@@ -68,9 +68,9 @@ class MXNetPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            serializer (callable): Optional. Default serializes input data to
+            serializer (Callable): Optional. Default serializes input data to
                 json. Handles dicts, lists, and numpy arrays.
-            deserializer (callable): Optional. Default parses the response using
+            deserializer (Callable): Optional. Default parses the response using
                 ``json.load(...)``.
             component_name (str): Optional. Name of the Amazon SageMaker inference
                 component corresponding to the predictor.
@@ -98,7 +98,7 @@ class MXNetModel(FrameworkModel):
         framework_version: str = _LOWEST_MMS_VERSION,
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = MXNetPredictor,
+        predictor_cls: Optional[Callable] = MXNetPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs,
     ):
@@ -127,7 +127,7 @@ class MXNetModel(FrameworkModel):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.

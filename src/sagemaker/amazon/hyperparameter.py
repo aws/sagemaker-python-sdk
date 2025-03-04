@@ -28,7 +28,7 @@ class Hyperparameter(object):
         """Args:
 
         name (str): The name of this hyperparameter validate
-        (callable[object]->[bool]): A validation function or list of validation
+        (Callable[object]->[bool]): A validation function or list of validation
         functions.
 
             Each function validates an object and returns False if the object

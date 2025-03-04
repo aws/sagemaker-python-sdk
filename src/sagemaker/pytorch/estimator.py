@@ -95,6 +95,7 @@ def _get_training_recipe_gpu_script(code_dir, recipe, source_dir):
         "llama_v3": ("llama", "llama_pretrain.py"),
         "mistral": ("mistral", "mistral_pretrain.py"),
         "mixtral": ("mixtral", "mixtral_pretrain.py"),
+        "deepseek": ("deepseek", "deepseek_pretrain.py"),
     }
 
     if "model" not in recipe:
@@ -102,6 +103,12 @@ def _get_training_recipe_gpu_script(code_dir, recipe, source_dir):
     if "model_type" not in recipe["model"]:
         raise ValueError("Supplied recipe does not contain required field model_type.")
     model_type = recipe["model"]["model_type"]
+
+    for key in model_type_to_script:
+        if model_type.startswith(key):
+            model_type = key
+            break
+
     if model_type not in model_type_to_script:
         raise ValueError(f"Model type {model_type} not supported")
 
@@ -175,8 +182,8 @@ class PyTorch(Framework):
                 unless ``image_uri`` is provided.
             source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI) to
                 a directory with any other training source code dependencies aside from the entry
-                point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
+                point file (default: None). If ``source_dir`` is an S3 URI, it must point to a
+                file with name ``sourcedir.tar.gz``. Structure within this directory are preserved
                 when training on Amazon SageMaker. Must be a local path when using training_recipe.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
                 that will be used for training (default: None). The hyperparameters are made

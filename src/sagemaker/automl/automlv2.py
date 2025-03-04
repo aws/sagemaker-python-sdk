@@ -1022,7 +1022,7 @@ class AutoMLV2(object):
                 training cluster for distributed training. Default: False
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If
                 specified, ``deploy()``  returns the result of invoking this
                 function on the created endpoint name.
@@ -1130,7 +1130,7 @@ class AutoMLV2(object):
                 training cluster for distributed training. Default: False
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If
                 specified, ``deploy()``  returns the result of invoking this
                 function on the created endpoint name.
@@ -1148,7 +1148,7 @@ class AutoMLV2(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
 
         Returns:
-            callable[string, sagemaker.session.Session] or ``None``:
+            Optional[Callable[[string, sagemaker.session.Session], Any]]:
                 If ``predictor_cls`` is specified, the invocation of ``self.predictor_cls`` on
                 the created endpoint name. Otherwise, ``None``.
         """

@@ -272,18 +272,21 @@ class Hub:
     def describe_model(
         self, model_name: str, hub_name: Optional[str] = None, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
-        """Describe model in the SageMaker Hub."""
+        """Describe Model or ModelReference in a Hub."""
+        hub_name = hub_name or self.hub_name
+
+        # Users only input model id, not contentType, so first try to describe with ModelReference, then with Model
         try:
             model_version = get_hub_model_version(
                 hub_model_name=model_name,
                 hub_model_type=HubContentType.MODEL_REFERENCE.value,
-                hub_name=self.hub_name if not hub_name else hub_name,
+                hub_name=hub_name,
                 sagemaker_session=self._sagemaker_session,
                 hub_model_version=model_version,
             )
 
             hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=self.hub_name if not hub_name else hub_name,
+                hub_name=hub_name,
                 hub_content_name=model_name,
                 hub_content_version=model_version,
                 hub_content_type=HubContentType.MODEL_REFERENCE.value,
@@ -294,19 +297,32 @@ class Hub:
                 "Received exeption while calling APIs for ContentType ModelReference, retrying with ContentType Model: "
                 + str(ex)
             )
-            model_version = get_hub_model_version(
-                hub_model_name=model_name,
-                hub_model_type=HubContentType.MODEL.value,
-                hub_name=self.hub_name if not hub_name else hub_name,
-                sagemaker_session=self._sagemaker_session,
-                hub_model_version=model_version,
-            )
 
-            hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=self.hub_name if not hub_name else hub_name,
-                hub_content_name=model_name,
-                hub_content_version=model_version,
-                hub_content_type=HubContentType.MODEL.value,
-            )
+            # Failed to describe ModelReference, try with Model
+            try:
+                model_version = get_hub_model_version(
+                    hub_model_name=model_name,
+                    hub_model_type=HubContentType.MODEL.value,
+                    hub_name=hub_name,
+                    sagemaker_session=self._sagemaker_session,
+                    hub_model_version=model_version,
+                )
+
+                hub_content_description: Dict[str, Any] = (
+                    self._sagemaker_session.describe_hub_content(
+                        hub_name=hub_name,
+                        hub_content_name=model_name,
+                        hub_content_version=model_version,
+                        hub_content_type=HubContentType.MODEL.value,
+                    )
+                )
+
+            except Exception as ex:
+                # Failed with both, throw a custom error message
+                raise RuntimeError(
+                    f"Cannot get details for {model_name} in Hub {hub_name}. \
+                        {model_name} does not exist as a Model or ModelReference in {hub_name}: \n"
+                    + str(ex)
+                )
 
         return DescribeHubContentResponse(hub_content_description)

@@ -18,51 +18,51 @@ and interpretation on Amazon SageMaker.
 """
 from __future__ import absolute_import
 
+import logging
 import os
 import pathlib
-import logging
+import re
+from copy import copy
 from textwrap import dedent
 from typing import Dict, List, Optional, Union
-from copy import copy
-import re
 
 import attr
-
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
+
 from sagemaker import s3
+from sagemaker.apiutils._base_types import ApiObject
 from sagemaker.config import (
+    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    PROCESSING_JOB_ENVIRONMENT_PATH,
+    PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     PROCESSING_JOB_KMS_KEY_ID_PATH,
+    PROCESSING_JOB_ROLE_ARN_PATH,
     PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
     PROCESSING_JOB_SUBNETS_PATH,
-    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
-    PROCESSING_JOB_ROLE_ARN_PATH,
-    PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
-    PROCESSING_JOB_ENVIRONMENT_PATH,
 )
+from sagemaker.dataset_definition.inputs import DatasetDefinition, S3Input
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
+from sagemaker.s3 import S3Uploader
+from sagemaker.session import Session
 from sagemaker.utils import (
+    Tags,
     base_name_from_image,
+    check_and_get_run_experiment_config,
+    format_tags,
     get_config_value,
     name_from_base,
-    check_and_get_run_experiment_config,
-    resolve_value_from_config,
     resolve_class_attribute_from_config,
-    Tags,
-    format_tags,
+    resolve_value_from_config,
 )
-from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
-from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
-from sagemaker.apiutils._base_types import ApiObject
-from sagemaker.s3 import S3Uploader
 
 logger = logging.getLogger(__name__)
 
@@ -1416,7 +1416,7 @@ class RunArgs(object):
 class FeatureStoreOutput(ApiObject):
     """Configuration for processing job outputs in Amazon SageMaker Feature Store."""
 
-    feature_group_name = None
+    feature_group_name: Optional[str] = None
 
 
 class FrameworkProcessor(ScriptProcessor):
@@ -1465,7 +1465,7 @@ class FrameworkProcessor(ScriptProcessor):
             instance_type (str or PipelineVariable): The type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             py_version (str): Python version you want to use for executing your
-                model training code. One of 'py2' or 'py3'. Defaults to 'py3'. Value
+                model training code. Ex `py38, py39, py310, py311`. Value
                 is ignored when ``image_uri`` is provided.
             image_uri (str or PipelineVariable): The URI of the Docker image to use for the
                 processing jobs (default: None).

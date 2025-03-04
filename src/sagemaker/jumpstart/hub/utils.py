@@ -78,6 +78,9 @@ def construct_hub_arn_from_name(
     account_id: Optional[str] = None,
 ) -> str:
     """Constructs a Hub arn from the Hub name using default Session values."""
+    if session is None:
+        # session is overridden to none by some callers
+        session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     account_id = account_id or session.account_id()
     region = region or session.boto_region_name
@@ -211,6 +214,9 @@ def get_hub_model_version(
         ClientError: If the specified model is not found in the hub.
         KeyError: If the specified model version is not found.
     """
+    if sagemaker_session is None:
+        # sagemaker_session is overridden to none by some callers
+        sagemaker_session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     try:
         hub_content_summaries = sagemaker_session.list_hub_content_versions(

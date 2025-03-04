@@ -23,6 +23,7 @@ import json
 import numpy as np
 from six import with_metaclass
 
+from sagemaker.serializer_utils import read_records
 from sagemaker.utils import DeferredError
 
 try:
@@ -388,3 +389,31 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
                 "Unable to deserialize your data to torch.Tensor.\
                     Please provide custom deserializer in InferenceSpec."
             )
+
+
+class RecordDeserializer(SimpleBaseDeserializer):
+    """Deserialize RecordIO Protobuf data from an inference endpoint."""
+
+    def __init__(self, accept="application/x-recordio-protobuf"):
+        """Initialize a ``RecordDeserializer`` instance.
+
+        Args:
+            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
+                is expected from the inference endpoint (default:
+                "application/x-recordio-protobuf").
+        """
+        super(RecordDeserializer, self).__init__(accept=accept)
+
+    def deserialize(self, data, content_type):
+        """Deserialize RecordIO Protobuf data from an inference endpoint.
+
+        Args:
+            data (object): The protobuf message to deserialize.
+            content_type (str): The MIME type of the data.
+        Returns:
+            list: A list of records.
+        """
+        try:
+            return read_records(data)
+        finally:
+            data.close()

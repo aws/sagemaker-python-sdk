@@ -631,7 +631,7 @@ class IngestionError(Exception):
 class FeatureGroup:
     """FeatureGroup definition.
 
-    This class instantiates a FeatureGroup object that comprises of a name for the FeatureGroup,
+    This class instantiates a FeatureGroup object that comprises a name for the FeatureGroup,
     session instance, and a list of feature definition objects i.e., FeatureDefinition.
 
     Attributes:

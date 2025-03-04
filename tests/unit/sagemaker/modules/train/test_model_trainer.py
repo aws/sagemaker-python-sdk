@@ -18,6 +18,7 @@ import tempfile
 import json
 import os
 import pytest
+from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY
 
 from sagemaker import image_uris
@@ -438,7 +439,7 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
         {
             "source_code": DEFAULT_SOURCE_CODE,
             "distributed": MPI(
-                custom_mpi_options=["-x", "VAR1", "-x", "VAR2"],
+                mpi_additional_options=["-x", "VAR1", "-x", "VAR2"],
             ),
             "expected_template": EXECUTE_MPI_DRIVER,
             "expected_hyperparameters": {},
@@ -1059,3 +1060,36 @@ def test_model_trainer_local_full_init(
         hyper_parameters=hyperparameters,
         environment=environment,
     )
+
+
+def test_safe_configs():
+    # Test extra fails
+    with pytest.raises(ValueError):
+        SourceCode(entry_point="train.py")
+    # Test invalid type fails
+    with pytest.raises(ValueError):
+        SourceCode(entry_script=1)
+
+
+@patch("sagemaker.modules.train.model_trainer.TemporaryDirectory")
+def test_destructor_cleanup(mock_tmp_dir, modules_session):
+
+    with pytest.raises(ValidationError):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute="test",
+        )
+    mock_tmp_dir.cleanup.assert_not_called()
+
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+    )
+    model_trainer._temp_recipe_train_dir = mock_tmp_dir
+    mock_tmp_dir.assert_not_called()
+    del model_trainer
+    mock_tmp_dir.cleanup.assert_called_once()

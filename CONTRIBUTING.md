@@ -61,6 +61,10 @@ Before sending us a pull request, please ensure that:
    1. Follow the instructions at [Modifying an EBS Volume Using Elastic Volumes (Console)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html#modify-ebs-volume) to increase the EBS volume size associated with the newly created EC2 instance.
    1. Wait 5-10min for the new EBS volume increase to finalize.
    1. Allow EC2 to claim the additional space by stopping and then starting your EC2 host.
+2. Set up a venv to manage dependencies:
+   1. `python -m venv ~/.venv/myproject-env` to create the venv
+   2. `source ~/.venv/myproject-env/bin/activate` to activate the venv
+   3. `deactivate` to exit the venv
 
 
 ### Pull Down the Code
@@ -74,8 +78,8 @@ Before sending us a pull request, please ensure that:
 ### Run the Unit Tests
 
 1. Install tox using `pip install tox`
-1. Install coverage using `pip install .[test]`
-1. cd into the sagemaker-python-sdk folder: `cd sagemaker-python-sdk` or `cd /environment/sagemaker-python-sdk`
+1. cd into the github project sagemaker-python-sdk folder: `cd sagemaker-python-sdk` or `cd /environment/sagemaker-python-sdk`
+1. Install coverage using `pip install '.[test]'`
 1. Run the following tox command and verify that all code checks and unit tests pass: `tox tests/unit`
 1. You can also run a single test with the following command: `tox -e py310 -- -s -vv <path_to_file><file_name>::<test_function_name>`
 1. You can run coverage via runcvoerage env : `tox -e runcoverage -- tests/unit` or `tox -e py310 -- tests/unit --cov=sagemaker --cov-append --cov-report xml`
