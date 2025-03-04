@@ -485,7 +485,7 @@ class ModelTrainer(BaseModel):
                         logger.info(f"contents: {contents}")
                         self.hyperparameters = yaml.safe_load(contents)
                         if not isinstance(self.hyperparameters, dict):
-                            raise ValueError(f"YAML contents must be a valid mapping")
+                            raise ValueError("YAML contents must be a valid mapping")
                         logger.info(f"hyperparameters: {self.hyperparameters}")
                         logger.debug("Hyperparameters loaded as YAML")
                     except (yaml.YAMLError, ValueError):
