@@ -1161,6 +1161,18 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
                 hyperparameters="hyperparameters.yaml",
             )
 
+    # YAML contents must be a valid mapping
+    mock_file_open = mock_open(read_data="invalid")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )
+
     # Must be valid YAML
     mock_file_open = mock_open(read_data="* invalid")
     with patch("builtins.open", mock_file_open):
