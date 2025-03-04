@@ -450,7 +450,7 @@ def test_run_pre_exec_script_cmd_error(isfile):
 def test_change_dir_permission(mock_subprocess_run):
     RuntimeEnvironmentManager().change_dir_permission(dirs=["a", "b", "c"], new_permission="777")
     expected_command = ["sudo", "chmod", "-R", "777", "a", "b", "c"]
-    assert mock_subprocess_run.assert_called_once_with(
+    mock_subprocess_run.assert_called_once_with(
         expected_command, check=True, stderr=subprocess.PIPE
     )
 

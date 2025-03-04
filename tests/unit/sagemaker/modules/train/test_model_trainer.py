@@ -1048,7 +1048,7 @@ def test_model_trainer_local_full_init(
 
     model_trainer.train()
 
-    assert mock_local_container.train.assert_called_once_with(
+    mock_local_container.train.assert_called_once_with(
         training_job_name=unique_name,
         instance_type=compute.instance_type,
         instance_count=compute.instance_count,

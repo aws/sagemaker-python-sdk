@@ -1190,7 +1190,7 @@ def test_start_with_spark(
 
     assert job.job_name.startswith("job-function")
 
-    assert mock_stored_function.assert_called_once_with(
+    mock_stored_function.assert_called_once_with(
         sagemaker_session=session(), s3_base_uri=f"{S3_URI}/{job.job_name}", s3_kms_key=None
     )
 

@@ -5781,7 +5781,7 @@ def test_start_query_execution(sagemaker_session):
         query_string="query",
         output_location="s3://results",
     )
-    assert athena_mock.start_query_execution.assert_called_once_with(
+    athena_mock.start_query_execution.assert_called_once_with(
         QueryString="query",
         QueryExecutionContext={"Catalog": "catalog", "Database": "database"},
         OutputLocation="s3://results",

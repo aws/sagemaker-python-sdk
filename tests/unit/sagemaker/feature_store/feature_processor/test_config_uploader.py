@@ -100,7 +100,7 @@ def remote_decorator_config_with_filter(sagemaker_session):
 def test_prepare_and_upload_callable(mock_stored_function, config_uploader, wrapped_func):
     mock_stored_function.save(wrapped_func).return_value = None
     config_uploader._prepare_and_upload_callable(wrapped_func, "s3_base_uri", sagemaker_session)
-    assert mock_stored_function.assert_called_once_with(
+    mock_stored_function.assert_called_once_with(
         s3_base_uri="s3_base_uri",
         s3_kms_key=config_uploader.remote_decorator_config.s3_kms_key,
         hmac_key="some_secret_key",
@@ -244,7 +244,7 @@ def test_prepare_step_input_channel(
     )
     remote_decorator_config = config_uploader.remote_decorator_config
 
-    assert mock_upload_callable.assert_called_once_with(wrapped_func)
+    mock_upload_callable.assert_called_once_with(wrapped_func)
 
     mock_script_upload.assert_called_once_with(
         spark_config=config_uploader.remote_decorator_config.spark_config,
