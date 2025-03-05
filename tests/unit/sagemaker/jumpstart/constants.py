@@ -3059,7 +3059,7 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "g4": {
                     "regional_properties": {"image_uri": "$gpu_image_uri"},
                     "properties": {
-                        "artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
+                        "training_artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
                     },
                 },
                 "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
@@ -3135,7 +3135,7 @@ SPECIAL_MODEL_SPECS_DICT = {
                 },
                 "p9": {
                     "regional_properties": {"image_uri": "$gpu_image_uri"},
-                    "properties": {"artifact_key": "do/re/mi"},
+                    "properties": {"training_artifact_key": "do/re/mi"},
                 },
                 "m2": {
                     "regional_properties": {"image_uri": "$cpu_image_uri"},
@@ -3214,13 +3214,13 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "ml.p9.12xlarge": {
                     "properties": {
                         "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
-                        "artifact_key": "you/not/entertained",
+                        "training_artifact_key": "you/not/entertained",
                     }
                 },
                 "g6": {
                     "properties": {
                         "environment_variables": {"BLAH": "4"},
-                        "artifact_key": "path/to/training/artifact.tar.gz",
+                        "training_artifact_key": "path/to/training/artifact.tar.gz",
                         "prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/",
                     }
                 },
@@ -5046,7 +5046,7 @@ SPECIAL_MODEL_SPECS_DICT = {
                 "m4": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
                 "m5": {
                     "regional_properties": {"image_uri": "$cpu_ecr_uri_1"},
-                    "properties": {"artifact_key": "hello-world-1"},
+                    "properties": {"training_artifact_key": "hello-world-1"},
                 },
                 "m5d": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
                 "m6i": {"regional_properties": {"image_uri": "$cpu_ecr_uri_1"}},
@@ -17234,13 +17234,13 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "g4dn": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+                        "training_artifact_uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/g4dn/v1.0.0/",  # noqa: E501
                     },
                 },
                 "g5": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+                        "training_artifact_uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/g5/v1.0.0/",  # noqa: E501
                     },
                 },
                 "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -17249,13 +17249,13 @@ HUB_MODEL_DOCUMENT_DICTS = {
                 "p3dn": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+                        "training_artifact_uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/p3dn/v1.0.0/",  # noqa: E501
                     },
                 },
                 "p4d": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-huggingface-llm-gemma-2b-instruct.tar.gz",  # noqa: E501
+                        "training_artifact_uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/p4d/v1.0.0/",  # noqa: E501
                     },
                 },
                 "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
