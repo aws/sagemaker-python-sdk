@@ -133,7 +133,7 @@ class Torchrun(DistributedConfig):
         Returns:
             str: Path to directory containing the driver script
         """
-        return os.path.join(SM_DRIVERS_LOCAL_PATH, "drivers")
+        return os.path.join(SM_DRIVERS_LOCAL_PATH, "distributed_drivers")
 
     @property
     def driver_script(self) -> str:
@@ -169,7 +169,7 @@ class MPI(DistributedConfig):
         Returns:
             str: Path to directory containing the driver script
         """
-        return os.path.join(SM_DRIVERS_LOCAL_PATH, "drivers")
+        return os.path.join(SM_DRIVERS_LOCAL_PATH, "distributed_drivers")
 
     @property
     def driver_script(self) -> str:

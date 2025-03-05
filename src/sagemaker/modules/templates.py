@@ -21,12 +21,12 @@ eval $CMD
 
 EXECUTE_BASIC_SCRIPT_DRIVER = """
 echo "Running Basic Script driver"
-$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/drivers/basic_script_driver.py
+$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/distributed_drivers/basic_script_driver.py
 """
 
 EXEUCTE_DISTRIBUTED_DRIVER = """
 echo "Running {driver_name} Driver"
-$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/drivers/{driver_script}
+$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/distributed_drivers/{driver_script}
 """
 
 TRAIN_SCRIPT_TEMPLATE = """

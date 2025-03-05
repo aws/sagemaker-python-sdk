@@ -569,7 +569,7 @@ class ModelTrainer(BaseModel):
             # If distributed is provided, overwrite code under <root>/drivers
             if self.distributed:
                 distributed_driver_dir = self.distributed.driver_dir
-                driver_dir = os.path.join(tmp_dir.name, "drivers")
+                driver_dir = os.path.join(tmp_dir.name, "distributed_drivers")
                 shutil.copytree(distributed_driver_dir, driver_dir, dirs_exist_ok=True)
 
             # If source code is provided, create a channel for the source code

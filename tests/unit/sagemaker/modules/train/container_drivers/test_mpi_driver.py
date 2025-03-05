@@ -22,7 +22,7 @@ from unittest.mock import patch, MagicMock
 sys.modules["utils"] = MagicMock()
 sys.modules["mpi_utils"] = MagicMock()
 
-from sagemaker.modules.train.container_drivers.drivers import mpi_driver  # noqa: E402
+from sagemaker.modules.train.container_drivers.distributed_drivers import mpi_driver  # noqa: E402
 
 
 DUMMY_MPI_COMMAND = [
@@ -63,13 +63,13 @@ DUMMY_DISTRIBUTED = {
         "SM_ENTRY_SCRIPT": "/opt/ml/input/data/code/script.py",
     },
 )
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.write_env_vars_to_file")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.start_sshd_daemon")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.bootstrap_master_node")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.bootstrap_worker_node")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.hyperparameters_to_cli_args")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.get_mpirun_command")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.execute_commands")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.write_env_vars_to_file")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.start_sshd_daemon")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.bootstrap_master_node")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.bootstrap_worker_node")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.hyperparameters_to_cli_args")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.get_mpirun_command")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.execute_commands")
 def test_mpi_driver_worker(
     mock_execute_commands,
     mock_get_mpirun_command,
@@ -104,15 +104,15 @@ def test_mpi_driver_worker(
         "SM_ENTRY_SCRIPT": "script.py",
     },
 )
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.write_env_vars_to_file")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.start_sshd_daemon")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.bootstrap_master_node")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.bootstrap_worker_node")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.get_process_count")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.hyperparameters_to_cli_args")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.get_mpirun_command")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.execute_commands")
-@patch("sagemaker.modules.train.container_drivers.drivers.mpi_driver.write_status_file_to_workers")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.write_env_vars_to_file")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.start_sshd_daemon")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.bootstrap_master_node")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.bootstrap_worker_node")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.get_process_count")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.hyperparameters_to_cli_args")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.get_mpirun_command")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.execute_commands")
+@patch("sagemaker.modules.train.container_drivers.distributed_drivers.mpi_driver.write_status_file_to_workers")
 def test_mpi_driver_master(
     mock_write_status_file_to_workers,
     mock_execute_commands,

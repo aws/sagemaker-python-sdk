@@ -15,8 +15,8 @@ def main():
 
     source_dir = os.environ["SM_SOURCE_DIR"]
     assert source_dir == "/opt/ml/input/data/code"
-    sm_drivers_dir = os.environ["SM_DRIVER_DIR"]
-    assert sm_drivers_dir == "/opt/ml/input/data/sm_drivers/drivers"
+    sm_drivers_dir = os.environ["SM_DISTRIBUTED_DRIVER_DIR"]
+    assert sm_drivers_dir == "/opt/ml/input/data/sm_drivers/distributed_drivers"
 
     entry_script = os.environ["SM_ENTRY_SCRIPT"]
     assert entry_script != None

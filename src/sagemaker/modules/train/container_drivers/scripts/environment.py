@@ -48,7 +48,7 @@ SM_OUTPUT_DIR = "/opt/ml/output"
 SM_OUTPUT_FAILURE = "/opt/ml/output/failure"
 SM_OUTPUT_DATA_DIR = "/opt/ml/output/data"
 SM_SOURCE_DIR_PATH = "/opt/ml/input/data/code"
-SM_DRIVER_DIR_PATH = "/opt/ml/input/data/sm_drivers/drivers"
+SM_DISTRIBUTED_DRIVER_DIR_PATH = "/opt/ml/input/data/sm_drivers/distributed_drivers"
 
 SM_MASTER_ADDR = "algo-1"
 SM_MASTER_PORT = 7777
@@ -173,7 +173,7 @@ def set_env(
 
     distributed = read_distributed_json()
     if distributed:
-        env_vars["SM_DRIVER_DIR"] = SM_DRIVER_DIR_PATH
+        env_vars["SM_DISTRIBUTED_DRIVER_DIR"] = SM_DISTRIBUTED_DRIVER_DIR_PATH
         env_vars["SM_DISTRIBUTED_CONFIG"] = distributed
 
     # Data Channels
