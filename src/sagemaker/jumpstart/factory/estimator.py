@@ -315,9 +315,14 @@ def _add_hub_access_config_to_kwargs_inputs(
     dataset_uri = kwargs.specs.default_training_dataset_uri
     if isinstance(kwargs.inputs, str):
         if dataset_uri is not None and dataset_uri == kwargs.inputs:
-            kwargs.inputs = TrainingInput(s3_data=kwargs.inputs, hub_access_config=hub_access_config)
+            kwargs.inputs = TrainingInput(
+                s3_data=kwargs.inputs, hub_access_config=hub_access_config
+            )
     elif isinstance(kwargs.inputs, TrainingInput):
-        if dataset_uri is not None and dataset_uri == kwargs.inputs.config["DataSource"]["S3DataSource"]["S3Uri"]:
+        if (
+            dataset_uri is not None
+            and dataset_uri == kwargs.inputs.config["DataSource"]["S3DataSource"]["S3Uri"]
+        ):
             kwargs.inputs.add_hub_access_config(hub_access_config=hub_access_config)
     elif isinstance(kwargs.inputs, dict):
         for k, v in kwargs.inputs.items():
@@ -327,7 +332,10 @@ def _add_hub_access_config_to_kwargs_inputs(
                     training_input.add_hub_access_config(hub_access_config=hub_access_config)
                 kwargs.inputs[k] = training_input
             elif isinstance(kwargs.inputs, TrainingInput):
-                if dataset_uri is not None and dataset_uri == kwargs.inputs.config["DataSource"]["S3DataSource"]["S3Uri"]:
+                if (
+                    dataset_uri is not None
+                    and dataset_uri == kwargs.inputs.config["DataSource"]["S3DataSource"]["S3Uri"]
+                ):
                     kwargs.inputs[k].add_hub_access_config(hub_access_config=hub_access_config)
 
     return kwargs

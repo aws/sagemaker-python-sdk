@@ -36,7 +36,7 @@ from tests.integ.sagemaker.jumpstart.constants import (
 )
 from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
-    get_training_dataset_for_model_and_version
+    get_training_dataset_for_model_and_version,
 )
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
@@ -81,13 +81,13 @@ def test_jumpstart_hub_estimator(setup, add_model_references):
     )
 
     estimator.fit(
-        inputs = {
+        inputs={
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
         }
     )
 
-     # test that we can create a JumpStartEstimator from existing job with `attach`
+    # test that we can create a JumpStartEstimator from existing job with `attach`
     estimator = JumpStartEstimator.attach(
         training_job_name=estimator.latest_training_job.name,
         model_id=model_id,
@@ -121,14 +121,13 @@ def test_jumpstart_hub_estimator_with_default_session(setup, add_model_reference
     )
 
     estimator.fit(
-        inputs = {
+        inputs={
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
         }
     )
 
-
-     # test that we can create a JumpStartEstimator from existing job with `attach`
+    # test that we can create a JumpStartEstimator from existing job with `attach`
     estimator = JumpStartEstimator.attach(
         training_job_name=estimator.latest_training_job.name,
         model_id=model_id,
@@ -138,7 +137,7 @@ def test_jumpstart_hub_estimator_with_default_session(setup, add_model_reference
     # uses ml.p3.2xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
-        role=get_sm_session().get_caller_identity_arn()
+        role=get_sm_session().get_caller_identity_arn(),
     )
 
     response = predictor.predict(["hello", "world"])
@@ -159,10 +158,10 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
 
     estimator.fit(
         accept_eula=True,
-         inputs = {
+        inputs={
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
-        }
+        },
     )
 
     estimator = JumpStartEstimator.attach(
@@ -196,12 +195,11 @@ def test_jumpstart_hub_gated_estimator_without_eula(setup, add_model_references)
     )
     with pytest.raises(Exception):
         estimator.fit(
-            inputs = {
+            inputs={
                 "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
                 f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
             }
         )
-
 
 
 def test_instantiating_estimator(setup, add_model_references):

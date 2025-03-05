@@ -1464,8 +1464,12 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
                 else None
             )
         self.model_subscription_link = json_obj.get("model_subscription_link")
-        self.default_training_dataset_key: Optional[str] = json_obj.get("default_training_dataset_key")
-        self.default_training_dataset_uri: Optional[str] = json_obj.get("default_training_dataset_uri")
+        self.default_training_dataset_key: Optional[str] = json_obj.get(
+            "default_training_dataset_key"
+        )
+        self.default_training_dataset_uri: Optional[str] = json_obj.get(
+            "default_training_dataset_uri"
+        )
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartMetadataBaseFields object."""
