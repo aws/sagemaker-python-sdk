@@ -67,7 +67,7 @@ from sagemaker.modules.configs import (
 )
 from sagemaker.modules.distributed import Torchrun, SMP, MPI
 from sagemaker.modules.train.sm_recipes.utils import _load_recipes_cfg
-from sagemaker.modules.templates import EXEUCTE_TORCHRUN_DRIVER, EXECUTE_MPI_DRIVER
+from sagemaker.modules.templates import EXEUCTE_DISTRIBUTED_DRIVER
 from tests.unit import DATA_DIR
 
 DEFAULT_BASE_NAME = "dummy-image-job"
@@ -412,7 +412,9 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
         {
             "source_code": DEFAULT_SOURCE_CODE,
             "distributed": Torchrun(),
-            "expected_template": EXEUCTE_TORCHRUN_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="Torchrun", driver_script="torchrun_driver.py"
+            ),
             "expected_hyperparameters": {},
         },
         {
@@ -425,7 +427,9 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
                     tensor_parallel_degree=5,
                 )
             ),
-            "expected_template": EXEUCTE_TORCHRUN_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="Torchrun", driver_script="torchrun_driver.py"
+            ),
             "expected_hyperparameters": {
                 "mp_parameters": json.dumps(
                     {
@@ -442,7 +446,9 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
             "distributed": MPI(
                 mpi_additional_options=["-x", "VAR1", "-x", "VAR2"],
             ),
-            "expected_template": EXECUTE_MPI_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="MPI", driver_script="mpi_driver.py"
+            ),
             "expected_hyperparameters": {},
         },
     ],
@@ -499,21 +505,15 @@ def test_train_with_distributed_config(
         assert os.path.exists(expected_runner_json_path)
         with open(expected_runner_json_path, "r") as f:
             runner_json_content = f.read()
-            assert test_case["distributed"].model_dump(exclude_none=True) == (
-                json.loads(runner_json_content)
-            )
+            assert test_case["distributed"].model_dump() == (json.loads(runner_json_content))
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
-            assert test_case["source_code"].model_dump(exclude_none=True) == (
-                json.loads(source_code_json_content)
-            )
+            assert test_case["source_code"].model_dump() == (json.loads(source_code_json_content))
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
-            assert test_case["source_code"].model_dump(exclude_none=True) == (
-                json.loads(source_code_json_content)
-            )
+            assert test_case["source_code"].model_dump() == (json.loads(source_code_json_content))
     finally:
         shutil.rmtree(tmp_dir.name)
         assert not os.path.exists(tmp_dir.name)
