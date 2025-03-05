@@ -152,7 +152,7 @@ class ModelTrainer(BaseModel):
         source_code (Optional[SourceCode]):
             The source code configuration. This is used to configure the source code for
             running the training job.
-        distributed (Optional[Union[DistributedConfig]]):
+        distributed (Optional[DistributedConfig]):
             The distributed runner for the training job. This is used to configure
             a distributed training job. If specifed, ``source_code`` must also
             be provided.
@@ -213,7 +213,7 @@ class ModelTrainer(BaseModel):
     role: Optional[str] = None
     base_job_name: Optional[str] = None
     source_code: Optional[SourceCode] = None
-    distributed: Optional[Union[DistributedConfig]] = None
+    distributed: Optional[DistributedConfig] = None
     compute: Optional[Compute] = None
     networking: Optional[Networking] = None
     stopping_condition: Optional[StoppingCondition] = None
