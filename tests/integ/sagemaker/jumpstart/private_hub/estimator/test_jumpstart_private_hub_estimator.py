@@ -20,6 +20,8 @@ from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.hub.hub import Hub
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME,
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
@@ -29,13 +31,8 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_public_hub_model_arn,
     get_sm_session,
     with_exponential_backoff,
-)
-from tests.integ.sagemaker.jumpstart.utils import (
-    get_sm_session,
     get_training_dataset_for_model_and_version,
 )
-
-from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 MAX_INIT_TIME_SECONDS = 5
 
