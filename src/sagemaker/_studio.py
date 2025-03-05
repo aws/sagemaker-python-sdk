@@ -65,7 +65,7 @@ def _find_config(working_dir=None):
         wd = Path(working_dir) if working_dir else Path.cwd()
 
         path = None
-        
+
         # Get the root of the current working directory for both Windows and Unix-like systems
         root = Path(wd.anchor)
         while path is None and wd != root:
