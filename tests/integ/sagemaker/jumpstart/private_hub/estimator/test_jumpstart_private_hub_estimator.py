@@ -30,10 +30,6 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     with_exponential_backoff,
 )
-from tests.integ.sagemaker.jumpstart.constants import (
-    ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
-    JUMPSTART_TAG,
-)
 from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     get_training_dataset_for_model_and_version,
