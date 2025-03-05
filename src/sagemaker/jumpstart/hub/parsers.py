@@ -279,4 +279,10 @@ def make_model_specs_from_describe_hub_content_response(
         specs["training_instance_type_variants"] = (
             hub_model_document.training_instance_type_variants
         )
+        if hub_model_document.default_training_dataset_uri:
+            _, default_training_dataset_key = parse_s3_url(  # pylint: disable=unused-variable
+                hub_model_document.default_training_dataset_uri
+            )
+            specs["default_training_dataset_key"] = default_training_dataset_key
+            specs["default_training_dataset_uri"] = hub_model_document.default_training_dataset_uri
     return JumpStartModelSpecs(_to_json(specs), is_hub_content=True)
