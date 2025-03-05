@@ -18,8 +18,8 @@ import os
 import json
 import shutil
 from tempfile import TemporaryDirectory
-
 from typing import Optional, List, Union, Dict, Any, ClassVar
+import yaml
 
 from graphene.utils.str_converters import to_camel_case, to_snake_case
 
@@ -195,8 +195,9 @@ class ModelTrainer(BaseModel):
             Defaults to "File".
         environment (Optional[Dict[str, str]]):
             The environment variables for the training job.
-        hyperparameters (Optional[Dict[str, Any]]):
-            The hyperparameters for the training job.
+        hyperparameters (Optional[Union[Dict[str, Any], str]):
+            The hyperparameters for the training job. Can be a dictionary of hyperparameters
+            or a path to hyperparameters json/yaml file.
         tags (Optional[List[Tag]]):
             An array of key-value pairs. You can use tags to categorize your AWS resources
             in different ways, for example, by purpose, owner, or environment.
@@ -226,7 +227,7 @@ class ModelTrainer(BaseModel):
     checkpoint_config: Optional[CheckpointConfig] = None
     training_input_mode: Optional[str] = "File"
     environment: Optional[Dict[str, str]] = {}
-    hyperparameters: Optional[Dict[str, Any]] = {}
+    hyperparameters: Optional[Union[Dict[str, Any], str]] = {}
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
 
@@ -469,6 +470,29 @@ class ModelTrainer(BaseModel):
             logger.warning(
                 f"StoppingCondition not provided. Using default:\n{self.stopping_condition}"
             )
+
+        if self.hyperparameters and isinstance(self.hyperparameters, str):
+            if not os.path.exists(self.hyperparameters):
+                raise ValueError(f"Hyperparameters file not found: {self.hyperparameters}")
+            logger.info(f"Loading hyperparameters from file: {self.hyperparameters}")
+            with open(self.hyperparameters, "r") as f:
+                contents = f.read()
+                try:
+                    self.hyperparameters = json.loads(contents)
+                    logger.debug("Hyperparameters loaded as JSON")
+                except json.JSONDecodeError:
+                    try:
+                        logger.info(f"contents: {contents}")
+                        self.hyperparameters = yaml.safe_load(contents)
+                        if not isinstance(self.hyperparameters, dict):
+                            raise ValueError("YAML contents must be a valid mapping")
+                        logger.info(f"hyperparameters: {self.hyperparameters}")
+                        logger.debug("Hyperparameters loaded as YAML")
+                    except (yaml.YAMLError, ValueError):
+                        raise ValueError(
+                            f"Invalid hyperparameters file: {self.hyperparameters}. "
+                            "Must be a valid JSON or YAML file."
+                        )
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
             session = self.sagemaker_session
