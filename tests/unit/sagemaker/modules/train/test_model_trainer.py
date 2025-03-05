@@ -17,9 +17,10 @@ import shutil
 import tempfile
 import json
 import os
+import yaml
 import pytest
 from pydantic import ValidationError
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch, MagicMock, ANY, mock_open
 
 from sagemaker import image_uris
 from sagemaker_core.main.resources import TrainingJob
@@ -1093,3 +1094,93 @@ def test_destructor_cleanup(mock_tmp_dir, modules_session):
     mock_tmp_dir.assert_not_called()
     del model_trainer
     mock_tmp_dir.cleanup.assert_called_once()
+
+
+@patch("os.path.exists")
+def test_hyperparameters_valid_json(mock_exists, modules_session):
+    mock_exists.return_value = True
+    expected_hyperparameters = {"param1": "value1", "param2": 2}
+    mock_file_open = mock_open(read_data=json.dumps(expected_hyperparameters))
+
+    with patch("builtins.open", mock_file_open):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="hyperparameters.json",
+        )
+        assert model_trainer.hyperparameters == expected_hyperparameters
+        mock_file_open.assert_called_once_with("hyperparameters.json", "r")
+        mock_exists.assert_called_once_with("hyperparameters.json")
+
+
+@patch("os.path.exists")
+def test_hyperparameters_valid_yaml(mock_exists, modules_session):
+    mock_exists.return_value = True
+    expected_hyperparameters = {"param1": "value1", "param2": 2}
+    mock_file_open = mock_open(read_data=yaml.dump(expected_hyperparameters))
+
+    with patch("builtins.open", mock_file_open):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="hyperparameters.yaml",
+        )
+        assert model_trainer.hyperparameters == expected_hyperparameters
+        mock_file_open.assert_called_once_with("hyperparameters.yaml", "r")
+        mock_exists.assert_called_once_with("hyperparameters.yaml")
+
+
+def test_hyperparameters_not_exist(modules_session):
+    with pytest.raises(ValueError):
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="nonexistent.json",
+        )
+
+
+@patch("os.path.exists")
+def test_hyperparameters_invalid(mock_exists, modules_session):
+    mock_exists.return_value = True
+
+    # YAML contents must be a valid mapping
+    mock_file_open = mock_open(read_data="- item1\n- item2")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )
+
+    # YAML contents must be a valid mapping
+    mock_file_open = mock_open(read_data="invalid")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )
+
+    # Must be valid YAML
+    mock_file_open = mock_open(read_data="* invalid")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )

@@ -28,26 +28,29 @@ EXPECTED_HYPERPARAMETERS = {
     "dict": {
         "string": "value",
         "integer": 3,
+        "float": 3.14,
         "list": [1, 2, 3],
         "dict": {"key": "value"},
         "boolean": True,
     },
 }
 
+PARAM_SCRIPT_SOURCE_DIR = f"{DATA_DIR}/modules/params_script"
+PARAM_SCRIPT_SOURCE_CODE = SourceCode(
+    source_dir=PARAM_SCRIPT_SOURCE_DIR,
+    requirements="requirements.txt",
+    entry_script="train.py",
+)
+
 DEFAULT_CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py310"
 
 
 def test_hp_contract_basic_py_script(modules_sagemaker_session):
-    source_code = SourceCode(
-        source_dir=f"{DATA_DIR}/modules/params_script",
-        entry_script="train.py",
-    )
-
     model_trainer = ModelTrainer(
         sagemaker_session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
-        source_code=source_code,
+        source_code=PARAM_SCRIPT_SOURCE_CODE,
         base_job_name="hp-contract-basic-py-script",
     )
 
@@ -57,6 +60,7 @@ def test_hp_contract_basic_py_script(modules_sagemaker_session):
 def test_hp_contract_basic_sh_script(modules_sagemaker_session):
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/modules/params_script",
+        requirements="requirements.txt",
         entry_script="train.sh",
     )
     model_trainer = ModelTrainer(
@@ -71,17 +75,13 @@ def test_hp_contract_basic_sh_script(modules_sagemaker_session):
 
 
 def test_hp_contract_mpi_script(modules_sagemaker_session):
-    source_code = SourceCode(
-        source_dir=f"{DATA_DIR}/modules/params_script",
-        entry_script="train.py",
-    )
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(
         sagemaker_session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         compute=compute,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
-        source_code=source_code,
+        source_code=PARAM_SCRIPT_SOURCE_CODE,
         distributed=MPI(),
         base_job_name="hp-contract-mpi-script",
     )
@@ -90,21 +90,41 @@ def test_hp_contract_mpi_script(modules_sagemaker_session):
 
 
 def test_hp_contract_torchrun_script(modules_sagemaker_session):
-    source_code = SourceCode(
-        source_dir=f"{DATA_DIR}/modules/params_script",
-        entry_script="train.py",
-    )
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(
         sagemaker_session=modules_sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         compute=compute,
         hyperparameters=EXPECTED_HYPERPARAMETERS,
-        source_code=source_code,
+        source_code=PARAM_SCRIPT_SOURCE_CODE,
         distributed=Torchrun(),
         base_job_name="hp-contract-torchrun-script",
     )
 
+    model_trainer.train()
+
+
+def test_hp_contract_hyperparameter_json(modules_sagemaker_session):
+    model_trainer = ModelTrainer(
+        sagemaker_session=modules_sagemaker_session,
+        training_image=DEFAULT_CPU_IMAGE,
+        hyperparameters=f"{PARAM_SCRIPT_SOURCE_DIR}/hyperparameters.json",
+        source_code=PARAM_SCRIPT_SOURCE_CODE,
+        base_job_name="hp-contract-hyperparameter-json",
+    )
+    assert model_trainer.hyperparameters == EXPECTED_HYPERPARAMETERS
+    model_trainer.train()
+
+
+def test_hp_contract_hyperparameter_yaml(modules_sagemaker_session):
+    model_trainer = ModelTrainer(
+        sagemaker_session=modules_sagemaker_session,
+        training_image=DEFAULT_CPU_IMAGE,
+        hyperparameters=f"{PARAM_SCRIPT_SOURCE_DIR}/hyperparameters.yaml",
+        source_code=PARAM_SCRIPT_SOURCE_CODE,
+        base_job_name="hp-contract-hyperparameter-yaml",
+    )
+    assert model_trainer.hyperparameters == EXPECTED_HYPERPARAMETERS
     model_trainer.train()
 
 
@@ -122,6 +142,7 @@ def test_custom_distributed_driver(modules_sagemaker_session):
 
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/modules/scripts",
+        requirements=
         entry_script="entry_script.py",
     )
 
@@ -137,4 +158,3 @@ def test_custom_distributed_driver(modules_sagemaker_session):
         distributed=custom_driver,
         base_job_name="custom-distributed-driver",
     )
-    model_trainer.train()
