@@ -142,7 +142,6 @@ def test_custom_distributed_driver(modules_sagemaker_session):
 
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/modules/scripts",
-        requirements=
         entry_script="entry_script.py",
     )
 
@@ -158,3 +157,4 @@ def test_custom_distributed_driver(modules_sagemaker_session):
         distributed=custom_driver,
         base_job_name="custom-distributed-driver",
     )
+    model_trainer.train()

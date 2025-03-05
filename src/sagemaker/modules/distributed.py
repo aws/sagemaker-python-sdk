@@ -76,7 +76,7 @@ class SMP(BaseConfig):
         return hyperparameters
 
 
-class DistributedConfig(BaseModel, ABC):
+class DistributedConfig(BaseConfig, ABC):
     """Abstract base class for distributed training configurations.
 
     This class defines the interface that all distributed training configurations
