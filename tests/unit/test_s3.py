@@ -17,6 +17,7 @@ import pytest
 from mock import Mock
 
 from sagemaker import s3
+from sagemaker.s3_utils import is_s3_url
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -130,6 +131,34 @@ def test_parse_s3_url_fail():
     with pytest.raises(ValueError) as error:
         s3.parse_s3_url("t3://code_location")
     assert "Expecting 's3' scheme" in str(error)
+
+
+@pytest.mark.parametrize(
+    "input_url",
+    [
+        ("s3://bucket/code_location"),
+        ("s3://bucket/code_location/sub_location"),
+        ("s3://bucket/code_location/sub_location/"),
+        ("s3://bucket/"),
+        ("s3://bucket"),
+    ],
+)
+def test_is_s3_url_true(input_url):
+    assert is_s3_url(input_url) is True
+
+
+@pytest.mark.parametrize(
+    "input_url",
+    [
+        ("bucket/code_location"),
+        ("bucket/code_location/sub_location"),
+        ("sub_location/"),
+        ("s3/bucket/"),
+        ("t3://bucket"),
+    ],
+)
+def test_is_s3_url_false(input_url):
+    assert is_s3_url(input_url) is False
 
 
 @pytest.mark.parametrize(
