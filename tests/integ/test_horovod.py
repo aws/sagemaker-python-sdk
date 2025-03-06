@@ -62,11 +62,8 @@ def test_hvd_gpu(
     tmpdir,
     **kwargs,
 ):
-    if (
-        Version(tensorflow_training_latest_version) >= Version("2.12")
-        and kwargs["instance_type"] == "ml.p2.xlarge"
-    ):
-        pytest.skip("P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12")
+    if kwargs["instance_type"] == "ml.p2.xlarge":
+        pytest.skip("Instance type ml.p2.xlarge has been deprecated")
     if Version(tensorflow_training_latest_version) >= Version("2.13"):
         pytest.skip("Horovod is deprecated in TensorFlow 2.13 and above")
 
