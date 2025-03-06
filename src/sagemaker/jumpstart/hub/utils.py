@@ -220,7 +220,12 @@ def get_hub_model_version(
         sagemaker_session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     try:
-        hub_content_summaries = _list_hub_content_versions_helper(hub_name=hub_name, hub_content_name=hub_model_name, hub_content_type=hub_model_type, sagemaker_session=sagemaker_session)
+        hub_content_summaries = _list_hub_content_versions_helper(
+            hub_name=hub_name,
+            hub_content_name=hub_model_name,
+            hub_content_type=hub_model_type,
+            sagemaker_session=sagemaker_session,
+        )
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
 
@@ -236,7 +241,10 @@ def get_hub_model_version(
             return marketplace_hub_content_version
         raise
 
-def _list_hub_content_versions_helper(hub_name, hub_content_name, hub_content_type, sagemaker_session):
+
+def _list_hub_content_versions_helper(
+    hub_name, hub_content_name, hub_content_type, sagemaker_session
+):
     all_hub_content_summaries = []
     list_hub_content_versions_response = sagemaker_session.list_hub_content_versions(
         hub_name=hub_name, hub_content_name=hub_content_name, hub_content_type=hub_content_type
@@ -244,10 +252,16 @@ def _list_hub_content_versions_helper(hub_name, hub_content_name, hub_content_ty
     all_hub_content_summaries.extend(list_hub_content_versions_response.get("HubContentSummaries"))
     while "NextToken" in list_hub_content_versions_response:
         list_hub_content_versions_response = sagemaker_session.list_hub_content_versions(
-        hub_name=hub_name, hub_content_name=hub_content_name, hub_content_type=hub_content_type, next_token=list_hub_content_versions_response["NextToken"]
-    )
-        all_hub_content_summaries.extend(list_hub_content_versions_response.get("HubContentSummaries"))
+            hub_name=hub_name,
+            hub_content_name=hub_content_name,
+            hub_content_type=hub_content_type,
+            next_token=list_hub_content_versions_response["NextToken"],
+        )
+        all_hub_content_summaries.extend(
+            list_hub_content_versions_response.get("HubContentSummaries")
+        )
     return all_hub_content_summaries
+
 
 def _get_hub_model_version_for_open_weight_version(
     hub_content_summaries: List[Any], hub_model_version: Optional[str] = None
