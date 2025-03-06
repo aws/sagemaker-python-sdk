@@ -688,6 +688,7 @@ class EstimatorTest(unittest.TestCase):
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pyt"
             "orch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+            model_uri='s3://jumpstart-private-cache-prod-us-west-2/some/dummy/key',
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-d"
             "irectory-tarballs/meta/transfer_learning/textgeneration/prepack/v1.0.1/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
