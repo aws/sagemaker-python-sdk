@@ -16,7 +16,7 @@ dependencies:
     - protobuf>=3.12,<5.0
     - smdebug_rulesconfig==1.0.1
     - importlib-metadata>=1.4.0,<7.0
-    - packaging>=20.0
+    - packaging>=23.0,<25
     - pandas
     - pathos
     - schema
