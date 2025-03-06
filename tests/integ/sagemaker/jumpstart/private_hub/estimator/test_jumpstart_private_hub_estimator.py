@@ -60,17 +60,12 @@ def add_model_references():
 
 
 def test_jumpstart_hub_estimator(setup, add_model_references):
-
     model_id, model_version = "huggingface-spc-bert-base-cased", "*"
-
-    sagemaker_session = get_sm_session()
 
     estimator = JumpStartEstimator(
         model_id=model_id,
-        role=sagemaker_session.get_caller_identity_arn(),
-        sagemaker_session=sagemaker_session,
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
     estimator.fit(
@@ -85,14 +80,11 @@ def test_jumpstart_hub_estimator(setup, add_model_references):
         training_job_name=estimator.latest_training_job.name,
         model_id=model_id,
         model_version=model_version,
-        sagemaker_session=get_sm_session(),
     )
 
     # uses ml.p3.2xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
-        role=get_sm_session().get_caller_identity_arn(),
-        sagemaker_session=get_sm_session(),
     )
 
     response = predictor.predict(["hello", "world"])
@@ -100,7 +92,8 @@ def test_jumpstart_hub_estimator(setup, add_model_references):
     assert response is not None
 
 
-def test_jumpstart_hub_estimator_with_default_session(setup, add_model_references):
+def test_jumpstart_hub_estimator_with_session(setup, add_model_references):
+
     model_id, model_version = "huggingface-spc-bert-base-cased", "*"
 
     sagemaker_session = get_sm_session()
@@ -125,12 +118,14 @@ def test_jumpstart_hub_estimator_with_default_session(setup, add_model_reference
         training_job_name=estimator.latest_training_job.name,
         model_id=model_id,
         model_version=model_version,
+        sagemaker_session=get_sm_session(),
     )
 
     # uses ml.p3.2xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
     )
 
     response = predictor.predict(["hello", "world"])
@@ -144,9 +139,8 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
 
     estimator = JumpStartEstimator(
         model_id=model_id,
-        role=get_sm_session().get_caller_identity_arn(),
-        sagemaker_session=get_sm_session(),
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
     estimator.fit(
@@ -161,14 +155,11 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
         training_job_name=estimator.latest_training_job.name,
         model_id=model_id,
         model_version=model_version,
-        sagemaker_session=get_sm_session(),
     )
 
     # uses ml.p3.2xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
-        role=get_sm_session().get_caller_identity_arn(),
-        sagemaker_session=get_sm_session(),
     )
 
     response = predictor.predict(["hello", "world"])
@@ -182,9 +173,8 @@ def test_jumpstart_hub_gated_estimator_without_eula(setup, add_model_references)
 
     estimator = JumpStartEstimator(
         model_id=model_id,
-        role=get_sm_session().get_caller_identity_arn(),
-        sagemaker_session=get_sm_session(),
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
     with pytest.raises(Exception):
         estimator.fit(
