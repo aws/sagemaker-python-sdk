@@ -13,6 +13,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import os
+import platform
 from pathlib import Path
 from sagemaker._studio import (
     _append_project_tags,
@@ -69,19 +70,21 @@ def test_find_config_path_separators(tmpdir):
     config.write('{"sagemakerProjectId": "proj-1234"}')
     base_path = str(tmpdir)
 
-    # Test different path separator styles
-    paths = [
-        os.path.join(base_path, "dir1", "dir2"),  # OS native
-        "/".join([base_path, "dir1", "dir2"]),  # Forward slashes
-        "\\".join([base_path, "dir1", "dir2"]),  # Backslashes
-        base_path + "/dir1\\dir2",  # Mixed
-    ]
+    # Always include the OS native path and forward slashes (which are equivalent on all OS)
+    paths = [os.path.join(base_path, "dir1", "dir2"),
+             "/".join([base_path, "dir1", "dir2"])]
+
+    # Only on Windows add the backslashes and mixed separator test cases.
+    if os.name == "nt":
+        paths.extend([
+            "\\".join([base_path, "dir1", "dir2"]),
+            base_path + "/dir1\\dir2",
+        ])
 
     for path in paths:
         os.makedirs(path, exist_ok=True)
         found_path = _find_config(path)
         assert found_path == config
-
 
 def test_find_config(tmpdir):
     path = tmpdir.join(".sagemaker-code-config")
