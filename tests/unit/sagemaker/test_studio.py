@@ -71,20 +71,17 @@ def test_find_config_path_separators(tmpdir):
     base_path = str(tmpdir)
 
     # Always include the OS native path and forward slashes (which are equivalent on all OS)
-    paths = [os.path.join(base_path, "dir1", "dir2"),
-             "/".join([base_path, "dir1", "dir2"])]
+    paths = [os.path.join(base_path, "dir1", "dir2"), "/".join([base_path, "dir1", "dir2"])]
 
     # Only on Windows add the backslashes and mixed separator test cases.
     if os.name == "nt":
-        paths.extend([
-            "\\".join([base_path, "dir1", "dir2"]),
-            base_path + "/dir1\\dir2",
-        ])
+        paths.extend(["\\".join([base_path, "dir1", "dir2"]), base_path + "/dir1\\dir2"])
 
     for path in paths:
         os.makedirs(path, exist_ok=True)
         found_path = _find_config(path)
         assert found_path == config
+
 
 def test_find_config(tmpdir):
     path = tmpdir.join(".sagemaker-code-config")
