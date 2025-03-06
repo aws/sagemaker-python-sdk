@@ -13,7 +13,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import os
-import platform
 from pathlib import Path
 from sagemaker._studio import (
     _append_project_tags,
