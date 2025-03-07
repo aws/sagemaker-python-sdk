@@ -1940,7 +1940,7 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     def use_training_model_artifact(self) -> bool:
         """Returns True if the model should use a model uri when kicking off training job."""
-        # gated model never uses training model artifact
+        # gated model never use training model artifact
         if self.gated_bucket:
             return False
 

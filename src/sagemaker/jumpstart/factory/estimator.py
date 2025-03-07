@@ -313,6 +313,7 @@ def _add_hub_access_config_to_kwargs_inputs(
     kwargs: JumpStartEstimatorFitKwargs, hub_access_config=None
 ):
     """Adds HubAccessConfig to kwargs inputs"""
+
     dataset_uri = kwargs.specs.default_training_dataset_uri
     if isinstance(kwargs.inputs, str):
         if dataset_uri is not None and dataset_uri == kwargs.inputs:
