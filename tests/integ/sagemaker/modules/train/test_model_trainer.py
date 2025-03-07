@@ -17,7 +17,7 @@ from tests.integ import DATA_DIR
 
 from sagemaker.modules.train import ModelTrainer
 from sagemaker.modules.configs import SourceCode, Compute
-from sagemaker.modules.distributed import MPI, Torchrun
+from sagemaker.modules.distributed import MPI, Torchrun, DistributedConfig
 
 EXPECTED_HYPERPARAMETERS = {
     "integer": 1,
@@ -125,4 +125,36 @@ def test_hp_contract_hyperparameter_yaml(modules_sagemaker_session):
         base_job_name="hp-contract-hyperparameter-yaml",
     )
     assert model_trainer.hyperparameters == EXPECTED_HYPERPARAMETERS
+    model_trainer.train()
+
+
+def test_custom_distributed_driver(modules_sagemaker_session):
+    class CustomDriver(DistributedConfig):
+        process_count_per_node: int = None
+
+        @property
+        def driver_dir(self) -> str:
+            return f"{DATA_DIR}/modules/custom_drivers"
+
+        @property
+        def driver_script(self) -> str:
+            return "driver.py"
+
+    source_code = SourceCode(
+        source_dir=f"{DATA_DIR}/modules/scripts",
+        entry_script="entry_script.py",
+    )
+
+    hyperparameters = {"epochs": 10}
+
+    custom_driver = CustomDriver(process_count_per_node=2)
+
+    model_trainer = ModelTrainer(
+        sagemaker_session=modules_sagemaker_session,
+        training_image=DEFAULT_CPU_IMAGE,
+        hyperparameters=hyperparameters,
+        source_code=source_code,
+        distributed=custom_driver,
+        base_job_name="custom-distributed-driver",
+    )
     model_trainer.train()

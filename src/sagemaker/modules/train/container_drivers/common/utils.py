@@ -99,10 +99,10 @@ def read_hyperparameters_json(hyperparameters_json: Dict[str, Any] = HYPERPARAME
     return hyperparameters_dict
 
 
-def get_process_count(distributed_dict: Dict[str, Any]) -> int:
+def get_process_count(process_count: Optional[int] = None) -> int:
     """Get the number of processes to run on each node in the training job."""
     return (
-        int(distributed_dict.get("process_count_per_node", 0))
+        process_count
         or int(os.environ.get("SM_NUM_GPUS", 0))
         or int(os.environ.get("SM_NUM_NEURONS", 0))
         or 1

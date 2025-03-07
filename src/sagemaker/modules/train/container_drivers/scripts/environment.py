@@ -19,12 +19,17 @@ import subprocess
 import json
 import os
 import sys
+from pathlib import Path
 import logging
 
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, parent_dir)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils import safe_serialize, safe_deserialize  # noqa: E402 # pylint: disable=C0413
+from common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
+    safe_serialize,
+    safe_deserialize,
+    read_distributed_json,
+    read_source_code_json,
+)
 
 # Initialize logger
 SM_LOG_LEVEL = os.environ.get("SM_LOG_LEVEL", 20)
@@ -42,6 +47,8 @@ SM_INPUT_CONFIG_DIR = "/opt/ml/input/config"
 SM_OUTPUT_DIR = "/opt/ml/output"
 SM_OUTPUT_FAILURE = "/opt/ml/output/failure"
 SM_OUTPUT_DATA_DIR = "/opt/ml/output/data"
+SM_SOURCE_DIR_PATH = "/opt/ml/input/data/code"
+SM_DISTRIBUTED_DRIVER_DIR_PATH = "/opt/ml/input/data/sm_drivers/distributed_drivers"
 
 SM_MASTER_ADDR = "algo-1"
 SM_MASTER_PORT = 7777
@@ -157,6 +164,17 @@ def set_env(
         "SM_MASTER_ADDR": SM_MASTER_ADDR,
         "SM_MASTER_PORT": SM_MASTER_PORT,
     }
+
+    # SourceCode and DistributedConfig Environment Variables
+    source_code = read_source_code_json()
+    if source_code:
+        env_vars["SM_SOURCE_DIR"] = SM_SOURCE_DIR_PATH
+        env_vars["SM_ENTRY_SCRIPT"] = source_code.get("entry_script", "")
+
+    distributed = read_distributed_json()
+    if distributed:
+        env_vars["SM_DISTRIBUTED_DRIVER_DIR"] = SM_DISTRIBUTED_DRIVER_DIR_PATH
+        env_vars["SM_DISTRIBUTED_CONFIG"] = distributed
 
     # Data Channels
     channels = list(input_data_config.keys())
