@@ -47,7 +47,7 @@ TEST_MODEL_IDS = {
 def create_model_reference(hub_instance, model_arn):
     try:
         hub_instance.create_model_reference(model_arn=model_arn)
-    except(Exception):
+    except Exception:
         pass
 
 
