@@ -2511,7 +2511,7 @@ class _TrainingJob(_Job):
         train_args = cls._get_train_args(estimator, inputs, experiment_config)
 
         logger.debug("Train args after processing defaults: %s", train_args)
-        print("rohan debug: ", train_args)
+
         estimator.sagemaker_session.train(**train_args)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)

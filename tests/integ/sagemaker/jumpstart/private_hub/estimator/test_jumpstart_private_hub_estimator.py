@@ -151,18 +151,18 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
         },
     )
 
-    estimator = JumpStartEstimator.attach(
-        training_job_name=estimator.latest_training_job.name,
-        model_id=model_id,
-        model_version=model_version,
-    )
-
-    # uses ml.p3.2xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
     )
 
-    response = predictor.predict(["hello", "world"])
+    payload = {
+        "inputs": "some-payload",
+        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
+    }
+
+    response = predictor.predict(payload, custom_attributes="accept_eula=true")
 
     assert response is not None
 
