@@ -99,14 +99,12 @@ class Hub:
             "hub_description": description,
             "hub_display_name": display_name,
             "hub_search_keywords": search_keywords,
-            "tags": tags
+            "tags": tags,
         }
-        
+
         if self.bucket_name:
             request["s3_storage_config"] = {
-                "S3OutputPath": (
-                    f"s3://{self.bucket_name}/{self.hub_name}-{curr_timestamp}"
-                )
+                "S3OutputPath": (f"s3://{self.bucket_name}/{self.hub_name}-{curr_timestamp}")
             }
 
         return self._sagemaker_session.create_hub(**request)
