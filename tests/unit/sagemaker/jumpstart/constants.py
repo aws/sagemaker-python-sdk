@@ -15553,6 +15553,8 @@ BASE_SPEC = {
     },
     "inference_enable_network_isolation": True,
     "training_enable_network_isolation": True,
+    "default_training_dataset_uri": None,
+    "default_training_dataset_key": "training-datasets/tf_flowers/",
     "resource_name_base": "pt-ic-mobilenet-v2",
     "hosting_eula_key": None,
     "hosting_model_package_arns": {},
