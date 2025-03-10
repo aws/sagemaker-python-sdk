@@ -87,7 +87,6 @@ def test_create_with_no_bucket_name(
         "hub_description": hub_description,
         "hub_display_name": hub_display_name,
         "hub_search_keywords": hub_search_keywords,
-        "s3_storage_config": {"S3OutputPath": None},
         "tags": tags,
     }
     response = hub.create(
