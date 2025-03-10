@@ -117,7 +117,7 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             "g4": {
                 "regional_properties": {"image_uri": "$gpu_image_uri"},
                 "properties": {
-                    "artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
+                    "training_artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
                 },
             },
             "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
@@ -193,7 +193,7 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             },
             "p9": {
                 "regional_properties": {"image_uri": "$gpu_image_uri"},
-                "properties": {"artifact_key": "do/re/mi"},
+                "properties": {"training_artifact_key": "do/re/mi"},
             },
             "m2": {
                 "regional_properties": {"image_uri": "$cpu_image_uri"},
@@ -272,13 +272,13 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             "ml.p9.12xlarge": {
                 "properties": {
                     "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
-                    "artifact_key": "you/not/entertained",
+                    "training_artifact_key": "you/not/entertained",
                 }
             },
             "g6": {
                 "properties": {
                     "environment_variables": {"BLAH": "4"},
-                    "artifact_key": "path/to/training/artifact.tar.gz",
+                    "training_artifact_key": "path/to/training/artifact.tar.gz",
                     "prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/",
                 }
             },
@@ -952,27 +952,35 @@ def test_jumpstart_hosting_prepacked_artifact_key_instance_variants():
 
 def test_jumpstart_training_artifact_key_instance_variants():
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.g6.xlarge")
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
+            instance_type="ml.g6.xlarge"
+        )
         == "path/to/training/artifact.tar.gz"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.g4.9xlarge")
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
+            instance_type="ml.g4.9xlarge"
+        )
         == "path/to/prepacked/training/artifact/prefix/number2/"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.p9.9xlarge")
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
+            instance_type="ml.p9.9xlarge"
+        )
         == "do/re/mi"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.p9.12xlarge")
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
+            instance_type="ml.p9.12xlarge"
+        )
         == "you/not/entertained"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
             instance_type="ml.g9dsfsdfs.12xlarge"
         )
         is None

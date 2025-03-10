@@ -16,18 +16,8 @@ from __future__ import absolute_import
 import os
 import sys
 import json
+from pathlib import Path
 
-from utils import (
-    logger,
-    read_source_code_json,
-    read_distributed_json,
-    read_hyperparameters_json,
-    hyperparameters_to_cli_args,
-    get_process_count,
-    execute_commands,
-    write_failure_file,
-    USER_CODE_PATH,
-)
 from mpi_utils import (
     start_sshd_daemon,
     bootstrap_master_node,
@@ -35,6 +25,16 @@ from mpi_utils import (
     get_mpirun_command,
     write_status_file_to_workers,
     write_env_vars_to_file,
+)
+
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
+    logger,
+    hyperparameters_to_cli_args,
+    get_process_count,
+    execute_commands,
+    write_failure_file,
 )
 
 
@@ -58,9 +58,9 @@ def main():
     5. Exit
 
     """
-    source_code = read_source_code_json()
-    distribution = read_distributed_json()
-    hyperparameters = read_hyperparameters_json()
+    entry_script = os.environ["SM_ENTRY_SCRIPT"]
+    distributed_config = json.loads(os.environ["SM_DISTRIBUTED_CONFIG"])
+    hyperparameters = json.loads(os.environ["SM_HPS"])
 
     sm_current_host = os.environ["SM_CURRENT_HOST"]
     sm_hosts = json.loads(os.environ["SM_HOSTS"])
@@ -77,7 +77,8 @@ def main():
 
         host_list = json.loads(os.environ["SM_HOSTS"])
         host_count = int(os.environ["SM_HOST_COUNT"])
-        process_count = get_process_count(distribution)
+        process_count = int(distributed_config["process_count_per_node"] or 0)
+        process_count = get_process_count(process_count)
 
         if process_count > 1:
             host_list = ["{}:{}".format(host, process_count) for host in host_list]
@@ -86,8 +87,8 @@ def main():
             host_count=host_count,
             host_list=host_list,
             num_processes=process_count,
-            additional_options=distribution.get("mpi_additional_options", []),
-            entry_script_path=os.path.join(USER_CODE_PATH, source_code["entry_script"]),
+            additional_options=distributed_config["mpi_additional_options"] or [],
+            entry_script_path=entry_script,
         )
 
         args = hyperparameters_to_cli_args(hyperparameters)
