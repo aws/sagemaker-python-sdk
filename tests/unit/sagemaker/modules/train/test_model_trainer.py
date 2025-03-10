@@ -1048,18 +1048,19 @@ def test_model_trainer_local_full_init(
 
     model_trainer.train()
 
-    mock_local_container.train.assert_called_once_with(
-        training_job_name=unique_name,
-        instance_type=compute.instance_type,
-        instance_count=compute.instance_count,
-        image=training_image,
-        container_root=local_container_root,
-        sagemaker_session=modules_session,
-        container_entry_point=DEFAULT_ENTRYPOINT,
-        container_arguments=DEFAULT_ARGUMENTS,
-        hyper_parameters=hyperparameters,
-        environment=environment,
-    )
+    mock_local_container.assert_called_once_with(
+      training_job_name=unique_name,
+      instance_type=compute.instance_type,
+      instance_count=compute.instance_count,
+      image=training_image,
+      container_root=local_container_root,
+      sagemaker_session=modules_session,
+      container_entrypoint=DEFAULT_ENTRYPOINT,
+      container_arguments=DEFAULT_ARGUMENTS,
+      input_data_config=ANY,
+      hyper_parameters=hyperparameters,
+      environment=environment,
+)
 
 
 def test_safe_configs():
