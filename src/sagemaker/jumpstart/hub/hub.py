@@ -56,8 +56,8 @@ class Hub:
     def __init__(
         self,
         hub_name: str,
+        sagemaker_session: Session,
         bucket_name: Optional[str] = None,
-        sagemaker_session: Optional[Session] = None,
     ) -> None:
         """Instantiates a SageMaker ``Hub``.
 
@@ -94,20 +94,22 @@ class Hub:
         """Creates a hub with the given description"""
         curr_timestamp = datetime.now().timestamp()
 
-        return self._sagemaker_session.create_hub(
-            hub_name=self.hub_name,
-            hub_description=description,
-            hub_display_name=display_name,
-            hub_search_keywords=search_keywords,
-            s3_storage_config={
+        request = {
+            "hub_name": self.hub_name,
+            "hub_description": description,
+            "hub_display_name": display_name,
+            "hub_search_keywords": search_keywords,
+            "tags": tags
+        }
+        
+        if self.bucket_name:
+            request["s3_storage_config"] = {
                 "S3OutputPath": (
                     f"s3://{self.bucket_name}/{self.hub_name}-{curr_timestamp}"
-                    if self.bucket_name
-                    else None
                 )
-            },
-            tags=tags,
-        )
+            }
+
+        return self._sagemaker_session.create_hub(**request)
 
     def describe(self, hub_name: Optional[str] = None) -> DescribeHubResponse:
         """Returns descriptive information about the Hub"""
