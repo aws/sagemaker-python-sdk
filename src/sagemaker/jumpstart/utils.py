@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
 import botocore
 from sagemaker_core.shapes import ModelAccessConfig
 import sagemaker
@@ -1630,3 +1630,52 @@ def get_draft_model_content_bucket(provider: Dict, region: str) -> str:
             return get_jumpstart_gated_content_bucket(region=region)
         return get_jumpstart_content_bucket(region=region)
     return neo_bucket
+
+
+def remove_env_var_from_estimator_kwargs_if_accept_eula_present(
+    init_kwargs: dict, accept_eula: Optional[bool]
+):
+    """Remove env vars if access configs are used
+
+    Args:
+        init_kwargs (dict): Dictionary of kwargs when Estimator is instantiated.
+        accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
+    """
+    if accept_eula is not None and init_kwargs["environment"]:
+        del init_kwargs["environment"][constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY]
+
+
+def get_hub_access_config(hub_content_arn: Optional[str]):
+    """Get hub access config
+
+    Args:
+        hub_content_arn (Optional[bool]): Arn of the model reference hub content
+    """
+    if hub_content_arn is not None:
+        hub_access_config = {"HubContentArn": hub_content_arn}
+    else:
+        hub_access_config = None
+
+    return hub_access_config
+
+
+def get_model_access_config(accept_eula: Optional[bool]):
+    """Get access configs
+
+    Args:
+        accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
+    """
+    if accept_eula is not None:
+        model_access_config = {"AcceptEula": accept_eula}
+    else:
+        model_access_config = None
+
+    return model_access_config
+
+
+def get_latest_version(versions: List[str]) -> Optional[str]:
+    """Returns the latest version using sem-ver when possible."""
+    try:
+        return None if not versions else max(versions, key=Version)
+    except InvalidVersion:
+        return max(versions)

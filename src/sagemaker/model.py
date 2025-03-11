@@ -20,7 +20,7 @@ import logging
 import os
 import re
 import copy
-from typing import List, Dict, Optional, Union, Any
+from typing import Callable, List, Dict, Optional, Union, Any
 
 import sagemaker
 from sagemaker import (
@@ -154,7 +154,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
@@ -186,7 +186,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 It can be null if this is being used to create a Model to pass
                 to a ``PipelineModel`` which has its own Role field. (default:
                 None)
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
@@ -215,8 +215,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
             source_dir (str): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory is preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory
+                is preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
                 is used instead.
@@ -745,6 +745,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         Returns:
             bool: if the source need to be repacked or not
         """
+        if self.source_dir is None or self.entry_point is None:
+            return False
         return self.source_dir and self.entry_point and not self.git_config
 
     def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
@@ -1492,6 +1494,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     }
             model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
                 content (default: None).
+            inference_ami_version (Optional [str]): Specifies an option from a collection of preconfigured
+             Amazon Machine Image (AMI) images. For a full list of options, see:
+             https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1501,7 +1506,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     inference config or
                 - If inference recommendation id is specified along with incompatible parameters
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of
+            Callable[[string, sagemaker.session.Session], Any] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
@@ -1743,6 +1748,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 model_data_download_timeout=model_data_download_timeout,
                 container_startup_health_check_timeout=container_startup_health_check_timeout,
                 routing_config=routing_config,
+                inference_ami_version=inference_ami_version,
             )
             if endpoint_name:
                 self.endpoint_name = endpoint_name
@@ -1959,7 +1965,7 @@ class FrameworkModel(Model):
         role: Optional[str] = None,
         entry_point: Optional[str] = None,
         source_dir: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         name: Optional[str] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
@@ -1996,11 +2002,11 @@ class FrameworkModel(Model):
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
-                'source_dir' should be a relative location to a directory in the Git repo.
-                If the directory points to S3, no code will be uploaded and the S3 location
-                will be used instead.
+                point to a file with name ``sourcedir.tar.gz``. Structure within this
+                directory are preserved when training on Amazon SageMaker. If 'git_config'
+                is provided, 'source_dir' should be a relative location to a directory in the
+                Git repo. If the directory points to S3, no code will be uploaded and the S3
+                location will be used instead.
 
                 .. admonition:: Example
 
@@ -2012,7 +2018,7 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='inference.py', source_dir='src'.
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
@@ -2139,6 +2145,8 @@ class FrameworkModel(Model):
         Returns:
             bool: if the source need to be repacked or not
         """
+        if self.source_dir is None or self.entry_point is None:
+            return False
         return self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
 
 

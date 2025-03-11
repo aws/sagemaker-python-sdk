@@ -101,6 +101,8 @@ def retrieve(
             https://github.com/aws/deep-learning-containers/blob/master/available_images.md
             (default: None).
         distribution (dict): A dictionary with information on how to run distributed training
+        base_framework_version (str): The base version number of PyTorch or Tensorflow.
+            (default: None).
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler
             (default: None).

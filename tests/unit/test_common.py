@@ -16,12 +16,12 @@ import numpy as np
 import tempfile
 import pytest
 import itertools
+from sagemaker.deserializers import RecordDeserializer
+from sagemaker.serializers import RecordSerializer
 from scipy.sparse import coo_matrix
 from sagemaker.amazon.common import (
-    RecordDeserializer,
     write_numpy_to_dense_tensor,
     read_recordio,
-    RecordSerializer,
     write_spmatrix_to_sparse_tensor,
 )
 from sagemaker.amazon.record_pb2 import Record
