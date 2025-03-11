@@ -272,7 +272,9 @@ def pytorch_training_py_version(pytorch_training_version, request):
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_inference_py_version(pytorch_inference_version, request):
-    if Version(pytorch_inference_version) >= Version("2.3"):
+    if Version(pytorch_inference_version) >= Version("2.6"):
+        return "py312"
+    elif Version(pytorch_inference_version) >= Version("2.3"):
         return "py311"
     elif Version(pytorch_inference_version) >= Version("2.0"):
         return "py310"
