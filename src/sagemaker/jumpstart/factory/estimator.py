@@ -56,6 +56,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_LOGGER,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
+    JUMPSTART_MODEL_HUB_NAME,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.factory import model
@@ -313,16 +314,31 @@ def _add_hub_access_config_to_kwargs_inputs(
 ):
     """Adds HubAccessConfig to kwargs inputs"""
 
+    dataset_uri = kwargs.specs.default_training_dataset_uri
     if isinstance(kwargs.inputs, str):
-        kwargs.inputs = TrainingInput(s3_data=kwargs.inputs, hub_access_config=hub_access_config)
+        if dataset_uri is not None and dataset_uri == kwargs.inputs:
+            kwargs.inputs = TrainingInput(
+                s3_data=kwargs.inputs, hub_access_config=hub_access_config
+            )
     elif isinstance(kwargs.inputs, TrainingInput):
-        kwargs.inputs.add_hub_access_config(hub_access_config=hub_access_config)
+        if (
+            dataset_uri is not None
+            and dataset_uri == kwargs.inputs.config["DataSource"]["S3DataSource"]["S3Uri"]
+        ):
+            kwargs.inputs.add_hub_access_config(hub_access_config=hub_access_config)
     elif isinstance(kwargs.inputs, dict):
         for k, v in kwargs.inputs.items():
             if isinstance(v, str):
-                kwargs.inputs[k] = TrainingInput(s3_data=v, hub_access_config=hub_access_config)
+                training_input = TrainingInput(s3_data=v)
+                if dataset_uri is not None and dataset_uri == v:
+                    training_input.add_hub_access_config(hub_access_config=hub_access_config)
+                kwargs.inputs[k] = training_input
             elif isinstance(kwargs.inputs, TrainingInput):
-                kwargs.inputs[k].add_hub_access_config(hub_access_config=hub_access_config)
+                if (
+                    dataset_uri is not None
+                    and dataset_uri == kwargs.inputs.config["DataSource"]["S3DataSource"]["S3Uri"]
+                ):
+                    kwargs.inputs[k].add_hub_access_config(hub_access_config=hub_access_config)
 
     return kwargs
 
@@ -616,8 +632,13 @@ def _add_model_reference_arn_to_kwargs(
 
 def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets model uri in kwargs based on default or override, returns full kwargs."""
-
-    if _model_supports_training_model_uri(**get_model_info_default_kwargs(kwargs)):
+    # hub_arn is by default None unless the user specifies the hub_name
+    # If no hub_name is specified, it is assumed the public hub
+    is_private_hub = JUMPSTART_MODEL_HUB_NAME not in kwargs.hub_arn if kwargs.hub_arn else False
+    if (
+        _model_supports_training_model_uri(**get_model_info_default_kwargs(kwargs))
+        or is_private_hub
+    ):
         default_model_uri = model_uris.retrieve(
             model_scope=JumpStartScriptScope.TRAINING,
             instance_type=kwargs.instance_type,

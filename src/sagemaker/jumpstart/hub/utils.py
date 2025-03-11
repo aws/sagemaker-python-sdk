@@ -20,6 +20,7 @@ from sagemaker.utils import aws_partition
 from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
 from sagemaker.jumpstart import constants
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
+from packaging import version
 
 PROPRIETARY_VERSION_KEYWORD = "@marketplace-version:"
 
@@ -162,9 +163,12 @@ def get_hub_model_version(
         sagemaker_session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     try:
-        hub_content_summaries = sagemaker_session.list_hub_content_versions(
-            hub_name=hub_name, hub_content_name=hub_model_name, hub_content_type=hub_model_type
-        ).get("HubContentSummaries")
+        hub_content_summaries = _list_hub_content_versions_helper(
+            hub_name=hub_name,
+            hub_content_name=hub_model_name,
+            hub_content_type=hub_model_type,
+            sagemaker_session=sagemaker_session,
+        )
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
 
@@ -181,13 +185,34 @@ def get_hub_model_version(
         raise
 
 
+def _list_hub_content_versions_helper(
+    hub_name, hub_content_name, hub_content_type, sagemaker_session
+):
+    all_hub_content_summaries = []
+    list_hub_content_versions_response = sagemaker_session.list_hub_content_versions(
+        hub_name=hub_name, hub_content_name=hub_content_name, hub_content_type=hub_content_type
+    )
+    all_hub_content_summaries.extend(list_hub_content_versions_response.get("HubContentSummaries"))
+    while "NextToken" in list_hub_content_versions_response:
+        list_hub_content_versions_response = sagemaker_session.list_hub_content_versions(
+            hub_name=hub_name,
+            hub_content_name=hub_content_name,
+            hub_content_type=hub_content_type,
+            next_token=list_hub_content_versions_response["NextToken"],
+        )
+        all_hub_content_summaries.extend(
+            list_hub_content_versions_response.get("HubContentSummaries")
+        )
+    return all_hub_content_summaries
+
+
 def _get_hub_model_version_for_open_weight_version(
     hub_content_summaries: List[Any], hub_model_version: Optional[str] = None
 ) -> str:
     available_model_versions = [model.get("HubContentVersion") for model in hub_content_summaries]
 
     if hub_model_version == "*" or hub_model_version is None:
-        return str(max(available_model_versions))
+        return str(max(version.parse(v) for v in available_model_versions))
 
     try:
         spec = SpecifierSet(f"=={hub_model_version}")

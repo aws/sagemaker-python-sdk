@@ -378,6 +378,7 @@ def test_jumpstart_model_specs():
         specs1.training_script_key
         == "source-directory-tarballs/pytorch/transfer_learning/ic/v2.3.0/sourcedir.tar.gz"
     )
+    assert specs1.default_training_dataset_key == "training-datasets/tf_flowers/"
     assert specs1.hyperparameters == [
         JumpStartHyperparameter(
             {
