@@ -4540,8 +4540,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 empty object passed through, will use pre-defined values in
                 ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
                 instance based endpoint if it's None. (default: None).
-            routing_config (Optional[Dict[str, Any]): Settings the control how the endpoint routes incoming
-                traffic to the instances that the endpoint hosts.
+            routing_config (Optional[Dict[str, Any]): Settings the control how the endpoint routes
+                incoming traffic to the instances that the endpoint hosts.
                 Currently, support dictionary key ``RoutingStrategy``.
 
                 .. code:: python

@@ -1663,7 +1663,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         if isinstance(inference_config, ResourceRequirements):
             if update_endpoint:
-                raise ValueError("Currently update_endpoint is supported for single model endpoints")
+                raise ValueError(
+                    "Currently update_endpoint is supported for single model endpoints"
+                )
             # Multi Model and MultiContainer endpoints with Inference Component
             return self.built_model.deploy(
                 instance_type=self.instance_type,

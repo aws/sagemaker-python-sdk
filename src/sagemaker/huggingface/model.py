@@ -298,8 +298,8 @@ class HuggingFaceModel(FrameworkModel):
             explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
                 configuration for use with Amazon SageMaker Clarify. (default: None)
             update_endpoint (Optional[bool]): Flag to update the model in an existing Amazon SageMaker endpoint.
-                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
-                corresponding to the previous EndpointConfig. Default: False
+                If True, this will deploy a new EndpointConfig to an already existing endpoint and
+                delete resources corresponding to the previous EndpointConfig. Default: False
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or

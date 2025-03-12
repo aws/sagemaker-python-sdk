@@ -1134,13 +1134,12 @@ def test_deploy_with_update_endpoint(production_variant, name_from_base, sagemak
 
     # Test update_endpoint with async inference config
     async_inference_config = AsyncInferenceConfig(
-        output_path="s3://bucket/output",
-        failure_path="s3://bucket/failure"
+        output_path="s3://bucket/output", failure_path="s3://bucket/failure"
     )
     async_inference_config_dict = {
         "OutputConfig": {
             "S3OutputPath": "s3://bucket/output",
-            "S3FailurePath": "s3://bucket/failure"
+            "S3FailurePath": "s3://bucket/failure",
         },
     }
     model.deploy(
@@ -1182,7 +1181,9 @@ def test_deploy_with_update_endpoint_inference_component(production_variant, sag
     )
 
     # Test that updating endpoint with inference component raises error
-    with pytest.raises(ValueError, match="Currently update_endpoint is supported for single model endpoints"):
+    with pytest.raises(
+        ValueError, match="Currently update_endpoint is supported for single model endpoints"
+    ):
         model.deploy(
             endpoint_name="test-endpoint",
             instance_type=INSTANCE_TYPE,

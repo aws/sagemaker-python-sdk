@@ -1631,7 +1631,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         # Support multiple models on same endpoint
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             if update_endpoint:
-                raise ValueError("Currently update_endpoint is supported for single model endpoints")
+                raise ValueError(
+                    "Currently update_endpoint is supported for single model endpoints"
+                )
             if endpoint_name:
                 self.endpoint_name = endpoint_name
             else:

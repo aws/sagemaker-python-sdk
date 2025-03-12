@@ -4138,9 +4138,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
         {
             "input_args": {
                 "inference_config": BatchTransformInferenceConfig(
-                    instance_count=1,
-                    instance_type="ml.m5.large",
-                    output_path="op-path"
+                    instance_count=1, instance_type="ml.m5.large", output_path="op-path"
                 )
             },
             "call_params": {
@@ -4194,9 +4192,9 @@ def test_deploy_multi_model_update_error():
     )
     setattr(model_builder, "built_model", MagicMock())
 
-    with pytest.raises(ValueError, match="Currently update_endpoint is supported for single model endpoints"):
+    with pytest.raises(
+        ValueError, match="Currently update_endpoint is supported for single model endpoints"
+    ):
         model_builder.deploy(
-            endpoint_name="test",
-            inference_config=RESOURCE_REQUIREMENTS,
-            update_endpoint=True
+            endpoint_name="test", inference_config=RESOURCE_REQUIREMENTS, update_endpoint=True
         )
