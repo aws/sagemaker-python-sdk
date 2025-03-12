@@ -19,7 +19,7 @@ import json
 import pytest
 
 from mock import Mock, call, patch
-from mock.mock import MagicMock
+from mock.mock import MagicMock, ANY
 
 from sagemaker import s3
 from sagemaker.remote_function.job import _JobSettings
@@ -345,6 +345,10 @@ def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_ar
         role_arn=role_arn,
         parallelism_config=dict(MaxParallelExecutionSteps=10),
     )
+    pipeline.update(  
+        role_arn=role_arn,
+        parallelism_config={"MaxParallelExecutionSteps": 10},
+    )
     sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_with(
         PipelineName="MyPipeline",
         PipelineDefinition=pipeline.definition(),
@@ -552,17 +556,17 @@ def test_pipeline_start(sagemaker_session_mock):
         sagemaker_session=sagemaker_session_mock,
     )
     pipeline.start()
-    sagemaker_session_mock.start_pipeline_execution.assert_called_with(
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
         PipelineName="MyPipeline",
     )
 
     pipeline.start(execution_display_name="pipeline-execution")
-    sagemaker_session_mock.start_pipeline_execution.assert_called_with(
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
         PipelineName="MyPipeline", PipelineExecutionDisplayName="pipeline-execution"
     )
 
     pipeline.start(parameters=dict(alpha="epsilon"))
-    sagemaker_session_mock.start_pipeline_execution.assert_called_with(
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
     )
 
@@ -912,7 +916,7 @@ def test_pipeline_execution_basics(sagemaker_session_mock):
         PipelineExecutionArn="my:arn"
     )
     steps = execution.list_steps()
-    sagemaker_session_mock.sagemaker_client.describe_pipeline_execution_steps.assert_called_with(
+    sagemaker_session_mock.sagemaker_client.list_pipeline_execution_steps.assert_called_with(
         PipelineExecutionArn="my:arn"
     )
     assert len(steps) == 1
