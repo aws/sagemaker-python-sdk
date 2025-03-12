@@ -74,6 +74,7 @@ supported_model_servers = {
     ModelServer.MMS,
     ModelServer.TGI,
     ModelServer.TEI,
+    ModelServer.SMD,
 }
 
 mock_session = MagicMock()
@@ -2890,6 +2891,85 @@ class TestModelBuilder(unittest.TestCase):
             },
         )
 
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_jumpstart")
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    def test_build_multiple_inference_component_modelbuilders(
+        self,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model_id,
+        mock_build_for_js,
+        mock_serve_settings,
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder1 = ModelBuilder(
+            model="gpt_llm_burt", inference_component_name="ic1", resource_requirements=Mock()
+        )
+        builder2 = ModelBuilder(
+            model="gpt_llm_burt", inference_component_name="ic2", resource_requirements=Mock()
+        )
+
+        builder3 = ModelBuilder(
+            model="gpt_llm_burt", inference_component_name="ic3", resource_requirements=Mock()
+        )
+
+        chain_builder = ModelBuilder(
+            modelbuilder_list=[builder1, builder2, builder3],
+        )
+        chain_builder.build(sagemaker_session=mock_session)
+        assert mock_build_for_js.call_count == 3
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_jumpstart")
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._does_ic_exist",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.session.Session.update_inference_component",
+        return_value=MagicMock(),
+    )
+    def test_deploy_existing_inference_component_calls_update_inference_component(
+        self,
+        mock_update_inference_component,
+        mock_ic_exists,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model_id,
+        mock_build_for_js,
+        mock_serve_settings,
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder1 = ModelBuilder(
+            model="gpt_llm_burt", inference_component_name="ic1", resource_requirements=Mock()
+        )
+
+        chain_builder = ModelBuilder(
+            modelbuilder_list=[builder1],
+        ).build()
+        chain_builder.deploy()
+        assert mock_update_inference_component.call_count == 1
+
     def test_deploy_invalid_inputs(self):
         model_builder = ModelBuilder(
             model="meta-llama/Meta-Llama-3-8B-Instruct",
@@ -2902,7 +2982,7 @@ class TestModelBuilder(unittest.TestCase):
         try:
             model_builder.deploy(**inputs)
         except ValueError as e:
-            assert "Model Needs to be built before deploying" in str(e)
+            assert "Model needs to be built before deploying" in str(e)
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
     def test_display_benchmark_metrics_non_string_model(self, mock_is_jumpstart):
