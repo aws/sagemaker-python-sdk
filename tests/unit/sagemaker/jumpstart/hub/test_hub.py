@@ -16,7 +16,6 @@ from unittest.mock import patch, MagicMock
 import pytest
 from mock import Mock
 from sagemaker.jumpstart.hub.hub import Hub
-from sagemaker.jumpstart.hub.types import S3ObjectLocation
 
 
 REGION = "us-east-1"
@@ -60,48 +59,34 @@ def test_instantiates(sagemaker_session):
 
 
 @pytest.mark.parametrize(
-    ("hub_name,hub_description,hub_bucket_name,hub_display_name,hub_search_keywords,tags"),
+    ("hub_name,hub_description,,hub_display_name,hub_search_keywords,tags"),
     [
-        pytest.param("MockHub1", "this is my sagemaker hub", None, None, None, None),
+        pytest.param("MockHub1", "this is my sagemaker hub", None, None, None),
         pytest.param(
             "MockHub2",
             "this is my sagemaker hub two",
-            None,
             "DisplayMockHub2",
             ["mock", "hub", "123"],
             [{"Key": "tag-key-1", "Value": "tag-value-1"}],
         ),
     ],
 )
-@patch("sagemaker.jumpstart.hub.hub.Hub._generate_hub_storage_location")
 def test_create_with_no_bucket_name(
-    mock_generate_hub_storage_location,
     sagemaker_session,
     hub_name,
     hub_description,
-    hub_bucket_name,
     hub_display_name,
     hub_search_keywords,
     tags,
 ):
-    storage_location = S3ObjectLocation(
-        "sagemaker-hubs-us-east-1-123456789123", f"{hub_name}-{FAKE_TIME.timestamp()}"
-    )
-    mock_generate_hub_storage_location.return_value = storage_location
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
-    sagemaker_session.describe_hub.return_value = {
-        "S3StorageConfig": {"S3OutputPath": f"s3://{hub_bucket_name}/{storage_location.key}"}
-    }
     hub = Hub(hub_name=hub_name, sagemaker_session=sagemaker_session)
     request = {
         "hub_name": hub_name,
         "hub_description": hub_description,
         "hub_display_name": hub_display_name,
         "hub_search_keywords": hub_search_keywords,
-        "s3_storage_config": {
-            "S3OutputPath": f"s3://sagemaker-hubs-us-east-1-123456789123/{storage_location.key}"
-        },
         "tags": tags,
     }
     response = hub.create(
@@ -128,9 +113,9 @@ def test_create_with_no_bucket_name(
         ),
     ],
 )
-@patch("sagemaker.jumpstart.hub.hub.Hub._generate_hub_storage_location")
+@patch("sagemaker.jumpstart.hub.hub.datetime")
 def test_create_with_bucket_name(
-    mock_generate_hub_storage_location,
+    mock_datetime,
     sagemaker_session,
     hub_name,
     hub_description,
@@ -139,8 +124,8 @@ def test_create_with_bucket_name(
     hub_search_keywords,
     tags,
 ):
-    storage_location = S3ObjectLocation(hub_bucket_name, f"{hub_name}-{FAKE_TIME.timestamp()}")
-    mock_generate_hub_storage_location.return_value = storage_location
+    mock_datetime.now.return_value = FAKE_TIME
+
     create_hub = {"HubArn": f"arn:aws:sagemaker:us-east-1:123456789123:hub/{hub_name}"}
     sagemaker_session.create_hub = Mock(return_value=create_hub)
     hub = Hub(hub_name=hub_name, sagemaker_session=sagemaker_session, bucket_name=hub_bucket_name)
@@ -149,7 +134,9 @@ def test_create_with_bucket_name(
         "hub_description": hub_description,
         "hub_display_name": hub_display_name,
         "hub_search_keywords": hub_search_keywords,
-        "s3_storage_config": {"S3OutputPath": f"s3://mock-bucket-123/{storage_location.key}"},
+        "s3_storage_config": {
+            "S3OutputPath": f"s3://mock-bucket-123/{hub_name}-{FAKE_TIME.timestamp()}"
+        },
         "tags": tags,
     }
     response = hub.create(
