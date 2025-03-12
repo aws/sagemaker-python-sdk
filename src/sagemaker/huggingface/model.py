@@ -218,6 +218,7 @@ class HuggingFaceModel(FrameworkModel):
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
         explainer_config=None,
+        update_endpoint: Optional[bool] = False,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -296,6 +297,9 @@ class HuggingFaceModel(FrameworkModel):
                 would like to deploy the model and endpoint with recommended parameters.
             explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
                 configuration for use with Amazon SageMaker Clarify. (default: None)
+            update_endpoint (Optional[bool]): Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
+                corresponding to the previous EndpointConfig. Default: False
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -335,6 +339,7 @@ class HuggingFaceModel(FrameworkModel):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
+            update_endpoint=update_endpoint,
             **kwargs,
         )
 

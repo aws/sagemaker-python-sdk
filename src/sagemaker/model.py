@@ -53,7 +53,6 @@ from sagemaker.model_card.helpers import _hash_content_str
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
-from sagemaker.deprecations import removed_kwargs
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.explainer import ExplainerConfig
 from sagemaker.metadata_properties import MetadataProperties
@@ -1386,6 +1385,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         routing_config: Optional[Dict[str, Any]] = None,
         model_reference_arn: Optional[str] = None,
         inference_ami_version: Optional[str] = None,
+        update_endpoint: Optional[bool] = False,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1497,6 +1497,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             inference_ami_version (Optional [str]): Specifies an option from a collection of preconfigured
              Amazon Machine Image (AMI) images. For a full list of options, see:
              https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
+            update_endpoint (Optional[bool]): Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
+                corresponding to the previous EndpointConfig. Default: False
+                Note: Currently this is supported for single model endpoints
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1511,8 +1515,6 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 is not None. Otherwise, return None.
         """
         self.accept_eula = accept_eula
-
-        removed_kwargs("update_endpoint", kwargs)
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
         # Depending on the instance type, a local session (or) a session is initialized.
@@ -1628,6 +1630,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         # Support multiple models on same endpoint
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
+            if update_endpoint:
+                raise ValueError("Currently update_endpoint is supported for single model endpoints")
             if endpoint_name:
                 self.endpoint_name = endpoint_name
             else:
@@ -1783,17 +1787,38 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             if is_explainer_enabled:
                 explainer_config_dict = explainer_config._to_request_dict()
 
-            self.sagemaker_session.endpoint_from_production_variants(
-                name=self.endpoint_name,
-                production_variants=[production_variant],
-                tags=tags,
-                kms_key=kms_key,
-                wait=wait,
-                data_capture_config_dict=data_capture_config_dict,
-                explainer_config_dict=explainer_config_dict,
-                async_inference_config_dict=async_inference_config_dict,
-                live_logging=endpoint_logging,
-            )
+            if update_endpoint:
+                endpoint_config_name = self.sagemaker_session.create_endpoint_config(
+                    name=self.name,
+                    model_name=self.name,
+                    initial_instance_count=initial_instance_count,
+                    instance_type=instance_type,
+                    accelerator_type=accelerator_type,
+                    tags=tags,
+                    kms_key=kms_key,
+                    data_capture_config_dict=data_capture_config_dict,
+                    volume_size=volume_size,
+                    model_data_download_timeout=model_data_download_timeout,
+                    container_startup_health_check_timeout=container_startup_health_check_timeout,
+                    explainer_config_dict=explainer_config_dict,
+                    async_inference_config_dict=async_inference_config_dict,
+                    serverless_inference_config=serverless_inference_config_dict,
+                    routing_config=routing_config,
+                    inference_ami_version=inference_ami_version,
+                )
+                self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+            else:
+                self.sagemaker_session.endpoint_from_production_variants(
+                    name=self.endpoint_name,
+                    production_variants=[production_variant],
+                    tags=tags,
+                    kms_key=kms_key,
+                    wait=wait,
+                    data_capture_config_dict=data_capture_config_dict,
+                    explainer_config_dict=explainer_config_dict,
+                    async_inference_config_dict=async_inference_config_dict,
+                    live_logging=endpoint_logging,
+                )
 
             if self.predictor_cls:
                 predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)

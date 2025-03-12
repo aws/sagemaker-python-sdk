@@ -1602,6 +1602,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 ResourceRequirements,
             ]
         ] = None,
+        update_endpoint: Optional[bool] = False,
     ) -> Union[Predictor, Transformer]:
         """Deploys the built Model.
 
@@ -1615,24 +1616,32 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                AsyncInferenceConfig, BatchTransformInferenceConfig, ResourceRequirements]]) :
                 Additional Config for different deployment types such as
                 serverless, async, batch and multi-model/container
+            update_endpoint (Optional[bool]): Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
+                corresponding to the previous EndpointConfig. Default: False
+                Note: Currently this is supported for single model endpoints
         Returns:
             Transformer for Batch Deployments
             Predictors for all others
         """
         if not hasattr(self, "built_model"):
             raise ValueError("Model Needs to be built before deploying")
-        endpoint_name = unique_name_from_base(endpoint_name)
+        if not update_endpoint:
+            endpoint_name = unique_name_from_base(endpoint_name)
+
         if not inference_config:  # Real-time Deployment
             return self.built_model.deploy(
                 instance_type=self.instance_type,
                 initial_instance_count=initial_instance_count,
                 endpoint_name=endpoint_name,
+                update_endpoint=update_endpoint,
             )
 
         if isinstance(inference_config, ServerlessInferenceConfig):
             return self.built_model.deploy(
                 serverless_inference_config=inference_config,
                 endpoint_name=endpoint_name,
+                update_endpoint=update_endpoint,
             )
 
         if isinstance(inference_config, AsyncInferenceConfig):
@@ -1641,6 +1650,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 initial_instance_count=initial_instance_count,
                 async_inference_config=inference_config,
                 endpoint_name=endpoint_name,
+                update_endpoint=update_endpoint,
             )
 
         if isinstance(inference_config, BatchTransformInferenceConfig):
@@ -1652,6 +1662,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             return transformer
 
         if isinstance(inference_config, ResourceRequirements):
+            if update_endpoint:
+                raise ValueError("Currently update_endpoint is supported for single model endpoints")
             # Multi Model and MultiContainer endpoints with Inference Component
             return self.built_model.deploy(
                 instance_type=self.instance_type,
@@ -1660,6 +1672,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 resources=inference_config,
                 initial_instance_count=initial_instance_count,
                 role=self.role_arn,
+                update_endpoint=update_endpoint,
             )
 
         raise ValueError("Deployment Options not supported")
