@@ -18,6 +18,7 @@ from PIL import Image
 import os
 import io
 import numpy as np
+from sagemaker import image_uris
 
 from sagemaker.lineage.artifact import Artifact
 from sagemaker.lineage.association import Association
@@ -196,6 +197,14 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     )
 
     model_builder = ModelBuilder(
+        image_uri=image_uris.retrieve(
+            framework="pytorch",
+            region=sagemaker_session.boto_region_name,
+            version="2.2.0", # Compatible version for py310
+            image_scope="inference",
+            py_version="py310",
+            instance_type=cpu_instance_type,
+        ),
         mode=Mode.SAGEMAKER_ENDPOINT,
         schema_builder=squeezenet_schema,
         role_arn=role_arn,
