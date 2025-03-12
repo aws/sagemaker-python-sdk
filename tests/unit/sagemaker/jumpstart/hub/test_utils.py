@@ -173,30 +173,6 @@ def test_generate_hub_arn_for_init_kwargs():
     assert utils.generate_hub_arn_for_init_kwargs(hub_arn, None, mock_custom_session) == hub_arn
 
 
-def test_create_hub_bucket_if_it_does_not_exist_hub_arn():
-    mock_sagemaker_session = Mock()
-    mock_sagemaker_session.account_id.return_value = "123456789123"
-    mock_sagemaker_session.client("sts").get_caller_identity.return_value = {
-        "Account": "123456789123"
-    }
-    hub_arn = "arn:aws:sagemaker:us-west-2:12346789123:hub/my-awesome-hub"
-    # Mock custom session with custom values
-    mock_custom_session = Mock()
-    mock_custom_session.account_id.return_value = "000000000000"
-    mock_custom_session.boto_region_name = "us-east-2"
-    mock_sagemaker_session.boto_session.resource("s3").Bucket().creation_date = None
-    mock_sagemaker_session.boto_region_name = "us-east-1"
-
-    bucket_name = "sagemaker-hubs-us-east-1-123456789123"
-    created_hub_bucket_name = utils.create_hub_bucket_if_it_does_not_exist(
-        sagemaker_session=mock_sagemaker_session
-    )
-
-    mock_sagemaker_session.boto_session.resource("s3").create_bucketassert_called_once()
-    assert created_hub_bucket_name == bucket_name
-    assert utils.generate_hub_arn_for_init_kwargs(hub_arn, None, mock_custom_session) == hub_arn
-
-
 def test_is_gated_bucket():
     assert utils.is_gated_bucket("jumpstart-private-cache-prod-us-west-2") is True
 
@@ -205,23 +181,6 @@ def test_is_gated_bucket():
     assert utils.is_gated_bucket("jumpstart-cache-prod-us-west-2") is False
 
     assert utils.is_gated_bucket("") is False
-
-
-def test_create_hub_bucket_if_it_does_not_exist():
-    mock_sagemaker_session = Mock()
-    mock_sagemaker_session.account_id.return_value = "123456789123"
-    mock_sagemaker_session.client("sts").get_caller_identity.return_value = {
-        "Account": "123456789123"
-    }
-    mock_sagemaker_session.boto_session.resource("s3").Bucket().creation_date = None
-    mock_sagemaker_session.boto_region_name = "us-east-1"
-    bucket_name = "sagemaker-hubs-us-east-1-123456789123"
-    created_hub_bucket_name = utils.create_hub_bucket_if_it_does_not_exist(
-        sagemaker_session=mock_sagemaker_session
-    )
-
-    mock_sagemaker_session.boto_session.resource("s3").create_bucketassert_called_once()
-    assert created_hub_bucket_name == bucket_name
 
 
 @patch("sagemaker.session.Session")
