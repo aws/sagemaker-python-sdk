@@ -1497,9 +1497,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             inference_ami_version (Optional [str]): Specifies an option from a collection of preconfigured
              Amazon Machine Image (AMI) images. For a full list of options, see:
              https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
-            update_endpoint (Optional[bool]): Flag to update the model in an existing Amazon SageMaker endpoint.
-                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
-                corresponding to the previous EndpointConfig. Default: False
+            update_endpoint (Optional[bool]):
+                Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint
+                and delete resources corresponding to the previous EndpointConfig. Default: False
                 Note: Currently this is supported for single model endpoints
         Raises:
              ValueError: If arguments combination check failed in these circumstances:

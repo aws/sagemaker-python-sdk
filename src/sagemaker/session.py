@@ -4549,7 +4549,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     {
                         "RoutingStrategy":  sagemaker.enums.RoutingStrategy.RANDOM
                     }
-            inference_ami_version (Optional [str]): Specifies an option from a collection of preconfigured
+            inference_ami_version (Optional [str]):
+             Specifies an option from a collection of preconfigured
+             Amazon Machine Image (AMI) images. For a full list of options, see:
+             https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]

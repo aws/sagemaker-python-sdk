@@ -1616,9 +1616,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                AsyncInferenceConfig, BatchTransformInferenceConfig, ResourceRequirements]]) :
                 Additional Config for different deployment types such as
                 serverless, async, batch and multi-model/container
-            update_endpoint (Optional[bool]): Flag to update the model in an existing Amazon SageMaker endpoint.
-                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
-                corresponding to the previous EndpointConfig. Default: False
+            update_endpoint (Optional[bool]):
+                Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint
+                and delete resources corresponding to the previous EndpointConfig. Default: False
                 Note: Currently this is supported for single model endpoints
         Returns:
             Transformer for Batch Deployments
