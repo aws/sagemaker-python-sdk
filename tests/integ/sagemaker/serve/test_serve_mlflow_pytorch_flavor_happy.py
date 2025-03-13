@@ -168,7 +168,7 @@ def model_builder(request):
 
 @pytest.mark.skip(
     reason="Testing against Python version 310 which is not supported anymore"
-           " https://github.com/aws/deep-learning-containers/blob/master/available_images.md",
+    " https://github.com/aws/deep-learning-containers/blob/master/available_images.md",
 )
 def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     sagemaker_session,
