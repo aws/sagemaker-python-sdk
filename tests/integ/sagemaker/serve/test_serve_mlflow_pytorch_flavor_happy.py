@@ -18,7 +18,6 @@ from PIL import Image
 import os
 import io
 import numpy as np
-from sagemaker import image_uris
 
 from sagemaker.lineage.artifact import Artifact
 from sagemaker.lineage.association import Association
@@ -44,7 +43,7 @@ from sagemaker.serve.utils.lineage_constants import (
 
 logger = logging.getLogger(__name__)
 
-ROLE_NAME = "SageMakerRole"
+ROLE_NAME = "Admin"
 
 
 @pytest.fixture
@@ -167,9 +166,9 @@ def model_builder(request):
 #                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
-    reason="The goal of these test are to test the serving components of our feature",
+@pytest.mark.skip(
+    reason="Testing against Python version 310 which is not supported anymore"
+           " https://github.com/aws/deep-learning-containers/blob/master/available_images.md",
 )
 def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     sagemaker_session,
@@ -197,14 +196,6 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     )
 
     model_builder = ModelBuilder(
-        image_uri=image_uris.retrieve(
-            framework="pytorch",
-            region=sagemaker_session.boto_region_name,
-            version="2.2.0",  # Compatible version for py310
-            image_scope="inference",
-            py_version="py310",
-            instance_type=cpu_instance_type,
-        ),
         mode=Mode.SAGEMAKER_ENDPOINT,
         schema_builder=squeezenet_schema,
         role_arn=role_arn,
@@ -236,10 +227,10 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
         except Exception as e:
             caught_ex = e
         finally:
-            # cleanup_model_resources(
-            #     sagemaker_session=model_builder.sagemaker_session,
-            #     model_name=model.name,
-            #     endpoint_name=model.endpoint_name,
-            # )
+            cleanup_model_resources(
+                sagemaker_session=model_builder.sagemaker_session,
+                model_name=model.name,
+                endpoint_name=model.endpoint_name,
+            )
             if caught_ex:
                 raise caught_ex

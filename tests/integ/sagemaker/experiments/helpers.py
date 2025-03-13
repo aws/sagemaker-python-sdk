@@ -44,10 +44,11 @@ def cleanup_exp_resources(exp_names, sagemaker_session):
             exp = Experiment.load(experiment_name=exp_name, sagemaker_session=sagemaker_session)
             exp._delete_all(action="--force")
 
+
 @pytest.fixture
 def clear_run_context():
     current_run = _RunContext.get_current_run()
-    if current_run == None:
+    if current_run is None:
         return
 
     logging.info(
