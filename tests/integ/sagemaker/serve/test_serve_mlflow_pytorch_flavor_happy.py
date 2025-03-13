@@ -236,10 +236,10 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
         except Exception as e:
             caught_ex = e
         finally:
-            cleanup_model_resources(
-                sagemaker_session=model_builder.sagemaker_session,
-                model_name=model.name,
-                endpoint_name=model.endpoint_name,
-            )
+            # cleanup_model_resources(
+            #     sagemaker_session=model_builder.sagemaker_session,
+            #     model_name=model.name,
+            #     endpoint_name=model.endpoint_name,
+            # )
             if caught_ex:
                 raise caught_ex
