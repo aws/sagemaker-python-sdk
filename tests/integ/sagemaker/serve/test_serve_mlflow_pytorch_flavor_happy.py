@@ -43,7 +43,7 @@ from sagemaker.serve.utils.lineage_constants import (
 
 logger = logging.getLogger(__name__)
 
-ROLE_NAME = "Admin"
+ROLE_NAME = "SageMakerRole"
 
 
 @pytest.fixture
