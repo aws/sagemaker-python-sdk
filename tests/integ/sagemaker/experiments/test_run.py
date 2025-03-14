@@ -32,7 +32,7 @@ from sagemaker.experiments._metrics import BATCH_SIZE
 from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.sklearn import SKLearn
 from sagemaker.utils import retry_with_backoff, unique_name_from_base
-from tests.integ.sagemaker.experiments.helpers import name, cleanup_exp_resources, clear_run_context
+from tests.integ.sagemaker.experiments.helpers import name, cleanup_exp_resources
 from sagemaker.experiments.run import (
     RUN_NAME_BASE,
     DELIMITER,
