@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.242.0 (2025-03-14)
+
+### Features
+
+ * add integ tests for training JumpStart models in private hub
+
+### Bug Fixes and Other Changes
+
+ * Torch upgrade
+ * Prevent RunContext overlap between test_run tests
+ * remove s3 output location requirement from hub class init
+ * Fixing Pytorch training python version in tests
+ * update image_uri_configs  03-11-2025 07:18:09 PST
+ * resolve infinite loop in _find_config on Windows systems
+ * pipeline definition function doc update
+
 ## v2.241.0 (2025-03-06)
 
 ### Features
