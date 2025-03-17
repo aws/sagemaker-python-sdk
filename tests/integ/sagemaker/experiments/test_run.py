@@ -32,7 +32,7 @@ from sagemaker.experiments._metrics import BATCH_SIZE
 from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.sklearn import SKLearn
 from sagemaker.utils import retry_with_backoff, unique_name_from_base
-from tests.integ.sagemaker.experiments.helpers import name, cleanup_exp_resources, clear_run_context
+from tests.integ.sagemaker.experiments.helpers import name, cleanup_exp_resources
 from sagemaker.experiments.run import (
     RUN_NAME_BASE,
     DELIMITER,
@@ -55,7 +55,7 @@ file_artifact_name = f"File-Artifact-{name()}"
 metric_name = "Test-Local-Init-Log-Metric"
 
 
-def test_local_run_with_load(sagemaker_session, artifact_file_path, clear_run_context):
+def test_local_run_with_load(sagemaker_session, artifact_file_path):
     exp_name = f"My-Local-Exp-{name()}"
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
         # Run name is not provided, will create a new TC
@@ -86,9 +86,7 @@ def test_local_run_with_load(sagemaker_session, artifact_file_path, clear_run_co
         retry_with_backoff(verify_load_run, 4)
 
 
-def test_two_local_run_init_with_same_run_name_and_different_exp_names(
-    sagemaker_session, clear_run_context
-):
+def test_two_local_run_init_with_same_run_name_and_different_exp_names(sagemaker_session):
     exp_name1 = f"my-two-local-exp1-{name()}"
     exp_name2 = f"my-two-local-exp2-{name()}"
     run_name = "test-run"
@@ -126,9 +124,7 @@ def test_two_local_run_init_with_same_run_name_and_different_exp_names(
         ("my-test4", "test-run", "run-display-name-test"),  # with supplied display name
     ],
 )
-def test_run_name_vs_trial_component_name_edge_cases(
-    sagemaker_session, input_names, clear_run_context
-):
+def test_run_name_vs_trial_component_name_edge_cases(sagemaker_session, input_names):
     exp_name, run_name, run_display_name = input_names
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
         with Run(
@@ -181,7 +177,6 @@ def test_run_from_local_and_train_job_and_all_exp_cfg_match(
     execution_role,
     sagemaker_client_config,
     sagemaker_metrics_config,
-    clear_run_context,
 ):
     # Notes:
     # 1. The 1st Run created locally and its exp config was auto passed to the job
@@ -282,7 +277,6 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(
     execution_role,
     sagemaker_client_config,
     sagemaker_metrics_config,
-    clear_run_context,
 ):
     # Notes:
     # 1. The 1st Run created locally and its exp config was auto passed to the job
@@ -369,7 +363,6 @@ def test_run_from_train_job_only(
     execution_role,
     sagemaker_client_config,
     sagemaker_metrics_config,
-    clear_run_context,
 ):
     # Notes:
     # 1. No Run created locally or specified in experiment config
@@ -420,7 +413,6 @@ def test_run_from_processing_job_and_override_default_exp_config(
     execution_role,
     sagemaker_client_config,
     sagemaker_metrics_config,
-    clear_run_context,
 ):
     # Notes:
     # 1. The 1st Run (run) created locally
@@ -500,7 +492,6 @@ def test_run_from_transform_job(
     execution_role,
     sagemaker_client_config,
     sagemaker_metrics_config,
-    clear_run_context,
 ):
     # Notes:
     # 1. The 1st Run (run) created locally
@@ -582,7 +573,6 @@ def test_load_run_auto_pass_in_exp_config_to_job(
     execution_role,
     sagemaker_client_config,
     sagemaker_metrics_config,
-    clear_run_context,
 ):
     # Notes:
     # 1. In local side, load the Run created previously and invoke a job under the load context
@@ -631,7 +621,7 @@ def test_load_run_auto_pass_in_exp_config_to_job(
         )
 
 
-def test_list(run_obj, sagemaker_session, clear_run_context):
+def test_list(run_obj, sagemaker_session):
     tc1 = _TrialComponent.create(
         trial_component_name=f"non-run-tc1-{name()}",
         sagemaker_session=sagemaker_session,
@@ -653,7 +643,7 @@ def test_list(run_obj, sagemaker_session, clear_run_context):
     assert run_tcs[0].experiment_config == run_obj.experiment_config
 
 
-def test_list_twice(run_obj, sagemaker_session, clear_run_context):
+def test_list_twice(run_obj, sagemaker_session):
     tc1 = _TrialComponent.create(
         trial_component_name=f"non-run-tc1-{name()}",
         sagemaker_session=sagemaker_session,
