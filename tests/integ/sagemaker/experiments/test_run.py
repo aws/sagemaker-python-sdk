@@ -731,7 +731,7 @@ def _generate_processor(
     return FrameworkProcessor(
         estimator_cls=PyTorch,
         framework_version="1.10",
-        py_version="py38",
+        py_version="py39",
         instance_count=1,
         instance_type="ml.m5.xlarge",
         role=execution_role,
