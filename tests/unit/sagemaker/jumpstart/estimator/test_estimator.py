@@ -392,23 +392,6 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator.return_value = sagemaker_session
         mock_session_model.return_value = sagemaker_session
 
-        with pytest.raises(ValueError) as e:
-            JumpStartEstimator(
-                model_id=model_id,
-                environment={
-                    "accept_eula": "false",
-                    "what am i": "doing",
-                    "SageMakerGatedModelS3Uri": "none of your business",
-                },
-            )
-        assert str(e.value) == (
-            "Need to define ‘accept_eula'='true' within Environment. "
-            "Model 'meta-textgeneration-llama-2-7b-f' requires accepting end-user "
-            "license agreement (EULA). See "
-            "https://jumpstart-cache-prod-us-west-2.s3.us-west-2.amazonaws.com/fmhMetadata/eula/llamaEula.txt"
-            " for terms of use."
-        )
-
         mock_estimator_init.reset_mock()
 
         estimator = JumpStartEstimator(model_id=model_id, environment={"accept_eula": "true"})
@@ -485,6 +468,151 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_fit.assert_called_once_with(
             inputs=channels, wait=True, job_name="meta-textgeneration-llama-2-7b-f-8675309"
         )
+
+        estimator.deploy()
+
+        mock_estimator_deploy.assert_called_once_with(
+            instance_type="ml.g5.2xlarge",
+            initial_instance_count=1,
+            predictor_cls=Predictor,
+            endpoint_name="meta-textgeneration-llama-2-7b-f-8675309",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.23.0-deepspeed0.9.5-cu118",
+            wait=True,
+            model_data_download_timeout=3600,
+            container_startup_health_check_timeout=3600,
+            role=execution_role,
+            enable_network_isolation=True,
+            model_name="meta-textgeneration-llama-2-7b-f-8675309",
+            use_compiled_model=False,
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.4"},
+            ],
+        )
+
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_gated_model_s3_uri_with_eula_in_fit(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
+        mock_timestamp: mock.Mock,
+    ):
+        mock_estimator_deploy.return_value = default_predictor
+
+        mock_timestamp.return_value = "8675309"
+
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
+
+        model_id, _ = "js-gated-artifact-trainable-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        mock_estimator_init.reset_mock()
+
+        estimator = JumpStartEstimator(model_id=model_id)
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.g5.12xlarge",
+            instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-"
+            "pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "meta/transfer_learning/textgeneration/v1.0.6/sourcedir.tar.gz",
+            entry_point="transfer_learning.py",
+            hyperparameters={
+                "int8_quantization": "False",
+                "enable_fsdp": "True",
+                "epoch": "1",
+                "learning_rate": "0.0001",
+                "lora_r": "8",
+                "lora_alpha": "32",
+                "lora_dropout": "0.05",
+                "instruction_tuned": "False",
+                "chat_dataset": "True",
+                "add_input_output_demarcation_key": "True",
+                "per_device_train_batch_size": "1",
+                "per_device_eval_batch_size": "1",
+                "max_train_samples": "-1",
+                "max_val_samples": "-1",
+                "seed": "10",
+                "max_input_length": "-1",
+                "validation_split_ratio": "0.2",
+                "train_data_split_seed": "0",
+                "preprocessing_num_workers": "None",
+            },
+            metric_definitions=[
+                {
+                    "Name": "huggingface-textgeneration:eval-loss",
+                    "Regex": "eval_epoch_loss=tensor\\(([0-9\\.]+)",
+                },
+                {
+                    "Name": "huggingface-textgeneration:eval-ppl",
+                    "Regex": "eval_ppl=tensor\\(([0-9\\.]+)",
+                },
+                {
+                    "Name": "huggingface-textgeneration:train-loss",
+                    "Regex": "train_epoch_loss=([0-9\\.]+)",
+                },
+            ],
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            max_run=360000,
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
+            environment={
+                "SageMakerGatedModelS3Uri": "s3://sagemaker-repository-pdx/"
+                "model-data-model-package_llama2-7b-f-v4-71eeccf76ddf33f2a18d2e16b9c7f302",
+            },
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.4"},
+            ],
+        )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        estimator.fit(channels, accept_eula=True)
+
+        mock_estimator_fit.assert_called_once_with(
+            inputs=channels,
+            wait=True,
+            job_name="meta-textgeneration-llama-2-7b-f-8675309",
+        )
+
+        assert hasattr(estimator, "model_access_config")
+        assert hasattr(estimator, "hub_access_config")
+
+        assert estimator.model_access_config == {"AcceptEula": True}
 
         estimator.deploy()
 
@@ -1218,7 +1346,7 @@ class EstimatorTest(unittest.TestCase):
         and reach out to JumpStart team."""
 
         init_args_to_skip: Set[str] = set(["kwargs"])
-        fit_args_to_skip: Set[str] = set()
+        fit_args_to_skip: Set[str] = set(["accept_eula"])
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
         parent_class_init = Estimator.__init__
@@ -1243,8 +1371,8 @@ class EstimatorTest(unittest.TestCase):
         js_class_fit = JumpStartEstimator.fit
         js_class_fit_args = set(signature(js_class_fit).parameters.keys())
 
-        assert js_class_fit_args - parent_class_fit_args == set()
-        assert parent_class_fit_args - js_class_fit_args == fit_args_to_skip
+        assert js_class_fit_args - parent_class_fit_args == fit_args_to_skip
+        assert parent_class_fit_args - js_class_fit_args == set()
 
         model_class_init = Model.__init__
         model_class_init_args = set(signature(model_class_init).parameters.keys())

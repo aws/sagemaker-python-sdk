@@ -630,7 +630,6 @@ class HubModelDocument(HubDataHolderType):
             if json_obj.get("ValidationSupported")
             else None
         )
-        self.default_training_dataset_uri: Optional[str] = json_obj.get("DefaultTrainingDatasetUri")
         self.resource_name_base: Optional[str] = json_obj.get("ResourceNameBase")
         self.gated_bucket: bool = bool(json_obj.get("GatedBucket", False))
         self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
@@ -671,6 +670,9 @@ class HubModelDocument(HubDataHolderType):
         )
 
         if self.training_supported:
+            self.default_training_dataset_uri: Optional[str] = json_obj.get(
+                "DefaultTrainingDatasetUri"
+            )
             self.training_model_package_artifact_uri: Optional[str] = json_obj.get(
                 "TrainingModelPackageArtifactUri"
             )

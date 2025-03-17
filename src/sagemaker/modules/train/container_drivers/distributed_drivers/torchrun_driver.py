@@ -15,20 +15,20 @@ from __future__ import absolute_import
 
 import os
 import sys
+import json
 
+from pathlib import Path
 from typing import List, Tuple
 
-from utils import (
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
     logger,
-    read_source_code_json,
-    read_distributed_json,
-    read_hyperparameters_json,
     hyperparameters_to_cli_args,
     get_process_count,
     get_python_executable,
     execute_commands,
     write_failure_file,
-    USER_CODE_PATH,
     SM_EFA_NCCL_INSTANCES,
     SM_EFA_RDMA_INSTANCES,
 )
@@ -65,11 +65,12 @@ def setup_env():
 
 def create_commands():
     """Create the Torch Distributed command to execute"""
-    source_code = read_source_code_json()
-    distribution = read_distributed_json()
-    hyperparameters = read_hyperparameters_json()
+    entry_script = os.environ["SM_ENTRY_SCRIPT"]
+    distributed_config = json.loads(os.environ["SM_DISTRIBUTED_CONFIG"])
+    hyperparameters = json.loads(os.environ["SM_HPS"])
 
-    process_count = get_process_count(distribution)
+    process_count = int(distributed_config["process_count_per_node"] or 0)
+    process_count = get_process_count(process_count)
     host_count = int(os.environ["SM_HOST_COUNT"])
 
     torch_cmd = []
@@ -94,7 +95,7 @@ def create_commands():
             ]
         )
 
-    torch_cmd.extend([os.path.join(USER_CODE_PATH, source_code["entry_script"])])
+    torch_cmd.extend([entry_script])
 
     args = hyperparameters_to_cli_args(hyperparameters)
     torch_cmd += args

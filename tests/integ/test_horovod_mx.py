@@ -58,6 +58,9 @@ def test_hvd_gpu(
     tmpdir,
     **kwargs,
 ):
+    if kwargs["instance_type"] == "ml.p2.xlarge":
+        pytest.skip("Instance type ml.p2.xlarge has been deprecated")
+
     _create_and_fit_estimator(
         mxnet_training_latest_version,
         mxnet_training_latest_py_version,

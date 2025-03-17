@@ -41,6 +41,8 @@ def test_training_input_all_arguments():
     record_wrapping = "RecordIO"
     s3_data_type = "Manifestfile"
     input_mode = "Pipe"
+    hub_access_config = {"HubContentArn": "some-hub-content-arn"}
+    model_access_config = {"AcceptEula": True}
     result = TrainingInput(
         s3_data=prefix,
         distribution=distribution,
@@ -49,6 +51,8 @@ def test_training_input_all_arguments():
         content_type=content_type,
         record_wrapping=record_wrapping,
         s3_data_type=s3_data_type,
+        hub_access_config=hub_access_config,
+        model_access_config=model_access_config,
     )
     expected = {
         "DataSource": {
@@ -56,6 +60,8 @@ def test_training_input_all_arguments():
                 "S3DataDistributionType": distribution,
                 "S3DataType": s3_data_type,
                 "S3Uri": prefix,
+                "ModelAccessConfig": model_access_config,
+                "HubAccessConfig": hub_access_config,
             }
         },
         "CompressionType": compression,
@@ -76,6 +82,8 @@ def test_training_input_all_arguments_heterogeneous_cluster():
     s3_data_type = "Manifestfile"
     instance_groups = ["data-server"]
     input_mode = "Pipe"
+    hub_access_config = {"HubContentArn": "some-hub-content-arn"}
+    model_access_config = {"AcceptEula": True}
     result = TrainingInput(
         s3_data=prefix,
         distribution=distribution,
@@ -85,6 +93,8 @@ def test_training_input_all_arguments_heterogeneous_cluster():
         record_wrapping=record_wrapping,
         s3_data_type=s3_data_type,
         instance_groups=instance_groups,
+        hub_access_config=hub_access_config,
+        model_access_config=model_access_config,
     )
 
     expected = {
@@ -94,6 +104,8 @@ def test_training_input_all_arguments_heterogeneous_cluster():
                 "S3DataType": s3_data_type,
                 "S3Uri": prefix,
                 "InstanceGroupNames": instance_groups,
+                "ModelAccessConfig": model_access_config,
+                "HubAccessConfig": hub_access_config,
             }
         },
         "CompressionType": compression,

@@ -99,9 +99,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), config_role)
+        self.assertEqual(mock_model_init.call_args[1].get("role"), config_role)
 
         assert "enable_network_isolation" not in mock_model_init.call_args[1]
 
@@ -147,10 +147,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             role=override_role,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
@@ -197,10 +197,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 2)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), config_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), config_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             config_enable_network_isolation,
         )
@@ -249,10 +249,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
@@ -299,10 +299,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 2)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), execution_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), execution_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             metadata_enable_network_isolation,
         )
@@ -350,10 +350,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
@@ -398,9 +398,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), execution_role)
+        self.assertEqual(mock_model_init.call_args[1].get("role"), execution_role)
         assert "enable_network_isolation" not in mock_model_init.call_args[1]
 
     @mock.patch(
@@ -445,10 +445,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )

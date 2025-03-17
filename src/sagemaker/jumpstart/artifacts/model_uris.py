@@ -29,6 +29,7 @@ from sagemaker.jumpstart.utils import (
     get_region_fallback,
     verify_model_region_and_return_specs,
 )
+from sagemaker.s3_utils import is_s3_url
 from sagemaker.session import Session
 from sagemaker.jumpstart.types import JumpStartModelSpecs
 
@@ -74,7 +75,7 @@ def _retrieve_hosting_artifact_key(model_specs: JumpStartModelSpecs, instance_ty
 def _retrieve_training_artifact_key(model_specs: JumpStartModelSpecs, instance_type: str) -> str:
     """Returns instance specific training artifact key or default one as fallback."""
     instance_specific_training_artifact_key: Optional[str] = (
-        model_specs.training_instance_type_variants.get_instance_specific_artifact_key(
+        model_specs.training_instance_type_variants.get_instance_specific_training_artifact_key(
             instance_type=instance_type
         )
         if instance_type
@@ -185,8 +186,8 @@ def _retrieve_model_uri(
         os.environ.get(ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE)
         or default_jumpstart_bucket
     )
-
-    model_s3_uri = f"s3://{bucket}/{model_artifact_key}"
+    if not is_s3_url(model_artifact_key):
+        model_s3_uri = f"s3://{bucket}/{model_artifact_key}"
 
     return model_s3_uri
 

@@ -1386,7 +1386,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_sagemaker_session.list_tags = mock_list_tags
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, None),
         )
@@ -1401,7 +1401,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_ID, "Value": "model_id"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             ("model_id", None, None, None),
         )
@@ -1416,7 +1416,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, "model_version", None, None),
         )
@@ -1428,7 +1428,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_sagemaker_session.list_tags = mock_list_tags
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, None),
         )
@@ -1443,7 +1443,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, "config_name", None),
         )
@@ -1458,7 +1458,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "config_name"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, "config_name"),
         )
@@ -1474,7 +1474,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "training_config_name"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, "inference_config_name", "training_config_name"),
         )
@@ -1490,7 +1490,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             ("model_id", "model_version", None, None),
         )
@@ -1508,7 +1508,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_2"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, None),
         )
@@ -1526,7 +1526,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_1"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             ("model_id_1", "model_version_1", None, None),
         )
@@ -1544,7 +1544,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_2"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, None),
         )
@@ -1562,7 +1562,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name_2"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             ("model_id_1", "model_version_1", None, None),
         )

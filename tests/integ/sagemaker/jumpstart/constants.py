@@ -47,7 +47,7 @@ TRAINING_DATASET_MODEL_DICT = {
     ("huggingface-spc-bert-base-cased", "1.0.0"): ("training-datasets/QNLI-tiny/"),
     ("huggingface-spc-bert-base-cased", "1.2.3"): ("training-datasets/QNLI-tiny/"),
     ("huggingface-spc-bert-base-cased", "2.0.3"): ("training-datasets/QNLI-tiny/"),
-    ("huggingface-spc-bert-base-cased", "*"): ("training-datasets/QNLI-tiny/"),
+    ("huggingface-spc-bert-base-cased", "*"): ("training-datasets/QNLI/"),
     ("js-trainable-model", "*"): ("training-datasets/QNLI-tiny/"),
     ("meta-textgeneration-llama-2-7b", "*"): ("training-datasets/sec_amazon/"),
     ("meta-textgeneration-llama-2-7b", "2.*"): ("training-datasets/sec_amazon/"),

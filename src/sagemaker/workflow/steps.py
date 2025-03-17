@@ -645,6 +645,7 @@ class CreateModelStep(ConfigurableRetryStep):
             request_dict = self.step_args
         else:
             if isinstance(self.model, PipelineModel):
+                self.model._init_sagemaker_session_if_does_not_exist()
                 request_dict = self.model.sagemaker_session._create_model_request(
                     name="",
                     role=self.model.role,
@@ -653,6 +654,7 @@ class CreateModelStep(ConfigurableRetryStep):
                     enable_network_isolation=self.model.enable_network_isolation,
                 )
             else:
+                self.model._init_sagemaker_session_if_does_not_exist()
                 request_dict = self.model.sagemaker_session._create_model_request(
                     name="",
                     role=self.model.role,

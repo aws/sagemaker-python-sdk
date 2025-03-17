@@ -16,6 +16,9 @@ from __future__ import absolute_import
 import argparse
 import json
 import os
+from typing import List, Dict, Any
+from dataclasses import dataclass
+from omegaconf import OmegaConf
 
 EXPECTED_HYPERPARAMETERS = {
     "integer": 1,
@@ -26,6 +29,7 @@ EXPECTED_HYPERPARAMETERS = {
     "dict": {
         "string": "value",
         "integer": 3,
+        "float": 3.14,
         "list": [1, 2, 3],
         "dict": {"key": "value"},
         "boolean": True,
@@ -117,7 +121,7 @@ def main():
     assert isinstance(params["dict"], dict)
 
     params = json.loads(os.environ["SM_TRAINING_ENV"])["hyperparameters"]
-    print(params)
+    print(f"SM_TRAINING_ENV -> hyperparameters: {params}")
     assert params["string"] == EXPECTED_HYPERPARAMETERS["string"]
     assert params["integer"] == EXPECTED_HYPERPARAMETERS["integer"]
     assert params["boolean"] == EXPECTED_HYPERPARAMETERS["boolean"]
@@ -132,9 +136,96 @@ def main():
     assert isinstance(params["float"], float)
     assert isinstance(params["list"], list)
     assert isinstance(params["dict"], dict)
-    print(f"SM_TRAINING_ENV -> hyperparameters: {params}")
 
-    print("Test passed.")
+    # Local JSON - DictConfig OmegaConf
+    params = OmegaConf.load("hyperparameters.json")
+
+    print(f"Local hyperparameters.json: {params}")
+    assert params.string == EXPECTED_HYPERPARAMETERS["string"]
+    assert params.integer == EXPECTED_HYPERPARAMETERS["integer"]
+    assert params.boolean == EXPECTED_HYPERPARAMETERS["boolean"]
+    assert params.float == EXPECTED_HYPERPARAMETERS["float"]
+    assert params.list == EXPECTED_HYPERPARAMETERS["list"]
+    assert params.dict == EXPECTED_HYPERPARAMETERS["dict"]
+    assert params.dict.string == EXPECTED_HYPERPARAMETERS["dict"]["string"]
+    assert params.dict.integer == EXPECTED_HYPERPARAMETERS["dict"]["integer"]
+    assert params.dict.boolean == EXPECTED_HYPERPARAMETERS["dict"]["boolean"]
+    assert params.dict.float == EXPECTED_HYPERPARAMETERS["dict"]["float"]
+    assert params.dict.list == EXPECTED_HYPERPARAMETERS["dict"]["list"]
+    assert params.dict.dict == EXPECTED_HYPERPARAMETERS["dict"]["dict"]
+
+    @dataclass
+    class DictConfig:
+        string: str
+        integer: int
+        boolean: bool
+        float: float
+        list: List[int]
+        dict: Dict[str, Any]
+
+    @dataclass
+    class HPConfig:
+        string: str
+        integer: int
+        boolean: bool
+        float: float
+        list: List[int]
+        dict: DictConfig
+
+    # Local JSON - Structured OmegaConf
+    hp_config: HPConfig = OmegaConf.merge(
+        OmegaConf.structured(HPConfig), OmegaConf.load("hyperparameters.json")
+    )
+    print(f"Local hyperparameters.json - Structured: {hp_config}")
+    assert hp_config.string == EXPECTED_HYPERPARAMETERS["string"]
+    assert hp_config.integer == EXPECTED_HYPERPARAMETERS["integer"]
+    assert hp_config.boolean == EXPECTED_HYPERPARAMETERS["boolean"]
+    assert hp_config.float == EXPECTED_HYPERPARAMETERS["float"]
+    assert hp_config.list == EXPECTED_HYPERPARAMETERS["list"]
+    assert hp_config.dict == EXPECTED_HYPERPARAMETERS["dict"]
+    assert hp_config.dict.string == EXPECTED_HYPERPARAMETERS["dict"]["string"]
+    assert hp_config.dict.integer == EXPECTED_HYPERPARAMETERS["dict"]["integer"]
+    assert hp_config.dict.boolean == EXPECTED_HYPERPARAMETERS["dict"]["boolean"]
+    assert hp_config.dict.float == EXPECTED_HYPERPARAMETERS["dict"]["float"]
+    assert hp_config.dict.list == EXPECTED_HYPERPARAMETERS["dict"]["list"]
+    assert hp_config.dict.dict == EXPECTED_HYPERPARAMETERS["dict"]["dict"]
+
+    # Local YAML - Structured OmegaConf
+    hp_config: HPConfig = OmegaConf.merge(
+        OmegaConf.structured(HPConfig), OmegaConf.load("hyperparameters.yaml")
+    )
+    print(f"Local hyperparameters.yaml - Structured: {hp_config}")
+    assert hp_config.string == EXPECTED_HYPERPARAMETERS["string"]
+    assert hp_config.integer == EXPECTED_HYPERPARAMETERS["integer"]
+    assert hp_config.boolean == EXPECTED_HYPERPARAMETERS["boolean"]
+    assert hp_config.float == EXPECTED_HYPERPARAMETERS["float"]
+    assert hp_config.list == EXPECTED_HYPERPARAMETERS["list"]
+    assert hp_config.dict == EXPECTED_HYPERPARAMETERS["dict"]
+    assert hp_config.dict.string == EXPECTED_HYPERPARAMETERS["dict"]["string"]
+    assert hp_config.dict.integer == EXPECTED_HYPERPARAMETERS["dict"]["integer"]
+    assert hp_config.dict.boolean == EXPECTED_HYPERPARAMETERS["dict"]["boolean"]
+    assert hp_config.dict.float == EXPECTED_HYPERPARAMETERS["dict"]["float"]
+    assert hp_config.dict.list == EXPECTED_HYPERPARAMETERS["dict"]["list"]
+    assert hp_config.dict.dict == EXPECTED_HYPERPARAMETERS["dict"]["dict"]
+    print(f"hyperparameters.yaml -> hyperparameters: {hp_config}")
+
+    # HP Dict - Structured OmegaConf
+    hp_dict = json.loads(os.environ["SM_HPS"])
+    hp_config: HPConfig = OmegaConf.merge(OmegaConf.structured(HPConfig), OmegaConf.create(hp_dict))
+    print(f"SM_HPS - Structured: {hp_config}")
+    assert hp_config.string == EXPECTED_HYPERPARAMETERS["string"]
+    assert hp_config.integer == EXPECTED_HYPERPARAMETERS["integer"]
+    assert hp_config.boolean == EXPECTED_HYPERPARAMETERS["boolean"]
+    assert hp_config.float == EXPECTED_HYPERPARAMETERS["float"]
+    assert hp_config.list == EXPECTED_HYPERPARAMETERS["list"]
+    assert hp_config.dict == EXPECTED_HYPERPARAMETERS["dict"]
+    assert hp_config.dict.string == EXPECTED_HYPERPARAMETERS["dict"]["string"]
+    assert hp_config.dict.integer == EXPECTED_HYPERPARAMETERS["dict"]["integer"]
+    assert hp_config.dict.boolean == EXPECTED_HYPERPARAMETERS["dict"]["boolean"]
+    assert hp_config.dict.float == EXPECTED_HYPERPARAMETERS["dict"]["float"]
+    assert hp_config.dict.list == EXPECTED_HYPERPARAMETERS["dict"]["list"]
+    assert hp_config.dict.dict == EXPECTED_HYPERPARAMETERS["dict"]["dict"]
+    print(f"SM_HPS -> hyperparameters: {hp_config}")
 
 
 if __name__ == "__main__":

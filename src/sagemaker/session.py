@@ -4347,11 +4347,59 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if model_package_group_name is not None and not model_package_group_name.startswith(
                 "arn:"
             ):
-                _create_resource(
-                    lambda: self.sagemaker_client.create_model_package_group(
-                        ModelPackageGroupName=request["ModelPackageGroupName"]
+                is_model_package_group_present = False
+                try:
+                    model_package_groups_response = self.search(
+                        resource="ModelPackageGroup",
+                        search_expression={
+                            "Filters": [
+                                {
+                                    "Name": "ModelPackageGroupName",
+                                    "Value": request["ModelPackageGroupName"],
+                                    "Operator": "Equals",
+                                }
+                            ],
+                        },
                     )
-                )
+                    if len(model_package_groups_response.get("Results")) > 0:
+                        is_model_package_group_present = True
+                except Exception:  # pylint: disable=W0703
+                    model_package_groups = []
+                    model_package_groups_response = self.sagemaker_client.list_model_package_groups(
+                        NameContains=request["ModelPackageGroupName"],
+                    )
+                    model_package_groups = (
+                        model_package_groups
+                        + model_package_groups_response["ModelPackageGroupSummaryList"]
+                    )
+                    next_token = model_package_groups_response.get("NextToken")
+
+                    while next_token is not None and next_token != "":
+                        model_package_groups_response = (
+                            self.sagemaker_client.list_model_package_groups(
+                                NameContains=request["ModelPackageGroupName"], NextToken=next_token
+                            )
+                        )
+                        model_package_groups = (
+                            model_package_groups
+                            + model_package_groups_response["ModelPackageGroupSummaryList"]
+                        )
+                        next_token = model_package_groups_response.get("NextToken")
+
+                    filtered_model_package_group = list(
+                        filter(
+                            lambda mpg: mpg.get("ModelPackageGroupName")
+                            == request["ModelPackageGroupName"],
+                            model_package_groups,
+                        )
+                    )
+                    is_model_package_group_present = len(filtered_model_package_group) > 0
+                if not is_model_package_group_present:
+                    _create_resource(
+                        lambda: self.sagemaker_client.create_model_package_group(
+                            ModelPackageGroupName=request["ModelPackageGroupName"]
+                        )
+                    )
             if "SourceUri" in request and request["SourceUri"] is not None:
                 # Remove inference spec from request if the
                 # given source uri can lead to auto-population of it

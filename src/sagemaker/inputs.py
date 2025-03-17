@@ -43,6 +43,8 @@ class TrainingInput(object):
         attribute_names: Optional[List[Union[str, PipelineVariable]]] = None,
         target_attribute_name: Optional[Union[str, PipelineVariable]] = None,
         shuffle_config: Optional["ShuffleConfig"] = None,
+        hub_access_config: Optional[dict] = None,
+        model_access_config: Optional[dict] = None,
     ):
         r"""Create a definition for input data used by an SageMaker training job.
 
@@ -102,6 +104,13 @@ class TrainingInput(object):
             shuffle_config (sagemaker.inputs.ShuffleConfig): If specified this configuration enables
                 shuffling on this channel. See the SageMaker API documentation for more info:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
+            hub_access_config (dict): Specify the HubAccessConfig of a
+                Model Reference for which a training job is being created for.
+            model_access_config (dict): For models that require a Model Access Config, specify True
+                or False for to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
         """
         self.config = {
             "DataSource": {"S3DataSource": {"S3DataType": s3_data_type, "S3Uri": s3_data}}
@@ -129,6 +138,27 @@ class TrainingInput(object):
             self.config["TargetAttributeName"] = target_attribute_name
         if shuffle_config is not None:
             self.config["ShuffleConfig"] = {"Seed": shuffle_config.seed}
+        self.add_hub_access_config(hub_access_config)
+        self.add_model_access_config(model_access_config)
+
+    def add_hub_access_config(self, hub_access_config=None):
+        """Add Hub Access Config to the channel's configuration.
+
+        Args:
+            hub_access_config (dict): The HubAccessConfig to be added to the
+            channel's configuration.
+        """
+        if hub_access_config is not None:
+            self.config["DataSource"]["S3DataSource"]["HubAccessConfig"] = hub_access_config
+
+    def add_model_access_config(self, model_access_config=None):
+        """Add Model Access Config to the channel's configuration.
+
+        Args:
+            model_access_config (dict): Whether model terms of use have been accepted.
+        """
+        if model_access_config is not None:
+            self.config["DataSource"]["S3DataSource"]["ModelAccessConfig"] = model_access_config
 
 
 class ShuffleConfig(object):
