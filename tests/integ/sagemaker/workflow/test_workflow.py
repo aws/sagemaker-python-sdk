@@ -1122,7 +1122,7 @@ def test_model_registration_with_tuning_model(
         entry_point=entry_point,
         source_dir=base_dir,
         role=role,
-        framework_version="1.10",
+        framework_version="1.13.1",
         py_version="py39",
         instance_count=instance_count,
         instance_type=instance_type,
@@ -1159,7 +1159,7 @@ def test_model_registration_with_tuning_model(
         ),
         entry_point=entry_point,
         source_dir=base_dir,
-        framework_version="1.10",
+        framework_version="1.13.1",
         py_version="py39",
         sagemaker_session=pipeline_session,
     )
