@@ -1,5 +1,59 @@
 # Changelog
 
+## v2.242.0 (2025-03-14)
+
+### Features
+
+ * add integ tests for training JumpStart models in private hub
+
+### Bug Fixes and Other Changes
+
+ * Torch upgrade
+ * Prevent RunContext overlap between test_run tests
+ * remove s3 output location requirement from hub class init
+ * Fixing Pytorch training python version in tests
+ * update image_uri_configs  03-11-2025 07:18:09 PST
+ * resolve infinite loop in _find_config on Windows systems
+ * pipeline definition function doc update
+
+## v2.241.0 (2025-03-06)
+
+### Features
+
+ * Make DistributedConfig Extensible
+ * support training for JumpStart model references as part of Curated Hub Phase 2
+ * Allow ModelTrainer to accept hyperparameters file
+
+### Bug Fixes and Other Changes
+
+ * Skip tests with deprecated instance type
+ * Ensure Model.is_repack() returns a boolean
+ * Fix error when there is no session to call _create_model_request()
+ * Use sagemaker session's s3_resource in download_folder
+ * Added check for the presence of model package group before creating one
+ * Fix key error in _send_metrics()
+
+## v2.240.0 (2025-02-25)
+
+### Features
+
+ * Add support for TGI Neuronx 0.0.27 and HF PT 2.3.0 image in PySDK
+
+### Bug Fixes and Other Changes
+
+ * Remove main function entrypoint in ModelBuilder dependency manager.
+ * forbid extras in Configs
+ * altconfig hubcontent and reenable integ test
+ * Merge branch 'master-rba' into local_merge
+ * py_version doc fixes
+ * Add backward compatbility for RecordSerializer and RecordDeserializer
+ * update image_uri_configs  02-21-2025 06:18:10 PST
+ * update image_uri_configs  02-20-2025 06:18:08 PST
+
+### Documentation Changes
+
+ * Removed a line about python version requirements of training script which can misguide users.
+
 ## v2.239.3 (2025-02-19)
 
 ### Bug Fixes and Other Changes

@@ -13,9 +13,12 @@
 from __future__ import absolute_import
 
 from contextlib import contextmanager
+import pytest
+import logging
 
 from sagemaker import utils
 from sagemaker.experiments.experiment import Experiment
+from sagemaker.experiments._run_context import _RunContext
 
 EXP_INTEG_TEST_NAME_PREFIX = "experiments-integ"
 
@@ -40,3 +43,17 @@ def cleanup_exp_resources(exp_names, sagemaker_session):
         for exp_name in exp_names:
             exp = Experiment.load(experiment_name=exp_name, sagemaker_session=sagemaker_session)
             exp._delete_all(action="--force")
+
+
+@pytest.fixture
+def clear_run_context():
+    current_run = _RunContext.get_current_run()
+    if current_run is None:
+        return
+
+    logging.info(
+        f"RunContext already populated by run {current_run.run_name}"
+        f" in experiment {current_run.experiment_name}."
+        " Clearing context manually"
+    )
+    _RunContext.drop_current_run()

@@ -17,9 +17,10 @@ import shutil
 import tempfile
 import json
 import os
+import yaml
 import pytest
 from pydantic import ValidationError
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch, MagicMock, ANY, mock_open
 
 from sagemaker import image_uris
 from sagemaker_core.main.resources import TrainingJob
@@ -66,7 +67,7 @@ from sagemaker.modules.configs import (
 )
 from sagemaker.modules.distributed import Torchrun, SMP, MPI
 from sagemaker.modules.train.sm_recipes.utils import _load_recipes_cfg
-from sagemaker.modules.templates import EXEUCTE_TORCHRUN_DRIVER, EXECUTE_MPI_DRIVER
+from sagemaker.modules.templates import EXEUCTE_DISTRIBUTED_DRIVER
 from tests.unit import DATA_DIR
 
 DEFAULT_BASE_NAME = "dummy-image-job"
@@ -411,7 +412,9 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
         {
             "source_code": DEFAULT_SOURCE_CODE,
             "distributed": Torchrun(),
-            "expected_template": EXEUCTE_TORCHRUN_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="Torchrun", driver_script="torchrun_driver.py"
+            ),
             "expected_hyperparameters": {},
         },
         {
@@ -424,7 +427,9 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
                     tensor_parallel_degree=5,
                 )
             ),
-            "expected_template": EXEUCTE_TORCHRUN_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="Torchrun", driver_script="torchrun_driver.py"
+            ),
             "expected_hyperparameters": {
                 "mp_parameters": json.dumps(
                     {
@@ -441,7 +446,9 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
             "distributed": MPI(
                 mpi_additional_options=["-x", "VAR1", "-x", "VAR2"],
             ),
-            "expected_template": EXECUTE_MPI_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="MPI", driver_script="mpi_driver.py"
+            ),
             "expected_hyperparameters": {},
         },
     ],
@@ -498,21 +505,15 @@ def test_train_with_distributed_config(
         assert os.path.exists(expected_runner_json_path)
         with open(expected_runner_json_path, "r") as f:
             runner_json_content = f.read()
-            assert test_case["distributed"].model_dump(exclude_none=True) == (
-                json.loads(runner_json_content)
-            )
+            assert test_case["distributed"].model_dump() == (json.loads(runner_json_content))
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
-            assert test_case["source_code"].model_dump(exclude_none=True) == (
-                json.loads(source_code_json_content)
-            )
+            assert test_case["source_code"].model_dump() == (json.loads(source_code_json_content))
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
-            assert test_case["source_code"].model_dump(exclude_none=True) == (
-                json.loads(source_code_json_content)
-            )
+            assert test_case["source_code"].model_dump() == (json.loads(source_code_json_content))
     finally:
         shutil.rmtree(tmp_dir.name)
         assert not os.path.exists(tmp_dir.name)
@@ -1093,3 +1094,93 @@ def test_destructor_cleanup(mock_tmp_dir, modules_session):
     mock_tmp_dir.assert_not_called()
     del model_trainer
     mock_tmp_dir.cleanup.assert_called_once()
+
+
+@patch("os.path.exists")
+def test_hyperparameters_valid_json(mock_exists, modules_session):
+    mock_exists.return_value = True
+    expected_hyperparameters = {"param1": "value1", "param2": 2}
+    mock_file_open = mock_open(read_data=json.dumps(expected_hyperparameters))
+
+    with patch("builtins.open", mock_file_open):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="hyperparameters.json",
+        )
+        assert model_trainer.hyperparameters == expected_hyperparameters
+        mock_file_open.assert_called_once_with("hyperparameters.json", "r")
+        mock_exists.assert_called_once_with("hyperparameters.json")
+
+
+@patch("os.path.exists")
+def test_hyperparameters_valid_yaml(mock_exists, modules_session):
+    mock_exists.return_value = True
+    expected_hyperparameters = {"param1": "value1", "param2": 2}
+    mock_file_open = mock_open(read_data=yaml.dump(expected_hyperparameters))
+
+    with patch("builtins.open", mock_file_open):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="hyperparameters.yaml",
+        )
+        assert model_trainer.hyperparameters == expected_hyperparameters
+        mock_file_open.assert_called_once_with("hyperparameters.yaml", "r")
+        mock_exists.assert_called_once_with("hyperparameters.yaml")
+
+
+def test_hyperparameters_not_exist(modules_session):
+    with pytest.raises(ValueError):
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="nonexistent.json",
+        )
+
+
+@patch("os.path.exists")
+def test_hyperparameters_invalid(mock_exists, modules_session):
+    mock_exists.return_value = True
+
+    # YAML contents must be a valid mapping
+    mock_file_open = mock_open(read_data="- item1\n- item2")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )
+
+    # YAML contents must be a valid mapping
+    mock_file_open = mock_open(read_data="invalid")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )
+
+    # Must be valid YAML
+    mock_file_open = mock_open(read_data="* invalid")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )
