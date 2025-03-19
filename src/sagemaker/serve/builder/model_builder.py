@@ -274,7 +274,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         metadata={"help": "Define the s3 location where you want to upload the model package"},
     )
     instance_type: Optional[str] = field(
-        default="ml.c5.xlarge",
+        default=None,
         metadata={"help": "Define the instance_type of the endpoint"},
     )
     schema_builder: Optional[SchemaBuilder] = field(
