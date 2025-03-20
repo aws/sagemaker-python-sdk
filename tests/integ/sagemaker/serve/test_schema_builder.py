@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 
 def test_model_builder_happy_path_with_only_model_id_text_generation(sagemaker_session):
     model_builder = ModelBuilder(
-        model="HuggingFaceH4/zephyr-7b-beta", sagemaker_session=sagemaker_session
+        model="HuggingFaceH4/zephyr-7b-beta",
+        sagemaker_session=sagemaker_session,
+        instance_type=None,
     )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
