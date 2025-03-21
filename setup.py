@@ -58,7 +58,7 @@ setup(
     version=HERE.joinpath("VERSION").read_text().strip(),
     packages=find_packages("src"),
     package_dir={"": "src"},
-    package_data={"": ["*.whl"]},
+    package_data={"": ["*.whl", "py.typed"]},
     py_modules=[os.path.splitext(os.path.basename(path))[0] for path in glob("src/*.py")],
     include_package_data=True,
     install_requires=get_dependencies(),
