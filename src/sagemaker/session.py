@@ -4463,6 +4463,49 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
         return desc
 
+    def get_most_recently_created_approved_model_package(self, model_package_group_name):
+        """Returns the most recently created and Approved model package in a model package group
+
+        Args:
+            model_package_group_name (str): Name or Arn of the model package group
+
+        Returns:
+            dict: Returns a "sagemaker.model.ModelPackage" value.
+        """
+
+        approved_model_packages = self.sagemaker_client.list_model_packages(
+            ModelPackageGroupName=model_package_group_name,
+            ModelApprovalStatus="Approved",
+            SortBy="CreationTime",
+            SortOrder="Descending",
+            MaxResults=1,
+        )
+        next_token = approved_model_packages.get("NextToken")
+
+        while (
+            len(approved_model_packages.get("ModelPackageSummaryList")) == 0
+            and next_token is not None
+            and next_token != ""
+        ):
+            approved_model_packages = self.sagemaker_client.list_model_packages(
+                ModelPackageGroupName=model_package_group_name,
+                ModelApprovalStatus="Approved",
+                SortBy="CreationTime",
+                SortOrder="Descending",
+                MaxResults=1,
+                NextToken=next_token,
+            )
+            next_token = approved_model_packages.get("NextToken")
+
+        if len(approved_model_packages.get("ModelPackageSummaryList")) == 0:
+            return None
+
+        return sagemaker.model.ModelPackage(
+            model_package_arn=approved_model_packages.get("ModelPackageSummaryList")[0].get(
+                "ModelPackageArn"
+            )
+        )
+
     def describe_model(self, name):
         """Calls the DescribeModel API for the given model name.
 
