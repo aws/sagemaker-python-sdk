@@ -291,8 +291,8 @@ def mock_get_current_run():
     return current_run
 
 
-def describe_training_job_response(job_status):
-    return {
+def describe_training_job_response(job_status, disable_output_compression=False):
+    job_response = {
         "TrainingJobArn": TRAINING_JOB_ARN,
         "TrainingJobStatus": job_status,
         "ResourceConfig": {
@@ -300,14 +300,37 @@ def describe_training_job_response(job_status):
             "InstanceType": "ml.c4.xlarge",
             "VolumeSizeInGB": 30,
         },
-        "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
     }
+
+    if disable_output_compression:
+        output_config = {
+            "S3OutputPath": "s3://sagemaker-123/image_uri/output",
+            "CompressionType": "NONE",
+        }
+    else:
+        output_config = {
+            "S3OutputPath": "s3://sagemaker-123/image_uri/output",
+            "CompressionType": "NONE",
+        }
+
+    job_response["OutputDataConfig"] = output_config
+
+    return job_response
 
 
 COMPLETED_TRAINING_JOB = describe_training_job_response("Completed")
 INPROGRESS_TRAINING_JOB = describe_training_job_response("InProgress")
 CANCELLED_TRAINING_JOB = describe_training_job_response("Stopped")
 FAILED_TRAINING_JOB = describe_training_job_response("Failed")
+
+COMPLETED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response(
+    "Completed", True
+)
+INPROGRESS_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response(
+    "InProgress", True
+)
+CANCELLED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response("Stopped", True)
+FAILED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response("Failed", True)
 
 
 def mock_session():
@@ -1299,6 +1322,27 @@ def test_describe(session, *args):
 
     job.describe()
     assert job.describe() == COMPLETED_TRAINING_JOB
+
+    session().sagemaker_client.describe_training_job.assert_called_once()
+
+
+@patch("sagemaker.remote_function.job._prepare_and_upload_runtime_scripts")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_describe_disable_output_compression(session, *args):
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        instance_type="ml.m5.large",
+        disable_output_compression=True,
+    )
+    job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
+
+    job.describe()
+    assert job.describe() == COMPLETED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION
 
     session().sagemaker_client.describe_training_job.assert_called_once()
 
