@@ -1,2 +1,0 @@
-pyenchant==3.2.2
-pylint==2.6.2

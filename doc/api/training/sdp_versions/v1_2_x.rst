@@ -1,9 +1,0 @@
-
-Version 1.2.x and 1.3.0
-=======================
-
-.. toctree::
-   :maxdepth: 1
-
-   v1.2.x/smd_data_parallel_pytorch.rst
-   v1.2.x/smd_data_parallel_tensorflow.rst

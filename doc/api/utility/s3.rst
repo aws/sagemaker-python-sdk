@@ -1,7 +1,0 @@
-S3 Utilities
-------------
-
-.. automodule:: sagemaker.s3
-    :members:
-    :undoc-members:
-    :show-inheritance:

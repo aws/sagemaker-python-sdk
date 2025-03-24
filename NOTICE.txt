@@ -1,2 +1,0 @@
-Amazon SageMaker Python SDK
-Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.

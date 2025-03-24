@@ -1,7 +1,0 @@
-Class,Age,Sex,SurvivalStatus
-1st,"Quantity[29., ""Years""]",female,survived
-1st,"Quantity[0.9167, ""Years""]",male,survived
-2nd,"Quantity[30., ""Years""]",male,died
-2nd,"Quantity[28., ""Years""]",female,survived
-3rd,"Quantity[16., ""Years""]",male,died
-3rd,"Quantity[35., ""Years""]",female,survived
