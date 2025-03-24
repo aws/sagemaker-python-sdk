@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import logging
 import os
 from typing import Dict, Set, Type
+import json
 import boto3
 from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
 from sagemaker.jumpstart.enums import (
@@ -33,7 +34,6 @@ from sagemaker.base_serializers import (
     JSONSerializer,
 )
 from sagemaker.session import Session
-import json
 
 
 JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
@@ -61,7 +61,8 @@ REGION_CONFIG_JSON_FILEPATH = os.path.join(CURRENT_FILE_DIRECTORY_PATH, REGION_C
 
 def _load_region_config(filepath: str) -> Set[JumpStartLaunchedRegionInfo]:
     """Load the JumpStart region config from a JSON file."""
-    JUMPSTART_LOGGER.debug(f"Loading JumpStart region config from '{filepath}'.")
+    debug_msg = f"Loading JumpStart region config from '{filepath}'."
+    JUMPSTART_LOGGER.debug(debug_msg)
     try:
         with open(filepath) as f:
             config = json.load(f)
@@ -75,7 +76,7 @@ def _load_region_config(filepath: str) -> Set[JumpStartLaunchedRegionInfo]:
             )
             for region, data in config.items()
         }
-    except Exception:
+    except Exception:  # pylint: disable=W0703
         JUMPSTART_LOGGER.error("Unable to load JumpStart region config.", exc_info=True)
         return set()
 
