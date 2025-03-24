@@ -96,6 +96,8 @@ def model_builder(request):
 def test_non_text_generation_model_single_GPU(
     sagemaker_session, model_builder, model_input, **kwargs
 ):
+    if kwargs["instance_type"] == "ml.p2.xlarge":
+        pytest.skip("Instance type ml.p2.xlarge has been deprecated")
     iam_client = sagemaker_session.boto_session.client("iam")
     role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
     model = model_builder.build(role_arn=role_arn, sagemaker_session=sagemaker_session)
@@ -147,6 +149,8 @@ def test_non_text_generation_model_single_GPU(
 def test_non_text_generation_model_multi_GPU(
     sagemaker_session, model_builder, model_input, **kwargs
 ):
+    if kwargs["instance_type"] == "ml.p2.xlarge":
+        pytest.skip("Instance type ml.p2.xlarge has been deprecated")
     iam_client = sagemaker_session.boto_session.client("iam")
     role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
     caught_ex = None
