@@ -54,9 +54,11 @@ JUMPSTART_LOGGER.addHandler(
 )
 
 
-CURRENT_FILE_DIRECTORY_PATH = os.path.dirname(os.path.realpath(__file__))
+_CURRENT_FILE_DIRECTORY_PATH = os.path.dirname(os.path.realpath(__file__))
 REGION_CONFIG_JSON_FILENAME = "region_config.json"
-REGION_CONFIG_JSON_FILEPATH = os.path.join(CURRENT_FILE_DIRECTORY_PATH, REGION_CONFIG_JSON_FILENAME)
+REGION_CONFIG_JSON_FILEPATH = os.path.join(
+    _CURRENT_FILE_DIRECTORY_PATH, REGION_CONFIG_JSON_FILENAME
+)
 
 
 def _load_region_config(filepath: str) -> Set[JumpStartLaunchedRegionInfo]:
