@@ -29,8 +29,7 @@
     },
     "ap-south-2": {
         "content_bucket": "jumpstart-cache-prod-ap-south-2",
-        "gated_content_bucket": "jumpstart-private-cache-prod-ap-south-2",
-        "neo_content_bucket": "sagemaker-sd-models-prod-ap-south-2"
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-south-2"
     },
     "ap-southeast-1": {
         "content_bucket": "jumpstart-cache-prod-ap-southeast-1",
@@ -44,13 +43,11 @@
     },
     "ap-southeast-3": {
         "content_bucket": "jumpstart-cache-prod-ap-southeast-3",
-        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-3",
-        "neo_content_bucket": "sagemaker-sd-models-prod-ap-southeast-3"
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-3"
     },
     "ap-southeast-4": {
         "content_bucket": "jumpstart-cache-prod-ap-southeast-4",
-        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-4",
-        "neo_content_bucket": "sagemaker-sd-models-prod-ap-southeast-4"
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-4"
     },
     "ap-southeast-5": {
         "content_bucket": "jumpstart-cache-prod-ap-southeast-5",
@@ -67,13 +64,11 @@
     },
     "ca-west-1": {
         "content_bucket": "jumpstart-cache-prod-ca-west-1",
-        "gated_content_bucket": "jumpstart-private-cache-prod-ca-west-1",
-        "neo_content_bucket": "sagemaker-sd-models-prod-ca-west-1"
+        "gated_content_bucket": "jumpstart-private-cache-prod-ca-west-1"
     },
     "cn-north-1": {
         "content_bucket": "jumpstart-cache-prod-cn-north-1",
-        "gated_content_bucket": "jumpstart-private-cache-prod-cn-north-1",
-        "neo_content_bucket": null
+        "gated_content_bucket": "jumpstart-private-cache-prod-cn-north-1"
     },
     "cn-northwest-1": {
         "content_bucket": "jumpstart-cache-prod-cn-northwest-1",
@@ -99,8 +94,7 @@
     },
     "eu-south-2": {
         "content_bucket": "jumpstart-cache-prod-eu-south-2",
-        "gated_content_bucket": "jumpstart-private-cache-prod-eu-south-2",
-        "neo_content_bucket": "sagemaker-sd-models-prod-eu-south-2"
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-south-2"
     },
     "eu-west-1": {
         "content_bucket": "jumpstart-cache-prod-eu-west-1",
