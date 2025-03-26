@@ -554,7 +554,9 @@ class JumpStartModelsCache:
 
         if version_str[-1] == "*":
             # major or minor version is pinned, e.g 1.* or 1.0.*
-            return utils.get_latest_version([version for version in available_versions if version.startswith(version_str[:-1])])
+            return utils.get_latest_version(
+                [version for version in available_versions if version.startswith(version_str[:-1])]
+            )
 
         try:
             spec = SpecifierSet(f"=={version_str}")
