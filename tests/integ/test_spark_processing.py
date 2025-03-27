@@ -35,7 +35,7 @@ SPARK_APPLICATION_URL_SUFFIX = "/history/application_1594922484246_0001/1/jobs/"
 SPARK_PATH = os.path.join(DATA_DIR, "spark")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def build_jar():
     jar_file_path = os.path.join(SPARK_PATH, "code", "java", "hello-java-spark")
     # compile java file
@@ -207,11 +207,11 @@ def configuration() -> list:
 
 
 def test_sagemaker_pyspark_v3(
-    spark_v3_py_processor, spark_v3_jar_processor, sagemaker_session, configuration, build_jar
+    spark_v3_py_processor, spark_v3_jar_processor, sagemaker_session, configuration
 ):
     test_sagemaker_pyspark_multinode(spark_v3_py_processor, sagemaker_session, configuration)
     test_sagemaker_java_jar_multinode(
-        spark_v3_jar_processor, sagemaker_session, configuration, build_jar
+        spark_v3_jar_processor, sagemaker_session, configuration
     )
 
 
@@ -281,7 +281,7 @@ def test_sagemaker_pyspark_multinode(spark_py_processor, sagemaker_session, conf
 
 
 def test_sagemaker_java_jar_multinode(
-    spark_jar_processor, sagemaker_session, configuration, build_jar
+    spark_jar_processor, sagemaker_session, configuration
 ):
     """Test SparkJarProcessor using Java application jar"""
     bucket = spark_jar_processor.sagemaker_session.default_bucket()
