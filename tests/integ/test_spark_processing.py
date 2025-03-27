@@ -210,9 +210,7 @@ def test_sagemaker_pyspark_v3(
     spark_v3_py_processor, spark_v3_jar_processor, sagemaker_session, configuration
 ):
     test_sagemaker_pyspark_multinode(spark_v3_py_processor, sagemaker_session, configuration)
-    test_sagemaker_java_jar_multinode(
-        spark_v3_jar_processor, sagemaker_session, configuration
-    )
+    test_sagemaker_java_jar_multinode(spark_v3_jar_processor, sagemaker_session, configuration)
 
 
 def test_sagemaker_pyspark_multinode(spark_py_processor, sagemaker_session, configuration):
@@ -280,9 +278,7 @@ def test_sagemaker_pyspark_multinode(spark_py_processor, sagemaker_session, conf
     assert len(output_contents) != 0
 
 
-def test_sagemaker_java_jar_multinode(
-    spark_jar_processor, sagemaker_session, configuration
-):
+def test_sagemaker_java_jar_multinode(spark_jar_processor, sagemaker_session, configuration):
     """Test SparkJarProcessor using Java application jar"""
     bucket = spark_jar_processor.sagemaker_session.default_bucket()
     with open(os.path.join(SPARK_PATH, "files", "data.jsonl")) as data:
