@@ -373,6 +373,7 @@ class _JobSettings:
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
+        disable_output_compression: bool = False,
         use_torchrun: bool = False,
         use_mpirun: bool = False,
         nproc_per_node: Optional[int] = None,
@@ -558,13 +559,16 @@ class _JobSettings:
               After this amount of time Amazon SageMaker will stop waiting for managed spot
               training job to complete. Defaults to ``None``.
 
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded to
+              Amazon S3 without compression after training finishes.
+
             use_torchrun (bool): Specifies whether to use torchrun for distributed training.
               Defaults to ``False``.
 
             use_mpirun (bool): Specifies whether to use mpirun for distributed training.
               Defaults to ``False``.
 
-            nproc_per_node (Optional int): Specifies the number of processes per node for
+            nproc_per_node (int): Optional. Specifies the number of processes per node for
               distributed training. Defaults to ``None``.
               This is defined automatically configured on the instance type.
         """
@@ -725,6 +729,7 @@ class _JobSettings:
         tags = format_tags(tags)
         self.tags = self.sagemaker_session._append_sagemaker_config_tags(tags, REMOTE_FUNCTION_TAGS)
 
+        self.disable_output_compression = disable_output_compression
         self.use_torchrun = use_torchrun
         self.use_mpirun = use_mpirun
         self.nproc_per_node = nproc_per_node
@@ -954,6 +959,8 @@ class _Job:
             output_config = {"S3OutputPath": s3_base_uri}
         if job_settings.s3_kms_key is not None:
             output_config["KmsKeyId"] = job_settings.s3_kms_key
+        if job_settings.disable_output_compression:
+            output_config["CompressionType"] = "NONE"
         request_dict["OutputDataConfig"] = output_config
 
         container_args = ["--s3_base_uri", s3_base_uri]
