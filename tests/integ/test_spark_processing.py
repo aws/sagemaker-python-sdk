@@ -69,9 +69,6 @@ def build_jar():
             ".",
         ]
     )
-    yield
-    subprocess.run(["rm", os.path.join(jar_file_path, "hello-spark-java.jar")])
-    subprocess.run(["rm", os.path.join(jar_file_path, JAVA_FILE_PATH, "HelloJavaSparkApp.class")])
 
 
 @pytest.fixture(scope="module")
