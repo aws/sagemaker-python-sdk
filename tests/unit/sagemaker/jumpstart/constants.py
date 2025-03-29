@@ -15990,6 +15990,18 @@ BASE_MANIFEST = [
         "spec_key": "community_models_specs/tensorflow-ic-"
         "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
     },
+    {
+        "model_id": "meta-textgeneration-llama-2-7b",
+        "version": "4.9.0",
+        "min_version": "2.49.0",
+        "spec_key": "community_models/meta-textgeneration-llama-2-7b/specs_v4.9.0.json",
+    },
+    {
+        "model_id": "meta-textgeneration-llama-2-7b",
+        "version": "4.13.0",
+        "min_version": "2.49.0",
+        "spec_key": "community_models/meta-textgeneration-llama-2-7b/specs_v4.13.0.json",
+    },
 ]
 
 BASE_PROPRIETARY_HEADER = {
