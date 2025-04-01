@@ -1671,7 +1671,7 @@ def get_model_access_config(accept_eula: Optional[bool], environment: Optional[d
     Args:
         accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
     """
-    env_var_eula = environment.get("accept_eula")
+    env_var_eula = environment.get("accept_eula") if environment else None
     if env_var_eula and accept_eula is not None:
         raise ValueError(
             "Cannot pass in both accept_eula and environment variables. "

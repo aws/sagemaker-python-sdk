@@ -616,6 +616,7 @@ class JumpStartEstimator(Estimator):
         self.tolerate_vulnerable_model = estimator_init_kwargs.tolerate_vulnerable_model
         self.instance_count = estimator_init_kwargs.instance_count
         self.region = estimator_init_kwargs.region
+        self.environment = estimator_init_kwargs.environment
         self.orig_predictor_cls = None
         self.role = estimator_init_kwargs.role
         self.sagemaker_session = estimator_init_kwargs.sagemaker_session
