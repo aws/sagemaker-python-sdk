@@ -1641,8 +1641,14 @@ def remove_env_var_from_estimator_kwargs_if_accept_eula_present(
         init_kwargs (dict): Dictionary of kwargs when Estimator is instantiated.
         accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
     """
-    if accept_eula is not None and init_kwargs["environment"]:
-        del init_kwargs["environment"][constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY]
+    if accept_eula is not None and init_kwargs.get("environment") is not None:
+        if (
+            constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY
+            in init_kwargs["environment"]
+        ):
+            del init_kwargs["environment"][
+                constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY
+            ]
 
 
 def get_hub_access_config(hub_content_arn: Optional[str]):
@@ -1659,16 +1665,24 @@ def get_hub_access_config(hub_content_arn: Optional[str]):
     return hub_access_config
 
 
-def get_model_access_config(accept_eula: Optional[bool]):
+def get_model_access_config(accept_eula: Optional[bool], environment: Optional[dict]):
     """Get access configs
 
     Args:
         accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
     """
+    env_var_eula = environment.get("accept_eula")
+    if env_var_eula and accept_eula is not None:
+        raise ValueError(
+            "Cannot pass in both accept_eula and environment variables. "
+            "Please remove the environment variable and pass in the accept_eula parameter."
+        )
+
+    model_access_config = None
+    if env_var_eula is not None:
+        model_access_config = {"AcceptEula": True if env_var_eula == "true" else False}
     if accept_eula is not None:
         model_access_config = {"AcceptEula": accept_eula}
-    else:
-        model_access_config = None
 
     return model_access_config
 

@@ -693,7 +693,7 @@ class JumpStartEstimator(Estimator):
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
         """
-        self.model_access_config = get_model_access_config(accept_eula)
+        self.model_access_config = get_model_access_config(accept_eula, self.environment)
         self.hub_access_config = get_hub_access_config(
             hub_content_arn=self.init_kwargs.get("model_reference_arn", None)
         )
