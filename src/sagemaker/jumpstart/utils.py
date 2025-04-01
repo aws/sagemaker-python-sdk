@@ -1680,7 +1680,7 @@ def get_model_access_config(accept_eula: Optional[bool], environment: Optional[d
 
     model_access_config = None
     if env_var_eula is not None:
-        model_access_config = {"AcceptEula": True if env_var_eula == "true" else False}
+        model_access_config = {"AcceptEula": env_var_eula == "true"}
     if accept_eula is not None:
         model_access_config = {"AcceptEula": accept_eula}
 
