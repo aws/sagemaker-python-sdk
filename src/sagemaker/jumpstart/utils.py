@@ -1633,7 +1633,7 @@ def get_draft_model_content_bucket(provider: Dict, region: str) -> str:
 
 
 def remove_env_var_from_estimator_kwargs_if_model_access_config_present(
-    init_kwargs: dict, model_access_config: dict | None
+    init_kwargs: dict, model_access_config: Optional[dict]
 ):
     """Remove env vars if ModelAccessConfig is used
 
