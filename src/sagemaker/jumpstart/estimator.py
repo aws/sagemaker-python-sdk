@@ -41,7 +41,7 @@ from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
-    remove_env_var_from_estimator_kwargs_if_accept_eula_present,
+    remove_env_var_from_estimator_kwargs_if_model_access_config_present,
     get_model_access_config,
     get_hub_access_config,
 )
@@ -714,7 +714,9 @@ class JumpStartEstimator(Estimator):
             config_name=self.config_name,
             hub_access_config=self.hub_access_config,
         )
-        remove_env_var_from_estimator_kwargs_if_accept_eula_present(self.init_kwargs, accept_eula)
+        remove_env_var_from_estimator_kwargs_if_model_access_config_present(
+            self.init_kwargs, self.model_access_config
+        )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
 

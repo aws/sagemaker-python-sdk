@@ -1632,16 +1632,16 @@ def get_draft_model_content_bucket(provider: Dict, region: str) -> str:
     return neo_bucket
 
 
-def remove_env_var_from_estimator_kwargs_if_accept_eula_present(
-    init_kwargs: dict, accept_eula: Optional[bool]
+def remove_env_var_from_estimator_kwargs_if_model_access_config_present(
+    init_kwargs: dict, model_access_config: dict | None
 ):
-    """Remove env vars if access configs are used
+    """Remove env vars if ModelAccessConfig is used
 
     Args:
         init_kwargs (dict): Dictionary of kwargs when Estimator is instantiated.
         accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
     """
-    if accept_eula is not None and init_kwargs.get("environment") is not None:
+    if model_access_config is not None and init_kwargs.get("environment") is not None:
         if (
             constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY
             in init_kwargs["environment"]
@@ -1672,7 +1672,7 @@ def get_model_access_config(accept_eula: Optional[bool], environment: Optional[d
         accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
     """
     env_var_eula = environment.get("accept_eula") if environment else None
-    if env_var_eula and accept_eula is not None:
+    if env_var_eula is not None and accept_eula is not None:
         raise ValueError(
             "Cannot pass in both accept_eula and environment variables. "
             "Please remove the environment variable and pass in the accept_eula parameter."
