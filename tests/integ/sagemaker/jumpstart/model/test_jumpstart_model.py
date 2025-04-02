@@ -170,7 +170,7 @@ def test_jumpstart_gated_model(setup):
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="3.*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        model_version="*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
@@ -197,7 +197,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="3.*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        model_version="*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
