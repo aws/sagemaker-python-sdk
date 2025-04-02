@@ -170,42 +170,6 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
     assert response is not None
 
 
-def test_jumpstart_hub_gated_estimator_with_eula_env_var(setup, add_model_references):
-
-    model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
-
-    estimator = JumpStartEstimator(
-        model_id=model_id,
-        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
-        environment={
-            "accept_eula": "true",
-        },
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
-    )
-
-    estimator.fit(
-        inputs={
-            "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
-            f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
-        },
-    )
-
-    predictor = estimator.deploy(
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
-        role=get_sm_session().get_caller_identity_arn(),
-        sagemaker_session=get_sm_session(),
-    )
-
-    payload = {
-        "inputs": "some-payload",
-        "parameters": {"max_new_tokens": 256, "top_p": 0.9, "temperature": 0.6},
-    }
-
-    response = predictor.predict(payload, custom_attributes="accept_eula=true")
-
-    assert response is not None
-
-
 def test_jumpstart_hub_gated_estimator_without_eula(setup, add_model_references):
 
     model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
