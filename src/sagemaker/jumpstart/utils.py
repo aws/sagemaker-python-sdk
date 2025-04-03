@@ -1641,7 +1641,7 @@ def remove_env_var_from_estimator_kwargs_if_model_access_config_present(
         init_kwargs (dict): Dictionary of kwargs when Estimator is instantiated.
         accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
     """
-    if model_access_config is not None and init_kwargs.get("environment") is not None:
+    if model_access_config is not None and init_kwargs.get("environment") is not None and init_kwargs.get("model_uri") is not None:
         if (
             constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY
             in init_kwargs["environment"]
@@ -1649,6 +1649,7 @@ def remove_env_var_from_estimator_kwargs_if_model_access_config_present(
             del init_kwargs["environment"][
                 constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY
             ]
+            del init_kwargs["environment"]["accept_eula"]
 
 
 def get_hub_access_config(hub_content_arn: Optional[str]):
