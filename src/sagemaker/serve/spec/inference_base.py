@@ -18,12 +18,18 @@ from abc import ABC, abstractmethod
 class CustomOrchestrator(ABC):
     """Templated class to standardize sync entrypoint-based inference scripts"""
 
+    def __init__(self):
+        self._client = None
+
     @property
     def client(self):
         """Boto3 SageMaker runtime client to use with custom orchestrator"""
-        from boto3 import Session
+        if not hasattr(self, "_client"):
+            from boto3 import Session
 
-        return Session().client("sagemaker-runtime")
+            self._client = Session().client("sagemaker-runtime")
+
+        return self._client
 
     @abstractmethod
     def handle(self, data, context=None):
