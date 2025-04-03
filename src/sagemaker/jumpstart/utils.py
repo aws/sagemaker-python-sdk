@@ -1653,6 +1653,7 @@ def remove_env_var_from_estimator_kwargs_if_model_access_config_present(
             del init_kwargs["environment"][
                 constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY
             ]
+        if "accept_eula" in init_kwargs["environment"]:
             del init_kwargs["environment"]["accept_eula"]
 
 
