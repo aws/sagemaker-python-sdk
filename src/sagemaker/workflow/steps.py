@@ -18,7 +18,6 @@ import warnings
 
 from enum import Enum
 from typing import Dict, List, Set, Union, Optional, Any, TYPE_CHECKING
-from urllib.parse import urlparse
 
 import attr
 
