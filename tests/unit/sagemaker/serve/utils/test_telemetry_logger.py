@@ -14,7 +14,7 @@ from __future__ import absolute_import
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 from sagemaker.serve import Mode, ModelServer
-from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH, MLFLOW_TRACKING_ARN
 from sagemaker.serve.utils.telemetry_logger import (
     _send_telemetry,
     _capture_telemetry,
@@ -40,7 +40,10 @@ MOCK_PYTORCH_CONTAINER = (
 MOCK_HUGGINGFACE_ID = "meta-llama/Llama-2-7b-hf"
 MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
 MOCK_ENDPOINT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test"
-MOCK_MODEL_METADATA_FOR_MLFLOW = {MLFLOW_MODEL_PATH: "s3://some_path"}
+MOCK_MODEL_METADATA_FOR_MLFLOW = {
+    MLFLOW_MODEL_PATH: "s3://some_path",
+    MLFLOW_TRACKING_ARN: "arn:aws:sagemaker:us-west-2:000000000000:mlflow-tracking-server/test",
+}
 
 
 class ModelBuilderMock:
@@ -274,6 +277,7 @@ class TestTelemetryLogger(unittest.TestCase):
             f"&x-defaultImageUsage={ImageUriOption.DEFAULT_IMAGE.value}"
             f"&x-endpointArn={MOCK_ENDPOINT_ARN}"
             f"&x-mlflowModelPathType=2"
+            f"&x-mlflowTrackingServerArn={MOCK_MODEL_METADATA_FOR_MLFLOW[MLFLOW_TRACKING_ARN]}"
             f"&x-latency={latency}"
         )
 

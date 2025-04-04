@@ -41,7 +41,7 @@ from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
-    remove_env_var_from_estimator_kwargs_if_accept_eula_present,
+    remove_env_var_from_estimator_kwargs_if_model_access_config_present,
     get_model_access_config,
     get_hub_access_config,
 )
@@ -616,6 +616,7 @@ class JumpStartEstimator(Estimator):
         self.tolerate_vulnerable_model = estimator_init_kwargs.tolerate_vulnerable_model
         self.instance_count = estimator_init_kwargs.instance_count
         self.region = estimator_init_kwargs.region
+        self.environment = estimator_init_kwargs.environment
         self.orig_predictor_cls = None
         self.role = estimator_init_kwargs.role
         self.sagemaker_session = estimator_init_kwargs.sagemaker_session
@@ -693,7 +694,7 @@ class JumpStartEstimator(Estimator):
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
         """
-        self.model_access_config = get_model_access_config(accept_eula)
+        self.model_access_config = get_model_access_config(accept_eula, self.environment)
         self.hub_access_config = get_hub_access_config(
             hub_content_arn=self.init_kwargs.get("model_reference_arn", None)
         )
@@ -712,6 +713,9 @@ class JumpStartEstimator(Estimator):
             sagemaker_session=self.sagemaker_session,
             config_name=self.config_name,
             hub_access_config=self.hub_access_config,
+        )
+        remove_env_var_from_estimator_kwargs_if_model_access_config_present(
+            self.init_kwargs, self.model_access_config
         )
         remove_env_var_from_estimator_kwargs_if_accept_eula_present(self.init_kwargs, accept_eula)
 

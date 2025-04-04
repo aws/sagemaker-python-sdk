@@ -11,6 +11,6 @@ packaging>=23.0,<25
 pandas==2.2.1
 pyyaml==6.0.1
 requests==2.32.2
-torch==2.2.0
-torchvision==0.17.0
+torch>=2.6.0
+torchvision>=0.17.0
 tqdm==4.66.3
