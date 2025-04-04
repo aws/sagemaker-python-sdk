@@ -408,21 +408,39 @@ Example:
         step_args=step_args_register_model,
     )
 
-CreateModelStep
+ModelStep
 ````````````````
 Referable Property List:
 
 - `DescribeModel`_
 
+  OR
+- `DescribeModelPackage`_
+
 .. _DescribeModel: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DescribeModel.html#API_DescribeModel_ResponseSyntax
+.. _DescribeModelPackage: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DescribeModelPackage.html#API_DescribeModelPackage_ResponseSyntax
 
 Example:
 
+For model creation usecase:
+
 .. code-block:: python
 
-    step_model = CreateModelStep(...)
-    model_data = step_model.PrimaryContainer.ModelDataUrl
+    create_model_step = ModelStep(
+        name="MyModelCreationStep",
+        step_args = model.create(...)
+    )
+    model_data = create_model_step.properties.PrimaryContainer.ModelDataUrl
 
+For model registration usercase:
+
+.. code-block:: python
+
+    register_model_step = ModelStep(
+        name="MyModelRegistrationStep",
+        step_args=model.register(...)
+    )
+    approval_status=register_model_step.properties.ModelApprovalStatus
 
 LambdaStep
 `````````````
