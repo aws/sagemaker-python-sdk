@@ -717,7 +717,6 @@ class JumpStartEstimator(Estimator):
         remove_env_var_from_estimator_kwargs_if_model_access_config_present(
             self.init_kwargs, self.model_access_config
         )
-        remove_env_var_from_estimator_kwargs_if_accept_eula_present(self.init_kwargs, accept_eula)
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
 
