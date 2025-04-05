@@ -464,6 +464,7 @@ class TrainingStep(ConfigurableRetryStep):
         self.step_args = step_args
         self.estimator = estimator
         self.inputs = inputs
+        self.job_name = None
 
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeTrainingJobResponse"
