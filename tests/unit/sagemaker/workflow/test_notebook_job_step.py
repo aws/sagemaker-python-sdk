@@ -13,10 +13,11 @@
 from __future__ import absolute_import
 
 import unittest
+
 from mock import Mock, patch
 
-from sagemaker.workflow.notebook_job_step import NotebookJobStep
 from sagemaker.workflow.functions import Join
+from sagemaker.workflow.notebook_job_step import NotebookJobStep
 
 REGION = "us-west-2"
 PIPELINE_NAME = "test-pipeline-name"
@@ -572,4 +573,63 @@ class TestNotebookJobStep(unittest.TestCase):
             input_notebook=INPUT_NOTEBOOK,
             image_uri=IMAGE_URI,
             kernel_name=KERNEL_NAME,
+        )
+
+    def test_environment_variables_not_shared(self):
+        """Test that environment variables are not shared between NotebookJob steps"""
+        # Setup shared environment variables
+        shared_env_vars = {"test": "test"}
+
+        # Create two steps with the same environment variables dictionary
+        step1 = NotebookJobStep(
+            name="step1",
+            input_notebook=INPUT_NOTEBOOK,
+            image_uri=IMAGE_URI,
+            kernel_name=KERNEL_NAME,
+            environment_variables=shared_env_vars,
+        )
+
+        step2 = NotebookJobStep(
+            name="step2",
+            input_notebook=INPUT_NOTEBOOK,
+            image_uri=IMAGE_URI,
+            kernel_name=KERNEL_NAME,
+            environment_variables=shared_env_vars,
+        )
+
+        # Get the arguments for both steps
+        step1_args = step1.arguments
+        step2_args = step2.arguments
+
+        # Verify that the environment variables are different objects
+        self.assertIsNot(
+            step1_args["Environment"],
+            step2_args["Environment"],
+            "Environment dictionaries should be different objects",
+        )
+
+        # Verify that modifying one step's environment doesn't affect the other
+        step1_env = step1_args["Environment"]
+        step2_env = step2_args["Environment"]
+
+        # Both should have the original test value
+        self.assertEqual(step1_env["test"], "test")
+        self.assertEqual(step2_env["test"], "test")
+
+        # Modify step1's environment
+        step1_env["test"] = "modified"
+
+        # Verify step2's environment remains unchanged
+        self.assertEqual(step2_env["test"], "test")
+
+        # Verify notebook names are correct for each step
+        self.assertEqual(
+            step1_env["SM_INPUT_NOTEBOOK_NAME"],
+            os.path.basename(INPUT_NOTEBOOK),
+            "Step 1 should have its own notebook name",
+        )
+        self.assertEqual(
+            step2_env["SM_INPUT_NOTEBOOK_NAME"],
+            os.path.basename(INPUT_NOTEBOOK),
+            "Step 2 should have its own notebook name",
         )
