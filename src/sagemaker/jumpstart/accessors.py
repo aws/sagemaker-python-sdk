@@ -25,6 +25,7 @@ from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.hub.utils import (
     construct_hub_model_arn_from_inputs,
     construct_hub_model_reference_arn_from_inputs,
+    generate_hub_arn_for_init_kwargs,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.session import Session
@@ -291,6 +292,10 @@ class JumpStartModelsAccessor(object):
         # Users only input model id, not contentType, so first try to describe with ModelReference, then with Model
         if hub_arn:
             try:
+                hub_arn = generate_hub_arn_for_init_kwargs(
+                    hub_name=hub_arn, region=region, session=sagemaker_session
+                )
+
                 hub_model_arn = construct_hub_model_reference_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
