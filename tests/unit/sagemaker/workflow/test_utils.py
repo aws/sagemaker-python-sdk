@@ -83,8 +83,8 @@ def test_repack_model_step(estimator):
 
     # ex: "gits3://my-bucket/sagemaker-scikit-learn-2025-04-07-20-39-38-854/source/sourcedir.tar.gz"
     sagemaker_submit_directory = hyperparameters["sagemaker_submit_directory"]
-    assert sagemaker_submit_directory.startswith("\"s3://my-bucket/sagemaker-scikit-learn-")
-    assert sagemaker_submit_directory.endswith("/source/sourcedir.tar.gz\"")
+    assert sagemaker_submit_directory.startswith('"s3://my-bucket/sagemaker-scikit-learn-')
+    assert sagemaker_submit_directory.endswith('/source/sourcedir.tar.gz"')
 
     del request_dict["Arguments"]["HyperParameters"]
     del request_dict["Arguments"]["AlgorithmSpecification"]["TrainingImage"]
