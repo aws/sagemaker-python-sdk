@@ -12,5 +12,5 @@ start_time=`date +%s`
 tox -e sphinx,doc8 --parallel all
 ./ci-scripts/displaytime.sh 'sphinx,doc8' $start_time
 start_time=`date +%s`
-tox -e py38,py39,py310 --parallel all -- tests/unit
-./ci-scripts/displaytime.sh 'py38,py39,py310 unit' $start_time
+tox -e py39,py310,py311,py312 --parallel all -- tests/unit
+./ci-scripts/displaytime.sh 'py39,py310,py311,py312 unit' $start_time
