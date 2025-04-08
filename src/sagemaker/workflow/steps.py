@@ -18,7 +18,6 @@ import warnings
 
 from enum import Enum
 from typing import Dict, List, Set, Union, Optional, Any, TYPE_CHECKING
-from urllib.parse import urlparse
 
 import attr
 
@@ -465,6 +464,7 @@ class TrainingStep(ConfigurableRetryStep):
         self.step_args = step_args
         self.estimator = estimator
         self.inputs = inputs
+        self.job_name = None
 
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeTrainingJobResponse"
@@ -492,19 +492,6 @@ class TrainingStep(ConfigurableRetryStep):
                 ),
                 DeprecationWarning,
             )
-
-        self.job_name = None
-        if estimator and (estimator.source_dir or estimator.entry_point):
-            # By default, `Estimator` will upload the local code to an S3 path
-            # containing a timestamp. This causes cache misses whenever a
-            # pipeline is updated, even if the underlying script hasn't changed.
-            # To avoid this, hash the contents of the training script and include it
-            # in the `job_name` passed to the `Estimator`, which will be used
-            # instead of the timestamped path.
-            if not is_pipeline_variable(estimator.source_dir) and not is_pipeline_variable(
-                estimator.entry_point
-            ):
-                self.job_name = self._generate_code_upload_path()
 
     @property
     def arguments(self) -> RequestType:
@@ -553,26 +540,6 @@ class TrainingStep(ConfigurableRetryStep):
             request_dict.update(self.cache_config.config)
 
         return request_dict
-
-    def _generate_code_upload_path(self) -> str or None:
-        """Generate an upload path for local training scripts based on their content."""
-        from sagemaker.workflow.utilities import hash_files_or_dirs
-
-        if self.estimator.source_dir:
-            source_dir_url = urlparse(self.estimator.source_dir)
-            if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
-                code_hash = hash_files_or_dirs(
-                    [self.estimator.source_dir] + self.estimator.dependencies
-                )
-                return f"{self.name}-{code_hash}"[:1024]
-        elif self.estimator.entry_point:
-            entry_point_url = urlparse(self.estimator.entry_point)
-            if entry_point_url.scheme == "" or entry_point_url.scheme == "file":
-                code_hash = hash_files_or_dirs(
-                    [self.estimator.entry_point] + self.estimator.dependencies
-                )
-                return f"{self.name}-{code_hash}"[:1024]
-        return None
 
 
 class CreateModelStep(ConfigurableRetryStep):
@@ -895,16 +862,6 @@ class ProcessingStep(ConfigurableRetryStep):
                         "code argument has to be a valid S3 URI or local file path "
                         + "rather than a pipeline variable"
                     )
-                code_url = urlparse(code)
-                if code_url.scheme == "" or code_url.scheme == "file":
-                    # By default, `Processor` will upload the local code to an S3 path
-                    # containing a timestamp. This causes cache misses whenever a
-                    # pipeline is updated, even if the underlying script hasn't changed.
-                    # To avoid this, hash the contents of the script and include it
-                    # in the `job_name` passed to the `Processor`, which will be used
-                    # instead of the timestamped path.
-                    self.job_name = self._generate_code_upload_path()
-
             warnings.warn(
                 (
                     'We are deprecating the instantiation of ProcessingStep using "processor".'
