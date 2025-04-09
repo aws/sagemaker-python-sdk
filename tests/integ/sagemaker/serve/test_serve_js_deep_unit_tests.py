@@ -28,7 +28,7 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
         patch.object(Session, "create_model", return_value="mock_model") as mock_create_model,
         patch.object(
             Session, "endpoint_from_production_variants"
-        ) as mock_endpoint_from_production_variants,
+        ) as mock_endpoint_from_production_variants
     ):
         iam_client = sagemaker_session.boto_session.client("iam")
         role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]

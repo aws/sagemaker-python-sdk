@@ -122,7 +122,7 @@ def test_create_lineage_when_no_lineage_exists_with_fg_only():
                 FEATURE_GROUP_INPUT[1],
                 FEATURE_GROUP_INPUT[0],
             ],
-        ) as retrieve_feature_group_context_arns_method,
+        ) as retrieve_feature_group_context_arns_method
         patch.object(
             S3LineageEntityHandler,
             "retrieve_raw_data_artifact",

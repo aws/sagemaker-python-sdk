@@ -99,7 +99,7 @@ def test_generate_requirements_exact_match(monkeypatch):
         patch("sagemaker.serve.detector.pickle_dependencies.subprocess.run") as subprocess_run,
         patch("sagemaker.serve.detector.pickle_dependencies.subprocess.Popen") as subprocess_popen,
         patch("builtins.open") as mocked_open,
-        monkeypatch.context() as m,
+        monkeypatch.context() as m
     ):
         mock_run_stdout = MagicMock()
         mock_run_stdout.stdout = json.dumps(INSTALLED_PKG_JSON).encode("utf-8")
