@@ -176,7 +176,7 @@ class ModelArtifactVariantsTest(unittest.TestCase):
                         "image_uri": "$alias_ecr_uri_1",
                     },
                     "properties": {
-                        "artifact_key": "in/the/way",
+                        "training_artifact_key": "in/the/way",
                     },
                 }
             },

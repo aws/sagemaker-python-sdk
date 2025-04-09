@@ -51,8 +51,8 @@ NEW_CLASS_NAME_TO_NAMESPACES = {
     "StreamDeserializer": ("sagemaker.deserializers",),
     "NumpyDeserializer": ("sagemaker.deserializers",),
     "JSONDeserializer": ("sagemaker.deserializers",),
-    "RecordSerializer ": ("sagemaker.amazon.common",),
-    "RecordDeserializer": ("sagemaker.amazon.common",),
+    "RecordSerializer ": ("sagemaker.serializers",),
+    "RecordDeserializer": ("sagemaker.deserializers",),
 }
 
 OLD_CLASS_NAME_TO_NEW_CLASS_NAME = {
@@ -101,8 +101,8 @@ class SerdeConstructorRenamer(Modifier):
         - ``sagemaker.predictor.StreamDeserializer``
         - ``sagemaker.predictor._NumpyDeserializer``
         - ``sagemaker.predictor._JsonDeserializer``
-        - ``sagemaker.amazon.common.numpy_to_record_serializer``
-        - ``sagemaker.amazon.common.record_deserializer``
+        - ``sagemaker.serializers.numpy_to_record_serializer``
+        - ``sagemaker.deserializers.record_deserializer``
 
         Args:
             node (ast.Call): a node that represents a function call. For more,
@@ -128,8 +128,8 @@ class SerdeConstructorRenamer(Modifier):
         - ``sagemaker.deserializers.StreamDeserializer``
         - ``sagemaker.deserializers.NumpyDeserializer``
         - ``sagemaker.deserializers._JsonDeserializer``
-        - ``sagemaker.amazon.common.RecordSerializer``
-        - ``sagemaker.amazon.common.RecordDeserializer``
+        - ``sagemaker.serializers.RecordSerializer``
+        - ``sagemaker.deserializers.RecordDeserializer``
 
         Args:
             node (ast.Call): a node that represents a SerDe constructor.
@@ -303,8 +303,8 @@ class SerdeImportFromAmazonCommonRenamer(Modifier):
         """Checks if the import statement imports a SerDe from the ``sagemaker.amazon.common``.
 
         This checks for:
-        - ``sagemaker.amazon.common.numpy_to_record_serializer``
-        - ``sagemaker.amazon.common.record_deserializer``
+        - ``sagemaker.serializers.numpy_to_record_serializer``
+        - ``sagemaker.deserializers.record_deserializer``
 
         Args:
             node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
@@ -322,8 +322,8 @@ class SerdeImportFromAmazonCommonRenamer(Modifier):
         """Upgrades the ``numpy_to_record_serializer`` and ``record_deserializer`` imports.
 
         This upgrades the classes to (if applicable):
-        - ``sagemaker.amazon.common.RecordSerializer``
-        - ``sagemaker.amazon.common.RecordDeserializer``
+        - ``sagemaker.serializers.RecordSerializer``
+        - ``sagemaker.deserializers.RecordDeserializer``
 
         Args:
             node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.

@@ -65,7 +65,10 @@ def _find_config(working_dir=None):
         wd = Path(working_dir) if working_dir else Path.cwd()
 
         path = None
-        while path is None and not wd.match("/"):
+
+        # Get the root of the current working directory for both Windows and Unix-like systems
+        root = Path(wd.anchor)
+        while path is None and wd != root:
             candidate = wd / STUDIO_PROJECT_CONFIG
             if Path.exists(candidate):
                 path = candidate

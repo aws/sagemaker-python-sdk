@@ -1,5 +1,131 @@
 # Changelog
 
+## v2.242.0 (2025-03-14)
+
+### Features
+
+ * add integ tests for training JumpStart models in private hub
+
+### Bug Fixes and Other Changes
+
+ * Torch upgrade
+ * Prevent RunContext overlap between test_run tests
+ * remove s3 output location requirement from hub class init
+ * Fixing Pytorch training python version in tests
+ * update image_uri_configs  03-11-2025 07:18:09 PST
+ * resolve infinite loop in _find_config on Windows systems
+ * pipeline definition function doc update
+
+## v2.241.0 (2025-03-06)
+
+### Features
+
+ * Make DistributedConfig Extensible
+ * support training for JumpStart model references as part of Curated Hub Phase 2
+ * Allow ModelTrainer to accept hyperparameters file
+
+### Bug Fixes and Other Changes
+
+ * Skip tests with deprecated instance type
+ * Ensure Model.is_repack() returns a boolean
+ * Fix error when there is no session to call _create_model_request()
+ * Use sagemaker session's s3_resource in download_folder
+ * Added check for the presence of model package group before creating one
+ * Fix key error in _send_metrics()
+
+## v2.240.0 (2025-02-25)
+
+### Features
+
+ * Add support for TGI Neuronx 0.0.27 and HF PT 2.3.0 image in PySDK
+
+### Bug Fixes and Other Changes
+
+ * Remove main function entrypoint in ModelBuilder dependency manager.
+ * forbid extras in Configs
+ * altconfig hubcontent and reenable integ test
+ * Merge branch 'master-rba' into local_merge
+ * py_version doc fixes
+ * Add backward compatbility for RecordSerializer and RecordDeserializer
+ * update image_uri_configs  02-21-2025 06:18:10 PST
+ * update image_uri_configs  02-20-2025 06:18:08 PST
+
+### Documentation Changes
+
+ * Removed a line about python version requirements of training script which can misguide users.
+
+## v2.239.3 (2025-02-19)
+
+### Bug Fixes and Other Changes
+
+ * added ap-southeast-7 and mx-central-1 for Jumpstart
+ * update image_uri_configs  02-19-2025 06:18:15 PST
+
+## v2.239.2 (2025-02-18)
+
+### Bug Fixes and Other Changes
+
+ * Add warning about not supporting torch.nn.SyncBatchNorm
+ * pass in inference_ami_version to model_based endpoint type
+ * Fix hyperparameter strategy docs
+ * Add framework_version to all TensorFlowModel examples
+ * Move RecordSerializer and RecordDeserializer to sagemaker.serializers and sagemaker.deserialzers
+
+## v2.239.1 (2025-02-14)
+
+### Bug Fixes and Other Changes
+
+ * keep sagemaker_session from being overridden to None
+ * Fix all type hint and docstrings for callable
+ * Fix the workshop link for Step Functions
+ * Fix Tensorflow doc link
+ * Fix FeatureGroup docstring
+ * Add type hint for ProcessingOutput
+ * Fix sourcedir.tar.gz filenames in docstrings
+ * Fix documentation for local mode
+ * bug in get latest version was getting the max sorted alphabetically
+ * Add cleanup logic to model builder integ tests for endpoints
+ * Fixed pagination failing while listing collections
+ * fix ValueError when updating a data quality monitoring schedule
+ * Add docstring for image_uris.retrieve
+ * Create GitHub action to trigger canaries
+ * update image_uri_configs  02-04-2025 06:18:00 PST
+
+## v2.239.0 (2025-02-01)
+
+### Features
+
+ * Add support for deepseek recipes
+
+### Bug Fixes and Other Changes
+
+ * mpirun protocol - distributed training with @remote decorator
+ * Allow telemetry only in supported regions
+ * Fix ssh host policy
+
+## v2.238.0 (2025-01-29)
+
+### Features
+
+ * use jumpstart deployment config image as default optimization image
+
+### Bug Fixes and Other Changes
+
+ * chore: add new images for HF TGI
+ * update image_uri_configs  01-29-2025 06:18:08 PST
+ * skip TF tests for unsupported versions
+ * Merge branch 'master-rba' into local_merge
+ * Add missing attributes to local resourceconfig
+ * update image_uri_configs  01-27-2025 06:18:13 PST
+ * update image_uri_configs  01-24-2025 06:18:11 PST
+ * add missing schema definition in docs
+ * Omegaconf upgrade
+ * SageMaker @remote function: Added multi-node functionality
+ * remove option
+ * fix typo
+ * fix tests
+ * Add an option for user to remove inputs and container artifacts when using local model trainer
+
 ## v2.237.3 (2025-01-09)
 
 ### Bug Fixes and Other Changes
