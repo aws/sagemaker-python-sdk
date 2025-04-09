@@ -358,6 +358,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
         explainer_config=None,
+        update_endpoint: Optional[bool] = False,
         **kwargs,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
@@ -383,6 +384,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
+            update_endpoint=update_endpoint,
             **kwargs,
         )
 

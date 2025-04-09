@@ -23,7 +23,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ap-east-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -49,7 +49,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ap-northeast-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -75,7 +75,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ap-northeast-2": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -101,7 +101,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ap-northeast-3": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -127,7 +127,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ap-south-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -153,7 +153,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ap-southeast-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -179,7 +179,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ap-southeast-2": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -205,7 +205,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ap-southeast-3": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -231,7 +231,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "ca-central-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -257,7 +257,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "cn-north-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -283,7 +283,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "cn-northwest-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -309,7 +309,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "eu-central-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -335,7 +335,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "eu-central-2": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -361,7 +361,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "eu-north-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -387,7 +387,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "eu-south-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -413,7 +413,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "eu-south-2": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -439,7 +439,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "eu-west-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -465,7 +465,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "eu-west-2": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -491,7 +491,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "eu-west-3": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -517,7 +517,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "il-central-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -543,7 +543,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "me-central-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -569,7 +569,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "me-south-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -595,7 +595,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "sa-east-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -621,7 +621,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "us-east-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -647,7 +647,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "us-east-2": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -673,7 +673,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "us-gov-east-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -699,7 +699,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "us-gov-west-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -725,7 +725,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "us-west-1": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -751,7 +751,7 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     },
     "us-west-2": {
         "ml.p5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 655360},
@@ -777,6 +777,6 @@
         "ml.g5.16xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 24576},
         "ml.g5.12xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
         "ml.g5.24xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 98304},
-        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 196608}
+        "ml.g5.48xlarge": {"Count": 8, "TotalGpuMemoryInMiB": 183104}
     }
 }

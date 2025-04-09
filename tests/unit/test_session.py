@@ -7253,3 +7253,35 @@ def test_create_model_package_from_containers_to_create_mpg_if_not_present(sagem
     sagemaker_session.sagemaker_client.create_model_package_group.assert_called_with(
         ModelPackageGroupName="mock-mpg"
     )
+
+
+def test_get_most_recently_created_approved_model_package(sagemaker_session):
+    sagemaker_session.sagemaker_client.list_model_packages.side_effect = [
+        (
+            {
+                "ModelPackageSummaryList": [],
+                "NextToken": "NextToken",
+            }
+        ),
+        (
+            {
+                "ModelPackageSummaryList": [
+                    {
+                        "CreationTime": 1697440162,
+                        "ModelApprovalStatus": "Approved",
+                        "ModelPackageArn": "arn:aws:sagemaker:us-west-2:123456789012:model-package/model-version/3",
+                        "ModelPackageGroupName": "model-version",
+                        "ModelPackageVersion": 3,
+                    },
+                ],
+            }
+        ),
+    ]
+    model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name="mpg"
+    )
+    assert model_package is not None
+    assert (
+        model_package.model_package_arn
+        == "arn:aws:sagemaker:us-west-2:123456789012:model-package/model-version/3"
+    )

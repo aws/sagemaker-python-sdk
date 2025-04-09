@@ -4041,14 +4041,30 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
 @pytest.mark.parametrize(
     "test_case",
     [
+        # Real-time deployment without update
         {
             "input_args": {"endpoint_name": "test"},
             "call_params": {
                 "instance_type": "ml.g5.2xlarge",
                 "initial_instance_count": 1,
                 "endpoint_name": "test",
+                "update_endpoint": False,
             },
         },
+        # Real-time deployment with update
+        {
+            "input_args": {
+                "endpoint_name": "existing-endpoint",
+                "update_endpoint": True,
+            },
+            "call_params": {
+                "instance_type": "ml.g5.2xlarge",
+                "initial_instance_count": 1,
+                "endpoint_name": "existing-endpoint",
+                "update_endpoint": True,
+            },
+        },
+        # Serverless deployment without update
         {
             "input_args": {
                 "endpoint_name": "test",
@@ -4057,8 +4073,23 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             "call_params": {
                 "serverless_inference_config": ServerlessInferenceConfig(),
                 "endpoint_name": "test",
+                "update_endpoint": False,
             },
         },
+        # Serverless deployment with update
+        {
+            "input_args": {
+                "endpoint_name": "existing-endpoint",
+                "inference_config": ServerlessInferenceConfig(),
+                "update_endpoint": True,
+            },
+            "call_params": {
+                "serverless_inference_config": ServerlessInferenceConfig(),
+                "endpoint_name": "existing-endpoint",
+                "update_endpoint": True,
+            },
+        },
+        # Async deployment without update
         {
             "input_args": {
                 "endpoint_name": "test",
@@ -4069,10 +4100,30 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
                 "instance_type": "ml.g5.2xlarge",
                 "initial_instance_count": 1,
                 "endpoint_name": "test",
+                "update_endpoint": False,
             },
         },
+        # Async deployment with update
         {
-            "input_args": {"endpoint_name": "test", "inference_config": RESOURCE_REQUIREMENTS},
+            "input_args": {
+                "endpoint_name": "existing-endpoint",
+                "inference_config": AsyncInferenceConfig(output_path="op-path"),
+                "update_endpoint": True,
+            },
+            "call_params": {
+                "async_inference_config": AsyncInferenceConfig(output_path="op-path"),
+                "instance_type": "ml.g5.2xlarge",
+                "initial_instance_count": 1,
+                "endpoint_name": "existing-endpoint",
+                "update_endpoint": True,
+            },
+        },
+        # Multi-Model deployment (update_endpoint not supported)
+        {
+            "input_args": {
+                "endpoint_name": "test",
+                "inference_config": RESOURCE_REQUIREMENTS,
+            },
             "call_params": {
                 "resources": RESOURCE_REQUIREMENTS,
                 "role": "role-arn",
@@ -4080,8 +4131,10 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
                 "instance_type": "ml.g5.2xlarge",
                 "mode": Mode.SAGEMAKER_ENDPOINT,
                 "endpoint_type": EndpointType.INFERENCE_COMPONENT_BASED,
+                "update_endpoint": False,
             },
         },
+        # Batch transform
         {
             "input_args": {
                 "inference_config": BatchTransformInferenceConfig(
@@ -4096,7 +4149,16 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             "id": "Batch",
         },
     ],
-    ids=["Real Time", "Serverless", "Async", "Multi-Model", "Batch"],
+    ids=[
+        "Real Time",
+        "Real Time Update",
+        "Serverless",
+        "Serverless Update",
+        "Async",
+        "Async Update",
+        "Multi-Model",
+        "Batch",
+    ],
 )
 @patch("sagemaker.serve.builder.model_builder.unique_name_from_base")
 def test_deploy(mock_unique_name_from_base, test_case):
@@ -4119,3 +4181,20 @@ def test_deploy(mock_unique_name_from_base, test_case):
 
     diff = deepdiff.DeepDiff(kwargs, test_case["call_params"])
     assert diff == {}
+
+
+def test_deploy_multi_model_update_error():
+    model_builder = ModelBuilder(
+        model="meta-llama/Meta-Llama-3-8B-Instruct",
+        env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+        role_arn="role-arn",
+        instance_type="ml.g5.2xlarge",
+    )
+    setattr(model_builder, "built_model", MagicMock())
+
+    with pytest.raises(
+        ValueError, match="Currently update_endpoint is supported for single model endpoints"
+    ):
+        model_builder.deploy(
+            endpoint_name="test", inference_config=RESOURCE_REQUIREMENTS, update_endpoint=True
+        )
