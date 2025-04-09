@@ -1061,7 +1061,7 @@ def test_model_trainer_local_full_init(
         input_data_config=ANY,
         hyper_parameters=hyperparameters,
         environment=environment,
-)
+    )
 
 
 def test_safe_configs():

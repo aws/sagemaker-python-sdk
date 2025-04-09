@@ -1646,8 +1646,8 @@ def test_create_dataset_with_feature_group_base(
         )
 
         with (
-            timeout(minutes=10) 
-            and cleanup_offline_store(base, feature_store_session) 
+            timeout(minutes=10)
+            and cleanup_offline_store(base, feature_store_session)
             and cleanup_offline_store(feature_group, feature_store_session)
         ):
             feature_store = FeatureStore(sagemaker_session=feature_store_session)
@@ -1835,8 +1835,8 @@ def test_create_dataset_with_feature_group_base_with_additional_params(
         )
 
         with (
-            timeout(minutes=10) 
-            and cleanup_offline_store(base, feature_store_session) 
+            timeout(minutes=10)
+            and cleanup_offline_store(base, feature_store_session)
             and cleanup_offline_store(feature_group, feature_store_session)
         ):
             feature_store = FeatureStore(sagemaker_session=feature_store_session)

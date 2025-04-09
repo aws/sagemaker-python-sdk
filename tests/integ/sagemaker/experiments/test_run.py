@@ -86,9 +86,7 @@ def test_local_run_with_load(sagemaker_session, artifact_file_path):
         retry_with_backoff(verify_load_run, 4)
 
 
-def test_two_local_run_init_with_same_run_name_and_different_exp_names(
-    sagemaker_session
-):
+def test_two_local_run_init_with_same_run_name_and_different_exp_names(sagemaker_session):
     exp_name1 = f"my-two-local-exp1-{name()}"
     exp_name2 = f"my-two-local-exp2-{name()}"
     run_name = "test-run"
@@ -126,9 +124,7 @@ def test_two_local_run_init_with_same_run_name_and_different_exp_names(
         ("my-test4", "test-run", "run-display-name-test"),  # with supplied display name
     ],
 )
-def test_run_name_vs_trial_component_name_edge_cases(
-    sagemaker_session, input_names
-):
+def test_run_name_vs_trial_component_name_edge_cases(sagemaker_session, input_names):
     exp_name, run_name, run_display_name = input_names
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
         with Run(
