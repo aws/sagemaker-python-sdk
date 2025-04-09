@@ -17,7 +17,7 @@ data pre-processing, post-processing, feature engineering, data validation, and 
 and interpretation on Amazon SageMaker.
 """
 from __future__ import absolute_import
-
+import json
 import logging
 import os
 import pathlib
@@ -60,10 +60,9 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.execution_variables import ExecutionVariable, ExecutionVariables
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
-from sagemaker.workflow.parameters import Parameter
 
 logger = logging.getLogger(__name__)
 
@@ -316,14 +315,14 @@ class Processor(object):
                 + "rather than a pipeline variable"
             )
         if arguments is not None:
-            normalized_arguments = []
+            processed_arguments = []
             for arg in arguments:
                 if isinstance(arg, PipelineVariable):
-                    normalized_value = self._normalize_pipeline_variable(arg)
-                    normalized_arguments.append(normalized_value)
+                    processed_value = json.dumps(arg.expr)
+                    processed_arguments.append(processed_value)
                 else:
-                    normalized_arguments.append(str(arg))
-            arguments = normalized_arguments
+                    processed_arguments.append(str(arg))
+            arguments = processed_arguments
 
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
@@ -508,37 +507,6 @@ class Processor(object):
                     output.destination = s3_uri
                 normalized_outputs.append(output)
         return normalized_outputs
-
-    def _normalize_pipeline_variable(self, value):
-        """Helper function to normalize PipelineVariable objects"""
-        try:
-            if isinstance(value, Parameter):
-                return str(value.default_value) if value.default_value is not None else None
-
-            elif isinstance(value, ExecutionVariable):
-                return f"{value.name}"
-
-            elif isinstance(value, Join):
-                normalized_values = [
-                    normalize_pipeline_variable(v) if isinstance(v, PipelineVariable) else str(v)
-                    for v in value.values
-                ]
-                return value.on.join(normalized_values)
-
-            elif isinstance(value, PipelineVariable):
-                if hasattr(value, 'default_value'):
-                    return str(value.default_value)
-                elif hasattr(value, 'expr'):
-                    return str(value.expr)
-
-            return str(value)
-
-        except AttributeError as e:
-            raise ValueError(f"Missing required attribute while normalizing {type(value).__name__}: {e}")
-        except TypeError as e:
-            raise ValueError(f"Type error while normalizing {type(value).__name__}: {e}")
-        except Exception as e:
-            raise ValueError(f"Error normalizing {type(value).__name__}: {e}")
 
 
 class ScriptProcessor(Processor):

@@ -48,7 +48,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.execution_variables import ExecutionVariable, ExecutionVariables
 from tests.unit import SAGEMAKER_CONFIG_PROCESSING_JOB
-from sagemaker.workflow.parameters import ParameterString, Parameter
+from sagemaker.workflow.parameters import ParameterString
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -1719,16 +1719,14 @@ def _get_describe_response_inputs_and_ouputs():
         "ProcessingOutputConfig": _get_expected_args_all_parameters(None)["output_config"],
     }
 
+
 # Parameters
 def _get_data_inputs_with_parameters():
     return [
         ProcessingInput(
-            source=ParameterString(
-                name="input_data",
-                default_value="s3://dummy-bucket/input"
-            ),
+            source=ParameterString(name="input_data", default_value="s3://dummy-bucket/input"),
             destination="/opt/ml/processing/input",
-            input_name="input-1"
+            input_name="input-1",
         )
     ]
 
@@ -1738,36 +1736,39 @@ def _get_data_outputs_with_parameters():
         ProcessingOutput(
             source="/opt/ml/processing/output",
             destination=ParameterString(
-                name="output_data",
-                default_value="s3://dummy-bucket/output"
+                name="output_data", default_value="s3://dummy-bucket/output"
             ),
-            output_name="output-1"
+            output_name="output-1",
         )
     ]
 
 
 def _get_expected_args_with_parameters(job_name):
     return {
-        "inputs": [{
-            "InputName": "input-1",
-            "S3Input": {
-                "S3Uri": "s3://dummy-bucket/input",
-                "LocalPath": "/opt/ml/processing/input",
-                "S3DataType": "S3Prefix",
-                "S3InputMode": "File",
-                "S3DataDistributionType": "FullyReplicated",
-                "S3CompressionType": "None"
+        "inputs": [
+            {
+                "InputName": "input-1",
+                "S3Input": {
+                    "S3Uri": "s3://dummy-bucket/input",
+                    "LocalPath": "/opt/ml/processing/input",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
             }
-        }],
+        ],
         "output_config": {
-            "Outputs": [{
-                "OutputName": "output-1",
-                "S3Output": {
-                    "S3Uri": "s3://dummy-bucket/output",
-                    "LocalPath": "/opt/ml/processing/output",
-                    "S3UploadMode": "EndOfJob"
+            "Outputs": [
+                {
+                    "OutputName": "output-1",
+                    "S3Output": {
+                        "S3Uri": "s3://dummy-bucket/output",
+                        "LocalPath": "/opt/ml/processing/output",
+                        "S3UploadMode": "EndOfJob",
+                    },
                 }
-            }]
+            ]
         },
         "job_name": job_name,
         "resources": {
@@ -1775,7 +1776,7 @@ def _get_expected_args_with_parameters(job_name):
                 "InstanceType": "ml.m4.xlarge",
                 "InstanceCount": 1,
                 "VolumeSizeInGB": 100,
-                "VolumeKmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/volume-kms-key"
+                "VolumeKmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
             }
         },
         "stopping_condition": {"MaxRuntimeInSeconds": 3600},
@@ -1785,9 +1786,9 @@ def _get_expected_args_with_parameters(job_name):
                 "--input-data",
                 "s3://dummy-bucket/input-param",
                 "--output-path",
-                "s3://dummy-bucket/output-param"
+                "s3://dummy-bucket/output-param",
             ],
-            "ContainerEntrypoint": ["python3"]
+            "ContainerEntrypoint": ["python3"],
         },
         "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {
@@ -1795,12 +1796,12 @@ def _get_expected_args_with_parameters(job_name):
             "EnableInterContainerTrafficEncryption": True,
             "VpcConfig": {
                 "Subnets": ["my_subnet_id"],
-                "SecurityGroupIds": ["my_security_group_id"]
-            }
+                "SecurityGroupIds": ["my_security_group_id"],
+            },
         },
         "role_arn": "dummy/role",
         "tags": [{"Key": "my-tag", "Value": "my-tag-value"}],
-        "experiment_config": {"ExperimentName": "AnExperiment"}
+        "experiment_config": {"ExperimentName": "AnExperiment"},
     }
 
 
@@ -1810,12 +1811,12 @@ def _get_expected_args_with_parameters(job_name):
 @patch("sagemaker.utils.create_tar_file")
 @patch("sagemaker.session.Session.upload_data")
 def test_script_processor_with_parameter_string(
-        upload_data_mock,
-        create_tar_file_mock,
-        repack_model_mock,
-        exists_mock,
-        isfile_mock,
-        sagemaker_session,
+    upload_data_mock,
+    create_tar_file_mock,
+    repack_model_mock,
+    exists_mock,
+    isfile_mock,
+    sagemaker_session,
 ):
     """Test ScriptProcessor with ParameterString arguments"""
     upload_data_mock.return_value = "s3://mocked_s3_uri_from_upload_data"
@@ -1843,21 +1844,12 @@ def test_script_processor_with_parameter_string(
         sagemaker_session=sagemaker_session,
     )
 
-    input_param = ParameterString(
-        name="input_param",
-        default_value="s3://dummy-bucket/input-param"
-    )
+    input_param = ParameterString(name="input_param", default_value="s3://dummy-bucket/input-param")
     output_param = ParameterString(
-        name="output_param",
-        default_value="s3://dummy-bucket/output-param"
+        name="output_param", default_value="s3://dummy-bucket/output-param"
     )
-    exec_var = ExecutionVariable(
-        name="ExecutionTest"
-    )
-    join_var = Join(
-        on="/",
-        values=["s3://bucket", "prefix", "file.txt"]
-    )
+    exec_var = ExecutionVariable(name="ExecutionTest")
+    join_var = Join(on="/", values=["s3://bucket", "prefix", "file.txt"])
     dummy_str_var = "test-variable"
 
     # Define expected arguments
@@ -1868,15 +1860,14 @@ def test_script_processor_with_parameter_string(
                 "AppManaged": False,
                 "S3Input": {
                     "S3Uri": ParameterString(
-                        name="input_data",
-                        default_value="s3://dummy-bucket/input"
+                        name="input_data", default_value="s3://dummy-bucket/input"
                     ),
                     "LocalPath": "/opt/ml/processing/input",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None"
-                }
+                    "S3CompressionType": "None",
+                },
             },
             {
                 "InputName": "code",
@@ -1887,9 +1878,9 @@ def test_script_processor_with_parameter_string(
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None"
-                }
-            }
+                    "S3CompressionType": "None",
+                },
+            },
         ],
         "output_config": {
             "Outputs": [
@@ -1898,15 +1889,14 @@ def test_script_processor_with_parameter_string(
                     "AppManaged": False,
                     "S3Output": {
                         "S3Uri": ParameterString(
-                            name="output_data",
-                            default_value="s3://dummy-bucket/output"
+                            name="output_data", default_value="s3://dummy-bucket/output"
                         ),
                         "LocalPath": "/opt/ml/processing/output",
-                        "S3UploadMode": "EndOfJob"
-                    }
+                        "S3UploadMode": "EndOfJob",
+                    },
                 }
             ],
-            "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/output-kms-key"
+            "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
         },
         "job_name": "test_job",
         "resources": {
@@ -1914,7 +1904,7 @@ def test_script_processor_with_parameter_string(
                 "InstanceType": "ml.m4.xlarge",
                 "InstanceCount": 1,
                 "VolumeSizeInGB": 100,
-                "VolumeKmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/volume-kms-key"
+                "VolumeKmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
             }
         },
         "stopping_condition": {"MaxRuntimeInSeconds": 3600},
@@ -1922,14 +1912,17 @@ def test_script_processor_with_parameter_string(
             "ImageUri": "custom-image-uri",
             "ContainerArguments": [
                 "--input-data",
-                "s3://dummy-bucket/input-param",
+                '{"Get": "Parameters.input_param"}',
                 "--output-path",
-                "s3://dummy-bucket/output-param",
-                "--exec-arg", "ExecutionTest",
-                "--join-arg", "s3://bucket/prefix/file.txt",
-                "--string-param", "test-variable"
+                '{"Get": "Parameters.output_param"}',
+                "--exec-arg",
+                '{"Get": "Execution.ExecutionTest"}',
+                "--join-arg",
+                '{"Std:Join": {"On": "/", "Values": ["s3://bucket", "prefix", "file.txt"]}}',
+                "--string-param",
+                "test-variable",
             ],
-            "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/processing_code.py"]
+            "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/processing_code.py"],
         },
         "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {
@@ -1937,12 +1930,12 @@ def test_script_processor_with_parameter_string(
             "EnableInterContainerTrafficEncryption": True,
             "VpcConfig": {
                 "SecurityGroupIds": ["my_security_group_id"],
-                "Subnets": ["my_subnet_id"]
-            }
+                "Subnets": ["my_subnet_id"],
+            },
         },
         "role_arn": "arn:aws:iam::012345678901:role/SageMakerRole",
         "tags": [{"Key": "my-tag", "Value": "my-tag-value"}],
-        "experiment_config": {"ExperimentName": "AnExperiment"}
+        "experiment_config": {"ExperimentName": "AnExperiment"},
     }
 
     # Run processor
@@ -1955,9 +1948,12 @@ def test_script_processor_with_parameter_string(
             input_param,
             "--output-path",
             output_param,
-             "--exec-arg", exec_var,
-            "--join-arg", join_var,
-            "--string-param", dummy_str_var
+            "--exec-arg",
+            exec_var,
+            "--join-arg",
+            join_var,
+            "--string-param",
+            dummy_str_var,
         ],
         wait=True,
         logs=False,
@@ -1968,5 +1964,3 @@ def test_script_processor_with_parameter_string(
     # Assert
     sagemaker_session.process.assert_called_with(**expected_args)
     assert "test_job" in processor._current_job_name
-
-
