@@ -19,7 +19,7 @@ import json
 import pytest
 
 from mock import Mock, call, patch
-from mock.mock import MagicMock, ANY
+from mock.mock import MagicMock
 
 from sagemaker import s3
 from sagemaker.remote_function.job import _JobSettings
@@ -345,7 +345,7 @@ def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_ar
         role_arn=role_arn,
         parallelism_config=dict(MaxParallelExecutionSteps=10),
     )
-    pipeline.update(  
+    pipeline.update(
         role_arn=role_arn,
         parallelism_config={"MaxParallelExecutionSteps": 10},
     )
@@ -422,9 +422,7 @@ def test_pipeline_upsert_resource_already_exists(sagemaker_session_mock, role_ar
     sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_once_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
-    sagemaker_session_mock.sagemaker_client.list_tags.assert_called_with(
-        ResourceArn="pipeline-arn"
-    )
+    sagemaker_session_mock.sagemaker_client.list_tags.assert_called_with(ResourceArn="pipeline-arn")
 
     tags.append({"Key": "dummy", "Value": "dummy_tag"})
     sagemaker_session_mock.sagemaker_client.add_tags.assert_called_with(
