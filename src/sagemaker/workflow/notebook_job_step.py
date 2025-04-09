@@ -13,49 +13,33 @@
 """The notebook job step definitions for workflow."""
 from __future__ import absolute_import
 
+import os
 import re
 import shutil
-import os
+from typing import Dict, List, Optional, Union
 
-from typing import (
-    List,
-    Optional,
-    Union,
-    Dict,
+from sagemaker import vpc_utils
+from sagemaker.config.config_schema import (
+    NOTEBOOK_JOB_ROLE_ARN,
+    NOTEBOOK_JOB_S3_KMS_KEY_ID,
+    NOTEBOOK_JOB_S3_ROOT_URI,
+    NOTEBOOK_JOB_VOLUME_KMS_KEY_ID,
+    NOTEBOOK_JOB_VPC_CONFIG_SECURITY_GROUP_IDS,
+    NOTEBOOK_JOB_VPC_CONFIG_SUBNETS,
 )
-
+from sagemaker.s3 import S3Uploader
+from sagemaker.s3_utils import s3_path_join
+from sagemaker.session import get_execution_role
+from sagemaker.utils import Tags, _tmpdir, format_tags, name_from_base, resolve_value_from_config
+from sagemaker.workflow.entities import PipelineVariable, RequestType
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
-from sagemaker.workflow.steps import (
-    Step,
-    ConfigurableRetryStep,
-    StepTypeEnum,
-)
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.step_outputs import StepOutput
-
-from sagemaker.workflow.entities import (
-    RequestType,
-    PipelineVariable,
-)
+from sagemaker.workflow.steps import ConfigurableRetryStep, Step, StepTypeEnum
 from sagemaker.workflow.utilities import _collect_parameters, load_step_compilation_context
-from sagemaker.session import get_execution_role
-
-from sagemaker.s3_utils import s3_path_join
-from sagemaker.s3 import S3Uploader
-from sagemaker.utils import _tmpdir, name_from_base, resolve_value_from_config, format_tags, Tags
-from sagemaker import vpc_utils
-
-from sagemaker.config.config_schema import (
-    NOTEBOOK_JOB_ROLE_ARN,
-    NOTEBOOK_JOB_S3_ROOT_URI,
-    NOTEBOOK_JOB_S3_KMS_KEY_ID,
-    NOTEBOOK_JOB_VOLUME_KMS_KEY_ID,
-    NOTEBOOK_JOB_VPC_CONFIG_SUBNETS,
-    NOTEBOOK_JOB_VPC_CONFIG_SECURITY_GROUP_IDS,
-)
 
 
 # disable E1101 as collect_parameters decorator sets the attributes
@@ -374,7 +358,7 @@ class NotebookJobStep(ConfigurableRetryStep):
         execution mechanism.
         """
 
-        job_envs = self.environment_variables if self.environment_variables else {}
+        job_envs = dict(self.environment_variables or {})
         system_envs = {
             "AWS_DEFAULT_REGION": self._region_from_session,
             "SM_JOB_DEF_VERSION": "1.0",
