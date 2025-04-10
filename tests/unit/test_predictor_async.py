@@ -233,7 +233,7 @@ def test_async_predict_call_verify_exceptions():
     with pytest.raises(
         PollingTimeoutError,
         match=f"No result at {ASYNC_OUTPUT_LOCATION} after polling for "
-        f"{DEFAULT_WAITER_CONFIG.delay*DEFAULT_WAITER_CONFIG.max_attempts}"
+        f"{DEFAULT_WAITER_CONFIG.delay * DEFAULT_WAITER_CONFIG.max_attempts}"
         f" seconds. Inference could still be running",
     ):
         predictor_async.predict(input_path=input_location, waiter_config=DEFAULT_WAITER_CONFIG)
@@ -253,7 +253,7 @@ def test_async_predict_call_verify_exceptions_with_null_failure_path():
     with pytest.raises(
         PollingTimeoutError,
         match=f"No result at {ASYNC_OUTPUT_LOCATION} after polling for "
-        f"{DEFAULT_WAITER_CONFIG.delay*DEFAULT_WAITER_CONFIG.max_attempts}"
+        f"{DEFAULT_WAITER_CONFIG.delay * DEFAULT_WAITER_CONFIG.max_attempts}"
         f" seconds. Inference could still be running",
     ):
         predictor_async.predict(input_path=input_location, waiter_config=DEFAULT_WAITER_CONFIG)
