@@ -1,7 +1,7 @@
 tox==3.24.5
 numpy>=1.26.0,<2.0
 build[virtualenv]==1.2.1
-flake8==7.2.0
+flake8==7.1.2
 pytest==6.2.5
 pytest-cov==3.0.0
 pytest-rerunfailures==10.2
