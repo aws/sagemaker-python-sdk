@@ -84,7 +84,7 @@ def prepare_for_mms(
     image_uri: str,
     inference_spec: InferenceSpec = None,
 ) -> str:
-    """Prepares for InferenceSpec using model_path, writes inference.py,
+    """Prepares for InferenceSpec using model_path, writes inference.py, \
         and captures dependencies to generate secret_key.
 
     Args:to

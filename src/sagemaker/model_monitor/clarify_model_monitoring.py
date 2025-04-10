@@ -86,7 +86,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
-        if type(self) is __class__:
+        if self.__class__ is __class__:
             raise TypeError(
                 f"{__class__.__name__} is abstract, please instantiate its subclasses instead."
             )

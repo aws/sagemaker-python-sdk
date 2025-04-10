@@ -847,8 +847,8 @@ class _LocalPipelineExecution(object):
                 parameter_type = default_parameters[param_name].parameter_type
                 if not isinstance(param_value, parameter_type.python_type):
                     error_msg = self._construct_validation_exception_message(
-                        f"Unexpected type for parameter '{param_name}'. Expected {parameter_type.python_type} \
-                            but found {type(param_value)}."
+                        f"Unexpected type for parameter '{param_name}'. Expected \
+                            {parameter_type.python_type} but found {type(param_value)}."
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
                 if param_value == "":
