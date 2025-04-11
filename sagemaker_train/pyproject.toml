@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sagemaker_train"
+dynamic = ["version", "optional-dependencies"]
+description = "Open source library for training and deploying models on Amazon SageMaker."
+readme = "README.rst"
+requires-python = ">=3.9"
+authors = [
+  { name = "Amazon Web Services" },
+]
+keywords = [
+  "AI",
+  "AWS",
+  "Amazon",
+  "ML",
+  "MXNet",
+  "Tensorflow",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Natural Language :: English",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+  #"sagemaker",
+  "sagemaker-core>=1.0.17,<2.0.0"
+]
+
+#[tool.setuptools.dynamic]
+#version = {attr = "my_package.__version__"}
+
+[project.urls]
+Homepage = "https://github.com/aws/sagemaker-python-sdk"
+
+
+[tool.pytest.ini_options]
+addopts = ["-vv"]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100

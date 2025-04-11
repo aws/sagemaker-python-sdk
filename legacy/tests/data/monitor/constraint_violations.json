@@ -1,0 +1,31 @@
+{
+  "violations" : [ {
+    "feature_name" : "store_and_fwd_flag",
+    "constraint_check_type" : "categorical_values_check",
+    "description" : "Value: 0.009009009009009009 does not meet the constraint requirement! "
+  }, {
+    "feature_name" : "fare_amount",
+    "constraint_check_type" : "data_type_check",
+    "description" : "Value: 0.4994994994994995 does not meet the constraint requirement! "
+  }, {
+    "feature_name" : "total_amount",
+    "constraint_check_type" : "data_type_check",
+    "description" : "Value: 0.986986986986987 does not meet the constraint requirement! "
+  }, {
+    "feature_name" : "congestion_surcharge",
+    "constraint_check_type" : "completeness_check",
+    "description" : "Value: 0.0 does not meet the constraint requirement! "
+  }, {
+    "feature_name" : "tolls_amount",
+    "constraint_check_type" : "data_type_check",
+    "description" : "Value: 0.973973973973974 does not meet the constraint requirement! "
+  }, {
+    "feature_name" : "extra",
+    "constraint_check_type" : "data_type_check",
+    "description" : "Value: 0.985985985985986 does not meet the constraint requirement! "
+  }, {
+    "feature_name" : "tip_amount",
+    "constraint_check_type" : "data_type_check",
+    "description" : "Value: 0.4974974974974975 does not meet the constraint requirement! "
+  } ]
+}
