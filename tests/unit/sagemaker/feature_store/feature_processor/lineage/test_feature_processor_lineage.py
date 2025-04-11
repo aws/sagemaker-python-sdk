@@ -113,69 +113,85 @@ def test_create_lineage_when_no_lineage_exists_with_fg_only():
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_1,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        side_effect=RESOURCE_NOT_FOUND_EXCEPTION,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineLineageEntityHandler,
-        "create_pipeline_context",
-        return_value=PIPELINE_CONTEXT,
-    ), patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            [],
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_1,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            side_effect=RESOURCE_NOT_FOUND_EXCEPTION,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "create_pipeline_context",
+            return_value=PIPELINE_CONTEXT,
+        ),
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                [],
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+    ):
         lineage_handler.create_lineage()
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -259,75 +275,92 @@ def test_create_lineage_when_no_lineage_exists_with_raw_data_only():
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_1,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        side_effect=RESOURCE_NOT_FOUND_EXCEPTION,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineLineageEntityHandler,
-        "create_pipeline_context",
-        return_value=PIPELINE_CONTEXT,
-    ), patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            [],
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_1,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            side_effect=RESOURCE_NOT_FOUND_EXCEPTION,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "create_pipeline_context",
+            return_value=PIPELINE_CONTEXT,
+        ),
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                [],
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_called_once_with(
@@ -408,75 +441,92 @@ def test_create_lineage_when_no_lineage_exists_with_fg_and_raw_data_with_tags():
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_1,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        side_effect=RESOURCE_NOT_FOUND_EXCEPTION,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineLineageEntityHandler,
-        "create_pipeline_context",
-        return_value=PIPELINE_CONTEXT,
-    ), patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            [],
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_1,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            side_effect=RESOURCE_NOT_FOUND_EXCEPTION,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "create_pipeline_context",
+            return_value=PIPELINE_CONTEXT,
+        ),
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                [],
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -569,75 +619,92 @@ def test_create_lineage_when_no_lineage_exists_with_no_transformation_code():
         output=FEATURE_GROUP_DATA_SOURCE[0].name,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=None,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        side_effect=RESOURCE_NOT_FOUND_EXCEPTION,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineLineageEntityHandler,
-        "create_pipeline_context",
-        return_value=PIPELINE_CONTEXT,
-    ), patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            [],
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=None,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            side_effect=RESOURCE_NOT_FOUND_EXCEPTION,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "create_pipeline_context",
+            return_value=PIPELINE_CONTEXT,
+        ),
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                [],
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -728,78 +795,96 @@ def test_create_lineage_when_already_exist_with_no_version_change():
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_1,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=PIPELINE_CONTEXT,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler,
-        "load_artifact_from_arn",
-        return_value=transformation_code_1,
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler,
-        "update_transformation_code_artifact",
-    ) as update_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as create_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_1,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=PIPELINE_CONTEXT,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "load_artifact_from_arn",
+            return_value=transformation_code_1,
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "update_transformation_code_artifact",
+        ) as update_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as create_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -925,73 +1010,91 @@ def test_create_lineage_when_already_exist_with_changed_raw_data():
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[RAW_DATA_INPUT_ARTIFACTS[0], RAW_DATA_INPUT_ARTIFACTS[1]],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_1,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=pipeline_context,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler,
-        "load_artifact_from_arn",
-        return_value=transformation_code_1,
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler,
-        "update_transformation_code_artifact",
-    ) as update_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[RAW_DATA_INPUT_ARTIFACTS[0], RAW_DATA_INPUT_ARTIFACTS[1]],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_1,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=pipeline_context,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "load_artifact_from_arn",
+            return_value=transformation_code_1,
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "update_transformation_code_artifact",
+        ) as update_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -1140,74 +1243,92 @@ def test_create_lineage_when_already_exist_with_changed_input_fg():
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[FEATURE_GROUP_INPUT[0], FEATURE_GROUP_INPUT[0]],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_1,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=pipeline_context,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler,
-        "load_artifact_from_arn",
-        return_value=transformation_code_1,
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler,
-        "update_transformation_code_artifact",
-    ) as update_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[FEATURE_GROUP_INPUT[0], FEATURE_GROUP_INPUT[0]],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_1,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=pipeline_context,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "load_artifact_from_arn",
+            return_value=transformation_code_1,
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "update_transformation_code_artifact",
+        ) as update_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -1354,78 +1475,96 @@ def test_create_lineage_when_already_exist_with_changed_output_fg():
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[1],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_1,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=pipeline_context,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler,
-        "load_artifact_from_arn",
-        return_value=transformation_code_1,
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler,
-        "update_transformation_code_artifact",
-    ) as update_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[1],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_1,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=pipeline_context,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "load_artifact_from_arn",
+            return_value=transformation_code_1,
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "update_transformation_code_artifact",
+        ) as update_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -1576,78 +1715,96 @@ def test_create_lineage_when_already_exist_with_changed_transformation_code():
         transformation_code=TRANSFORMATION_CODE_INPUT_2,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_2,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=pipeline_context,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler,
-        "load_artifact_from_arn",
-        return_value=transformation_code_1,
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler,
-        "update_transformation_code_artifact",
-    ) as update_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_2,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=pipeline_context,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "load_artifact_from_arn",
+            return_value=transformation_code_1,
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "update_transformation_code_artifact",
+        ) as update_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -1778,78 +1935,96 @@ def test_create_lineage_when_already_exist_with_last_transformation_code_as_none
         transformation_code=TRANSFORMATION_CODE_INPUT_2,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_2,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=pipeline_context,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler,
-        "load_artifact_from_arn",
-        return_value=transformation_code_1,
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler,
-        "update_transformation_code_artifact",
-    ) as update_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_2,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=pipeline_context,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "load_artifact_from_arn",
+            return_value=transformation_code_1,
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "update_transformation_code_artifact",
+        ) as update_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -1968,77 +2143,95 @@ def test_create_lineage_when_already_exist_with_all_previous_transformation_code
         transformation_code=TRANSFORMATION_CODE_INPUT_2,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=TRANSFORMATION_CODE_ARTIFACT_2,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=pipeline_context,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            iter([]),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler,
-        "load_artifact_from_arn",
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler,
-        "update_transformation_code_artifact",
-    ) as update_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=TRANSFORMATION_CODE_ARTIFACT_2,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=pipeline_context,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                iter([]),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "load_artifact_from_arn",
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "update_transformation_code_artifact",
+        ) as update_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -2154,78 +2347,96 @@ def test_create_lineage_when_already_exist_with_removed_transformation_code():
         output=FEATURE_GROUP_DATA_SOURCE[0].name,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        FeatureGroupLineageEntityHandler,
-        "retrieve_feature_group_context_arns",
-        side_effect=[
-            FEATURE_GROUP_INPUT[0],
-            FEATURE_GROUP_INPUT[1],
-            FEATURE_GROUP_INPUT[0],
-        ],
-    ) as retrieve_feature_group_context_arns_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        S3LineageEntityHandler,
-        "create_transformation_code_artifact",
-        return_value=None,
-    ) as create_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=pipeline_context,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            generate_pipeline_version_upstream_transformation_code(),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler,
-        "load_artifact_from_arn",
-        return_value=transformation_code_1,
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler,
-        "update_transformation_code_artifact",
-    ) as update_transformation_code_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "update_pipeline_context",
-    ) as update_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "create_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ), patch.object(
-        LineageAssociationHandler, "add_upstream_feature_group_data_associations"
-    ) as add_upstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_downstream_feature_group_data_associations"
-    ) as add_downstream_feature_group_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_raw_data_associations"
-    ) as add_upstream_raw_data_associations_method, patch.object(
-        LineageAssociationHandler, "add_upstream_transformation_code_associations"
-    ) as add_upstream_transformation_code_associations_method, patch.object(
-        LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
-    ) as add_pipeline_and_pipeline_version_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            FeatureGroupLineageEntityHandler,
+            "retrieve_feature_group_context_arns",
+            side_effect=[
+                FEATURE_GROUP_INPUT[0],
+                FEATURE_GROUP_INPUT[1],
+                FEATURE_GROUP_INPUT[0],
+            ],
+        ) as retrieve_feature_group_context_arns_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "create_transformation_code_artifact",
+            return_value=None,
+        ) as create_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=pipeline_context,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                generate_pipeline_version_upstream_transformation_code(),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "load_artifact_from_arn",
+            return_value=transformation_code_1,
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "update_transformation_code_artifact",
+        ) as update_transformation_code_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "update_pipeline_context",
+        ) as update_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "create_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ),
+        patch.object(
+            LineageAssociationHandler, "add_upstream_feature_group_data_associations"
+        ) as add_upstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_downstream_feature_group_data_associations"
+        ) as add_downstream_feature_group_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_raw_data_associations"
+        ) as add_upstream_raw_data_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_upstream_transformation_code_associations"
+        ) as add_upstream_transformation_code_associations_method,
+        patch.object(
+            LineageAssociationHandler, "add_pipeline_and_pipeline_version_association"
+        ) as add_pipeline_and_pipeline_version_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_lineage(TAGS)
 
     retrieve_feature_group_context_arns_method.assert_has_calls(
@@ -2370,15 +2581,18 @@ def test_get_pipeline_lineage_names_when_lineage_exists():
         transformation_code=TRANSFORMATION_CODE_INPUT_1,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=PIPELINE_CONTEXT,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method:
+    with (
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=PIPELINE_CONTEXT,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+    ):
         return_value = lineage_handler.get_pipeline_lineage_names()
 
         assert return_value == dict(
@@ -2416,28 +2630,34 @@ def test_create_schedule_lineage():
         pipeline=PIPELINE,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=PIPELINE_CONTEXT,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_pipeline_schedule_artifact",
-        return_value=SCHEDULE_ARTIFACT_RESULT,
-    ) as retrieve_pipeline_schedule_artifact_method, patch.object(
-        LineageAssociationHandler,
-        "add_upstream_schedule_associations",
-    ) as add_upstream_schedule_associations_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=PIPELINE_CONTEXT,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_pipeline_schedule_artifact",
+            return_value=SCHEDULE_ARTIFACT_RESULT,
+        ) as retrieve_pipeline_schedule_artifact_method,
+        patch.object(
+            LineageAssociationHandler,
+            "add_upstream_schedule_associations",
+        ) as add_upstream_schedule_associations_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_schedule_lineage(
             pipeline_name=PIPELINE_NAME,
             schedule_arn=SCHEDULE_ARN,
@@ -2487,28 +2707,34 @@ def test_create_trigger_lineage():
         pipeline=PIPELINE,
         sagemaker_session=SAGEMAKER_SESSION_MOCK,
     )
-    with patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=PIPELINE_CONTEXT,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        S3LineageEntityHandler,
-        "retrieve_pipeline_trigger_artifact",
-        return_value=PIPELINE_TRIGGER_ARTIFACT,
-    ) as retrieve_pipeline_trigger_artifact_method, patch.object(
-        LineageAssociationHandler,
-        "_add_association",
-    ) as add_association_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags:
+    with (
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=PIPELINE_CONTEXT,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_pipeline_trigger_artifact",
+            return_value=PIPELINE_TRIGGER_ARTIFACT,
+        ) as retrieve_pipeline_trigger_artifact_method,
+        patch.object(
+            LineageAssociationHandler,
+            "_add_association",
+        ) as add_association_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+    ):
         lineage_handler.create_trigger_lineage(
             pipeline_name=PIPELINE_NAME,
             trigger_arn=TRIGGER_ARN,
@@ -2564,56 +2790,68 @@ def test_upsert_tags_for_lineage_resources():
     )
     lineage_handler.sagemaker_session.boto_session = Mock()
     lineage_handler.sagemaker_session.sagemaker_client = Mock()
-    with patch.object(
-        S3LineageEntityHandler,
-        "retrieve_raw_data_artifact",
-        side_effect=[
-            RAW_DATA_INPUT_ARTIFACTS[0],
-            RAW_DATA_INPUT_ARTIFACTS[1],
-            RAW_DATA_INPUT_ARTIFACTS[2],
-            RAW_DATA_INPUT_ARTIFACTS[3],
-        ],
-    ) as retrieve_raw_data_artifact_method, patch.object(
-        PipelineLineageEntityHandler,
-        "load_pipeline_context",
-        return_value=pipeline_context,
-    ) as load_pipeline_context_method, patch.object(
-        PipelineVersionLineageEntityHandler,
-        "load_pipeline_version_context",
-        return_value=PIPELINE_VERSION_CONTEXT,
-    ) as load_pipeline_version_context_method, patch.object(
-        LineageAssociationHandler,
-        "list_upstream_associations",
-        side_effect=[
-            generate_pipeline_version_upstream_feature_group_list(),
-            generate_pipeline_version_upstream_raw_data_list(),
-            iter([]),
-        ],
-    ) as list_upstream_associations_method, patch.object(
-        LineageAssociationHandler,
-        "list_downstream_associations",
-        return_value=generate_pipeline_version_downstream_feature_group(),
-    ) as list_downstream_associations_method, patch.object(
-        S3LineageEntityHandler, "load_artifact_from_arn", return_value=ARTIFACT_RESULT
-    ) as load_artifact_from_arn_method, patch.object(
-        S3LineageEntityHandler, "_load_artifact_from_s3_uri", return_value=ARTIFACT_SUMMARY
-    ) as load_artifact_from_s3_uri_method, patch.object(
-        Artifact,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as artifact_set_tags, patch.object(
-        Context,
-        "set_tags",
-        return_value={
-            "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
-        },
-    ) as context_set_tags, patch.object(
-        EventBridgeSchedulerHelper, "describe_schedule", return_value=dict(Arn="schedule_arn")
-    ) as get_event_bridge_schedule, patch.object(
-        EventBridgeRuleHelper, "describe_rule", return_value=dict(Arn="rule_arn")
-    ) as get_event_bridge_rule:
+    with (
+        patch.object(
+            S3LineageEntityHandler,
+            "retrieve_raw_data_artifact",
+            side_effect=[
+                RAW_DATA_INPUT_ARTIFACTS[0],
+                RAW_DATA_INPUT_ARTIFACTS[1],
+                RAW_DATA_INPUT_ARTIFACTS[2],
+                RAW_DATA_INPUT_ARTIFACTS[3],
+            ],
+        ) as retrieve_raw_data_artifact_method,
+        patch.object(
+            PipelineLineageEntityHandler,
+            "load_pipeline_context",
+            return_value=pipeline_context,
+        ) as load_pipeline_context_method,
+        patch.object(
+            PipelineVersionLineageEntityHandler,
+            "load_pipeline_version_context",
+            return_value=PIPELINE_VERSION_CONTEXT,
+        ) as load_pipeline_version_context_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_upstream_associations",
+            side_effect=[
+                generate_pipeline_version_upstream_feature_group_list(),
+                generate_pipeline_version_upstream_raw_data_list(),
+                iter([]),
+            ],
+        ) as list_upstream_associations_method,
+        patch.object(
+            LineageAssociationHandler,
+            "list_downstream_associations",
+            return_value=generate_pipeline_version_downstream_feature_group(),
+        ) as list_downstream_associations_method,
+        patch.object(
+            S3LineageEntityHandler, "load_artifact_from_arn", return_value=ARTIFACT_RESULT
+        ) as load_artifact_from_arn_method,
+        patch.object(
+            S3LineageEntityHandler, "_load_artifact_from_s3_uri", return_value=ARTIFACT_SUMMARY
+        ) as load_artifact_from_s3_uri_method,
+        patch.object(
+            Artifact,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as artifact_set_tags,
+        patch.object(
+            Context,
+            "set_tags",
+            return_value={
+                "Tags": [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
+            },
+        ) as context_set_tags,
+        patch.object(
+            EventBridgeSchedulerHelper, "describe_schedule", return_value=dict(Arn="schedule_arn")
+        ) as get_event_bridge_schedule,
+        patch.object(
+            EventBridgeRuleHelper, "describe_rule", return_value=dict(Arn="rule_arn")
+        ) as get_event_bridge_rule,
+    ):
         lineage_handler.upsert_tags_for_lineage_resources(TAGS)
 
     retrieve_raw_data_artifact_method.assert_has_calls(

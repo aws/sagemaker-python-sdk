@@ -1,2 +1,2 @@
-pylint==2.6.2
-astroid==2.4.2
+pylint==2.14.0
+astroid==2.11.5
