@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.243.1 (2025-04-11)
+
+### Bug Fixes and Other Changes
+
+ * Added handler for pipeline variable while creating process job
+ * Fix issue #4856 by copying environment variables
+ * remove historical job_name caching which causes long job name
+ * Update instance gpu info
+ * Master
+ * Add mlflow tracking arn telemetry
+ * chore: fix semantic versioning for wildcard identifier
+ * flaky test
+
+### Documentation Changes
+
+ * update pipelines step caching examples to include more steps
+ * update ModelStep data dependency info
+
 ## v2.243.0 (2025-03-27)
 
 ### Features
