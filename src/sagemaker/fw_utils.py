@@ -198,10 +198,11 @@ def validate_source_dir(script, directory):
             not contain ``script``.
     """
     if directory:
-        if not os.path.isfile(os.path.join(directory, script)):
+        if script.endswith(".py") and not os.path.isfile(os.path.join(directory, script)):
             raise ValueError(
                 'No file named "{}" was found in directory "{}".'.format(script, directory)
             )
+
 
     return True
 
@@ -1063,10 +1064,10 @@ def validate_torch_distributed_distribution(
             )
 
     # Check entry point type
-    if not entry_point.endswith(".py"):
+    if not entry_point.startswith("-m") and not entry_point.endswith(".py"):
         err_msg += (
             "Unsupported entry point type for the distribution torch_distributed.\n"
-            "Only python programs (*.py) are supported."
+            "Only python programs (*.py) or modules (-m *) are supported."
         )
 
     if err_msg:
