@@ -91,10 +91,10 @@ def test_huggingface_uris(load_config):
             # that doesn't involve a human raising a PR.
             if parse(version) > parse(highest_version):
                 print(
-                    f"Skipping test for version {version} as it is higher than "
-                    "the highest known version {highest_version}. There is "
+                    f"Skipping version check for {version} as there is "
                     "automation that now updates the image_uri_config "
-                    "without a human raising a PR."
+                    "without a human raising a PR. Tests will pass for "
+                    f"versions higher than {highest_version} that are not in HF_VERSIONS_MAPPING."
                 )
                 continue
 
