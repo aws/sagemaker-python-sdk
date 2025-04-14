@@ -825,6 +825,13 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
     processor.sagemaker_session = pipeline_session
     processor.role = ROLE
 
+    arguments_output = [
+        "--input",
+        "input-data-uri",
+        "--output",
+        '{"Get": "Parameters.MyArgOutput"}',
+    ]
+
     run_inputs["inputs"] = processing_input
 
     step_args = processor.run(**run_inputs)
@@ -835,7 +842,7 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
 
     step_args = get_step_args_helper(step_args, "Processing")
 
-    assert step_args["AppSpecification"]["ContainerArguments"] == run_inputs["arguments"]
+    assert step_args["AppSpecification"]["ContainerArguments"] == arguments_output
 
     entry_points = step_args["AppSpecification"]["ContainerEntrypoint"]
     entry_points_expr = []
@@ -1020,6 +1027,13 @@ def test_spark_processor_local_code(spark_processor, processing_input, pipeline_
     processor.sagemaker_session = pipeline_session
     processor.role = ROLE
 
+    arguments_output = [
+        "--input",
+        "input-data-uri",
+        "--output",
+        '{"Get": "Parameters.MyArgOutput"}',
+    ]
+
     run_inputs["inputs"] = processing_input
 
     step_args = processor.run(**run_inputs)
@@ -1030,7 +1044,7 @@ def test_spark_processor_local_code(spark_processor, processing_input, pipeline_
 
     step_args = get_step_args_helper(step_args, "Processing")
 
-    assert step_args["AppSpecification"]["ContainerArguments"] == run_inputs["arguments"]
+    assert step_args["AppSpecification"]["ContainerArguments"] == arguments_output
 
     entry_points = step_args["AppSpecification"]["ContainerEntrypoint"]
     entry_points_expr = []
