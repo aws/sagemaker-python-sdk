@@ -79,7 +79,7 @@ def test_huggingface_uris(load_config):
         raise ValueError(f"Device {device} not found in HF_VERSIONS_MAPPING")
 
     # Get highest version for the device
-    highest_version = max(HF_VERSIONS_MAPPING[device].keys(), key=lambda x: version.parse(x))
+    highest_version = max(HF_VERSIONS_MAPPING[device].keys(), key=lambda x: parse(x))
 
     for version in VERSIONS:
         ACCOUNTS = load_config["inference"]["versions"][version]["registries"]
