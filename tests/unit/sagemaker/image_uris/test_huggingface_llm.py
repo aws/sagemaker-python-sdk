@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
-from packaging import version
+from packaging.version import parse
 
 from sagemaker.huggingface import get_huggingface_llm_image_uri
 from tests.unit.sagemaker.image_uris import expected_uris, conftest
@@ -89,10 +89,12 @@ def test_huggingface_uris(load_config):
             # Skip only if test version is higher than highest known version.
             # There's now automation to add new TGI releases to image_uri_config directory
             # that doesn't involve a human raising a PR.
-            if version.parse(version) > version.parse(highest_version):
+            if parse(version) > parse(highest_version):
                 print(
-                    f"Skipping test for version {test_version} as it is higher than the highest known version {highest_version}. "
-                    "There is automation that now updates the image_uri_config without a human raising a PR."
+                    f"Skipping test for version {version} as it is higher than "
+                    "the highest known version {highest_version}. There is "
+                    "automation that now updates the image_uri_config "
+                    "without a human raising a PR."
                 )
                 continue
 
