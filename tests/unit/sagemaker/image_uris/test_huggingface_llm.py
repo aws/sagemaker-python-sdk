@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
+from packaging import version
 
 from sagemaker.huggingface import get_huggingface_llm_image_uri
 from tests.unit.sagemaker.image_uris import expected_uris, conftest
@@ -72,10 +73,29 @@ def test_huggingface_uris(load_config):
     VERSIONS = load_config["inference"]["versions"]
     device = load_config["inference"]["processors"][0]
     backend = "huggingface-neuronx" if device == "inf2" else "huggingface"
+
+    # Fail if device is not in mapping
+    if device not in HF_VERSIONS_MAPPING:
+        raise ValueError(f"Device {device} not found in HF_VERSIONS_MAPPING")
+
+    # Get highest version for the device
+    highest_version = max(HF_VERSIONS_MAPPING[device].keys(), key=lambda x: version.parse(x))
+
     for version in VERSIONS:
         ACCOUNTS = load_config["inference"]["versions"][version]["registries"]
         for region in ACCOUNTS.keys():
             uri = get_huggingface_llm_image_uri(backend, region=region, version=version)
+
+            # Skip only if test version is higher than highest known version.
+            # There's now automation to add new TGI releases to image_uri_config directory
+            # that doesn't involve a human raising a PR.
+            if version.parse(version) > version.parse(highest_version):
+                print(
+                    f"Skipping test for version {test_version} as it is higher than the highest known version {highest_version}. "
+                    "There is automation that now updates the image_uri_config without a human raising a PR."
+                )
+                continue
+
             expected = expected_uris.huggingface_llm_framework_uri(
                 "huggingface-pytorch-tgi-inference",
                 ACCOUNTS[region],
