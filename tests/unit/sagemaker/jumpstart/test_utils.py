@@ -13,10 +13,9 @@
 from __future__ import absolute_import
 import os
 from unittest import TestCase
-from unittest.mock import call
-
+from unittest.mock import call, mock_open, Mock, patch
+import json
 from botocore.exceptions import ClientError
-from mock.mock import Mock, patch
 import pytest
 import boto3
 import random
@@ -24,6 +23,7 @@ from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
+    _load_region_config,
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
@@ -38,6 +38,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_RESOURCE_BASE_NAME,
     NEO_DEFAULT_REGION_NAME,
     JumpStartScriptScope,
+    JUMPSTART_LAUNCHED_REGIONS,
 )
 from functools import partial
 from sagemaker.jumpstart.enums import JumpStartTag, MIMEType, JumpStartModelType
@@ -49,6 +50,7 @@ from sagemaker.jumpstart.types import (
     JumpStartBenchmarkStat,
     JumpStartModelHeader,
     JumpStartVersionedModelId,
+    JumpStartLaunchedRegionInfo,
 )
 from tests.unit.sagemaker.jumpstart.utils import (
     get_base_spec_with_prototype_configs,
@@ -1569,6 +1571,109 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_list_tags.assert_called_once_with("some-arn")
 
 
+class TestJumpStartLaunchedRegions(TestCase):
+    def test_regions_not_empty(self):
+        self.assertTrue(len(JUMPSTART_LAUNCHED_REGIONS) > 0)
+
+
+class TestLoadRegionConfig(TestCase):
+    def setUp(self):
+        # Sample valid config that matches the expected structure
+        self.valid_config = {
+            "us-east-1": {
+                "content_bucket": "jumpstart-cache-prod-us-east-1",
+                "gated_content_bucket": "jumpstart-private-cache-prod-us-east-1",
+                "neo_content_bucket": "jumpstart-neo-cache-prod-us-east-1",
+            },
+            "us-west-2": {
+                "content_bucket": "jumpstart-cache-prod-us-west-2",
+            },
+        }
+        self.config_json = json.dumps(self.valid_config)
+
+    @patch("builtins.open", new_callable=mock_open)
+    def test_successful_config_load(self, mock_file):
+        # Setup mock to return valid config
+        mock_file.return_value.__enter__().read.return_value = self.config_json
+
+        result = _load_region_config("dummy/path")
+
+        # Verify the returned dictionary contains JumpStartLaunchedRegionInfo objects
+        self.assertTrue(all(isinstance(region, JumpStartLaunchedRegionInfo) for region in result))
+
+        for region in result:
+            if region.region_name == "us-east-1":
+                self.assertEqual(region.region_name, "us-east-1")
+                self.assertEqual(region.content_bucket, "jumpstart-cache-prod-us-east-1")
+                self.assertEqual(
+                    region.gated_content_bucket, "jumpstart-private-cache-prod-us-east-1"
+                )
+                self.assertEqual(region.neo_content_bucket, "jumpstart-neo-cache-prod-us-east-1")
+
+            elif region.region_name == "us-west-2":
+                self.assertEqual(region.region_name, "us-west-2")
+                self.assertEqual(region.content_bucket, "jumpstart-cache-prod-us-west-2")
+                self.assertIsNone(region.gated_content_bucket)
+                self.assertIsNone(region.neo_content_bucket)
+            else:
+                raise AssertionError(f"Unexpected region name found: {region.region_name}")
+
+    @patch("builtins.open", new_callable=mock_open)
+    def test_missing_required_field(self, mock_file):
+        # Config missing required content_bucket field
+        invalid_config = {
+            "us-east-1": {
+                "gated_content_bucket": "XXXXXXXXXXX",
+                "neo_content_bucket": "some-other-bucket",
+            }
+        }
+        mock_file.return_value.__enter__().read.return_value = json.dumps(invalid_config)
+
+        # Should return empty dict due to exception handling
+        result = _load_region_config("dummy/path")
+        self.assertEqual(result, set())
+
+    @patch("builtins.open")
+    def test_file_not_found(self, mock_file):
+        # Simulate file not found
+        mock_file.side_effect = FileNotFoundError()
+
+        # Should return empty dict due to exception handling
+        result = _load_region_config("dummy/path")
+        self.assertEqual(result, set())
+
+    @patch("builtins.open", new_callable=mock_open)
+    def test_invalid_json(self, mock_file):
+        # Setup mock to return invalid JSON
+        mock_file.return_value.__enter__().read.return_value = "invalid json content"
+
+        # Should return empty dict due to exception handling
+        result = _load_region_config("dummy/path")
+        self.assertEqual(result, set())
+
+    @patch("builtins.open", new_callable=mock_open)
+    def test_empty_config(self, mock_file):
+        # Setup mock to return empty JSON object
+        mock_file.return_value.__enter__().read.return_value = "{}"
+
+        result = _load_region_config("dummy/path")
+        self.assertEqual(result, set())
+
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER")
+    @patch("builtins.open")
+    def test_logging_on_error(self, mock_file, mock_logger):
+
+        # Simulate an error
+        mock_file.side_effect = Exception("Test error")
+
+        result = _load_region_config("dummy/path")
+
+        self.assertEqual(result, set())
+
+        # Verify error was logged
+        mock_logger.error.assert_called_once()
+
+
 class TestJumpStartLogger(TestCase):
     @patch.dict("os.environ", {})
     @patch("logging.StreamHandler.emit")
@@ -2142,6 +2247,22 @@ def test_add_instance_rate_stats_to_benchmark_metrics_client_ex(
 )
 def test_has_instance_rate_stat(stats, expected):
     assert utils.has_instance_rate_stat(stats) is expected
+
+
+def test_get_latest_version():
+    assert utils.get_latest_version(["2.9.1", "2.16.0", "1.0.0"]) == "2.16.0"
+
+
+def test_get_latest_version_empty_list_is_none():
+    assert utils.get_latest_version([]) is None
+
+
+def test_get_latest_version_none_is_none():
+    assert utils.get_latest_version(None) is None
+
+
+def test_get_latest_version_with_invalid_sem_ver():
+    assert utils.get_latest_version(["2.9.1", "2.16.0", "1.0.0", "abc"]) == "abc"
 
 
 @pytest.mark.parametrize(

@@ -23,6 +23,7 @@ from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.explainer import ExplainerConfig
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
+from sagemaker.enums import EndpointType
 from tests.unit.sagemaker.inference_recommender.constants import (
     DESCRIBE_COMPILATION_JOB_RESPONSE,
     DESCRIBE_MODEL_PACKAGE_RESPONSE,
@@ -130,6 +131,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         routing_config=None,
+        inference_ami_version=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -192,6 +194,7 @@ def test_deploy_accelerator_type(
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         routing_config=None,
+        inference_ami_version=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -519,6 +522,7 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         routing_config=None,
+        inference_ami_version=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -956,6 +960,7 @@ def test_deploy_customized_volume_size_and_timeout(
         model_data_download_timeout=model_data_download_timeout_sec,
         container_startup_health_check_timeout=startup_health_check_timeout_sec,
         routing_config=None,
+        inference_ami_version=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -1006,6 +1011,7 @@ def test_deploy_with_resources(sagemaker_session, name_from_base, production_var
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         routing_config=None,
+        inference_ami_version=None,
     )
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=name_from_base(MODEL_NAME),
@@ -1046,3 +1052,143 @@ def test_deploy_with_name_and_resources(sagemaker_session):
         async_inference_config_dict=None,
         live_logging=False,
     )
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_with_update_endpoint(production_variant, name_from_base, sagemaker_session):
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+    )
+
+    # Mock the create_endpoint_config to return a specific config name
+    endpoint_config_name = "test-config-name"
+    sagemaker_session.create_endpoint_config.return_value = endpoint_config_name
+
+    # Test update_endpoint=True scenario
+    endpoint_name = "existing-endpoint"
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        endpoint_name=endpoint_name,
+        update_endpoint=True,
+    )
+
+    # Verify create_endpoint_config is called with correct parameters
+    sagemaker_session.create_endpoint_config.assert_called_with(
+        name=MODEL_NAME,
+        model_name=MODEL_NAME,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        accelerator_type=None,
+        tags=None,
+        kms_key=None,
+        data_capture_config_dict=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
+        explainer_config_dict=None,
+        async_inference_config_dict=None,
+        serverless_inference_config=None,
+        routing_config=None,
+        inference_ami_version=None,
+    )
+
+    # Verify update_endpoint is called with correct parameters
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, endpoint_config_name)
+
+    # Test update_endpoint with serverless config
+    serverless_inference_config = ServerlessInferenceConfig()
+    serverless_inference_config_dict = {
+        "MemorySizeInMB": 2048,
+        "MaxConcurrency": 5,
+    }
+    model.deploy(
+        endpoint_name=endpoint_name,
+        update_endpoint=True,
+        serverless_inference_config=serverless_inference_config,
+    )
+
+    sagemaker_session.create_endpoint_config.assert_called_with(
+        name=MODEL_NAME,
+        model_name=MODEL_NAME,
+        initial_instance_count=None,
+        instance_type=None,
+        accelerator_type=None,
+        tags=None,
+        kms_key=None,
+        data_capture_config_dict=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
+        explainer_config_dict=None,
+        async_inference_config_dict=None,
+        serverless_inference_config=serverless_inference_config_dict,
+        routing_config=None,
+        inference_ami_version=None,
+    )
+
+    # Verify update_endpoint is called with the new config
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, endpoint_config_name)
+
+    # Test update_endpoint with async inference config
+    async_inference_config = AsyncInferenceConfig(
+        output_path="s3://bucket/output", failure_path="s3://bucket/failure"
+    )
+    async_inference_config_dict = {
+        "OutputConfig": {
+            "S3OutputPath": "s3://bucket/output",
+            "S3FailurePath": "s3://bucket/failure",
+        },
+    }
+    model.deploy(
+        endpoint_name=endpoint_name,
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        update_endpoint=True,
+        async_inference_config=async_inference_config,
+    )
+
+    sagemaker_session.create_endpoint_config.assert_called_with(
+        name=MODEL_NAME,
+        model_name=MODEL_NAME,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        accelerator_type=None,
+        tags=None,
+        kms_key=None,
+        data_capture_config_dict=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
+        explainer_config_dict=None,
+        async_inference_config_dict=async_inference_config_dict,
+        serverless_inference_config=None,
+        routing_config=None,
+        inference_ami_version=None,
+    )
+
+    # Verify update_endpoint is called with the new config
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, endpoint_config_name)
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_with_update_endpoint_inference_component(production_variant, sagemaker_session):
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+    )
+
+    # Test that updating endpoint with inference component raises error
+    with pytest.raises(
+        ValueError, match="Currently update_endpoint is supported for single model endpoints"
+    ):
+        model.deploy(
+            endpoint_name="test-endpoint",
+            instance_type=INSTANCE_TYPE,
+            initial_instance_count=INSTANCE_COUNT,
+            update_endpoint=True,
+            resources=RESOURCES,
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+        )

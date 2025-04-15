@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import io
 import logging
 from pathlib import Path
+from typing import Callable
 import numpy as np
 from pandas import DataFrame
 
@@ -286,7 +287,7 @@ def _is_path_to_file(data: object) -> bool:
 
 
 def _validate_translations(
-    payload: object, serialize_callable: callable, deserialize_callable: callable
+    payload: object, serialize_callable: Callable, deserialize_callable: Callable
 ) -> None:
     """Placeholder docstring"""
     try:

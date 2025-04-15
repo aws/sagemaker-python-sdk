@@ -22,10 +22,14 @@ import botocore
 from mock.mock import MagicMock
 import pytest
 from mock import patch
+from packaging.version import Version
 
+
+from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.cache import (
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JumpStartModelsCache,
 )
 from sagemaker.jumpstart.constants import (
@@ -33,6 +37,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
 )
 from sagemaker.jumpstart.types import (
+    JumpStartCachedContentValue,
     JumpStartModelHeader,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
@@ -51,6 +56,25 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_PROPRIETARY_MANIFEST,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+@patch("boto3.client")
+def test_jumpstart_cache_init(mock_boto3_client):
+    cache = JumpStartModelsCache()
+    assert cache._region == "dummy-region"
+    assert cache.s3_bucket_name == "dummy-bucket"
+    assert cache._manifest_file_s3_key == JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
+    assert cache._proprietary_manifest_s3_key == JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY
+    assert cache._sagemaker_session == DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    mock_boto3_client.assert_called_once_with("s3", region_name="dummy-region")
+
+    # Some callers override the session to None, should still be set to default
+    cache = JumpStartModelsCache(sagemaker_session=None)
+    assert cache._sagemaker_session == DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 
 @patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
@@ -158,6 +182,30 @@ def test_jumpstart_cache_get_header():
     ) == cache.get_header(
         model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
         semantic_version_str="1.0.*",
+    )
+
+    assert JumpStartModelHeader(
+        {
+            "model_id": "meta-textgeneration-llama-2-7b",
+            "version": "4.13.0",
+            "min_version": "2.49.0",
+            "spec_key": "community_models/meta-textgeneration-llama-2-7b/specs_v4.13.0.json",
+        }
+    ) == cache.get_header(
+        model_id="meta-textgeneration-llama-2-7b",
+        semantic_version_str="*",
+    )
+
+    assert JumpStartModelHeader(
+        {
+            "model_id": "meta-textgeneration-llama-2-7b",
+            "version": "4.13.0",
+            "min_version": "2.49.0",
+            "spec_key": "community_models/meta-textgeneration-llama-2-7b/specs_v4.13.0.json",
+        }
+    ) == cache.get_header(
+        model_id="meta-textgeneration-llama-2-7b",
+        semantic_version_str="4.*",
     )
 
     assert JumpStartModelHeader(
@@ -1119,3 +1167,124 @@ def test_jumpstart_local_metadata_override_specs_not_exist_both_directories(
             ),
         ]
     )
+
+
+@patch.object(JumpStartModelsCache, "_retrieval_function")
+def test_jumpstart_cache_handles_versioning_correctly_for_open_source_weights(
+    retrieval_function: Mock,
+):
+    sm_version = Version(utils.get_sagemaker_version())
+    new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
+    print(str(new_sm_version))
+    versions = ["1.0.0", "2.9.1", "2.16.0"]
+    manifest = [
+        {
+            "model_id": "test-model",
+            "version": version,
+            "min_version": "2.49.0",
+            "spec_key": "spec_key",
+        }
+        for version in versions
+    ]
+
+    manifest.append(
+        {
+            "model_id": "test-model",
+            "version": "3.0.0",
+            "min_version": str(new_sm_version),
+            "spec_key": "spec_key",
+        }
+    )
+
+    manifest_dict = {}
+    for header in manifest:
+        header_obj = JumpStartModelHeader(header)
+        manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
+            header_obj
+        )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
+    key = JumpStartVersionedModelId("test-model", "*")
+
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    result = cache._get_open_weight_manifest_key_from_model_id(key=key, value=None)
+
+    assert_key = JumpStartVersionedModelId("test-model", "2.16.0")
+
+    assert result == assert_key
+
+
+@patch.object(JumpStartModelsCache, "_retrieval_function")
+def test_jumpstart_cache_handles_versioning_correctly_for_proprietary_weights(
+    retrieval_function: Mock,
+):
+    sm_version = Version(utils.get_sagemaker_version())
+    new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
+    print(str(new_sm_version))
+    versions = ["1.0.0", "2.9.1", "2.16.0"]
+    manifest = [
+        {
+            "model_id": "test-model",
+            "version": version,
+            "min_version": "2.49.0",
+            "spec_key": "spec_key",
+        }
+        for version in versions
+    ]
+
+    manifest.append(
+        {
+            "model_id": "test-model",
+            "version": "3.0.0",
+            "min_version": str(new_sm_version),
+            "spec_key": "spec_key",
+        }
+    )
+
+    manifest_dict = {}
+    for header in manifest:
+        header_obj = JumpStartModelHeader(header)
+        manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
+            header_obj
+        )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
+    key = JumpStartVersionedModelId("test-model", "*")
+
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    result = cache._get_proprietary_manifest_key_from_model_id(key=key, value=None)
+
+    assert_key = JumpStartVersionedModelId("test-model", "2.16.0")
+
+    assert result == assert_key
+
+
+@patch.object(JumpStartModelsCache, "_retrieval_function")
+def test_jumpstart_cache_handles_versioning_correctly_non_sem_ver(retrieval_function: Mock):
+    sm_version = Version(utils.get_sagemaker_version())
+    new_sm_version = Version(str(sm_version.major + 1) + ".0.0")
+    print(str(new_sm_version))
+    versions = ["abc", "2.9.1", "2.16.0"]
+    manifest = [
+        {
+            "model_id": "test-model",
+            "version": version,
+            "min_version": "2.49.0",
+            "spec_key": "spec_key",
+        }
+        for version in versions
+    ]
+
+    manifest_dict = {}
+    for header in manifest:
+        header_obj = JumpStartModelHeader(header)
+        manifest_dict[JumpStartVersionedModelId(header_obj.model_id, header_obj.version)] = (
+            header_obj
+        )
+    retrieval_function.return_value = JumpStartCachedContentValue(formatted_content=manifest_dict)
+    key = JumpStartVersionedModelId("test-model", "*")
+
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    result = cache._get_open_weight_manifest_key_from_model_id(key=key, value=None)
+
+    assert_key = JumpStartVersionedModelId("test-model", "abc")
+
+    assert result == assert_key

@@ -22,7 +22,7 @@ For more documentation on ``sagemaker_core.shapes``, see:
 from __future__ import absolute_import
 
 from typing import Optional, Union
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, ConfigDict
 
 import sagemaker_core.shapes as shapes
 
@@ -74,7 +74,13 @@ __all__ = [
 ]
 
 
-class SourceCode(BaseModel):
+class BaseConfig(BaseModel):
+    """BaseConfig"""
+
+    model_config = ConfigDict(validate_assignment=True, extra="forbid")
+
+
+class SourceCode(BaseConfig):
     """SourceCode.
 
     The SourceCode class allows the user to specify the source code location, dependencies,
@@ -194,7 +200,7 @@ class Networking(shapes.VpcConfig):
         return shapes.VpcConfig(**filtered_dict)
 
 
-class InputData(BaseModel):
+class InputData(BaseConfig):
     """InputData.
 
     This config allows the user to specify an input data source for the training job.
