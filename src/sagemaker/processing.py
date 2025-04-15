@@ -314,6 +314,7 @@ class Processor(object):
                 "code argument has to be a valid S3 URI or local file path "
                 + "rather than a pipeline variable"
             )
+
         if arguments is not None:
             processed_arguments = []
             for arg in arguments:
@@ -321,7 +322,7 @@ class Processor(object):
                     processed_value = json.dumps(arg.expr)
                     processed_arguments.append(processed_value)
                 else:
-                    processed_arguments.append(str(arg))
+                    processed_arguments.append(arg)
             arguments = processed_arguments
 
         self._current_job_name = self._generate_current_job_name(job_name=job_name)

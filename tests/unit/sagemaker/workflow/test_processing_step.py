@@ -824,12 +824,14 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
     processor, run_inputs = spark_processor
     processor.sagemaker_session = pipeline_session
     processor.role = ROLE
+
     arguments_output = [
         "--input",
         "input-data-uri",
         "--output",
         '{"Get": "Parameters.MyArgOutput"}',
     ]
+
     run_inputs["inputs"] = processing_input
 
     step_args = processor.run(**run_inputs)
@@ -1024,6 +1026,7 @@ def test_spark_processor_local_code(spark_processor, processing_input, pipeline_
     processor, run_inputs = spark_processor
     processor.sagemaker_session = pipeline_session
     processor.role = ROLE
+
     arguments_output = [
         "--input",
         "input-data-uri",
