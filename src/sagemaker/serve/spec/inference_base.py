@@ -24,11 +24,10 @@ class CustomOrchestrator(ABC):
     @property
     def client(self):
         """Boto3 SageMaker runtime client to use with custom orchestrator"""
-        if not hasattr(self, "_client"):
+        if not hasattr(self, "_client") or not self._client:
             from boto3 import Session
 
             self._client = Session().client("sagemaker-runtime")
-
         return self._client
 
     @abstractmethod
