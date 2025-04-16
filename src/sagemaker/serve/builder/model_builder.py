@@ -250,7 +250,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         default=None, metadata={"help": "Define sagemaker session for execution"}
     )
     name: Optional[str] = field(
-        default="model-name-" + uuid.uuid1().hex,
+        default_factory=lambda: "model-name-" + uuid.uuid1().hex,
         metadata={"help": "Define the model name"},
     )
     mode: Optional[Mode] = field(
@@ -1130,7 +1130,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     def _get_processing_unit(self):
         """Detects if the resource requirements are intended for a CPU or GPU instance."""
         # Assume custom orchestrator will be deployed as an endpoint to a CPU instance
-        if not self.resource_requirements:
+        if not self.resource_requirements or not self.resource_requirements.num_accelerators:
             return "cpu"
         for ic in self.modelbuilder_list or []:
             if ic.resource_requirements.num_accelerators > 0:
@@ -1171,10 +1171,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
     @_capture_telemetry("build_custom_orchestrator")
     def _get_smd_image_uri(self, processing_unit: str = None) -> str:
-        """Gets the SMD Inference URI.
+        """Gets the SMD Inference Image URI.
 
         Returns:
-            str: Pytorch DLC URI.
+            str: SMD Inference Image URI.
         """
         from sagemaker import image_uris
         import sys
@@ -1183,10 +1183,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         from packaging.version import Version
 
         formatted_py_version = f"py{sys.version_info.major}{sys.version_info.minor}"
-        if Version(f"{sys.version_info.major}{sys.version_info.minor}") < Version("3.11.11"):
+        if Version(f"{sys.version_info.major}{sys.version_info.minor}") < Version("3.12"):
             raise ValueError(
                 f"Found Python version {formatted_py_version} but"
-                f"Custom orchestrator deployment requires Python version >= 3.11.11."
+                f"Custom orchestrator deployment requires Python version >= 3.12."
             )
 
         INSTANCE_TYPES = {"cpu": "ml.c5.xlarge", "gpu": "ml.g5.4xlarge"}
@@ -1956,7 +1956,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             ]
         ] = None,
         custom_orchestrator_instance_type: str = None,
-        custom_orchestrator_initial_instance_count: int = 1,
+        custom_orchestrator_initial_instance_count: int = None,
         **kwargs,
     ) -> Union[Predictor, Transformer, List[Predictor]]:
         """Deploys the built Model.
@@ -1977,7 +1977,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
-        endpoint_name = unique_name_from_base("endpoint-name")
+        endpoint_name = endpoint_name or unique_name_from_base("endpoint-name")
 
         if not hasattr(self, "_deployables"):
             if not inference_config:  # Real-time Deployment
@@ -2038,13 +2038,14 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
         if self._deployables.get("CustomOrchestrator", None):
             custom_orchestrator = self._deployables.get("CustomOrchestrator")
+            if not custom_orchestrator_instance_type and not instance_type:
+                logger.warning(
+                    "Deploying custom orchestrator as an endpoint but no instance type was "
+                    "set. Defaulting to `ml.c5.xlarge`."
+                )
+                custom_orchestrator_instance_type = "ml.c5.xlarge"
+                custom_orchestrator_initial_instance_count = 1
             if custom_orchestrator["Mode"] == "Endpoint":
-                if not custom_orchestrator_instance_type:
-                    logger.warning(
-                        "Deploying custom orchestrator as an endpoint but no instance type was "
-                        "set. Defaulting to `ml.c5.xlarge`."
-                    )
-                    custom_orchestrator_instance_type = "ml.c5.xlarge"
                 logger.info(
                     "Deploying custom orchestrator on instance type %s.",
                     custom_orchestrator_instance_type,
@@ -2057,6 +2058,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                     )
                 )
             elif custom_orchestrator["Mode"] == "InferenceComponent":
+                logger.info(
+                    "Deploying custom orchestrator as an inference component "
+                    f"to endpoint {endpoint_name}"
+                )
                 predictors.append(
                     self._deploy_for_ic(
                         ic_data=custom_orchestrator,
@@ -2064,6 +2069,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                         instance_type=custom_orchestrator_instance_type or instance_type,
                         initial_instance_count=custom_orchestrator_initial_instance_count
                         or initial_instance_count,
+                        endpoint_name=endpoint_name,
                         **kwargs,
                     )
                 )

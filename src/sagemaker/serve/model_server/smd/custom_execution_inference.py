@@ -67,6 +67,6 @@ async def handler(request):
     :return: outputs to be send back to client
     """
     if asyncio.iscoroutinefunction(custom_orchestrator.handle):
-        return await custom_orchestrator.handle(request)
+        return await custom_orchestrator.handle(request.body)
     else:
-        return custom_orchestrator.handle(request)
+        return custom_orchestrator.handle(request.body)
