@@ -5,7 +5,7 @@ cloudpickle==2.2.1
 defusedxml==0.7.1
 dill==0.3.8
 gmpy2==2.1.2
-numpy==2.0
+numpy==2.0.0
 opt-einsum==3.3.0
 packaging==21.3
 pandas==2.2.1
