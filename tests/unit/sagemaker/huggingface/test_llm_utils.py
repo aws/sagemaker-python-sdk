@@ -65,7 +65,7 @@ class LlmUtilsTests(TestCase):
             "Trying to access a gated/private HuggingFace model without valid credentials. "
             "Please provide a HUGGING_FACE_HUB_TOKEN in env_vars"
         )
-        self.assertEquals(expected_error_msg, str(context.exception))
+        self.assertEqual(expected_error_msg, str(context.exception))
 
     @patch("sagemaker.huggingface.llm_utils.urllib")
     def test_huggingface_model_metadata_general_exception(self, mock_urllib):
@@ -76,7 +76,7 @@ class LlmUtilsTests(TestCase):
         expected_error_msg = (
             f"Did not find model metadata for the following HuggingFace Model ID {MOCK_HF_ID}"
         )
-        self.assertEquals(expected_error_msg, str(context.exception))
+        self.assertEqual(expected_error_msg, str(context.exception))
 
     @patch("huggingface_hub.snapshot_download")
     def test_download_huggingface_model_metadata(self, mock_snapshot_download):
