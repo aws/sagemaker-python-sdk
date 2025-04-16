@@ -50,3 +50,4 @@ fastapi==0.115.4
 nest-asyncio
 sagemaker-mlflow>=0.1.0
 deepdiff>=8.0.0
+orderly-set<5.4.0
