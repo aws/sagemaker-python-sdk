@@ -21,7 +21,7 @@ from sagemaker.serve.detector.dependency_manager import _parse_dependency_list, 
 
 DEPENDENCY_LIST = [
     "requests==2.26.0",
-    "numpy>=2.0.0",
+    "numpy>=2.0.0,<2.3.0",
     "pandas==2.2.3",
     "matplotlib<3.5.0",
     "scikit-learn>0.24.1",

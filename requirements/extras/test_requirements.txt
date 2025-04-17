@@ -1,5 +1,5 @@
 tox==3.24.5
-numpy>=2.0.0
+numpy>=2.0.0, <2.3.0
 build[virtualenv]==1.2.1
 flake8==4.0.1
 pytest==6.2.5
@@ -23,7 +23,7 @@ sagemaker-experiments==0.1.35
 Jinja2==3.1.6
 pyvis==0.2.1
 pandas==2.2.3
-scikit-learn==1.6.1
+scikit-learn==1.4.0
 cloudpickle==2.2.1
 jsonpickle<4.0.0
 PyYAML==6.0

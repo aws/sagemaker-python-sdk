@@ -4,7 +4,7 @@ dependencies:
 - python=3.10.13
 - pip<=23.3.1
 - pip:
-  - mlflow==2.10.2
+  - mlflow==2.16.1
   - astunparse==1.6.3
   - cffi==1.16.0
   - cloudpickle==2.2.1
