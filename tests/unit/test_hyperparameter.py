@@ -62,7 +62,7 @@ def test_validated():
 def test_data_type():
     x = Test()
     x.validated = 66
-    assert type(x.validated) == Test.__dict__["validated"].data_type
+    assert isinstance(x.validated, Test.__dict__["validated"].data_type)
 
 
 def test_from_string():
