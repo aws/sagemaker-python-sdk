@@ -93,13 +93,14 @@ EXPECTED_SUBPROCESS_CMD = [sys.executable, "-m", "pip", "--disable-pip-version-c
 
 # happy case
 def test_generate_requirements_exact_match(monkeypatch):
-    with patch("cloudpickle.load"), patch("tqdm.tqdm"), patch(
-        "sagemaker.serve.detector.pickle_dependencies.subprocess.run"
-    ) as subprocess_run, patch(
-        "sagemaker.serve.detector.pickle_dependencies.subprocess.Popen"
-    ) as subprocess_popen, patch(
-        "builtins.open"
-    ) as mocked_open, monkeypatch.context() as m:
+    with (
+        patch("cloudpickle.load"),
+        patch("tqdm.tqdm"),
+        patch("sagemaker.serve.detector.pickle_dependencies.subprocess.run") as subprocess_run,
+        patch("sagemaker.serve.detector.pickle_dependencies.subprocess.Popen") as subprocess_popen,
+        patch("builtins.open") as mocked_open,
+        monkeypatch.context() as m,
+    ):
         mock_run_stdout = MagicMock()
         mock_run_stdout.stdout = json.dumps(INSTALLED_PKG_JSON).encode("utf-8")
         subprocess_run.return_value = mock_run_stdout
@@ -147,13 +148,14 @@ def test_generate_requirements_exact_match(monkeypatch):
 
 
 def test_generate_requirements_txt_pruning_unused_packages(monkeypatch):
-    with patch("cloudpickle.load"), patch("tqdm.tqdm"), patch(
-        "sagemaker.serve.detector.pickle_dependencies.subprocess.run"
-    ) as subprocess_run, patch(
-        "sagemaker.serve.detector.pickle_dependencies.subprocess.Popen"
-    ) as subprocess_popen, patch(
-        "builtins.open"
-    ) as mocked_open, monkeypatch.context() as m:
+    with (
+        patch("cloudpickle.load"),
+        patch("tqdm.tqdm"),
+        patch("sagemaker.serve.detector.pickle_dependencies.subprocess.run") as subprocess_run,
+        patch("sagemaker.serve.detector.pickle_dependencies.subprocess.Popen") as subprocess_popen,
+        patch("builtins.open") as mocked_open,
+        monkeypatch.context() as m,
+    ):
         mock_run_stdout = MagicMock()
         mock_run_stdout.stdout = json.dumps(INSTALLED_PKG_JSON_UNUSED).encode("utf-8")
         subprocess_run.return_value = mock_run_stdout
@@ -201,13 +203,14 @@ def test_generate_requirements_txt_pruning_unused_packages(monkeypatch):
 
 
 def test_generate_requirements_txt_no_currently_used_packages(monkeypatch):
-    with patch("cloudpickle.load"), patch("tqdm.tqdm"), patch(
-        "sagemaker.serve.detector.pickle_dependencies.subprocess.run"
-    ) as subprocess_run, patch(
-        "sagemaker.serve.detector.pickle_dependencies.subprocess.Popen"
-    ) as subprocess_popen, patch(
-        "builtins.open"
-    ) as mocked_open, monkeypatch.context() as m:
+    with (
+        patch("cloudpickle.load"),
+        patch("tqdm.tqdm"),
+        patch("sagemaker.serve.detector.pickle_dependencies.subprocess.run") as subprocess_run,
+        patch("sagemaker.serve.detector.pickle_dependencies.subprocess.Popen") as subprocess_popen,
+        patch("builtins.open") as mocked_open,
+        monkeypatch.context() as m,
+    ):
         mock_run_stdout = MagicMock()
         mock_run_stdout.stdout = json.dumps([]).encode("utf-8")
         subprocess_run.return_value = mock_run_stdout

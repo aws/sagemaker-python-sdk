@@ -540,7 +540,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "minItems": 0,
             "maxItems": 50,
         },
-        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html#sagemaker-CreateTrainingJob-request-Environment
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/
+        #   API_CreateTrainingJob.html#sagemaker-CreateTrainingJob-request-Environment
         "environmentVariables": {
             TYPE: OBJECT,
             ADDITIONAL_PROPERTIES: False,
@@ -553,13 +554,15 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             },
             "maxProperties": 48,
         },
-        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_S3DataSource.html#sagemaker-Type-S3DataSource-S3Uri
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/
+        #   API_S3DataSource.html#sagemaker-Type-S3DataSource-S3Uri
         "s3Uri": {
             TYPE: "string",
             "pattern": "^(https|s3)://([^/]+)/?(.*)$",
             "maxLength": 1024,
         },
-        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html#sagemaker-Type-AlgorithmSpecification-ContainerEntrypoint
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/
+        #   API_AlgorithmSpecification.html#sagemaker-Type-AlgorithmSpecification-ContainerEntrypoint
         "preExecutionCommand": {TYPE: "string", "pattern": r".*"},
         # Regex based on https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_PipelineDefinitionS3Location.html
         # except with an additional ^ and $ for the beginning and the end to closer align to
@@ -570,7 +573,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "minLength": 3,
             "maxLength": 63,
         },
-        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_MonitoringJobDefinition.html#sagemaker-Type-MonitoringJobDefinition-Environment
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/
+        #   API_MonitoringJobDefinition.html#sagemaker-Type-MonitoringJobDefinition-Environment
         "environment-Length256-Properties50": {
             TYPE: OBJECT,
             ADDITIONAL_PROPERTIES: False,
@@ -583,7 +587,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             },
             "maxProperties": 50,
         },
-        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTransformJob.html#sagemaker-CreateTransformJob-request-Environment
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/
+        #   API_CreateTransformJob.html#sagemaker-CreateTransformJob-request-Environment
         "environment-Length10240-Properties16": {
             TYPE: OBJECT,
             ADDITIONAL_PROPERTIES: False,
@@ -596,7 +601,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             },
             "maxProperties": 16,
         },
-        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ContainerDefinition.html#sagemaker-Type-ContainerDefinition-Environment
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/
+        #   API_ContainerDefinition.html#sagemaker-Type-ContainerDefinition-Environment
         "environment-Length1024-Properties16": {
             TYPE: OBJECT,
             ADDITIONAL_PROPERTIES: False,
@@ -609,7 +615,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             },
             "maxProperties": 16,
         },
-        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateProcessingJob.html#sagemaker-CreateProcessingJob-request-Environment
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/
+        #   API_CreateProcessingJob.html#sagemaker-CreateProcessingJob-request-Environment
         "environment-Length256-Properties100": {
             TYPE: OBJECT,
             ADDITIONAL_PROPERTIES: False,
@@ -622,7 +629,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             },
             "maxProperties": 100,
         },
-        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html#sagemaker-CreateTrainingJob-request-Environment
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/
+        # API_CreateTrainingJob.html#sagemaker-CreateTrainingJob-request-Environment
         "environment-Length512-Properties48": {
             TYPE: OBJECT,
             ADDITIONAL_PROPERTIES: False,

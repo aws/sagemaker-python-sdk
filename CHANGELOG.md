@@ -1,12 +1,5 @@
 # Changelog
 
-## v2.243.2 (2025-04-16)
-
-### Bug Fixes and Other Changes
-
- * tgi image uri unit tests
- * Fix deepdiff dependencies
-
 ## v2.243.1 (2025-04-11)
 
 ### Bug Fixes and Other Changes

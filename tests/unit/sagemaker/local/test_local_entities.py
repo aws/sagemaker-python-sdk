@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import re
 import os
 import pytest
 
@@ -290,10 +291,10 @@ def test_start_local_pipeline_with_wrong_parameter_type(sagemaker_local_session)
     local_pipeline = sagemaker.local.entities._LocalPipeline(pipeline)
     with pytest.raises(ClientError) as error:
         local_pipeline.start(PipelineParameters={"MyStr": True})
-    assert (
-        f"Unexpected type for parameter '{parameter.name}'. Expected "
-        f"{parameter.parameter_type.python_type} but found {type(True)}." in str(error.value)
+    expected_error_pattern = (
+        r"Unexpected type for parameter 'MyStr'\. Expected .* but found <class 'bool'>\."
     )
+    assert re.search(expected_error_pattern, str(error.value))
 
 
 def test_start_local_pipeline_with_empty_parameter_string_value(

@@ -1645,9 +1645,11 @@ def test_create_dataset_with_feature_group_base(
             feature_store_session, feature_group, offline_store_s3_uri
         )
 
-        with timeout(minutes=10) and cleanup_offline_store(
-            base, feature_store_session
-        ) and cleanup_offline_store(feature_group, feature_store_session):
+        with (
+            timeout(minutes=10)
+            and cleanup_offline_store(base, feature_store_session)
+            and cleanup_offline_store(feature_group, feature_store_session)
+        ):
             feature_store = FeatureStore(sagemaker_session=feature_store_session)
             df, query_string = (
                 feature_store.create_dataset(base=base, output_path=offline_store_s3_uri)
@@ -1832,9 +1834,11 @@ def test_create_dataset_with_feature_group_base_with_additional_params(
             feature_store_session, feature_group, offline_store_s3_uri
         )
 
-        with timeout(minutes=10) and cleanup_offline_store(
-            base, feature_store_session
-        ) and cleanup_offline_store(feature_group, feature_store_session):
+        with (
+            timeout(minutes=10)
+            and cleanup_offline_store(base, feature_store_session)
+            and cleanup_offline_store(feature_group, feature_store_session)
+        ):
             feature_store = FeatureStore(sagemaker_session=feature_store_session)
             df, query_string = (
                 feature_store.create_dataset(base=base, output_path=offline_store_s3_uri)
