@@ -14,7 +14,7 @@ dependencies:
   - numpy>=2.0.0,<2.3.0
   - opt-einsum==3.3.0
   - packaging==24.0
-  - pandas==2.2.1
+  - pandas==2.2.3
   - pyyaml==6.0.1
   - requests==2.31.0
   - torch>=2.6.0
