@@ -3,7 +3,7 @@ Training APIs
 #############
 
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 2
 
    model_trainer
    algorithm
