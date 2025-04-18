@@ -38,7 +38,7 @@ def test_hub_model_reference(setup):
 
     describe_model_response = hub_instance.describe_model(model_name=model_id)
     assert describe_model_response is not None
-    assert type(describe_model_response) == DescribeHubContentResponse
+    assert isinstance(describe_model_response, DescribeHubContentResponse)
     assert describe_model_response.hub_content_name == model_id
     assert describe_model_response.hub_content_type == "ModelReference"
 
