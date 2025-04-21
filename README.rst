@@ -94,10 +94,10 @@ Supported Python Versions
 
 SageMaker Python SDK is tested on:
 
-- Python 3.8
 - Python 3.9
 - Python 3.10
 - Python 3.11
+- Python 3.12
 
 Telemetry
 ~~~~~~~~~~~~~~~
@@ -191,9 +191,9 @@ Setup a Python environment, and install the dependencies listed in ``doc/require
 ::
 
     # conda
-    conda create -n sagemaker python=3.7
+    conda create -n sagemaker python=3.12
     conda activate sagemaker
-    conda install sphinx=3.1.1 sphinx_rtd_theme=0.5.0
+    conda install sphinx=5.1.1 sphinx_rtd_theme=0.5.0
 
     # pip
     pip install -r doc/requirements.txt
