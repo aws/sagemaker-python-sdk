@@ -66,9 +66,9 @@ def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool =
 
         with open(path, "r") as f:
             autodetect_depedencies = f.read().splitlines()
-        autodetect_depedencies.append("sagemaker[huggingface]>=2.199")
-    else:
-        autodetect_depedencies = ["sagemaker[huggingface]>=2.199"]
+    #     autodetect_depedencies.append("sagemaker[huggingface]>=2.199")
+    # else:
+    #     autodetect_depedencies = ["sagemaker[huggingface]>=2.199"]
 
     module_version_dict = _parse_dependency_list(autodetect_depedencies)
 
