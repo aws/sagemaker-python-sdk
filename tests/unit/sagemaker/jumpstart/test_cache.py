@@ -186,6 +186,30 @@ def test_jumpstart_cache_get_header():
 
     assert JumpStartModelHeader(
         {
+            "model_id": "meta-textgeneration-llama-2-7b",
+            "version": "4.13.0",
+            "min_version": "2.49.0",
+            "spec_key": "community_models/meta-textgeneration-llama-2-7b/specs_v4.13.0.json",
+        }
+    ) == cache.get_header(
+        model_id="meta-textgeneration-llama-2-7b",
+        semantic_version_str="*",
+    )
+
+    assert JumpStartModelHeader(
+        {
+            "model_id": "meta-textgeneration-llama-2-7b",
+            "version": "4.13.0",
+            "min_version": "2.49.0",
+            "spec_key": "community_models/meta-textgeneration-llama-2-7b/specs_v4.13.0.json",
+        }
+    ) == cache.get_header(
+        model_id="meta-textgeneration-llama-2-7b",
+        semantic_version_str="4.*",
+    )
+
+    assert JumpStartModelHeader(
+        {
             "model_id": "ai21-summarization",
             "version": "1.1.003",
             "min_version": "2.0.0",

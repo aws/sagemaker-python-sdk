@@ -1,5 +1,55 @@
 # Changelog
 
+## v2.243.2 (2025-04-16)
+
+### Bug Fixes and Other Changes
+
+ * tgi image uri unit tests
+ * Fix deepdiff dependencies
+
+## v2.243.1 (2025-04-11)
+
+### Bug Fixes and Other Changes
+
+ * Added handler for pipeline variable while creating process job
+ * Fix issue #4856 by copying environment variables
+ * remove historical job_name caching which causes long job name
+ * Update instance gpu info
+ * Master
+ * Add mlflow tracking arn telemetry
+ * chore: fix semantic versioning for wildcard identifier
+ * flaky test
+
+### Documentation Changes
+
+ * update pipelines step caching examples to include more steps
+ * update ModelStep data dependency info
+
+## v2.243.0 (2025-03-27)
+
+### Features
+
+ * Enabled update_endpoint through model_builder
+
+### Bug Fixes and Other Changes
+
+ * Update for PT 2.5.1, SMP 2.8.0
+ * chore: move jumpstart region definitions to json file
+ * fix flaky clarify model monitor test
+ * fix flaky spark processor integ
+ * use temp file in unit tests
+ * Update transformers version
+ * Aligned disable_output_compression for @remote with Estimator
+ * Update Jinja version
+ * update image_uri_configs  03-26-2025 07:18:16 PST
+ * chore: fix integ tests to use latest version of model
+ * update image_uri_configs  03-25-2025 07:18:13 PST
+ * Skip tests failed due to deprecated instance type
+ * update image_uri_configs  03-21-2025 07:17:55 PST
+ * factor in set instance type when building JumpStart models in ModelBuilder.
+ * ADD Documentation to ReadtheDocs for Upgrading torch versions
+ * add new regions to JUMPSTART_LAUNCHED_REGIONS
+
 ## v2.242.0 (2025-03-14)
 
 ### Features

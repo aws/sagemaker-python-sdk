@@ -104,7 +104,7 @@ def get_default_predictor(
     """
 
     # if there's a non-default predictor, do not mutate -- return as is
-    if type(predictor) != Predictor:  # pylint: disable=C0123
+    if not isinstance(predictor, Predictor):
         raise RuntimeError(
             "Can only get default predictor from base Predictor class. "
             f"Using Predictor class '{type(predictor).__name__}'."

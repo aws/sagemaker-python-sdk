@@ -83,15 +83,10 @@ html_js_files = [
 
 html_css_files = [
     "https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css",
+    "theme_overrides.css",
+    "pagination.css",
+    "search_accessories.css",
 ]
-
-html_context = {
-    "css_files": [
-        "_static/theme_overrides.css",
-        "_static/pagination.css",
-        "_static/search_accessories.css",
-    ]
-}
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {"python": ("http://docs.python.org/", None)}
