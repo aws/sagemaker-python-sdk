@@ -413,16 +413,22 @@ class ModelTrainer(BaseModel):
                     )
                 if requirements:
                     if not source_dir.endswith(".tar.gz"):
-                        if (not _is_valid_path(f"{source_dir}/{requirements}", path_type="File") 
-                        and not _is_valid_s3_uri(f"{source_dir}/{requirements}", path_type="File")):
+                        if not _is_valid_path(
+                            f"{source_dir}/{requirements}", path_type="File"
+                        ) and not _is_valid_s3_uri(
+                            f"{source_dir}/{requirements}", path_type="File"
+                        ):
                             raise ValueError(
                                 f"Invalid 'requirements': {requirements}. "
                                 + "Must be a valid file within the 'source_dir'.",
                             )
                 if entry_script:
                     if not source_dir.endswith(".tar.gz"):
-                        if (not _is_valid_path(f"{source_dir}/{entry_script}", path_type="File") 
-                        and not _is_valid_s3_uri(f"{source_dir}/{entry_script}", path_type="File")):
+                        if not _is_valid_path(
+                            f"{source_dir}/{entry_script}", path_type="File"
+                        ) and not _is_valid_s3_uri(
+                            f"{source_dir}/{entry_script}", path_type="File"
+                        ):
                             raise ValueError(
                                 f"Invalid 'entry_script': {entry_script}. "
                                 + "Must be a valid file within the 'source_dir'.",
@@ -837,8 +843,8 @@ class ModelTrainer(BaseModel):
         install_requirements = ""
         if source_code.requirements:
             install_requirements = (
-                "echo 'Installing requirements'\n" +
-                f"$SM_PIP_CMD install -r {source_code.requirements}"
+                "echo 'Installing requirements'\n"
+                + f"$SM_PIP_CMD install -r {source_code.requirements}"
             )
 
         working_dir = ""

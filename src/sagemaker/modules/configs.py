@@ -88,7 +88,7 @@ class SourceCode(BaseConfig):
 
     Parameters:
         source_dir (Optional[str]):
-            The local directory, s3 uri, or path to tar.gz file stored locally or in s3 that contains 
+            The local directory, s3 uri, or path to tar.gz file stored locally or in s3 that contains
             the source code to be used in the training job container.
         requirements (Optional[str]):
             The path within ``source_dir`` to a ``requirements.txt`` file. If specified, the listed
