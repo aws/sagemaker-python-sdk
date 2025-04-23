@@ -1,4 +1,4 @@
-mlflow==2.13.2
+mlflow>=2.19.0
 lz4==4.3.2
 numpy==1.26.4
 pandas==2.0.3
