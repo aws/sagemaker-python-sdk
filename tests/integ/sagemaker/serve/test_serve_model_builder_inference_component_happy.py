@@ -40,6 +40,7 @@ sample_output = [
 
 LLAMA_2_7B_JS_ID = "meta-textgeneration-llama-2-7b"
 LLAMA_IC_NAME = "llama2-mb-ic"
+INSTANCE_TYPE = "ml.g5.24xlarge"
 
 
 @pytest.fixture
@@ -65,6 +66,7 @@ def test_model_builder_ic_sagemaker_endpoint(
     caught_ex = None
 
     model_builder_llama_inference_component.sagemaker_session = sagemaker_session
+    model_builder_llama_inference_component.instance_type = INSTANCE_TYPE
 
     model_builder_llama_inference_component.inference_component_name = unique_name_from_base(
         LLAMA_IC_NAME
@@ -88,7 +90,7 @@ def test_model_builder_ic_sagemaker_endpoint(
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             endpoint_name = "llama-ic-endpoint-name"
             predictors = chain.deploy(
-                instance_type="ml.g5.24xlarge",
+                instance_type=INSTANCE_TYPE,
                 initial_instance_count=1,
                 accept_eula=True,
                 endpoint_name=endpoint_name,

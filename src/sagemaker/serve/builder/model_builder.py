@@ -1983,7 +1983,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
-        endpoint_name = unique_name_from_base("endpoint-name")
         if not update_endpoint:
             endpoint_name = unique_name_from_base(endpoint_name)
 

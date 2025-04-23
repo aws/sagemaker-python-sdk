@@ -2967,7 +2967,8 @@ class TestModelBuilder(unittest.TestCase):
         chain_builder = ModelBuilder(
             modelbuilder_list=[builder1],
         ).build()
-        chain_builder.deploy()
+        inputs = {"endpoint_name": "endpoint-001"}
+        chain_builder.deploy(**inputs)
         assert mock_update_inference_component.call_count == 1
 
     def test_deploy_invalid_inputs(self):
