@@ -217,10 +217,9 @@ def test_log_to_mlflow(mock_request, mock_getenv):
         mock_response.text = json.dumps({})
 
     mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/update"].status_code = 200
-    mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/update"].text = json.dumps({
-        "run_id": "test_run_id",
-        "status": "FINISHED"
-    })
+    mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/update"].text = json.dumps(
+        {"run_id": "test_run_id", "status": "FINISHED"}
+    )
 
     mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/terminate"].status_code = 200
     mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/terminate"].text = json.dumps({})
