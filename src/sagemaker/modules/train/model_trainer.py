@@ -409,7 +409,9 @@ class ModelTrainer(BaseModel):
                     )
                 if not _is_valid_path(source_dir) and not _is_valid_s3_uri(source_dir):
                     raise ValueError(
-                        f"Invalid 'source_dir' path: {source_dir}. " + "Must be a valid directory.",
+                        f"Invalid 'source_dir' path: {source_dir}. "
+                        + "Must be a valid local directory, "
+                        "s3 uri or path to tar.gz file stored locally or in s3.",
                     )
                 if requirements:
                     if not source_dir.endswith(".tar.gz"):
@@ -851,10 +853,7 @@ class ModelTrainer(BaseModel):
         if source_code.source_dir:
             working_dir = f"cd {SM_CODE_CONTAINER_PATH} \n"
             if source_code.source_dir.endswith(".tar.gz"):
-                if source_code.source_dir.startswith("s3://"):
-                    tarfile_name = os.path.basename(source_code.source_dir)
-                else:
-                    tarfile_name = source_code.source_dir
+                tarfile_name = os.path.basename(source_code.source_dir)
                 working_dir += f"tar --strip-components=1 -xzf {tarfile_name} \n"
 
         if base_command:

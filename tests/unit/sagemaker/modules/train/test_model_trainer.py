@@ -163,13 +163,46 @@ def model_trainer():
             },
             "should_throw": False,
         },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir=f"{DEFAULT_SOURCE_DIR}/code.tar.gz",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/code",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/code/code.tar.gz",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
     ],
     ids=[
         "no_params",
         "training_image_and_algorithm_name",
         "only_training_image",
         "unsupported_source_code",
-        "supported_source_code",
+        "supported_source_code_local_dir",
+        "supported_source_code_local_tar_file",
+        "supported_source_code_s3_dir",
+        "supported_source_code_s3_tar_file",
     ],
 )
 def test_model_trainer_param_validation(test_case, modules_session):
