@@ -188,6 +188,7 @@ def test_log_to_mlflow(mock_request, mock_getenv):
             Mock(spec=requests.Response),
             Mock(spec=requests.Response),
         ],
+        "https://test.sagemaker.aws/api/2.0/mlflow/runs/update": Mock(spec=requests.Response),
         "https://test.sagemaker.aws/api/2.0/mlflow/runs/terminate": Mock(spec=requests.Response),
     }
 
@@ -215,6 +216,12 @@ def test_log_to_mlflow(mock_request, mock_getenv):
         mock_response.status_code = 200
         mock_response.text = json.dumps({})
 
+    mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/update"].status_code = 200
+    mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/update"].text = json.dumps({
+        "run_id": "test_run_id",
+        "status": "FINISHED"
+    })
+
     mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/terminate"].status_code = 200
     mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/terminate"].text = json.dumps({})
 
@@ -222,6 +229,7 @@ def test_log_to_mlflow(mock_request, mock_getenv):
         mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/experiments/get-by-name"],
         mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/create"],
         *mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/log-batch"],
+        mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/update"],
         mock_responses["https://test.sagemaker.aws/api/2.0/mlflow/runs/terminate"],
     ]
 
@@ -231,7 +239,7 @@ def test_log_to_mlflow(mock_request, mock_getenv):
 
     log_to_mlflow(metrics, params, tags)
 
-    assert mock_request.call_count == 6  # Total number of API calls
+    assert mock_request.call_count == 7  # Total number of API calls
 
 
 @patch("sagemaker.mlflow.forward_sagemaker_metrics.get_training_job_details")
