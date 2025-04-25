@@ -407,7 +407,18 @@ class ModelTrainer(BaseModel):
                         "If 'requirements' or 'entry_script' is provided in 'source_code', "
                         + "'source_dir' must also be provided.",
                     )
-                if not _is_valid_path(source_dir) and not _is_valid_s3_uri(source_dir):
+                if not (
+                    _is_valid_path(source_dir, path_type="Directory")
+                    or _is_valid_s3_uri(source_dir, path_type="Directory")
+                    or (
+                        _is_valid_path(source_dir, path_type="File")
+                        and source_dir.endswith(".tar.gz")
+                    )
+                    or (
+                        _is_valid_s3_uri(source_dir, path_type="File")
+                        and source_dir.endswith(".tar.gz")
+                    )
+                ):
                     raise ValueError(
                         f"Invalid 'source_dir' path: {source_dir}. "
                         + "Must be a valid local directory, "

@@ -92,9 +92,6 @@ DEFAULT_SOURCE_CODE = SourceCode(
     source_dir=DEFAULT_SOURCE_DIR,
     entry_script="custom_script.py",
 )
-UNSUPPORTED_SOURCE_CODE = SourceCode(
-    entry_script="train.py",
-)
 DEFAULT_ENTRYPOINT = ["/bin/bash"]
 DEFAULT_ARGUMENTS = [
     "-c",
@@ -152,7 +149,19 @@ def model_trainer():
         {
             "init_params": {
                 "training_image": DEFAULT_IMAGE,
-                "source_code": UNSUPPORTED_SOURCE_CODE,
+                "source_code": SourceCode(
+                    entry_script="train.py",
+                ),
+            },
+            "should_throw": True,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/requirements.txt",
+                    entry_script="custom_script.py",
+                ),
             },
             "should_throw": True,
         },
@@ -177,7 +186,7 @@ def model_trainer():
             "init_params": {
                 "training_image": DEFAULT_IMAGE,
                 "source_code": SourceCode(
-                    source_dir="s3://bucket/code",
+                    source_dir="s3://bucket/code/",
                     entry_script="custom_script.py",
                 ),
             },
@@ -198,7 +207,8 @@ def model_trainer():
         "no_params",
         "training_image_and_algorithm_name",
         "only_training_image",
-        "unsupported_source_code",
+        "unsupported_source_code_missing_source_dir",
+        "unsupported_source_code_s3_other_file",
         "supported_source_code_local_dir",
         "supported_source_code_local_tar_file",
         "supported_source_code_s3_dir",
