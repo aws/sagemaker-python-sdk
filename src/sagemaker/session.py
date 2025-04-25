@@ -632,14 +632,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         bucket = s3.Bucket(name=bucket_name)
         expected_bucket_owner_id = self.account_id()
         if bucket.creation_date is None:
-            self.general_bucket_check_if_user_has_permission(
-                bucket_name, s3, bucket, region, True
-            )
+            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, True)
 
         elif self._default_bucket_set_by_sdk:
-            self.general_bucket_check_if_user_has_permission(
-                bucket_name, s3, bucket, region, False
-            )
+            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, False)
             self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
 
     def expected_bucket_owner_id_bucket_check(self, bucket_name, s3, expected_bucket_owner_id):
