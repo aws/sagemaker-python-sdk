@@ -630,13 +630,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 = self.s3_resource
 
         bucket = s3.Bucket(name=bucket_name)
+        expected_bucket_owner_id = self.account_id()
         if bucket.creation_date is None:
-            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, True)
+            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, True, expected_bucket_owner_id)
 
         elif self._default_bucket_set_by_sdk:
-            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, False)
-
-            expected_bucket_owner_id = self.account_id()
+            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, False, expected_bucket_owner_id)
             self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
 
     def expected_bucket_owner_id_bucket_check(self, bucket_name, s3, expected_bucket_owner_id):
@@ -649,9 +648,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         try:
-            s3.meta.client.head_bucket(
-                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
-            )
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name,
+                    Prefix=self.default_bucket_prefix,
+                    ExpectedBucketOwner=expected_bucket_owner_id
+                )
+            else:
+                s3.meta.client.head_bucket(
+                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+                )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
@@ -668,7 +674,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 raise
 
     def general_bucket_check_if_user_has_permission(
-        self, bucket_name, s3, bucket, region, bucket_creation_date_none
+        self, bucket_name, s3, bucket, region, bucket_creation_date_none, expected_bucket_owner_id
     ):
         """Checks if the person running has the permissions to the bucket
 
@@ -682,7 +688,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
         """
         try:
-            s3.meta.client.head_bucket(Bucket=bucket_name)
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name,
+                    Prefix=self.default_bucket_prefix,
+                    ExpectedBucketOwner=expected_bucket_owner_id
+                )
+            else:
+                s3.meta.client.head_bucket(Bucket=bucket_name)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
