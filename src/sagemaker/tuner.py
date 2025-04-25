@@ -2119,7 +2119,10 @@ class HyperparameterTuner(object):
 
     @staticmethod
     def visualize_jobs(
-        tuning_jobs: Union[str, 'sagemaker.tuner.HyperparameterTuner', List[Union[str, 'sagemaker.tuner.HyperparameterTuner']]],
+        tuning_jobs: Union[
+            str, 'sagemaker.tuner.HyperparameterTuner',
+            List[Union[str, 'sagemaker.tuner.HyperparameterTuner']]
+        ],
         return_dfs: bool = False,
         job_metrics: Optional[List[str]] = None,
         trials_only: bool = False,
@@ -2128,7 +2131,8 @@ class HyperparameterTuner(object):
         """Create an interactive visualization based on altair charts using the sagemaker.amtviz
         package.
         Args:
-            tuning_jobs (str or sagemaker.tuner.HyperparameterTuner or list[str, sagemaker.tuner.HyperparameterTuner]): One or more tuning jobs to create
+            tuning_jobs (str or sagemaker.tuner.HyperparameterTuner or list[str, sagemaker.tuner.HyperparameterTuner]):
+            One or more tuning jobs to create
             visualization for.
             return_dfs: (bool): Option to return trials and full dataframe.
             job_metrics: (list[str]): Metrics to be used in charts.
@@ -2160,8 +2164,10 @@ class HyperparameterTuner(object):
         )
 
     def visualize_job(
-        self, return_dfs: bool = False, 
-        job_metrics: Optional[List[str]] = None, trials_only: bool = False, advanced: bool = False
+        self, return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False
     ):
         """Convenience method on instance level for visualize_jobs().
         See static method visualize_jobs().

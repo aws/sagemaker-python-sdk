@@ -1,18 +1,17 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: MIT-0
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-# IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""Helper functions to retrieve job metrics from CloudWatch."""
+from __future__ import absolute_import
 
 from datetime import datetime, timedelta
 from typing import Callable, List, Optional, Tuple, Dict, Any
@@ -20,10 +19,10 @@ import hashlib
 import os
 from pathlib import Path
 
+import logging
 import pandas as pd
 import numpy as np
 import boto3
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +57,8 @@ def disk_cache(outer: Callable) -> Callable:
                 logger.debug("H", end="")
                 df["ts"] = pd.to_datetime(df["ts"])
                 df["ts"] = df["ts"].dt.tz_localize(None)
-                df["rel_ts"] = pd.to_datetime(df["rel_ts"]) # pyright: ignore [reportIndexIssue, reportOptionalSubscript]
+                # pyright: ignore [reportIndexIssue, reportOptionalSubscript]
+                df["rel_ts"] = pd.to_datetime(df["rel_ts"])
                 df["rel_ts"] = df["rel_ts"].dt.tz_localize(None)
                 return df
             except KeyError:
@@ -66,8 +66,7 @@ def disk_cache(outer: Callable) -> Callable:
                 pass
             # nosec b110 - doesn't matter why we could not load it.
             except BaseException as e:
-                logger.error("\nException", type(e), e)
-                pass  # continue with calling the outer function
+                logger.error("\nException: %s - %s", type(e), e)
 
         logger.debug("M", end="")
         df = outer(*args, **kwargs)
@@ -82,6 +81,7 @@ def disk_cache(outer: Callable) -> Callable:
 
 
 def _metric_data_query_tpl(metric_name: str, dim_name: str, dim_value: str) -> Dict[str, Any]:
+    """Returns a CloudWatch metric data query template."""
     return {
         "Id": metric_name.lower().replace(":", "_").replace("-", "_"),
         "MetricStat": {
@@ -100,10 +100,11 @@ def _metric_data_query_tpl(metric_name: str, dim_name: str, dim_value: str) -> D
 
 
 def _get_metric_data(
-    queries: List[Dict[str, Any]], 
-    start_time: datetime, 
+    queries: List[Dict[str, Any]],
+    start_time: datetime,
     end_time: datetime
 ) -> pd.DataFrame:
+    """Fetches CloudWatch metrics between timestamps and returns a DataFrame with selected columns."""
     start_time = start_time - timedelta(hours=1)
     end_time = end_time + timedelta(hours=1)
     response = cw.get_metric_data(MetricDataQueries=queries, StartTime=start_time, EndTime=end_time)
@@ -111,7 +112,7 @@ def _get_metric_data(
     df = pd.DataFrame()
     if "MetricDataResults" not in response:
         return df
-    
+
     for metric_data in response["MetricDataResults"]:
         values = metric_data["Values"]
         ts = np.array(metric_data["Timestamps"], dtype=np.datetime64)
@@ -130,11 +131,11 @@ def _get_metric_data(
 
 @disk_cache
 def _collect_metrics(
-    dimensions: List[Tuple[str, str]], 
-    start_time: datetime, 
+    dimensions: List[Tuple[str, str]],
+    start_time: datetime,
     end_time: Optional[datetime]
 ) -> pd.DataFrame:
-
+    """Collects SageMaker training job metrics from CloudWatch based on given dimensions and time range."""
     df = pd.DataFrame()
     for dim_name, dim_value in dimensions:
         response = cw.list_metrics(
@@ -158,8 +159,8 @@ def _collect_metrics(
 
 
 def get_cw_job_metrics(
-    job_name: str, 
-    start_time: Optional[datetime] = None, 
+    job_name: str,
+    start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None
 ) -> pd.DataFrame:
     """Retrieves CloudWatch metrics for a SageMaker training job.

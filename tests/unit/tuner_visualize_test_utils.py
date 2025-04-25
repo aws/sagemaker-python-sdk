@@ -10,10 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
 
 TRIALS_DF_COLUMNS = [
     'criterion', 'max-depth', 'min-samples-leaf', 'min-weight-fraction-leaf', 'n-estimators', 'TrainingJobName',
-    'TrainingJobStatus', 'TrainingStartTime', 'TrainingEndTime', 'TrainingElapsedTimeSeconds', 'TuningJobName', 'valid-f1'
+    'TrainingJobStatus',
+    'TrainingStartTime', 'TrainingEndTime', 'TrainingElapsedTimeSeconds', 'TuningJobName', 'valid-f1'
 ]
 
 FULL_DF_COLUMNS = [
@@ -34,9 +36,9 @@ TUNING_JOB_NAME_2 = 'bayesian-240712-1600'
 TUNING_JOB_NAMES = [TUNING_JOB_NAME_1, TUNING_JOB_NAME_2]
 TRIALS_DF_VALID_F1_VALUES = [0.950, 0.896]
 
-FULL_DF_COLUMNS = ['value', 'ts', 'label', 'rel_ts', 'TrainingJobName', 'criterion', 'max-depth', 'min-samples-leaf', 'min-weight-fraction-leaf',
-                   'n-estimators', 'TrainingJobStatus', 'TrainingStartTime', 'TrainingEndTime', 'TrainingElapsedTimeSeconds', 'TuningJobName', 'valid-f1']
-
+FULL_DF_COLUMNS = ['value', 'ts', 'label', 'rel_ts', 'TrainingJobName', 'criterion', 'max-depth', 'min-samples-leaf',
+                   'min-weight-fraction-leaf', 'n-estimators', 'TrainingJobStatus', 'TrainingStartTime',
+                   'TrainingEndTime', 'TrainingElapsedTimeSeconds', 'TuningJobName', 'valid-f1']
 
 TUNED_PARAMETERS = ['n-estimators', 'max-depth', 'min-samples-leaf', 'min-weight-fraction-leaf', 'criterion']
 OBJECTIVE_NAME = 'valid-f1'
@@ -90,12 +92,36 @@ FILTERED_TUNING_JOB_DF_DATA = {
     'TuningJobName': [TUNING_JOB_NAME_1, TUNING_JOB_NAME_2]
 }
 
-TUNING_RANGES = [{'Name': 'n-estimators', 'MinValue': '1', 'MaxValue': '200', 'ScalingType': 'Auto'},
-    {'Name': 'max-depth', 'MinValue': '1', 'MaxValue': '20', 'ScalingType': 'Auto'},
-    {'Name': 'min-samples-leaf', 'MinValue': '1', 'MaxValue': '10', 'ScalingType': 'Auto'},
-    {'Name': 'min-weight-fraction-leaf', 'MinValue': '0.01', 'MaxValue': '0.5', 'ScalingType': 'Auto'},
-    {'Name': 'criterion', 'Values': ['"gini"', '"entropy"', '"log_loss"']}]
-
+TUNING_RANGES = [
+    {
+        'Name': 'n-estimators',
+        'MinValue': '1',
+        'MaxValue': '200',
+        'ScalingType': 'Auto'
+    },
+    {
+        'Name': 'max-depth',
+        'MinValue': '1',
+        'MaxValue': '20',
+        'ScalingType': 'Auto'
+    },
+    {
+        'Name': 'min-samples-leaf',
+        'MinValue': '1',
+        'MaxValue': '10',
+        'ScalingType': 'Auto'
+    },
+    {
+        'Name': 'min-weight-fraction-leaf',
+        'MinValue': '0.01',
+        'MaxValue': '0.5',
+        'ScalingType': 'Auto'
+    },
+    {
+        'Name': 'criterion',
+        'Values': ['"gini"', '"entropy"', '"log_loss"']
+    }
+]
 
 TUNING_JOB_RESULT = {
     'HyperParameterTuningJobName': TUNING_JOB_NAME_1,
