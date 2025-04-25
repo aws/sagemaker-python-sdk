@@ -691,8 +691,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if self.default_bucket_prefix:
                 s3.meta.client.list_objects_v2(
                     Bucket=bucket_name,
-                    Prefix=self.default_bucket_prefix,
-                    ExpectedBucketOwner=expected_bucket_owner_id
+                    Prefix=self.default_bucket_prefix
                 )
             else:
                 s3.meta.client.head_bucket(Bucket=bucket_name)
