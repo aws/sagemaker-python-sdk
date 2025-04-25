@@ -1,28 +1,56 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: MIT-0
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""
+This module provides visualization capabilities for SageMaker hyperparameter tuning jobs.
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this
-# software and associated documentation files (the "Software"), to deal in the Software
-# without restriction, including without limitation the rights to use, copy, modify,
-# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
-# permit persons to whom the Software is furnished to do so.
+It contains utilities to create interactive visualizations of hyperparameter tuning results
+using Altair charts. The module enables users to analyze and understand the performance
+of their hyperparameter optimization experiments through various visual representations
+including:
+- Progress of objective metrics over time
+- Distribution of results
+- Relationship between hyperparameters and objective values
+- Training job metrics and instance utilization
+- Comparative analysis across multiple tuning jobs
 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Main Features:
+    - Visualize single or multiple hyperparameter tuning jobs
+    - Display training job metrics from CloudWatch
+    - Support for both completed and in-progress tuning jobs
+    - Interactive filtering and highlighting of data points
+    - CPU, memory, and GPU utilization visualization
+    - Advanced visualization options for detailed analysis
 
+Primary Classes and Functions:
+    - visualize_tuning_job: Main function to create visualizations for tuning jobs
+    - create_charts: Core chart creation functionality
+    - get_job_analytics_data: Retrieves and processes tuning job data
 
-import sagemaker
-import boto3
-from typing import Union, List, Optional, Tuple, Dict, Any
-import altair as alt
-import pandas as pd
-import numpy as np
+Dependencies:
+    - altair: For creating interactive visualizations
+    - pandas: For data manipulation and analysis
+    - boto3: For AWS service interaction
+    - sagemaker: For accessing SageMaker resources
+"""
+from __future__ import absolute_import
+
+from typing import Union, List, Optional, Tuple
 import os
 import warnings
 import logging
+import altair as alt
+import pandas as pd
+import numpy as np
+import boto3
+import sagemaker
 from sagemaker.amtviz.job_metrics import get_cw_job_metrics
 
 warnings.filterwarnings("ignore")
@@ -36,7 +64,7 @@ pd.set_option("display.max_colwidth", None)  # Don't truncate TrainingJobName
 
 alt.data_transformers.disable_max_rows()
 altair_renderer = os.getenv("ALTAIR_RENDERER", "default")
-logger.info(f"Setting altair renderer to {altair_renderer}.")
+logger.info("Setting altair renderer to %s.", altair_renderer)
 alt.renderers.enable(altair_renderer)
 
 
@@ -44,6 +72,7 @@ sm = boto3.client("sagemaker")
 
 
 def _columnize(charts: List[alt.Chart], cols: int = 2) -> alt.VConcatChart:
+    """Arrange charts in columns."""
     return alt.vconcat(*[alt.hconcat(*charts[i : i + cols]) for i in range(0, len(charts), cols)])
 
 
@@ -72,7 +101,7 @@ def visualize_tuning_job(
     trials_df, tuned_parameters, objective_name, is_minimize = get_job_analytics_data(tuning_jobs)
 
     try:
-        from IPython import get_ipython
+        from IPython import get_ipython, display
         if get_ipython():
             # Running in a Jupyter Notebook
             display(trials_df.head(10))
@@ -84,7 +113,7 @@ def visualize_tuning_job(
         logger.info(trials_df.head(10).to_string())
 
     full_df = (
-        _prepare_consolidated_df(trials_df, objective_name) if not trials_only else pd.DataFrame()
+        _prepare_consolidated_df(trials_df) if not trials_only else pd.DataFrame()
     )
 
     trials_df.columns = trials_df.columns.map(_clean_parameter_name)
@@ -104,8 +133,7 @@ def visualize_tuning_job(
 
     if return_dfs:
         return charts, trials_df, full_df
-    else:
-        return charts
+    return charts
 
 
 def create_charts(
@@ -212,9 +240,7 @@ def create_charts(
     # If we have multiple tuning jobs, we also want to be able
     # to discriminate based on the individual tuning job, so
     # we just treat them as an additional tuning parameter
-    tuning_parameters = tuning_parameters.copy()
-    if multiple_tuning_jobs:
-        tuning_parameters.append("TuningJobName")
+    tuning_parameters = tuning_parameters.copy() + (["TuningJobName"] if multiple_tuning_jobs else [])
 
     # If we use early stopping and at least some jobs were
     # stopped early, we want to be able to discriminate
@@ -292,7 +318,7 @@ def create_charts(
             if discrete:
                 # Individually coloring the values only if we don't already
                 # use the colors to show the different tuning jobs
-                logger.info(f"{parameter_type}, {tuning_parameter}")
+                logger.info("%s, %s", parameter_type, tuning_parameter)
                 if not multiple_tuning_jobs:
                     charts[-1] = charts[-1].encode(color=f"{tuning_parameter}:N")
                 charts[-1] = (
@@ -383,15 +409,14 @@ def create_charts(
             )
             .encode(
                 x=alt.X("TrainingStartTime:T", scale=alt.Scale(nice=True)),
-                y=alt.Y(f"cum_objective:Q", scale=alt.Scale(zero=False, padding=1)),
+                y=alt.Y("cum_objective:Q", scale=alt.Scale(zero=False, padding=1)),
                 stroke=alt.Stroke("TuningJobName:N", legend=None),
             )
         )
 
         if advanced:
             return cum_obj_chart + progress_chart
-        else:
-            return progress_chart
+        return progress_chart
 
     progress_chart = render_progress_chart()
 
@@ -403,7 +428,7 @@ def create_charts(
         .transform_density(objective_name, bandwidth=0.01)
         .mark_area()
         .encode(
-            x=alt.X(f"value:Q", scale=objective_scale, title=objective_name),
+            x=alt.X("value:Q", scale=objective_scale, title=objective_name),
             y="density:Q",
         )
     )
@@ -586,12 +611,20 @@ def create_charts(
     return overview_row & detail_rows & job_level_rows
 
 
-# Ensure proper parameter name characters for altair 5+
 def _clean_parameter_name(s):
+    """ Helper method to ensure proper parameter name characters for altair 5+ """
     return s.replace(":", "_").replace(".", "_")
 
 
 def _prepare_training_job_metrics(jobs):
+    """Fetches and combines CloudWatch metrics for multiple training jobs.
+
+    Args:
+        jobs (list): List of (job_name, start_time, end_time) tuples.
+
+    Returns:
+        pandas.DataFrame: Combined metrics DataFrame with 'TrainingJobName' column.
+    """
     df = pd.DataFrame()
     for job_name, start_time, end_time in jobs:
         job_df = get_cw_job_metrics(
@@ -600,7 +633,7 @@ def _prepare_training_job_metrics(jobs):
             end_time=pd.Timestamp(end_time) + pd.DateOffset(hours=8),
         )
         if job_df is None:
-            logger.info(f"No CloudWatch metrics for {job_name}. Skipping.")
+            logger.info("No CloudWatch metrics for %s. Skipping.", job_name)
             continue
 
         job_df["TrainingJobName"] = job_name
@@ -608,7 +641,8 @@ def _prepare_training_job_metrics(jobs):
     return df
 
 
-def _prepare_consolidated_df(trials_df, objective_name):
+def _prepare_consolidated_df(trials_df):
+    """Merges training job metrics with trials data into a consolidated DataFrame."""
     if trials_df.empty:
         return pd.DataFrame()
 
@@ -630,6 +664,9 @@ def _prepare_consolidated_df(trials_df, objective_name):
 
 
 def _get_df(tuning_job_name, filter_out_stopped=False):
+    """Retrieves hyperparameter tuning job results and returns preprocessed DataFrame with
+    tuning metrics and parameters."""
+
     tuner = sagemaker.HyperparameterTuningJobAnalytics(tuning_job_name)
 
     df = tuner.dataframe()
@@ -670,8 +707,9 @@ def _get_df(tuning_job_name, filter_out_stopped=False):
                     # A float then?
                     df[parameter_name] = df[parameter_name].astype(float)
 
-            except Exception as e:
-                # Trouble, as this was not a number just pretending to be a string, but an actual string with charracters. Leaving the value untouched
+            except Exception:
+                # Trouble, as this was not a number just pretending to be a string, but an actual string with
+                # characters. Leaving the value untouched
                 # Ex: Caught exception could not convert string to float: 'sqrt' <class 'ValueError'>
                 pass
 
@@ -695,7 +733,7 @@ def _get_tuning_job_names_with_parents(tuning_job_names):
                 for cfg in tuning_job_result["WarmStartConfig"]["ParentHyperParameterTuningJobs"]
             ]
             if parent_jobs:
-                logger.info(f'Tuning job {tuning_job_name}\'s parents: {", ".join(parent_jobs)}')
+                logger.info("Tuning job %s's parents: %s", tuning_job_name, ", ".join(parent_jobs))
         all_tuning_job_names.extend([tuning_job_name, *parent_jobs])
 
     # return de-duplicated tuning job names
@@ -703,6 +741,17 @@ def _get_tuning_job_names_with_parents(tuning_job_names):
 
 
 def get_job_analytics_data(tuning_job_names):
+    """Retrieves and processes analytics data from hyperparameter tuning jobs.
+
+    Args:
+        tuning_job_names (str or list): Single tuning job name or list of names/tuner objects.
+
+    Returns:
+        tuple: (DataFrame with training results, tuned parameters list, objective name, is_minimize flag).
+
+    Raises:
+        ValueError: If tuning jobs have different objectives or optimization directions.
+    """
     if not isinstance(tuning_job_names, list):
         tuning_job_names = [tuning_job_names]
 
@@ -729,7 +778,7 @@ def get_job_analytics_data(tuning_job_names):
             HyperParameterTuningJobName=tuning_job_name
         )
         status = tuning_job_result["HyperParameterTuningJobStatus"]
-        logger.info(f"Tuning job {tuning_job_name:25s} status: {status}")
+        logger.info("Tuning job %-25s status: %s", tuning_job_name, status)
 
         df = pd.concat([df, _get_df(tuning_job_name)])
 
@@ -786,14 +835,15 @@ def get_job_analytics_data(tuning_job_names):
         df[objective_name] = df.pop("FinalObjectiveValue")
 
         # Fix potential issue with dates represented as objects, instead of a timestamp
-        # This can in other cases lead to https://www.markhneedham.com/blog/2020/01/10/altair-typeerror-object-type-date-not-json-serializable/
+        # This can in other cases lead to:
+        # https://www.markhneedham.com/blog/2020/01/10/altair-typeerror-object-type-date-not-json-serializable/
         # Have only observed this for TrainingEndTime, but will be on the lookout dfor TrainingStartTime as well now
         df["TrainingEndTime"] = pd.to_datetime(df["TrainingEndTime"])
         df["TrainingStartTime"] = pd.to_datetime(df["TrainingStartTime"])
 
         logger.info("")
-        logger.info(f"Number of training jobs with valid objective: {len(df)}")
-        logger.info(f"Lowest: {min(df[objective_name])} Highest {max(df[objective_name])}")
+        logger.info("Number of training jobs with valid objective: %d", len(df))
+        logger.info("Lowest: %s Highest %s", min(df[objective_name]), max(df[objective_name]))
 
         tuned_parameters = [_clean_parameter_name(tp) for tp in tuned_parameters]
 

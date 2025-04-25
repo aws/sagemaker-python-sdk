@@ -10,6 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Tests related to amtviz.visualization"""
+from __future__ import absolute_import
+
 import pandas as pd
 import pytest
 from mock import Mock, patch, MagicMock
@@ -24,7 +27,6 @@ from tests.unit.tuner_test_utils import (
     HYPERPARAMETER_RANGES,
     METRIC_DEFINITIONS
 )
-from sagemaker.session_settings import SessionSettings
 # Visualization specific imports
 from sagemaker.amtviz.visualization import visualize_tuning_job, get_job_analytics_data
 from tests.unit.tuner_visualize_test_utils import (
@@ -40,12 +42,12 @@ from tests.unit.tuner_visualize_test_utils import (
     FULL_DF_COLUMNS,
     TRIALS_DF_TRAINING_JOB_NAMES,
     TRIALS_DF_TRAINING_JOB_STATUSES,
-    TUNING_JOB_NAMES,
     TRIALS_DF_VALID_F1_VALUES,
     FILTERED_TUNING_JOB_DF_DATA,
     TUNING_RANGES
 )
 import altair as alt
+
 
 def create_sagemaker_session():
     boto_mock = Mock(name="boto_session")
@@ -58,6 +60,7 @@ def create_sagemaker_session():
     )
     sms.sagemaker_config = {}
     return sms
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -81,6 +84,7 @@ def tuner(estimator):
     return HyperparameterTuner(
         estimator, OBJECTIVE_METRIC_NAME, HYPERPARAMETER_RANGES, METRIC_DEFINITIONS
     )
+
 
 @pytest.fixture()
 def tuner2(estimator):
@@ -130,7 +134,7 @@ def test_visualize_jobs_altair_not_installed(capsys):
 # Test basic method call if altair is installed
 def test_visualize_jobs_altair_installed(mock_visualize_tuning_job):
     # Mock successful import of altair
-    with patch("importlib.import_module") as mock_import:
+    with patch("importlib.import_module"):
         result = HyperparameterTuner.visualize_jobs(TUNING_JOB_NAMES)
         assert result == "mock_chart"
 
@@ -157,6 +161,7 @@ def test_visualize_jobs(mock_visualize_tuning_job):
         advanced=True
     )
 
+
 # Test the instance method visualize_job() on a stubbed tuner object
 def test_visualize_job(tuner, mock_visualize_tuning_job):
     # With default parameters
@@ -180,6 +185,7 @@ def test_visualize_job(tuner, mock_visualize_tuning_job):
         advanced=True
     )
 
+
 # Test the static method visualize_jobs() on multiple stubbed tuner objects
 def test_visualize_multiple_jobs(tuner, tuner2, mock_visualize_tuning_job):
     result = HyperparameterTuner.visualize_jobs([tuner, tuner2])
@@ -201,6 +207,7 @@ def test_visualize_multiple_jobs(tuner, tuner2, mock_visualize_tuning_job):
         trials_only=True,
         advanced=True
     )
+
 
 # Test direct method call for basic chart return type and default render settings
 def test_visualize_tuning_job_analytics_data_results_in_altair_chart(mock_get_job_analytics_data):
@@ -259,7 +266,11 @@ def test_visualize_tuning_job_trials_only(mock_get_job_analytics_data):
 
 # Check if all parameters are correctly passed to the (mocked) create_charts method
 @patch("sagemaker.amtviz.visualization.create_charts")
-def test_visualize_tuning_job_with_full_df(mock_create_charts, mock_get_job_analytics_data, mock_prepare_consolidated_df):
+def test_visualize_tuning_job_with_full_df(
+    mock_create_charts,
+    mock_get_job_analytics_data,
+    mock_prepare_consolidated_df
+):
     mock_create_charts.return_value = alt.Chart()
     visualize_tuning_job("dummy_job")
 
