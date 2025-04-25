@@ -9,7 +9,7 @@ dependencies:
   - cffi==1.16.0
   - cloudpickle==2.2.1
   - defusedxml==0.7.1
-  - dill==0.3.8
+  - dill==0.3.9
   - gmpy2==2.1.2
   - numpy==1.26.4
   - opt-einsum==3.3.0

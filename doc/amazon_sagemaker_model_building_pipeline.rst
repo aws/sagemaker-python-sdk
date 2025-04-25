@@ -930,7 +930,7 @@ Caching is supported for the following step types:
 - :class:`sagemaker.workflow.clarify_check_step.ClarifyCheckStep`
 - :class:`sagemaker.workflow.emr_step.EMRStep`
 
-In order to create pipeline steps and eventually construct a SageMaker pipeline, you provide parameters within a Python script or notebook. The SageMaker Python SDK creates a pipeline definition by translating these parameters into SageMaker job attributes. Some of these attributes, when changed, cause the step to re-run (See `Caching Pipeline Steps <https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-caching.html>`__ for a detailed list). Therefore, if you update a SDK parameter that is used to create such an attribute, the step will rerun. See the following discussion for examples of this in processing and training steps, which are commonly used steps in Pipelines.
+In order to create pipeline steps and eventually construct a SageMaker pipeline, you provide parameters within a Python script or notebook. The SageMaker Python SDK creates a pipeline definition by translating these parameters into SageMaker job attributes. Some of these attributes, when changed, cause the step to re-run (See `Caching Pipeline Steps <https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-caching.html>`__ for a detailed list). Therefore, if you update a SDK parameter that is used to create such an attribute, the step will rerun. See the following discussion for examples of this in commonly used step types in Pipelines.
 
 The following example creates a processing step:
 
@@ -1054,6 +1054,218 @@ The following parameters from the example cause additional training step iterati
 - :code:`hyperparameters`: All of the hyperparameters are used directly in the `HyperParameters <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DescribeTrainingJob.html#API_DescribeTrainingJob_ResponseSyntax>`__ attribute for the training job.
 - :code:`entry_point`: The entry point file is included in the training job’s `InputDataConfig Channel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Channel.html>`__ array. A unique hash is created from the file (and any other dependencies), and then the file is uploaded to S3 with the hash included in the path. When a different entry point file is used, a new hash is created and the S3 path for that `InputDataConfig Channel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Channel.html>`__ object changes, initiating a new step run. For examples of what the S3 paths look like, see the **S3 Artifact Folder Structure** section.
 - :code:`inputs`: The inputs are also included in the training job’s `InputDataConfig <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Channel.html>`__. Local inputs are uploaded to S3. If the S3 path changes, a new training job is initiated. For examples of S3 paths, see the **S3 Artifact Folder Structure** section.
+
+The following example creates a tuning step:
+
+.. code-block:: python
+
+    from sagemaker.workflow.steps import TuningStep
+    from sagemaker.tuner import HyperparameterTuner
+    from sagemaker.estimator import Estimator
+    from sagemaker.inputs import TrainingInput
+
+    model_path = f"s3://{default_bucket}/{base_job_prefix}/AbaloneTrain"
+
+    xgb_train = Estimator(
+        image_uri=image_uri,
+        instance_type=training_instance_type,
+        instance_count=1,
+        output_path=model_path,
+        base_job_name=f"{base_job_prefix}/abalone-train",
+        sagemaker_session=pipeline_session,
+        role=role,
+    )
+
+    xgb_train.set_hyperparameters(
+        eval_metric="rmse",
+        objective="reg:squarederror",  # Define the object metric for the training job
+        num_round=50,
+        max_depth=5,
+        eta=0.2,
+        gamma=4,
+        min_child_weight=6,
+        subsample=0.7,
+        silent=0,
+    )
+
+    objective_metric_name = "validation:rmse"
+
+    hyperparameter_ranges = {
+        "alpha": ContinuousParameter(0.01, 10, scaling_type="Logarithmic"),
+        "lambda": ContinuousParameter(0.01, 10, scaling_type="Logarithmic"),
+    }
+
+    tuner = HyperparameterTuner(
+        xgb_train,
+        objective_metric_name,
+        hyperparameter_ranges,
+        max_jobs=3,
+        max_parallel_jobs=3,
+        strategy="Random",
+        objective_type="Minimize",
+    )
+
+    hpo_args = tuner.fit(
+        inputs={
+            "train": TrainingInput(
+                s3_data=step_process.properties.ProcessingOutputConfig.Outputs["train"].S3Output.S3Uri,
+                content_type="text/csv",
+            ),
+            "validation": TrainingInput(
+                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                    "validation"
+                ].S3Output.S3Uri,
+                content_type="text/csv",
+            ),
+        }
+    )
+
+    step_tuning = TuningStep(
+        name="HPTuning",
+        step_args=hpo_args,
+        cache_config=cache_config,
+    )
+
+The following parameters from the example cause additional tuning (or training) step iterations when you change them:
+
+- :code:`image_uri`: The :code:`image_uri` parameter defines the image used for training, and is used directly in the `AlgorithmSpecification <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html>`__ attribute of the training job(s) that are created from the tuning job.
+- :code:`hyperparameters`: All of the hyperparameters passed in the :code:`xgb_train.set_hyperparameters()` method are used directly in the `StaticHyperParameters <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_HyperParameterTrainingJobDefinition.html>`__ attribute for the tuning job.
+- The following parameters are all included in the `HyperParameterTuningJobConfig <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_HyperParameterTuningJobConfig.html>`__ and if any one of them changes, a new tuning job is initiated:
+      - :code:`hyperparameter_ranges`
+      - :code:`objective_metric_name`
+      - :code:`max_jobs`
+      - :code:`max_parallel_jobs`
+      - :code:`strategy`
+      - :code:`objective_type`
+- :code:`inputs`: The inputs are included in any training job’s `InputDataConfig <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Channel.html>`__ that get created from the tuning job. Local inputs are uploaded to S3. If the S3 path changes, a new tuning job is initiated. For examples of S3 paths, see the S3 Artifact Folder Structure section.
+
+The following examples creates a transform step:
+
+.. code-block:: python
+
+    from sagemaker.transformer import Transformer
+    from sagemaker.inputs import TransformInput
+    from sagemaker.workflow.steps import TransformStep
+
+    base_uri = f"s3://{default_bucket}/abalone"
+    batch_data_uri = sagemaker.s3.S3Uploader.upload(
+        local_path=local_path,
+        desired_s3_uri=base_uri,
+    )
+
+    batch_data = ParameterString(
+        name="BatchData",
+        default_value=batch_data_uri,
+    )
+
+    transformer = Transformer(
+        model_name=step_create_model.properties.ModelName,
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        output_path=f"s3://{default_bucket}/AbaloneTransform",
+        env={
+            'class': 'Transformer'
+        }
+    )
+
+    step_transform = TransformStep(
+        name="AbaloneTransform",
+        step_args=transformer.transform(
+            data=batch_data,
+            data_type="S3Prefix"
+        )
+    )
+
+The following parameters from the example cause additional batch transform step iterations when you change them:
+
+- :code:`model_name`: The name of the SageMaker model being used for the transform job.
+- :code:`env`: Environment variables to be set for use during the transform job.
+- :code:`batch_data`: The input data will be included in the transform job’s `TransformInputfield <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_TransformInput.html>`__. If the S3 path changes, a new transform job is initiated.
+
+The following example creates an automl step:
+
+.. code-block:: python
+
+    from sagemaker.workflow.pipeline_context import PipelineSession
+    from sagemaker.workflow.automl_step import AutoMLStep
+
+    pipeline_session = PipelineSession()
+
+    auto_ml = AutoML(...,
+        role=role,
+        target_attribute_name="my_target_attribute_name",
+        mode="ENSEMBLING",
+        sagemaker_session=pipeline_session)
+
+    input_training = AutoMLInput(
+        inputs="s3://amzn-s3-demo-bucket/my-training-data",
+        target_attribute_name="my_target_attribute_name",
+        channel_type="training",
+    )
+    input_validation = AutoMLInput(
+        inputs="s3://amzn-s3-demo-bucket/my-validation-data",
+        target_attribute_name="my_target_attribute_name",
+        channel_type="validation",
+    )
+
+    step_args = auto_ml.fit(
+        inputs=[input_training, input_validation]
+    )
+
+    step_automl = AutoMLStep(
+        name="AutoMLStep",
+        step_args=step_args,
+    )
+
+    best_model = step_automl.get_best_auto_ml_model(role=<role>)
+
+The following parameters from the example cause additional automl step iterations when you change them:
+
+- :code:`target_attribute_name`: The name of the target variable in supervised learning.
+- :code:`mode`: The method that AutoML job uses to train the model - either AUTO, ENSEMBLING or HYPERPARAMETER_TUNING.
+- :code:`inputs`: The inputs passed to the auto_ml.fit() method are included in the automl job’s `InputDataConfig <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AutoMLChannel.html>`__. If the included S3 path(s) change, a new automl job is initiated.
+
+The following example creates an EMR step:
+
+.. code-block:: python
+
+    from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
+
+    emr_config = EMRStepConfig(
+        jar="jar-location", # required, path to jar file used
+        args=["--verbose", "--force"], # optional list of arguments to pass to the jar
+        main_class="com.my.Main1", # optional main class, this can be omitted if jar above has a manifest
+        properties=[ # optional list of Java properties that are set when the step runs
+        {
+            "key": "mapred.tasktracker.map.tasks.maximum",
+            "value": "2"
+        },
+        {
+            "key": "mapreduce.map.sort.spill.percent",
+            "value": "0.90"
+       },
+       {
+           "key": "mapreduce.tasktracker.reduce.tasks.maximum",
+           "value": "5"
+        }
+      ]
+    )
+
+    step_emr = EMRStep(
+        name="EMRSampleStep", # required
+        cluster_id="j-1ABCDEFG2HIJK", # include cluster_id to use a running cluster
+        step_config=emr_config, # required
+        display_name="My EMR Step",
+        description="Pipeline step to execute EMR job"
+    )
+
+The following parameters from the example cause additional EMR step iterations when you change them:
+
+- :code:`cluster_id`: The id of a running cluster to leverage for the EMR job.
+- :code:`emr_config`: Configuration regarding the code that will run on the EMR cluster during the job.
+
+:class:`Note`: A :code:`cluster_config` parameter may also be passed into :code:`EMRStep` in order to spin up a new cluster. This parameter will also trigger additional step iterations if changed.
+
 
 S3 Artifact Folder Structure
 ----------------------------
