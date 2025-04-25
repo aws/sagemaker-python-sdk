@@ -632,10 +632,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         bucket = s3.Bucket(name=bucket_name)
         expected_bucket_owner_id = self.account_id()
         if bucket.creation_date is None:
-            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, True, expected_bucket_owner_id)
+            self.general_bucket_check_if_user_has_permission(
+                bucket_name, s3, bucket, region, True, expected_bucket_owner_id
+            )
 
         elif self._default_bucket_set_by_sdk:
-            self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, False, expected_bucket_owner_id)
+            self.general_bucket_check_if_user_has_permission(
+                bucket_name, s3, bucket, region, False, expected_bucket_owner_id
+            )
             self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
 
     def expected_bucket_owner_id_bucket_check(self, bucket_name, s3, expected_bucket_owner_id):
@@ -652,7 +656,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 s3.meta.client.list_objects_v2(
                     Bucket=bucket_name,
                     Prefix=self.default_bucket_prefix,
-                    ExpectedBucketOwner=expected_bucket_owner_id
+                    ExpectedBucketOwner=expected_bucket_owner_id,
                 )
             else:
                 s3.meta.client.head_bucket(
@@ -690,8 +694,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         try:
             if self.default_bucket_prefix:
                 s3.meta.client.list_objects_v2(
-                    Bucket=bucket_name,
-                    Prefix=self.default_bucket_prefix
+                    Bucket=bucket_name, Prefix=self.default_bucket_prefix
                 )
             else:
                 s3.meta.client.head_bucket(Bucket=bucket_name)

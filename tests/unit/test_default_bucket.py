@@ -43,9 +43,11 @@ def sagemaker_session():
 def sagemaker_session_with_bucket_name_and_prefix():
     boto_mock = MagicMock(name="boto_session", region_name=REGION)
     boto_mock.client("sts").get_caller_identity.return_value = {"Account": ACCOUNT_ID}
-    sagemaker_session = sagemaker.Session(boto_session=boto_mock,
-                                          default_bucket="XXXXXXXXXXXXX",
-                                          default_bucket_prefix="sample-prefix")
+    sagemaker_session = sagemaker.Session(
+        boto_session=boto_mock,
+        default_bucket="XXXXXXXXXXXXX",
+        default_bucket_prefix="sample-prefix",
+    )
     sagemaker_session.boto_session.resource("s3").Bucket().creation_date = None
     return sagemaker_session
 
@@ -106,15 +108,18 @@ def test_default_bucket_s3_needs_bucket_owner_access(sagemaker_session, datetime
     assert error_message in caplog.text
     assert sagemaker_session._default_bucket is None
 
-def test_default_bucket_with_prefix_s3_needs_bucket_owner_access(sagemaker_session_with_bucket_name_and_prefix,
-                                                                 datetime_obj,
-                                                                 caplog):
+
+def test_default_bucket_with_prefix_s3_needs_bucket_owner_access(
+    sagemaker_session_with_bucket_name_and_prefix, datetime_obj, caplog
+):
     with pytest.raises(ClientError):
         error = ClientError(
             error_response={"Error": {"Code": "403", "Message": "Forbidden"}},
             operation_name="foo",
         )
-        sagemaker_session_with_bucket_name_and_prefix.boto_session.resource("s3").meta.client.list_objects_v2.side_effect = error
+        sagemaker_session_with_bucket_name_and_prefix.boto_session.resource(
+            "s3"
+        ).meta.client.list_objects_v2.side_effect = error
         sagemaker_session_with_bucket_name_and_prefix.boto_session.resource("s3").Bucket(
             name=DEFAULT_BUCKET_NAME
         ).creation_date = None
@@ -123,7 +128,10 @@ def test_default_bucket_with_prefix_s3_needs_bucket_owner_access(sagemaker_sessi
     error_message = "Please try again after adding appropriate access."
     assert error_message in caplog.text
     assert sagemaker_session_with_bucket_name_and_prefix._default_bucket is None
-    sagemaker_session_with_bucket_name_and_prefix.boto_session.resource("s3").meta.client.list_objects_v2.assert_called_once()
+    sagemaker_session_with_bucket_name_and_prefix.boto_session.resource(
+        "s3"
+    ).meta.client.list_objects_v2.assert_called_once()
+
 
 def test_default_bucket_s3_custom_bucket_input(sagemaker_session, datetime_obj, caplog):
     sagemaker_session._default_bucket_name_override = "custom-bucket-override"
