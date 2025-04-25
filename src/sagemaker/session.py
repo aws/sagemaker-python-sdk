@@ -633,12 +633,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         expected_bucket_owner_id = self.account_id()
         if bucket.creation_date is None:
             self.general_bucket_check_if_user_has_permission(
-                bucket_name, s3, bucket, region, True, expected_bucket_owner_id
+                bucket_name, s3, bucket, region, True
             )
 
         elif self._default_bucket_set_by_sdk:
             self.general_bucket_check_if_user_has_permission(
-                bucket_name, s3, bucket, region, False, expected_bucket_owner_id
+                bucket_name, s3, bucket, region, False
             )
             self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
 
@@ -678,7 +678,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 raise
 
     def general_bucket_check_if_user_has_permission(
-        self, bucket_name, s3, bucket, region, bucket_creation_date_none, expected_bucket_owner_id
+        self, bucket_name, s3, bucket, region, bucket_creation_date_none
     ):
         """Checks if the person running has the permissions to the bucket
 
