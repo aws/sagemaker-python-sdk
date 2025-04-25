@@ -3,14 +3,14 @@ Model Builder
 
 This module contains classes related to Amazon Sagemaker Model Builder
 
-.. autoclass:: sagemaker.serve.builder.model_builder.ModelBuilder
+.. autoclass:: sagemaker.serve.ModelBuilder
 
-.. automethod:: sagemaker.serve.builder.model_builder.ModelBuilder.build
+.. automethod:: sagemaker.serve.ModelBuilder.build
 
-.. automethod:: sagemaker.serve.builder.model_builder.ModelBuilder.save
+.. automethod:: sagemaker.serve.ModelBuilder.save
 
-.. autoclass:: sagemaker.serve.spec.inference_spec.InferenceSpec
+.. autoclass:: sagemaker.serve.InferenceSpec
 
-.. autoclass:: sagemaker.serve.builder.schema_builder.SchemaBuilder
+.. autoclass:: sagemaker.serve.SchemaBuilder
 
-.. autoclass:: sagemaker.serve.marshalling.custom_payload_translator.CustomPayloadTranslator
+.. autoclass:: sagemaker.serve.CustomPayloadTranslator
