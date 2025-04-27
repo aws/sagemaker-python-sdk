@@ -44,6 +44,24 @@ PARAM_SCRIPT_SOURCE_CODE = SourceCode(
 
 DEFAULT_CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py310"
 
+TAR_FILE_SOURCE_DIR = f"{DATA_DIR}/modules/script_mode/code.tar.gz"
+TAR_FILE_SOURCE_CODE = SourceCode(
+    source_dir=TAR_FILE_SOURCE_DIR,
+    requirements="requirements.txt",
+    entry_script="custom_script.py",
+)
+
+
+def test_source_dir_local_tar_file(modules_sagemaker_session):
+    model_trainer = ModelTrainer(
+        sagemaker_session=modules_sagemaker_session,
+        training_image=DEFAULT_CPU_IMAGE,
+        source_code=TAR_FILE_SOURCE_CODE,
+        base_job_name="source_dir_local_tar_file",
+    )
+
+    model_trainer.train()
+
 
 def test_hp_contract_basic_py_script(modules_sagemaker_session):
     model_trainer = ModelTrainer(
