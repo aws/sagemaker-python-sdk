@@ -48,7 +48,7 @@ def mock_mlflow_client():
 def test_encode():
     existing_names = set()
     assert encode("test-name", existing_names) == "test-name"
-    assert encode("test:name", existing_names) == "test_3a_name"
+    assert encode("test:name", existing_names) == "test:name"
     assert encode("test-name", existing_names) == "test-name_1"
 
 
