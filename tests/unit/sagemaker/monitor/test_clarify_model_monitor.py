@@ -89,6 +89,7 @@ NETWORK_CONFIG = NetworkConfig(
     subnets=SUBNETS,
 )
 CRON_HOURLY = CronExpressionGenerator.hourly()
+NOW = CronExpressionGenerator.now()
 ENDPOINT_NAME = "endpoint"
 GROUND_TRUTH_S3_URI = "s3://bucket/monitoring_captured/actuals"
 ANALYSIS_CONFIG_S3_URI = "s3://bucket/analysis_config.json"
@@ -1380,6 +1381,26 @@ def test_model_explainability_monitor_created_by_attach(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
+def test_model_explainability_monitor_with_one_time_schedule(model_explainability_monitor, sagemaker_session):
+    # create schedule
+    _test_model_explainability_monitor_create_one_time_schedule(
+        model_explainability_monitor=model_explainability_monitor,
+        sagemaker_session=sagemaker_session,
+        analysis_config=ANALYSIS_CONFIG_S3_URI,
+        constraints=CONSTRAINTS,
+    )
+
+    # update schedule
+    _test_model_explainability_monitor_update_schedule(
+        model_explainability_monitor=model_explainability_monitor,
+        sagemaker_session=sagemaker_session,
+    )
+
+    # delete schedule
+    _test_model_explainability_monitor_delete_schedule(
+        model_explainability_monitor=model_explainability_monitor,
+        sagemaker_session=sagemaker_session,
+    )
 
 def test_model_explainability_monitor_invalid_create(
     model_explainability_monitor, sagemaker_session
@@ -1521,6 +1542,70 @@ def _test_model_explainability_monitor_create_schedule(
         Tags=TAGS,
     )
 
+def _test_model_explainability_monitor_create_one_time_schedule(
+    model_explainability_monitor,
+    sagemaker_session,
+    analysis_config=None,
+    constraints=None,
+    baseline_job_name=None,
+    endpoint_input=EndpointInput(
+        endpoint_name=ENDPOINT_NAME,
+        destination=ENDPOINT_INPUT_LOCAL_PATH,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=str(INFERENCE_ATTRIBUTE),
+    ),
+    explainability_analysis_config=None,
+):
+    # create schedule
+    with patch(
+        "sagemaker.s3.S3Uploader.upload_string_as_file_body", return_value=ANALYSIS_CONFIG_S3_URI
+    ) as upload:
+        model_explainability_monitor.create_monitoring_schedule(
+            endpoint_input=endpoint_input,
+            analysis_config=analysis_config,
+            output_s3_uri=OUTPUT_S3_URI,
+            constraints=constraints,
+            monitor_schedule_name=SCHEDULE_NAME,
+            schedule_cron_expression=NOW,
+            data_analysis_start_time=NEW_START_TIME_OFFSET,
+            data_analysis_end_time=NEW_END_TIME_OFFSET,
+        )
+        if not isinstance(analysis_config, str):
+            upload.assert_called_once()
+            assert json.loads(upload.call_args[0][0]) == explainability_analysis_config
+
+    # validation
+    expected_arguments = {
+        "JobDefinitionName": model_explainability_monitor.job_definition_name,
+        **copy.deepcopy(EXPLAINABILITY_JOB_DEFINITION),
+        "Tags": TAGS,
+    }
+    if constraints:
+        expected_arguments["ModelExplainabilityBaselineConfig"] = {
+            "ConstraintsResource": {"S3Uri": constraints.file_s3_uri}
+        }
+    elif baseline_job_name:
+        expected_arguments["ModelExplainabilityBaselineConfig"] = {
+            "BaseliningJobName": baseline_job_name,
+        }
+
+    sagemaker_session.sagemaker_client.create_model_explainability_job_definition.assert_called_with(
+        **expected_arguments
+    )
+
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+        MonitoringScheduleName=SCHEDULE_NAME,
+        MonitoringScheduleConfig={
+            "MonitoringJobDefinitionName": model_explainability_monitor.job_definition_name,
+            "MonitoringType": "ModelExplainability",
+            "ScheduleConfig": {
+                "ScheduleExpression": NOW,
+                "DataAnalysisStartTime": NEW_START_TIME_OFFSET,
+                "DataAnalysisEndTime": NEW_END_TIME_OFFSET
+            },
+        },
+        Tags=TAGS,
+    )
 
 def _test_model_explainability_batch_transform_monitor_create_schedule(
     model_explainability_monitor,
