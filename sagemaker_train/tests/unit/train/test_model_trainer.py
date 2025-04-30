@@ -15,17 +15,17 @@ from __future__ import absolute_import
 
 from imaplib import IMAP4
 
-#import shutil
-#import tempfile
-#import json
-#import os
-#import yaml
+import shutil
+import tempfile
+import json
+import os
+import yaml
 import pytest
-#from pydantic import ValidationError
+from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
 
 #from sagemaker.utils import image_uris
-#from sagemaker_core.main.resources import TrainingJob
+from sagemaker_core.main.resources import TrainingJob
 from sagemaker_core.main.shapes import (
     ResourceConfig,
     VpcConfig,
@@ -60,8 +60,8 @@ from sagemaker.train.configs import (
     Channel,
     DataSource,
 )
-from sagemaker.utils.config_schema import SAGEMAKER, PYTHON_SDK, MODULES
-from sagemaker.utils.config_schema import (
+from sagemaker.utils.config.config_schema import SAGEMAKER, PYTHON_SDK, MODULES
+from sagemaker.utils.config.config_schema import (
     MODEL_TRAINER,
     _simple_path,
     TRAINING_JOB_RESOURCE_CONFIG_PATH,

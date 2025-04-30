@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sagemaker_utils"
-dynamic = ["version", "optional-dependencies"]
+dynamic = ["version"]
 description = "Open source library for training and deploying models on Amazon SageMaker."
 readme = "README.rst"
 requires-python = ">=3.9"
@@ -18,6 +18,8 @@ keywords = [
   "ML",
   "MXNet",
   "Tensorflow",
+  "PyTorch",
+  "HuggingFace"
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -25,10 +27,10 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "boto3>=1.35.75,<2.0",
@@ -40,10 +42,12 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/aws/sagemaker-python-sdk"
 
-[tool.hatch.version]
-path = "VERSION"
-pattern = "(?P<version>.+)"
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["sagemaker.utils"]
 
+[tool.setuptools.dynamic]
+version = { file = "VERSION"}
 
 [tool.pytest.ini_options]
 addopts = ["-vv"]

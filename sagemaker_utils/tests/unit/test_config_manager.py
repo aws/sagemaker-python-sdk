@@ -8,9 +8,9 @@ from unittest.mock import Mock, MagicMock, patch, call
 from jsonschema import exceptions
 from yaml.constructor import ConstructorError
 
-from sagemaker.utils.config_manager import SageMakerConfig
+from sagemaker.utils.config.config_manager import SageMakerConfig
 
-from sagemaker.utils.config_utils import non_repeating_log_factory, get_sagemaker_config_logger, _log_sagemaker_config_single_substitution, _log_sagemaker_config_merge
+from sagemaker.utils.config.config_utils import non_repeating_log_factory, get_sagemaker_config_logger, _log_sagemaker_config_single_substitution, _log_sagemaker_config_merge
 logger = get_sagemaker_config_logger()
 log_info_function = non_repeating_log_factory(logger, "info")
 
@@ -412,13 +412,13 @@ class TestSageMakerConfig:
         logger.propagate = False
 
     def test_load_local_mode_config(self):
-        with patch('sagemaker.utils.config_manager.SageMakerConfig._load_config_from_file') as mock_load:
+        with patch('sagemaker.utils.config.config_manager.SageMakerConfig._load_config_from_file') as mock_load:
             self.config.load_local_mode_config()
             mock_load.assert_called_with(self.config._DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH)
 
     def test_load_local_mode_config_when_config_file_is_not_found(self):
         with patch(
-                'sagemaker.utils.config_manager.SageMakerConfig._load_config_from_file',
+                'sagemaker.utils.config.config_manager.SageMakerConfig._load_config_from_file',
                 side_effect=ValueError
         ):
             assert self.config.load_local_mode_config() is None

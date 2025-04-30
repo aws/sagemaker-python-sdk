@@ -29,7 +29,7 @@ from sagemaker_core.shapes import AlgorithmSpecification
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 from sagemaker.train.distributed import Torchrun, DistributedConfig
-from sagemaker.utils.config_schema import (
+from sagemaker.utils.config.config_schema import (
     _simple_path,
     SAGEMAKER,
     MODEL_TRAINER,
@@ -46,7 +46,7 @@ from sagemaker.utils.config_schema import (
     TRAINING_JOB_TAGS_PATH,
 )
 
-from sagemaker.utils.config_manager import SageMakerConfig
+from sagemaker.utils.config.config_manager import SageMakerConfig
 from sagemaker.train import Session, get_execution_role
 from sagemaker.train.configs import (
     Compute,

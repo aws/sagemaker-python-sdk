@@ -1,5 +1,0 @@
-[run]
-concurrency = threading
-omit = sagemaker/tests/*
-timid = True
-disable_warnings = module-not-measured

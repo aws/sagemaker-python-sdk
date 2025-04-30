@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""This module contains telemetry utilities for the SageMaker Python SDK."""
 from __future__ import absolute_import
 
 from .telemetry_logging import _telemetry_emitter  # noqa: F401

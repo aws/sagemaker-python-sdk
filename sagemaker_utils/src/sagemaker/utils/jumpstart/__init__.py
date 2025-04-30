@@ -1,2 +1,0 @@
-
-from sagemaker.utils.jumpstart.image_uris import _retrieve_image_uri

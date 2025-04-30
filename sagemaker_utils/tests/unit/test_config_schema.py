@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 from jsonschema import validate, exceptions
 import pytest
-from sagemaker.utils.config_schema import (
+from sagemaker.utils.config.config_schema import (
     SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA,
     SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA,
 )

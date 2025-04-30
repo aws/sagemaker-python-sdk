@@ -1,6 +1,0 @@
-[flake8]
-application_import_names = sagemaker, tests
-import-order-style = google
-per-file-ignores =
-    tests/unit/test_tuner.py: F405
-    src/sagemaker/config/config_schema.py: E501

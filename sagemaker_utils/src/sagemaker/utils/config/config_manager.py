@@ -11,8 +11,8 @@ import jsonschema
 from platformdirs import site_config_dir, user_config_dir
 from botocore.utils import merge_dicts
 from six.moves.urllib.parse import urlparse
-from sagemaker.utils.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
-from sagemaker.utils.config_utils import non_repeating_log_factory, get_sagemaker_config_logger, _log_sagemaker_config_single_substitution, _log_sagemaker_config_merge
+from sagemaker.utils.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
+from sagemaker.utils.config.config_utils import non_repeating_log_factory, get_sagemaker_config_logger, _log_sagemaker_config_single_substitution, _log_sagemaker_config_merge
 
 logger = get_sagemaker_config_logger()
 log_info_function = non_repeating_log_factory(logger, "info")
