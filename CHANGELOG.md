@@ -1,5 +1,121 @@
 # Changelog
 
+## v2.243.3 (2025-04-23)
+
+### Bug Fixes and Other Changes
+
+ * update readme to reflect py312 upgrade
+ * Revert the PR changes 5122
+ * Py312 upgrade step 2: Update dependencies, integ tests and unit tests
+ * update pr test to deprecate py38 and add py312
+ * update image_uri_configs 04-16-2025 07:18:18 PST
+ * update image_uri_configs 04-15-2025 07:18:10 PST
+ * update image_uri_configs 04-11-2025 07:18:19 PST
+
+## v2.243.2 (2025-04-16)
+
+### Bug Fixes and Other Changes
+
+ * tgi image uri unit tests
+ * Fix deepdiff dependencies
+
+## v2.243.1 (2025-04-11)
+
+### Bug Fixes and Other Changes
+
+ * Added handler for pipeline variable while creating process job
+ * Fix issue #4856 by copying environment variables
+ * remove historical job_name caching which causes long job name
+ * Update instance gpu info
+ * Master
+ * Add mlflow tracking arn telemetry
+ * chore: fix semantic versioning for wildcard identifier
+ * flaky test
+
+### Documentation Changes
+
+ * update pipelines step caching examples to include more steps
+ * update ModelStep data dependency info
+
+## v2.243.0 (2025-03-27)
+
+### Features
+
+ * Enabled update_endpoint through model_builder
+
+### Bug Fixes and Other Changes
+
+ * Update for PT 2.5.1, SMP 2.8.0
+ * chore: move jumpstart region definitions to json file
+ * fix flaky clarify model monitor test
+ * fix flaky spark processor integ
+ * use temp file in unit tests
+ * Update transformers version
+ * Aligned disable_output_compression for @remote with Estimator
+ * Update Jinja version
+ * update image_uri_configs  03-26-2025 07:18:16 PST
+ * chore: fix integ tests to use latest version of model
+ * update image_uri_configs  03-25-2025 07:18:13 PST
+ * Skip tests failed due to deprecated instance type
+ * update image_uri_configs  03-21-2025 07:17:55 PST
+ * factor in set instance type when building JumpStart models in ModelBuilder.
+ * ADD Documentation to ReadtheDocs for Upgrading torch versions
+ * add new regions to JUMPSTART_LAUNCHED_REGIONS
+
+## v2.242.0 (2025-03-14)
+
+### Features
+
+ * add integ tests for training JumpStart models in private hub
+
+### Bug Fixes and Other Changes
+
+ * Torch upgrade
+ * Prevent RunContext overlap between test_run tests
+ * remove s3 output location requirement from hub class init
+ * Fixing Pytorch training python version in tests
+ * update image_uri_configs  03-11-2025 07:18:09 PST
+ * resolve infinite loop in _find_config on Windows systems
+ * pipeline definition function doc update
+
+## v2.241.0 (2025-03-06)
+
+### Features
+
+ * Make DistributedConfig Extensible
+ * support training for JumpStart model references as part of Curated Hub Phase 2
+ * Allow ModelTrainer to accept hyperparameters file
+
+### Bug Fixes and Other Changes
+
+ * Skip tests with deprecated instance type
+ * Ensure Model.is_repack() returns a boolean
+ * Fix error when there is no session to call _create_model_request()
+ * Use sagemaker session's s3_resource in download_folder
+ * Added check for the presence of model package group before creating one
+ * Fix key error in _send_metrics()
+
+## v2.240.0 (2025-02-25)
+
+### Features
+
+ * Add support for TGI Neuronx 0.0.27 and HF PT 2.3.0 image in PySDK
+
+### Bug Fixes and Other Changes
+
+ * Remove main function entrypoint in ModelBuilder dependency manager.
+ * forbid extras in Configs
+ * altconfig hubcontent and reenable integ test
+ * Merge branch 'master-rba' into local_merge
+ * py_version doc fixes
+ * Add backward compatbility for RecordSerializer and RecordDeserializer
+ * update image_uri_configs  02-21-2025 06:18:10 PST
+ * update image_uri_configs  02-20-2025 06:18:08 PST
+
+### Documentation Changes
+
+ * Removed a line about python version requirements of training script which can misguide users.
+
 ## v2.239.3 (2025-02-19)
 
 ### Bug Fixes and Other Changes

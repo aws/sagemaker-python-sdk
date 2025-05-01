@@ -619,6 +619,19 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             instance_type=instance_type, property_name="artifact_key"
         )
 
+    def get_instance_specific_training_artifact_key(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific training artifact key.
+
+        Returns None if a model, instance type tuple does not have specific
+        training artifact key.
+        """
+
+        return self._get_instance_specific_property(
+            instance_type=instance_type, property_name="training_artifact_uri"
+        ) or self._get_instance_specific_property(
+            instance_type=instance_type, property_name="training_artifact_key"
+        )
+
     def get_instance_specific_resource_requirements(self, instance_type: str) -> Optional[str]:
         """Returns instance specific resource requirements.
 
@@ -1266,6 +1279,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "hosting_neuron_model_version",
         "hub_content_type",
         "_is_hub_content",
+        "default_training_dataset_key",
+        "default_training_dataset_uri",
     ]
 
     _non_serializable_slots = ["_is_hub_content"]
@@ -1363,9 +1378,10 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
             JumpStartPredictorSpecs(
-                json_obj["predictor_specs"], is_hub_content=self._is_hub_content
+                json_obj.get("predictor_specs"),
+                is_hub_content=self._is_hub_content,
             )
-            if "predictor_specs" in json_obj
+            if json_obj.get("predictor_specs")
             else None
         )
         self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
@@ -1448,6 +1464,12 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
                 else None
             )
         self.model_subscription_link = json_obj.get("model_subscription_link")
+        self.default_training_dataset_key: Optional[str] = json_obj.get(
+            "default_training_dataset_key"
+        )
+        self.default_training_dataset_uri: Optional[str] = json_obj.get(
+            "default_training_dataset_uri"
+        )
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartMetadataBaseFields object."""
@@ -1501,6 +1523,9 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         "incremental_training_supported",
     ]
 
+    # Map of HubContent fields that map to custom names in MetadataBaseFields
+    CUSTOM_FIELD_MAP = {"sage_maker_sdk_predictor_specifications": "predictor_specs"}
+
     __slots__ = slots + JumpStartMetadataBaseFields.__slots__
 
     def __init__(
@@ -1531,6 +1556,11 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         for field in json_obj.keys():
             if field in self.__slots__:
                 setattr(self, field, json_obj[field])
+
+        # Handle custom fields
+        for custom_field, field in self.CUSTOM_FIELD_MAP.items():
+            if custom_field in json_obj:
+                setattr(self, field, json_obj.get(custom_field))
 
 
 class JumpStartMetadataConfig(JumpStartDataHolderType):

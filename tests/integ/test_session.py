@@ -15,7 +15,8 @@ from __future__ import absolute_import
 import boto3
 from botocore.config import Config
 
-from sagemaker import Session
+from sagemaker import Session, ModelPackage
+from sagemaker.utils import unique_name_from_base
 
 CUSTOM_BUCKET_NAME = "this-bucket-should-not-exist"
 
@@ -44,3 +45,62 @@ def test_sagemaker_session_does_not_create_bucket_on_init(
 
     s3 = boto3.resource("s3", region_name=boto_session.region_name)
     assert s3.Bucket(CUSTOM_BUCKET_NAME).creation_date is None
+
+
+def test_sagemaker_session_to_return_most_recent_approved_model_package(sagemaker_session):
+    model_package_group_name = unique_name_from_base("test-model-package-group")
+    approved_model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name=model_package_group_name
+    )
+    assert approved_model_package is None
+    sagemaker_session.sagemaker_client.create_model_package_group(
+        ModelPackageGroupName=model_package_group_name
+    )
+    approved_model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name=model_package_group_name
+    )
+    assert approved_model_package is None
+    source_uri = "dummy source uri"
+    model_package = sagemaker_session.sagemaker_client.create_model_package(
+        ModelPackageGroupName=model_package_group_name, SourceUri=source_uri
+    )
+    approved_model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name=model_package_group_name
+    )
+    assert approved_model_package is None
+    ModelPackage(
+        sagemaker_session=sagemaker_session,
+        model_package_arn=model_package["ModelPackageArn"],
+    ).update_approval_status(approval_status="Approved")
+    approved_model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name=model_package_group_name
+    )
+    assert approved_model_package is not None
+    assert approved_model_package.model_package_arn == model_package.get("ModelPackageArn")
+    model_package_2 = sagemaker_session.sagemaker_client.create_model_package(
+        ModelPackageGroupName=model_package_group_name, SourceUri=source_uri
+    )
+    approved_model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name=model_package_group_name
+    )
+    assert approved_model_package is not None
+    assert approved_model_package.model_package_arn == model_package.get("ModelPackageArn")
+    ModelPackage(
+        sagemaker_session=sagemaker_session,
+        model_package_arn=model_package_2["ModelPackageArn"],
+    ).update_approval_status(approval_status="Approved")
+    approved_model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name=model_package_group_name
+    )
+    assert approved_model_package is not None
+    assert approved_model_package.model_package_arn == model_package_2.get("ModelPackageArn")
+
+    sagemaker_session.sagemaker_client.delete_model_package(
+        ModelPackageName=model_package_2["ModelPackageArn"]
+    )
+    sagemaker_session.sagemaker_client.delete_model_package(
+        ModelPackageName=model_package["ModelPackageArn"]
+    )
+    sagemaker_session.sagemaker_client.delete_model_package_group(
+        ModelPackageGroupName=model_package_group_name
+    )

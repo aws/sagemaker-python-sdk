@@ -41,6 +41,9 @@ from sagemaker.jumpstart.utils import (
     validate_model_id_and_get_type,
     resolve_model_sagemaker_config_field,
     verify_model_region_and_return_specs,
+    remove_env_var_from_estimator_kwargs_if_model_access_config_present,
+    get_model_access_config,
+    get_hub_access_config,
 )
 from sagemaker.utils import stringify_object, format_tags, Tags
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -613,12 +616,17 @@ class JumpStartEstimator(Estimator):
         self.tolerate_vulnerable_model = estimator_init_kwargs.tolerate_vulnerable_model
         self.instance_count = estimator_init_kwargs.instance_count
         self.region = estimator_init_kwargs.region
+        self.environment = estimator_init_kwargs.environment
         self.orig_predictor_cls = None
         self.role = estimator_init_kwargs.role
         self.sagemaker_session = estimator_init_kwargs.sagemaker_session
         self._enable_network_isolation = estimator_init_kwargs.enable_network_isolation
         self.config_name = estimator_init_kwargs.config_name
         self.init_kwargs = estimator_init_kwargs.to_kwargs_dict(False)
+        # Access configs initialized to None, would be given a value when .fit() is called
+        # if applicable
+        self.model_access_config = None
+        self.hub_access_config = None
 
         super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
 
@@ -629,6 +637,7 @@ class JumpStartEstimator(Estimator):
         logs: Optional[str] = None,
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
+        accept_eula: Optional[bool] = None,
     ) -> None:
         """Start training job by calling base ``Estimator`` class ``fit`` method.
 
@@ -679,8 +688,16 @@ class JumpStartEstimator(Estimator):
                 is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
                 However, the value of `TrialComponentDisplayName` is honored for display in Studio.
                 (Default: None).
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
         """
-
+        self.model_access_config = get_model_access_config(accept_eula, self.environment)
+        self.hub_access_config = get_hub_access_config(
+            hub_content_arn=self.init_kwargs.get("model_reference_arn", None)
+        )
         estimator_fit_kwargs = get_fit_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
@@ -695,6 +712,10 @@ class JumpStartEstimator(Estimator):
             tolerate_deprecated_model=self.tolerate_deprecated_model,
             sagemaker_session=self.sagemaker_session,
             config_name=self.config_name,
+            hub_access_config=self.hub_access_config,
+        )
+        remove_env_var_from_estimator_kwargs_if_model_access_config_present(
+            self.init_kwargs, self.model_access_config
         )
 
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())

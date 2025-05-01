@@ -671,7 +671,7 @@ def test_processing_step_normalizes_args_with_local_code(mock_normalize_args, sc
     mock_normalize_args.return_value = [step.inputs, step.outputs]
     step.to_request()
     mock_normalize_args.assert_called_with(
-        job_name="MyProcessingStep-a22fc59b38f13da26f6a40b18687ba598cf669f74104b793cefd9c63eddf4ac7",
+        job_name=None,
         arguments=step.job_arguments,
         inputs=step.inputs,
         outputs=step.outputs,

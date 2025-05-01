@@ -15,17 +15,13 @@ from __future__ import absolute_import
 
 import logging
 import re
-from typing import Optional, Union, Dict
+from typing import Dict, Optional, Union
 
-from sagemaker.estimator import Framework, EstimatorBase
-from sagemaker.fw_utils import (
-    framework_name_from_image,
-    validate_distribution,
-)
+from sagemaker.estimator import EstimatorBase, Framework
+from sagemaker.fw_utils import framework_name_from_image, validate_distribution
 from sagemaker.huggingface.model import HuggingFaceModel
-from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
-
 from sagemaker.huggingface.training_compiler.config import TrainingCompilerConfig
+from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
@@ -66,7 +62,7 @@ class HuggingFace(Framework):
         Args:
             py_version (str): Python version you want to use for executing your model training
                 code. Defaults to ``None``. Required unless ``image_uri`` is provided.  If
-                using PyTorch, the current supported version is ``py36``. If using TensorFlow,
+                using PyTorch, the current supported version is ``py39``. If using TensorFlow,
                 the current supported version is ``py37``.
             entry_point (str or PipelineVariable): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.

@@ -16,10 +16,13 @@ from sagemaker.serve.model_server.torchserve.server import SageMakerTorchServe
 from sagemaker.serve.model_server.djl_serving.server import SageMakerDjlServing
 from sagemaker.serve.model_server.tgi.server import SageMakerTgiServing
 from sagemaker.serve.model_server.multi_model_server.server import SageMakerMultiModelServer
+from sagemaker.serve.model_server.smd.server import SageMakerSmdServer
+
 
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=R0901
 class SageMakerEndpointMode(
     SageMakerTorchServe,
     SageMakerTritonServer,
@@ -27,6 +30,7 @@ class SageMakerEndpointMode(
     SageMakerTgiServing,
     SageMakerMultiModelServer,
     SageMakerTensorflowServing,
+    SageMakerSmdServer,
 ):
     """Holds the required method to deploy a model to a SageMaker Endpoint"""
 
@@ -142,6 +146,16 @@ class SageMakerEndpointMode(
                 s3_model_data_url=s3_model_data_url,
                 image=image,
                 should_upload_artifacts=should_upload_artifacts,
+            )
+
+        if self.model_server == ModelServer.SMD:
+            upload_artifacts = self._upload_smd_artifacts(
+                model_path=model_path,
+                sagemaker_session=sagemaker_session,
+                secret_key=secret_key,
+                s3_model_data_url=s3_model_data_url,
+                image=image,
+                should_upload_artifacts=True,
             )
 
         if upload_artifacts or isinstance(self.model_server, ModelServer):

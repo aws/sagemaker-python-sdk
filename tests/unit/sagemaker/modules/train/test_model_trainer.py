@@ -17,8 +17,10 @@ import shutil
 import tempfile
 import json
 import os
+import yaml
 import pytest
-from unittest.mock import patch, MagicMock, ANY
+from pydantic import ValidationError
+from unittest.mock import patch, MagicMock, ANY, mock_open
 
 from sagemaker import image_uris
 from sagemaker_core.main.resources import TrainingJob
@@ -65,7 +67,7 @@ from sagemaker.modules.configs import (
 )
 from sagemaker.modules.distributed import Torchrun, SMP, MPI
 from sagemaker.modules.train.sm_recipes.utils import _load_recipes_cfg
-from sagemaker.modules.templates import EXEUCTE_TORCHRUN_DRIVER, EXECUTE_MPI_DRIVER
+from sagemaker.modules.templates import EXEUCTE_DISTRIBUTED_DRIVER
 from tests.unit import DATA_DIR
 
 DEFAULT_BASE_NAME = "dummy-image-job"
@@ -89,9 +91,6 @@ DEFAULT_STOPPING_CONDITION = StoppingCondition(
 DEFAULT_SOURCE_CODE = SourceCode(
     source_dir=DEFAULT_SOURCE_DIR,
     entry_script="custom_script.py",
-)
-UNSUPPORTED_SOURCE_CODE = SourceCode(
-    entry_script="train.py",
 )
 DEFAULT_ENTRYPOINT = ["/bin/bash"]
 DEFAULT_ARGUMENTS = [
@@ -150,7 +149,19 @@ def model_trainer():
         {
             "init_params": {
                 "training_image": DEFAULT_IMAGE,
-                "source_code": UNSUPPORTED_SOURCE_CODE,
+                "source_code": SourceCode(
+                    entry_script="train.py",
+                ),
+            },
+            "should_throw": True,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/requirements.txt",
+                    entry_script="custom_script.py",
+                ),
             },
             "should_throw": True,
         },
@@ -161,13 +172,47 @@ def model_trainer():
             },
             "should_throw": False,
         },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir=f"{DEFAULT_SOURCE_DIR}/code.tar.gz",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/code/",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/code/code.tar.gz",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
     ],
     ids=[
         "no_params",
         "training_image_and_algorithm_name",
         "only_training_image",
-        "unsupported_source_code",
-        "supported_source_code",
+        "unsupported_source_code_missing_source_dir",
+        "unsupported_source_code_s3_other_file",
+        "supported_source_code_local_dir",
+        "supported_source_code_local_tar_file",
+        "supported_source_code_s3_dir",
+        "supported_source_code_s3_tar_file",
     ],
 )
 def test_model_trainer_param_validation(test_case, modules_session):
@@ -410,7 +455,9 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
         {
             "source_code": DEFAULT_SOURCE_CODE,
             "distributed": Torchrun(),
-            "expected_template": EXEUCTE_TORCHRUN_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="Torchrun", driver_script="torchrun_driver.py"
+            ),
             "expected_hyperparameters": {},
         },
         {
@@ -423,7 +470,9 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
                     tensor_parallel_degree=5,
                 )
             ),
-            "expected_template": EXEUCTE_TORCHRUN_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="Torchrun", driver_script="torchrun_driver.py"
+            ),
             "expected_hyperparameters": {
                 "mp_parameters": json.dumps(
                     {
@@ -438,9 +487,11 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
         {
             "source_code": DEFAULT_SOURCE_CODE,
             "distributed": MPI(
-                custom_mpi_options=["-x", "VAR1", "-x", "VAR2"],
+                mpi_additional_options=["-x", "VAR1", "-x", "VAR2"],
             ),
-            "expected_template": EXECUTE_MPI_DRIVER,
+            "expected_template": EXEUCTE_DISTRIBUTED_DRIVER.format(
+                driver_name="MPI", driver_script="mpi_driver.py"
+            ),
             "expected_hyperparameters": {},
         },
     ],
@@ -497,21 +548,15 @@ def test_train_with_distributed_config(
         assert os.path.exists(expected_runner_json_path)
         with open(expected_runner_json_path, "r") as f:
             runner_json_content = f.read()
-            assert test_case["distributed"].model_dump(exclude_none=True) == (
-                json.loads(runner_json_content)
-            )
+            assert test_case["distributed"].model_dump() == (json.loads(runner_json_content))
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
-            assert test_case["source_code"].model_dump(exclude_none=True) == (
-                json.loads(source_code_json_content)
-            )
+            assert test_case["source_code"].model_dump() == (json.loads(source_code_json_content))
         assert os.path.exists(expected_source_code_json_path)
         with open(expected_source_code_json_path, "r") as f:
             source_code_json_content = f.read()
-            assert test_case["source_code"].model_dump(exclude_none=True) == (
-                json.loads(source_code_json_content)
-            )
+            assert test_case["source_code"].model_dump() == (json.loads(source_code_json_content))
     finally:
         shutil.rmtree(tmp_dir.name)
         assert not os.path.exists(tmp_dir.name)
@@ -1047,15 +1092,139 @@ def test_model_trainer_local_full_init(
 
     model_trainer.train()
 
-    assert mock_local_container.train.called_once_with(
+    mock_local_container.assert_called_once_with(
         training_job_name=unique_name,
         instance_type=compute.instance_type,
         instance_count=compute.instance_count,
         image=training_image,
         container_root=local_container_root,
         sagemaker_session=modules_session,
-        container_entry_point=DEFAULT_ENTRYPOINT,
+        container_entrypoint=DEFAULT_ENTRYPOINT,
         container_arguments=DEFAULT_ARGUMENTS,
+        input_data_config=ANY,
         hyper_parameters=hyperparameters,
         environment=environment,
     )
+
+
+def test_safe_configs():
+    # Test extra fails
+    with pytest.raises(ValueError):
+        SourceCode(entry_point="train.py")
+    # Test invalid type fails
+    with pytest.raises(ValueError):
+        SourceCode(entry_script=1)
+
+
+@patch("sagemaker.modules.train.model_trainer.TemporaryDirectory")
+def test_destructor_cleanup(mock_tmp_dir, modules_session):
+
+    with pytest.raises(ValidationError):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute="test",
+        )
+    mock_tmp_dir.cleanup.assert_not_called()
+
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+    )
+    model_trainer._temp_recipe_train_dir = mock_tmp_dir
+    mock_tmp_dir.assert_not_called()
+    del model_trainer
+    mock_tmp_dir.cleanup.assert_called_once()
+
+
+@patch("os.path.exists")
+def test_hyperparameters_valid_json(mock_exists, modules_session):
+    mock_exists.return_value = True
+    expected_hyperparameters = {"param1": "value1", "param2": 2}
+    mock_file_open = mock_open(read_data=json.dumps(expected_hyperparameters))
+
+    with patch("builtins.open", mock_file_open):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="hyperparameters.json",
+        )
+        assert model_trainer.hyperparameters == expected_hyperparameters
+        mock_file_open.assert_called_once_with("hyperparameters.json", "r")
+        mock_exists.assert_called_once_with("hyperparameters.json")
+
+
+@patch("os.path.exists")
+def test_hyperparameters_valid_yaml(mock_exists, modules_session):
+    mock_exists.return_value = True
+    expected_hyperparameters = {"param1": "value1", "param2": 2}
+    mock_file_open = mock_open(read_data=yaml.dump(expected_hyperparameters))
+
+    with patch("builtins.open", mock_file_open):
+        model_trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="hyperparameters.yaml",
+        )
+        assert model_trainer.hyperparameters == expected_hyperparameters
+        mock_file_open.assert_called_once_with("hyperparameters.yaml", "r")
+        mock_exists.assert_called_once_with("hyperparameters.yaml")
+
+
+def test_hyperparameters_not_exist(modules_session):
+    with pytest.raises(ValueError):
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            hyperparameters="nonexistent.json",
+        )
+
+
+@patch("os.path.exists")
+def test_hyperparameters_invalid(mock_exists, modules_session):
+    mock_exists.return_value = True
+
+    # YAML contents must be a valid mapping
+    mock_file_open = mock_open(read_data="- item1\n- item2")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )
+
+    # YAML contents must be a valid mapping
+    mock_file_open = mock_open(read_data="invalid")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )
+
+    # Must be valid YAML
+    mock_file_open = mock_open(read_data="* invalid")
+    with patch("builtins.open", mock_file_open):
+        with pytest.raises(ValueError, match="Must be a valid JSON or YAML file."):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                hyperparameters="hyperparameters.yaml",
+            )

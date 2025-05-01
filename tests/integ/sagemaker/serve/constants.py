@@ -25,6 +25,7 @@ SERVE_SAVE_TIMEOUT = 2
 
 PYTHON_VERSION_IS_NOT_38 = platform.python_version_tuple()[1] != "8"
 PYTHON_VERSION_IS_NOT_310 = platform.python_version_tuple()[1] != "10"
+PYTHON_VERSION_IS_NOT_312 = platform.python_version_tuple()[1] != "12"
 
 XGB_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "xgboost")
 PYTORCH_SQUEEZENET_RESOURCE_DIR = os.path.join(DATA_DIR, "serve_resources", "pytorch")

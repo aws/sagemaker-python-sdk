@@ -794,7 +794,7 @@ class ModelTest(unittest.TestCase):
         and reach out to JumpStart team."""
 
         init_args_to_skip: Set[str] = set(["model_reference_arn"])
-        deploy_args_to_skip: Set[str] = set(["kwargs", "model_reference_arn"])
+        deploy_args_to_skip: Set[str] = set(["kwargs", "model_reference_arn", "update_endpoint"])
         deploy_args_removed_at_deploy_time: Set[str] = set(["model_access_configs"])
 
         parent_class_init = Model.__init__
