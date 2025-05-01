@@ -1,0 +1,479 @@
+{
+    "Cluster": {
+        "DescribeClusterNode": {
+            "operation_name": "DescribeClusterNode",
+            "resource_name": "Cluster",
+            "method_name": "get_node",
+            "return_type": "ClusterNodeDetails",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "ListClusterNodes": {
+            "operation_name": "ListClusterNodes",
+            "resource_name": "Cluster",
+            "method_name": "get_all_nodes",
+            "return_type": "ClusterNodeDetails",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "UpdateClusterSoftware": {
+            "operation_name": "UpdateClusterSoftware",
+            "resource_name": "Cluster",
+            "method_name": "update_software",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "BatchDeleteClusterNodes": {
+            "operation_name": "BatchDeleteClusterNodes",
+            "resource_name": "Cluster",
+            "method_name": "batch_delete_nodes",
+            "return_type": "BatchDeleteClusterNodesResponse",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "PipelineExecution": {
+        "DescribePipelineDefinitionForExecution": {
+            "operation_name": "DescribePipelineDefinitionForExecution",
+            "resource_name": "PipelineExecution",
+            "method_name": "get_pipeline_definition",
+            "return_type": "DescribePipelineDefinitionForExecutionResponse",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "ListPipelineExecutionSteps": {
+            "operation_name": "ListPipelineExecutionSteps",
+            "resource_name": "PipelineExecution",
+            "method_name": "get_all_steps",
+            "return_type": "PipelineExecutionStep",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "ListPipelineParametersForExecution": {
+            "operation_name": "ListPipelineParametersForExecution",
+            "resource_name": "PipelineExecution",
+            "method_name": "get_all_parameters",
+            "return_type": "Parameter",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "RetryPipelineExecution": {
+            "operation_name": "RetryPipelineExecution",
+            "resource_name": "PipelineExecution",
+            "method_name": "retry",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "SendPipelineExecutionStepFailure": {
+            "operation_name": "SendPipelineExecutionStepFailure",
+            "resource_name": "PipelineExecution",
+            "method_name": "send_execution_step_failure",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "SendPipelineExecutionStepSuccess": {
+            "operation_name": "SendPipelineExecutionStepSuccess",
+            "resource_name": "PipelineExecution",
+            "method_name": "send_execution_step_success",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "ModelPackageGroup": {
+        "GetModelPackageGroupPolicy": {
+            "operation_name": "GetModelPackageGroupPolicy",
+            "resource_name": "ModelPackageGroup",
+            "method_name": "get_policy",
+            "return_type": "str",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "DeleteModelPackageGroupPolicy": {
+            "operation_name": "DeleteModelPackageGroupPolicy",
+            "resource_name": "ModelPackageGroup",
+            "method_name": "delete_policy",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "PutModelPackageGroupPolicy": {
+            "operation_name": "PutModelPackageGroupPolicy",
+            "resource_name": "ModelPackageGroup",
+            "method_name": "put_policy",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "Endpoint": {
+        "UpdateEndpointWeightsAndCapacities": {
+            "operation_name": "UpdateEndpointWeightsAndCapacities",
+            "resource_name": "Endpoint",
+            "method_name": "update_weights_and_capacities",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "InvokeEndpoint": {
+            "operation_name": "InvokeEndpoint",
+            "resource_name": "Endpoint",
+            "method_name": "invoke",
+            "return_type": "InvokeEndpointOutput",
+            "method_type": "object",
+            "service_name": "sagemaker-runtime"
+        },
+        "InvokeEndpointAsync": {
+            "operation_name": "InvokeEndpointAsync",
+            "resource_name": "Endpoint",
+            "method_name": "invoke_async",
+            "return_type": "InvokeEndpointAsyncOutput",
+            "method_type": "object",
+            "service_name": "sagemaker-runtime"
+        },
+        "InvokeEndpointWithResponseStream": {
+            "operation_name": "InvokeEndpointWithResponseStream",
+            "resource_name": "Endpoint",
+            "method_name": "invoke_with_response_stream",
+            "return_type": "InvokeEndpointWithResponseStreamOutput",
+            "method_type": "object",
+            "service_name": "sagemaker-runtime"
+        }
+    },
+    "InferenceComponent": {
+        "UpdateInferenceComponentRuntimeConfig": {
+            "operation_name": "UpdateInferenceComponentRuntimeConfig",
+            "resource_name": "InferenceComponent",
+            "method_name": "update_runtime_configs",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "TrialComponent": {
+        "AssociateTrialComponent": {
+            "operation_name": "AssociateTrialComponent",
+            "resource_name": "TrialComponent",
+            "method_name": "associate_trail",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "DisassociateTrialComponent": {
+            "operation_name": "DisassociateTrialComponent",
+            "resource_name": "TrialComponent",
+            "method_name": "disassociate_trail",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "BatchPutMetrics": {
+            "operation_name": "BatchPutMetrics",
+            "resource_name": "TrialComponent",
+            "method_name": "batch_put_metrics",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker-metrics"
+        },
+        "BatchGetMetrics": {
+            "operation_name": "BatchGetMetrics",
+            "resource_name": "TrialComponent",
+            "method_name": "batch_get_metrics",
+            "return_type": "BatchGetMetricsResponse",
+            "method_type": "class",
+            "service_name": "sagemaker-metrics"
+        }
+    },
+    "HubContent": {
+        "ListHubContentVersions": {
+            "operation_name": "ListHubContentVersions",
+            "resource_name": "HubContent",
+            "method_name": "get_all_versions",
+            "return_type": "HubContent",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "CodeRepository": {
+        "ListCodeRepositories": {
+            "operation_name": "ListCodeRepositories",
+            "resource_name": "CodeRepository",
+            "method_name": "get_all",
+            "return_type": "CodeRepository",
+            "method_type": "class",
+            "service_name": "sagemaker"
+        }
+    },
+    "InferenceRecommendationsJob": {
+        "ListInferenceRecommendationsJobSteps": {
+            "operation_name": "ListInferenceRecommendationsJobSteps",
+            "resource_name": "InferenceRecommendationsJob",
+            "method_name": "get_all_steps",
+            "return_type": "InferenceRecommendationsJobStep",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "Model": {
+        "ListModelMetadata": {
+            "operation_name": "ListModelMetadata",
+            "resource_name": "Model",
+            "method_name": "get_all_metadata",
+            "return_type": "ModelMetadataSummary",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "ModelCard": {
+        "ListModelCardVersions": {
+            "operation_name": "ListModelCardVersions",
+            "resource_name": "ModelCard",
+            "method_name": "get_all_versions",
+            "return_type": "ModelCardVersionSummary",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "AutoMLJob": {
+        "ListCandidatesForAutoMLJob": {
+            "operation_name": "ListCandidatesForAutoMLJob",
+            "resource_name": "AutoMLJob",
+            "method_name": "get_all_candidates",
+            "return_type": "AutoMLCandidate",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "HyperParameterTuningJob": {
+        "ListTrainingJobsForHyperParameterTuningJob": {
+            "operation_name": "ListTrainingJobsForHyperParameterTuningJob",
+            "resource_name": "HyperParameterTuningJob",
+            "method_name": "get_all_training_jobs",
+            "return_type": "HyperParameterTrainingJobSummary",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "Workteam": {
+        "ListLabelingJobsForWorkteam": {
+            "operation_name": "ListLabelingJobsForWorkteam",
+            "resource_name": "Workteam",
+            "method_name": "get_all_labeling_jobs",
+            "return_type": "LabelingJob",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "Device": {},
+    "FeatureMetadata": {},
+    "SubscribedWorkteam": {},
+    "LineageGroup": {
+        "GetLineageGroupPolicy": {
+            "operation_name": "GetLineageGroupPolicy",
+            "resource_name": "LineageGroup",
+            "method_name": "get_policy",
+            "return_type": "GetLineageGroupPolicyResponse",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "DeviceFleet": {
+        "DeregisterDevices": {
+            "operation_name": "DeregisterDevices",
+            "resource_name": "DeviceFleet",
+            "method_name": "deregister_devices",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "GetDeviceFleetReport": {
+            "operation_name": "GetDeviceFleetReport",
+            "resource_name": "DeviceFleet",
+            "method_name": "get_report",
+            "return_type": "GetDeviceFleetReportResponse",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "RegisterDevices": {
+            "operation_name": "RegisterDevices",
+            "resource_name": "DeviceFleet",
+            "method_name": "register_devices",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "UpdateDevices": {
+            "operation_name": "UpdateDevices",
+            "resource_name": "DeviceFleet",
+            "method_name": "update_devices",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "ModelPackage": {
+        "BatchDescribeModelPackage": {
+            "operation_name": "BatchDescribeModelPackage",
+            "resource_name": "ModelPackage",
+            "method_name": "batch_get",
+            "return_type": "BatchDescribeModelPackageOutput",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "Association": {
+        "AddAssociation": {
+            "operation_name": "AddAssociation",
+            "resource_name": "Association",
+            "method_name": "add",
+            "return_type": "None",
+            "method_type": "class",
+            "service_name": "sagemaker"
+        }
+    },
+    "Tag": {
+        "AddTags": {
+            "operation_name": "AddTags",
+            "resource_name": "Tag",
+            "method_name": "add_tags",
+            "return_type": "None",
+            "method_type": "class",
+            "service_name": "sagemaker"
+        },
+        "DeleteTags": {
+            "operation_name": "DeleteTags",
+            "resource_name": "Tag",
+            "method_name": "delete_tags",
+            "return_type": "None",
+            "method_type": "class",
+            "service_name": "sagemaker"
+        }
+    },
+    "MonitoringAlert": {
+        "ListMonitoringAlertHistory": {
+            "operation_name": "ListMonitoringAlertHistory",
+            "resource_name": "MonitoringAlert",
+            "method_name": "list_history",
+            "return_type": "MonitoringAlertHistorySummary",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "EdgeDeploymentPlan": {
+        "CreateEdgeDeploymentStage": {
+            "operation_name": "CreateEdgeDeploymentStage",
+            "resource_name": "EdgeDeploymentPlan",
+            "method_name": "create_stage",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "DeleteEdgeDeploymentStage": {
+            "operation_name": "DeleteEdgeDeploymentStage",
+            "resource_name": "EdgeDeploymentPlan",
+            "method_name": "delete_stage",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "StartEdgeDeploymentStage": {
+            "operation_name": "StartEdgeDeploymentStage",
+            "resource_name": "EdgeDeploymentPlan",
+            "method_name": "start_stage",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "StopEdgeDeploymentStage": {
+            "operation_name": "StopEdgeDeploymentStage",
+            "resource_name": "EdgeDeploymentPlan",
+            "method_name": "stop_stage",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        },
+        "ListStageDevices": {
+            "operation_name": "ListStageDevices",
+            "resource_name": "EdgeDeploymentPlan",
+            "method_name": "get_all_stage_devices",
+            "return_type": "DeviceDeploymentSummary",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "MonitoringExecution": {},
+    "ResourceCatalog": {},
+    "Image": {
+        "ListAliases": {
+            "operation_name": "ListAliases",
+            "resource_name": "Image",
+            "method_name": "get_all_aliases",
+            "return_type": "str",
+            "method_type": "object",
+            "service_name": "sagemaker"
+        }
+    },
+    "SagemakerServicecatalogPortfolio": {
+        "DisableSagemakerServicecatalogPortfolio": {
+            "operation_name": "DisableSagemakerServicecatalogPortfolio",
+            "resource_name": "SagemakerServicecatalogPortfolio",
+            "method_name": "disable",
+            "return_type": "None",
+            "method_type": "static",
+            "service_name": "sagemaker"
+        },
+        "EnableSagemakerServicecatalogPortfolio": {
+            "operation_name": "EnableSagemakerServicecatalogPortfolio",
+            "resource_name": "SagemakerServicecatalogPortfolio",
+            "method_name": "enable",
+            "return_type": "None",
+            "method_type": "static",
+            "service_name": "sagemaker"
+        },
+        "GetSagemakerServicecatalogPortfolioStatus": {
+            "operation_name": "GetSagemakerServicecatalogPortfolioStatus",
+            "resource_name": "SagemakerServicecatalogPortfolio",
+            "method_name": "get_status",
+            "return_type": "str",
+            "method_type": "static",
+            "service_name": "sagemaker"
+        }
+    },
+    "FeatureGroup": {
+        "GetRecord": {
+            "operation_name": "GetRecord",
+            "resource_name": "FeatureGroup",
+            "method_name": "get_record",
+            "return_type": "GetRecordResponse",
+            "method_type": "object",
+            "service_name": "sagemaker-featurestore-runtime"
+        },
+        "PutRecord": {
+            "operation_name": "PutRecord",
+            "resource_name": "FeatureGroup",
+            "method_name": "put_record",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker-featurestore-runtime"
+        },
+        "DeleteRecord": {
+            "operation_name": "DeleteRecord",
+            "resource_name": "FeatureGroup",
+            "method_name": "delete_record",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker-featurestore-runtime"
+        },
+        "BatchGetRecord": {
+            "operation_name": "BatchGetRecord",
+            "resource_name": "FeatureGroup",
+            "method_name": "batch_get_record",
+            "return_type": "BatchGetRecordResponse",
+            "method_type": "object",
+            "service_name": "sagemaker-featurestore-runtime"
+        }
+    }
+}
