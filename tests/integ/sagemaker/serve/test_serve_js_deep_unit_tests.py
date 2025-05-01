@@ -64,6 +64,7 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
                 "Image": ANY,
                 "Environment": {
                     "SAGEMAKER_PROGRAM": "inference.py",
+                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
                     "ENDPOINT_SERVER_TIMEOUT": "3600",
                     "MODEL_CACHE_ROOT": "/opt/ml/model",
                     "SAGEMAKER_ENV": "1",
@@ -150,6 +151,7 @@ def test_js_model_with_optimize_sharding_and_resource_requirements_requests_are_
                 "Image": ANY,
                 "Environment": {
                     "SAGEMAKER_PROGRAM": "inference.py",
+                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
                     "ENDPOINT_SERVER_TIMEOUT": "3600",
                     "MODEL_CACHE_ROOT": "/opt/ml/model",
                     "SAGEMAKER_ENV": "1",
