@@ -1049,7 +1049,7 @@ see `For versions 1.1 and lower <#for-versions-1.1-and-lower>`_.
 Where ``requirements.txt`` is an optional file that specifies dependencies on third-party libraries.
 
 Important Packaging Instructions
-------------------------------
+--------------------------------
 
 When creating your model artifact (``model.tar.gz``), follow these steps to avoid common deployment issues:
 
@@ -1067,7 +1067,7 @@ When creating your model artifact (``model.tar.gz``), follow these steps to avoi
 
 **Common Mistakes to Avoid:**
 
-* Do NOT create the archive from the parent directory using ``tar czvf model.tar.gz my_model/``. 
+* Do NOT create the archive from the parent directory using ``tar czvf model.tar.gz my_model/``.
   This creates an extra directory level that will cause deployment errors.
 * Ensure ``inference.py`` is directly under the ``code/`` directory in your archive.
 * Verify your archive structure using:
@@ -1104,7 +1104,7 @@ Now call the :class:`sagemaker.pytorch.model.PyTorchModel` constructor to create
 Now you can call the ``predict()`` method to get predictions from your deployed model.
 
 Troubleshooting
---------------
+---------------
 
 If you encounter a ``FileNotFoundError`` for ``inference.py``, check:
 
