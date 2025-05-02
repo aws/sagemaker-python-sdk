@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.244.0 (2025-05-02)
+
+### Features
+
+ * support custom workflow deployment in ModelBuilder using SMD image.
+
+### Bug Fixes and Other Changes
+
+ * Add Owner ID check for bucket with path when prefix is provided
+ * Add model server timeout
+ * pin mamba version to 24.11.3-2 to avoid inconsistent test runs
+ * Update ModelTrainer to support s3 uri and tar.gz file as source_dir
+ * chore: add huggingface images
+
 ## v2.243.3 (2025-04-23)
 
 ### Bug Fixes and Other Changes
