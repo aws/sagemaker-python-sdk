@@ -15,8 +15,9 @@ from __future__ import absolute_import
 import os
 
 from mock.mock import Mock
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-'''
+"""
 from sagemaker.config import (
     SAGEMAKER,
     MONITORING_SCHEDULE,
@@ -90,7 +91,7 @@ from sagemaker.config import (
     ESTIMATOR,
     DEBUG_HOOK_CONFIG,
 )
-'''
+"""
 
 '''
 PY_VERSION = "py3"
