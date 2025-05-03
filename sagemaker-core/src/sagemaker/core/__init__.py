@@ -1,0 +1,4 @@
+from sagemaker.core.utils.utils import enable_textual_rich_console_and_traceback
+
+
+enable_textual_rich_console_and_traceback()

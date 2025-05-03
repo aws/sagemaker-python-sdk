@@ -1,0 +1,30 @@
+{
+  "SageMaker": {
+    "PythonSDK": {
+      "Resources": {
+        "GlobalDefaults": {
+          "vpc_config": {
+            "security_group_ids": [
+              "group-1",
+              "group-2"
+            ],
+            "subnets": [
+              "subnet-1",
+              "subnet-2"
+            ]
+          }
+        },
+        "Cluster": {
+          "vpc_config": {
+            "security_group_ids": [
+              "group-4"
+            ],
+            "subnets": [
+              "subnet-4"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
