@@ -639,6 +639,8 @@ def _create_or_update_code_dir(
                     "   └── code/\n"
                     "       ├── inference.py\n"
                     "       └── requirements.txt"
+                    "\nFor more details, see the documentation:\n"
+                    "https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/using_pytorch.html#bring-your-own-model"
                 )
 
     for dependency in dependencies:
