@@ -69,7 +69,7 @@ from sagemaker.train.configs import (
     InputData,
 )
 
-#from sagemaker.train.local_core.local_container import _LocalContainer
+# from sagemaker.train.local_core.local_container import _LocalContainer
 from sagemaker.train.distributed import Torchrun, DistributedConfig
 from sagemaker.train.utils import (
     _get_repo_name_from_image,
@@ -101,6 +101,8 @@ from sagemaker.utils.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.utils.telemetry.constants import Feature
 from sagemaker.train import logger
 from sagemaker.train.sm_recipes.utils import _get_args_from_recipe, _determine_device_type
+from sagemaker.utils.jumpstart.configs import JumpStartConfig
+from sagemaker.utils.jumpstart.document import get_hub_content_document
 
 
 class Mode(Enum):
@@ -117,8 +119,8 @@ class ModelTrainer(BaseModel):
 
     .. code:: python
 
-        from sagemaker.modules.train import ModelTrainer
-        from sagemaker.modules.configs import SourceCode, Compute, InputData
+        from sagemaker.train import ModelTrainer
+        from sagemaker.train.configs import SourceCode, Compute, InputData
 
         source_code = SourceCode(source_dir="source", entry_script="train.py")
         training_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-training-image"
@@ -137,18 +139,17 @@ class ModelTrainer(BaseModel):
             The training mode. Valid values are "Mode.LOCAL_CONTAINER" or
             "Mode.SAGEMAKER_TRAINING_JOB".
         sagemaker_session (Optiona(Session)):
-            The SageMakerCore session. For convinience, can be imported like:
-            ``from sagemaker.modules import Session``.
+            The SageMaker Session. This object can be used to manage underlying
+            boto3 clients and to specify aritfact upload paths via the ``default_bucket``
+            and ``default_bucket_prefix`` attributes.
             If not specified, a new session will be created.
-            If the default bucket for the artifacts needs to be updated, it can be done by
-            passing it in the Session object.
         role (Optional(str)):
             The IAM role ARN for the training job.
             If not specified, the default SageMaker execution role will be used.
         base_job_name (Optional[str]):
             The base name for the training job.
             If not specified, a default name will be generated using the algorithm name
-            or training image.
+            or training image name.
         source_code (Optional[SourceCode]):
             The source code configuration. This is used to configure the source code for
             running the training job.
@@ -299,7 +300,9 @@ class ModelTrainer(BaseModel):
             if default_enable_network_isolation is not None or default_vpc_config is not None:
                 self.networking = Networking(
                     default_enable_network_isolation=default_enable_network_isolation,
-                    subnets=self.config_mgr.resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH),
+                    subnets=self.config_mgr.resolve_value_from_config(
+                        config_path=TRAINING_JOB_SUBNETS_PATH
+                    ),
                     security_group_ids=self.config_mgr.resolve_value_from_config(
                         config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
                     ),
@@ -333,10 +336,14 @@ class ModelTrainer(BaseModel):
                 self.compute = Compute(**self._convert_keys_to_snake(default_resource_config))
 
         if not self.role:
-            self.role = self.config_mgr.resolve_value_from_config(config_path=TRAINING_JOB_ROLE_ARN_PATH)
+            self.role = self.config_mgr.resolve_value_from_config(
+                config_path=TRAINING_JOB_ROLE_ARN_PATH
+            )
 
         if not self.tags:
-            self.tags = self.config_mgr.resolve_value_from_config(config_path=TRAINING_JOB_TAGS_PATH)
+            self.tags = self.config_mgr.resolve_value_from_config(
+                config_path=TRAINING_JOB_TAGS_PATH
+            )
 
     def _convert_keys_to_snake(self, config: dict) -> dict:
         """Utility helper function that converts the keys of a dictionary into snake case"""
@@ -397,7 +404,6 @@ class ModelTrainer(BaseModel):
                 "Must provide 'entry_script' if 'distribution' " + "is provided in 'source_code'.",
             )
 
-    # TODO: Move to use pydantic model validators
     def _validate_source_code(self, source_code: Optional[SourceCode]):
         """Validate the source code configuration."""
         if source_code:
@@ -668,7 +674,7 @@ class ModelTrainer(BaseModel):
                 )
         else:
             pass
-            '''
+            """
             local_container = _LocalContainer(
                 training_job_name=_get_unique_name(self.base_job_name),
                 instance_type=resource_config.instance_type,
@@ -683,7 +689,7 @@ class ModelTrainer(BaseModel):
                 environment=self.environment,
             )
             local_container.train(wait)
-            '''
+            """
 
     def create_input_data_channel(
         self, channel_name: str, data_source: DataSourceType, key_prefix: Optional[str] = None
@@ -911,7 +917,8 @@ class ModelTrainer(BaseModel):
                 a sagemaker training recipe or a path to a local training recipe .yaml file.
             compute (Compute):
                 The compute configuration. This is used to specify the compute resources for
-                the training job. If not specified, will default to 1 instance of ml.m5.xlarge.
+                the training job. Specifying instance_type is required for training recipes.
+                Must be a GPU or Tranium instance type.
             recipe_overrides (Optional[Dict[str, Any]]):
                 The recipe overrides. This is used to override the default recipe parameters.
             networking (Optional[Networking]):
@@ -960,9 +967,7 @@ class ModelTrainer(BaseModel):
                 or training image.
         """
         if compute.instance_type is None:
-            raise ValueError(
-                "Must set ``instance_type`` in compute_config when using training recipes."
-            )
+            raise ValueError("Must set ``instance_type`` in Compute when using training recipes.")
         device_type = _determine_device_type(compute.instance_type)
         if device_type == "cpu":
             raise ValueError(
@@ -1014,6 +1019,112 @@ class ModelTrainer(BaseModel):
 
         model_trainer._temp_recipe_train_dir = recipe_train_dir
         return model_trainer
+
+    def from_jumpstart_config(
+        cls,
+        jumpstart_config: JumpStartConfig,
+        source_code: Optional[SourceCode] = None,
+        compute: Optional[Compute] = None,
+        networking: Optional[Networking] = None,
+        stopping_condition: Optional[StoppingCondition] = None,
+        training_image: Optional[str] = None,
+        training_image_config: Optional[TrainingImageConfig] = None,
+        output_data_config: Optional[OutputDataConfig] = None,
+        input_data_config: Optional[List[Union[Channel, InputData]]] = None,
+        checkpoint_config: Optional[CheckpointConfig] = None,
+        training_input_mode: Optional[str] = "File",
+        environment: Optional[Dict[str, str]] = {},
+        hyperparameters: Optional[Union[Dict[str, Any], str]] = {},
+        tags: Optional[List[Tag]] = None,
+        sagemaker_session: Optional[Session] = None,
+        role: Optional[str] = None,
+        base_job_name: Optional[str] = None,
+    ):
+        """Create a ModelTrainer from a JumpStart Model ID.
+
+        .. code:: python
+
+            from sagemaker.train import ModelTrainer
+            from sagemaker.train.configs import InputData
+            from sagemaker.utils.jumpstart import JumpStartConfig
+
+            jumpstart_config = JumpStartConfig(model_id="xxxxxxx")
+            model_trainer = ModelTrainer.from_jumpstart_config(
+                jumpstart_config=jumpstart_config
+            )
+
+            train_data = InputData(channel_name="train", data_source="s3://bucket/train")
+            model_trainer.train(input_data_config=[train_data])
+
+        Args:
+            jumpstart_config (JumpStart):
+                The JumpStart model configuration. This is used to specify the model ID,
+                version, and other parameters for the training job.
+            source_code (Optional[SourceCode]):
+                The source code configuration. This is used to configure the source code for
+                running the training job.
+            compute (Optional[Compute]):
+                The compute configuration. This is used to specify the compute resources for
+                the training job.
+            networking (Optional[Networking]):
+                The networking configuration. This is used to specify the networking settings
+                for the training job.
+            stopping_condition (Optional[StoppingCondition]):
+                The stopping condition. This is used to specify the different stopping
+                conditions for the training job.
+                If not specified, will default to 1 hour max run time.
+            training_image (Optional[str]):
+                The training image URI to use for the training job container. If not specified,
+                the training image will be determined from the recipe.
+            training_image_config (Optional[TrainingImageConfig]):
+                Training image Config. This is the configuration to use an image from a private
+                Docker registry for a training job.
+            output_data_config (Optional[OutputDataConfig]):
+                The output data configuration. This is used to specify the output data location
+                for the training job. If not specified, will default
+                to ``s3://<default_bucket>/<default_prefix>/<base_job_name>/``.
+            input_data_config (Optional[List[Union[Channel, InputData]]]):
+                The input data config for the training job.
+                Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
+                string, local file path string, S3DataSource object, or FileSystemDataSource object.
+            checkpoint_config (Optional[CheckpointConfig]):
+                Contains information about the output location for managed spot training checkpoint
+                data.
+            training_input_mode (Optional[str]):
+                The input mode for the training job. Valid values are "Pipe", "File", "FastFile".
+                Defaults to "File".
+            environment (Optional[Dict[str, str]]):
+                The environment variables for the training job.
+            hyperparameters (Optional[Union[Dict[str, Any], str]]):
+                The hyperparameters for the training job. Can be a dictionary of hyperparameters
+                or a path to hyperparameters json/yaml file.
+            tags (Optional[List[Tag]]):
+                An array of key-value pairs. You can use tags to categorize your AWS resources
+                in different ways, for example, by purpose, owner, or environment.
+            sagemaker_session (Optional[Session]):
+                The SageMaker Session. This object can be used to manage underlying
+                boto3 clients and to specify aritfact upload paths via the ``default_bucket``
+                and ``default_bucket_prefix`` attributes.
+                If not specified, a new session will be created.
+            role (Optional[str]):
+                The IAM role ARN for the training job.
+                If not specified, the default SageMaker execution role will be used.
+            base_job_name (Optional[str]):
+                The base name for the training job.
+                If not specified, a default name will be generated using the algorithm name
+                or training image name.
+        """
+        if sagemaker_session is None:
+            sagemaker_session = Session()
+            logger.warning("SageMaker session not provided. Using default Session.")
+        if role is None:
+            role = get_execution_role(sagemaker_session=sagemaker_session)
+            logger.warning(f"Role not provided. Using default role:\n{role}")
+
+        model_metadata = get_hub_content_document(
+            jumpstart_config=jumpstart_config, sagemaker_session=sagemaker_session
+        )
+        pass
 
     def with_tensorboard_output_config(
         self, tensorboard_output_config: TensorBoardOutputConfig

@@ -24,7 +24,7 @@ import pytest
 from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
 
-#from sagemaker.utils import image_uris
+# from sagemaker.utils import image_uris
 from sagemaker_core.main.resources import TrainingJob
 from sagemaker_core.main.shapes import (
     ResourceConfig,
@@ -69,10 +69,11 @@ from sagemaker.utils.config.config_schema import (
 
 from sagemaker.train import Session
 import os
-#from sagemaker.train.distributed import Torchrun, SMP, MPI
-#from sagemaker.train.sm_recipes.utils import _load_recipes_cfg
-#from sagemaker.templates import EXEUCTE_DISTRIBUTED_DRIVER
-#from tests.unit import DATA_DIR
+
+# from sagemaker.train.distributed import Torchrun, SMP, MPI
+# from sagemaker.train.sm_recipes.utils import _load_recipes_cfg
+# from sagemaker.templates import EXEUCTE_DISTRIBUTED_DRIVER
+# from tests.unit import DATA_DIR
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../..", "data")
 DEFAULT_BASE_NAME = "dummy-image-job"
 DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest"
@@ -328,7 +329,8 @@ def test_train_with_intelligent_defaults_training_job_space(
     training_job_instance = mock_training_job.create.return_value
     training_job_instance.wait.assert_called_once_with(logs=True)
 
-'''
+
+"""
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch.object(ModelTrainer, "_get_input_data_config")
 def test_train_with_input_data_channels(mock_get_input_config, mock_training_job, model_trainer):
@@ -1190,4 +1192,4 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
                 compute=DEFAULT_COMPUTE_CONFIG,
                 hyperparameters="hyperparameters.yaml",
             )
-'''
+"""

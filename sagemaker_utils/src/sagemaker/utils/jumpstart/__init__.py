@@ -10,12 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""SageMaker Python SDK Train Module."""
+"""This module contains JumpStart utilites for the SageMaker Python SDK."""
 from __future__ import absolute_import
 
-# from sagemaker.train.model_trainer import ModelTrainer  # noqa: F401
-
-from sagemaker_core.main.utils import logger as sagemaker_core_logger
-from sagemaker_core.helper.session_helper import Session, get_execution_role  # noqa: F401
-
-logger = sagemaker_core_logger
+from sagemaker.utils.jumpstart.configs import JumpStartConfig  # noqa: F401

@@ -10,12 +10,21 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""SageMaker Python SDK Train Module."""
+"""Test for JumpStart HubContentDocument Model."""
 from __future__ import absolute_import
 
-# from sagemaker.train.model_trainer import ModelTrainer  # noqa: F401
+import json
+import os
+from sagemaker.utils.jumpstart.model import HubContentDocument
 
-from sagemaker_core.main.utils import logger as sagemaker_core_logger
-from sagemaker_core.helper.session_helper import Session, get_execution_role  # noqa: F401
 
-logger = sagemaker_core_logger
+TEST_HUB_CONTENT_DOCUMENT = "hub_content_document.json"
+
+
+def test_init_hub_content_document():
+    """Test HubContentDocument initialization."""
+
+    with open(os.path.join(os.path.dirname(__file__), TEST_HUB_CONTENT_DOCUMENT), "r") as f:
+        hub_content_document = json.load(f)
+    hub_content_document_instance = HubContentDocument(**hub_content_document)
+    assert isinstance(hub_content_document_instance, HubContentDocument)
