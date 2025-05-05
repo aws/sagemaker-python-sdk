@@ -625,10 +625,6 @@ def _create_or_update_code_dir(
             if os.path.exists(os.path.join(code_dir, inference_script)):
                 pass
             else:
-                docs_url = (
-                    "https://sagemaker.readthedocs.io/en/stable/"
-                    "frameworks/pytorch/using_pytorch.html#bring-your-own-model"
-                )
                 raise FileNotFoundError(
                     f"Could not find '{inference_script}'. Common solutions:\n"
                     "1. Make sure inference.py exists in the code/ directory\n"
@@ -642,9 +638,10 @@ def _create_or_update_code_dir(
                     "   ├── model.pth (or your model file)\n"
                     "   └── code/\n"
                     "       ├── inference.py\n"
-                    "       └── requirements.txt"
+                    "       └── requirements.txt\n"
                     "\nFor more details, see the documentation:\n"
-                    f"{docs_url}"
+                    + "https://sagemaker.readthedocs.io/en/stable/"
+                    + "frameworks/pytorch/using_pytorch.html#bring-your-own-model"
                 )
 
     for dependency in dependencies:
