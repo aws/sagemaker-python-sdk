@@ -870,7 +870,7 @@ class BiasConfig:
 
     def __init__(
         self,
-        label_values_or_threshold: Union[int, float, str],
+        label_values_or_threshold: List[Union[int, float, str]],
         facet_name: Union[str, int, List[str], List[int]],
         facet_values_or_threshold: Optional[Union[int, float, str]] = None,
         group_name: Optional[str] = None,

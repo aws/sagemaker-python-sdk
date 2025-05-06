@@ -3,9 +3,10 @@
 from __future__ import absolute_import
 import io
 from typing import Type
-
+import logging
 from sagemaker import Session
 from sagemaker.serve.mode.local_container_mode import LocalContainerMode
+from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.serializers import IdentitySerializer, JSONSerializer
 from sagemaker.deserializers import BytesDeserializer, JSONDeserializer
@@ -14,6 +15,8 @@ from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.model_server.triton.triton_builder import TritonSerializer
 
 APPLICATION_X_NPY = "application/x-npy"
+
+logger = logging.getLogger(__name__)
 
 
 class TorchServeLocalPredictor(PredictorBase):
@@ -209,6 +212,90 @@ class TransformersLocalModePredictor(PredictorBase):
         self._mode_obj.destroy_server()
 
 
+class TeiLocalModePredictor(PredictorBase):
+    """Lightweight Tei predictor for local deployment in IN_PROCESS and LOCAL_CONTAINER modes"""
+
+    def __init__(
+        self,
+        mode_obj: Type[LocalContainerMode],
+        serializer=JSONSerializer(),
+        deserializer=JSONDeserializer(),
+    ):
+        self._mode_obj = mode_obj
+        self.serializer = serializer
+        self.deserializer = deserializer
+
+    def predict(self, data):
+        """Placeholder docstring"""
+        return [
+            self.deserializer.deserialize(
+                io.BytesIO(
+                    self._mode_obj._invoke_serving(
+                        self.serializer.serialize(data),
+                        self.content_type,
+                        self.deserializer.ACCEPT[0],
+                    )
+                ),
+                self.content_type,
+            )
+        ]
+
+    @property
+    def content_type(self):
+        """The MIME type of the data sent to the inference endpoint."""
+        return self.serializer.CONTENT_TYPE
+
+    @property
+    def accept(self):
+        """The content type(s) that are expected from the inference endpoint."""
+        return self.deserializer.ACCEPT
+
+    def delete_predictor(self):
+        """Shut down and remove the container that you created in LOCAL_CONTAINER mode"""
+        self._mode_obj.destroy_server()
+
+
+class TensorflowServingLocalPredictor(PredictorBase):
+    """Lightweight predictor for local deployment in LOCAL_CONTAINER modes"""
+
+    # TODO: change mode_obj to union of IN_PROCESS and LOCAL_CONTAINER objs
+    def __init__(
+        self,
+        mode_obj: Type[LocalContainerMode],
+        serializer=IdentitySerializer(),
+        deserializer=BytesDeserializer(),
+    ):
+        self._mode_obj = mode_obj
+        self.serializer = serializer
+        self.deserializer = deserializer
+
+    def predict(self, data):
+        """Placeholder docstring"""
+        return self.deserializer.deserialize(
+            io.BytesIO(
+                self._mode_obj._invoke_tensorflow_serving(
+                    self.serializer.serialize(data),
+                    self.content_type,
+                    self.accept[0],
+                )
+            )
+        )
+
+    @property
+    def content_type(self):
+        """The MIME type of the data sent to the inference endpoint."""
+        return self.serializer.CONTENT_TYPE
+
+    @property
+    def accept(self):
+        """The content type(s) that are expected from the inference endpoint."""
+        return self.deserializer.ACCEPT
+
+    def delete_predictor(self):
+        """Shut down and remove the container that you created in LOCAL_CONTAINER mode"""
+        self._mode_obj.destroy_server()
+
+
 def _get_local_mode_predictor(
     model_server: ModelServer,
     mode_obj: Type[LocalContainerMode],
@@ -223,7 +310,64 @@ def _get_local_mode_predictor(
     if model_server == ModelServer.TRITON:
         return TritonLocalPredictor(mode_obj=mode_obj)
 
+    if model_server == ModelServer.TENSORFLOW_SERVING:
+        return TensorflowServingLocalPredictor(
+            mode_obj=mode_obj, serializer=serializer, deserializer=deserializer
+        )
+
     raise ValueError("%s model server is not supported yet!" % model_server)
+
+
+class InProcessModePredictor(PredictorBase):
+    """Lightweight predictor for in process mode deployment"""
+
+    def __init__(
+        self,
+        mode_obj: Type[InProcessMode],
+        serializer=JSONSerializer(),
+        deserializer=JSONDeserializer(),
+    ):
+        self._mode_obj = mode_obj
+        self.serializer = serializer
+        self.deserializer = deserializer
+
+    def predict(self, data):
+        """Placeholder docstring"""
+        return self.deserializer.deserialize(
+            io.BytesIO(
+                self._mode_obj._invoke_serving(
+                    self.serializer.serialize(data),
+                    self.content_type,
+                    self.accept[0],
+                )
+            )
+        )
+
+    @property
+    def content_type(self):
+        """The MIME type of the data sent to the inference endpoint."""
+        return self.serializer.CONTENT_TYPE
+
+    @property
+    def accept(self):
+        """The content type(s) that are expected from the inference endpoint."""
+        return self.deserializer.ACCEPT
+
+    def delete_predictor(self):
+        """Shut down and remove the container that you created in IN_PROCESS mode"""
+        self._mode_obj.destroy_server()
+
+
+def _get_in_process_mode_predictor(
+    # model_server: ModelServer,
+    mode_obj: Type[InProcessMode],
+    serializer=JSONSerializer(),
+    deserializer=JSONDeserializer(),
+) -> Type[PredictorBase]:
+    """Returns Predictor for IN_PROCESS mode"""
+    return InProcessModePredictor(
+        mode_obj=mode_obj, serializer=serializer, deserializer=deserializer
+    )
 
 
 def retrieve_predictor(

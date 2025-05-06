@@ -213,6 +213,10 @@ class _LocalTrainingJob(object):
             hyperparameters (dict): The HyperParameters for the training job.
             environment (dict): The collection of environment variables passed to the job.
             job_name (str): Name of the local training job being run.
+
+        Raises:
+            ValueError: If the input data configuration is not valid.
+            RuntimeError: If the data distribution type is not supported.
         """
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
@@ -233,10 +237,12 @@ class _LocalTrainingJob(object):
             # use a single Data URI - this makes handling S3 and File Data easier down the stack
             channel["DataUri"] = data_uri
 
-            if data_distribution and data_distribution != "FullyReplicated":
+            supported_distributions = ["FullyReplicated"]
+            if data_distribution and data_distribution not in supported_distributions:
                 raise RuntimeError(
-                    "DataDistribution: %s is not currently supported in Local Mode"
-                    % data_distribution
+                    "Invalid DataDistribution: '{}'. Local mode currently supports: {}.".format(
+                        data_distribution, ", ".join(supported_distributions)
+                    )
                 )
 
         self.start_time = datetime.datetime.now()
@@ -839,10 +845,10 @@ class _LocalPipelineExecution(object):
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
                 parameter_type = default_parameters[param_name].parameter_type
-                if type(param_value) != parameter_type.python_type:  # pylint: disable=C0123
+                if not isinstance(param_value, parameter_type.python_type):
                     error_msg = self._construct_validation_exception_message(
-                        "Unexpected type for parameter '{}'. Expected {} but found "
-                        "{}.".format(param_name, parameter_type.python_type, type(param_value))
+                        f"Unexpected type for parameter '{param_name}'. Expected \
+                            {parameter_type.python_type} but found {type(param_value)}."
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
                 if param_value == "":

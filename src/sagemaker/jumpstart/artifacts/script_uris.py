@@ -19,6 +19,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE,
 )
 from sagemaker.jumpstart.enums import (
+    JumpStartModelType,
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.utils import (
@@ -32,11 +33,14 @@ from sagemaker.session import Session
 def _retrieve_script_uri(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     script_scope: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ):
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -47,6 +51,8 @@ def _retrieve_script_uri(
             retrieve the script S3 URI.
         model_version (str): Version of the JumpStart model for which to
             retrieve the model script S3 URI.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model script S3 URI.
@@ -62,6 +68,9 @@ def _retrieve_script_uri(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -78,11 +87,14 @@ def _retrieve_script_uri(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=script_scope,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
+        model_type=model_type,
     )
 
     if script_scope == JumpStartScriptScope.INFERENCE:
@@ -104,10 +116,13 @@ def _retrieve_script_uri(
 def _model_supports_inference_script_uri(
     model_id: str,
     model_version: str,
-    region: Optional[str],
+    hub_arn: Optional[str] = None,
+    region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
+    model_type: Optional[str] = None,
 ) -> bool:
     """Returns True if the model supports inference with script uri field.
 
@@ -116,6 +131,8 @@ def _model_supports_inference_script_uri(
             retrieve the support status for script uri with inference.
         model_version (str): Version of the JumpStart model for which to retrieve the
             support status for script uri with inference.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve the
             support status for script uri with inference.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -129,6 +146,8 @@ def _model_supports_inference_script_uri(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         bool: the support status for script uri with inference.
     """
@@ -140,11 +159,14 @@ def _model_supports_inference_script_uri(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
+        model_type=model_type,
     )
 
     return model_specs.use_inference_script_uri()

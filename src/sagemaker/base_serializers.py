@@ -22,6 +22,7 @@ import numpy as np
 from pandas import DataFrame
 from six import with_metaclass
 
+from sagemaker.serializer_utils import write_numpy_to_dense_tensor
 from sagemaker.utils import DeferredError
 
 try:
@@ -466,3 +467,39 @@ class TorchTensorSerializer(SimpleBaseSerializer):
                 )
 
         raise ValueError("Object of type %s is not a torch.Tensor" % type(data))
+
+
+class RecordSerializer(SimpleBaseSerializer):
+    """Serialize a NumPy array for an inference request."""
+
+    def __init__(self, content_type="application/x-recordio-protobuf"):
+        """Initialize a ``RecordSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "application/x-recordio-protobuf").
+        """
+        super(RecordSerializer, self).__init__(content_type=content_type)
+
+    def serialize(self, data):
+        """Serialize a NumPy array into a buffer containing RecordIO records.
+
+        Args:
+            data (numpy.ndarray): The data to serialize.
+
+        Returns:
+            io.BytesIO: A buffer containing the data serialized as records.
+        """
+        if len(data.shape) == 1:
+            data = data.reshape(1, data.shape[0])
+
+        if len(data.shape) != 2:
+            raise ValueError(
+                "Expected a 1D or 2D array, but got a %dD array instead." % len(data.shape)
+            )
+
+        buffer = io.BytesIO()
+        write_numpy_to_dense_tensor(buffer, data)
+        buffer.seek(0)
+
+        return buffer

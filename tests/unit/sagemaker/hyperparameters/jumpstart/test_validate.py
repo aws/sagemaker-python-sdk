@@ -21,7 +21,7 @@ from sagemaker.jumpstart.enums import HyperparameterValidationMode, JumpStartMod
 from sagemaker.jumpstart.exceptions import JumpStartHyperparametersError
 from sagemaker.jumpstart.types import JumpStartHyperparameter
 
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec
 
 region = "us-west-2"
 mock_client = boto3.client("s3")
@@ -34,7 +34,7 @@ def test_jumpstart_validate_provided_hyperparameters(
     patched_get_model_specs, patched_validate_model_id_and_get_type
 ):
     def add_options_to_hyperparameter(*largs, **kwargs):
-        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec = get_prototype_model_spec(*largs, **kwargs)
         spec.hyperparameters.extend(
             [
                 JumpStartHyperparameter(
@@ -115,7 +115,7 @@ def test_jumpstart_validate_provided_hyperparameters(
     patched_get_model_specs.side_effect = add_options_to_hyperparameter
     patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
-    model_id, model_version = "pytorch-eqa-bert-base-cased", "*"
+    model_id, model_version = "mxnet-semseg-fcn-resnet50-ade", "*"
     region = "us-west-2"
 
     hyperparameter_to_test = {
@@ -146,6 +146,8 @@ def test_jumpstart_validate_provided_hyperparameters(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -410,7 +412,7 @@ def test_jumpstart_validate_algorithm_hyperparameters(
     patched_get_model_specs, patched_validate_model_id_and_get_type
 ):
     def add_options_to_hyperparameter(*largs, **kwargs):
-        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec = get_prototype_model_spec(*largs, **kwargs)
         spec.hyperparameters.append(
             JumpStartHyperparameter(
                 {
@@ -427,10 +429,11 @@ def test_jumpstart_validate_algorithm_hyperparameters(
     patched_get_model_specs.side_effect = add_options_to_hyperparameter
     patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
-    model_id, model_version = "pytorch-eqa-bert-base-cased", "*"
+    model_id, model_version = "mxnet-semseg-fcn-resnet50-ade", "*"
     region = "us-west-2"
 
     hyperparameter_to_test = {
+        "train-only-top-layer": "True",
         "adam-learning-rate": "0.05",
         "batch-size": "4",
         "epochs": "3",
@@ -452,6 +455,8 @@ def test_jumpstart_validate_algorithm_hyperparameters(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -484,13 +489,14 @@ def test_jumpstart_validate_all_hyperparameters(
     patched_get_model_specs, patched_validate_model_id_and_get_type
 ):
 
-    patched_get_model_specs.side_effect = get_spec_from_base_spec
+    patched_get_model_specs.side_effect = get_prototype_model_spec
     patched_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
-    model_id, model_version = "pytorch-eqa-bert-base-cased", "*"
+    model_id, model_version = "mxnet-semseg-fcn-resnet50-ade", "*"
     region = "us-west-2"
 
     hyperparameter_to_test = {
+        "train-only-top-layer": "True",
         "adam-learning-rate": "0.05",
         "batch-size": "4",
         "epochs": "3",
@@ -514,6 +520,8 @@ def test_jumpstart_validate_all_hyperparameters(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()

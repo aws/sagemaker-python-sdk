@@ -20,6 +20,8 @@ from collections import deque
 import logging
 import sys
 from typing import Callable
+import re
+from copy import deepcopy
 
 
 def get_sagemaker_config_logger():
@@ -67,6 +69,19 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
     """
     logger = get_sagemaker_config_logger()
 
+    source_value_log_copy = deepcopy(source_value)
+    config_value_log_copy = deepcopy(config_value)
+
+    if isinstance(source_value_log_copy, dict):
+        for key in source_value_log_copy.keys():
+            if re.search(r"(secret|password|key|token)", key, re.IGNORECASE):
+                source_value_log_copy[key] = "***"
+
+    if isinstance(config_value_log_copy, dict):
+        for key in config_value_log_copy.keys():
+            if re.search(r"(secret|password|key|token)", key, re.IGNORECASE):
+                config_value_log_copy[key] = "***"
+
     if config_value is not None:
 
         if source_value is None:
@@ -79,7 +94,7 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
                 logger.debug(
                     "Applied value\n  config key = %s\n  config value that will be used = %s",
                     config_key_path,
-                    config_value,
+                    config_value_log_copy,
                 )
             else:
                 logger.info(
@@ -102,8 +117,8 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
                     "  source value that will be used = %s"
                 ),
                 config_key_path,
-                config_value,
-                source_value,
+                config_value_log_copy,
+                source_value_log_copy,
             )
         elif source_value is not None and config_value != source_value:
             # Sagemaker Config had a value defined that is NOT going to be used
@@ -117,8 +132,8 @@ def _log_sagemaker_config_single_substitution(source_value, config_value, config
                     "  source value that will be used = %s",
                 ),
                 config_key_path,
-                config_value,
-                source_value,
+                config_value_log_copy,
+                source_value_log_copy,
             )
     else:
         # nothing was specified in the config and nothing is being automatically applied

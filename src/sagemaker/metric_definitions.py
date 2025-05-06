@@ -20,6 +20,7 @@ from typing import Dict, Optional, List
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
@@ -29,10 +30,13 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     instance_type: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model matching the given arguments.
 
@@ -43,6 +47,8 @@ def retrieve_default(
             retrieve the default training metric definitions. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default training metric definitions. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         instance_type (str): An instance type to optionally supply in order to get
             metric definitions specific for the instance type.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -56,6 +62,9 @@ def retrieve_default(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         list: The default metric definitions to use for the model or None.
 
@@ -71,9 +80,12 @@ def retrieve_default(
     return artifacts._retrieve_default_training_metric_definitions(
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         instance_type=instance_type,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
+        model_type=model_type,
     )

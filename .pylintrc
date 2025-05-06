@@ -94,7 +94,24 @@ disable=
     useless-object-inheritance, # TODO: Enable this check and fix code once Python 2 is no longer supported.
     super-with-arguments,
     raise-missing-from,
-    E1136,
+    C0116,  # Missing function or method docstring
+    C0209,  # Use f-string instead of format
+    E0015,  # Unrecognized option found in config
+    E0702,  # Raising a string instead of an exception
+    E1101,  # Module has no member (likely dynamic attr)
+    E1136,  # Value assigned to something inferred as None
+    R0022,  # Useless option value in config
+    R1710,  # Inconsistent return statements
+    R1714,  # Consider using `in` with comparisons
+    R1729,  # Use a generator
+    R1732,
+    R1735,  # Consider using a dict or list literal
+    W0237,  # Argument renamed in override
+    W0613,  # Unused argument
+    W0621,  # Redefining name from outer scope
+    W0719
+    W1404,  # Implicit string concatenation
+    W1514,  # `open()` used without encoding
 
 [REPORTS]
 # Set the output format. Available formats are text, parseable, colorized, msvs
@@ -310,7 +327,7 @@ ignore-mixin-members=yes
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis. It
 # supports qualified module names, as well as Unix pattern matching.
-ignored-modules=distutils
+ignored-modules=
 
 # List of class names for which member attributes should not be checked (useful
 # for classes with dynamically set attributes). This supports the use of
@@ -384,7 +401,7 @@ max-returns=6
 max-branches=12
 
 # Maximum number of statements in function / method body
-max-statements=100
+max-statements=105
 
 # Maximum number of parents for a class (see R0901).
 max-parents=7
@@ -436,4 +453,4 @@ analyse-fallback-blocks=no
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception"
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception

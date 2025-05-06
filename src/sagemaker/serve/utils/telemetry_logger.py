@@ -19,8 +19,22 @@ import requests
 
 from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH, MLFLOW_TRACKING_ARN
 from sagemaker.serve.utils.exceptions import ModelBuilderException
-from sagemaker.serve.utils.types import ModelServer, ImageUriOption
+from sagemaker.serve.utils.lineage_constants import (
+    MLFLOW_LOCAL_PATH,
+    MLFLOW_S3_PATH,
+    MLFLOW_MODEL_PACKAGE_PATH,
+    MLFLOW_RUN_ID,
+    MLFLOW_REGISTRY_PATH,
+)
+from sagemaker.serve.utils.lineage_utils import _get_mlflow_model_path_type
+from sagemaker.serve.utils.types import (
+    ModelServer,
+    ImageUriOption,
+    ModelHub,
+    SpeculativeDecodingDraftModelSource,
+)
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.user_agent import SDK_VERSION
 
@@ -49,6 +63,26 @@ MODEL_SERVER_TO_CODE = {
     str(ModelServer.DJL_SERVING): 4,
     str(ModelServer.TRITON): 5,
     str(ModelServer.TGI): 6,
+    str(ModelServer.TEI): 7,
+    str(ModelServer.SMD): 8,
+}
+
+MLFLOW_MODEL_PATH_CODE = {
+    MLFLOW_LOCAL_PATH: 1,
+    MLFLOW_S3_PATH: 2,
+    MLFLOW_MODEL_PACKAGE_PATH: 3,
+    MLFLOW_RUN_ID: 4,
+    MLFLOW_REGISTRY_PATH: 5,
+}
+
+MODEL_HUB_TO_CODE = {
+    str(ModelHub.JUMPSTART): 1,
+    str(ModelHub.HUGGINGFACE): 2,
+}
+
+SD_DRAFT_MODEL_SOURCE_TO_CODE = {
+    str(SpeculativeDecodingDraftModelSource.SAGEMAKER): 1,
+    str(SpeculativeDecodingDraftModelSource.CUSTOM): 2,
 }
 
 
@@ -61,16 +95,45 @@ def _capture_telemetry(func_name: str):
             logger.info(TELEMETRY_OPT_OUT_MESSAGING)
             response = None
             caught_ex = None
+            status = "1"
+            failure_reason = None
+            failure_type = None
+            extra = f"{func_name}"
 
-            image_uri_tail = self.image_uri.split("/")[1]
-            image_uri_option = _get_image_uri_option(self.image_uri, self._is_custom_image_uri)
-            extra = (
-                f"{func_name}"
-                f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
-                f"&x-imageTag={image_uri_tail}"
-                f"&x-sdkVersion={SDK_VERSION}"
-                f"&x-defaultImageUsage={image_uri_option}"
-            )
+            start_timer = perf_counter()
+            try:
+                response = func(self, *args, **kwargs)
+            except (
+                ModelBuilderException,
+                exceptions.CapacityError,
+                exceptions.UnexpectedStatusException,
+                exceptions.AsyncInferenceError,
+            ) as e:
+                status = "0"
+                caught_ex = e
+                failure_reason = str(e)
+                failure_type = e.__class__.__name__
+            except Exception as e:  # pylint: disable=W0703
+                raise e
+
+            stop_timer = perf_counter()
+            elapsed = stop_timer - start_timer
+
+            if self.model_server:
+                extra += f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
+
+            if self.image_uri:
+                image_uri_option = _get_image_uri_option(
+                    self.image_uri, getattr(self, "_is_custom_image_uri", False)
+                )
+                split_image_uri = self.image_uri.split("/")
+                if len(split_image_uri) > 1:
+                    extra += f"&x-imageTag={split_image_uri[1]}"
+
+            extra += f"&x-sdkVersion={SDK_VERSION}"
+
+            if self.image_uri:
+                extra += f"&x-defaultImageUsage={image_uri_option}"
 
             if self.model_server == ModelServer.DJL_SERVING or self.model_server == ModelServer.TGI:
                 extra += f"&x-modelName={self.model}"
@@ -78,46 +141,53 @@ def _capture_telemetry(func_name: str):
             if self.sagemaker_session and self.sagemaker_session.endpoint_arn:
                 extra += f"&x-endpointArn={self.sagemaker_session.endpoint_arn}"
 
-            start_timer = perf_counter()
-            try:
-                response = func(self, *args, **kwargs)
-                stop_timer = perf_counter()
-                elapsed = stop_timer - start_timer
-                extra += f"&x-latency={round(elapsed, 2)}"
-                if not self.serve_settings.telemetry_opt_out:
-                    _send_telemetry(
-                        "1",
-                        MODE_TO_CODE[str(self.mode)],
-                        self.sagemaker_session,
-                        None,
-                        None,
-                        extra,
-                    )
-            except (
-                ModelBuilderException,
-                exceptions.CapacityError,
-                exceptions.UnexpectedStatusException,
-                exceptions.AsyncInferenceError,
-            ) as e:
-                stop_timer = perf_counter()
-                elapsed = stop_timer - start_timer
-                extra += f"&x-latency={round(elapsed, 2)}"
-                if not self.serve_settings.telemetry_opt_out:
-                    _send_telemetry(
-                        "0",
-                        MODE_TO_CODE[str(self.mode)],
-                        self.sagemaker_session,
-                        str(e),
-                        e.__class__.__name__,
-                        extra,
-                    )
-                caught_ex = e
-            except Exception as e:  # pylint: disable=W0703
-                caught_ex = e
-            finally:
-                if caught_ex:
-                    raise caught_ex
-                return response  # pylint: disable=W0150
+            if getattr(self, "_is_mlflow_model", False):
+                mlflow_model_path = self.model_metadata[MLFLOW_MODEL_PATH]
+                mlflow_model_path_type = _get_mlflow_model_path_type(mlflow_model_path)
+                extra += f"&x-mlflowModelPathType={MLFLOW_MODEL_PATH_CODE[mlflow_model_path_type]}"
+                mlflow_model_tracking_server_arn = self.model_metadata.get(MLFLOW_TRACKING_ARN)
+                if mlflow_model_tracking_server_arn is not None:
+                    extra += f"&x-mlflowTrackingServerArn={mlflow_model_tracking_server_arn}"
+
+            if getattr(self, "model_hub", False):
+                extra += f"&x-modelHub={MODEL_HUB_TO_CODE[str(self.model_hub)]}"
+
+            if getattr(self, "is_fine_tuned", False):
+                extra += "&x-fineTuned=1"
+
+            if getattr(self, "is_compiled", False):
+                extra += "&x-compiled=1"
+            if getattr(self, "is_quantized", False):
+                extra += "&x-quantized=1"
+            if getattr(self, "speculative_decoding_draft_model_source", False):
+                model_provider_enum = (
+                    SpeculativeDecodingDraftModelSource.SAGEMAKER
+                    if self.speculative_decoding_draft_model_source == "sagemaker"
+                    else SpeculativeDecodingDraftModelSource.CUSTOM
+                )
+                model_provider_value = SD_DRAFT_MODEL_SOURCE_TO_CODE[str(model_provider_enum)]
+                extra += f"&x-sdDraftModelSource={model_provider_value}"
+
+            if getattr(self, "deployment_config_name", False):
+                config_name_code = self.deployment_config_name.lower()
+                extra += f"&x-configName={config_name_code}"
+
+            extra += f"&x-latency={round(elapsed, 2)}"
+
+            if hasattr(self, "serve_settings") and not self.serve_settings.telemetry_opt_out:
+                _send_telemetry(
+                    status,
+                    MODE_TO_CODE[str(self.mode)],
+                    self.sagemaker_session,
+                    failure_reason,
+                    failure_type,
+                    extra,
+                )
+
+            if caught_ex:
+                raise caught_ex
+
+            return response
 
         return wrapper
 

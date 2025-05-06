@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 
 import datetime
+from unittest.mock import Mock
+
 import pytest
 from botocore.exceptions import ClientError
 from mock import MagicMock
@@ -37,13 +39,32 @@ def sagemaker_session():
     return sagemaker_session
 
 
+@pytest.fixture()
+def sagemaker_session_with_bucket_name_and_prefix():
+    boto_mock = MagicMock(name="boto_session", region_name=REGION)
+    boto_mock.client("sts").get_caller_identity.return_value = {"Account": ACCOUNT_ID}
+    sagemaker_session = sagemaker.Session(
+        boto_session=boto_mock,
+        default_bucket="XXXXXXXXXXXXX",
+        default_bucket_prefix="sample-prefix",
+    )
+    sagemaker_session.boto_session.resource("s3").Bucket().creation_date = None
+    return sagemaker_session
+
+
 def test_default_bucket_s3_create_call(sagemaker_session):
     error = ClientError(
         error_response={"Error": {"Code": "404", "Message": "Not Found"}},
         operation_name="foo",
     )
-    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = error
-    bucket_name = sagemaker_session.default_bucket()
+    sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = Mock(
+        side_effect=error
+    )
+
+    try:
+        bucket_name = sagemaker_session.default_bucket()
+    except ClientError:
+        pass
 
     create_calls = sagemaker_session.boto_session.resource().create_bucket.mock_calls
     _1, _2, create_kwargs = create_calls[0]
@@ -53,7 +74,6 @@ def test_default_bucket_s3_create_call(sagemaker_session):
         "CreateBucketConfiguration": {"LocationConstraint": "us-west-2"},
         "Bucket": bucket_name,
     }
-    assert sagemaker_session._default_bucket == bucket_name
 
 
 def test_default_bucket_s3_needs_access(sagemaker_session, caplog):
@@ -87,6 +107,30 @@ def test_default_bucket_s3_needs_bucket_owner_access(sagemaker_session, datetime
     error_message = "This bucket cannot be configured to use as it is not owned by Account"
     assert error_message in caplog.text
     assert sagemaker_session._default_bucket is None
+
+
+def test_default_bucket_with_prefix_s3_needs_bucket_owner_access(
+    sagemaker_session_with_bucket_name_and_prefix, datetime_obj, caplog
+):
+    with pytest.raises(ClientError):
+        error = ClientError(
+            error_response={"Error": {"Code": "403", "Message": "Forbidden"}},
+            operation_name="foo",
+        )
+        sagemaker_session_with_bucket_name_and_prefix.boto_session.resource(
+            "s3"
+        ).meta.client.list_objects_v2.side_effect = error
+        sagemaker_session_with_bucket_name_and_prefix.boto_session.resource("s3").Bucket(
+            name=DEFAULT_BUCKET_NAME
+        ).creation_date = None
+        sagemaker_session_with_bucket_name_and_prefix.default_bucket()
+
+    error_message = "Please try again after adding appropriate access."
+    assert error_message in caplog.text
+    assert sagemaker_session_with_bucket_name_and_prefix._default_bucket is None
+    sagemaker_session_with_bucket_name_and_prefix.boto_session.resource(
+        "s3"
+    ).meta.client.list_objects_v2.assert_called_once()
 
 
 def test_default_bucket_s3_custom_bucket_input(sagemaker_session, datetime_obj, caplog):

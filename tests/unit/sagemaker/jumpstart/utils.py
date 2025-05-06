@@ -12,9 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from typing import List
+from typing import List, Dict, Any, Optional
 import boto3
 
+from sagemaker.compute_resource_requirements import ResourceRequirements
 from sagemaker.jumpstart.cache import JumpStartModelsCache
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -22,11 +23,16 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_REGION_NAME_SET,
 )
 from sagemaker.jumpstart.types import (
-    JumpStartCachedS3ContentKey,
-    JumpStartCachedS3ContentValue,
+    JumpStartCachedContentKey,
+    JumpStartCachedContentValue,
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartModelHeader,
+    JumpStartModelInitKwargs,
+    DeploymentConfigMetadata,
+    JumpStartModelDeployKwargs,
+    JumpStartBenchmarkStat,
+    JumpStartAdditionalDataSources,
 )
 from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import get_formatted_manifest
@@ -43,6 +49,8 @@ from tests.unit.sagemaker.jumpstart.constants import (
     SPECIAL_MODEL_SPECS_DICT,
     TRAINING_CONFIG_RANKINGS,
     TRAINING_CONFIGS,
+    DEPLOYMENT_CONFIGS,
+    INIT_KWARGS,
 )
 
 
@@ -108,7 +116,9 @@ def get_prototype_model_spec(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID.
@@ -124,7 +134,9 @@ def get_special_model_spec(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID. This is reserved
@@ -140,7 +152,9 @@ def get_special_model_spec_for_inference_component_based_endpoint(
     model_id: str = None,
     version: str = None,
     s3_client: boto3.client = None,
+    hub_arn: Optional[str] = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
     we only retrieve model specs based on the model ID and adding
@@ -163,8 +177,10 @@ def get_spec_from_base_spec(
     model_id: str = None,
     version_str: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
 
     if version and version_str:
@@ -187,6 +203,7 @@ def get_spec_from_base_spec(
             "catboost" not in model_id,
             "lightgbm" not in model_id,
             "sklearn" not in model_id,
+            "ai21" not in model_id,
         ]
     ):
         raise KeyError("Bad model ID")
@@ -209,8 +226,10 @@ def get_base_spec_with_prototype_configs(
     region: str = None,
     model_id: str = None,
     version: str = None,
+    hub_arn: Optional[str] = None,
     s3_client: boto3.client = None,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    sagemaker_session: Optional[str] = None,
 ) -> JumpStartModelSpecs:
     spec = copy.deepcopy(BASE_SPEC)
     inference_configs = {**INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
@@ -222,35 +241,72 @@ def get_base_spec_with_prototype_configs(
     return JumpStartModelSpecs(spec)
 
 
+def get_base_spec_with_prototype_configs_with_missing_benchmarks(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+) -> JumpStartModelSpecs:
+    spec = copy.deepcopy(BASE_SPEC)
+    copy_inference_configs = copy.deepcopy(INFERENCE_CONFIGS)
+    copy_inference_configs["inference_configs"]["neuron-inference"]["benchmark_metrics"] = None
+
+    inference_configs = {**copy_inference_configs, **INFERENCE_CONFIG_RANKINGS}
+    training_configs = {**TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
+
+    spec.update(inference_configs)
+    spec.update(training_configs)
+
+    return JumpStartModelSpecs(spec)
+
+
+def get_prototype_spec_with_configs(
+    region: str = None,
+    model_id: str = None,
+    version: str = None,
+    s3_client: boto3.client = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    hub_arn: str = None,
+    sagemaker_session: boto3.Session = None,
+) -> JumpStartModelSpecs:
+    spec = copy.deepcopy(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
+    inference_configs = {**INFERENCE_CONFIGS, **INFERENCE_CONFIG_RANKINGS}
+    training_configs = {**TRAINING_CONFIGS, **TRAINING_CONFIG_RANKINGS}
+
+    spec.update(inference_configs)
+    spec.update(training_configs)
+
+    return JumpStartModelSpecs(spec)
+
+
 def patched_retrieval_function(
     _modelCacheObj: JumpStartModelsCache,
-    key: JumpStartCachedS3ContentKey,
-    value: JumpStartCachedS3ContentValue,
-) -> JumpStartCachedS3ContentValue:
+    key: JumpStartCachedContentKey,
+    value: JumpStartCachedContentValue,
+) -> JumpStartCachedContentValue:
 
-    filetype, s3_key = key.file_type, key.s3_key
-    if filetype == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
+    data_type, id_info = key.data_type, key.id_info
+    if data_type == JumpStartS3FileType.OPEN_WEIGHT_MANIFEST:
 
-        return JumpStartCachedS3ContentValue(
-            formatted_content=get_formatted_manifest(BASE_MANIFEST)
-        )
+        return JumpStartCachedContentValue(formatted_content=get_formatted_manifest(BASE_MANIFEST))
 
-    if filetype == JumpStartS3FileType.OPEN_WEIGHT_SPECS:
-        _, model_id, specs_version = s3_key.split("/")
+    if data_type == JumpStartS3FileType.OPEN_WEIGHT_SPECS:
+        _, model_id, specs_version = id_info.split("/")
         version = specs_version.replace("specs_v", "").replace(".json", "")
-        return JumpStartCachedS3ContentValue(
+        return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(model_id=model_id, version=version)
         )
 
-    if filetype == JumpStartS3FileType.PROPRIETARY_MANIFEST:
-        return JumpStartCachedS3ContentValue(
+    if data_type == JumpStartS3FileType.PROPRIETARY_MANIFEST:
+        return JumpStartCachedContentValue(
             formatted_content=get_formatted_manifest(BASE_PROPRIETARY_MANIFEST)
         )
 
-    if filetype == JumpStartS3FileType.PROPRIETARY_SPECS:
-        _, model_id, specs_version = s3_key.split("/")
+    if data_type == JumpStartS3FileType.PROPRIETARY_SPECS:
+        _, model_id, specs_version = id_info.split("/")
         version = specs_version.replace("proprietary_specs_", "").replace(".json", "")
-        return JumpStartCachedS3ContentValue(
+        return JumpStartCachedContentValue(
             formatted_content=get_spec_from_base_spec(
                 model_id=model_id,
                 version=version,
@@ -258,7 +314,7 @@ def patched_retrieval_function(
             )
         )
 
-    raise ValueError(f"Bad value for filetype: {filetype}")
+    raise ValueError(f"Bad value for filetype: {data_type}")
 
 
 def overwrite_dictionary(
@@ -280,3 +336,128 @@ def overwrite_dictionary(
         base_dictionary[key] = value
 
     return base_dictionary
+
+
+def get_base_deployment_configs_with_acceleration_configs() -> List[Dict[str, Any]]:
+    configs = copy.deepcopy(DEPLOYMENT_CONFIGS)
+    configs[0]["AccelerationConfigs"] = [
+        {"Type": "Speculative-Decoding", "Enabled": True, "Spec": {"Version": "0.1"}}
+    ]
+    return configs
+
+
+def get_mock_init_kwargs(
+    model_id: str, config_name: Optional[str] = None
+) -> JumpStartModelInitKwargs:
+    kwargs = JumpStartModelInitKwargs(
+        model_id=model_id,
+        model_type=JumpStartModelType.OPEN_WEIGHTS,
+        model_data=INIT_KWARGS.get("model_data"),
+        image_uri=INIT_KWARGS.get("image_uri"),
+        instance_type=INIT_KWARGS.get("instance_type"),
+        env=INIT_KWARGS.get("env"),
+        resources=ResourceRequirements(),
+        config_name=config_name,
+    )
+    setattr(kwargs, "model_reference_arn", None)
+    setattr(kwargs, "hub_content_type", None)
+    return kwargs
+
+
+def get_base_deployment_configs_metadata(
+    omit_benchmark_metrics: bool = False,
+) -> List[DeploymentConfigMetadata]:
+    specs = (
+        get_base_spec_with_prototype_configs_with_missing_benchmarks()
+        if omit_benchmark_metrics
+        else get_base_spec_with_prototype_configs()
+    )
+    configs = []
+    for config_name in specs.inference_configs.config_rankings.get("overall").rankings:
+        jumpstart_config = specs.inference_configs.configs.get(config_name)
+        benchmark_metrics = jumpstart_config.benchmark_metrics
+
+        if benchmark_metrics:
+            for instance_type in benchmark_metrics:
+                benchmark_metrics[instance_type].append(
+                    JumpStartBenchmarkStat(
+                        {
+                            "name": "Instance Rate",
+                            "unit": "USD/Hrs",
+                            "value": "3.76",
+                            "concurrency": None,
+                        }
+                    )
+                )
+
+        configs.append(
+            DeploymentConfigMetadata(
+                config_name=config_name,
+                metadata_config=jumpstart_config,
+                init_kwargs=get_mock_init_kwargs(
+                    get_base_spec_with_prototype_configs().model_id, config_name
+                ),
+                deploy_kwargs=JumpStartModelDeployKwargs(
+                    model_id=get_base_spec_with_prototype_configs().model_id,
+                ),
+            )
+        )
+    return configs
+
+
+def get_base_deployment_configs(
+    omit_benchmark_metrics: bool = False,
+) -> List[Dict[str, Any]]:
+    configs = []
+    for config in get_base_deployment_configs_metadata(omit_benchmark_metrics):
+        config_json = config.to_json()
+        if config_json["BenchmarkMetrics"]:
+            config_json["BenchmarkMetrics"] = {
+                config.deployment_args.instance_type: config_json["BenchmarkMetrics"].get(
+                    config.deployment_args.instance_type
+                )
+            }
+        configs.append(config_json)
+    return configs
+
+
+def append_instance_stat_metrics(
+    metrics: Dict[str, List[JumpStartBenchmarkStat]]
+) -> Dict[str, List[JumpStartBenchmarkStat]]:
+    if metrics is not None:
+        for key in metrics:
+            metrics[key].append(
+                JumpStartBenchmarkStat(
+                    {
+                        "name": "Instance Rate",
+                        "value": "3.76",
+                        "unit": "USD/Hrs",
+                        "concurrency": None,
+                    }
+                )
+            )
+    return metrics
+
+
+def append_gated_draft_model_specs_to_jumpstart_model_spec(*args, **kwargs):
+    augmented_spec = get_prototype_model_spec(*args, **kwargs)
+
+    gated_s3_uri = "meta-textgeneration/meta-textgeneration-llama-3-2-1b-instruct/artifacts/inference-prepack/v1.0.0/"
+    augmented_spec.hosting_additional_data_sources = JumpStartAdditionalDataSources(
+        spec={
+            "speculative_decoding": [
+                {
+                    "channel_name": "draft_model",
+                    "provider": {"name": "JumpStart", "classification": "gated"},
+                    "artifact_version": "v1",
+                    "hosting_eula_key": "fmhMetadata/eula/llama3_2Eula.txt",
+                    "s3_data_source": {
+                        "s3_uri": gated_s3_uri,
+                        "compression_type": "None",
+                        "s3_data_type": "S3Prefix",
+                    },
+                }
+            ]
+        }
+    )
+    return augmented_spec

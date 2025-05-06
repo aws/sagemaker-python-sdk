@@ -18,7 +18,6 @@ import warnings
 
 from enum import Enum
 from typing import Dict, List, Set, Union, Optional, Any, TYPE_CHECKING
-from urllib.parse import urlparse
 
 import attr
 
@@ -362,10 +361,10 @@ class ConfigurableRetryStep(Step):
         self,
         name: str,
         step_type: StepTypeEnum,
-        display_name: str = None,
-        description: str = None,
-        depends_on: Optional[List[Union[str, Step, "StepCollection", StepOutput]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         super().__init__(
             name=name,
@@ -404,14 +403,14 @@ class TrainingStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: _JobStepArguments = None,
-        estimator: EstimatorBase = None,
-        display_name: str = None,
-        description: str = None,
-        inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
-        cache_config: CacheConfig = None,
+        step_args: Optional[_JobStepArguments] = None,
+        estimator: Optional[EstimatorBase] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        inputs: Optional[Union[TrainingInput, dict, str, FileSystemInput]] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Construct a `TrainingStep`, given an `EstimatorBase` instance.
 
@@ -465,6 +464,7 @@ class TrainingStep(ConfigurableRetryStep):
         self.step_args = step_args
         self.estimator = estimator
         self.inputs = inputs
+        self.job_name = None
 
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeTrainingJobResponse"
@@ -492,19 +492,6 @@ class TrainingStep(ConfigurableRetryStep):
                 ),
                 DeprecationWarning,
             )
-
-        self.job_name = None
-        if estimator and (estimator.source_dir or estimator.entry_point):
-            # By default, `Estimator` will upload the local code to an S3 path
-            # containing a timestamp. This causes cache misses whenever a
-            # pipeline is updated, even if the underlying script hasn't changed.
-            # To avoid this, hash the contents of the training script and include it
-            # in the `job_name` passed to the `Estimator`, which will be used
-            # instead of the timestamped path.
-            if not is_pipeline_variable(estimator.source_dir) and not is_pipeline_variable(
-                estimator.entry_point
-            ):
-                self.job_name = self._generate_code_upload_path()
 
     @property
     def arguments(self) -> RequestType:
@@ -553,26 +540,6 @@ class TrainingStep(ConfigurableRetryStep):
             request_dict.update(self.cache_config.config)
 
         return request_dict
-
-    def _generate_code_upload_path(self) -> str or None:
-        """Generate an upload path for local training scripts based on their content."""
-        from sagemaker.workflow.utilities import hash_files_or_dirs
-
-        if self.estimator.source_dir:
-            source_dir_url = urlparse(self.estimator.source_dir)
-            if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
-                code_hash = hash_files_or_dirs(
-                    [self.estimator.source_dir] + self.estimator.dependencies
-                )
-                return f"{self.name}-{code_hash}"[:1024]
-        elif self.estimator.entry_point:
-            entry_point_url = urlparse(self.estimator.entry_point)
-            if entry_point_url.scheme == "" or entry_point_url.scheme == "file":
-                code_hash = hash_files_or_dirs(
-                    [self.estimator.entry_point] + self.estimator.dependencies
-                )
-                return f"{self.name}-{code_hash}"[:1024]
-        return None
 
 
 class CreateModelStep(ConfigurableRetryStep):
@@ -645,6 +612,7 @@ class CreateModelStep(ConfigurableRetryStep):
             request_dict = self.step_args
         else:
             if isinstance(self.model, PipelineModel):
+                self.model._init_sagemaker_session_if_does_not_exist()
                 request_dict = self.model.sagemaker_session._create_model_request(
                     name="",
                     role=self.model.role,
@@ -653,6 +621,7 @@ class CreateModelStep(ConfigurableRetryStep):
                     enable_network_isolation=self.model.enable_network_isolation,
                 )
             else:
+                self.model._init_sagemaker_session_if_does_not_exist()
                 request_dict = self.model.sagemaker_session._create_model_request(
                     name="",
                     role=self.model.role,
@@ -681,14 +650,14 @@ class TransformStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: _JobStepArguments = None,
-        transformer: Transformer = None,
-        inputs: TransformInput = None,
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
+        step_args: Optional[_JobStepArguments] = None,
+        transformer: Optional[Transformer] = None,
+        inputs: Optional[TransformInput] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Constructs a `TransformStep`, given a `Transformer` instance.
 
@@ -808,19 +777,19 @@ class ProcessingStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: _JobStepArguments = None,
-        processor: Processor = None,
-        display_name: str = None,
-        description: str = None,
-        inputs: List[ProcessingInput] = None,
-        outputs: List[ProcessingOutput] = None,
-        job_arguments: List[str] = None,
-        code: str = None,
-        property_files: List[PropertyFile] = None,
-        cache_config: CacheConfig = None,
+        step_args: Optional[_JobStepArguments] = None,
+        processor: Optional[Processor] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        inputs: Optional[List[ProcessingInput]] = None,
+        outputs: Optional[List[ProcessingOutput]] = None,
+        job_arguments: Optional[List[str]] = None,
+        code: Optional[str] = None,
+        property_files: Optional[List[PropertyFile]] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
-        retry_policies: List[RetryPolicy] = None,
-        kms_key=None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+        kms_key: Optional[str] = None,
     ):
         """Construct a `ProcessingStep`, given a `Processor` instance.
 
@@ -893,16 +862,6 @@ class ProcessingStep(ConfigurableRetryStep):
                         "code argument has to be a valid S3 URI or local file path "
                         + "rather than a pipeline variable"
                     )
-                code_url = urlparse(code)
-                if code_url.scheme == "" or code_url.scheme == "file":
-                    # By default, `Processor` will upload the local code to an S3 path
-                    # containing a timestamp. This causes cache misses whenever a
-                    # pipeline is updated, even if the underlying script hasn't changed.
-                    # To avoid this, hash the contents of the script and include it
-                    # in the `job_name` passed to the `Processor`, which will be used
-                    # instead of the timestamped path.
-                    self.job_name = self._generate_code_upload_path()
-
             warnings.warn(
                 (
                     'We are deprecating the instantiation of ProcessingStep using "processor".'
@@ -980,15 +939,15 @@ class TuningStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: _JobStepArguments = None,
-        tuner: HyperparameterTuner = None,
-        display_name: str = None,
-        description: str = None,
+        step_args: Optional[_JobStepArguments] = None,
+        tuner: Optional[HyperparameterTuner] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
         inputs=None,
-        job_arguments: List[str] = None,
-        cache_config: CacheConfig = None,
+        job_arguments: Optional[List[str]] = None,
+        cache_config: Optional[CacheConfig] = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Construct a `TuningStep`, given a `HyperparameterTuner` instance.
 

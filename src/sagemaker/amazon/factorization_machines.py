@@ -17,11 +17,12 @@ from typing import Union, Optional
 
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
-from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt, isin, ge
+from sagemaker.deserializers import RecordDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
+from sagemaker.serializers import RecordSerializer
 from sagemaker.session import Session
 from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -114,7 +115,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
         factors_init_scale: Optional[float] = None,
         factors_init_sigma: Optional[float] = None,
         factors_init_value: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ):
         """Factorization Machines is :class:`Estimator` for general-purpose supervised learning.
 
@@ -266,7 +267,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
 
@@ -332,7 +333,7 @@ class FactorizationMachinesModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for FactorizationMachinesModel class.
 
@@ -365,5 +366,5 @@ class FactorizationMachinesModel(Model):
             role,
             predictor_cls=FactorizationMachinesPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

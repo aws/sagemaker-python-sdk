@@ -1,2 +1,96 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sagemaker"
+dynamic = ["version", "optional-dependencies"]
+description = "Open source library for training and deploying models on Amazon SageMaker."
+readme = "README.rst"
+requires-python = ">=3.9"
+authors = [
+  { name = "Amazon Web Services" },
+]
+keywords = [
+  "AI",
+  "AWS",
+  "Amazon",
+  "ML",
+  "MXNet",
+  "Tensorflow",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Natural Language :: English",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "attrs>=23.1.0,<24",
+  "boto3>=1.35.75,<2.0",
+  "cloudpickle>=2.2.1",
+  "docker",
+  "fastapi",
+  "google-pasta",
+  "importlib-metadata>=1.4.0,<7.0",
+  "jsonschema",
+  "numpy==1.26.4",
+  "omegaconf>=2.2,<=2.3",
+  "packaging>=23.0,<25",
+  "pandas",
+  "pathos",
+  "platformdirs",
+  "protobuf>=3.12,<6.0",
+  "psutil",
+  "PyYAML>=6.0.1",
+  "requests",
+  "sagemaker-core>=1.0.17,<2.0.0",
+  "schema",
+  "smdebug_rulesconfig==1.0.1",
+  "tblib>=1.7.0,<4",
+  "tqdm",
+  "urllib3>=1.26.8,<3.0.0",
+  "uvicorn"
+]
+
+[project.scripts]
+sagemaker-upgrade-v2 = "sagemaker.cli.compatibility.v2.sagemaker_upgrade_v2:main"
+
+[project.urls]
+Homepage = "https://github.com/aws/sagemaker-python-sdk"
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>.+)"
+
+# Dynamically define optional dependencies from requirements.txt files so
+# they can be be tracked by Dependabot
+[tool.hatch.metadata.hooks.custom]
+
+[tool.hatch.build.targets.wheel]
+core-metadata-version = "2.3"
+packages = ["src/sagemaker"]
+exclude = ["src/sagemaker/serve/model_server/triton/pack_conda_env.sh"]
+
+[tool.hatch.build.targets.wheel.shared-scripts]
+"src/sagemaker/serve/model_server/triton/pack_conda_env.sh" = "pack_conda_env.sh"
+
+[tool.hatch.build.targets.sdist]
+core-metadata-version = "2.3"
+only-include = [
+  "/requirements/extras",
+  "/src",
+  "/VERSION",
+]
+
+[tool.pytest.ini_options]
+addopts = ["-vv"]
+testpaths = ["tests"]
+
 [tool.black]
 line-length = 100

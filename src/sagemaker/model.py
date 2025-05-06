@@ -20,7 +20,7 @@ import logging
 import os
 import re
 import copy
-from typing import List, Dict, Optional, Union
+from typing import Callable, List, Dict, Optional, Union, Any
 
 import sagemaker
 from sagemaker import (
@@ -44,10 +44,15 @@ from sagemaker.config import (
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
     load_sagemaker_config,
 )
+from sagemaker.jumpstart.enums import JumpStartModelType
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
+from sagemaker.model_card.helpers import _hash_content_str
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
-from sagemaker.deprecations import removed_kwargs
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.explainer import ExplainerConfig
 from sagemaker.metadata_properties import MetadataProperties
@@ -66,6 +71,9 @@ from sagemaker.utils import (
     resolve_nested_dict_value_from_config,
     format_tags,
     Tags,
+    _resolve_routing_config,
+    _validate_new_tags,
+    remove_tag_with_key,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -81,6 +89,7 @@ from sagemaker.session import (
     get_add_model_package_inference_args,
     get_update_model_package_inference_args,
 )
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 # Setting LOGGER for backward compatibility, in case users import it...
 logger = LOGGER = logging.getLogger("sagemaker")
@@ -144,7 +153,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
@@ -159,6 +168,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         resources: Optional[ResourceRequirements] = None,
+        additional_model_data_sources: Optional[Dict[str, Any]] = None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -174,7 +185,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 It can be null if this is being used to create a Model to pass
                 to a ``PipelineModel`` which has its own Role field. (default:
                 None)
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
@@ -203,8 +214,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
             source_dir (str): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory is preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory
+                is preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
                 is used instead.
@@ -322,9 +333,14 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 for a model to be deployed to an endpoint. Only
                 EndpointType.INFERENCE_COMPONENT_BASED supports this feature.
                 (Default: None).
+            additional_model_data_sources (Optional[Dict[str, Any]]): Additional location
+                of SageMaker model data (default: None).
+            model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
+                content (default: None).
 
         """
         self.model_data = model_data
+        self.additional_model_data_sources = additional_model_data_sources
         self.image_uri = image_uri
         self.predictor_cls = predictor_cls
         self.name = name
@@ -353,7 +369,9 @@ class Model(ModelBase, InferenceRecommenderMixin):
             sagemaker_config=self._sagemaker_config,
         )
         self.endpoint_name = None
+        self.inference_component_name = None
         self._is_compiled_model = False
+        self._is_sharded_model = False
         self._compilation_job_name = None
         self._is_edge_packaged_model = False
         self.inference_recommender_job_results = None
@@ -399,6 +417,34 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.content_types = None
         self.response_types = None
         self.accept_eula = None
+        self.model_reference_arn = model_reference_arn
+        self._tags: Optional[Tags] = None
+
+    def add_tags(self, tags: Tags) -> None:
+        """Add tags to this ``Model``
+
+        Args:
+            tags (Tags): Tags to add.
+        """
+        self._tags = _validate_new_tags(tags, self._tags)
+
+    def remove_tag_with_key(self, key: str) -> None:
+        """Remove a tag with the given key from the list of tags.
+
+        Args:
+            key (str): The key of the tag to remove.
+        """
+        self._tags = remove_tag_with_key(key, self._tags)
+
+    @classmethod
+    def attach(
+        cls,
+        endpoint_name: str,
+        inference_component_name: Optional[str] = None,
+        sagemaker_session=None,
+    ) -> "Model":
+        """Attaches a Model object to an existing SageMaker Endpoint."""
+        raise NotImplementedError
 
     @runnable_by_pipeline
     def register(
@@ -427,6 +473,10 @@ class Model(ModelBase, InferenceRecommenderMixin):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
+        accept_eula: Optional[bool] = None,
+        model_type: Optional[JumpStartModelType] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -478,6 +528,9 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance or pipeline step arguments
@@ -499,9 +552,11 @@ class Model(ModelBase, InferenceRecommenderMixin):
             model_package_group_name = utils.base_name_from_image(
                 self.image_uri, default_base_name=ModelPackage.__name__
             )
-
-        if model_package_group_name is not None:
-            container_def = self.prepare_container_def()
+        if (
+            model_package_group_name is not None
+            and model_type is not JumpStartModelType.PROPRIETARY
+        ):
+            container_def = self.prepare_container_def(accept_eula=accept_eula)
             container_def = update_container_with_inference_params(
                 framework=framework,
                 framework_version=framework_version,
@@ -544,6 +599,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
             task=task,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -566,6 +623,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
         serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
         tags: Optional[Tags] = None,
         accept_eula: Optional[bool] = None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Create a SageMaker Model Entity
 
@@ -607,6 +665,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             tags=format_tags(tags),
             serverless_inference_config=serverless_inference_config,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
@@ -628,6 +687,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()``.
 
@@ -670,6 +730,12 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             accept_eula=(
                 accept_eula if accept_eula is not None else getattr(self, "accept_eula", None)
             ),
+            additional_model_data_sources=self.additional_model_data_sources,
+            model_reference_arn=(
+                model_reference_arn
+                if model_reference_arn is not None
+                else getattr(self, "model_reference_arn", None)
+            ),
         )
 
     def is_repack(self) -> bool:
@@ -678,6 +744,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         Returns:
             bool: if the source need to be repacked or not
         """
+        if self.source_dir is None or self.entry_point is None:
+            return False
         return self.source_dir and self.entry_point and not self.git_config
 
     def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
@@ -812,6 +880,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         tags: Optional[Tags] = None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn: Optional[str] = None,
     ):
         """Create a SageMaker Model Entity
 
@@ -836,6 +905,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 The `accept_eula` value must be explicitly defined as `True` in order to
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
+            model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
+                content (default: None).
         """
         if self.model_package_arn is not None or self.algorithm_arn is not None:
             model_package = ModelPackage(
@@ -867,6 +938,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 accelerator_type=accelerator_type,
                 serverless_inference_config=serverless_inference_config,
                 accept_eula=accept_eula,
+                model_reference_arn=model_reference_arn,
             )
 
             if not isinstance(self.sagemaker_session, PipelineSession):
@@ -1309,6 +1381,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         resources: Optional[ResourceRequirements] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         managed_instance_scaling: Optional[str] = None,
+        inference_component_name=None,
+        routing_config: Optional[Dict[str, Any]] = None,
+        model_reference_arn: Optional[str] = None,
+        inference_ami_version: Optional[str] = None,
+        update_endpoint: Optional[bool] = False,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1406,6 +1483,25 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 Endpoint. (Default: None).
             endpoint_type (Optional[EndpointType]): The type of an endpoint used to deploy models.
                 (Default: EndpointType.MODEL_BASED).
+            routing_config (Optional[Dict[str, Any]): Settings the control how the endpoint routes incoming
+                traffic to the instances that the endpoint hosts.
+                Currently, support dictionary key ``RoutingStrategy``.
+
+                .. code:: python
+
+                    {
+                        "RoutingStrategy":  sagemaker.enums.RoutingStrategy.RANDOM
+                    }
+            model_reference_arn (Optional [str]): Hub Content Arn of a Model Reference type
+                content (default: None).
+            inference_ami_version (Optional [str]): Specifies an option from a collection of preconfigured
+             Amazon Machine Image (AMI) images. For a full list of options, see:
+             https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
+            update_endpoint (Optional[bool]):
+                Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint
+                and delete resources corresponding to the previous EndpointConfig. Default: False
+                Note: Currently this is supported for single model endpoints
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1415,13 +1511,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     inference config or
                 - If inference recommendation id is specified along with incompatible parameters
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of
+            Callable[[string, sagemaker.session.Session], Any] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
         self.accept_eula = accept_eula
-
-        removed_kwargs("update_endpoint", kwargs)
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
         # Depending on the instance type, a local session (or) a session is initialized.
@@ -1441,7 +1535,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             sagemaker_session=self.sagemaker_session,
         )
 
-        tags = format_tags(tags)
+        self.add_tags(tags)
+        tags = format_tags(self._tags)
 
         if (
             getattr(self.sagemaker_session, "settings", None) is not None
@@ -1457,6 +1552,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
+
+        routing_config = _resolve_routing_config(routing_config)
 
         if (
             inference_recommendation_id is not None
@@ -1512,8 +1609,32 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
+        if self._is_sharded_model:
+            if endpoint_type != EndpointType.INFERENCE_COMPONENT_BASED:
+                logging.warning(
+                    "Forcing INFERENCE_COMPONENT_BASED endpoint for sharded model. ADVISORY - "
+                    "Use INFERENCE_COMPONENT_BASED endpoints over MODEL_BASED endpoints."
+                )
+                endpoint_type = EndpointType.INFERENCE_COMPONENT_BASED
+
+            if self._enable_network_isolation:
+                raise ValueError(
+                    "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
+                    "Loading of model requires network access."
+                )
+
+            if resources and resources.num_cpus and resources.num_cpus > 0:
+                logger.warning(
+                    "NumberOfCpuCoresRequired should be 0 for the best experience with SageMaker "
+                    "Fast Model Loading. Configure by setting `num_cpus` to 0 in `resources`."
+                )
+
         # Support multiple models on same endpoint
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
+            if update_endpoint:
+                raise ValueError(
+                    "Currently update_endpoint is supported for single model endpoints"
+                )
             if endpoint_name:
                 self.endpoint_name = endpoint_name
             else:
@@ -1543,6 +1664,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     model_data_download_timeout=model_data_download_timeout,
                     container_startup_health_check_timeout=container_startup_health_check_timeout,
                     managed_instance_scaling=managed_instance_scaling_config,
+                    routing_config=routing_config,
+                    inference_ami_version=inference_ami_version,
                 )
 
                 self.sagemaker_session.endpoint_from_production_variants(
@@ -1553,7 +1676,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     vpc_config=self.vpc_config,
                     enable_network_isolation=self._enable_network_isolation,
                     role=self.role,
-                    live_logging=endpoint_logging,
+                    live_logging=False,  # TODO: enable when IC supports this
                     wait=wait,
                 )
 
@@ -1580,11 +1703,15 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 "ComputeResourceRequirements": resources.get_compute_resource_requirements(),
             }
             runtime_config = {"CopyCount": resources.copy_count}
-            inference_component_name = unique_name_from_base(self.name)
+            self.inference_component_name = (
+                inference_component_name
+                or self.inference_component_name
+                or unique_name_from_base(self.name)
+            )
 
             # [TODO]: Add endpoint_logging support
             self.sagemaker_session.create_inference_component(
-                inference_component_name=inference_component_name,
+                inference_component_name=self.inference_component_name,
                 endpoint_name=self.endpoint_name,
                 variant_name="AllTraffic",  # default variant name
                 specification=inference_component_spec,
@@ -1597,7 +1724,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 predictor = self.predictor_cls(
                     self.endpoint_name,
                     self.sagemaker_session,
-                    component_name=inference_component_name,
+                    component_name=self.inference_component_name,
                 )
                 if serializer:
                     predictor.serializer = serializer
@@ -1612,6 +1739,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 accelerator_type=accelerator_type,
                 tags=tags,
                 serverless_inference_config=serverless_inference_config,
+                accept_eula=accept_eula,
+                model_reference_arn=model_reference_arn,
             )
             serverless_inference_config_dict = (
                 serverless_inference_config._to_request_dict() if is_serverless else None
@@ -1625,6 +1754,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 volume_size=volume_size,
                 model_data_download_timeout=model_data_download_timeout,
                 container_startup_health_check_timeout=container_startup_health_check_timeout,
+                routing_config=routing_config,
+                inference_ami_version=inference_ami_version,
             )
             if endpoint_name:
                 self.endpoint_name = endpoint_name
@@ -1659,17 +1790,38 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             if is_explainer_enabled:
                 explainer_config_dict = explainer_config._to_request_dict()
 
-            self.sagemaker_session.endpoint_from_production_variants(
-                name=self.endpoint_name,
-                production_variants=[production_variant],
-                tags=tags,
-                kms_key=kms_key,
-                wait=wait,
-                data_capture_config_dict=data_capture_config_dict,
-                explainer_config_dict=explainer_config_dict,
-                async_inference_config_dict=async_inference_config_dict,
-                live_logging=endpoint_logging,
-            )
+            if update_endpoint:
+                endpoint_config_name = self.sagemaker_session.create_endpoint_config(
+                    name=self.name,
+                    model_name=self.name,
+                    initial_instance_count=initial_instance_count,
+                    instance_type=instance_type,
+                    accelerator_type=accelerator_type,
+                    tags=tags,
+                    kms_key=kms_key,
+                    data_capture_config_dict=data_capture_config_dict,
+                    volume_size=volume_size,
+                    model_data_download_timeout=model_data_download_timeout,
+                    container_startup_health_check_timeout=container_startup_health_check_timeout,
+                    explainer_config_dict=explainer_config_dict,
+                    async_inference_config_dict=async_inference_config_dict,
+                    serverless_inference_config=serverless_inference_config_dict,
+                    routing_config=routing_config,
+                    inference_ami_version=inference_ami_version,
+                )
+                self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+            else:
+                self.sagemaker_session.endpoint_from_production_variants(
+                    name=self.endpoint_name,
+                    production_variants=[production_variant],
+                    tags=tags,
+                    kms_key=kms_key,
+                    wait=wait,
+                    data_capture_config_dict=data_capture_config_dict,
+                    explainer_config_dict=explainer_config_dict,
+                    async_inference_config_dict=async_inference_config_dict,
+                    live_logging=endpoint_logging,
+                )
 
             if self.predictor_cls:
                 predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
@@ -1841,7 +1993,7 @@ class FrameworkModel(Model):
         role: Optional[str] = None,
         entry_point: Optional[str] = None,
         source_dir: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         name: Optional[str] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
@@ -1878,11 +2030,11 @@ class FrameworkModel(Model):
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
-                'source_dir' should be a relative location to a directory in the Git repo.
-                If the directory points to S3, no code will be uploaded and the S3 location
-                will be used instead.
+                point to a file with name ``sourcedir.tar.gz``. Structure within this
+                directory are preserved when training on Amazon SageMaker. If 'git_config'
+                is provided, 'source_dir' should be a relative location to a directory in the
+                Git repo. If the directory points to S3, no code will be uploaded and the S3
+                location will be used instead.
 
                 .. admonition:: Example
 
@@ -1894,7 +2046,7 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='inference.py', source_dir='src'.
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
@@ -2021,6 +2173,8 @@ class FrameworkModel(Model):
         Returns:
             bool: if the source need to be repacked or not
         """
+        if self.source_dir is None or self.entry_point is None:
+            return False
         return self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
 
 
@@ -2294,6 +2448,23 @@ class ModelPackage(Model):
         sagemaker_session = self.sagemaker_session or sagemaker.Session()
         sagemaker_session.sagemaker_client.update_model_package(**update_source_uri_args)
 
+    def update_model_life_cycle(
+        self,
+        model_life_cycle: ModelLifeCycle,
+    ):
+        """Modellifecycle to be set for the model package
+
+        Args:
+            model_life_cycle (ModelLifeCycle): The current state of model package in its life cycle
+
+        """
+        update_model_life_cycle_args = {
+            "ModelPackageArn": self.model_package_arn,
+            "ModelLifeCycle": model_life_cycle,
+        }
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        sagemaker_session.sagemaker_client.update_model_package(**update_model_life_cycle_args)
+
     def remove_customer_metadata_properties(
         self, customer_metadata_properties_to_remove: List[str]
     ):
@@ -2370,3 +2541,67 @@ class ModelPackage(Model):
         )
 
         sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
+
+    def update_model_card(self, model_card: Union[ModelCard, ModelPackageModelCard]):
+        """Updates Created model card content which created with model package
+
+        Args:
+            model_card (ModelCard | ModelPackageModelCard): Updated Model Card content
+        """
+
+        sagemaker_session = self.sagemaker_session or sagemaker.Session()
+        desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
+            ModelPackageName=self.model_package_arn
+        )
+        if hasattr(model_card, "model_package_details"):
+            model_card.model_package_details = None
+        update_model_card_req = model_card._create_request_args()
+        if update_model_card_req.get("ModelCardName") is not None:
+            del update_model_card_req["ModelCardName"]
+        if update_model_card_req["Content"] is not None:
+            if "model_package_details" in update_model_card_req["Content"]:
+                update_model_card_req["Content"].pop("model_package_details", None)
+            update_model_card_req["ModelCardContent"] = update_model_card_req["Content"]
+            del update_model_card_req["Content"]
+
+        if "ModelCard" in desc_model_package:
+            if update_model_card_req["ModelCardStatus"] is not None:
+                if (
+                    desc_model_package["ModelCard"]["ModelCardStatus"]
+                    != update_model_card_req["ModelCardStatus"]
+                ):
+                    new_mc_mp_req = update_model_card_req
+                    del new_mc_mp_req["ModelCardContent"]
+                    update_model_package_args = {
+                        "ModelPackageArn": self.model_package_arn,
+                        "ModelCard": new_mc_mp_req,
+                    }
+                    sagemaker_session.sagemaker_client.update_model_package(
+                        **update_model_package_args
+                    )
+
+            if update_model_card_req.get("ModelCardContent") is not None:
+                previous_content_hash = _hash_content_str(
+                    desc_model_package["ModelCard"]["ModelCardContent"]
+                )
+                current_content_hash = _hash_content_str(update_model_card_req["ModelCardContent"])
+                if not (
+                    previous_content_hash == current_content_hash
+                    or update_model_card_req.get("ModelCardContent") == "{}"
+                    or update_model_card_req.get("ModelCardContent") == "null"
+                ):
+                    new_mc_mp_req = update_model_card_req
+                    del new_mc_mp_req["ModelCardStatus"]
+                    update_model_package_args = {
+                        "ModelPackageArn": self.model_package_arn,
+                        "ModelCard": new_mc_mp_req,
+                    }
+                    sagemaker_session.sagemaker_client.update_model_package(
+                        **update_model_package_args
+                    )
+        else:
+            update_model_package_args = {
+                "ModelPackageArn": self.model_package_arn,
+                "ModelCard": update_model_card_req,
+            }
+            sagemaker_session.sagemaker_client.update_model_package(**update_model_package_args)

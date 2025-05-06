@@ -7,6 +7,7 @@ from time import perf_counter
 import collections
 from multiprocessing.pool import ThreadPool
 from math import ceil
+from typing import Callable
 import pandas as pd
 from numpy import percentile, std
 from sagemaker.serve.model_server.djl_serving.utils import _tokens_from_chars, _tokens_from_words
@@ -33,8 +34,8 @@ def _pretty_print_results(results: dict):
 
     for key, value in ordered.items():
         avg_latencies.append(key)
-        tensor_parallel_degrees.append(value[0]["option.tensor_parallel_degree"])
-        dtypes.append(value[0]["option.dtype"])
+        tensor_parallel_degrees.append(value[0]["TENSOR_PARALLEL_DEGREE"])
+        dtypes.append(value[0]["OPTION_DTYPE"])
         p90s.append(value[1])
         avg_tokens_per_seconds.append(value[2])
         throughput_per_seconds.append(value[3])
@@ -152,7 +153,7 @@ def _tokens_per_second(generated_text: str, max_token_length: int, latency: floa
     return min(est_tokens, max_token_length) / latency
 
 
-def _timed_invoke(predict: callable, sample_input: object) -> tuple:
+def _timed_invoke(predict: Callable, sample_input: object) -> tuple:
     """Placeholder docstring"""
     start_timer = perf_counter()
     response = predict(sample_input)

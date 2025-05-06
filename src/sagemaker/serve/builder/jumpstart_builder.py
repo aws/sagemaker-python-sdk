@@ -14,15 +14,20 @@
 from __future__ import absolute_import
 
 import copy
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type
+from typing import Type, Any, List, Dict, Optional, Tuple
 import logging
 
+from botocore.exceptions import ClientError
+
+from sagemaker.enums import Tag
 from sagemaker.model import Model
 from sagemaker import model_uris
 from sagemaker.serve.model_server.djl_serving.prepare import prepare_djl_js_resources
 from sagemaker.serve.model_server.djl_serving.utils import _get_admissible_tensor_parallel_degrees
+from sagemaker.serve.model_server.multi_model_server.prepare import prepare_mms_js_resources
 from sagemaker.serve.model_server.tgi.prepare import prepare_tgi_js_resources, _create_dir_structure
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.exceptions import (
@@ -32,9 +37,25 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelLoadException,
     SkipTuningComboException,
 )
+from sagemaker.serve.utils.optimize_utils import (
+    _generate_model_source,
+    _update_environment_variables,
+    _extract_speculative_draft_model_provider,
+    _is_image_compatible_with_optimization_job,
+    _generate_channel_name,
+    _extract_optimization_config_and_env,
+    _is_optimized,
+    _custom_speculative_decoding,
+    SPECULATIVE_DRAFT_MODEL,
+    _is_inferentia_or_trainium,
+    _jumpstart_speculative_decoding,
+    _deployment_config_contains_draft_model,
+    _is_draft_model_jumpstart_provided,
+)
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
     TgiLocalModePredictor,
+    TransformersLocalModePredictor,
 )
 from sagemaker.serve.utils.local_hardware import (
     _get_nb_instance,
@@ -51,6 +72,7 @@ from sagemaker.serve.utils.tuning import (
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.jumpstart.model import JumpStartModel
+from sagemaker.utils import Tags
 
 _DJL_MODEL_BUILDER_ENTRY_POINT = "inference.py"
 _NO_JS_MODEL_EX = "HuggingFace JumpStart Model ID not detected. Building for HuggingFace Model ID."
@@ -60,6 +82,7 @@ _JS_ENABLED_MODEL_SERVERS = {
     ModelServer.DJL_SERVING,
     ModelServer.TGI,
 }
+_JS_MINIMUM_VERSION_IMAGE = "{}:0.31.0-lmi13.0.0-cu124"
 
 logger = logging.getLogger(__name__)
 
@@ -90,13 +113,23 @@ class JumpStart(ABC):
         self.existing_properties = None
         self.prepared_for_tgi = None
         self.prepared_for_djl = None
+        self.prepared_for_mms = None
         self.schema_builder = None
+        self.instance_type = None
         self.nb_instance_type = None
         self.ram_usage_model_load = None
-        self.jumpstart = None
+        self.model_hub = None
+        self.model_metadata = None
+        self.role_arn = None
+        self.is_fine_tuned = None
+        self.is_compiled = False
+        self.is_quantized = False
+        self.speculative_decoding_draft_model_source = None
+        self.deployment_config_name = None
+        self.name = None
 
     @abstractmethod
-    def _prepare_for_mode(self):
+    def _prepare_for_mode(self, **kwargs):
         """Placeholder docstring"""
 
     @abstractmethod
@@ -105,6 +138,9 @@ class JumpStart(ABC):
 
     def _is_jumpstart_model_id(self) -> bool:
         """Placeholder docstring"""
+        if self.model is None:
+            return False
+
         try:
             model_uris.retrieve(model_id=self.model, model_version="*", model_scope=_JS_SCOPE)
         except KeyError:
@@ -116,8 +152,13 @@ class JumpStart(ABC):
 
     def _create_pre_trained_js_model(self) -> Type[Model]:
         """Placeholder docstring"""
-        pysdk_model = JumpStartModel(self.model, vpc_config=self.vpc_config)
-        pysdk_model.sagemaker_session = self.sagemaker_session
+        pysdk_model = JumpStartModel(
+            self.model,
+            vpc_config=self.vpc_config,
+            sagemaker_session=self.sagemaker_session,
+            name=self.name,
+            instance_type=self.instance_type,
+        )
 
         self._original_deploy = pysdk_model.deploy
         pysdk_model.deploy = self._js_builder_deploy_wrapper
@@ -126,6 +167,7 @@ class JumpStart(ABC):
     @_capture_telemetry("jumpstart.deploy")
     def _js_builder_deploy_wrapper(self, *args, **kwargs) -> Type[PredictorBase]:
         """Placeholder docstring"""
+        env = {}
         if "mode" in kwargs and kwargs.get("mode") != self.mode:
             overwrite_mode = kwargs.get("mode")
             # mode overwritten by customer during model.deploy()
@@ -137,8 +179,13 @@ class JumpStart(ABC):
 
             if overwrite_mode == Mode.SAGEMAKER_ENDPOINT:
                 self.mode = self.pysdk_model.mode = Mode.SAGEMAKER_ENDPOINT
-                if not hasattr(self, "prepared_for_djl") or not hasattr(self, "prepared_for_tgi"):
-                    self.pysdk_model.model_data, env = self._prepare_for_mode()
+                if (
+                    not hasattr(self, "prepared_for_djl")
+                    or not hasattr(self, "prepared_for_tgi")
+                    or not hasattr(self, "prepared_for_mms")
+                ):
+                    if not _is_optimized(self.pysdk_model):
+                        self.pysdk_model.model_data, env = self._prepare_for_mode()
             elif overwrite_mode == Mode.LOCAL_CONTAINER:
                 self.mode = self.pysdk_model.mode = Mode.LOCAL_CONTAINER
 
@@ -160,9 +207,15 @@ class JumpStart(ABC):
                         dependencies=self.dependencies,
                         model_data=self.pysdk_model.model_data,
                     )
+                elif not hasattr(self, "prepared_for_mms"):
+                    self.js_model_config, self.prepared_for_mms = prepare_mms_js_resources(
+                        model_path=self.model_path,
+                        js_id=self.model,
+                        dependencies=self.dependencies,
+                        model_data=self.pysdk_model.model_data,
+                    )
 
                 self._prepare_for_mode()
-                env = {}
             else:
                 raise ValueError("Mode %s is not supported!" % overwrite_mode)
 
@@ -177,6 +230,10 @@ class JumpStart(ABC):
                 )
             elif self.model_server == ModelServer.TGI:
                 predictor = TgiLocalModePredictor(
+                    self.modes[str(Mode.LOCAL_CONTAINER)], serializer, deserializer
+                )
+            elif self.model_server == ModelServer.MMS:
+                predictor = TransformersLocalModePredictor(
                     self.modes[str(Mode.LOCAL_CONTAINER)], serializer, deserializer
                 )
 
@@ -231,7 +288,7 @@ class JumpStart(ABC):
                 )
             self._prepare_for_mode()
         elif self.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(self, "prepared_for_djl"):
-            self.nb_instance_type = _get_nb_instance()
+            self.nb_instance_type = self.instance_type or _get_nb_instance()
             self.pysdk_model.model_data, env = self._prepare_for_mode()
 
         self.pysdk_model.env.update(env)
@@ -254,6 +311,24 @@ class JumpStart(ABC):
 
         self.pysdk_model.env.update(env)
 
+    def _build_for_mms_jumpstart(self):
+        """Placeholder docstring"""
+
+        env = {}
+        if self.mode == Mode.LOCAL_CONTAINER:
+            if not hasattr(self, "prepared_for_mms"):
+                self.js_model_config, self.prepared_for_mms = prepare_mms_js_resources(
+                    model_path=self.model_path,
+                    js_id=self.model,
+                    dependencies=self.dependencies,
+                    model_data=self.pysdk_model.model_data,
+                )
+            self._prepare_for_mode()
+        elif self.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(self, "prepared_for_mms"):
+            self.pysdk_model.model_data, env = self._prepare_for_mode()
+
+        self.pysdk_model.env.update(env)
+
     def _tune_for_js(self, sharded_supported: bool, max_tuning_duration: int = 1800):
         """Tune for Jumpstart Models in Local Mode.
 
@@ -264,7 +339,7 @@ class JumpStart(ABC):
         returns:
             Tuned Model.
         """
-        if self.mode != Mode.LOCAL_CONTAINER:
+        if self.mode == Mode.SAGEMAKER_ENDPOINT:
             logger.warning(
                 "Tuning is only a %s capability. Returning original model.", Mode.LOCAL_CONTAINER
             )
@@ -431,17 +506,133 @@ class JumpStart(ABC):
             sharded_supported=sharded_supported, max_tuning_duration=max_tuning_duration
         )
 
+    def set_deployment_config(self, config_name: str, instance_type: str) -> None:
+        """Sets the deployment config to apply to the model.
+
+        Args:
+            config_name (str):
+                The name of the deployment config to apply to the model.
+                Call list_deployment_configs to see the list of config names.
+            instance_type (str):
+                The instance_type that the model will use after setting
+                the config.
+        """
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            raise Exception("Cannot set deployment config to an uninitialized model.")
+
+        self.pysdk_model.set_deployment_config(config_name, instance_type)
+        self.deployment_config_name = config_name
+
+        self.instance_type = instance_type
+
+        # JS-benchmarked models only include SageMaker-provided SD models
+        if self.pysdk_model.additional_model_data_sources:
+            self.speculative_decoding_draft_model_source = "sagemaker"
+            self.pysdk_model.add_tags(
+                {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
+            )
+            self.pysdk_model.remove_tag_with_key(Tag.OPTIMIZATION_JOB_NAME)
+            self.pysdk_model.remove_tag_with_key(Tag.FINE_TUNING_MODEL_PATH)
+            self.pysdk_model.remove_tag_with_key(Tag.FINE_TUNING_JOB_NAME)
+
+    def get_deployment_config(self) -> Optional[Dict[str, Any]]:
+        """Gets the deployment config to apply to the model.
+
+        Returns:
+            Optional[Dict[str, Any]]: Deployment config to apply to this model.
+        """
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        return self.pysdk_model.deployment_config
+
+    def display_benchmark_metrics(self, **kwargs):
+        """Display Markdown Benchmark Metrics for deployment configs."""
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        self.pysdk_model.display_benchmark_metrics(**kwargs)
+
+    def list_deployment_configs(self) -> List[Dict[str, Any]]:
+        """List deployment configs for ``This`` model in the current region.
+
+        Returns:
+            List[Dict[str, Any]]: A list of deployment configs.
+        """
+        if not hasattr(self, "pysdk_model") or self.pysdk_model is None:
+            self._build_for_jumpstart()
+
+        return self.pysdk_model.list_deployment_configs()
+
+    def _is_fine_tuned_model(self) -> bool:
+        """Checks whether a fine-tuned model exists."""
+        return self.model_metadata and (
+            self.model_metadata.get("FINE_TUNING_MODEL_PATH")
+            or self.model_metadata.get("FINE_TUNING_JOB_NAME")
+        )
+
+    def _update_model_data_for_fine_tuned_model(self, pysdk_model: Type[Model]) -> Type[Model]:
+        """Set the model path and data and add fine-tuning tags for the model."""
+        # TODO: determine precedence of FINE_TUNING_MODEL_PATH and FINE_TUNING_JOB_NAME
+        if fine_tuning_model_path := self.model_metadata.get("FINE_TUNING_MODEL_PATH"):
+            if not re.match("^(https|s3)://([^/]+)/?(.*)$", fine_tuning_model_path):
+                raise ValueError(
+                    f"Invalid path for FINE_TUNING_MODEL_PATH: {fine_tuning_model_path}."
+                )
+            pysdk_model.model_data["S3DataSource"]["S3Uri"] = fine_tuning_model_path
+            pysdk_model.add_tags(
+                {"Key": Tag.FINE_TUNING_MODEL_PATH, "Value": fine_tuning_model_path}
+            )
+            logger.info(
+                "FINE_TUNING_MODEL_PATH detected. Using fine-tuned model found in %s.",
+                fine_tuning_model_path,
+            )
+            return pysdk_model
+
+        if fine_tuning_job_name := self.model_metadata.get("FINE_TUNING_JOB_NAME"):
+            try:
+                response = self.sagemaker_session.sagemaker_client.describe_training_job(
+                    TrainingJobName=fine_tuning_job_name
+                )
+                fine_tuning_model_path = response["ModelArtifacts"]["S3ModelArtifacts"]
+                pysdk_model.model_data["S3DataSource"]["S3Uri"] = fine_tuning_model_path
+                pysdk_model.add_tags(
+                    [
+                        {"key": Tag.FINE_TUNING_JOB_NAME, "value": fine_tuning_job_name},
+                        {"key": Tag.FINE_TUNING_MODEL_PATH, "value": fine_tuning_model_path},
+                    ]
+                )
+                logger.info(
+                    "FINE_TUNING_JOB_NAME detected. Using fine-tuned model found in %s.",
+                    fine_tuning_model_path,
+                )
+                return pysdk_model
+            except ClientError:
+                raise ValueError(
+                    f"Invalid job name for FINE_TUNING_JOB_NAME: {fine_tuning_job_name}."
+                )
+
+        raise ValueError(
+            "Input model not found. Please provide either `model_path`, or "
+            "`FINE_TUNING_MODEL_PATH` or `FINE_TUNING_JOB_NAME` under `model_metadata`."
+        )
+
     def _build_for_jumpstart(self):
         """Placeholder docstring"""
+        if hasattr(self, "pysdk_model") and self.pysdk_model is not None:
+            return self.pysdk_model
+
         # we do not pickle for jumpstart. set to none
         self.secret_key = None
-        self.jumpstart = True
 
         pysdk_model = self._create_pre_trained_js_model()
-
         image_uri = pysdk_model.image_uri
 
         logger.info("JumpStart ID %s is packaged with Image URI: %s", self.model, image_uri)
+
+        if self._is_fine_tuned_model():
+            self.is_fine_tuned = True
+            pysdk_model = self._update_model_data_for_fine_tuned_model(pysdk_model)
 
         if self._is_gated_model(pysdk_model) and self.mode != Mode.SAGEMAKER_ENDPOINT:
             raise ValueError(
@@ -451,7 +642,6 @@ class JumpStart(ABC):
         if "djl-inference" in image_uri:
             logger.info("Building for DJL JumpStart Model ID...")
             self.model_server = ModelServer.DJL_SERVING
-
             self.pysdk_model = pysdk_model
             self.image_uri = self.pysdk_model.image_uri
 
@@ -461,21 +651,196 @@ class JumpStart(ABC):
         elif "tgi-inference" in image_uri:
             logger.info("Building for TGI JumpStart Model ID...")
             self.model_server = ModelServer.TGI
-
             self.pysdk_model = pysdk_model
             self.image_uri = self.pysdk_model.image_uri
 
             self._build_for_tgi_jumpstart()
 
             self.pysdk_model.tune = self.tune_for_tgi_jumpstart
-        else:
+        elif "huggingface-pytorch-inference:" in image_uri:
+            logger.info("Building for MMS JumpStart Model ID...")
+            self.model_server = ModelServer.MMS
+            self.pysdk_model = pysdk_model
+            self.image_uri = self.pysdk_model.image_uri
+
+            self._build_for_mms_jumpstart()
+        elif self.mode != Mode.SAGEMAKER_ENDPOINT:
             raise ValueError(
-                "JumpStart Model ID was not packaged with djl-inference or tgi-inference container."
+                "JumpStart Model ID was not packaged "
+                "with djl-inference, tgi-inference, or mms-inference container."
             )
 
+        if self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
         return self.pysdk_model
 
-    def _is_gated_model(self, model) -> bool:
+    def _optimize_for_jumpstart(
+        self,
+        output_path: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        tags: Optional[Tags] = None,
+        job_name: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
+        quantization_config: Optional[Dict] = None,
+        compilation_config: Optional[Dict] = None,
+        speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
+        env_vars: Optional[Dict] = None,
+        vpc_config: Optional[Dict] = None,
+        kms_key: Optional[str] = None,
+        max_runtime_in_sec: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Runs a model optimization job.
+
+        Args:
+            output_path (Optional[str]): Specifies where to store the compiled/quantized model.
+            instance_type (str): Target deployment instance type that the model is optimized for.
+            tags (Optional[Tags]): Tags for labeling a model optimization job. Defaults to ``None``.
+            job_name (Optional[str]): The name of the model optimization job. Defaults to ``None``.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
+            quantization_config (Optional[Dict]): Quantization configuration. Defaults to ``None``.
+            compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
+            speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
+                Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
+                Defaults to ``None``
+            env_vars (Optional[Dict]): Additional environment variables to run the optimization
+                container. Defaults to ``None``.
+            vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
+            kms_key (Optional[str]): KMS key ARN used to encrypt the model artifacts when uploading
+                to S3. Defaults to ``None``.
+            max_runtime_in_sec (Optional[int]): Maximum job execution time in seconds. Defaults to
+                ``None``.
+
+        Returns:
+            Dict[str, Any]: Model optimization job input arguments.
+        """
+        if self._is_gated_model() and accept_eula is not True:
+            raise ValueError(
+                f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
+            )
+
+        is_compilation = (compilation_config is not None) or _is_inferentia_or_trainium(
+            instance_type
+        )
+
+        pysdk_model_env_vars = dict()
+        if is_compilation:
+            pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
+
+        # optimization_config can contain configs for both quantization and compilation
+        (
+            optimization_config,
+            quantization_override_env,
+            compilation_override_env,
+            sharding_override_env,
+        ) = _extract_optimization_config_and_env(
+            quantization_config, compilation_config, sharding_config
+        )
+
+        if not optimization_config:
+            optimization_config = {}
+
+        if not optimization_config.get("ModelCompilationConfig") and is_compilation:
+            # Fallback to default if override_env is None or empty
+            if not compilation_override_env:
+                compilation_override_env = pysdk_model_env_vars
+
+            # Update optimization_config with ModelCompilationConfig
+            override_compilation_config = (
+                {"OverrideEnvironment": compilation_override_env}
+                if compilation_override_env
+                else {}
+            )
+            optimization_config["ModelCompilationConfig"] = override_compilation_config
+
+        if speculative_decoding_config:
+            self._set_additional_model_source(speculative_decoding_config)
+        else:
+            deployment_config = self._find_compatible_deployment_config(None)
+            if deployment_config:
+                self.pysdk_model.set_deployment_config(
+                    config_name=deployment_config.get("DeploymentConfigName"),
+                    instance_type=deployment_config.get("InstanceType"),
+                )
+                pysdk_model_env_vars = self.pysdk_model.env
+
+        model_source = _generate_model_source(self.pysdk_model.model_data, accept_eula)
+        optimization_env_vars = _update_environment_variables(pysdk_model_env_vars, env_vars)
+
+        output_config = {"S3OutputLocation": output_path}
+        if kms_key:
+            output_config["KmsKeyId"] = kms_key
+
+        deployment_config_instance_type = (
+            self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get("InstanceType")
+            if self.pysdk_model.deployment_config
+            else None
+        )
+        self.instance_type = instance_type or deployment_config_instance_type or _get_nb_instance()
+
+        create_optimization_job_args = {
+            "OptimizationJobName": job_name,
+            "ModelSource": model_source,
+            "DeploymentInstanceType": self.instance_type,
+            "OptimizationConfigs": [{k: v} for k, v in optimization_config.items()],
+            "OutputConfig": output_config,
+            "RoleArn": self.role_arn,
+        }
+
+        if optimization_env_vars:
+            create_optimization_job_args["OptimizationEnvironment"] = optimization_env_vars
+        if max_runtime_in_sec:
+            create_optimization_job_args["StoppingCondition"] = {
+                "MaxRuntimeInSeconds": max_runtime_in_sec
+            }
+        if tags:
+            create_optimization_job_args["Tags"] = tags
+        if vpc_config:
+            create_optimization_job_args["VpcConfig"] = vpc_config
+
+        if accept_eula:
+            self.pysdk_model.accept_eula = accept_eula
+            if isinstance(self.pysdk_model.model_data, dict):
+                self.pysdk_model.model_data["S3DataSource"]["ModelAccessConfig"] = {
+                    "AcceptEula": True
+                }
+
+        optimization_env_vars = _update_environment_variables(
+            optimization_env_vars,
+            {
+                **(quantization_override_env or {}),
+                **(compilation_override_env or {}),
+                **(sharding_override_env or {}),
+            },
+        )
+        if optimization_env_vars:
+            self.pysdk_model.env.update(optimization_env_vars)
+
+        if sharding_config and self.pysdk_model._enable_network_isolation:
+            logger.warning(
+                "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
+                "Loading of model requires network access. Setting it to False."
+            )
+            self.pysdk_model._enable_network_isolation = False
+
+        if quantization_config or sharding_config or is_compilation:
+            # only apply default image for vLLM usecases.
+            # vLLM does not support compilation for now so skip on compilation
+            return (
+                create_optimization_job_args
+                if is_compilation
+                else self._set_optimization_image_default(create_optimization_job_args)
+            )
+        return None
+
+    def _is_gated_model(self, model=None) -> bool:
         """Determine if ``this`` Model is Gated
 
         Args:
@@ -483,10 +848,251 @@ class JumpStart(ABC):
         Returns:
             bool: ``True`` if ``this`` Model is Gated
         """
-        s3_uri = model.model_data
+        s3_uri = model.model_data if model else self.pysdk_model.model_data
         if isinstance(s3_uri, dict):
             s3_uri = s3_uri.get("S3DataSource").get("S3Uri")
 
         if s3_uri is None:
             return False
         return "private" in s3_uri
+
+    def _set_additional_model_source(
+        self, speculative_decoding_config: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Set Additional Model Source to ``this`` model.
+
+        Args:
+            speculative_decoding_config (Optional[Dict[str, Any]]): Speculative decoding config.
+            accept_eula (Optional[bool]): For models that require a Model Access Config.
+        """
+        if speculative_decoding_config:
+            model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
+
+            channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
+
+            if model_provider in ["sagemaker", "auto"]:
+                additional_model_data_sources = (
+                    self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
+                        "AdditionalDataSources"
+                    )
+                    if self.pysdk_model.deployment_config
+                    else None
+                )
+                if additional_model_data_sources is None:
+                    deployment_config = self._find_compatible_deployment_config(
+                        speculative_decoding_config
+                    )
+                    if deployment_config:
+                        if model_provider == "sagemaker" and _is_draft_model_jumpstart_provided(
+                            deployment_config
+                        ):
+                            raise ValueError(
+                                "No `Sagemaker` provided draft model was found for "
+                                f"{self.model}. Try setting `ModelProvider` "
+                                "to `Auto` instead."
+                            )
+
+                        try:
+                            self.pysdk_model.set_deployment_config(
+                                config_name=deployment_config.get("DeploymentConfigName"),
+                                instance_type=deployment_config.get("InstanceType"),
+                            )
+                        except ValueError as e:
+                            raise ValueError(
+                                f"{e} If using speculative_decoding_config, "
+                                "accept the EULA by setting `AcceptEula`=True."
+                            )
+                    else:
+                        raise ValueError(
+                            "Cannot find deployment config compatible for optimization job."
+                        )
+                else:
+                    if model_provider == "sagemaker" and _is_draft_model_jumpstart_provided(
+                        self.pysdk_model.deployment_config
+                    ):
+                        raise ValueError(
+                            "No `Sagemaker` provided draft model was found for "
+                            f"{self.model}. Try setting `ModelProvider` "
+                            "to `Auto` instead."
+                        )
+
+                self.pysdk_model.env.update(
+                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
+                )
+                self.pysdk_model.add_tags(
+                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": model_provider},
+                )
+            elif model_provider == "jumpstart":
+                _jumpstart_speculative_decoding(
+                    model=self.pysdk_model,
+                    speculative_decoding_config=speculative_decoding_config,
+                    sagemaker_session=self.sagemaker_session,
+                )
+            else:
+                self.pysdk_model = _custom_speculative_decoding(
+                    self.pysdk_model,
+                    speculative_decoding_config,
+                    speculative_decoding_config.get("AcceptEula", False),
+                )
+
+    def _find_compatible_deployment_config(
+        self, speculative_decoding_config: Optional[Dict] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Finds compatible model deployment config for optimization job.
+
+        Args:
+            speculative_decoding_config (Optional[Dict]): Speculative decoding config.
+
+        Returns:
+            Optional[Dict[str, Any]]: A compatible model deployment config for optimization job.
+        """
+        model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
+        for deployment_config in self.pysdk_model.list_deployment_configs():
+            image_uri = deployment_config.get("deployment_config", {}).get("ImageUri")
+
+            if _is_image_compatible_with_optimization_job(
+                image_uri
+            ) and _deployment_config_contains_draft_model(deployment_config):
+                if (
+                    model_provider in ["sagemaker", "auto"]
+                    and deployment_config.get("DeploymentArgs", {}).get("AdditionalDataSources")
+                ) or model_provider == "custom":
+                    return deployment_config
+
+        # There's no matching config from jumpstart to add sagemaker draft model location
+        if model_provider in ["sagemaker", "auto"]:
+            return None
+
+        # fall back to the default jumpstart model deployment config for optimization job
+        return self.pysdk_model.deployment_config
+
+    def _get_neuron_model_env_vars(
+        self, instance_type: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Gets Neuron model env vars.
+
+        Args:
+            instance_type (Optional[str]): Instance type.
+
+        Returns:
+            Optional[Dict[str, Any]]: Neuron Model environment variables.
+        """
+        metadata_configs = self.pysdk_model._metadata_configs
+        if metadata_configs:
+            metadata_config = metadata_configs.get(self.pysdk_model.config_name)
+            resolve_config = metadata_config.resolved_config if metadata_config else None
+            if resolve_config and instance_type not in resolve_config.get(
+                "supported_inference_instance_types", []
+            ):
+                neuro_model_id = resolve_config.get("hosting_neuron_model_id")
+                neuro_model_version = resolve_config.get("hosting_neuron_model_version", "*")
+                if neuro_model_id:
+                    job_model = JumpStartModel(
+                        neuro_model_id,
+                        model_version=neuro_model_version,
+                        vpc_config=self.vpc_config,
+                    )
+                    return job_model.env
+        return None
+
+    def _set_optimization_image_default(
+        self, create_optimization_job_args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Defaults the optimization image to the JumpStart deployment config default
+
+        Args:
+            create_optimization_job_args (Dict[str, Any]): create optimization job request
+
+        Returns:
+            Dict[str, Any]: create optimization job request with image uri default
+        """
+        default_image = self._get_default_vllm_image(self.pysdk_model.init_kwargs["image_uri"])
+
+        # find the latest vLLM image version
+        for optimization_config in create_optimization_job_args.get("OptimizationConfigs"):
+            if optimization_config.get("ModelQuantizationConfig"):
+                model_quantization_config = optimization_config.get("ModelQuantizationConfig")
+                provided_image = model_quantization_config.get("Image")
+                if provided_image and self._get_latest_lmi_version_from_list(
+                    default_image, provided_image
+                ):
+                    default_image = provided_image
+            if optimization_config.get("ModelShardingConfig"):
+                model_sharding_config = optimization_config.get("ModelShardingConfig")
+                provided_image = model_sharding_config.get("Image")
+                if provided_image and self._get_latest_lmi_version_from_list(
+                    default_image, provided_image
+                ):
+                    default_image = provided_image
+
+        # default to latest vLLM version
+        for optimization_config in create_optimization_job_args.get("OptimizationConfigs"):
+            if optimization_config.get("ModelQuantizationConfig") is not None:
+                optimization_config.get("ModelQuantizationConfig")["Image"] = default_image
+            if optimization_config.get("ModelShardingConfig") is not None:
+                optimization_config.get("ModelShardingConfig")["Image"] = default_image
+
+        logger.info("Defaulting to %s image for optimization job", default_image)
+
+        return create_optimization_job_args
+
+    def _get_default_vllm_image(self, image: str) -> bool:
+        """Ensures the minimum working image version for vLLM enabled optimization techniques
+
+        Args:
+            image (str): JumpStart provided default image
+
+        Returns:
+            str: minimum working image version
+        """
+        dlc_name, _ = image.split(":")
+        major_version_number, _, _ = self._parse_lmi_version(image)
+
+        if major_version_number < self._parse_lmi_version(_JS_MINIMUM_VERSION_IMAGE)[0]:
+            minimum_version_default = _JS_MINIMUM_VERSION_IMAGE.format(dlc_name)
+            return minimum_version_default
+        return image
+
+    def _get_latest_lmi_version_from_list(self, version: str, version_to_compare: str) -> bool:
+        """LMI version comparator
+
+        Args:
+            version (str): current version
+            version_to_compare (str): version to compare to
+
+        Returns:
+            bool: if version_to_compare larger or equal to version
+        """
+        parse_lmi_version = self._parse_lmi_version(version)
+        parse_lmi_version_to_compare = self._parse_lmi_version(version_to_compare)
+
+        # Check major version
+        if parse_lmi_version_to_compare[0] > parse_lmi_version[0]:
+            return True
+        # Check minor version
+        if parse_lmi_version_to_compare[0] == parse_lmi_version[0]:
+            if parse_lmi_version_to_compare[1] > parse_lmi_version[1]:
+                return True
+            if parse_lmi_version_to_compare[1] == parse_lmi_version[1]:
+                # Check patch version
+                if parse_lmi_version_to_compare[2] >= parse_lmi_version[2]:
+                    return True
+                return False
+            return False
+        return False
+
+    def _parse_lmi_version(self, image: str) -> Tuple[int, int, int]:
+        """Parse out LMI version
+
+        Args:
+            image (str): image to parse version out of
+
+        Returns:
+            Tuple[int, int, int]: LMI version split into major, minor, patch
+        """
+        _, dlc_tag = image.split(":")
+        _, lmi_version, _ = dlc_tag.split("-")
+        major_version, minor_version, patch_version = lmi_version.split(".")
+        major_version_number = major_version[3:]
+
+        return (int(major_version_number), int(minor_version), int(patch_version))

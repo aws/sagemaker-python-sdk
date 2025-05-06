@@ -47,7 +47,7 @@ class SKLearn(Framework):
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         image_uri_region: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         """Creates a SKLearn Estimator for Scikit-learn environment.
 
@@ -83,8 +83,8 @@ class SKLearn(Framework):
             source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI) to
                 a directory with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker.
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory
+                are preserved when training on Amazon SageMaker.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
                 that will be used for training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
@@ -154,7 +154,7 @@ class SKLearn(Framework):
             source_dir,
             hyperparameters,
             image_uri=image_uri,
-            **dict(kwargs, instance_count=1)
+            **dict(kwargs, instance_count=1),
         )
 
         if image_uri is None:
@@ -174,7 +174,7 @@ class SKLearn(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``SKLearnModel`` object that can be deployed to an ``Endpoint``.
 
@@ -229,7 +229,7 @@ class SKLearn(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod

@@ -17,51 +17,51 @@ data pre-processing, post-processing, feature engineering, data validation, and 
 and interpretation on Amazon SageMaker.
 """
 from __future__ import absolute_import
-
+import logging
 import os
 import pathlib
-import logging
+import re
+from copy import copy
 from textwrap import dedent
 from typing import Dict, List, Optional, Union
-from copy import copy
 
 import attr
-
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
+
 from sagemaker import s3
+from sagemaker.apiutils._base_types import ApiObject
 from sagemaker.config import (
+    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    PROCESSING_JOB_ENVIRONMENT_PATH,
+    PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     PROCESSING_JOB_KMS_KEY_ID_PATH,
+    PROCESSING_JOB_ROLE_ARN_PATH,
     PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
     PROCESSING_JOB_SUBNETS_PATH,
-    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
-    PROCESSING_JOB_ROLE_ARN_PATH,
-    PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
-    PROCESSING_JOB_ENVIRONMENT_PATH,
 )
+from sagemaker.dataset_definition.inputs import DatasetDefinition, S3Input
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
+from sagemaker.s3 import S3Uploader
+from sagemaker.session import Session
 from sagemaker.utils import (
+    Tags,
     base_name_from_image,
+    check_and_get_run_experiment_config,
+    format_tags,
     get_config_value,
     name_from_base,
-    check_and_get_run_experiment_config,
-    resolve_value_from_config,
     resolve_class_attribute_from_config,
-    Tags,
-    format_tags,
+    resolve_value_from_config,
 )
-from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
-from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
-from sagemaker.apiutils._base_types import ApiObject
-from sagemaker.s3 import S3Uploader
 
 logger = logging.getLogger(__name__)
 
@@ -1415,7 +1415,7 @@ class RunArgs(object):
 class FeatureStoreOutput(ApiObject):
     """Configuration for processing job outputs in Amazon SageMaker Feature Store."""
 
-    feature_group_name = None
+    feature_group_name: Optional[str] = None
 
 
 class FrameworkProcessor(ScriptProcessor):
@@ -1464,7 +1464,7 @@ class FrameworkProcessor(ScriptProcessor):
             instance_type (str or PipelineVariable): The type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             py_version (str): Python version you want to use for executing your
-                model training code. One of 'py2' or 'py3'. Defaults to 'py3'. Value
+                model training code. Ex `py38, py39, py310, py311`. Value
                 is ignored when ``image_uri`` is provided.
             image_uri (str or PipelineVariable): The URI of the Docker image to use for the
                 processing jobs (default: None).
@@ -1658,6 +1658,7 @@ class FrameworkProcessor(ScriptProcessor):
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
         kms_key: Optional[str] = None,
+        codeartifact_repo_arn: Optional[str] = None,
     ):
         """Runs a processing job.
 
@@ -1758,12 +1759,21 @@ class FrameworkProcessor(ScriptProcessor):
                 However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            codeartifact_repo_arn (str): The ARN of the CodeArtifact repository that should be
+                logged into before installing dependencies (default: None).
         Returns:
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
-            code, source_dir, dependencies, git_config, job_name, inputs, kms_key
+            code,
+            source_dir,
+            dependencies,
+            git_config,
+            job_name,
+            inputs,
+            kms_key,
+            codeartifact_repo_arn,
         )
 
         # Submit a processing job.
@@ -1780,7 +1790,15 @@ class FrameworkProcessor(ScriptProcessor):
         )
 
     def _pack_and_upload_code(
-        self, code, source_dir, dependencies, git_config, job_name, inputs, kms_key=None
+        self,
+        code,
+        source_dir,
+        dependencies,
+        git_config,
+        job_name,
+        inputs,
+        kms_key=None,
+        codeartifact_repo_arn=None,
     ):
         """Pack local code bundle and upload to Amazon S3."""
         if code.startswith("s3://"):
@@ -1821,12 +1839,53 @@ class FrameworkProcessor(ScriptProcessor):
         script = estimator.uploaded_code.script_name
         evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         s3_runproc_sh = self._create_and_upload_runproc(
-            script, evaluated_kms_key, entrypoint_s3_uri
+            script, evaluated_kms_key, entrypoint_s3_uri, codeartifact_repo_arn
         )
 
         return s3_runproc_sh, inputs, job_name
 
-    def _generate_framework_script(self, user_script: str) -> str:
+    def _get_codeartifact_command(self, codeartifact_repo_arn: str) -> str:
+        """Build an AWS CLI CodeArtifact command to configure pip.
+
+        The codeartifact_repo_arn property must follow the form
+        # `arn:${Partition}:codeartifact:${Region}:${Account}:repository/${Domain}/${Repository}`
+        https://docs.aws.amazon.com/codeartifact/latest/ug/python-configure-pip.html
+        https://docs.aws.amazon.com/service-authorization/latest/reference/list_awscodeartifact.html#awscodeartifact-resources-for-iam-policies
+
+        Args:
+            codeartifact_repo_arn: arn of the codeartifact repository
+        Returns:
+            codeartifact command string
+        """
+
+        arn_regex = (
+            "arn:(?P<partition>[^:]+):codeartifact:(?P<region>[^:]+):(?P<account>[^:]+)"
+            ":repository/(?P<domain>[^/]+)/(?P<repository>.+)"
+        )
+        m = re.match(arn_regex, codeartifact_repo_arn)
+        if not m:
+            raise ValueError("invalid CodeArtifact repository arn {}".format(codeartifact_repo_arn))
+        domain = m.group("domain")
+        owner = m.group("account")
+        repository = m.group("repository")
+        region = m.group("region")
+
+        logger.info(
+            "configuring pip to use codeartifact "
+            "(domain: %s, domain owner: %s, repository: %s, region: %s)",
+            domain,
+            owner,
+            repository,
+            region,
+        )
+
+        return "aws codeartifact login --tool pip --domain {} --domain-owner {} --repository {} --region {}".format(  # noqa: E501 pylint: disable=line-too-long
+            domain, owner, repository, region
+        )
+
+    def _generate_framework_script(
+        self, user_script: str, codeartifact_repo_arn: str = None
+    ) -> str:
         """Generate the framework entrypoint file (as text) for a processing job.
 
         This script implements the "framework" functionality for setting up your code:
@@ -1837,7 +1896,16 @@ class FrameworkProcessor(ScriptProcessor):
         Args:
             user_script (str): Relative path to ```code``` in the source bundle
                 - e.g. 'process.py'.
+            codeartifact_repo_arn (str): The ARN of the CodeArtifact repository that should be
+                logged into before installing dependencies (default: None).
         """
+        if codeartifact_repo_arn:
+            codeartifact_login_command = self._get_codeartifact_command(codeartifact_repo_arn)
+        else:
+            codeartifact_login_command = (
+                "echo 'CodeArtifact repository not specified. Skipping login.'"
+            )
+
         return dedent(
             """\
             #!/bin/bash
@@ -1849,6 +1917,13 @@ class FrameworkProcessor(ScriptProcessor):
             set -e
 
             if [[ -f 'requirements.txt' ]]; then
+                # Optionally log into CodeArtifact
+                if ! hash aws 2>/dev/null; then
+                    echo "AWS CLI is not installed. Skipping CodeArtifact login."
+                else
+                    {codeartifact_login_command}
+                fi
+
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
@@ -1858,6 +1933,7 @@ class FrameworkProcessor(ScriptProcessor):
             {entry_point_command} {entry_point} "$@"
         """
         ).format(
+            codeartifact_login_command=codeartifact_login_command,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )
@@ -1933,7 +2009,9 @@ class FrameworkProcessor(ScriptProcessor):
         )
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
 
-    def _create_and_upload_runproc(self, user_script, kms_key, entrypoint_s3_uri):
+    def _create_and_upload_runproc(
+        self, user_script, kms_key, entrypoint_s3_uri, codeartifact_repo_arn=None
+    ):
         """Create runproc shell script and upload to S3 bucket.
 
         If leveraging a pipeline session with optimized S3 artifact paths,
@@ -1949,7 +2027,7 @@ class FrameworkProcessor(ScriptProcessor):
         from sagemaker.workflow.utilities import _pipeline_config, hash_object
 
         if _pipeline_config and _pipeline_config.pipeline_name:
-            runproc_file_str = self._generate_framework_script(user_script)
+            runproc_file_str = self._generate_framework_script(user_script, codeartifact_repo_arn)
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
                 "s3://",
@@ -1968,7 +2046,7 @@ class FrameworkProcessor(ScriptProcessor):
             )
         else:
             s3_runproc_sh = S3Uploader.upload_string_as_file_body(
-                self._generate_framework_script(user_script),
+                self._generate_framework_script(user_script, codeartifact_repo_arn),
                 desired_s3_uri=entrypoint_s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,

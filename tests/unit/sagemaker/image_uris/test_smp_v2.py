@@ -27,6 +27,7 @@ def test_smp_v2(load_config):
         "torch_distributed": {"enabled": True},
         "smdistributed": {"modelparallel": {"enabled": True}},
     }
+
     for processor in PROCESSORS:
         for version in VERSIONS:
             ACCOUNTS = load_config["training"]["versions"][version]["registries"]
@@ -35,8 +36,19 @@ def test_smp_v2(load_config):
                 for region in ACCOUNTS.keys():
                     for instance_type in CONTAINER_VERSIONS.keys():
                         cuda_vers = CONTAINER_VERSIONS[instance_type]
-                        if "2.1" in version or "2.2" in version:
+                        supported_smp_pt_versions_cu124 = ("2.5",)
+                        supported_smp_pt_versions_cu121 = ("2.1", "2.2", "2.3", "2.4")
+                        if any(
+                            pt_version in version for pt_version in supported_smp_pt_versions_cu124
+                        ):
+                            cuda_vers = "cu124"
+                        elif any(
+                            pt_version in version for pt_version in supported_smp_pt_versions_cu121
+                        ):
                             cuda_vers = "cu121"
+
+                        if version in ("2.3.1", "2.4.1", "2.5.1"):
+                            py_version = "py311"
 
                         uri = image_uris.get_training_image_uri(
                             region,

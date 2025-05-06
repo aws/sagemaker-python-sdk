@@ -32,7 +32,7 @@ from sagemaker.remote_function.core.serialization import _MetaData
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_TRITON_MODE = {Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT}
+SUPPORTED_TRITON_MODE = {Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT, Mode.IN_PROCESS}
 SUPPORTED_TRITON_FRAMEWORK = {"pytorch", "tensorflow"}
 INPUT_NAME = "input_1"
 OUTPUT_NAME = "output_1"
@@ -428,6 +428,10 @@ class Triton:
         self.pysdk_model.mode = self.mode
         self.pysdk_model.modes = self.modes
         self.pysdk_model.serve_settings = self.serve_settings
+        if hasattr(self, "role_arn") and self.role_arn:
+            self.pysdk_model.role = self.role_arn
+        if hasattr(self, "sagemaker_session") and self.sagemaker_session:
+            self.pysdk_model.sagemaker_session = self.sagemaker_session
 
         # dynamically generate a method to direct model.deploy() logic based on mode
         # unique method to models created via ModelBuilder()

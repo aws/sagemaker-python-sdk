@@ -20,10 +20,10 @@ from tests.unit.sagemaker.serve.constants import MOCK_VPC_CONFIG
 
 from sagemaker.serve.utils.predictors import TransformersLocalModePredictor
 
-mock_model_id = "bert-base-uncased"
-mock_prompt = "The man worked as a [MASK]."
-mock_sample_input = {"inputs": mock_prompt}
-mock_sample_output = [
+MOCK_MODEL_ID = "bert-base-uncased"
+MOCK_PROMPT = "The man worked as a [MASK]."
+MOCK_SAMPLE_INPUT = {"inputs": MOCK_PROMPT}
+MOCK_SAMPLE_OUTPUT = [
     {
         "score": 0.0974755585193634,
         "token": 10533,
@@ -55,9 +55,14 @@ mock_sample_output = [
         "sequence": "the man worked as a salesman.",
     },
 ]
-mock_schema_builder = MagicMock()
-mock_schema_builder.sample_input = mock_sample_input
-mock_schema_builder.sample_output = mock_sample_output
+MOCK_SCHEMA_BUILDER = MagicMock()
+MOCK_SCHEMA_BUILDER.sample_input = MOCK_SAMPLE_INPUT
+MOCK_SCHEMA_BUILDER.sample_output = MOCK_SAMPLE_OUTPUT
+MOCK_IMAGE_CONFIG = (
+    "763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+    "huggingface-pytorch-inference:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04-v1.0"
+)
+MOCK_MODEL_PATH = "mock model path"
 
 
 class TestTransformersBuilder(unittest.TestCase):
@@ -66,16 +71,126 @@ class TestTransformersBuilder(unittest.TestCase):
         return_value="ml.g5.24xlarge",
     )
     @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
-    def test_build_deploy_for_transformers_local_container_and_remote_container(
+    def test_transformers_builder_sagemaker_endpoint_mode_no_s3_upload_success(
+        self,
+        mock_get_nb_instance,
+        mock_telemetry,
+    ):
+        # verify SAGEMAKER_ENDPOINT deploy
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID, schema_builder=MOCK_SCHEMA_BUILDER, mode=Mode.SAGEMAKER_ENDPOINT
+        )
+
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.return_value = (None, {})
+        model = builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+        builder._original_deploy = MagicMock()
+
+        model.deploy(mode=Mode.SAGEMAKER_ENDPOINT, role="mock_role_arn")
+
+        assert "HF_MODEL_ID" in model.env
+        with self.assertRaises(ValueError) as _:
+            model.deploy(mode=Mode.IN_PROCESS)
+        builder._prepare_for_mode.assert_called_with()
+
+    @patch(
+        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
+    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
+    def test_transformers_builder_overwritten_deploy_from_local_container_to_sagemaker_endpoint_success(
+        self,
+        mock_get_nb_instance,
+        mock_telemetry,
+    ):
+        # verify LOCAL_CONTAINER deploy
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID,
+            schema_builder=MOCK_SCHEMA_BUILDER,
+            mode=Mode.LOCAL_CONTAINER,
+            vpc_config=MOCK_VPC_CONFIG,
+            model_path=MOCK_MODEL_PATH,
+        )
+
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.side_effect = None
+        model = builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+        builder.modes[str(Mode.LOCAL_CONTAINER)] = MagicMock()
+
+        predictor = model.deploy(model_data_download_timeout=1800)
+
+        assert model.vpc_config == MOCK_VPC_CONFIG
+        assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
+        assert isinstance(predictor, TransformersLocalModePredictor)
+        assert builder.nb_instance_type == "ml.g5.24xlarge"
+
+        # verify SAGEMAKER_ENDPOINT overwritten deploy
+        builder._original_deploy = MagicMock()
+        builder._prepare_for_mode.return_value = (None, {})
+
+        model.deploy(mode=Mode.SAGEMAKER_ENDPOINT, role="mock_role_arn")
+
+        assert "HF_MODEL_ID" in model.env
+        with self.assertRaises(ValueError) as _:
+            model.deploy(mode=Mode.IN_PROCESS)
+        builder._prepare_for_mode.call_args_list[1].assert_called_once_with(
+            model_path=MOCK_MODEL_PATH, should_upload_artifacts=True
+        )
+
+    @patch(
+        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
+    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
+    @patch("sagemaker.serve.builder.transformers_builder._is_optimized", return_value=True)
+    def test_transformers_builder_optimized_sagemaker_endpoint_mode_no_s3_upload_success(
+        self,
+        mock_is_optimized,
+        mock_get_nb_instance,
+        mock_telemetry,
+    ):
+        # verify LOCAL_CONTAINER deploy
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID,
+            schema_builder=MOCK_SCHEMA_BUILDER,
+            mode=Mode.LOCAL_CONTAINER,
+            vpc_config=MOCK_VPC_CONFIG,
+            model_path=MOCK_MODEL_PATH,
+        )
+
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.side_effect = None
+        model = builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+        builder.modes[str(Mode.LOCAL_CONTAINER)] = MagicMock()
+
+        model.deploy(model_data_download_timeout=1800)
+
+        # verify SAGEMAKER_ENDPOINT overwritten deploy
+        builder._original_deploy = MagicMock()
+        builder._prepare_for_mode.return_value = (None, {})
+
+        model.deploy(mode=Mode.SAGEMAKER_ENDPOINT, role="mock_role_arn")
+
+        builder._prepare_for_mode.assert_called_once_with()
+
+    @patch(
+        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
+    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
+    def test_transformers_builder_image_uri_override_success(
         self,
         mock_get_nb_instance,
         mock_telemetry,
     ):
         builder = ModelBuilder(
-            model=mock_model_id,
-            schema_builder=mock_schema_builder,
+            model=MOCK_MODEL_ID,
+            schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.LOCAL_CONTAINER,
-            vpc_config=MOCK_VPC_CONFIG,
+            image_uri=MOCK_IMAGE_CONFIG,
         )
 
         builder._prepare_for_mode = MagicMock()
@@ -87,7 +202,7 @@ class TestTransformersBuilder(unittest.TestCase):
         builder.modes[str(Mode.LOCAL_CONTAINER)] = MagicMock()
         predictor = model.deploy(model_data_download_timeout=1800)
 
-        assert model.vpc_config == MOCK_VPC_CONFIG
+        assert builder.image_uri == MOCK_IMAGE_CONFIG
         assert builder.env_vars["MODEL_LOADING_TIMEOUT"] == "1800"
         assert isinstance(predictor, TransformersLocalModePredictor)
 
@@ -100,3 +215,29 @@ class TestTransformersBuilder(unittest.TestCase):
 
         with self.assertRaises(ValueError) as _:
             model.deploy(mode=Mode.IN_PROCESS)
+
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_transformers")
+    @patch(
+        "sagemaker.serve.builder.transformers_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
+    @patch("sagemaker.serve.builder.transformers_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.model_builder.get_huggingface_model_metadata",
+        return_value={},
+    )
+    def test_transformers_builder_empty_hf_md_defaults_to_transformers_success(
+        self, mock_model_md, mock_get_nb_instance, mock_telemetry, mock_build_for_transformers
+    ):
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID,
+            schema_builder=MOCK_SCHEMA_BUILDER,
+            mode=Mode.LOCAL_CONTAINER,
+        )
+
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.side_effect = None
+
+        builder.build()
+
+        mock_build_for_transformers.assert_called_once()

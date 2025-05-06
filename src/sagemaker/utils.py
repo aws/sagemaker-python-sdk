@@ -13,10 +13,12 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+import abc
 import contextlib
 import copy
 import errno
 import inspect
+import json
 import logging
 import os
 import random
@@ -25,28 +27,40 @@ import shutil
 import tarfile
 import tempfile
 import time
-from typing import Union, Any, List, Optional, Dict
-import json
-import abc
 import uuid
 from datetime import datetime
-from os.path import abspath, realpath, dirname, normpath, join as joinpath
-
+from functools import lru_cache
 from importlib import import_module
+from os.path import abspath, dirname
+from os.path import join as joinpath
+from os.path import normpath, realpath
+from typing import Any, Dict, List, Optional, Union
+
+import boto3
 import botocore
 from botocore.utils import merge_dicts
+from six import viewitems
 from six.moves.urllib import parse
-import pandas as pd
 
 from sagemaker import deprecations
 from sagemaker.config import validate_sagemaker_config
 from sagemaker.config.config_utils import (
-    _log_sagemaker_config_single_substitution,
     _log_sagemaker_config_merge,
+    _log_sagemaker_config_single_substitution,
 )
+from sagemaker.enums import RoutingStrategy
 from sagemaker.session_settings import SessionSettings
-from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
+from sagemaker.workflow import is_pipeline_parameter_string, is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+
+ALTERNATE_DOMAINS = {
+    "cn-north-1": "amazonaws.com.cn",
+    "cn-northwest-1": "amazonaws.com.cn",
+    "us-iso-east-1": "c2s.ic.gov",
+    "us-isob-east-1": "sc2s.sgov.gov",
+    "us-isof-south-1": "csp.hci.ic.gov",
+    "us-isof-east-1": "csp.hci.ic.gov",
+}
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MODEL_PACKAGE_ARN_PATTERN = (
@@ -384,8 +398,7 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
     """
-    boto_session = sagemaker_session.boto_session
-    s3 = boto_session.resource("s3", region_name=boto_session.region_name)
+    s3 = sagemaker_session.s3_resource
 
     prefix = prefix.lstrip("/")
 
@@ -612,7 +625,24 @@ def _create_or_update_code_dir(
             if os.path.exists(os.path.join(code_dir, inference_script)):
                 pass
             else:
-                raise
+                raise FileNotFoundError(
+                    f"Could not find '{inference_script}'. Common solutions:\n"
+                    "1. Make sure inference.py exists in the code/ directory\n"
+                    "2. Package your model correctly:\n"
+                    "   - ✅ DO: Navigate to the directory containing model files and run:\n"
+                    "     cd /path/to/model_files\n"
+                    "     tar czvf ../model.tar.gz *\n"
+                    "   - ❌ DON'T: Create from parent directory:\n"
+                    "     tar czvf model.tar.gz model/\n"
+                    "\nExpected structure in model.tar.gz:\n"
+                    "   ├── model.pth (or your model file)\n"
+                    "   └── code/\n"
+                    "       ├── inference.py\n"
+                    "       └── requirements.txt\n"
+                    "\nFor more details, see the documentation:\n"
+                    + "https://sagemaker.readthedocs.io/en/stable/"
+                    + "frameworks/pytorch/using_pytorch.html#bring-your-own-model"
+                )
 
     for dependency in dependencies:
         lib_dir = os.path.join(code_dir, "lib")
@@ -713,7 +743,7 @@ def retry_with_backoff(callable_func, num_attempts=8, botocore_client_error_code
     """Retry with backoff until maximum attempts are reached
 
     Args:
-        callable_func (callable): The callable function to retry.
+        callable_func (Callable): The callable function to retry.
         num_attempts (int): The maximum number of attempts to retry.(Default: 8)
         botocore_client_error_code (str): The specific Botocore ClientError exception error code
             on which to retry on.
@@ -1147,7 +1177,7 @@ def get_sagemaker_config_value(sagemaker_session, key, sagemaker_config: dict = 
     Returns:
         object: The corresponding default value in the configuration file.
     """
-    if sagemaker_session:
+    if sagemaker_session and hasattr(sagemaker_session, "sagemaker_config"):
         config_to_check = sagemaker_session.sagemaker_config
     else:
         config_to_check = sagemaker_config
@@ -1450,10 +1480,15 @@ def volume_size_supported(instance_type: str) -> bool:
         if len(parts) != 2:
             raise ValueError(f"Failed to parse instance type '{instance_type}'")
 
-        # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc) + g5
-        # does not support attaching an EBS volume.
+        # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc)
+        # + g5 or g6 or p5 does not support attaching an EBS volume.
         family = parts[0]
-        return "d" not in family and not family.startswith("g5")
+
+        unsupported_families = ["g5", "g6", "p5", "trn1"]
+
+        return "d" not in family and not any(
+            family.startswith(prefix) for prefix in unsupported_families
+        )
     except Exception as e:
         raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")
 
@@ -1602,44 +1637,78 @@ def can_model_package_source_uri_autopopulate(source_uri: str):
     )
 
 
-def flatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
-    """Flatten a nested dictionary.
+def flatten_dict(
+    d: Dict[str, Any],
+    max_flatten_depth=None,
+) -> Dict[str, Any]:
+    """Flatten a dictionary object.
 
-    Args:
-        source_dict (dict): The dictionary to be flattened.
-        sep (str): The separator to be used in the flattened dictionary.
-    Returns:
-        transformed_dict: The flattened dictionary.
+    d (Dict[str, Any]):
+        The dict that will be flattened.
+    max_flatten_depth (Optional[int]):
+        Maximum depth to merge.
     """
-    flat_dict_list = pd.json_normalize(source_dict, sep=sep).to_dict(orient="records")
-    if flat_dict_list:
-        return flat_dict_list[0]
-    return {}
+
+    def tuple_reducer(k1, k2):
+        if k1 is None:
+            return (k2,)
+        return k1 + (k2,)
+
+    # check max_flatten_depth
+    if max_flatten_depth is not None and max_flatten_depth < 1:
+        raise ValueError("max_flatten_depth should not be less than 1.")
+
+    reducer = tuple_reducer
+
+    flat_dict = {}
+
+    def _flatten(_d, depth, parent=None):
+        key_value_iterable = viewitems(_d)
+        has_item = False
+        for key, value in key_value_iterable:
+            has_item = True
+            flat_key = reducer(parent, key)
+            if isinstance(value, dict) and (max_flatten_depth is None or depth < max_flatten_depth):
+                has_child = _flatten(value, depth=depth + 1, parent=flat_key)
+                if has_child:
+                    continue
+
+            if flat_key in flat_dict:
+                raise ValueError("duplicated key '{}'".format(flat_key))
+            flat_dict[flat_key] = value
+
+        return has_item
+
+    _flatten(d, depth=1)
+    return flat_dict
 
 
-def unflatten_dict(source_dict: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
-    """Unflatten a flattened dictionary back into a nested dictionary.
+def nested_set_dict(d: Dict[str, Any], keys: List[str], value: Any) -> None:
+    """Set a value to a sequence of nested keys."""
 
-    Args:
-        source_dict (dict): The input flattened dictionary.
-        sep (str): The separator used in the flattened keys.
+    key = keys[0]
 
-    Returns:
-        transformed_dict: The reconstructed nested dictionary.
+    if len(keys) == 1:
+        d[key] = value
+        return
+
+    d = d.setdefault(key, {})
+    nested_set_dict(d, keys[1:], value)
+
+
+def unflatten_dict(d: Dict[str, Any]) -> Dict[str, Any]:
+    """Unflatten dict-like object.
+
+    d (Dict[str, Any]) :
+        The dict that will be unflattened.
     """
-    if not source_dict:
-        return {}
 
-    result = {}
-    for key, value in source_dict.items():
-        keys = key.split(sep)
-        current = result
-        for k in keys[:-1]:
-            if k not in current:
-                current[k] = {}
-            current = current[k] if current[k] is not None else current
-        current[keys[-1]] = value
-    return result
+    unflattened_dict = {}
+    for flat_key, value in viewitems(d):
+        key_tuple = flat_key
+        nested_set_dict(unflattened_dict, key_tuple, value)
+
+    return unflattened_dict
 
 
 def deep_override_dict(
@@ -1650,8 +1719,224 @@ def deep_override_dict(
         skip_keys = []
 
     flattened_dict1 = flatten_dict(dict1)
+    flattened_dict1 = {key: value for key, value in flattened_dict1.items() if value is not None}
     flattened_dict2 = flatten_dict(
         {key: value for key, value in dict2.items() if key not in skip_keys}
     )
     flattened_dict1.update(flattened_dict2)
     return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
+
+
+def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Resolve Routing Config
+
+    Args:
+        routing_config (Optional[Dict[str, Any]]): The routing config.
+
+    Returns:
+        Optional[Dict[str, Any]]: The resolved routing config.
+
+    Raises:
+        ValueError: If the RoutingStrategy is invalid.
+    """
+
+    if routing_config:
+        routing_strategy = routing_config.get("RoutingStrategy", None)
+        if routing_strategy:
+            if isinstance(routing_strategy, RoutingStrategy):
+                return {"RoutingStrategy": routing_strategy.name}
+            if isinstance(routing_strategy, str) and (
+                routing_strategy.upper() == RoutingStrategy.RANDOM.name
+                or routing_strategy.upper() == RoutingStrategy.LEAST_OUTSTANDING_REQUESTS.name
+            ):
+                return {"RoutingStrategy": routing_strategy.upper()}
+            raise ValueError(
+                "RoutingStrategy must be either RoutingStrategy.RANDOM "
+                "or RoutingStrategy.LEAST_OUTSTANDING_REQUESTS"
+            )
+    return None
+
+
+@lru_cache
+def get_instance_rate_per_hour(
+    instance_type: str,
+    region: str,
+) -> Optional[Dict[str, str]]:
+    """Gets instance rate per hour for the given instance type.
+
+    Args:
+        instance_type (str): The instance type.
+        region (str): The region.
+    Returns:
+        Optional[Dict[str, str]]: Instance rate per hour.
+        Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.125'}.
+
+    Raises:
+        Exception: An exception is raised if
+            the IAM role is not authorized to perform pricing:GetProducts.
+            or unexpected event happened.
+    """
+    region_name = "us-east-1"
+    if region.startswith("eu") or region.startswith("af"):
+        region_name = "eu-central-1"
+    elif region.startswith("ap") or region.startswith("cn"):
+        region_name = "ap-south-1"
+
+    pricing_client: boto3.client = boto3.client("pricing", region_name=region_name)
+    res = pricing_client.get_products(
+        ServiceCode="AmazonSageMaker",
+        Filters=[
+            {"Type": "TERM_MATCH", "Field": "instanceName", "Value": instance_type},
+            {"Type": "TERM_MATCH", "Field": "locationType", "Value": "AWS Region"},
+            {"Type": "TERM_MATCH", "Field": "regionCode", "Value": region},
+        ],
+    )
+
+    price_list = res.get("PriceList", [])
+    if len(price_list) > 0:
+        price_data = price_list[0]
+        if isinstance(price_data, str):
+            price_data = json.loads(price_data)
+
+        instance_rate_per_hour = extract_instance_rate_per_hour(price_data)
+        if instance_rate_per_hour is not None:
+            return instance_rate_per_hour
+    raise Exception(f"Unable to get instance rate per hour for instance type: {instance_type}.")
+
+
+def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    """Extract instance rate per hour for the given Price JSON data.
+
+    Args:
+        price_data (Dict[str, Any]): The Price JSON data.
+    Returns:
+        Optional[Dict[str, str], None]: Instance rate per hour.
+    """
+
+    if price_data is not None:
+        price_dimensions = price_data.get("terms", {}).get("OnDemand", {}).values()
+        for dimension in price_dimensions:
+            for price in dimension.get("priceDimensions", {}).values():
+                for currency in price.get("pricePerUnit", {}).keys():
+                    value = price.get("pricePerUnit", {}).get(currency)
+                    if value is not None:
+                        value = str(round(float(value), 3))
+                    return {
+                        "unit": f"{currency}/Hr",
+                        "value": value,
+                        "name": "On-demand Instance Rate",
+                    }
+    return None
+
+
+def camel_case_to_pascal_case(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Iteratively updates a dictionary to convert all keys from snake_case to PascalCase.
+
+    Args:
+        data (dict): The dictionary to be updated.
+
+    Returns:
+        dict: The updated dictionary with keys in PascalCase.
+    """
+    result = {}
+
+    def convert_key(key):
+        """Converts a snake_case key to PascalCase."""
+        return "".join(part.capitalize() for part in key.split("_"))
+
+    def convert_value(value):
+        """Recursively processes the value of a key-value pair."""
+        if isinstance(value, dict):
+            return camel_case_to_pascal_case(value)
+        if isinstance(value, list):
+            return [convert_value(item) for item in value]
+
+        return value
+
+    for key, value in data.items():
+        result[convert_key(key)] = convert_value(value)
+
+    return result
+
+
+def tag_exists(tag: TagsDict, curr_tags: Optional[Tags]) -> bool:
+    """Returns True if ``tag`` already exists.
+
+    Args:
+        tag (TagsDict): The tag dictionary.
+        curr_tags (Optional[Tags]): The current tags.
+
+    Returns:
+        bool: True if the tag exists.
+    """
+    if curr_tags is None:
+        return False
+
+    for curr_tag in curr_tags:
+        if tag["Key"] == curr_tag["Key"]:
+            return True
+
+    return False
+
+
+def _validate_new_tags(new_tags: Optional[Tags], curr_tags: Optional[Tags]) -> Optional[Tags]:
+    """Validates new tags against existing tags.
+
+    Args:
+        new_tags (Optional[Tags]): The new tags.
+        curr_tags (Optional[Tags]): The current tags.
+
+    Returns:
+        Optional[Tags]: The updated tags.
+    """
+    if curr_tags is None:
+        return new_tags
+
+    if curr_tags and isinstance(curr_tags, dict):
+        curr_tags = [curr_tags]
+
+    if isinstance(new_tags, dict):
+        if not tag_exists(new_tags, curr_tags):
+            curr_tags.append(new_tags)
+    elif isinstance(new_tags, list):
+        for new_tag in new_tags:
+            if not tag_exists(new_tag, curr_tags):
+                curr_tags.append(new_tag)
+
+    return curr_tags
+
+
+def remove_tag_with_key(key: str, tags: Optional[Tags]) -> Optional[Tags]:
+    """Remove a tag with the given key from the list of tags.
+
+    Args:
+        key (str): The key of the tag to remove.
+        tags (Optional[Tags]): The current list of tags.
+
+    Returns:
+        Optional[Tags]: The updated list of tags with the tag removed.
+    """
+    if tags is None:
+        return tags
+    if isinstance(tags, dict):
+        tags = [tags]
+
+    updated_tags = []
+    for tag in tags:
+        if tag["Key"] != key:
+            updated_tags.append(tag)
+
+    if not updated_tags:
+        return None
+    if len(updated_tags) == 1:
+        return updated_tags[0]
+    return updated_tags
+
+
+def get_domain_for_region(region: str) -> str:
+    """Returns the domain for the given region.
+
+    Args:
+        region (str): AWS region name.
+    """
+    return ALTERNATE_DOMAINS.get(region, "amazonaws.com")

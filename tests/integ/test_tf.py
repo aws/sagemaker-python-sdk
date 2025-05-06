@@ -85,6 +85,11 @@ def test_mnist_with_checkpoint_config(
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
 ):
+    if Version(tensorflow_training_latest_version) >= Version("2.16"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
     checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
     )
@@ -235,6 +240,11 @@ def test_mnist_distributed_cpu(
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
 ):
+    if Version(tensorflow_training_latest_version) >= Version("2.16"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
     _create_and_fit_estimator(
         sagemaker_session,
         tensorflow_training_latest_version,
@@ -296,6 +306,11 @@ def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instanc
 
 @pytest.mark.slow_test
 def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
+    if Version(tf_full_version) >= Version("2.16"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
     if tf_full_version == "2.7.0":
         tf_full_version = "2.7"
 

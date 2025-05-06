@@ -29,9 +29,9 @@ class FailStep(Step):
     def __init__(
         self,
         name: str,
-        error_message: Union[str, PipelineVariable] = None,
-        display_name: str = None,
-        description: str = None,
+        error_message: Optional[Union[str, PipelineVariable]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a `FailStep`.

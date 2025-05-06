@@ -18,6 +18,8 @@ import logging
 
 import pytest
 
+from packaging.version import Version
+
 from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker import TrainingInput, get_execution_role, utils, image_uris
 from sagemaker.debugger import (
@@ -235,6 +237,12 @@ def test_training_step_with_output_path_as_join(
 def test_tensorflow_training_step_with_parameterized_code_input(
     pipeline_session, role, tf_full_version, tf_full_py_version, pipeline_name
 ):
+    if Version(tf_full_version) >= Version("2.16"):
+        pytest.skip(
+            "This test is failing in TensorFlow 2.16 beacuse of an upstream bug: "
+            "https://github.com/tensorflow/io/issues/2039"
+        )
+
     base_dir = os.path.join(DATA_DIR, "tensorflow_mnist")
     entry_point1 = "mnist_v2.py"
     entry_point2 = "mnist_dummy.py"

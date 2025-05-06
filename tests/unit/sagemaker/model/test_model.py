@@ -287,7 +287,11 @@ def test_create_sagemaker_model(prepare_container_def, sagemaker_session):
     model._create_sagemaker_model()
 
     prepare_container_def.assert_called_with(
-        None, accelerator_type=None, serverless_inference_config=None, accept_eula=None
+        None,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
+        model_reference_arn=None,
     )
     sagemaker_session.create_model.assert_called_with(
         name=MODEL_NAME,
@@ -305,7 +309,11 @@ def test_create_sagemaker_model_instance_type(prepare_container_def, sagemaker_s
     model._create_sagemaker_model(INSTANCE_TYPE)
 
     prepare_container_def.assert_called_with(
-        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None, accept_eula=None
+        INSTANCE_TYPE,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        accept_eula=None,
+        model_reference_arn=None,
     )
 
 
@@ -321,6 +329,7 @@ def test_create_sagemaker_model_accelerator_type(prepare_container_def, sagemake
         accelerator_type=accelerator_type,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     )
 
 
@@ -336,6 +345,7 @@ def test_create_sagemaker_model_with_eula(prepare_container_def, sagemaker_sessi
         accelerator_type=accelerator_type,
         serverless_inference_config=None,
         accept_eula=True,
+        model_reference_arn=None,
     )
 
 
@@ -351,6 +361,7 @@ def test_create_sagemaker_model_with_eula_false(prepare_container_def, sagemaker
         accelerator_type=accelerator_type,
         serverless_inference_config=None,
         accept_eula=False,
+        model_reference_arn=None,
     )
 
 
@@ -949,6 +960,56 @@ def test_all_framework_models_inference_component_based_endpoint_deploy_path(
 
 
 @patch("sagemaker.utils.repack_model")
+@patch("sagemaker.fw_utils.tar_and_upload_dir")
+def test_sharded_model_force_inference_component_based_endpoint_deploy_path(
+    repack_model, tar_and_uload_dir, sagemaker_session
+):
+    framework_model_classes_to_kwargs = {
+        HuggingFaceModel: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+        },
+    }
+
+    sagemaker_session.settings = SessionSettings(include_jumpstart_tags=False)
+
+    source_dir = "s3://blah/blah/blah"
+    for framework_model_class, kwargs in framework_model_classes_to_kwargs.items():
+        test_sharded_model = framework_model_class(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_data=source_dir,
+            **kwargs,
+        )
+        test_sharded_model._is_sharded_model = True
+        test_sharded_model.deploy(
+            instance_type="ml.m2.xlarge",
+            initial_instance_count=INSTANCE_COUNT,
+            endpoint_type=EndpointType.MODEL_BASED,
+            resources=ResourceRequirements(
+                requests={
+                    "num_accelerators": 1,
+                    "memory": 8192,
+                    "copies": 1,
+                },
+                limits={},
+            ),
+        )
+
+        # Verified inference component based endpoint and inference component creation
+        # path
+        sagemaker_session.endpoint_in_service_or_not.assert_called_once()
+        sagemaker_session.create_model.assert_called_once()
+        sagemaker_session.create_inference_component.assert_called_once()
+
+        sagemaker_session.create_inference_component.reset_mock()
+        sagemaker_session.endpoint_in_service_or_not.reset_mock()
+        sagemaker_session.create_model.reset_mock()
+
+
+@patch("sagemaker.utils.repack_model")
 def test_repack_code_location_with_key_prefix(repack_model, sagemaker_session):
 
     code_location = "s3://my-bucket/code/location/"
@@ -983,6 +1044,20 @@ def test_is_repack_with_code_location(repack_model, sagemaker_session):
     )
 
     assert model.is_repack()
+
+
+@patch("sagemaker.utils.repack_model")
+def test_is_repack_with_none_type(repack_model, sagemaker_session):
+    """Test is_repack() returns a boolean value when source_dir and entry_point are None"""
+
+    model = Model(
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+
+    assert model.is_repack() is False
 
 
 @patch("sagemaker.git_utils.git_clone_repo")
@@ -1421,3 +1496,47 @@ def test_model_source(
     )
 
     assert model_1._get_model_uri() == "s3://tmybuckaet"
+
+
+@patch("sagemaker.utils.repack_model")
+@patch("sagemaker.fw_utils.tar_and_upload_dir")
+def test_deploy_sharded_model_with_cpus_requested_raises_warning(
+    repack_model, tar_and_upload_dir, sagemaker_session
+):
+    framework_model_classes_to_kwargs = {
+        HuggingFaceModel: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+        },
+    }
+
+    sagemaker_session.settings = SessionSettings(include_jumpstart_tags=False)
+
+    source_dir = "s3://blah/blah/blah"
+    for framework_model_class, kwargs in framework_model_classes_to_kwargs.items():
+        test_sharded_model = framework_model_class(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_data=source_dir,
+            **kwargs,
+        )
+        test_sharded_model._is_sharded_model = True
+        from unittest import mock
+
+        with mock.patch("sagemaker.model.logger") as mock_logger:
+            mock_logger.warning.reset_mock()
+            test_sharded_model.deploy(
+                instance_type="ml.m2.xlarge",
+                initial_instance_count=INSTANCE_COUNT,
+                endpoint_type=EndpointType.MODEL_BASED,
+                resources=ResourceRequirements(
+                    requests={"num_accelerators": 1, "memory": 8192, "copies": 1, "num_cpus": 1},
+                    limits={},
+                ),
+            )
+            mock_logger.warning.assert_called_once_with(
+                "NumberOfCpuCoresRequired should be 0 for the best experience with SageMaker "
+                "Fast Model Loading. Configure by setting `num_cpus` to 0 in `resources`."
+            )

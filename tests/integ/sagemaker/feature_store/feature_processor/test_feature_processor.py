@@ -1272,7 +1272,7 @@ def _generate_and_move_sagemaker_sdk_tar():
     """
     Run setup.py sdist to generate the PySDK whl file
     """
-    subprocess.run("python3 setup.py bdist_wheel", shell=True)
+    subprocess.run("python -m build --wheel", shell=True)
     dist_dir = "dist"
     source_archive = os.listdir(dist_dir)[0]
     source_path = os.path.join(dist_dir, source_archive)

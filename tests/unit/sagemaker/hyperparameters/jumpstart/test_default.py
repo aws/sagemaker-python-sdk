@@ -46,7 +46,13 @@ def test_jumpstart_default_hyperparameters(
         model_version="*",
         sagemaker_session=mock_session,
     )
-    assert params == {"adam-learning-rate": "0.05", "batch-size": "4", "epochs": "3"}
+    assert params == {
+        "train_only_top_layer": "True",
+        "epochs": "5",
+        "learning_rate": "0.001",
+        "batch_size": "4",
+        "reinitialize_top_layer": "Auto",
+    }
 
     patched_get_model_specs.assert_called_once_with(
         region=region,
@@ -54,6 +60,8 @@ def test_jumpstart_default_hyperparameters(
         version="*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -64,7 +72,13 @@ def test_jumpstart_default_hyperparameters(
         model_version="1.*",
         sagemaker_session=mock_session,
     )
-    assert params == {"adam-learning-rate": "0.05", "batch-size": "4", "epochs": "3"}
+    assert params == {
+        "train_only_top_layer": "True",
+        "epochs": "5",
+        "learning_rate": "0.001",
+        "batch_size": "4",
+        "reinitialize_top_layer": "Auto",
+    }
 
     patched_get_model_specs.assert_called_once_with(
         region=region,
@@ -72,6 +86,8 @@ def test_jumpstart_default_hyperparameters(
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -84,12 +100,14 @@ def test_jumpstart_default_hyperparameters(
         sagemaker_session=mock_session,
     )
     assert params == {
-        "adam-learning-rate": "0.05",
-        "batch-size": "4",
-        "epochs": "3",
-        "sagemaker_container_log_level": "20",
-        "sagemaker_program": "transfer_learning.py",
+        "train_only_top_layer": "True",
+        "epochs": "5",
+        "learning_rate": "0.001",
+        "batch_size": "4",
+        "reinitialize_top_layer": "Auto",
         "sagemaker_submit_directory": "/opt/ml/input/data/code/sourcedir.tar.gz",
+        "sagemaker_program": "transfer_learning.py",
+        "sagemaker_container_log_level": "20",
     }
 
     patched_get_model_specs.assert_called_once_with(
@@ -98,6 +116,8 @@ def test_jumpstart_default_hyperparameters(
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()

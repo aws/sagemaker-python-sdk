@@ -19,6 +19,7 @@ from typing import Optional
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.session import Session
 
 
@@ -29,11 +30,14 @@ def retrieve(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     model_scope: Optional[str] = None,
     instance_type: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the model artifact Amazon S3 URI for the model matching the given arguments.
 
@@ -43,6 +47,8 @@ def retrieve(
             the model artifact S3 URI.
         model_version (str): The version of the JumpStart model for which to retrieve
             the model artifact S3 URI.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (default: None).
         model_scope (str): The model type.
             Valid values: "training" and "inference".
         instance_type (str): The ML compute instance type for the specified scope. (Default: None).
@@ -57,6 +63,10 @@ def retrieve(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
+
     Returns:
         str: The model artifact S3 URI for the corresponding model.
 
@@ -75,10 +85,13 @@ def retrieve(
     return artifacts._retrieve_model_uri(
         model_id=model_id,
         model_version=model_version,  # type: ignore
+        hub_arn=hub_arn,
         model_scope=model_scope,
         instance_type=instance_type,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
+        model_type=model_type,
     )

@@ -24,6 +24,8 @@ import six
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
+from sagemaker.model_card.schema_constraints import ModelCardStatusEnum
+
 from .common import _raise_unexpected_client_error
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role, exceptions
@@ -5004,6 +5006,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     domain = "COMPUTER_VISION"
     task = "IMAGE_CLASSIFICATION"
     sample_payload_url = "s3://test-bucket/model"
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -5092,6 +5095,8 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
     skip_model_validation = "All"
     source_uri = "dummy-source-uri"
 
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
+
     created_versioned_mp_arn = (
         "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
     )
@@ -5147,6 +5152,7 @@ def test_create_model_package_from_containers_with_source_uri_for_unversioned_mp
     approval_status = ("Approved",)
     skip_model_validation = "All"
     source_uri = "dummy-source-uri"
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
     with pytest.raises(
         ValueError,
@@ -5218,6 +5224,8 @@ def test_create_model_package_from_containers_with_source_uri_set_to_mp(sagemake
     sagemaker_session.sagemaker_client.create_model_package = Mock(
         return_value={"ModelPackageArn": created_versioned_mp_arn}
     )
+
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
     sagemaker_session.create_model_package_from_containers(
         model_package_group_name=model_package_group_name,
@@ -5343,6 +5351,26 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
     domain = "COMPUTER_VISION"
     task = "IMAGE_CLASSIFICATION"
     sample_payload_url = "s3://test-bucket/model"
+    model_card = {
+        "ModelCardStatus": ModelCardStatusEnum.DRAFT,
+        "Content": {
+            "model_overview": {
+                "model_creator": "TestCreator",
+            },
+            "intended_uses": {
+                "purpose_of_model": "Test model card.",
+                "intended_uses": "Not used except this test.",
+                "factors_affecting_model_efficiency": "No.",
+                "risk_rating": "Low",
+                "explanations_for_risk_rating": "Just an example.",
+            },
+        },
+    }
+    model_life_cycle = {
+        "Stage": "Development",
+        "StageStatus": "In-Progress",
+        "StageDescription": "Sending for Staging Verification",
+    }
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -5361,6 +5389,8 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         sample_payload_url=sample_payload_url,
         task=task,
         skip_model_validation=skip_model_validation,
+        model_card=model_card,
+        model_life_cycle=model_life_cycle,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -5382,6 +5412,8 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "SamplePayloadUrl": sample_payload_url,
         "Task": task,
         "SkipModelValidation": skip_model_validation,
+        "ModelCard": model_card,
+        "ModelLifeCycle": model_life_cycle,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
@@ -5417,6 +5449,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
     approval_status = ("Approved",)
     description = "description"
     customer_metadata_properties = {"key1": "value1"}
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -5484,6 +5517,7 @@ def test_create_model_package_from_containers_with_one_instance_types(
     approval_status = ("Approved",)
     description = "description"
     customer_metadata_properties = {"key1": "value1"}
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -6263,6 +6297,24 @@ def test_create_inference_recommendations_job_propogate_other_exception(
     assert "AccessDeniedException" in str(error)
 
 
+def test_create_presigned_mlflow_tracking_server_url(sagemaker_session):
+    sagemaker_session.create_presigned_mlflow_tracking_server_url("ts", 1, 2)
+    assert (
+        sagemaker_session.sagemaker_client.create_presigned_mlflow_tracking_server_url.called_with(
+            TrackingServerName="ts", ExpiresInSeconds=1, SessionExpirationDurationInSeconds=2
+        )
+    )
+
+
+def test_create_presigned_mlflow_tracking_server_url_minimal(sagemaker_session):
+    sagemaker_session.create_presigned_mlflow_tracking_server_url("ts")
+    assert (
+        sagemaker_session.sagemaker_client.create_presigned_mlflow_tracking_server_url.called_with(
+            TrackingServerName="ts"
+        )
+    )
+
+
 DEFAULT_LOG_EVENTS_INFERENCE_RECOMMENDER = [
     MockBotoException("ResourceNotFoundException"),
     {"nextForwardToken": None, "events": [{"timestamp": 1, "message": "hi there #1"}]},
@@ -6971,4 +7023,265 @@ def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
         Key="foo/bar/mode.tar.gz",
         Filename="./foo/bar/mode.tar.gz",
         ExtraArgs=None,
+    )
+
+
+def test_create_hub(sagemaker_session):
+    sagemaker_session.create_hub(
+        hub_name="mock-hub-name",
+        hub_description="this is my sagemaker hub",
+        hub_display_name="Mock Hub",
+        hub_search_keywords=["mock", "hub", "123"],
+        s3_storage_config={"S3OutputPath": "s3://my-hub-bucket/"},
+        tags=[{"Key": "tag-key-1", "Value": "tag-value-1"}],
+    )
+
+    request = {
+        "HubName": "mock-hub-name",
+        "HubDescription": "this is my sagemaker hub",
+        "HubDisplayName": "Mock Hub",
+        "HubSearchKeywords": ["mock", "hub", "123"],
+        "S3StorageConfig": {"S3OutputPath": "s3://my-hub-bucket/"},
+        "Tags": [{"Key": "tag-key-1", "Value": "tag-value-1"}],
+    }
+
+    sagemaker_session.sagemaker_client.create_hub.assert_called_with(**request)
+
+
+def test_describe_hub(sagemaker_session):
+    sagemaker_session.describe_hub(
+        hub_name="mock-hub-name",
+    )
+
+    request = {
+        "HubName": "mock-hub-name",
+    }
+
+    sagemaker_session.sagemaker_client.describe_hub.assert_called_with(**request)
+
+
+def test_list_hubs(sagemaker_session):
+    sagemaker_session.list_hubs(
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08-2024 10:25:00",
+        max_results=25,
+        max_schema_version="1.0.5",
+        name_contains="mock-hub",
+        sort_by="HubName",
+        sort_order="Ascending",
+    )
+
+    request = {
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08-2024 10:25:00",
+        "MaxResults": 25,
+        "MaxSchemaVersion": "1.0.5",
+        "NameContains": "mock-hub",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending",
+    }
+
+    sagemaker_session.sagemaker_client.list_hubs.assert_called_with(**request)
+
+
+def test_list_hub_contents(sagemaker_session):
+    sagemaker_session.list_hub_contents(
+        hub_name="mock-hub-123",
+        hub_content_type="MODELREF",
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08/2024 10:25:00",
+        max_results=25,
+        max_schema_version="1.0.5",
+        name_contains="mock-hub",
+        sort_by="HubName",
+        sort_order="Ascending",
+    )
+
+    request = {
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODELREF",
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08/2024 10:25:00",
+        "MaxResults": 25,
+        "MaxSchemaVersion": "1.0.5",
+        "NameContains": "mock-hub",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending",
+    }
+
+    sagemaker_session.sagemaker_client.list_hub_contents.assert_called_with(**request)
+
+
+def test_list_hub_content_versions(sagemaker_session):
+    sagemaker_session.list_hub_content_versions(
+        hub_name="mock-hub-123",
+        hub_content_type="MODELREF",
+        hub_content_name="mock-hub-content-1",
+        min_version="1.0.0",
+        creation_time_after="08-14-1997 12:00:00",
+        creation_time_before="01-08/2024 10:25:00",
+        max_results=25,
+        max_schema_version="1.0.5",
+        sort_by="HubName",
+        sort_order="Ascending",
+    )
+
+    request = {
+        "HubName": "mock-hub-123",
+        "HubContentType": "MODELREF",
+        "HubContentName": "mock-hub-content-1",
+        "MinVersion": "1.0.0",
+        "CreationTimeAfter": "08-14-1997 12:00:00",
+        "CreationTimeBefore": "01-08/2024 10:25:00",
+        "MaxResults": 25,
+        "MaxSchemaVersion": "1.0.5",
+        "SortBy": "HubName",
+        "SortOrder": "Ascending",
+    }
+
+    sagemaker_session.sagemaker_client.list_hub_content_versions.assert_called_with(**request)
+
+
+def test_delete_hub(sagemaker_session):
+    sagemaker_session.delete_hub(
+        hub_name="mock-hub-123",
+    )
+
+    request = {
+        "HubName": "mock-hub-123",
+    }
+
+    sagemaker_session.sagemaker_client.delete_hub.assert_called_with(**request)
+
+
+def test_create_hub_content_reference(sagemaker_session):
+    sagemaker_session.create_hub_content_reference(
+        hub_name="mock-hub-name",
+        source_hub_content_arn=(
+            "arn:aws:sagemaker:us-east-1:"
+            "123456789123:"
+            "hub-content/JumpStartHub/"
+            "model/mock-hub-content-1"
+        ),
+        hub_content_name="mock-hub-content-1",
+        min_version="1.1.1",
+    )
+
+    request = {
+        "HubName": "mock-hub-name",
+        "SageMakerPublicHubContentArn": "arn:aws:sagemaker:us-east-1:123456789123:hub-content/JumpStartHub/model/mock-hub-content-1",  # noqa: E501
+        "HubContentName": "mock-hub-content-1",
+        "MinVersion": "1.1.1",
+    }
+
+    sagemaker_session.sagemaker_client.create_hub_content_reference.assert_called_with(**request)
+
+
+def test_delete_hub_content_reference(sagemaker_session):
+    sagemaker_session.delete_hub_content_reference(
+        hub_name="mock-hub-name",
+        hub_content_type="ModelReference",
+        hub_content_name="mock-hub-content-1",
+    )
+
+    request = {
+        "HubName": "mock-hub-name",
+        "HubContentType": "ModelReference",
+        "HubContentName": "mock-hub-content-1",
+    }
+
+    sagemaker_session.sagemaker_client.delete_hub_content_reference.assert_called_with(**request)
+
+
+def test_create_model_package_from_containers_to_create_mpg_if_not_present_without_search(
+    sagemaker_session,
+):
+    sagemaker_session.sagemaker_client.search.side_effect = Exception()
+    sagemaker_session.sagemaker_client.search.return_value = {}
+    sagemaker_session.sagemaker_client.list_model_package_groups.side_effect = [
+        {
+            "ModelPackageGroupSummaryList": [{"ModelPackageGroupName": "mock-mpg"}],
+            "NextToken": "NextToken",
+        },
+        {"ModelPackageGroupSummaryList": [{"ModelPackageGroupName": "mock-mpg-test"}]},
+    ]
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri", model_package_group_name="mock-mpg"
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_not_called()
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri",
+        model_package_group_name="arn:aws:sagemaker:us-east-1:215995503607:model-package-group/mock-mpg",
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_not_called()
+    sagemaker_session.sagemaker_client.list_model_package_groups.side_effect = [
+        {"ModelPackageGroupSummaryList": []}
+    ]
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri", model_package_group_name="mock-mpg"
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_called_with(
+        ModelPackageGroupName="mock-mpg"
+    )
+
+
+def test_create_model_package_from_containers_to_create_mpg_if_not_present(sagemaker_session):
+    # with search api
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "ModelPackageGroup": {
+                    "ModelPackageGroupName": "mock-mpg",
+                    "ModelPackageGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/mock-mpg",
+                }
+            }
+        ]
+    }
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri", model_package_group_name="mock-mpg"
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_not_called()
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri",
+        model_package_group_name="arn:aws:sagemaker:us-east-1:215995503607:model-package-group/mock-mpg",
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_not_called()
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri", model_package_group_name="mock-mpg"
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_called_with(
+        ModelPackageGroupName="mock-mpg"
+    )
+
+
+def test_get_most_recently_created_approved_model_package(sagemaker_session):
+    sagemaker_session.sagemaker_client.list_model_packages.side_effect = [
+        (
+            {
+                "ModelPackageSummaryList": [],
+                "NextToken": "NextToken",
+            }
+        ),
+        (
+            {
+                "ModelPackageSummaryList": [
+                    {
+                        "CreationTime": 1697440162,
+                        "ModelApprovalStatus": "Approved",
+                        "ModelPackageArn": "arn:aws:sagemaker:us-west-2:123456789012:model-package/model-version/3",
+                        "ModelPackageGroupName": "model-version",
+                        "ModelPackageVersion": 3,
+                    },
+                ],
+            }
+        ),
+    ]
+    model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name="mpg"
+    )
+    assert model_package is not None
+    assert (
+        model_package.model_package_arn
+        == "arn:aws:sagemaker:us-west-2:123456789012:model-package/model-version/3"
     )

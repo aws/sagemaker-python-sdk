@@ -1066,7 +1066,7 @@ def deploy_config_from_estimator(
     model_name=None,
     endpoint_name=None,
     tags=None,
-    **kwargs
+    **kwargs,
 ):
     """Export Airflow deploy config from a SageMaker estimator
 

@@ -21,17 +21,12 @@ To train a PyTorch model by using the SageMaker Python SDK:
 .. |create pytorch estimator| replace:: Create a ``sagemaker.pytorch.PyTorch`` Estimator
 .. _create pytorch estimator: #create-an-estimator
 
-.. |call fit| replace:: Call the estimator's ``fit`` method
-.. _call fit: #call-the-fit-method
-
-1. `Prepare a training script <#prepare-a-pytorch-training-script>`_
+1. `Prepare a training script <#prepare-a-pytorch-training-script>`_ OR `Choose an Amazon SageMaker HyperPod recipe`_
 2. |create pytorch estimator|_
-3. |call fit|_
+3. `Call the estimator's fit method or ModelTrainer's train method`_
 
 Prepare a PyTorch Training Script
 =================================
-
-Your PyTorch training script must be a Python 3.6 compatible source file.
 
 Prepare your script in a separate source file than the notebook, terminal session, or source file you're
 using to submit the script to SageMaker via a ``PyTorch`` Estimator. This will be discussed in further detail below.
@@ -175,6 +170,16 @@ see `AWS Deep Learning Containers <https://github.com/aws/deep-learning-containe
 - `Images for HuggingFace <https://github.com/aws/deep-learning-containers/tree/master/huggingface>`__
 
 
+Choose an Amazon Sagemaker HyperPod recipe
+==========================================
+
+Alternatively, instead of using your own training script, you can choose an
+`Amazon SageMaker HyperPod recipe <https://github.com/aws/sagemaker-hyperpod-recipes>`_ to launch training for a supported model.
+If using a recipe, you do not need to provide your own training script. You only need to determine
+which recipe you want to run. You can modify a recipe as explained in the next section.
+
+
+
 Create an Estimator
 ===================
 
@@ -196,10 +201,121 @@ directories ('train' and 'test').
                            'test': 's3://my-data-bucket/path/to/my/test/data'})
 
 
+Amazon Sagemaker HyperPod recipes
+---------------------------------
+Alternatively, if you are using Amazon SageMaker HyperPod recipes, you can follow the following instructions:
+
+Prerequisites: you need ``git`` installed on your client to access Amazon SageMaker HyperPod recipes code.
+
+When using a recipe, you must set the ``training_recipe`` arg in place of providing a training script.
+This can be a recipe from `here <https://github.com/aws/sagemaker-hyperpod-recipes>`_
+or a local file or a custom url.  Please note that you must override the following using
+``recipe_overrides``:
+
+* directory paths for the local container in the recipe as appropriate for Python SDK
+* the output s3 URIs
+* Huggingface access token
+* any other recipe fields you wish to edit
+
+The code snippet below shows an example.
+Please refer to `SageMaker docs <https://docs.aws.amazon.com/sagemaker/latest/dg/model-train-storage.html>`_
+for more details about the expected local paths in the container and the Amazon SageMaker
+HyperPod recipes tutorial for more examples.
+You can override the fields by either setting ``recipe_overrides`` or
+providing a modified ``training_recipe`` through a local file or a custom url.
+When using the recipe, any provided ``entry_point`` will be ignored.
+
+SageMaker will automatically set up the distribution args.
+It will also determine the image to use for your model and device type,
+but you can override this with the ``image_uri`` arg.
+
+You can also override the number of nodes in the recipe with the ``instance_count`` arg to estimator.
+``source_dir`` will default to current working directory unless specified.
+A local copy of training scripts and recipe will be saved in the ``source_dir``.
+You can specify any additional packages you want to install for training in an optional ``requirements.txt`` in the ``source_dir``.
+
+Note for llama3.2 multi-modal models, you need to upgrade transformers library by providing a ``requirements.txt`` in the source file with ``transformers==4.45.2``.
+Please refer to the Amazon SageMaker HyperPod recipes documentation for more details.
 
 
-Call the fit Method
-===================
+Here is an example usage for recipe ``hf_llama3_8b_seq8k_gpu_p5x16_pretrain``.
+
+
+.. code:: python
+
+    overrides = {
+        "run": {
+            "results_dir": "/opt/ml/model",
+        },
+        "exp_manager": {
+            "exp_dir": "",
+            "explicit_log_dir": "/opt/ml/output/tensorboard",
+            "checkpoint_dir": "/opt/ml/checkpoints",
+        },
+        "model": {
+            "data": {
+                "train_dir": "/opt/ml/input/data/train",
+                "val_dir": "/opt/ml/input/data/val",
+            },
+        },
+    }
+    pytorch_estimator = PyTorch(
+      output_path=output_path,
+      base_job_name=f"llama-recipe",
+      role=role,
+      instance_type="ml.p5.48xlarge",
+      training_recipe="hf_llama3_8b_seq8k_gpu_p5x16_pretrain",
+      recipe_overrides=recipe_overrides,
+      sagemaker_session=sagemaker_session,
+      tensorboard_output_config=tensorboard_output_config,
+    )
+    pytorch_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
+                           'test': 's3://my-data-bucket/path/to/my/test/data'})
+
+    # Or alternatively with ModelTrainer
+    recipe_overrides = {
+        "run": {
+            "results_dir": "/opt/ml/model",
+        },
+        "exp_manager": {
+            "exp_dir": "",
+            "explicit_log_dir": "/opt/ml/output/tensorboard",
+            "checkpoint_dir": "/opt/ml/checkpoints",
+        },
+        "model": {
+            "data": {
+                "train_dir": "/opt/ml/input/data/train",
+                "val_dir": "/opt/ml/input/data/val",
+            },
+        },
+    }
+
+    model_trainer = ModelTrainer.from_recipe(
+        output_path=output_path,
+        base_job_name=f"llama-recipe",
+        training_recipe="training/llama/hf_llama3_8b_seq8k_gpu_p5x16_pretrain",
+        recipe_overrides=recipe_overrides,
+        compute=Compute(instance_type="ml.p5.48xlarge"),
+        sagemaker_session=sagemaker_session
+    ).with_tensorboard_output_config(
+        tensorboard_output_config=tensorboard_output_config
+    )
+
+    train_input = Input(
+        channel_name="train",
+        data_source="s3://my-data-bucket/path/to/my/training/data"
+    )
+
+    test_input = Input(
+        channel_name="test",
+        data_source="s3://my-data-bucket/path/to/my/test/data"
+    )
+
+    model_trainer.train(input_data_config=[train_input, test_input)
+
+
+Call the estimator's fit method or ModelTrainer's train method
+==============================================================
 
 You start your training script by calling ``fit`` on a ``PyTorch`` Estimator. ``fit`` takes both required and optional
 arguments.
@@ -257,6 +373,9 @@ To initialize distributed training in your script, call
 `torch.distributed.init_process_group
 <https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
 with the desired backend and the rank of the current host.
+Warning: Some torch features, such as (and likely not limited to) ``torch.nn.SyncBatchNorm``
+is not supported and its existence in ``init_process_group`` will cause an exception during
+distributed training.
 
 .. code:: python
 
@@ -929,6 +1048,43 @@ see `For versions 1.1 and lower <#for-versions-1.1-and-lower>`_.
 
 Where ``requirements.txt`` is an optional file that specifies dependencies on third-party libraries.
 
+Important Packaging Instructions
+--------------------------------
+
+When creating your model artifact (``model.tar.gz``), follow these steps to avoid common deployment issues:
+
+1. Navigate to the directory containing your model files:
+
+   .. code:: bash
+
+       cd my_model
+
+2. Create the tar archive from within this directory:
+
+   .. code:: bash
+
+       tar czvf ../model.tar.gz *
+
+**Common Mistakes to Avoid:**
+
+* Do NOT create the archive from the parent directory using ``tar czvf model.tar.gz my_model/``.
+  This creates an extra directory level that will cause deployment errors.
+* Ensure ``inference.py`` is directly under the ``code/`` directory in your archive.
+* Verify your archive structure using:
+
+  .. code:: bash
+
+      tar tvf model.tar.gz
+
+  You should see output similar to:
+
+  ::
+
+      model.pth
+      code/
+      code/inference.py
+      code/requirements.txt
+
 Create a ``PyTorchModel`` object
 --------------------------------
 
@@ -946,6 +1102,15 @@ Now call the :class:`sagemaker.pytorch.model.PyTorchModel` constructor to create
 
 
 Now you can call the ``predict()`` method to get predictions from your deployed model.
+
+Troubleshooting
+---------------
+
+If you encounter a ``FileNotFoundError`` for ``inference.py``, check:
+
+1. That your model artifact is packaged correctly following the instructions above
+2. The structure of your ``model.tar.gz`` file matches the expected layout
+3. You're creating the archive from within the model directory, not from its parent
 
 ***********************************************
 Attach an estimator to an existing training job

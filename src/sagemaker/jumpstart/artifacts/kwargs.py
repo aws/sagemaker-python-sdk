@@ -32,11 +32,13 @@ from sagemaker.jumpstart.utils import (
 def _retrieve_model_init_kwargs(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> dict:
     """Retrieves kwargs for `Model`.
 
@@ -45,6 +47,8 @@ def _retrieve_model_init_kwargs(
             retrieve the kwargs.
         model_version (str): Version of the JumpStart model for which to retrieve the
             kwargs.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve kwargs.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -58,6 +62,7 @@ def _retrieve_model_init_kwargs(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         dict: the kwargs to use for the use case.
     """
@@ -69,12 +74,14 @@ def _retrieve_model_init_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     kwargs = deepcopy(model_specs.model_kwargs)
@@ -89,11 +96,13 @@ def _retrieve_model_deploy_kwargs(
     model_id: str,
     model_version: str,
     instance_type: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> dict:
     """Retrieves kwargs for `Model.deploy`.
 
@@ -104,6 +113,8 @@ def _retrieve_model_deploy_kwargs(
             kwargs.
         instance_type (str): Instance type of the hosting endpoint, to determine if volume size
             is supported.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve kwargs.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -117,6 +128,7 @@ def _retrieve_model_deploy_kwargs(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
 
     Returns:
         dict: the kwargs to use for the use case.
@@ -129,12 +141,14 @@ def _retrieve_model_deploy_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
 
     if volume_size_supported(instance_type) and model_specs.inference_volume_size is not None:
@@ -147,10 +161,13 @@ def _retrieve_estimator_init_kwargs(
     model_id: str,
     model_version: str,
     instance_type: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Estimator`.
 
@@ -161,6 +178,8 @@ def _retrieve_estimator_init_kwargs(
             kwargs.
         instance_type (str): Instance type of the training job, to determine if volume size is
             supported.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve kwargs.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -174,6 +193,9 @@ def _retrieve_estimator_init_kwargs(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         dict: the kwargs to use for the use case.
     """
@@ -185,11 +207,14 @@ def _retrieve_estimator_init_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.TRAINING,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
+        model_type=model_type,
     )
 
     kwargs = deepcopy(model_specs.estimator_kwargs)
@@ -206,10 +231,13 @@ def _retrieve_estimator_init_kwargs(
 def _retrieve_estimator_fit_kwargs(
     model_id: str,
     model_version: str,
+    hub_arn: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Estimator.fit`.
 
@@ -218,6 +246,8 @@ def _retrieve_estimator_fit_kwargs(
             retrieve the kwargs.
         model_version (str): Version of the JumpStart model for which to retrieve the
             kwargs.
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         region (Optional[str]): Region for which to retrieve kwargs.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -231,6 +261,9 @@ def _retrieve_estimator_fit_kwargs(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
 
     Returns:
         dict: the kwargs to use for the use case.
@@ -243,11 +276,14 @@ def _retrieve_estimator_fit_kwargs(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
+        hub_arn=hub_arn,
         scope=JumpStartScriptScope.TRAINING,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
+        config_name=config_name,
+        model_type=model_type,
     )
 
     return model_specs.fit_kwargs

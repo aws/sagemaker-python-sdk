@@ -21,7 +21,8 @@ from typing import Optional
 from packaging.version import Version
 
 from sagemaker import utils
-from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
+from sagemaker.jumpstart.enums import JumpStartModelType
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
@@ -37,6 +38,8 @@ logger = logging.getLogger(__name__)
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
+HUGGING_FACE_TEI_GPU_FRAMEWORK = "huggingface-tei"
+HUGGING_FACE_TEI_CPU_FRAMEWORK = "huggingface-tei-cpu"
 HUGGING_FACE_LLM_NEURONX_FRAMEWORK = "huggingface-llm-neuronx"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
@@ -62,12 +65,15 @@ def retrieve(
     training_compiler_config=None,
     model_id=None,
     model_version=None,
+    hub_arn=None,
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
     sdk_version=None,
     inference_tool=None,
     serverless_inference_config=None,
     sagemaker_session=DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    config_name=None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -95,6 +101,8 @@ def retrieve(
             https://github.com/aws/deep-learning-containers/blob/master/available_images.md
             (default: None).
         distribution (dict): A dictionary with information on how to run distributed training
+        base_framework_version (str): The base version number of PyTorch or Tensorflow.
+            (default: None).
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler
             (default: None).
@@ -102,6 +110,8 @@ def retrieve(
             (default: None).
         model_version (str): The version of the JumpStart model for which to retrieve the
             image URI (default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model specifications
             should be tolerated without an exception raised. If ``False``, raises an exception if
             the script used by this version of the model has dependencies with known security
@@ -121,6 +131,9 @@ def retrieve(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
@@ -143,23 +156,30 @@ def retrieve(
             )
 
     if is_jumpstart_model_input(model_id, model_version):
+        if non_none_fields := {
+            key: value
+            for key, value in args.items()
+            if key in {"version", "framework", "container_version", "py_version"}
+            and value is not None
+        }:
+            JUMPSTART_LOGGER.info(
+                "Ignoring the following arguments when retrieving image uri "
+                "for JumpStart model id '%s': %s",
+                model_id,
+                str(non_none_fields),
+            )
         return artifacts._retrieve_image_uri(
-            model_id,
-            model_version,
-            image_scope,
-            framework,
-            region,
-            version,
-            py_version,
-            instance_type,
-            accelerator_type,
-            container_version,
-            distribution,
-            base_framework_version,
-            training_compiler_config,
-            tolerate_vulnerable_model,
-            tolerate_deprecated_model,
+            model_id=model_id,
+            model_version=model_version,
+            image_scope=image_scope,
+            hub_arn=hub_arn,
+            region=region,
+            instance_type=instance_type,
+            tolerate_vulnerable_model=tolerate_vulnerable_model,
+            tolerate_deprecated_model=tolerate_deprecated_model,
             sagemaker_session=sagemaker_session,
+            config_name=config_name,
+            model_type=model_type,
         )
 
     if training_compiler_config and (framework in [HUGGING_FACE_FRAMEWORK, "pytorch"]):
@@ -178,7 +198,7 @@ def retrieve(
         config = _config_for_framework_and_scope(_framework, final_image_scope, accelerator_type)
 
     original_version = version
-    version = _validate_version_and_set_if_needed(version, config, framework)
+    version = _validate_version_and_set_if_needed(version, config, framework, image_scope)
     version_config = config["versions"][_version_for_config(version, config)]
 
     if framework == HUGGING_FACE_FRAMEWORK:
@@ -210,7 +230,7 @@ def retrieve(
         container_version = version_config["container_version"][processor]
 
     # Append sdk version in case of trainium instances
-    if repo in ["pytorch-training-neuron"]:
+    if repo in ["pytorch-training-neuron", "pytorch-training-neuronx"]:
         if not sdk_version:
             sdk_version = _get_latest_versions(version_config["sdk_versions"])
         container_version = sdk_version + "-" + container_version
@@ -449,6 +469,23 @@ def _get_latest_versions(list_of_versions):
     return sorted(list_of_versions, reverse=True)[0]
 
 
+def _get_latest_version(framework, version, image_scope):
+    """Get the latest version from the input framework"""
+    if version:
+        return version
+    try:
+        framework_config = config_for_framework(framework)
+    except FileNotFoundError:
+        raise ValueError("Invalid framework {}".format(framework))
+
+    if not framework_config:
+        raise ValueError("Invalid framework {}".format(framework))
+
+    if not version:
+        version = _fetch_latest_version_from_config(framework_config, image_scope)
+    return version
+
+
 def _validate_accelerator_type(accelerator_type):
     """Raises a ``ValueError`` if ``accelerator_type`` is invalid."""
     if not accelerator_type.startswith("ml.eia") and accelerator_type != "local_sagemaker_notebook":
@@ -458,30 +495,16 @@ def _validate_accelerator_type(accelerator_type):
         )
 
 
-def _validate_version_and_set_if_needed(version, config, framework):
+def _validate_version_and_set_if_needed(version, config, framework, image_scope):
     """Checks if the framework/algorithm version is one of the supported versions."""
+    if not config:
+        config = config_for_framework(framework)
     available_versions = list(config["versions"].keys())
     aliased_versions = list(config.get("version_aliases", {}).keys())
-
     if len(available_versions) == 1 and version not in aliased_versions:
-        log_message = "Defaulting to the only supported framework/algorithm version: {}.".format(
-            available_versions[0]
-        )
-        if version and version != available_versions[0]:
-            logger.warning("%s Ignoring framework/algorithm version: %s.", log_message, version)
-        elif not version:
-            logger.info(log_message)
-
         return available_versions[0]
-
-    if version is None and framework in [
-        DATA_WRANGLER_FRAMEWORK,
-        HUGGING_FACE_LLM_FRAMEWORK,
-        HUGGING_FACE_LLM_NEURONX_FRAMEWORK,
-        STABILITYAI_FRAMEWORK,
-    ]:
-        version = _get_latest_versions(available_versions)
-
+    if not version:
+        version = _get_latest_version(framework, version, image_scope)
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
     return version
 
@@ -678,10 +701,16 @@ def get_training_image_uri(
             if "modelparallel" in distribution["smdistributed"]:
                 if distribution["smdistributed"]["modelparallel"].get("enabled", True):
                     framework = "pytorch-smp"
-                    if (
-                        "p5" in instance_type
-                        or "2.1" in framework_version
-                        or "2.2" in framework_version
+                    supported_smp_pt_versions_cu124 = ("2.5",)
+                    supported_smp_pt_versions_cu121 = ("2.1", "2.2", "2.3", "2.4")
+                    if any(
+                        pt_version in framework_version
+                        for pt_version in supported_smp_pt_versions_cu124
+                    ):
+                        container_version = "cu124"
+                    elif "p5" in instance_type or any(
+                        pt_version in framework_version
+                        for pt_version in supported_smp_pt_versions_cu121
                     ):
                         container_version = "cu121"
                     else:
@@ -728,3 +757,55 @@ def get_base_python_image_uri(region, py_version="310") -> str:
     repo_and_tag = repo + ":" + version
 
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo_and_tag)
+
+
+def _fetch_latest_version_from_config(  # pylint: disable=R0911
+    framework_config: dict, image_scope: Optional[str] = None
+) -> Optional[str]:
+    """Helper function to fetch the latest version as a string from a framework's config
+
+    Args:
+        framework_config (dict): A framework config dict.
+        image_scope (str): Scope of the image, eg: training, inference
+    Returns:
+        Version string if latest version found else None
+    """
+    if image_scope in framework_config:
+        if image_scope_config := framework_config[image_scope]:
+            if "version_aliases" in image_scope_config:
+                if "latest" in image_scope_config["version_aliases"]:
+                    return image_scope_config["version_aliases"]["latest"]
+    top_version = None
+    bottom_version = None
+
+    if "versions" in framework_config:
+        versions = list(framework_config["versions"].keys())
+        if len(versions) == 1:
+            return versions[0]
+        top_version = versions[0]
+        bottom_version = versions[-1]
+        if top_version == "latest" or bottom_version == "latest":
+            return None
+    elif (
+        image_scope is not None
+        and image_scope in framework_config
+        and "versions" in framework_config[image_scope]
+    ):
+        versions = list(framework_config[image_scope]["versions"].keys())
+        top_version = versions[0]
+        bottom_version = versions[-1]
+    elif "processing" in framework_config and "versions" in framework_config["processing"]:
+        versions = list(framework_config["processing"]["versions"].keys())
+        top_version = versions[0]
+        bottom_version = versions[-1]
+    if top_version and bottom_version:
+        if top_version.endswith(".x") or bottom_version.endswith(".x"):
+            top_number = int(top_version[:-2])
+            bottom_number = int(bottom_version[:-2])
+            max_version = max(top_number, bottom_number)
+            return f"{max_version}.x"
+        if Version(top_version) >= Version(bottom_version):
+            return top_version
+        return bottom_version
+
+    return None

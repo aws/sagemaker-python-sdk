@@ -84,7 +84,7 @@ class RLEstimator(Framework):
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Creates an RLEstimator for managed Reinforcement Learning (RL).
 
@@ -120,8 +120,8 @@ class RLEstimator(Framework):
             source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI)
                 to a directory with any other training source code dependencies aside from
                 the entry point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker.
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory
+                are preserved when training on Amazon SageMaker.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
                 that will be used for training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
@@ -168,7 +168,7 @@ class RLEstimator(Framework):
             hyperparameters,
             image_uri=image_uri,
             metric_definitions=metric_definitions,
-            **kwargs
+            **kwargs,
         )
 
     def create_model(
@@ -178,7 +178,7 @@ class RLEstimator(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``RLEstimatorModel`` object that can be deployed to an Endpoint.
 

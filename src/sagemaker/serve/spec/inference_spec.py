@@ -28,5 +28,14 @@ class InferenceSpec(abc.ABC):
             model (object): The model object
         """
 
+    def preprocess(self, input_data: object):
+        """Custom pre-processing function"""
+
+    def postprocess(self, predictions: object):
+        """Custom post-processing function"""
+
     def prepare(self, *args, **kwargs):
         """Custom prepare function"""
+
+    def get_model(self):
+        """Return HuggingFace model name for inference spec"""

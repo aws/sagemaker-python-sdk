@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 
 from enum import Enum
+from typing import List
 
 
 class ModelFramework(str, Enum):
@@ -81,6 +82,12 @@ class VariableTypes(str, Enum):
     BOOL = "bool"
 
 
+class HubContentCapability(str, Enum):
+    """Enum class for HubContent capabilities."""
+
+    BEDROCK_CONSOLE = "BEDROCK_CONSOLE"
+
+
 class JumpStartTag(str, Enum):
     """Enum class for tag keys to apply to JumpStart models."""
 
@@ -92,6 +99,13 @@ class JumpStartTag(str, Enum):
     MODEL_ID = "sagemaker-sdk:jumpstart-model-id"
     MODEL_VERSION = "sagemaker-sdk:jumpstart-model-version"
     MODEL_TYPE = "sagemaker-sdk:jumpstart-model-type"
+
+    INFERENCE_CONFIG_NAME = "sagemaker-sdk:jumpstart-inference-config-name"
+    TRAINING_CONFIG_NAME = "sagemaker-sdk:jumpstart-training-config-name"
+
+    HUB_CONTENT_ARN = "sagemaker-sdk:hub-content-arn"
+
+    BEDROCK = "sagemaker-sdk:bedrock"
 
 
 class SerializerType(str, Enum):
@@ -124,6 +138,28 @@ class MIMEType(str, Enum):
         """Removes suffix from type and instantiates enum."""
         base_type, _, _ = mime_type_with_suffix.partition(";")
         return MIMEType(base_type)
+
+
+class NamingConventionType(str, Enum):
+    """Enum class for naming conventions."""
+
+    SNAKE_CASE = "snake_case"
+    UPPER_CAMEL_CASE = "upper_camel_case"
+    DEFAULT = UPPER_CAMEL_CASE
+
+
+class ModelSpecKwargType(str, Enum):
+    """Enum class for types of kwargs for model hub content document and model specs."""
+
+    FIT = "fit_kwargs"
+    MODEL = "model_kwargs"
+    ESTIMATOR = "estimator_kwargs"
+    DEPLOY = "deploy_kwargs"
+
+    @classmethod
+    def arg_keys(cls) -> List[str]:
+        """Returns a list of kwargs keys that each type can have"""
+        return [member.value for member in cls]
 
 
 class JumpStartConfigRankingName(str, Enum):

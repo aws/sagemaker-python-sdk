@@ -108,7 +108,7 @@ class SearchExpression(SearchObject):
         nested_filters=None,
         sub_expressions=None,
         boolean_operator=BooleanOperator.AND,
-        **kwargs
+        **kwargs,
     ):
         """Construct a Search Expression object
 

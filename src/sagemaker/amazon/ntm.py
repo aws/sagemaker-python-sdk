@@ -17,11 +17,12 @@ from typing import Optional, Union, List
 
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
-from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le, isin
+from sagemaker.deserializers import RecordDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
+from sagemaker.serializers import RecordSerializer
 from sagemaker.session import Session
 from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -89,7 +90,7 @@ class NTM(AmazonAlgorithmEstimatorBase):
         clip_gradient: Optional[float] = None,
         weight_decay: Optional[float] = None,
         learning_rate: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ):
         """Neural Topic Model (NTM) is :class:`Estimator` used for unsupervised learning.
 
@@ -194,7 +195,7 @@ class NTM(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(  # pylint: disable=signature-differs
@@ -269,7 +270,7 @@ class NTMModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for NTMModel class.
 
@@ -302,5 +303,5 @@ class NTMModel(Model):
             role,
             predictor_cls=NTMPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

@@ -174,6 +174,7 @@ def test_gated_model_training_v2(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
+        instance_type="ml.g5.2xlarge",
     )
 
     payload = {

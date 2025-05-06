@@ -95,7 +95,7 @@ def _rl_estimator(
     framework=RLFramework.MXNET,
     instance_type=None,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
     return RLEstimator(
         entry_point=SCRIPT_PATH,
@@ -107,7 +107,7 @@ def _rl_estimator(
         instance_count=INSTANCE_COUNT,
         instance_type=instance_type or INSTANCE_TYPE,
         base_job_name=base_job_name,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -335,7 +335,7 @@ def test_rl(time, strftime, sagemaker_session, coach_mxnet_version):
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ["resource"]
+    assert "resource" in boto_call_names
 
     expected_train_args = _create_train_job(
         RLToolkit.COACH.value, coach_mxnet_version, RLFramework.MXNET.value

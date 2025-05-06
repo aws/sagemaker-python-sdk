@@ -46,8 +46,8 @@ DOCKERFILE_TEMPLATE_WITH_CONDA = (
     'SHELL ["/bin/bash", "-c"]\n'
     "RUN apt-get update -y \
         && apt-get install -y unzip curl\n\n"
-    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh' \
-        && bash Mambaforge-Linux-x86_64.sh -b -p '/opt/conda' \
+    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/download/24.11.3-2/Miniforge3-Linux-x86_64.sh' \
+        && bash Miniforge3-Linux-x86_64.sh -b -p '/opt/conda' \
         && /opt/conda/bin/conda init bash\n\n"
     "ENV PATH $PATH:/opt/conda/bin\n"
     "RUN mamba create -n integ_test_env python={py_version} -y \
@@ -86,8 +86,8 @@ AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE = (
     'SHELL ["/bin/bash", "-c"]\n'
     "RUN apt-get update -y \
         && apt-get install -y unzip curl\n\n"
-    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh' \
-        && bash Mambaforge-Linux-x86_64.sh -b -p '/opt/conda' \
+    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh' \
+        && bash Miniforge3-Miniforge3-Linux-x86_64.sh -b -p '/opt/conda' \
         && /opt/conda/bin/conda init bash\n\n"
     "ENV PATH $PATH:/opt/conda/bin\n"
     "COPY {source_archive} ./\n"
@@ -102,7 +102,9 @@ CONDA_YML_FILE_TEMPLATE = (
     "channels:\n"
     "  - defaults\n"
     "dependencies:\n"
-    "  - scipy=1.10.1\n"
+    "  - requests=2.32.3\n"
+    "  - charset-normalizer=3.3.2\n"
+    "  - scipy=1.13.1\n"
     "  - pip:\n"
     "    - /sagemaker-{sagemaker_version}.tar.gz\n"
     "prefix: /opt/conda/bin/conda\n"
@@ -176,7 +178,7 @@ def conda_env_yml():
         os.remove(conda_yml_file_name)
 
 
-def _build_container(sagemaker_session, py_version, docker_templete):
+def _build_container(sagemaker_session, py_version, docker_template):
     """Build a dummy test container locally and push a container to an ecr repo"""
 
     region = sagemaker_session.boto_region_name
@@ -189,9 +191,9 @@ def _build_container(sagemaker_session, py_version, docker_templete):
         print("building source archive...")
         source_archive = _generate_sagemaker_sdk_tar(tmpdir)
         with open(os.path.join(tmpdir, "Dockerfile"), "w") as file:
-            file.writelines(
-                docker_templete.format(py_version=py_version, source_archive=source_archive)
-            )
+            content = docker_template.format(py_version=py_version, source_archive=source_archive)
+            print(f"Dockerfile contents: \n{content}\n")
+            file.writelines(content)
 
         docker_client = docker.from_env()
 
@@ -209,6 +211,7 @@ def _build_container(sagemaker_session, py_version, docker_templete):
             raise
 
     if _is_repository_exists(ecr_client, REPO_NAME):
+        print("pushing to session configured account id!")
         sts_client = sagemaker_session.boto_session.client(
             "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
         )
@@ -218,6 +221,7 @@ def _build_container(sagemaker_session, py_version, docker_templete):
             account_id, sagemaker_session.boto_region_name, REPO_NAME, image_tag
         )
     else:
+        print(f"pushing to account id: {REPO_ACCOUNT_ID}")
         ecr_image = _ecr_image_uri(
             REPO_ACCOUNT_ID,
             sagemaker_session.boto_region_name,
@@ -232,7 +236,7 @@ def _build_container(sagemaker_session, py_version, docker_templete):
     return ecr_image
 
 
-def _build_auto_capture_client_container(py_version, docker_templete):
+def _build_auto_capture_client_container(py_version, docker_template):
     """Build a test docker container that will act as a client for auto_capture tests"""
     with _tmpdir() as tmpdir:
         print("building docker image locally in ", tmpdir)
@@ -240,9 +244,9 @@ def _build_auto_capture_client_container(py_version, docker_templete):
         source_archive = _generate_sdk_tar_with_public_version(tmpdir)
         _move_auto_capture_test_file(tmpdir)
         with open(os.path.join(tmpdir, "Dockerfile"), "w") as file:
-            file.writelines(
-                docker_templete.format(py_version=py_version, source_archive=source_archive)
-            )
+            content = docker_template.format(py_version=py_version, source_archive=source_archive)
+            print(f"Dockerfile contents: \n{content}\n")
+            file.writelines(content)
 
         docker_client = docker.from_env()
 
@@ -276,11 +280,14 @@ def _generate_sagemaker_sdk_tar(destination_folder):
     """
     Run setup.py sdist to generate the PySDK tar file
     """
-    subprocess.run(
-        f"python3 setup.py egg_info --egg-base {destination_folder} sdist -d {destination_folder} -k",
-        shell=True,
-        check=True,
-    )
+    command = f"python -m build --sdist -o {destination_folder}"
+    print(f"Running command: {command}")
+    result = subprocess.run(command, shell=True, check=True, capture_output=True)
+    if result.returncode != 0:
+        print(f"Command failed with return code: {result.returncode}")
+
+    print(f"Standard output: {result.stdout.decode()}")
+    print(f"Standard error: {result.stderr.decode()}")
     destination_folder_contents = os.listdir(destination_folder)
     source_archive = [file for file in destination_folder_contents if file.endswith("tar.gz")][0]
 

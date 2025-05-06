@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, s3, ModelMetrics
@@ -22,12 +22,17 @@ from sagemaker.deserializers import JSONDeserializer
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.utils import format_tags
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +62,9 @@ class TensorFlowPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            serializer (callable): Optional. Default serializes input data to
+            serializer (Callable): Optional. Default serializes input data to
                 json. Handles dicts, lists, and numpy arrays.
-            deserializer (callable): Optional. Default parses the response using
+            deserializer (Callable): Optional. Default parses the response using
                 ``json.load(...)``.
             model_name (str): Optional. The name of the SavedModel model that
                 should handle the request. If not specified, the endpoint's
@@ -141,7 +146,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         framework_version: Optional[str] = None,
         container_log_level: Optional[int] = None,
-        predictor_cls: callable = TensorFlowPredictor,
+        predictor_cls: Optional[Callable] = TensorFlowPredictor,
         **kwargs,
     ):
         """Initialize a Model.
@@ -169,7 +174,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             container_log_level (int): Log level to use within the container
                 (default: logging.ERROR). Valid values are defined in the Python
                 logging module.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
@@ -195,7 +200,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         # patch versions, but end up hosting the model of same TF version. For eg., the upstream
         # TFS-2.12.0 release was a bad release and hence a new TFS-2.12.1 release was made to host
         # models from TF-2.12.0.
-        training_inference_version_mismatch_dict = {"2.12.0": "2.12.1"}
+        training_inference_version_mismatch_dict = {"2.12.0": "2.12.1", "2.16.2": "2.16.1"}
         self.inference_framework_version = training_inference_version_mismatch_dict.get(
             framework_version, framework_version
         )
@@ -234,6 +239,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -285,6 +292,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -325,6 +335,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
 
     def deploy(
@@ -346,6 +358,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
         explainer_config=None,
+        update_endpoint: Optional[bool] = False,
         **kwargs,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
@@ -371,6 +384,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
+            update_endpoint=update_endpoint,
             **kwargs,
         )
 
@@ -389,6 +403,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """Prepare the container definition.
 
@@ -465,6 +480,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             model_data,
             env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def _get_container_env(self):

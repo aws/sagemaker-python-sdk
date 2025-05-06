@@ -58,6 +58,8 @@ def test_jumpstart_default_deserializers(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
 
@@ -98,4 +100,6 @@ def test_jumpstart_deserializer_options(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )

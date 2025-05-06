@@ -60,6 +60,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     region = "us-west-2"
     sagemaker_session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -77,6 +80,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -95,12 +99,15 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), config_role)
+        self.assertEqual(mock_model_init.call_args[1].get("role"), config_role)
 
         assert "enable_network_isolation" not in mock_model_init.call_args[1]
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -118,6 +125,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -139,14 +147,17 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             role=override_role,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -164,6 +175,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -185,14 +197,17 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 2)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), config_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), config_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             config_enable_network_isolation,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -210,6 +225,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -233,14 +249,17 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -258,6 +277,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -279,14 +299,17 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 2)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), execution_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), execution_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             metadata_enable_network_isolation,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -304,6 +327,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
@@ -326,14 +350,17 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -351,6 +378,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -370,11 +398,14 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), execution_role)
+        self.assertEqual(mock_model_init.call_args[1].get("role"), execution_role)
         assert "enable_network_isolation" not in mock_model_init.call_args[1]
 
+    @mock.patch(
+        "sagemaker.jumpstart.model.get_jumpstart_configs", side_effect=lambda *args, **kwargs: {}
+    )
     @mock.patch("sagemaker.jumpstart.model.validate_model_id_and_get_type")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
@@ -392,6 +423,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_model_init: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
     ):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -413,10 +445,10 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
 
-        self.assertEquals(mock_model_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_model_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_model_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )

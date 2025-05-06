@@ -43,7 +43,7 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         scope="training",
         sagemaker_session=mock_session,
     )
-    assert default_training_instance_types == "ml.p3.2xlarge"
+    assert default_training_instance_types == "ml.m5.xlarge"
 
     patched_get_model_specs.assert_called_once_with(
         region=region,
@@ -51,6 +51,8 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        sagemaker_session=mock_session,
+        hub_arn=None,
     )
 
     patched_get_model_specs.reset_mock()
@@ -62,7 +64,7 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         scope="inference",
         sagemaker_session=mock_session,
     )
-    assert default_inference_instance_types == "ml.p2.xlarge"
+    assert default_inference_instance_types == "ml.m5.large"
 
     patched_get_model_specs.assert_called_once_with(
         region=region,
@@ -70,6 +72,8 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -81,13 +85,7 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         scope="training",
         sagemaker_session=mock_session,
     )
-    assert default_training_instance_types == [
-        "ml.p3.2xlarge",
-        "ml.p2.xlarge",
-        "ml.g4dn.2xlarge",
-        "ml.m5.xlarge",
-        "ml.c5.2xlarge",
-    ]
+    assert default_training_instance_types == ["ml.m5.xlarge", "ml.c5.2xlarge", "ml.m4.xlarge"]
 
     patched_get_model_specs.assert_called_once_with(
         region=region,
@@ -95,6 +93,8 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()
@@ -107,13 +107,12 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         sagemaker_session=mock_session,
     )
     assert default_inference_instance_types == [
-        "ml.p2.xlarge",
-        "ml.p3.2xlarge",
-        "ml.g4dn.xlarge",
         "ml.m5.large",
         "ml.m5.xlarge",
         "ml.c5.xlarge",
         "ml.c5.2xlarge",
+        "ml.m4.large",
+        "ml.m4.xlarge",
     ]
 
     patched_get_model_specs.assert_called_once_with(
@@ -122,6 +121,8 @@ def test_jumpstart_instance_types(patched_get_model_specs, patched_validate_mode
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
 
     patched_get_model_specs.reset_mock()

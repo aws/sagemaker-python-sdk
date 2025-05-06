@@ -55,7 +55,7 @@ jobs:
       - name: Run Codestyle & Doc Tests
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: sagemaker-python-sdk-ci-codestyle-doc-tests
+          project-name: ${{ github.event.repository.name }}-ci-codestyle-doc-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
   unit-tests:
     runs-on: ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
     strategy:
         fail-fast: false
         matrix:
-          python-version: ["py38","py39","py310","py311"]
+          python-version: ["py39","py310","py311","py312"]
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -74,7 +74,7 @@ jobs:
       - name: Run Unit Tests
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: sagemaker-python-sdk-ci-unit-tests
+          project-name: ${{ github.event.repository.name }}-ci-unit-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
           env-vars-for-codebuild: |
             PY_VERSION
@@ -93,5 +93,5 @@ jobs:
       - name: Run Integ Tests
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: sagemaker-python-sdk-ci-integ-tests
+          project-name: ${{ github.event.repository.name }}-ci-integ-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'

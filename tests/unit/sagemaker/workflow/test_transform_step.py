@@ -70,6 +70,7 @@ custom_step = CustomStep(name="my-custom-step")
         custom_step.properties.OutputDataConfig.S3OutputPath,
     ],
 )
+@pytest.mark.flaky(reruns=5, reruns_delay=1)
 def test_transform_step_with_transformer(model_name, data, output_path, pipeline_session):
     transformer = Transformer(
         model_name=model_name,

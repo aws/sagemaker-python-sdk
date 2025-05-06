@@ -30,7 +30,6 @@ import sys
 import tarfile
 import tempfile
 
-from distutils.spawn import find_executable
 from threading import Thread
 from typing import Dict, List
 from six.moves.urllib.parse import urlparse
@@ -170,7 +169,7 @@ class _SageMakerContainer(object):
             compose_cmd_prefix.extend(["docker", "compose"])
             return compose_cmd_prefix
 
-        if find_executable("docker-compose") is not None:
+        if shutil.which("docker-compose") is not None:
             logger.info("'Docker Compose' found using Docker Compose CLI.")
             compose_cmd_prefix.extend(["docker-compose"])
             return compose_cmd_prefix
@@ -474,7 +473,12 @@ class _SageMakerContainer(object):
         """
         config_path = os.path.join(self.container_root, host, "config")
 
-        resource_config = {"current_host": host, "hosts": self.hosts}
+        resource_config = {
+            "current_host": host,
+            "hosts": self.hosts,
+            "network_interface_name": "eth0",
+            "current_instance_type": self.instance_type,
+        }
         _write_json_file(os.path.join(config_path, "resourceconfig.json"), resource_config)
 
         processing_job_config = {
@@ -520,7 +524,12 @@ class _SageMakerContainer(object):
         """
         config_path = os.path.join(self.container_root, host, "input", "config")
 
-        resource_config = {"current_host": host, "hosts": self.hosts}
+        resource_config = {
+            "current_host": host,
+            "hosts": self.hosts,
+            "network_interface_name": "eth0",
+            "current_instance_type": self.instance_type,
+        }
 
         json_input_data_config = {}
         for c in input_data_config:

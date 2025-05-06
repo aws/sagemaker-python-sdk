@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
 import pytest
@@ -21,6 +22,7 @@ import yaml
 from sagemaker.serve import ModelServer
 from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_PYFUNC,
+    TENSORFLOW_SAVED_MODEL_NAME,
 )
 from sagemaker.serve.model_format.mlflow.utils import (
     _get_default_model_server_for_mlflow,
@@ -30,11 +32,12 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _get_framework_version_from_requirements,
     _get_deployment_flavor,
     _get_python_version_from_parsed_mlflow_model_file,
-    _mlflow_input_is_local_path,
     _download_s3_artifacts,
     _select_container_for_mlflow_model,
     _validate_input_for_mlflow,
     _copy_directory_contents,
+    _move_contents,
+    _get_saved_model_path_for_tensorflow_and_keras_flavor,
 )
 
 
@@ -191,17 +194,6 @@ def test_get_python_version_from_parsed_mlflow_model_file():
 
     with pytest.raises(ValueError, match=f"{MLFLOW_PYFUNC} cannot be found in MLmodel file."):
         _get_python_version_from_parsed_mlflow_model_file({})
-
-
-@patch("os.path.exists")
-def test_mlflow_input_is_local_path(mock_path_exists):
-    valid_path = "/path/to/mlflow_model"
-    mock_path_exists.side_effect = lambda path: path == valid_path
-
-    assert not _mlflow_input_is_local_path("s3://my_bucket/path/to/model")
-    assert not _mlflow_input_is_local_path("runs:/run-id/run/relative/path/to/model")
-    assert not _mlflow_input_is_local_path("/invalid/path")
-    assert _mlflow_input_is_local_path(valid_path)
 
 
 def test_download_s3_artifacts():
@@ -414,11 +406,71 @@ def test_select_container_for_mlflow_model_no_dlc_detected(
         )
 
 
+@patch("sagemaker.image_uris.retrieve")
+@patch("sagemaker.serve.model_format.mlflow.utils._cast_to_compatible_version")
+@patch("sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements")
+@patch(
+    "sagemaker.serve.model_format.mlflow.utils._get_python_version_from_parsed_mlflow_model_file"
+)
+@patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
+@patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
+def test_select_container_for_mlflow_model_no_framework_version_detected(
+    mock_generate_mlflow_artifact_path,
+    mock_get_all_flavor_metadata,
+    mock_get_python_version_from_parsed_mlflow_model_file,
+    mock_get_framework_version_from_requirements,
+    mock_cast_to_compatible_version,
+    mock_image_uris_retrieve,
+):
+    mlflow_model_src_path = "/path/to/mlflow_model"
+    deployment_flavor = "pytorch"
+    region = "us-west-2"
+    instance_type = "ml.m5.xlarge"
+
+    mock_requirements_path = "/path/to/requirements.txt"
+    mock_metadata_path = "/path/to/mlmodel"
+    mock_flavor_metadata = {"pytorch": {"some_key": "some_value"}}
+    mock_python_version = "3.8.6"
+
+    mock_generate_mlflow_artifact_path.side_effect = lambda path, artifact: (
+        mock_requirements_path if artifact == "requirements.txt" else mock_metadata_path
+    )
+    mock_get_all_flavor_metadata.return_value = mock_flavor_metadata
+    mock_get_python_version_from_parsed_mlflow_model_file.return_value = mock_python_version
+    mock_get_framework_version_from_requirements.return_value = None
+
+    with pytest.raises(
+        ValueError,
+        match="Unable to auto detect framework version. Please provide framework "
+        "pytorch as part of the requirements.txt file for deployment flavor "
+        "pytorch",
+    ):
+        _select_container_for_mlflow_model(
+            mlflow_model_src_path, deployment_flavor, region, instance_type
+        )
+
+        mock_generate_mlflow_artifact_path.assert_any_call(
+            mlflow_model_src_path, "requirements.txt"
+        )
+        mock_generate_mlflow_artifact_path.assert_any_call(mlflow_model_src_path, "MLmodel")
+        mock_get_all_flavor_metadata.assert_called_once_with(mock_metadata_path)
+        mock_get_framework_version_from_requirements.assert_called_once_with(
+            deployment_flavor, mock_requirements_path
+        )
+        mock_cast_to_compatible_version.assert_not_called()
+        mock_image_uris_retrieve.assert_not_called()
+
+
 def test_validate_input_for_mlflow():
-    _validate_input_for_mlflow(ModelServer.TORCHSERVE)
+    _validate_input_for_mlflow(ModelServer.TORCHSERVE, "pytorch")
 
     with pytest.raises(ValueError):
-        _validate_input_for_mlflow(ModelServer.DJL_SERVING)
+        _validate_input_for_mlflow(ModelServer.DJL_SERVING, "pytorch")
+
+
+def test_validate_input_for_mlflow_non_supported_flavor_with_tf_serving():
+    with pytest.raises(ValueError):
+        _validate_input_for_mlflow(ModelServer.TENSORFLOW_SERVING, "pytorch")
 
 
 @patch("sagemaker.serve.model_format.mlflow.utils.shutil.copy2")
@@ -472,3 +524,68 @@ def test_copy_directory_contents_handles_same_src_dst(
     mock_os_walk.assert_not_called()
     mock_os_makedirs.assert_not_called()
     mock_shutil_copy2.assert_not_called()
+
+
+@patch("os.path.abspath")
+@patch("os.walk")
+def test_get_saved_model_path_found(mock_os_walk, mock_os_abspath):
+    mock_os_walk.return_value = [
+        ("/root/folder1", ("subfolder",), ()),
+        ("/root/folder1/subfolder", (), (TENSORFLOW_SAVED_MODEL_NAME,)),
+    ]
+    expected_path = "/root/folder1/subfolder"
+    mock_os_abspath.return_value = expected_path
+
+    # Call the function
+    result = _get_saved_model_path_for_tensorflow_and_keras_flavor("/root/folder1")
+
+    # Assertions
+    mock_os_walk.assert_called_once_with("/root/folder1")
+    mock_os_abspath.assert_called_once_with("/root/folder1/subfolder")
+    assert result == expected_path
+
+
+@patch("os.path.abspath")
+@patch("os.walk")
+def test_get_saved_model_path_not_found(mock_os_walk, mock_os_abspath):
+    mock_os_walk.return_value = [
+        ("/root/folder2", ("subfolder",), ()),
+        ("/root/folder2/subfolder", (), ("not_saved_model.pb",)),
+    ]
+
+    result = _get_saved_model_path_for_tensorflow_and_keras_flavor("/root/folder2")
+
+    mock_os_walk.assert_called_once_with("/root/folder2")
+    mock_os_abspath.assert_not_called()
+    assert result is None
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.move")
+@patch("sagemaker.serve.model_format.mlflow.utils.Path.iterdir")
+@patch("sagemaker.serve.model_format.mlflow.utils.Path.mkdir")
+def test_move_contents_handles_same_src_dst(mock_mkdir, mock_iterdir, mock_shutil_move):
+    src_dir = "/fake/source/dir"
+    dest_dir = "/fake/source/./dir"
+
+    mock_iterdir.return_value = []
+
+    _move_contents(src_dir, dest_dir)
+
+    mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+    mock_shutil_move.assert_not_called()
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.shutil.move")
+@patch("sagemaker.serve.model_format.mlflow.utils.Path.iterdir")
+@patch("sagemaker.serve.model_format.mlflow.utils.Path.mkdir")
+def test_move_contents_with_actual_files(mock_mkdir, mock_iterdir, mock_shutil_move):
+    src_dir = Path("/fake/source/dir")
+    dest_dir = Path("/fake/destination/dir")
+
+    file_path = src_dir / "testfile.txt"
+    mock_iterdir.return_value = [file_path]
+
+    _move_contents(src_dir, dest_dir)
+
+    mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+    mock_shutil_move.assert_called_once_with(str(file_path), str(dest_dir / "testfile.txt"))

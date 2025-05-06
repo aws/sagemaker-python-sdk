@@ -33,7 +33,11 @@ logger = logging.getLogger(__name__)
 
 
 def test_model_builder_happy_path_with_only_model_id_text_generation(sagemaker_session):
-    model_builder = ModelBuilder(model="HuggingFaceH4/zephyr-7b-beta")
+    model_builder = ModelBuilder(
+        model="HuggingFaceH4/zephyr-7b-beta",
+        sagemaker_session=sagemaker_session,
+        instance_type=None,
+    )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
@@ -47,7 +51,9 @@ def test_model_builder_happy_path_with_only_model_id_text_generation(sagemaker_s
 
 def test_model_builder_negative_path(sagemaker_session):
     # A model-task combo unsupported by both the local and remote schema fallback options. (eg: text-to-video)
-    model_builder = ModelBuilder(model="ByteDance/AnimateDiff-Lightning")
+    model_builder = ModelBuilder(
+        model="ByteDance/AnimateDiff-Lightning", sagemaker_session=sagemaker_session
+    )
     with pytest.raises(
         TaskNotFoundException,
         match="Error Message: HuggingFace Schema builder samples for text-to-video could not be found locally or "
@@ -86,6 +92,7 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
         model=model_id,
         model_metadata={"HF_TASK": task_provided},
         instance_type=instance_type_provided,
+        sagemaker_session=sagemaker_session,
     )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
@@ -111,13 +118,13 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
             if container_startup_timeout:
                 predictor = model.deploy(
                     role=role_arn,
-                    instance_count=1,
+                    initial_instance_count=1,
                     instance_type=instance_type_provided,
                     container_startup_health_check_timeout=container_startup_timeout,
                 )
             else:
                 predictor = model.deploy(
-                    role=role_arn, instance_count=1, instance_type=instance_type_provided
+                    role=role_arn, initial_instance_count=1, instance_type=instance_type_provided
                 )
 
             predicted_outputs = predictor.predict(inputs)
@@ -162,6 +169,7 @@ def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
         model=model_id,
         model_metadata={"HF_TASK": task_provided},
         instance_type=instance_type_provided,
+        sagemaker_session=sagemaker_session,
     )
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
@@ -181,7 +189,7 @@ def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
 
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             predictor = model.deploy(
-                role=role_arn, instance_count=1, instance_type=instance_type_provided
+                role=role_arn, initial_instance_count=1, instance_type=instance_type_provided
             )
 
             predicted_outputs = predictor.predict(inputs)
@@ -217,6 +225,7 @@ def test_model_builder_with_task_provided_remote_schema_mode_asr(
         model=model_id,
         model_metadata={"HF_TASK": task_provided},
         instance_type=instance_type_provided,
+        sagemaker_session=sagemaker_session,
     )
     model = model_builder.build(sagemaker_session=sagemaker_session)
 
@@ -231,7 +240,9 @@ def test_model_builder_with_task_provided_remote_schema_mode_asr(
 
 def test_model_builder_negative_path_with_invalid_task(sagemaker_session):
     model_builder = ModelBuilder(
-        model="bert-base-uncased", model_metadata={"HF_TASK": "invalid-task"}
+        model="bert-base-uncased",
+        model_metadata={"HF_TASK": "invalid-task"},
+        sagemaker_session=sagemaker_session,
     )
 
     with pytest.raises(

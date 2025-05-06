@@ -62,6 +62,7 @@ def _construct_payload(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    alias: Optional[str] = None,
 ) -> Optional[JumpStartSerializablePayload]:
     """Returns example payload from prompt.
 
@@ -102,7 +103,9 @@ def _construct_payload(
     if payloads is None or len(payloads) == 0:
         return None
 
-    payload_to_use: JumpStartSerializablePayload = list(payloads.values())[0]
+    payload_to_use: JumpStartSerializablePayload = (
+        payloads[alias] if alias else list(payloads.values())[0]
+    )
 
     prompt_key: Optional[str] = payload_to_use.prompt_key
     if prompt_key is None:

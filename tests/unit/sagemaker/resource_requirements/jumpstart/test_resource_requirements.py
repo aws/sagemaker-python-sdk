@@ -56,6 +56,8 @@ def test_jumpstart_resource_requirements(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.reset_mock()
 
@@ -76,6 +78,7 @@ def test_jumpstart_resource_requirements_instance_type_variants(patched_get_mode
         scope="inference",
         sagemaker_session=mock_session,
         instance_type="ml.g5.xlarge",
+        hub_arn=None,
     )
     assert default_inference_resource_requirements.requests == {
         "memory": 81999,
@@ -89,6 +92,7 @@ def test_jumpstart_resource_requirements_instance_type_variants(patched_get_mode
         scope="inference",
         sagemaker_session=mock_session,
         instance_type="ml.g5.555xlarge",
+        hub_arn=None,
     )
     assert default_inference_resource_requirements.requests == {
         "memory": 81999,
@@ -102,6 +106,7 @@ def test_jumpstart_resource_requirements_instance_type_variants(patched_get_mode
         scope="inference",
         sagemaker_session=mock_session,
         instance_type="ml.f9.555xlarge",
+        hub_arn=None,
     )
     assert default_inference_resource_requirements.requests == {
         "memory": 81999,
@@ -138,6 +143,8 @@ def test_jumpstart_no_supported_resource_requirements(
         version=model_version,
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
     patched_get_model_specs.reset_mock()
 

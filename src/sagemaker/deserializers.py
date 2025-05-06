@@ -31,8 +31,10 @@ from sagemaker.base_deserializers import (  # noqa: F401 # pylint: disable=W0611
     StreamDeserializer,
     StringDeserializer,
     TorchTensorDeserializer,
+    RecordDeserializer,
 )
 
+from sagemaker.deprecations import deprecated_class
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -43,6 +45,7 @@ def retrieve_options(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
@@ -56,6 +59,8 @@ def retrieve_options(
             retrieve the supported deserializers. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             supported deserializers. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -80,11 +85,12 @@ def retrieve_options(
         )
 
     return artifacts._retrieve_deserializer_options(
-        model_id,
-        model_version,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
     )
 
@@ -93,10 +99,12 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
+    config_name: Optional[str] = None,
 ) -> BaseDeserializer:
     """Retrieves the default deserializer for the model matching the given arguments.
 
@@ -107,6 +115,8 @@ def retrieve_default(
             retrieve the default deserializer. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default deserializer. (Default: None).
+        hub_arn (str): The arn of the SageMaker Hub for which to retrieve
+            model details from. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -118,6 +128,7 @@ def retrieve_default(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
     Returns:
         BaseDeserializer: The default deserializer to use for the model.
 
@@ -131,11 +142,16 @@ def retrieve_default(
         )
 
     return artifacts._retrieve_default_deserializer(
-        model_id,
-        model_version,
-        region,
-        tolerate_vulnerable_model,
-        tolerate_deprecated_model,
+        model_id=model_id,
+        model_version=model_version,
+        hub_arn=hub_arn,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         model_type=model_type,
+        config_name=config_name,
     )
+
+
+record_deserializer = deprecated_class(RecordDeserializer, "record_deserializer")

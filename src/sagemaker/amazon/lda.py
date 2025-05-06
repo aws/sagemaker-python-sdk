@@ -18,11 +18,12 @@ from typing import Union, Optional
 
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
-from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
+from sagemaker.deserializers import RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
+from sagemaker.serializers import RecordSerializer
 from sagemaker.session import Session
 from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -59,7 +60,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
         max_restarts: Optional[int] = None,
         max_iterations: Optional[int] = None,
         tol: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ):
         """Latent Dirichlet Allocation (LDA) is :class:`Estimator` used for unsupervised learning.
 
@@ -159,7 +160,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(  # pylint: disable=signature-differs
@@ -236,7 +237,7 @@ class LDAModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for LDAModel class.
 
@@ -269,5 +270,5 @@ class LDAModel(Model):
             role,
             predictor_cls=LDAPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

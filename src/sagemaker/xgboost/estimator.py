@@ -51,7 +51,7 @@ class XGBoost(Framework):
         py_version: str = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         image_uri_region: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         """An estimator that executes an XGBoost-based SageMaker Training Job.
 
@@ -78,8 +78,8 @@ class XGBoost(Framework):
             source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI) to
                 a directory with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker.
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory
+                are preserved when training on Amazon SageMaker.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
                 that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code
@@ -137,7 +137,7 @@ class XGBoost(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``XGBoostModel`` object that can be deployed to an ``Endpoint``.
 
@@ -188,7 +188,7 @@ class XGBoost(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod

@@ -126,6 +126,7 @@ class MultiDataModel(Model):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """Return a container definition set.
 
@@ -154,6 +155,7 @@ class MultiDataModel(Model):
             model_data_url=self.model_data_prefix,
             container_mode=self.container_mode,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def deploy(
@@ -221,7 +223,7 @@ class MultiDataModel(Model):
                 Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of
+            Optional[Callable[[string, sagemaker.session.Session], Any]]: Invocation of
                 ``self.predictor_cls`` on the created endpoint name,
                 if ``self.predictor_cls``
                 is not None. Otherwise, return None.

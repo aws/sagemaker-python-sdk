@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
@@ -23,12 +23,17 @@ from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.fw_utils import model_code_key_prefix, validate_version_or_image_args
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import NumpySerializer
 from sagemaker.sklearn import defaults
 from sagemaker.utils import to_string
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 logger = logging.getLogger("sagemaker")
 
@@ -87,9 +92,9 @@ class SKLearnModel(FrameworkModel):
         framework_version: Optional[str] = None,
         py_version: str = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = SKLearnPredictor,
+        predictor_cls: Optional[Callable] = SKLearnPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize an SKLearnModel.
 
@@ -117,7 +122,7 @@ class SKLearnModel(FrameworkModel):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
@@ -172,6 +177,8 @@ class SKLearnModel(FrameworkModel):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -223,6 +230,9 @@ class SKLearnModel(FrameworkModel):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -263,6 +273,8 @@ class SKLearnModel(FrameworkModel):
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
 
     def prepare_container_def(
@@ -271,6 +283,7 @@ class SKLearnModel(FrameworkModel):
         accelerator_type=None,
         serverless_inference_config=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """Container definition with framework configuration set in model environment variables.
 
@@ -320,6 +333,7 @@ class SKLearnModel(FrameworkModel):
             model_data_uri,
             deploy_env,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def serving_image_uri(self, region_name, instance_type, serverless_inference_config=None):

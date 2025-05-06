@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional, Union, List, Dict
+from typing import Callable, Optional, Union, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
@@ -26,12 +26,17 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.session import Session
 from sagemaker.utils import to_string, format_tags
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 logger = logging.getLogger("sagemaker")
 
@@ -118,7 +123,7 @@ class HuggingFaceModel(FrameworkModel):
         pytorch_version: Optional[str] = None,
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = HuggingFacePredictor,
+        predictor_cls: Optional[Callable] = HuggingFacePredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs,
     ):
@@ -153,7 +158,7 @@ class HuggingFaceModel(FrameworkModel):
                 If not specified, a default image for PyTorch will be used. If ``framework_version``
                 or ``py_version`` are ``None``, then ``image_uri`` is required. If
                 also ``None``, then a ``ValueError`` will be raised.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
@@ -213,6 +218,7 @@ class HuggingFaceModel(FrameworkModel):
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
         explainer_config=None,
+        update_endpoint: Optional[bool] = False,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -291,6 +297,11 @@ class HuggingFaceModel(FrameworkModel):
                 would like to deploy the model and endpoint with recommended parameters.
             explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
                 configuration for use with Amazon SageMaker Clarify. (default: None)
+            update_endpoint (Optional[bool]):
+                Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint
+                and delete resources corresponding to the previous EndpointConfig. Default: False
+                Note: Currently this is supported for single model endpoints
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -299,7 +310,7 @@ class HuggingFaceModel(FrameworkModel):
                 - If a wrong type of object is provided as serverless inference config or async
                     inference config
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of
+            Optional[Callable[[string, sagemaker.session.Session], Any]]: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
@@ -330,10 +341,8 @@ class HuggingFaceModel(FrameworkModel):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
-            endpoint_logging=kwargs.get("endpoint_logging", False),
-            endpoint_type=kwargs.get("endpoint_type", None),
-            resources=kwargs.get("resources", None),
-            managed_instance_scaling=kwargs.get("managed_instance_scaling", None),
+            update_endpoint=update_endpoint,
+            **kwargs,
         )
 
     def register(
@@ -361,6 +370,8 @@ class HuggingFaceModel(FrameworkModel):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -413,6 +424,9 @@ class HuggingFaceModel(FrameworkModel):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -461,6 +475,8 @@ class HuggingFaceModel(FrameworkModel):
             data_input_configuration=data_input_configuration,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_life_cycle=model_life_cycle,
+            model_card=model_card,
         )
 
     def prepare_container_def(
@@ -470,6 +486,7 @@ class HuggingFaceModel(FrameworkModel):
         serverless_inference_config=None,
         inference_tool=None,
         accept_eula=None,
+        model_reference_arn=None,
     ):
         """A container definition with framework configuration set in model environment variables.
 
@@ -523,7 +540,9 @@ class HuggingFaceModel(FrameworkModel):
             deploy_image,
             self.repacked_model_data or self.model_data,
             deploy_env,
+            image_config=self.image_config,
             accept_eula=accept_eula,
+            model_reference_arn=model_reference_arn,
         )
 
     def serving_image_uri(

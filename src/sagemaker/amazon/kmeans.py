@@ -17,11 +17,12 @@ from typing import Union, Optional, List
 
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
-from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt, isin, ge, le
+from sagemaker.deserializers import RecordDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
+from sagemaker.serializers import RecordSerializer
 from sagemaker.session import Session
 from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -75,7 +76,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         epochs: Optional[int] = None,
         center_factor: Optional[int] = None,
         eval_metrics: Optional[List[Union[str, PipelineVariable]]] = None,
-        **kwargs
+        **kwargs,
     ):
         """A k-means clustering class :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`.
 
@@ -184,7 +185,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             self.role,
             self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs
+            **kwargs,
         )
 
     def _prepare_for_training(self, records, mini_batch_size=5000, job_name=None):
@@ -261,7 +262,7 @@ class KMeansModel(Model):
         model_data: Union[str, PipelineVariable],
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization for KMeansModel class.
 
@@ -294,5 +295,5 @@ class KMeansModel(Model):
             role,
             predictor_cls=KMeansPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

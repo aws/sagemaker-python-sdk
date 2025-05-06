@@ -32,6 +32,7 @@ def retrieve_all_examples(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     serialize: bool = False,
     tolerate_vulnerable_model: bool = False,
@@ -78,11 +79,12 @@ def retrieve_all_examples(
 
     unserialized_payload_dict: Optional[Dict[str, JumpStartSerializablePayload]] = (
         artifacts._retrieve_example_payloads(
-            model_id,
-            model_version,
-            region,
-            tolerate_vulnerable_model,
-            tolerate_deprecated_model,
+            model_id=model_id,
+            model_version=model_version,
+            region=region,
+            hub_arn=hub_arn,
+            tolerate_vulnerable_model=tolerate_vulnerable_model,
+            tolerate_deprecated_model=tolerate_deprecated_model,
             sagemaker_session=sagemaker_session,
             model_type=model_type,
         )
@@ -123,6 +125,7 @@ def retrieve_example(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    hub_arn: Optional[str] = None,
     model_type: Optional[JumpStartModelType] = JumpStartModelType.OPEN_WEIGHTS,
     serialize: bool = False,
     tolerate_vulnerable_model: bool = False,
@@ -168,6 +171,7 @@ def retrieve_example(
         region=region,
         model_id=model_id,
         model_version=model_version,
+        hub_arn=hub_arn,
         model_type=model_type,
         serialize=serialize,
         tolerate_vulnerable_model=tolerate_vulnerable_model,

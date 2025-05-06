@@ -54,6 +54,8 @@ def test_jumpstart_common_model_uri(
         version="*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -72,6 +74,8 @@ def test_jumpstart_common_model_uri(
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -91,6 +95,8 @@ def test_jumpstart_common_model_uri(
         version="*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -110,6 +116,8 @@ def test_jumpstart_common_model_uri(
         version="1.*",
         s3_client=mock_client,
         model_type=JumpStartModelType.OPEN_WEIGHTS,
+        hub_arn=None,
+        sagemaker_session=mock_session,
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
@@ -176,4 +184,7 @@ def test_jumpstart_artifact_bucket_override(
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
     )
-    assert uri == "s3://some-cool-bucket-name/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        uri
+        == "s3://some-cool-bucket-name/pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz"
+    )

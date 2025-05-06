@@ -19,6 +19,8 @@ import os
 import io
 import numpy as np
 
+from sagemaker.lineage.artifact import Artifact
+from sagemaker.lineage.association import Association
 from sagemaker.s3 import S3Uploader
 from sagemaker.serve.builder.model_builder import ModelBuilder, Mode
 from sagemaker.serve.builder.schema_builder import SchemaBuilder, CustomPayloadTranslator
@@ -29,11 +31,15 @@ from tests.integ.sagemaker.serve.constants import (
     PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
     # SERVE_LOCAL_CONTAINER_TIMEOUT,
-    PYTHON_VERSION_IS_NOT_310,
+    # PYTHON_VERSION_IS_NOT_310,
 )
 from tests.integ.timeout import timeout
 from tests.integ.utils import cleanup_model_resources
 import logging
+
+from sagemaker.serve.utils.lineage_constants import (
+    MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -160,9 +166,9 @@ def model_builder(request):
 #                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
-    reason="The goal of these test are to test the serving components of our feature",
+@pytest.mark.skip(
+    reason="Testing against Python version 310 which is not supported anymore"
+    " https://github.com/aws/deep-learning-containers/blob/master/available_images.md",
 )
 def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     sagemaker_session,
@@ -205,6 +211,19 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
             predictor = model.deploy(instance_type=cpu_instance_type, initial_instance_count=1)
             logger.info("Endpoint successfully deployed.")
             predictor.predict(test_image)
+            model_data_artifact = None
+            for artifact in Artifact.list(
+                source_uri=model_builder.s3_upload_path, sagemaker_session=sagemaker_session
+            ):
+                model_data_artifact = artifact
+            for association in Association.list(
+                destination_arn=model_data_artifact.artifact_arn,
+                sagemaker_session=sagemaker_session,
+            ):
+                assert (
+                    association.source_type == MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE
+                )
+                break
         except Exception as e:
             caught_ex = e
         finally:
@@ -214,9 +233,4 @@ def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
                 endpoint_name=model.endpoint_name,
             )
             if caught_ex:
-                logger.exception(caught_ex)
-                ignore_if_worker_dies = "Worker died." in str(caught_ex)
-                # https://github.com/pytorch/serve/issues/3032
-                assert (
-                    ignore_if_worker_dies
-                ), f"{caught_ex} was thrown when running pytorch squeezenet sagemaker endpoint test"
+                raise caught_ex

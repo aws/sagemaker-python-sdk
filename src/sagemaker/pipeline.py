@@ -13,10 +13,12 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from typing import Optional, Dict, List, Union
+from typing import Callable, Optional, Dict, List, Union
 
 import sagemaker
 from sagemaker import ModelMetrics, Model
+from sagemaker import local
+from sagemaker import session
 from sagemaker.config import (
     ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
     MODEL_VPC_CONFIG_PATH,
@@ -26,6 +28,11 @@ from sagemaker.config import (
 )
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model import ModelPackage
+from sagemaker.model_card import (
+    ModelCard,
+    ModelPackageModelCard,
+)
 from sagemaker.session import Session
 from sagemaker.utils import (
     name_from_image,
@@ -49,7 +56,7 @@ class PipelineModel(object):
         self,
         models: List[Model],
         role: str = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
         sagemaker_session: Optional[Session] = None,
@@ -70,7 +77,7 @@ class PipelineModel(object):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            predictor_cls (callable[string, sagemaker.session.Session]): A
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
@@ -225,7 +232,7 @@ class PipelineModel(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
 
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of
+            Optional[Callable[[string, sagemaker.session.Session], Any]]: Invocation of
             ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
             is not None. Otherwise, return None.
         """
@@ -361,6 +368,7 @@ class PipelineModel(object):
         data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -412,6 +420,8 @@ class PipelineModel(object):
                 validation. Values can be "All" or "None" (default: None).
             source_uri (str or PipelineVariable): The URI of the source for the model package
                 (default: None).
+            model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
+                quantitative information about a model (default: None).
 
         Returns:
             If ``sagemaker_session`` is a ``PipelineSession`` instance, returns pipeline step
@@ -460,9 +470,21 @@ class PipelineModel(object):
             task=task,
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
+            model_card=model_card,
         )
 
-        self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)
+        model_package = self.sagemaker_session.create_model_package_from_containers(
+            **model_pkg_args
+        )
+
+        if model_package is not None and "ModelPackageArn" in model_package:
+            return ModelPackage(
+                role=self.role,
+                model_package_arn=model_package.get("ModelPackageArn"),
+                sagemaker_session=self.sagemaker_session,
+                predictor_cls=self.predictor_cls,
+            )
+        return None
 
     def transformer(
         self,
@@ -540,3 +562,16 @@ class PipelineModel(object):
             raise ValueError("The SageMaker model must be created before attempting to delete.")
 
         self.sagemaker_session.delete_model(self.name)
+
+    def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
+        """Set ``self.sagemaker_session`` to ``LocalSession`` or ``Session`` if it's not already.
+
+        The type of session object is determined by the instance type.
+        """
+        if self.sagemaker_session:
+            return
+
+        if instance_type in ("local", "local_gpu"):
+            self.sagemaker_session = local.LocalSession(sagemaker_config=self._sagemaker_config)
+        else:
+            self.sagemaker_session = session.Session(sagemaker_config=self._sagemaker_config)

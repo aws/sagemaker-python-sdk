@@ -854,17 +854,14 @@ def test_validate_smdataparallel_args_raises():
 
     # Cases {PT|TF2}
     # 1. None instance type
-    # 2. incorrect instance type
-    # 3. incorrect python version
-    # 4. incorrect framework version
+    # 2. incorrect python version
+    # 3. incorrect framework version
 
     bad_args = [
         (None, "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
-        ("ml.p3.2xlarge", "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
         ("ml.p3dn.24xlarge", "tensorflow", "2.3.1", "py2", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "1.3.1", "py3", smdataparallel_enabled),
         (None, "pytorch", "1.6.0", "py3", smdataparallel_enabled),
-        ("ml.p3.2xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
         ("ml.p3dn.24xlarge", "pytorch", "1.6.0", "py2", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.5.0", "py3", smdataparallel_enabled),
     ]
@@ -963,74 +960,6 @@ def test_validate_smdataparallel_args_not_raises():
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(
             instance_type, framework_name, framework_version, py_version, distribution
-        )
-
-
-def test_validate_pytorchddp_not_raises():
-    # Case 1: Framework is not PyTorch
-    fw_utils.validate_pytorch_distribution(
-        distribution=None,
-        framework_name="tensorflow",
-        framework_version="2.9.1",
-        py_version="py3",
-        image_uri="custom-container",
-    )
-    # Case 2: Framework is PyTorch, but distribution is not PyTorchDDP
-    pytorchddp_disabled = {"pytorchddp": {"enabled": False}}
-    fw_utils.validate_pytorch_distribution(
-        distribution=pytorchddp_disabled,
-        framework_name="pytorch",
-        framework_version="1.10",
-        py_version="py3",
-        image_uri="custom-container",
-    )
-    # Case 3: Framework is PyTorch, Distribution is PyTorchDDP enabled, supported framework and py versions
-    pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
-    pytorchddp_supported_fw_versions = [
-        "1.10",
-        "1.10.0",
-        "1.10.2",
-        "1.11",
-        "1.11.0",
-        "1.12",
-        "1.12.0",
-        "1.12.1",
-        "1.13.1",
-        "2.0.0",
-        "2.0.1",
-        "2.1.0",
-        "2.2.0",
-    ]
-    for framework_version in pytorchddp_supported_fw_versions:
-        fw_utils.validate_pytorch_distribution(
-            distribution=pytorchddp_enabled,
-            framework_name="pytorch",
-            framework_version=framework_version,
-            py_version="py3",
-            image_uri="custom-container",
-        )
-
-
-def test_validate_pytorchddp_raises():
-    pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
-    # Case 1: Unsupported framework version
-    with pytest.raises(ValueError):
-        fw_utils.validate_pytorch_distribution(
-            distribution=pytorchddp_enabled,
-            framework_name="pytorch",
-            framework_version="1.8",
-            py_version="py3",
-            image_uri=None,
-        )
-
-    # Case 2: Unsupported Py version
-    with pytest.raises(ValueError):
-        fw_utils.validate_pytorch_distribution(
-            distribution=pytorchddp_enabled,
-            framework_name="pytorch",
-            framework_version="1.10",
-            py_version="py2",
-            image_uri=None,
         )
 
 

@@ -1,5 +1,7 @@
 tox==3.24.5
-flake8==4.0.1
+numpy==1.26.4
+build[virtualenv]==1.2.1
+flake8==7.1.2
 pytest==6.2.5
 pytest-cov==3.0.0
 pytest-rerunfailures==10.2
@@ -12,27 +14,41 @@ awslogs==0.14.0
 black==24.3.0
 stopit==1.1.2
 # Update tox.ini to have correct version of airflow constraints file
-apache-airflow==2.9.0
+apache-airflow==2.10.4
 apache-airflow-providers-amazon==7.2.1
 attrs>=23.1.0,<24
-fabric==2.6.0
-requests==2.31.0
+fabric==3.2.2
+requests==2.32.2
 sagemaker-experiments==0.1.35
-Jinja2==3.1.3
+Jinja2==3.1.6
 pyvis==0.2.1
-pandas>=1.3.5,<1.5
+pandas==1.4.4
 scikit-learn==1.3.0
 cloudpickle==2.2.1
-PyYAML==6.0
+jsonpickle<4.0.0
+PyYAML>=6.0.1
 # TODO find workaround
 xgboost>=1.6.2,<=1.7.6
 pillow>=10.0.1,<=11
-transformers>=4.36.0
+opentelemetry-proto==1.27.0
+protobuf==4.25.5
+tensorboard>=2.16.2,<=2.18.0
+transformers==4.48.0
 sentencepiece==0.1.99
 # https://github.com/triton-inference-server/server/issues/6246
 tritonclient[http]<2.37.0
-onnx>=1.15.0
+onnx==1.17.0
 # tf2onnx==1.15.1
 nbformat>=5.9,<6
 accelerate>=0.24.1,<=0.27.0
 schema==0.7.5
+tensorflow>=2.16.2,<=2.18.0
+mlflow>=2.12.2,<2.13
+huggingface_hub==0.26.2
+uvicorn>=0.30.1
+fastapi==0.115.4
+nest-asyncio
+sagemaker-mlflow>=0.1.0
+deepdiff>=8.0.0
+orderly-set<5.4.0
+lexicon
