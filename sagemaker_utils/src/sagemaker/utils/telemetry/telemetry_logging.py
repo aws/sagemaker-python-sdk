@@ -21,7 +21,8 @@ import functools
 import requests
 
 import boto3
-#from sagemaker.session import Session
+
+# from sagemaker.session import Session
 from sagemaker_core.helper.session_helper import Session
 from sagemaker.utils.config.config_manager import SageMakerConfig
 from sagemaker.utils.config.config_schema import TELEMETRY_OPT_OUT_PATH

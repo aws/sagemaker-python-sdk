@@ -12,10 +12,16 @@ from platformdirs import site_config_dir, user_config_dir
 from botocore.utils import merge_dicts
 from six.moves.urllib.parse import urlparse
 from sagemaker.utils.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
-from sagemaker.utils.config.config_utils import non_repeating_log_factory, get_sagemaker_config_logger, _log_sagemaker_config_single_substitution, _log_sagemaker_config_merge
+from sagemaker.utils.config.config_utils import (
+    non_repeating_log_factory,
+    get_sagemaker_config_logger,
+    _log_sagemaker_config_single_substitution,
+    _log_sagemaker_config_merge,
+)
 
 logger = get_sagemaker_config_logger()
 log_info_function = non_repeating_log_factory(logger, "info")
+
 
 class SageMakerConfig:
     _APP_NAME = "sagemaker"
@@ -37,7 +43,7 @@ class SageMakerConfig:
         self,
         additional_config_paths: Optional[List[str]] = None,
         s3_resource=None,
-        repeat_log: bool = False
+        repeat_log: bool = False,
     ) -> dict:
         default_config_path = os.getenv(
             self.ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE, self._DEFAULT_ADMIN_CONFIG_FILE_PATH
@@ -165,10 +171,10 @@ class SageMakerConfig:
             ValueError if the dictionary structure does not match the nested_keys
         """
         if (
-                dictionary is not None
-                and isinstance(dictionary, dict)
-                and nested_keys is not None
-                and len(nested_keys) > 0
+            dictionary is not None
+            and isinstance(dictionary, dict)
+            and nested_keys is not None
+            and len(nested_keys) > 0
         ):
 
             current_section = dictionary
@@ -203,17 +209,17 @@ class SageMakerConfig:
             dictionary = {}
 
         if (
-                dictionary is not None
-                and isinstance(dictionary, dict)
-                and nested_keys is not None
-                and len(nested_keys) > 0
+            dictionary is not None
+            and isinstance(dictionary, dict)
+            and nested_keys is not None
+            and len(nested_keys) > 0
         ):
             current_section = dictionary
             for key in nested_keys[:-1]:
                 if (
-                        key not in current_section
-                        or current_section[key] is None
-                        or not isinstance(current_section[key], dict)
+                    key not in current_section
+                    or current_section[key] is None
+                    or not isinstance(current_section[key], dict)
                 ):
                     current_section[key] = {}
                 current_section = current_section[key]
@@ -222,12 +228,12 @@ class SageMakerConfig:
         return dictionary
 
     def resolve_value_from_config(
-            self,
-            direct_input=None,
-            config_path: str = None,
-            default_value=None,
-            sagemaker_session=None,
-            sagemaker_config: dict = None,
+        self,
+        direct_input=None,
+        config_path: str = None,
+        default_value=None,
+        sagemaker_session=None,
+        sagemaker_config: dict = None,
     ):
         """Decides which value for the caller to use.
 
@@ -307,13 +313,13 @@ class SageMakerConfig:
         return copy.deepcopy(config_value)
 
     def resolve_class_attribute_from_config(
-            self,
-            clazz: Optional[type],
-            instance: Optional[object],
-            attribute: str,
-            config_path: str,
-            default_value=None,
-            sagemaker_session=None,
+        self,
+        clazz: Optional[type],
+        instance: Optional[object],
+        attribute: str,
+        config_path: str,
+        default_value=None,
+        sagemaker_session=None,
     ):
         """Utility method that merges config values to data classes.
 
@@ -378,12 +384,12 @@ class SageMakerConfig:
         return instance
 
     def resolve_nested_dict_value_from_config(
-            self,
-            dictionary: dict,
-            nested_keys: List[str],
-            config_path: str,
-            default_value: object = None,
-            sagemaker_session=None,
+        self,
+        dictionary: dict,
+        nested_keys: List[str],
+        config_path: str,
+        default_value: object = None,
+        sagemaker_session=None,
     ):
         """Utility method that sets the value of a key path in a nested dictionary .
 
@@ -431,11 +437,12 @@ class SageMakerConfig:
         return dictionary
 
     def update_list_of_dicts_with_values_from_config(
-            self, input_list,
-            config_key_path,
-            required_key_paths: List[str] = None,
-            union_key_paths: List[List[str]] = None,
-            sagemaker_session=None,
+        self,
+        input_list,
+        config_key_path,
+        required_key_paths: List[str] = None,
+        union_key_paths: List[List[str]] = None,
+        sagemaker_session=None,
     ):
         """Updates a list of dictionaries with missing values that are present in Config.
 
@@ -467,7 +474,9 @@ class SageMakerConfig:
         if not input_list:
             return
         inputs_copy = copy.deepcopy(input_list)
-        inputs_from_config = self.get_sagemaker_config_value(sagemaker_session, config_key_path) or []
+        inputs_from_config = (
+            self.get_sagemaker_config_value(sagemaker_session, config_key_path) or []
+        )
         unmodified_inputs_from_config = copy.deepcopy(inputs_from_config)
 
         for i in range(min(len(input_list), len(inputs_from_config))):
@@ -497,7 +506,9 @@ class SageMakerConfig:
             config_key_path=config_key_path,
         )
 
-    def _validate_required_paths_in_a_dict(self, source_dict, required_key_paths: List[str] = None) -> bool:
+    def _validate_required_paths_in_a_dict(
+        self, source_dict, required_key_paths: List[str] = None
+    ) -> bool:
         """Placeholder docstring"""
         if not required_key_paths:
             return True
@@ -507,7 +518,7 @@ class SageMakerConfig:
         return True
 
     def _validate_union_key_paths_in_a_dict(
-            self, source_dict, union_key_paths: List[List[str]] = None
+        self, source_dict, union_key_paths: List[List[str]] = None
     ) -> bool:
         """Placeholder docstring"""
         if not union_key_paths:
@@ -522,7 +533,7 @@ class SageMakerConfig:
         return True
 
     def update_nested_dictionary_with_values_from_config(
-            self, source_dict, config_key_path, sagemaker_session=None
+        self, source_dict, config_key_path, sagemaker_session=None
     ) -> dict:
         """Updates a nested dictionary with missing values that are present in Config.
 
@@ -537,7 +548,9 @@ class SageMakerConfig:
             dict: The merged nested dictionary that is updated with missing values that are present
             in the Config file.
         """
-        inferred_config_dict = self.get_sagemaker_config_value(sagemaker_session, config_key_path) or {}
+        inferred_config_dict = (
+            self.get_sagemaker_config_value(sagemaker_session, config_key_path) or {}
+        )
         original_config_dict_value = copy.deepcopy(inferred_config_dict)
         merge_dicts(inferred_config_dict, source_dict or {})
 
