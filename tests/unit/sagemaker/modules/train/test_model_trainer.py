@@ -92,9 +92,6 @@ DEFAULT_SOURCE_CODE = SourceCode(
     source_dir=DEFAULT_SOURCE_DIR,
     entry_script="custom_script.py",
 )
-UNSUPPORTED_SOURCE_CODE = SourceCode(
-    entry_script="train.py",
-)
 DEFAULT_ENTRYPOINT = ["/bin/bash"]
 DEFAULT_ARGUMENTS = [
     "-c",
@@ -152,7 +149,19 @@ def model_trainer():
         {
             "init_params": {
                 "training_image": DEFAULT_IMAGE,
-                "source_code": UNSUPPORTED_SOURCE_CODE,
+                "source_code": SourceCode(
+                    entry_script="train.py",
+                ),
+            },
+            "should_throw": True,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/requirements.txt",
+                    entry_script="custom_script.py",
+                ),
             },
             "should_throw": True,
         },
@@ -163,13 +172,47 @@ def model_trainer():
             },
             "should_throw": False,
         },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir=f"{DEFAULT_SOURCE_DIR}/code.tar.gz",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/code/",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/code/code.tar.gz",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
     ],
     ids=[
         "no_params",
         "training_image_and_algorithm_name",
         "only_training_image",
-        "unsupported_source_code",
-        "supported_source_code",
+        "unsupported_source_code_missing_source_dir",
+        "unsupported_source_code_s3_other_file",
+        "supported_source_code_local_dir",
+        "supported_source_code_local_tar_file",
+        "supported_source_code_s3_dir",
+        "supported_source_code_s3_tar_file",
     ],
 )
 def test_model_trainer_param_validation(test_case, modules_session):
@@ -1049,15 +1092,16 @@ def test_model_trainer_local_full_init(
 
     model_trainer.train()
 
-    assert mock_local_container.train.called_once_with(
+    mock_local_container.assert_called_once_with(
         training_job_name=unique_name,
         instance_type=compute.instance_type,
         instance_count=compute.instance_count,
         image=training_image,
         container_root=local_container_root,
         sagemaker_session=modules_session,
-        container_entry_point=DEFAULT_ENTRYPOINT,
+        container_entrypoint=DEFAULT_ENTRYPOINT,
         container_arguments=DEFAULT_ARGUMENTS,
+        input_data_config=ANY,
         hyper_parameters=hyperparameters,
         environment=environment,
     )

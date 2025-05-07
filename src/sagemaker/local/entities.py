@@ -849,10 +849,10 @@ class _LocalPipelineExecution(object):
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
                 parameter_type = default_parameters[param_name].parameter_type
-                if type(param_value) != parameter_type.python_type:  # pylint: disable=C0123
+                if not isinstance(param_value, parameter_type.python_type):
                     error_msg = self._construct_validation_exception_message(
-                        "Unexpected type for parameter '{}'. Expected {} but found "
-                        "{}.".format(param_name, parameter_type.python_type, type(param_value))
+                        f"Unexpected type for parameter '{param_name}'. Expected \
+                            {parameter_type.python_type} but found {type(param_value)}."
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
                 if param_value == "":

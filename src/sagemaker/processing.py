@@ -17,7 +17,6 @@ data pre-processing, post-processing, feature engineering, data validation, and 
 and interpretation on Amazon SageMaker.
 """
 from __future__ import absolute_import
-import json
 import logging
 import os
 import pathlib
@@ -314,16 +313,6 @@ class Processor(object):
                 "code argument has to be a valid S3 URI or local file path "
                 + "rather than a pipeline variable"
             )
-
-        if arguments is not None:
-            processed_arguments = []
-            for arg in arguments:
-                if isinstance(arg, PipelineVariable):
-                    processed_value = json.dumps(arg.expr)
-                    processed_arguments.append(processed_value)
-                else:
-                    processed_arguments.append(arg)
-            arguments = processed_arguments
 
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 

@@ -1,5 +1,38 @@
 # Changelog
 
+## v2.244.0 (2025-05-02)
+
+### Features
+
+ * support custom workflow deployment in ModelBuilder using SMD image.
+
+### Bug Fixes and Other Changes
+
+ * Add Owner ID check for bucket with path when prefix is provided
+ * Add model server timeout
+ * pin mamba version to 24.11.3-2 to avoid inconsistent test runs
+ * Update ModelTrainer to support s3 uri and tar.gz file as source_dir
+ * chore: add huggingface images
+
+## v2.243.3 (2025-04-23)
+
+### Bug Fixes and Other Changes
+
+ * update readme to reflect py312 upgrade
+ * Revert the PR changes 5122
+ * Py312 upgrade step 2: Update dependencies, integ tests and unit tests
+ * update pr test to deprecate py38 and add py312
+ * update image_uri_configs 04-16-2025 07:18:18 PST
+ * update image_uri_configs 04-15-2025 07:18:10 PST
+ * update image_uri_configs 04-11-2025 07:18:19 PST
+
+## v2.243.2 (2025-04-16)
+
+### Bug Fixes and Other Changes
+
+ * tgi image uri unit tests
+ * Fix deepdiff dependencies
+
 ## v2.243.1 (2025-04-11)
 
 ### Bug Fixes and Other Changes

@@ -107,3 +107,12 @@ def base_python_uri(repo, account, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     tag = "1.0"
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def sagemaker_distribution_uri(repo, account, tag, processor, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    if processor == "cpu":
+        tag = f"{tag}-cpu"
+    else:
+        tag = f"{tag}-gpu"
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
