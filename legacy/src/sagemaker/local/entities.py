@@ -24,12 +24,12 @@ from uuid import uuid4
 from copy import deepcopy
 from botocore.exceptions import ClientError
 
-import sagemaker.local.data
+import legacy.src.sagemaker.local.data
 
-from sagemaker.local.image import _SageMakerContainer
-from sagemaker.local.utils import copy_directory_structure, move_to_destination, get_docker_host
+from legacy.src.sagemaker.local.image import _SageMakerContainer
+from legacy.src.sagemaker.local.utils import copy_directory_structure, move_to_destination, get_docker_host
 from sagemaker.utils import DeferredError, get_config_value, format_tags
-from sagemaker.local.exceptions import StepExecutionException
+from legacy.src.sagemaker.local.exceptions import StepExecutionException
 
 logger = logging.getLogger(__name__)
 
@@ -283,7 +283,7 @@ class _LocalTransformJob(object):
     _COMPLETED = "Completed"
 
     def __init__(self, transform_job_name, model_name, local_session=None):
-        from sagemaker.local import LocalSession
+        from legacy.src.sagemaker.local import LocalSession
 
         self.local_session = local_session or LocalSession()
         local_client = self.local_session.sagemaker_client
@@ -476,12 +476,12 @@ class _LocalTransformJob(object):
             A (data source, batch provider) pair.
         """
         input_path = input_data["DataSource"]["S3DataSource"]["S3Uri"]
-        data_source = sagemaker.local.data.get_data_source_instance(input_path, self.local_session)
+        data_source = legacy.src.sagemaker.local.data.get_data_source_instance(input_path, self.local_session)
 
         split_type = input_data["SplitType"] if "SplitType" in input_data else None
-        splitter = sagemaker.local.data.get_splitter_instance(split_type)
+        splitter = legacy.src.sagemaker.local.data.get_splitter_instance(split_type)
 
-        batch_provider = sagemaker.local.data.get_batch_strategy_instance(batch_strategy, splitter)
+        batch_provider = legacy.src.sagemaker.local.data.get_batch_strategy_instance(batch_strategy, splitter)
         return data_source, batch_provider
 
     def _perform_batch_inference(self, input_data, output_data, **kwargs):
@@ -582,7 +582,7 @@ class _LocalEndpoint(object):
 
     def __init__(self, endpoint_name, endpoint_config_name, tags=None, local_session=None):
         # runtime import since there is a cyclic dependency between entities and local_session
-        from sagemaker.local import LocalSession
+        from legacy.src.sagemaker.local import LocalSession
 
         self.local_session = local_session or LocalSession()
         local_client = self.local_session.sagemaker_client
@@ -654,7 +654,7 @@ class _LocalPipeline(object):
         pipeline_description=None,
         local_session=None,
     ):
-        from sagemaker.local import LocalSession
+        from legacy.src.sagemaker.local import LocalSession
 
         self.local_session = local_session or LocalSession()
         self.pipeline = pipeline
@@ -678,7 +678,7 @@ class _LocalPipeline(object):
 
     def start(self, **kwargs):
         """Start a pipeline execution. Returns a _LocalPipelineExecution object."""
-        from sagemaker.local.pipeline import LocalPipelineExecutor
+        from legacy.src.sagemaker.local.pipeline import LocalPipelineExecutor
 
         execution_id = str(uuid4())
         execution = _LocalPipelineExecution(

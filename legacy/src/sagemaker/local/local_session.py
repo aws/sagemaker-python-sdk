@@ -30,9 +30,9 @@ from sagemaker.config import (
     load_sagemaker_config,
     validate_sagemaker_config,
 )
-from sagemaker.local.image import _SageMakerContainer
-from sagemaker.local.utils import get_docker_host
-from sagemaker.local.entities import (
+from legacy.src.sagemaker.local.image import _SageMakerContainer
+from legacy.src.sagemaker.local.utils import get_docker_host
+from legacy.src.sagemaker.local.entities import (
     _LocalEndpointConfig,
     _LocalEndpoint,
     _LocalModel,

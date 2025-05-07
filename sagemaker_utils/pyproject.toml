@@ -55,3 +55,6 @@ testpaths = ["tests"]
 
 [tool.black]
 line-length = 100
+
+[tool.setuptools]
+include-package-data = true

@@ -22,7 +22,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 
-from sagemaker.local.image import (
+from sagemaker.utils.local import (
     _Volume,
     _aws_credentials,
     _check_output,
@@ -30,7 +30,7 @@ from sagemaker.local.image import (
     _stream_output,
     _write_json_file,
 )
-from sagemaker.local.utils import check_for_studio, recursive_copy
+from sagemaker.utils.local import check_for_studio, recursive_copy
 from sagemaker.model import DIR_PARAM_NAME
 from sagemaker.modules import logger, Session
 from sagemaker.modules.configs import Channel

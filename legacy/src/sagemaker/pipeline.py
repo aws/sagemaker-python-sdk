@@ -17,7 +17,6 @@ from typing import Callable, Optional, Dict, List, Union
 
 import sagemaker
 from sagemaker import ModelMetrics, Model
-from sagemaker import local
 from sagemaker import session
 from sagemaker.config import (
     ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
@@ -38,7 +37,7 @@ from sagemaker.utils import (
     name_from_image,
     update_container_with_inference_params,
     resolve_value_from_config,
-    format_tags,
+    format_tags, local,
 )
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import PipelineVariable

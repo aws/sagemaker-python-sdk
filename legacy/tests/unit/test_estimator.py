@@ -32,7 +32,7 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.enums import JumpStartTag
 
-import sagemaker.local
+import sagemaker.utils.local
 from sagemaker import TrainingInput, utils, vpc_utils
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.debugger import (

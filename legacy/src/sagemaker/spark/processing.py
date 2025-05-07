@@ -35,7 +35,7 @@ from copy import copy
 from typing import Union, List, Dict, Optional
 
 from sagemaker import image_uris, s3
-from sagemaker.local.image import _ecr_login_if_needed, _pull_image
+from sagemaker.utils.local import _ecr_login_if_needed, _pull_image
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session

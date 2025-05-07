@@ -36,8 +36,8 @@ from six.moves.urllib.parse import urlparse
 
 import sagemaker
 from sagemaker.config.config_schema import CONTAINER_CONFIG, LOCAL
-import sagemaker.local.data
-import sagemaker.local.utils
+import legacy.src.sagemaker.local.data
+import legacy.src.sagemaker.local.utils
 import sagemaker.utils
 from sagemaker.utils import custom_extractall_tarfile
 
@@ -95,7 +95,7 @@ class _SageMakerContainer(object):
             container_entrypoint (str): the container entrypoint to execute
             container_arguments (str): the container entrypoint arguments
         """
-        from sagemaker.local.local_session import LocalSession
+        from legacy.src.sagemaker.local.local_session import LocalSession
 
         # check if docker-compose is installed
 
@@ -109,7 +109,7 @@ class _SageMakerContainer(object):
         # Since we are using a single docker network, Generate a random suffix to attach to the
         # container names. This way multiple jobs can run in parallel.
         suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
-        self.is_studio = sagemaker.local.utils.check_for_studio()
+        self.is_studio = legacy.src.sagemaker.local.utils.check_for_studio()
         if self.is_studio:
             if self.instance_count > 1:
                 raise NotImplementedError(
@@ -418,9 +418,9 @@ class _SageMakerContainer(object):
                 else:
                     host_dir, container_dir = volume.split(":")
                 if container_dir == "/opt/ml/model":
-                    sagemaker.local.utils.recursive_copy(host_dir, model_artifacts)
+                    legacy.src.sagemaker.local.utils.recursive_copy(host_dir, model_artifacts)
                 elif container_dir == "/opt/ml/output":
-                    sagemaker.local.utils.recursive_copy(host_dir, output_artifacts)
+                    legacy.src.sagemaker.local.utils.recursive_copy(host_dir, output_artifacts)
 
         # Tar Artifacts -> model.tar.gz and output.tar.gz
         model_files = [os.path.join(model_artifacts, name) for name in os.listdir(model_artifacts)]
@@ -438,7 +438,7 @@ class _SageMakerContainer(object):
             output_data = "file://%s" % compressed_artifacts
         else:
             # Now we just need to move the compressed artifacts to wherever they are required
-            output_data = sagemaker.local.utils.move_to_destination(
+            output_data = legacy.src.sagemaker.local.utils.move_to_destination(
                 compressed_artifacts,
                 output_data_config["S3OutputPath"],
                 job_name,
@@ -575,7 +575,7 @@ class _SageMakerContainer(object):
             channel_dir = os.path.join(data_dir, channel_name)
             os.mkdir(channel_dir)
 
-            data_source = sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
+            data_source = legacy.src.sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
             volumes.append(_Volume(data_source.get_root_dir(), channel=channel_name))
 
         # If there is a training script directory and it is a local directory,
@@ -622,7 +622,7 @@ class _SageMakerContainer(object):
             uri = item["DataUri"]
             input_container_dir = item["S3Input"]["LocalPath"]
 
-            data_source = sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
+            data_source = legacy.src.sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
             volumes.append(_Volume(data_source.get_root_dir(), input_container_dir))
 
         if processing_output_config and "Outputs" in processing_output_config:
@@ -652,7 +652,7 @@ class _SageMakerContainer(object):
                 output_s3_uri = item["S3Output"]["S3Uri"]
                 output_dir = os.path.join(data_dir, "output", output_name)
 
-                sagemaker.local.utils.move_to_destination(
+                legacy.src.sagemaker.local.utils.move_to_destination(
                     output_dir, output_s3_uri, "", self.sagemaker_session
                 )
 
@@ -689,7 +689,7 @@ class _SageMakerContainer(object):
         host_dir = os.path.join(self.container_root, host)
         os.makedirs(host_dir)
 
-        model_data_source = sagemaker.local.data.get_data_source_instance(
+        model_data_source = legacy.src.sagemaker.local.data.get_data_source_instance(
             model_location, self.sagemaker_session
         )
 
@@ -971,7 +971,7 @@ class _HostingContainer(Thread):
     def down(self):
         """Placeholder docstring"""
         if os.name != "nt":
-            sagemaker.local.utils.kill_child_processes(self.process.pid)
+            legacy.src.sagemaker.local.utils.kill_child_processes(self.process.pid)
         self.process.terminate()
 
 

@@ -13,7 +13,7 @@ from sagemaker.serve.utils.optimize_utils import _is_s3_uri
 from sagemaker.serve.utils.uploader import upload
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url
-from sagemaker.local.utils import get_docker_host
+from sagemaker.utils.local import get_docker_host
 import docker
 from docker.types import DeviceRequest
 

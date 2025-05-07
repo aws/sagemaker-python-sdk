@@ -29,8 +29,8 @@ from sagemaker.workflow.functions import Join, JsonGet, PropertyFile
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.execution_variables import ExecutionVariable, ExecutionVariables
 from sagemaker.workflow.pipeline import PipelineGraph
-from sagemaker.local.exceptions import StepExecutionException
-from sagemaker.local.utils import get_using_dot_notation
+from legacy.src.sagemaker.local.exceptions import StepExecutionException
+from legacy.src.sagemaker.local.utils import get_using_dot_notation
 from sagemaker.utils import unique_name_from_base
 from sagemaker.s3 import parse_s3_url, s3_path_join
 

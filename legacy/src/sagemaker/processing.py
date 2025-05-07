@@ -44,7 +44,7 @@ from sagemaker.config import (
 )
 from sagemaker.dataset_definition.inputs import DatasetDefinition, S3Input
 from sagemaker.job import _Job
-from sagemaker.local import LocalSession
+from sagemaker.utils.local import LocalSession
 from sagemaker.network import NetworkConfig
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session

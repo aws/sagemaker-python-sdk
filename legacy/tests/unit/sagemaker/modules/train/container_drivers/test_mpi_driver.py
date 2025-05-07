@@ -24,7 +24,6 @@ sys.modules["mpi_utils"] = MagicMock()
 
 from sagemaker.modules.train.container_drivers.distributed_drivers import mpi_driver  # noqa: E402
 
-
 DUMMY_MPI_COMMAND = [
     "mpirun",
     "--host",

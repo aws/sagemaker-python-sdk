@@ -61,7 +61,7 @@ from sagemaker.utils import (
     _validate_new_tags,
     remove_tag_with_key,
 )
-from src.sagemaker.config.config_utils import _log_sagemaker_config_single_substitution
+from legacy.src.sagemaker import _log_sagemaker_config_single_substitution
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 

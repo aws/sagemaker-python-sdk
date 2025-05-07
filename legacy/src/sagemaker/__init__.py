@@ -46,7 +46,7 @@ from sagemaker.amazon.ipinsights import (  # noqa: F401
 
 from sagemaker.algorithm import AlgorithmEstimator  # noqa: F401
 from sagemaker.analytics import TrainingJobAnalytics, HyperparameterTuningJobAnalytics  # noqa: F401
-from sagemaker.local.local_session import LocalSession  # noqa: F401
+from sagemaker.utils.local import LocalSession  # noqa: F401
 
 from sagemaker.model import Model, ModelPackage  # noqa: F401
 from sagemaker.model_metrics import ModelMetrics, MetricsSource, FileSource  # noqa: F401

@@ -25,7 +25,6 @@ from typing import Callable, List, Dict, Optional, Union, Any
 import sagemaker
 from sagemaker import (
     fw_utils,
-    local,
     s3,
     session,
     utils,
@@ -73,7 +72,7 @@ from sagemaker.utils import (
     Tags,
     _resolve_routing_config,
     _validate_new_tags,
-    remove_tag_with_key,
+    remove_tag_with_key, local,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor

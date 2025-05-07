@@ -76,7 +76,7 @@ from sagemaker.jumpstart.utils import (
     get_jumpstart_base_name_if_jumpstart_model,
     update_inference_tags_with_jumpstart_training_tags,
 )
-from sagemaker.local import LocalSession
+from sagemaker.utils.local import LocalSession
 from sagemaker.model import (
     CONTAINER_LOG_LEVEL_PARAM_NAME,
     DIR_PARAM_NAME,

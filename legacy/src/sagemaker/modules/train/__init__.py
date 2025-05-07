@@ -13,4 +13,3 @@
 """Sagemaker modules train directory."""
 from __future__ import absolute_import
 
-from sagemaker.modules.train.model_trainer import ModelTrainer  # noqa: F401

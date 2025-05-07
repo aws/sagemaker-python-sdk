@@ -13,7 +13,7 @@ from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url
 from sagemaker import fw_utils
 from sagemaker.serve.utils.uploader import upload
-from sagemaker.local.utils import get_docker_host
+from sagemaker.utils.local import get_docker_host
 
 logger = logging.getLogger(__name__)
 

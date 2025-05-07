@@ -17,9 +17,10 @@ import os
 
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
-from sagemaker.modules.utils import safe_serialize
-from sagemaker.modules.constants import SM_DRIVERS_LOCAL_PATH
-from sagemaker.modules.configs import BaseConfig
+
+from legacy.src.sagemaker.modules.utils import safe_serialize
+from sagemaker.train.configs import BaseConfig
+from sagemaker.train.constants import SM_DRIVERS_LOCAL_PATH
 
 
 class SMP(BaseConfig):

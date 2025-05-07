@@ -29,8 +29,8 @@ import pytest
 import yaml
 from mock import patch, Mock, MagicMock, mock_open, call
 import sagemaker
-from sagemaker.local.image import _SageMakerContainer, _Volume, _aws_credentials
-from sagemaker.local.utils import STUDIO_APP_TYPES
+from sagemaker.utils.local import _SageMakerContainer, _Volume, _aws_credentials
+from sagemaker.utils.local import STUDIO_APP_TYPES
 
 REGION = "us-west-2"
 BUCKET_NAME = "mybucket"
@@ -205,7 +205,7 @@ def test_write_config_file(LocalSession, tmpdir):
     sagemaker_container.container_root = str(tmpdir.mkdir("container-root"))
     host = "algo-1"
 
-    sagemaker.local.image._create_config_file_directories(sagemaker_container.container_root, host)
+    sagemaker.utils.local.image._create_config_file_directories(sagemaker_container.container_root, host)
 
     container_root = sagemaker_container.container_root
     config_file_root = os.path.join(container_root, host, "input", "config")
@@ -248,7 +248,7 @@ def test_write_config_files_input_content_type(LocalSession, tmpdir):
     sagemaker_container.container_root = str(tmpdir.mkdir("container-root"))
     host = "algo-1"
 
-    sagemaker.local.image._create_config_file_directories(sagemaker_container.container_root, host)
+    sagemaker.utils.local.image._create_config_file_directories(sagemaker_container.container_root, host)
 
     container_root = sagemaker_container.container_root
     config_file_root = os.path.join(container_root, host, "input", "config")
@@ -404,23 +404,23 @@ def test_stream_output():
         p = subprocess.Popen(
             ["ls", "/some/unknown/path"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        sagemaker.local.image._stream_output(p)
+        sagemaker.utils.local.image._stream_output(p)
 
     p = subprocess.Popen(["echo", "hello"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    exit_code = sagemaker.local.image._stream_output(p)
+    exit_code = sagemaker.utils.local.image._stream_output(p)
     assert exit_code == 0
 
 
 def test_check_output():
     with pytest.raises(Exception):
-        sagemaker.local.image._check_output(["ls", "/some/unknown/path"])
+        sagemaker.utils.local.image._check_output(["ls", "/some/unknown/path"])
 
     msg = "hello!"
 
-    output = sagemaker.local.image._check_output(["echo", msg]).strip()
+    output = sagemaker.utils.local.image._check_output(["echo", msg]).strip()
     assert output == msg
 
-    output = sagemaker.local.image._check_output("echo %s" % msg).strip()
+    output = sagemaker.utils.local.image._check_output("echo %s" % msg).strip()
     assert output == msg
 
 
@@ -1105,7 +1105,7 @@ def test_prepare_serving_volumes_with_local_model(get_data_source_instance, sage
 
 def test_ecr_login_non_ecr():
     session_mock = Mock()
-    result = sagemaker.local.image._ecr_login_if_needed(session_mock, "ubuntu")
+    result = sagemaker.utils.local.image._ecr_login_if_needed(session_mock, "ubuntu")
 
     session_mock.assert_not_called()
     assert result is False
@@ -1123,7 +1123,7 @@ def test_ecr_login_non_ecr():
 def test_ecr_login_image_exists(_check_output, image):
     session_mock = Mock()
 
-    result = sagemaker.local.image._ecr_login_if_needed(session_mock, image)
+    result = sagemaker.utils.local.image._ecr_login_if_needed(session_mock, image)
 
     session_mock.assert_not_called()
     _check_output.assert_called()
@@ -1156,7 +1156,7 @@ def test_ecr_login_needed(mock_check_output, popen):
     # What a sucessful login would look like
     popen.return_value.communicate.return_value = (None, None)
 
-    result = sagemaker.local.image._ecr_login_if_needed(session_mock, image)
+    result = sagemaker.utils.local.image._ecr_login_if_needed(session_mock, image)
 
     mock_check_output.assert_called_with(f"docker images -q {image}")
     expected_command = [
@@ -1180,7 +1180,7 @@ def test_ecr_login_needed(mock_check_output, popen):
 def test_pull_image(check_output):
     image = "520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-need:1.1"
 
-    sagemaker.local.image._pull_image(image)
+    sagemaker.utils.local.image._pull_image(image)
 
     expected_command = "docker pull %s" % image
 

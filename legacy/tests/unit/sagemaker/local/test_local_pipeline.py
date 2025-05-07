@@ -56,7 +56,7 @@ from sagemaker.workflow.steps import (
     TransformInput,
     StepTypeEnum,
 )
-from sagemaker.local.pipeline import (
+from sagemaker.utils.local.pipeline import (
     _ConditionStepExecutor,
     _FailStepExecutor,
     _ProcessingStepExecutor,
@@ -67,10 +67,10 @@ from sagemaker.local.pipeline import (
     LocalPipelineExecutor,
     StepExecutionException,
 )
-from sagemaker.local.entities import _LocalExecutionStatus, _LocalPipelineExecution
+from sagemaker.utils.local.entities import _LocalExecutionStatus, _LocalPipelineExecution
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join, JsonGet, PropertyFile
-from sagemaker.local.local_session import LocalSession
+from sagemaker.utils.local import LocalSession
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from tests.unit import DATA_DIR
 

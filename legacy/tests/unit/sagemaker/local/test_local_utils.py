@@ -18,7 +18,7 @@ import pytest
 import json
 from mock import patch, Mock, mock_open
 
-import sagemaker.local.utils
+import sagemaker.utils.local.utils
 from sagemaker.session_settings import SessionSettings
 
 
@@ -26,7 +26,7 @@ from sagemaker.session_settings import SessionSettings
 @patch("sagemaker.local.utils.os")
 def test_copy_directory_structure(m_os, m_os_path):
     m_os_path.exists.return_value = False
-    sagemaker.local.utils.copy_directory_structure("/tmp/", "code/")
+    sagemaker.utils.local.utils.copy_directory_structure("/tmp/", "code/")
     m_os.makedirs.assert_called_with("/tmp/", "code/")
 
 
@@ -35,10 +35,10 @@ def test_copy_directory_structure(m_os, m_os_path):
 def test_move_to_destination_local(recursive_copy):
     # local files will just be recursively copied
     # given absolute path
-    sagemaker.local.utils.move_to_destination("/tmp/data", "file:///target/dir", "job", None)
+    sagemaker.utils.local.utils.move_to_destination("/tmp/data", "file:///target/dir", "job", None)
     recursive_copy.assert_called_with("/tmp/data", "/target/dir")
     # given relative path
-    sagemaker.local.utils.move_to_destination("/tmp/data", "file://root/target/dir", "job", None)
+    sagemaker.utils.local.utils.move_to_destination("/tmp/data", "file://root/target/dir", "job", None)
     recursive_copy.assert_called_with("/tmp/data", os.path.abspath("./root/target/dir"))
 
 
@@ -50,20 +50,20 @@ def test_move_to_destination_s3(recursive_copy):
     )
 
     # without trailing slash in prefix
-    sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket/path", "job", sms)
+    sagemaker.utils.local.utils.move_to_destination("/tmp/data", "s3://bucket/path", "job", sms)
     sms.upload_data.assert_called_with("/tmp/data", "bucket", "path/job")
     recursive_copy.assert_not_called()
 
     # with trailing slash in prefix
-    sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket/path/", "job", sms)
+    sagemaker.utils.local.utils.move_to_destination("/tmp/data", "s3://bucket/path/", "job", sms)
     sms.upload_data.assert_called_with("/tmp/data", "bucket", "path/job")
 
     # without path, with trailing slash
-    sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket/", "job", sms)
+    sagemaker.utils.local.utils.move_to_destination("/tmp/data", "s3://bucket/", "job", sms)
     sms.upload_data.assert_called_with("/tmp/data", "bucket", "job")
 
     # without path, without trailing slash
-    sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket", "job", sms)
+    sagemaker.utils.local.utils.move_to_destination("/tmp/data", "s3://bucket", "job", sms)
     sms.upload_data.assert_called_with("/tmp/data", "bucket", "job")
 
 
@@ -72,7 +72,7 @@ def test_move_to_destination_s3_with_prefix():
     sms = Mock(
         settings=SessionSettings(),
     )
-    uri = sagemaker.local.utils.move_to_destination(
+    uri = sagemaker.utils.local.utils.move_to_destination(
         "/tmp/data", "s3://bucket/path", "job", sms, "foo_prefix"
     )
     sms.upload_data.assert_called_with("/tmp/data", "bucket", "path/job/foo_prefix")
@@ -81,14 +81,14 @@ def test_move_to_destination_s3_with_prefix():
 
 def test_move_to_destination_illegal_destination():
     with pytest.raises(ValueError):
-        sagemaker.local.utils.move_to_destination("/tmp/data", "ftp://ftp/in/2018", "job", None)
+        sagemaker.utils.local.utils.move_to_destination("/tmp/data", "ftp://ftp/in/2018", "job", None)
 
 
 @patch("sagemaker.local.utils.os.path")
 @patch("sagemaker.local.utils.shutil.copytree")
 def test_recursive_copy(copy_tree, m_os_path):
     m_os_path.isdir.return_value = True
-    sagemaker.local.utils.recursive_copy("source", "destination")
+    sagemaker.utils.local.utils.recursive_copy("source", "destination")
     copy_tree.assert_called_with("source", "destination", dirs_exist_ok=True)
 
 
@@ -96,7 +96,7 @@ def test_recursive_copy(copy_tree, m_os_path):
 @patch("sagemaker.local.utils.get_child_process_ids")
 def test_kill_child_processes(m_get_child_process_ids, m_os):
     m_get_child_process_ids.return_value = ["child_pids"]
-    sagemaker.local.utils.kill_child_processes("pid")
+    sagemaker.utils.local.utils.kill_child_processes("pid")
     m_os.kill.assert_called_with("child_pids", 15)
 
 
@@ -107,7 +107,7 @@ def test_get_child_process_ids(m_subprocess):
     attrs = {"communicate.return_value": (b"\n", False), "returncode": 0}
     process_mock.configure_mock(**attrs)
     m_subprocess.Popen.return_value = process_mock
-    sagemaker.local.utils.get_child_process_ids("pid")
+    sagemaker.utils.local.utils.get_child_process_ids("pid")
     m_subprocess.Popen.assert_called_with(cmd, stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE)
 
 
@@ -128,7 +128,7 @@ def test_get_docker_host(m_subprocess):
         attrs = {"communicate.return_value": (return_value.encode("utf-8"), None), "returncode": 0}
         process_mock.configure_mock(**attrs)
         m_subprocess.Popen.return_value = process_mock
-        host = sagemaker.local.utils.get_docker_host()
+        host = sagemaker.utils.local.utils.get_docker_host()
         m_subprocess.Popen.assert_called_with(
             cmd, stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE
         )
@@ -165,23 +165,23 @@ def test_get_using_dot_notation(json_path, expected):
             {"Company": "Bar Ltd.", "Role": "Web developer", "Tenure": 2},
         ],
     }
-    actual = sagemaker.local.utils.get_using_dot_notation(resume, json_path)
+    actual = sagemaker.utils.local.utils.get_using_dot_notation(resume, json_path)
     assert actual == expected
 
 
 def test_get_using_dot_notation_type_error():
     with pytest.raises(ValueError):
-        sagemaker.local.utils.get_using_dot_notation({"foo": "bar"}, "foo.test")
+        sagemaker.utils.local.utils.get_using_dot_notation({"foo": "bar"}, "foo.test")
 
 
 def test_get_using_dot_notation_key_error():
     with pytest.raises(ValueError):
-        sagemaker.local.utils.get_using_dot_notation({"foo": {"bar": 1}}, "foo.test")
+        sagemaker.utils.local.utils.get_using_dot_notation({"foo": {"bar": 1}}, "foo.test")
 
 
 def test_get_using_dot_notation_index_error():
     with pytest.raises(ValueError):
-        sagemaker.local.utils.get_using_dot_notation({"foo": ["bar"]}, "foo[1]")
+        sagemaker.utils.local.utils.get_using_dot_notation({"foo": ["bar"]}, "foo[1]")
 
 
 def raise_os_error(args):
@@ -194,7 +194,7 @@ def raise_os_error(args):
 @patch("sagemaker.local.utils.recursive_copy")
 def test_move_to_destination_local_root_failure(recursive_copy, mock_rmtree):
     # This should not raise, in case root owns files, make sure it doesn't
-    sagemaker.local.utils.move_to_destination("/tmp/data", "file:///target/dir/", "job", None)
+    sagemaker.utils.local.utils.move_to_destination("/tmp/data", "file:///target/dir/", "job", None)
     mock_rmtree.assert_called_once()
     recursive_copy.assert_called_with(
         "/tmp/data", os.path.abspath(os.path.join(os.sep, "target", "dir"))
@@ -205,7 +205,7 @@ def test_check_for_studio_with_valid_request():
     metadata = {"AppType": "KernelGateway"}
     with patch("builtins.open", mock_open(read_data=json.dumps(metadata))):
         with patch("os.path.exists", return_value=True):
-            is_studio = sagemaker.local.utils.check_for_studio()
+            is_studio = sagemaker.utils.local.utils.check_for_studio()
             assert is_studio is True
 
 
@@ -214,12 +214,12 @@ def test_check_for_studio_with_invalid_request():
     with patch("builtins.open", mock_open(read_data=json.dumps(metadata))):
         with patch("os.path.exists", return_value=True):
             with pytest.raises(NotImplementedError):
-                sagemaker.local.utils.check_for_studio()
+                sagemaker.utils.local.utils.check_for_studio()
 
 
 def test_check_for_studio_without_app_type():
     metadata = {}
     with patch("builtins.open", mock_open(read_data=json.dumps(metadata))):
         with patch("os.path.exists", return_value=True):
-            is_studio = sagemaker.local.utils.check_for_studio()
+            is_studio = sagemaker.utils.local.utils.check_for_studio()
             assert is_studio is False

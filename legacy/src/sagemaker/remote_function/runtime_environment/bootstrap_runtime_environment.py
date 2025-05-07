@@ -198,7 +198,7 @@ def _install_dependencies(
             client_python_version=client_python_version,
         )
     else:
-        # no dependency file name is passed when an older version of the SDK is used
+        # no dependency file name is passed when an legacy version of the SDK is used
         # we look for a file with .txt, .yml or .yaml extension in the workspace directory
         dependencies_file = None
         for file in os.listdir(dependency_file_dir):

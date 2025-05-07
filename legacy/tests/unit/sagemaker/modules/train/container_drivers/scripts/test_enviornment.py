@@ -19,7 +19,7 @@ import logging
 
 from unittest.mock import patch
 
-from sagemaker.modules.train.container_drivers.scripts.environment import (
+from sagemaker.train import (
     set_env,
     log_env_variables,
     HIDDEN_VALUE,

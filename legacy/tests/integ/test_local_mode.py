@@ -52,7 +52,7 @@ from sagemaker.workflow.conditions import (
 )
 from sagemaker.workflow.functions import JsonGet, PropertyFile, Join
 from sagemaker.workflow.pipeline_context import LocalPipelineSession
-from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
+from sagemaker.utils.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
 
 # endpoint tests all use the same port, so we use this lock to prevent concurrent execution

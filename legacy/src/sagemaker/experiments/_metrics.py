@@ -24,7 +24,7 @@ import dateutil.tz
 
 from sagemaker.session import Session
 
-METRICS_DIR = os.environ.get("SAGEMAKER_METRICS_DIRECTORY", ".")
+METRICS_DIR = os.environ.get("SAGEMAKER_METRICS_DIRECTORY", "")
 METRIC_TS_LOWER_BOUND_TO_NOW = 1209600  # on seconds
 METRIC_TS_UPPER_BOUND_FROM_NOW = 7200  # on seconds
 

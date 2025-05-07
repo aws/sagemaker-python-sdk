@@ -17,7 +17,7 @@ from abc import abstractmethod
 from six import string_types
 
 from sagemaker.inputs import FileSystemInput, TrainingInput
-from sagemaker.local import file_input
+from sagemaker.utils.local import file_input
 from sagemaker.workflow import is_pipeline_variable
 
 

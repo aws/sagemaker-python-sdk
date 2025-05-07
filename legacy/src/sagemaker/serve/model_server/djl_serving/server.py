@@ -11,7 +11,7 @@ from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 from sagemaker.base_predictor import PredictorBase
 from sagemaker.s3_utils import determine_bucket_and_prefix, parse_s3_url, s3_path_join
 from sagemaker.s3 import S3Uploader
-from sagemaker.local.utils import get_docker_host
+from sagemaker.utils.local import get_docker_host
 from sagemaker.serve.utils.optimize_utils import _is_s3_uri
 
 logger = logging.getLogger(__name__)

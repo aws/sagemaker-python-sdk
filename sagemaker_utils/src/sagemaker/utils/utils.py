@@ -84,8 +84,10 @@ Tags = Union[List[TagsDict], TagsDict]
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image, max_length=63):
     """Create a training job name based on the image name and a timestamp.
+
     Args:
         image (str): Image name.
+
     Returns:
         str: Training job name using the algorithm from the image name and a
             timestamp.
@@ -96,13 +98,16 @@ def name_from_image(image, max_length=63):
 
 def name_from_base(base, max_length=63, short=False):
     """Append a timestamp to the provided string.
+
     This function assures that the total length of the resulting string is
     not longer than the specified max length, trimming the input parameter if
     necessary.
+
     Args:
         base (str): String used as prefix to generate the unique name.
         max_length (int): Maximum length for the resulting string (default: 63).
         short (bool): Whether or not to use a truncated timestamp (default: False).
+
     Returns:
         str: Input parameter with appended timestamp.
     """
@@ -113,11 +118,14 @@ def name_from_base(base, max_length=63, short=False):
 
 def unique_name_from_base_uuid4(base, max_length=63):
     """Append a UUID to the provided string.
+
     This function is used to generate a name using UUID instead of timestamps
     for uniqueness.
+
     Args:
         base (str): String used as prefix to generate the unique name.
         max_length (int): Maximum length for the resulting string (default: 63).
+
     Returns:
         str: Input parameter with appended timestamp.
     """
@@ -139,9 +147,11 @@ def unique_name_from_base(base, max_length=63):
 
 def base_name_from_image(image, default_base_name=None):
     """Extract the base name of the image to use as the 'algorithm name' for the job.
+
     Args:
         image (str): Image name.
         default_base_name (str): The default base name
+
     Returns:
         str: Algorithm name, as extracted from the image name.
     """
@@ -160,10 +170,13 @@ def base_name_from_image(image, default_base_name=None):
 
 def base_from_name(name):
     """Extract the base name of the resource name (for use with future resource name generation).
+
     This function looks for timestamps that match the ones produced by
     :func:`~sagemaker.utils.name_from_base`.
+
     Args:
         name (str): The resource name.
+
     Returns:
         str: The base name, as extracted from the resource name.
     """
@@ -185,9 +198,11 @@ def sagemaker_short_timestamp():
 
 def build_dict(key, value):
     """Return a dict of key and value pair if value is not None, otherwise return an empty dict.
+
     Args:
         key (str): input key
         value (str): input value
+
     Returns:
         dict: dict of key and value or an empty dict.
     """
@@ -213,6 +228,7 @@ def get_config_value(key_path, config):
 
 def get_nested_value(dictionary: dict, nested_keys: List[str]):
     """Returns a nested value from the given dictionary, and None if none present.
+
     Raises
         ValueError if the dictionary structure does not match the nested_keys
     """
@@ -245,6 +261,7 @@ def get_nested_value(dictionary: dict, nested_keys: List[str]):
 
 def set_nested_value(dictionary: dict, nested_keys: List[str], value_to_set: object):
     """Sets a nested value in a dictionary.
+
     This sets a nested value inside the given dictionary and returns the new dictionary. Note: if
     provided an unintended list of nested keys, this can overwrite an unexpected part of the dict.
     Recommended to use after a check with get_nested_value first
@@ -275,8 +292,10 @@ def set_nested_value(dictionary: dict, nested_keys: List[str], value_to_set: obj
 
 def get_short_version(framework_version):
     """Return short version in the format of x.x
+
     Args:
         framework_version: The version string to be shortened.
+
     Returns:
         str: The short version string
     """
@@ -285,9 +304,11 @@ def get_short_version(framework_version):
 
 def secondary_training_status_changed(current_job_description, prev_job_description):
     """Returns true if training job's secondary status message has changed.
+
     Args:
         current_job_description: Current job description, returned from DescribeTrainingJob call.
         prev_job_description: Previous job description, returned from DescribeTrainingJob call.
+
     Returns:
         boolean: Whether the secondary status message of a training job changed
         or not.
@@ -319,9 +340,11 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
 
 def secondary_training_status_message(job_description, prev_description):
     """Returns a string contains last modified time and the secondary training job status message.
+
     Args:
         job_description: Returned response from DescribeTrainingJob call
         prev_description: Previous job description from DescribeTrainingJob call
+
     Returns:
         str: Job status string to be printed.
     """
@@ -365,6 +388,7 @@ def secondary_training_status_message(job_description, prev_description):
 
 def download_folder(bucket_name, prefix, target, sagemaker_session):
     """Download a folder from S3 to a local path
+
     Args:
         bucket_name (str): S3 bucket name
         prefix (str): S3 prefix within the bucket that will be downloaded. Can
@@ -398,6 +422,7 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
 def _download_files_under_prefix(bucket_name, prefix, target, s3):
     """Download all S3 files which match the given prefix
+
     Args:
         bucket_name (str): S3 bucket name
         prefix (str): S3 prefix within the bucket that will be downloaded
@@ -425,9 +450,11 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
 
 def create_tar_file(source_files, target=None):
     """Create a tar file containing all the source_files
+
     Args:
         source_files: (List[str]): List of file paths that will be contained in the tar file
         target:
+
     Returns:
         (str): path to created tar file
     """
@@ -446,8 +473,10 @@ def create_tar_file(source_files, target=None):
 @contextlib.contextmanager
 def _tmpdir(suffix="", prefix="tmp", directory=None):
     """Create a temporary directory with a context manager.
+
     The file is deleted when the context exits, even when there's an exception.
     The prefix, suffix, and dir arguments are the same as for mkstemp().
+
     Args:
         suffix (str): If suffix is specified, the file name will end with that
             suffix, otherwise there will be no suffix.
@@ -455,6 +484,7 @@ def _tmpdir(suffix="", prefix="tmp", directory=None):
             prefix; otherwise, a default prefix is used.
         directory (str): If a directory is specified, the file will be downloaded
             in this directory; otherwise, a default directory is used.
+
     Returns:
         str: path to the directory
     """
@@ -480,10 +510,12 @@ def repack_model(
     kms_key=None,
 ):
     """Unpack model tarball and creates a new model tarball with the provided code script.
+
     This function does the following: - uncompresses model tarball from S3 or
     local system into a temp folder - replaces the inference code from the model
     with the new code provided - compresses the new model tarball and saves it
     in S3 or local file system
+
     Args:
         inference_script (str): path or basename of the inference script that
             will be packed into the model
@@ -494,10 +526,13 @@ def repack_model(
             container (default: []). The library folders will be copied to
             SageMaker in the same folder where the entrypoint is copied.
             Example
+
                 The following call >>> Estimator(entry_point='train.py',
                 dependencies=['my/libs/common', 'virtual-env']) results in the
                 following inside the container:
+
                 >>> $ ls
+
                 >>> opt/ml/code
                 >>>     |------ train.py
                 >>>     |------ common
@@ -508,6 +543,7 @@ def repack_model(
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
         kms_key (str): KMS key ARN for encrypting the repacked model file
+
     Returns:
         str: path to the new packed model
     """
@@ -624,6 +660,7 @@ def download_file_from_url(url, dst, sagemaker_session):
 
 def download_file(bucket_name, path, target, sagemaker_session):
     """Download a Single File from S3 into a local path
+
     Args:
         bucket_name (str): S3 bucket name
         path (str): file path within the bucket
@@ -641,12 +678,16 @@ def download_file(bucket_name, path, target, sagemaker_session):
 
 def sts_regional_endpoint(region):
     """Get the AWS STS endpoint specific for the given region.
+
     We need this function because the AWS SDK does not yet honor
     the ``region_name`` parameter when creating an AWS STS client.
+
     For the list of regional endpoints, see
     https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html#id_credentials_region-endpoints.
+
     Args:
         region (str): AWS region name
+
     Returns:
         str: AWS STS regional endpoint
     """
@@ -662,10 +703,12 @@ def retries(
     seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS,
 ):
     """Retries until max retry count is reached.
+
     Args:
         max_retry_count (int): The retry count.
         exception_message_prefix (str): The message to include in the exception on failure.
         seconds_to_sleep (int): The number of seconds to sleep between executions.
+
     """
     for i in range(max_retry_count):
         yield i
@@ -680,6 +723,7 @@ def retries(
 
 def retry_with_backoff(callable_func, num_attempts=8, botocore_client_error_code=None):
     """Retry with backoff until maximum attempts are reached
+
     Args:
         callable_func (Callable): The callable function to retry.
         num_attempts (int): The maximum number of attempts to retry.(Default: 8)
@@ -713,8 +757,10 @@ def retry_with_backoff(callable_func, num_attempts=8, botocore_client_error_code
 
 def _botocore_resolver():
     """Get the DNS suffix for the given region.
+
     Args:
         region (str): AWS region name
+
     Returns:
         str: the DNS suffix
     """
@@ -724,9 +770,11 @@ def _botocore_resolver():
 
 def aws_partition(region):
     """Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
+
     Args:
         region (str): The region name for which to return the corresponding partition.
         Ex: "cn-north-1"
+
     Returns:
         str: partition corresponding to the region name passed in. Ex: "aws-cn"
     """
@@ -738,9 +786,12 @@ def aws_partition(region):
 
 class DeferredError(object):
     """Stores an exception and raises it at a later time if this object is accessed in any way.
+
     Useful to allow soft-dependencies on imports, so that the ImportError can be raised again
     later if code actually relies on the missing library.
+
     Example::
+
         try:
             import obscurelib
         except ImportError as e:
@@ -754,7 +805,9 @@ class DeferredError(object):
 
     def __getattr__(self, name):
         """Called by Python interpreter before using any method or property on the object.
+
         So this will short-circuit essentially any access to this object.
+
         Args:
             name:
         """
@@ -763,10 +816,12 @@ class DeferredError(object):
 
 def _module_import_error(py_module, feature, extras):
     """Return error message for module import errors, provide installation details.
+
     Args:
         py_module (str): Module that failed to be imported
         feature (str): Affected SageMaker feature
         extras (str): Name of the `extras_require` to install the relevant dependencies
+
     Returns:
         str: Error message with installation instructions.
     """
@@ -780,12 +835,14 @@ def _module_import_error(py_module, feature, extras):
 
 class DataConfig(abc.ABC):
     """Abstract base class for accessing data config hosted in AWS resources.
+
     Provides a skeleton for customization by overriding of method fetch_data_config.
     """
 
     @abc.abstractmethod
     def fetch_data_config(self):
         """Abstract method implementing retrieval of data config from a pre-configured data source.
+
         Returns:
             object: The data configuration object.
         """
@@ -801,10 +858,12 @@ class S3DataConfig(DataConfig):
         prefix,
     ):
         """Initialize a ``S3DataConfig`` instance.
+
         Args:
             sagemaker_session (Session): SageMaker session instance to use for boto configuration.
             bucket_name (str): Required. Bucket name from which data config needs to be fetched.
             prefix (str): Required. The object prefix for the hosted data config.
+
         """
         if bucket_name is None or prefix is None:
             raise ValueError(
@@ -819,6 +878,7 @@ class S3DataConfig(DataConfig):
 
     def fetch_data_config(self):
         """Fetches data configuration from a S3 bucket.
+
         Returns:
             object: The JSON object containing data configuration.
         """
@@ -828,8 +888,10 @@ class S3DataConfig(DataConfig):
 
     def get_data_bucket(self, region_requested=None):
         """Provides the bucket containing the data for specified region.
+
         Args:
             region_requested (str): The region for which the data is beig requested.
+
         Returns:
             str: Name of the S3 bucket containing datasets in the requested region.
         """
@@ -851,6 +913,7 @@ def update_container_with_inference_params(
     container_list=None,
 ):
     """Function to check if inference recommender parameters exist and update container.
+
     Args:
         framework (str): Machine learning framework of the model package container image
                 (default: None).
@@ -861,6 +924,7 @@ def update_container_with_inference_params(
         data_input_configuration (str): Input object for the model (default: None).
         container_def (dict): object to be updated.
         container_list (list): list to be updated.
+
     Returns:
         dict: dict with inference recommender params
     """
@@ -887,6 +951,7 @@ def construct_container_object(
     obj, data_input_configuration, framework, framework_version, nearest_model_name
 ):
     """Function to construct container object.
+
     Args:
         framework (str): Machine learning framework of the model package container image
                 (default: None).
@@ -896,6 +961,7 @@ def construct_container_object(
             Amazon SageMaker Inference Recommender (default: None).
         data_input_configuration (str): Input object for the model (default: None).
         obj (dict): object to be updated.
+
     Returns:
         dict: container object
     """
@@ -935,6 +1001,7 @@ def construct_container_object(
 
 def pop_out_unused_kwarg(arg_name: str, kwargs: dict, override_val: Optional[str] = None):
     """Pop out the unused key-word argument and give a warning.
+
     Args:
         arg_name (str): The name of the argument to be checked if it is unused.
         kwargs (dict): The key-word argument dict.
@@ -951,7 +1018,9 @@ def pop_out_unused_kwarg(arg_name: str, kwargs: dict, override_val: Optional[str
 
 def to_string(obj: object):
     """Convert an object to string
+
     This helper function handles converting PipelineVariable object to string as well
+
     Args:
         obj (object): The object to be converted
     """
@@ -960,6 +1029,7 @@ def to_string(obj: object):
 
 def _start_waiting(waiting_time: int):
     """Waiting and print the in progress animation to stdout.
+
     Args:
         waiting_time (int): The total waiting time.
     """
@@ -975,10 +1045,13 @@ def _start_waiting(waiting_time: int):
 
 def get_module(module_name):
     """Import a module.
+
     Args:
         module_name (str): name of the module to import.
+
     Returns:
         object: The imported module.
+
     Raises:
         Exception: when the module name is not found
     """
@@ -990,8 +1063,10 @@ def get_module(module_name):
 
 def check_and_get_run_experiment_config(experiment_config: Optional[dict] = None) -> dict:
     """Check user input experiment_config or get it from the current Run object if exists.
+
     Args:
         experiment_config (dict): The experiment_config supplied by the user.
+
     Returns:
         dict: Return the user supplied experiment_config if it is not None.
             Otherwise fetch the experiment_config from the current Run object if exists.
@@ -1020,12 +1095,15 @@ def resolve_value_from_config(
     sagemaker_config: dict = None,
 ):
     """Decides which value for the caller to use.
+
     Note: This method incorporates information from the sagemaker config.
+
     Uses this order of prioritization:
     1. direct_input
     2. config value
     3. default_value
     4. None
+
     Args:
         direct_input: The value that the caller of this method starts with. Usually this is an
             input to the caller's class or method.
@@ -1041,6 +1119,7 @@ def resolve_value_from_config(
             Session cannot be initialized before config injection is needed. In that case,
             the config dictionary may be loaded and passed here before a default Session object
             is created.
+
     Returns:
         The value that should be used by the caller
     """
@@ -1065,6 +1144,7 @@ def resolve_value_from_config(
 
 def get_sagemaker_config_value(sagemaker_session, key, sagemaker_config: dict = None):
     """Returns the value that corresponds to the provided key from the configuration file.
+
     Args:
         key: Key Path of the config file entry.
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
@@ -1075,6 +1155,7 @@ def get_sagemaker_config_value(sagemaker_session, key, sagemaker_config: dict = 
             parameter exists for the rare cases where no Session provided but a default Session
             cannot be initialized before config injection is needed. In that case, the config
             dictionary may be loaded and passed here before a default Session object is created.
+
     Returns:
         object: The corresponding default value in the configuration file.
     """
@@ -1101,13 +1182,16 @@ def resolve_class_attribute_from_config(
     sagemaker_session=None,
 ):
     """Utility method that merges config values to data classes.
+
     Takes an instance of a class and, if not already set, sets the instance's attribute to a
     value fetched from the sagemaker_config or the default_value.
+
     Uses this order of prioritization to determine what the value of the attribute should be:
     1. current value of attribute
     2. config value
     3. default_value
     4. does not set it
+
     Args:
         clazz (Optional[type]): Class of 'instance'. Used to generate a new instance if the
                instance is None. If None is provided here, no new object will be created
@@ -1122,6 +1206,7 @@ def resolve_class_attribute_from_config(
         default_value: the value to use if not present elsewhere
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
                 SageMaker interactions (default: None).
+
     Returns:
         The updated class instance that should be used by the caller instead of the
         'instance' parameter that was passed in.
@@ -1167,10 +1252,13 @@ def resolve_nested_dict_value_from_config(
     sagemaker_session=None,
 ):
     """Utility method that sets the value of a key path in a nested dictionary .
+
     This method takes a dictionary and, if not already set, sets the value for the provided
     list of nested keys to the value fetched from the sagemaker_config or the default_value.
+
     Uses this order of prioritization to determine what the value of the attribute should be:
     (1) current value of nested key, (2) config value, (3) default_value, (4) does not set it
+
     Args:
         dictionary: The dict to update.
         nested_keys: The paths of keys where the value should be checked and set if needed.
@@ -1179,6 +1267,7 @@ def resolve_nested_dict_value_from_config(
         default_value: The value to use if not present elsewhere.
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
             SageMaker interactions (default: None).
+
     Returns:
         The updated dictionary that should be used by the caller instead of the
         'dictionary' parameter that was passed in.
@@ -1216,12 +1305,15 @@ def update_list_of_dicts_with_values_from_config(
     sagemaker_session=None,
 ):
     """Updates a list of dictionaries with missing values that are present in Config.
+
     In some cases, config file might introduce new parameters which requires certain other
     parameters to be provided as part of the input list. Without those parameters, the underlying
     service will throw an exception. This method provides the capability to specify required key
     paths.
+
     In some other cases, config file might introduce new parameters but the service API requires
     either an existing parameter or the new parameter that was supplied by config but not both
+
     Args:
         input_list: The input list that was provided as a method parameter.
         config_key_path: The Key Path in the Config file that corresponds to the input_list
@@ -1235,6 +1327,7 @@ def update_list_of_dicts_with_values_from_config(
         neither but not both, then pass [['X1', 'X2']]
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
             SageMaker interactions (default: None).
+
     Returns:
         No output. In place merge happens.
     """
@@ -1302,12 +1395,14 @@ def update_nested_dictionary_with_values_from_config(
     source_dict, config_key_path, sagemaker_session=None
 ) -> dict:
     """Updates a nested dictionary with missing values that are present in Config.
+
     Args:
         source_dict: The input nested dictionary that was provided as method parameter.
         config_key_path: The Key Path in the Config file which corresponds to this
         source_dict parameter.
         sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
             SageMaker interactions (default: None).
+
     Returns:
         dict: The merged nested dictionary that is updated with missing values that are present
         in the Config file.
@@ -1346,6 +1441,7 @@ def stringify_object(obj: Any) -> str:
 
 def volume_size_supported(instance_type: str) -> bool:
     """Returns True if SageMaker allows volume_size to be used for the instance type.
+
     Raises:
         ValueError: If the instance type is improperly formatted.
     """
@@ -1381,6 +1477,7 @@ def volume_size_supported(instance_type: str) -> bool:
 
 def instance_supports_kms(instance_type: str) -> bool:
     """Returns True if SageMaker allows KMS keys to be attached to the instance.
+
     Raises:
         ValueError: If the instance type is improperly formatted.
     """
@@ -1389,6 +1486,7 @@ def instance_supports_kms(instance_type: str) -> bool:
 
 def get_instance_type_family(instance_type: str) -> str:
     """Return the family of the instance type.
+
     Regex matches either "ml.<family>.<size>" or "ml_<family>. If input is None
     or there is no match, return an empty string.
     """
@@ -1418,6 +1516,7 @@ def format_tags(tags: Tags) -> List[TagsDict]:
 
 def _get_resolved_path(path):
     """Return the normalized absolute path of a given path.
+
     abspath - returns the absolute path without resolving symlinks
     realpath - resolves the symlinks and gets the actual path
     normpath - normalizes paths (e.g. remove redudant separators)
@@ -1428,11 +1527,14 @@ def _get_resolved_path(path):
 
 def _is_bad_path(path, base):
     """Checks if the joined path (base directory + file path) is rooted under the base directory
+
     Ensuring that the file does not attempt to access paths
     outside the expected directory structure.
+
     Args:
         path (str): The file path.
         base (str): The base directory.
+
     Returns:
         bool: True if the path is not rooted under the base directory, False otherwise.
     """
@@ -1442,10 +1544,13 @@ def _is_bad_path(path, base):
 
 def _is_bad_link(info, base):
     """Checks if the link is rooted under the base directory.
+
     Ensuring that the link does not attempt to access paths outside the expected directory structure
+
     Args:
         info (tarfile.TarInfo): The tar file info.
         base (str): The base directory.
+
     Returns:
         bool: True if the link is not rooted under the base directory, False otherwise.
     """
@@ -1456,9 +1561,12 @@ def _is_bad_link(info, base):
 
 def _get_safe_members(members):
     """A generator that yields members that are safe to extract.
+
     It filters out bad paths and bad links.
+
     Args:
         members (list): A list of members to check.
+
     Yields:
         tarfile.TarInfo: The tar file info.
     """
@@ -1477,13 +1585,17 @@ def _get_safe_members(members):
 
 def custom_extractall_tarfile(tar, extract_path):
     """Extract a tarfile, optionally using data_filter if available.
+
     # TODO: The function and it's usages can be deprecated once SageMaker Python SDK
     is upgraded to use Python 3.12+
+
     If the tarfile has a data_filter attribute, it will be used to extract the contents of the file.
     Otherwise, the _get_safe_members function will be used to filter bad paths and bad links.
+
     Args:
         tar (tarfile.TarFile): The opened tarfile object.
         extract_path (str): The path to extract the contents of the tarfile.
+
     Returns:
         None
     """
@@ -1495,8 +1607,10 @@ def custom_extractall_tarfile(tar, extract_path):
 
 def can_model_package_source_uri_autopopulate(source_uri: str):
     """Checks if the source_uri can lead to auto-population of information in the Model registry.
+
     Args:
         source_uri (str): The source uri.
+
     Returns:
         bool: True if the source_uri can lead to auto-population, False otherwise.
     """
@@ -1510,6 +1624,7 @@ def flatten_dict(
     max_flatten_depth=None,
 ) -> Dict[str, Any]:
     """Flatten a dictionary object.
+
     d (Dict[str, Any]):
         The dict that will be flattened.
     max_flatten_depth (Optional[int]):
@@ -1565,6 +1680,7 @@ def nested_set_dict(d: Dict[str, Any], keys: List[str], value: Any) -> None:
 
 def unflatten_dict(d: Dict[str, Any]) -> Dict[str, Any]:
     """Unflatten dict-like object.
+
     d (Dict[str, Any]) :
         The dict that will be unflattened.
     """
@@ -1595,10 +1711,13 @@ def deep_override_dict(
 
 def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Resolve Routing Config
+
     Args:
         routing_config (Optional[Dict[str, Any]]): The routing config.
+
     Returns:
         Optional[Dict[str, Any]]: The resolved routing config.
+
     Raises:
         ValueError: If the RoutingStrategy is invalid.
     """
@@ -1626,12 +1745,14 @@ def get_instance_rate_per_hour(
     region: str,
 ) -> Optional[Dict[str, str]]:
     """Gets instance rate per hour for the given instance type.
+
     Args:
         instance_type (str): The instance type.
         region (str): The region.
     Returns:
         Optional[Dict[str, str]]: Instance rate per hour.
         Example: {'name': 'Instance Rate', 'unit': 'USD/Hrs', 'value': '1.125'}.
+
     Raises:
         Exception: An exception is raised if
             the IAM role is not authorized to perform pricing:GetProducts.
@@ -1667,6 +1788,7 @@ def get_instance_rate_per_hour(
 
 def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[str, str]]:
     """Extract instance rate per hour for the given Price JSON data.
+
     Args:
         price_data (Dict[str, Any]): The Price JSON data.
     Returns:
@@ -1691,8 +1813,10 @@ def extract_instance_rate_per_hour(price_data: Dict[str, Any]) -> Optional[Dict[
 
 def camel_case_to_pascal_case(data: Dict[str, Any]) -> Dict[str, Any]:
     """Iteratively updates a dictionary to convert all keys from snake_case to PascalCase.
+
     Args:
         data (dict): The dictionary to be updated.
+
     Returns:
         dict: The updated dictionary with keys in PascalCase.
     """
@@ -1719,9 +1843,11 @@ def camel_case_to_pascal_case(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def tag_exists(tag: TagsDict, curr_tags: Optional[Tags]) -> bool:
     """Returns True if ``tag`` already exists.
+
     Args:
         tag (TagsDict): The tag dictionary.
         curr_tags (Optional[Tags]): The current tags.
+
     Returns:
         bool: True if the tag exists.
     """
@@ -1737,9 +1863,11 @@ def tag_exists(tag: TagsDict, curr_tags: Optional[Tags]) -> bool:
 
 def _validate_new_tags(new_tags: Optional[Tags], curr_tags: Optional[Tags]) -> Optional[Tags]:
     """Validates new tags against existing tags.
+
     Args:
         new_tags (Optional[Tags]): The new tags.
         curr_tags (Optional[Tags]): The current tags.
+
     Returns:
         Optional[Tags]: The updated tags.
     """
@@ -1762,9 +1890,11 @@ def _validate_new_tags(new_tags: Optional[Tags], curr_tags: Optional[Tags]) -> O
 
 def remove_tag_with_key(key: str, tags: Optional[Tags]) -> Optional[Tags]:
     """Remove a tag with the given key from the list of tags.
+
     Args:
         key (str): The key of the tag to remove.
         tags (Optional[Tags]): The current list of tags.
+
     Returns:
         Optional[Tags]: The updated list of tags with the tag removed.
     """
@@ -1787,6 +1917,7 @@ def remove_tag_with_key(key: str, tags: Optional[Tags]) -> Optional[Tags]:
 
 def get_domain_for_region(region: str) -> str:
     """Returns the domain for the given region.
+
     Args:
         region (str): AWS region name.
     """

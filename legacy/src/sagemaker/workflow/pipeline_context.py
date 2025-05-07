@@ -19,7 +19,7 @@ from functools import wraps
 from typing import Dict, Optional, Callable
 
 from sagemaker.session import Session, SessionSettings
-from sagemaker.local import LocalSession
+from sagemaker.utils.local import LocalSession
 from sagemaker.workflow.pipeline_definition_config import PipelineDefinitionConfig
 
 

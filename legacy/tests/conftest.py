@@ -25,7 +25,7 @@ from packaging.version import Version
 from packaging.specifiers import SpecifierSet
 
 from sagemaker import Session, image_uris, utils, get_execution_role
-from sagemaker.local import LocalSession
+from sagemaker.utils.local import LocalSession
 from sagemaker.workflow.pipeline_context import PipelineSession, LocalPipelineSession
 
 DEFAULT_REGION = "us-west-2"

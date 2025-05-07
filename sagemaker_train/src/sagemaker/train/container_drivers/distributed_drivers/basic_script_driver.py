@@ -21,16 +21,14 @@ import shlex
 from pathlib import Path
 from typing import List
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
     logger,
     get_python_executable,
-    execute_commands,
     write_failure_file,
     hyperparameters_to_cli_args,
-)
+    execute_commands)
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def create_commands() -> List[str]:
     """Create the commands to execute."""

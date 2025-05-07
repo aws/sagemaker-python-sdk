@@ -13,52 +13,23 @@
 """ModelTrainer Tests."""
 from __future__ import absolute_import
 
-from imaplib import IMAP4
-
-import shutil
-import tempfile
-import json
-import os
-import yaml
 import pytest
-from pydantic import ValidationError
-from unittest.mock import patch, MagicMock, ANY, mock_open
+from unittest.mock import patch, MagicMock, ANY
 
-# from sagemaker.utils import image_uris
-from sagemaker_core.main.resources import TrainingJob
+from sagemaker_core.helper.session_helper import Session
 from sagemaker_core.main.shapes import (
     ResourceConfig,
-    VpcConfig,
-    AlgorithmSpecification,
 )
 
-from sagemaker.train.model_trainer import ModelTrainer, Mode
+from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.train.constants import (
     DEFAULT_INSTANCE_TYPE,
-    DISTRIBUTED_JSON,
-    SOURCE_CODE_JSON,
-    TRAIN_SCRIPT,
 )
 from sagemaker.train.configs import (
-    Compute,
     StoppingCondition,
-    RetryStrategy,
     OutputDataConfig,
     SourceCode,
-    RemoteDebugConfig,
-    TensorBoardOutputConfig,
-    InfraCheckConfig,
-    SessionChainingConfig,
-    InputData,
-    Networking,
-    TrainingImageConfig,
-    TrainingRepositoryAuthConfig,
-    CheckpointConfig,
-    Tag,
-    S3DataSource,
-    FileSystemDataSource,
-    Channel,
-    DataSource,
+    Compute,
 )
 from sagemaker.utils.config.config_schema import SAGEMAKER, PYTHON_SDK, MODULES
 from sagemaker.utils.config.config_schema import (
@@ -67,21 +38,19 @@ from sagemaker.utils.config.config_schema import (
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
 )
 
-from sagemaker.train import Session
 import os
-
-# from sagemaker.train.distributed import Torchrun, SMP, MPI
-# from sagemaker.train.sm_recipes.utils import _load_recipes_cfg
-# from sagemaker.templates import EXEUCTE_DISTRIBUTED_DRIVER
-# from tests.unit import DATA_DIR
-DATA_DIR = os.path.join(os.path.dirname(__file__), "../..", "data")
+#from sagemaker.train.distributed import Torchrun, SMP, MPI
+#from sagemaker.train.sm_recipes.utils import _load_recipes_cfg
+#from sagemaker.templates import EXEUCTE_DISTRIBUTED_DRIVER
+#from tests.unit import DATA_DIR
+DATA_DIR = os.path.join(os.path.dirname(__file__), "../../", "data")
 DEFAULT_BASE_NAME = "dummy-image-job"
 DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest"
 DEFAULT_BUCKET = "sagemaker-us-west-2-000000000000"
 DEFAULT_ROLE = "arn:aws:iam::000000000000:role/test-role"
 DEFAULT_BUCKET_PREFIX = "sample-prefix"
 DEFAULT_REGION = "us-west-2"
-DEFAULT_SOURCE_DIR = f"{DATA_DIR}/modules/script_mode"
+DEFAULT_SOURCE_DIR = f"{DATA_DIR}/script_mode"
 DEFAULT_COMPUTE_CONFIG = Compute(instance_type=DEFAULT_INSTANCE_TYPE, instance_count=1)
 DEFAULT_OUTPUT_DATA_CONFIG = OutputDataConfig(
     s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{DEFAULT_BASE_NAME}",
@@ -329,8 +298,7 @@ def test_train_with_intelligent_defaults_training_job_space(
     training_job_instance = mock_training_job.create.return_value
     training_job_instance.wait.assert_called_once_with(logs=True)
 
-
-"""
+'''
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch.object(ModelTrainer, "_get_input_data_config")
 def test_train_with_input_data_channels(mock_get_input_config, mock_training_job, model_trainer):
@@ -1192,4 +1160,4 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
                 compute=DEFAULT_COMPUTE_CONFIG,
                 hyperparameters="hyperparameters.yaml",
             )
-"""
+'''

@@ -22,13 +22,12 @@ from typing import Optional, List, Union, Dict, Any, ClassVar
 import yaml
 
 from graphene.utils.str_converters import to_camel_case, to_snake_case
-
+from sagemaker.utils.config.config_manager import SageMakerConfig
 from sagemaker_core.main import resources
 from sagemaker_core.resources import TrainingJob
 from sagemaker_core.shapes import AlgorithmSpecification
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
-from sagemaker.train.distributed import Torchrun, DistributedConfig
 from sagemaker.utils.config.config_schema import (
     _simple_path,
     SAGEMAKER,
@@ -46,7 +45,6 @@ from sagemaker.utils.config.config_schema import (
     TRAINING_JOB_TAGS_PATH,
 )
 
-from sagemaker.utils.config.config_manager import SageMakerConfig
 from sagemaker.train import Session, get_execution_role
 from sagemaker.train.configs import (
     Compute,
@@ -69,7 +67,6 @@ from sagemaker.train.configs import (
     InputData,
 )
 
-# from sagemaker.train.local_core.local_container import _LocalContainer
 from sagemaker.train.distributed import Torchrun, DistributedConfig
 from sagemaker.train.utils import (
     _get_repo_name_from_image,
@@ -101,7 +98,9 @@ from sagemaker.utils.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.utils.telemetry.constants import Feature
 from sagemaker.train import logger
 from sagemaker.train.sm_recipes.utils import _get_args_from_recipe, _determine_device_type
+
 from sagemaker.utils.jumpstart.configs import JumpStartConfig
+
 from sagemaker.utils.jumpstart.document import get_hub_content_document
 
 
@@ -300,9 +299,7 @@ class ModelTrainer(BaseModel):
             if default_enable_network_isolation is not None or default_vpc_config is not None:
                 self.networking = Networking(
                     default_enable_network_isolation=default_enable_network_isolation,
-                    subnets=self.config_mgr.resolve_value_from_config(
-                        config_path=TRAINING_JOB_SUBNETS_PATH
-                    ),
+                    subnets=self.config_mgr.resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH),
                     security_group_ids=self.config_mgr.resolve_value_from_config(
                         config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
                     ),
@@ -404,6 +401,7 @@ class ModelTrainer(BaseModel):
                 "Must provide 'entry_script' if 'distribution' " + "is provided in 'source_code'.",
             )
 
+    # TODO: Move to use pydantic model validators
     def _validate_source_code(self, source_code: Optional[SourceCode]):
         """Validate the source code configuration."""
         if source_code:

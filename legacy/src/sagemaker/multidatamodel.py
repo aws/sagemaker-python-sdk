@@ -19,11 +19,11 @@ from typing import Union, Optional
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
-from sagemaker import local, s3
+from sagemaker import s3
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.model import Model
 from sagemaker.session import Session
-from sagemaker.utils import pop_out_unused_kwarg, format_tags
+from sagemaker.utils import pop_out_unused_kwarg, format_tags, local
 from sagemaker.workflow.entities import PipelineVariable
 
 MULTI_MODEL_CONTAINER_MODE = "MultiModel"

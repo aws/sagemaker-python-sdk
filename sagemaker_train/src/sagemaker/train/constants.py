@@ -22,7 +22,7 @@ SM_CODE_CONTAINER_PATH = "/opt/ml/input/data/code"
 SM_DRIVERS = "sm_drivers"
 SM_DRIVERS_CONTAINER_PATH = "/opt/ml/input/data/sm_drivers"
 SM_DRIVERS_LOCAL_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "train/container_drivers"
+    os.path.dirname(os.path.abspath(__file__)), "container_drivers"
 )
 
 SOURCE_CODE_JSON = "sourcecode.json"

@@ -1,5 +1,4 @@
 """Defines Types etc. used in workflow."""
-
 from __future__ import absolute_import
 
 from sagemaker.utils.workflow.entities import Expression
@@ -22,6 +21,7 @@ def is_pipeline_variable(var: object) -> bool:
 
 def is_pipeline_parameter_string(var: object) -> bool:
     """Check if the variable is a pipeline parameter string
+
     Args:
         var (object): The variable to be verified.
     Returns:

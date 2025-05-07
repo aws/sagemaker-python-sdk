@@ -24,7 +24,6 @@ sys.modules["utils"] = MagicMock()
 from sagemaker.modules.train.container_drivers.distributed_drivers import (  # noqa: E402
     torchrun_driver,
 )
-
 DUMMY_DISTRIBUTED = {"process_count_per_node": 2}
 
 

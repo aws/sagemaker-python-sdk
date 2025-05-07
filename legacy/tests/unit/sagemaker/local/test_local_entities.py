@@ -19,7 +19,7 @@ from mock import patch, Mock
 
 from botocore.exceptions import ClientError
 
-import sagemaker.local
+import sagemaker.utils.local
 from sagemaker.workflow.fail_step import FailStep
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline

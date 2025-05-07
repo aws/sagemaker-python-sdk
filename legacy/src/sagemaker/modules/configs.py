@@ -47,7 +47,6 @@ from sagemaker_core.shapes import (
     CheckpointConfig,
 )
 
-from sagemaker.modules.utils import convert_unassigned_to_none
 
 __all__ = [
     "SourceCode",
@@ -72,6 +71,8 @@ __all__ = [
     "Networking",
     "InputData",
 ]
+
+from legacy.src.sagemaker.modules.utils import convert_unassigned_to_none
 
 
 class BaseConfig(BaseModel):

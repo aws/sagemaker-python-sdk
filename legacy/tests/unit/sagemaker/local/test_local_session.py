@@ -24,8 +24,8 @@ import sagemaker
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from tests.unit.sagemaker.workflow.helpers import CustomStep
-from sagemaker.local.local_session import LocalSession
-from sagemaker.local.entities import _LocalPipelineExecution
+from sagemaker.utils.local import LocalSession
+from sagemaker.utils.local.entities import _LocalPipelineExecution
 
 
 OK_RESPONSE = urllib3.HTTPResponse()
@@ -49,7 +49,7 @@ LS_FILES = {"Contents": [{"Key": "/data/test.csv"}]}
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_processing_job(process, LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -145,7 +145,7 @@ def test_create_processing_job(process, LocalSession, mock_telemetry):
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_processing_job_not_fully_replicated(process, LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -201,7 +201,7 @@ def test_create_processing_job_not_fully_replicated(process, LocalSession, mock_
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_processing_job_invalid_upload_mode(process, LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -257,7 +257,7 @@ def test_create_processing_job_invalid_upload_mode(process, LocalSession, mock_t
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_processing_job_invalid_processing_input(process, LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -308,7 +308,7 @@ def test_create_processing_job_invalid_processing_input(process, LocalSession, m
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_processing_job_invalid_processing_output(process, LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -358,7 +358,7 @@ def test_create_processing_job_invalid_processing_output(process, LocalSession, 
 
 @patch("sagemaker.local.local_session.LocalSession")
 def test_describe_invalid_processing_job(*args):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
     with pytest.raises(ClientError):
         local_sagemaker_client.describe_processing_job("i-havent-created-this-job")
 
@@ -367,7 +367,7 @@ def test_describe_invalid_processing_job(*args):
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_training_job(train, LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -426,7 +426,7 @@ def test_create_training_job(train, LocalSession, mock_telemetry):
 
 @patch("sagemaker.local.local_session.LocalSession")
 def test_describe_invalid_training_job(*args):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
     with pytest.raises(ClientError):
         local_sagemaker_client.describe_training_job("i-havent-created-this-job")
 
@@ -435,7 +435,7 @@ def test_describe_invalid_training_job(*args):
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_training_job_invalid_data_source(train, LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -475,7 +475,7 @@ def test_create_training_job_invalid_data_source(train, LocalSession, mock_telem
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_training_job_not_fully_replicated(train, LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -513,29 +513,29 @@ def test_create_training_job_not_fully_replicated(train, LocalSession, mock_tele
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_model(LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     local_sagemaker_client.create_model(MODEL_NAME, PRIMARY_CONTAINER)
 
-    assert MODEL_NAME in sagemaker.local.local_session.LocalSagemakerClient._models
+    assert MODEL_NAME in sagemaker.utils.local.local_session.LocalSagemakerClient._models
 
 
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_delete_model(LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     local_sagemaker_client.create_model(MODEL_NAME, PRIMARY_CONTAINER)
-    assert MODEL_NAME in sagemaker.local.local_session.LocalSagemakerClient._models
+    assert MODEL_NAME in sagemaker.utils.local.local_session.LocalSagemakerClient._models
 
     local_sagemaker_client.delete_model(MODEL_NAME)
-    assert MODEL_NAME not in sagemaker.local.local_session.LocalSagemakerClient._models
+    assert MODEL_NAME not in sagemaker.utils.local.local_session.LocalSagemakerClient._models
 
 
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_describe_model(LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     with pytest.raises(ClientError):
         local_sagemaker_client.describe_model("model-does-not-exist")
@@ -551,7 +551,7 @@ def test_describe_model(LocalSession, mock_telemetry):
 @patch("sagemaker.local.local_session._LocalTransformJob")
 @patch("sagemaker.local.local_session.LocalSession")
 def test_create_transform_job(LocalSession, _LocalTransformJob, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     local_sagemaker_client.create_transform_job("transform-job", "some-model", None, None, None)
     _LocalTransformJob().start.assert_called_with(None, None, None)
@@ -563,7 +563,7 @@ def test_create_transform_job(LocalSession, _LocalTransformJob, mock_telemetry):
 @patch("sagemaker.local.local_session._LocalTransformJob")
 @patch("sagemaker.local.local_session.LocalSession")
 def test_describe_transform_job_does_not_exist(LocalSession, _LocalTransformJob):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     with pytest.raises(ClientError):
         local_sagemaker_client.describe_transform_job("transform-job-does-not-exist")
@@ -586,7 +586,7 @@ def test_logs_for_processing_job(process, LocalSession):
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_describe_endpoint_config(LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     # No Endpoint Config Created
     with pytest.raises(ClientError):
@@ -603,28 +603,28 @@ def test_describe_endpoint_config(LocalSession, mock_telemetry):
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_create_endpoint_config(LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
     local_sagemaker_client.create_endpoint_config(ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS)
 
     assert (
-        ENDPOINT_CONFIG_NAME in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+            ENDPOINT_CONFIG_NAME in sagemaker.utils.local.local_session.LocalSagemakerClient._endpoint_configs
     )
 
 
 @patch("sagemaker.local.local_session.LocalSession")
 @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config", side_effect=None)
 def test_delete_endpoint_config(LocalSession, mock_telemetry):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     local_sagemaker_client.create_endpoint_config(ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS)
     assert (
-        ENDPOINT_CONFIG_NAME in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+            ENDPOINT_CONFIG_NAME in sagemaker.utils.local.local_session.LocalSagemakerClient._endpoint_configs
     )
 
     local_sagemaker_client.delete_endpoint_config(ENDPOINT_CONFIG_NAME)
     assert (
-        ENDPOINT_CONFIG_NAME
-        not in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+            ENDPOINT_CONFIG_NAME
+            not in sagemaker.utils.local.local_session.LocalSagemakerClient._endpoint_configs
     )
 
 
@@ -637,7 +637,7 @@ def test_delete_endpoint_config(LocalSession, mock_telemetry):
 def test_describe_endpoint(
     describe_model, describe_endpoint_config, request, mock_telemetry, *args
 ):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     request.return_value = OK_RESPONSE
     describe_endpoint_config.return_value = {
@@ -683,7 +683,7 @@ def test_describe_endpoint(
 @patch("sagemaker.local.local_session.LocalSagemakerClient.describe_endpoint_config")
 @patch("sagemaker.local.local_session.LocalSagemakerClient.describe_model")
 def test_create_endpoint(describe_model, describe_endpoint_config, request, mock_telemetry, *args):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
 
     request.return_value = OK_RESPONSE
     describe_endpoint_config.return_value = {
@@ -715,12 +715,12 @@ def test_create_endpoint(describe_model, describe_endpoint_config, request, mock
 
     local_sagemaker_client.create_endpoint("my-endpoint", "some-endpoint-config")
 
-    assert "my-endpoint" in sagemaker.local.local_session.LocalSagemakerClient._endpoints
+    assert "my-endpoint" in sagemaker.utils.local.local_session.LocalSagemakerClient._endpoints
 
 
 @patch("sagemaker.local.local_session.LocalSession")
 def test_update_endpoint(LocalSession):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.utils.local.local_session.LocalSagemakerClient()
     endpoint_name = "my-endpoint"
     endpoint_config = "my-endpoint-config"
     expected_error_message = "Update endpoint name is not supported in local session."
@@ -755,7 +755,7 @@ def test_serve_endpoint_with_correct_accelerator(request, *args):
         }
     }
 
-    endpoint = sagemaker.local.local_session._LocalEndpoint(
+    endpoint = sagemaker.utils.local.local_session._LocalEndpoint(
         "my-endpoint", "some-endpoint-config", local_session=mock_session
     )
     endpoint.serve()
@@ -793,7 +793,7 @@ def test_serve_endpoint_with_incorrect_accelerator(request, *args):
         }
     }
 
-    endpoint = sagemaker.local.local_session._LocalEndpoint(
+    endpoint = sagemaker.utils.local.local_session._LocalEndpoint(
         "my-endpoint", "some-endpoint-config", local_session=mock_session
     )
     endpoint.serve()
@@ -807,7 +807,7 @@ def test_serve_endpoint_with_incorrect_accelerator(request, *args):
 
 def test_file_input_all_defaults():
     prefix = "pre"
-    actual = sagemaker.local.local_session.file_input(fileUri=prefix)
+    actual = sagemaker.utils.local.local_session.file_input(fileUri=prefix)
     expected = {
         "DataSource": {
             "FileDataSource": {"FileDataDistributionType": "FullyReplicated", "FileUri": prefix}
@@ -818,7 +818,7 @@ def test_file_input_all_defaults():
 
 def test_file_input_content_type():
     prefix = "pre"
-    actual = sagemaker.local.local_session.file_input(fileUri=prefix, content_type="text/csv")
+    actual = sagemaker.utils.local.local_session.file_input(fileUri=prefix, content_type="text/csv")
     expected = {
         "DataSource": {
             "FileDataSource": {"FileDataDistributionType": "FullyReplicated", "FileUri": prefix}
@@ -830,7 +830,7 @@ def test_file_input_content_type():
 
 def test_local_session_is_set_to_local_mode():
     boto_session = Mock(region_name="us-west-2")
-    local_session = sagemaker.local.local_session.LocalSession(boto_session=boto_session)
+    local_session = sagemaker.utils.local.local_session.LocalSession(boto_session=boto_session)
     assert local_session.local_mode
 
 
@@ -845,7 +845,7 @@ def sagemaker_session_custom_endpoint():
     boto_session.resource = Mock(name="resource", return_value=resource_mock)
     boto_session.client = Mock(name="client", return_value=client_mock)
 
-    local_session = sagemaker.local.local_session.LocalSession(
+    local_session = sagemaker.utils.local.local_session.LocalSession(
         boto_session=boto_session, s3_endpoint_url=ENDPOINT_URL
     )
 
@@ -893,7 +893,7 @@ def test_invoke_local_endpoint_with_remote_docker_host(
     m_get_docker_host.return_value = "some_host"
     Body = "Body".encode("utf-8")
     url = "http://%s:%d/invocations" % ("some_host", 8080)
-    sagemaker.local.local_session.LocalSagemakerRuntimeClient().invoke_endpoint(
+    sagemaker.utils.local.local_session.LocalSagemakerRuntimeClient().invoke_endpoint(
         Body, "local_endpoint"
     )
     m_request.assert_called_with("POST", url, body=Body, preload_content=False, headers={})

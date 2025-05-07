@@ -18,19 +18,19 @@ import pytest
 from mock import patch, Mock
 
 import sagemaker.amazon
-import sagemaker.local.data
+import sagemaker.utils.local.data
 
 
 @patch("sagemaker.local.data.LocalFileDataSource")
 def test_get_data_source_instance_with_file(LocalFileDataSource, sagemaker_local_session):
     # file
-    data_source = sagemaker.local.data.get_data_source_instance(
+    data_source = sagemaker.utils.local.data.get_data_source_instance(
         "file:///my/file", sagemaker_local_session
     )
     LocalFileDataSource.assert_called_with("/my/file")
     assert data_source is not None
 
-    data_source = sagemaker.local.data.get_data_source_instance(
+    data_source = sagemaker.utils.local.data.get_data_source_instance(
         "file://relative/path", sagemaker_local_session
     )
     LocalFileDataSource.assert_called_with("relative/path")
@@ -39,7 +39,7 @@ def test_get_data_source_instance_with_file(LocalFileDataSource, sagemaker_local
 
 @patch("sagemaker.local.data.S3DataSource")
 def test_get_data_source_instance_with_s3(S3DataSource, sagemaker_local_session):
-    data_source = sagemaker.local.data.get_data_source_instance(
+    data_source = sagemaker.utils.local.data.get_data_source_instance(
         "s3://bucket/path", sagemaker_local_session
     )
     S3DataSource.assert_called_with("bucket", "/path", sagemaker_local_session)
@@ -52,7 +52,7 @@ def test_get_data_source_instance_with_s3(S3DataSource, sagemaker_local_session)
 @patch("os.path.isfile", lambda x: x[-1] != "/")
 @patch("os.listdir")
 def test_file_data_source_get_file_list_with_folder(listdir):
-    data_source = sagemaker.local.data.LocalFileDataSource("/some/path/")
+    data_source = sagemaker.utils.local.data.LocalFileDataSource("/some/path/")
     listdir.return_value = ["/some/path/a", "/some/path/b", "/some/path/c/", "/some/path/c/a"]
     expected = ["/some/path/a", "/some/path/b", "/some/path/c/a"]
     result = data_source.get_file_list()
@@ -64,7 +64,7 @@ def test_file_data_source_get_file_list_with_folder(listdir):
 @patch("os.path.isdir", lambda x: x[-1] == "/")
 @patch("os.path.isfile", lambda x: x[-1] != "/")
 def test_file_data_source_get_file_list_with_single_file():
-    data_source = sagemaker.local.data.LocalFileDataSource("/some/batch/file.csv")
+    data_source = sagemaker.utils.local.data.LocalFileDataSource("/some/batch/file.csv")
     assert data_source.get_file_list() == ["/some/batch/file.csv"]
 
 
@@ -72,10 +72,10 @@ def test_file_data_source_get_file_list_with_single_file():
 @patch("os.path.abspath", lambda x: x)
 @patch("os.path.isdir", lambda x: x[-1] == "/")
 def test_file_data_source_get_root():
-    data_source = sagemaker.local.data.LocalFileDataSource("/some/path/")
+    data_source = sagemaker.utils.local.data.LocalFileDataSource("/some/path/")
     assert data_source.get_root_dir() == "/some/path/"
 
-    data_source = sagemaker.local.data.LocalFileDataSource("/some/path/my_file.csv")
+    data_source = sagemaker.utils.local.data.LocalFileDataSource("/some/path/my_file.csv")
     assert data_source.get_root_dir() == "/some/path"
 
 
@@ -83,7 +83,7 @@ def test_file_data_source_get_root():
 @patch("sagemaker.utils.download_folder")
 @patch("tempfile.mkdtemp", lambda dir: "/tmp/working_dir")
 def test_s3_data_source(download_folder, LocalFileDataSource, sagemaker_local_session):
-    data_source = sagemaker.local.data.S3DataSource(
+    data_source = sagemaker.utils.local.data.S3DataSource(
         "my_bucket", "/transform/data", sagemaker_local_session
     )
     download_folder.assert_called()
@@ -94,23 +94,23 @@ def test_s3_data_source(download_folder, LocalFileDataSource, sagemaker_local_se
 
 
 def test_get_splitter_instance_with_valid_types():
-    splitter = sagemaker.local.data.get_splitter_instance(None)
-    assert isinstance(splitter, sagemaker.local.data.NoneSplitter)
+    splitter = sagemaker.utils.local.data.get_splitter_instance(None)
+    assert isinstance(splitter, sagemaker.utils.local.data.NoneSplitter)
 
-    splitter = sagemaker.local.data.get_splitter_instance("Line")
-    assert isinstance(splitter, sagemaker.local.data.LineSplitter)
+    splitter = sagemaker.utils.local.data.get_splitter_instance("Line")
+    assert isinstance(splitter, sagemaker.utils.local.data.LineSplitter)
 
-    splitter = sagemaker.local.data.get_splitter_instance("RecordIO")
-    assert isinstance(splitter, sagemaker.local.data.RecordIOSplitter)
+    splitter = sagemaker.utils.local.data.get_splitter_instance("RecordIO")
+    assert isinstance(splitter, sagemaker.utils.local.data.RecordIOSplitter)
 
 
 def test_get_splitter_instance_with_invalid_types():
     with pytest.raises(ValueError):
-        sagemaker.local.data.get_splitter_instance("SomethingInvalid")
+        sagemaker.utils.local.data.get_splitter_instance("SomethingInvalid")
 
 
 def test_none_splitter(tmpdir):
-    splitter = sagemaker.local.data.NoneSplitter()
+    splitter = sagemaker.utils.local.data.NoneSplitter()
 
     test_file_path = tmpdir.join("none_test.txt")
 
@@ -136,7 +136,7 @@ def test_line_splitter(tmpdir):
         for i in range(10):
             f.write("%s\n" % i)
 
-    splitter = sagemaker.local.data.LineSplitter()
+    splitter = sagemaker.utils.local.data.LineSplitter()
     data = [x for x in splitter.split(str(test_file_path))]
     assert len(data) == 10
     for i in range(10):
@@ -150,7 +150,7 @@ def test_recordio_splitter(tmpdir):
             data = str(i).encode("utf-8")
             sagemaker.amazon.common._write_recordio(f, data)
 
-    splitter = sagemaker.local.data.RecordIOSplitter()
+    splitter = sagemaker.utils.local.data.RecordIOSplitter()
     data = [x for x in splitter.split(str(test_file_path))]
 
     assert len(data) == 10
@@ -158,24 +158,24 @@ def test_recordio_splitter(tmpdir):
 
 def test_get_batch_strategy_instance_with_valid_type():
     # Single Record
-    strategy = sagemaker.local.data.get_batch_strategy_instance("SingleRecord", None)
-    assert isinstance(strategy, sagemaker.local.data.SingleRecordStrategy)
+    strategy = sagemaker.utils.local.data.get_batch_strategy_instance("SingleRecord", None)
+    assert isinstance(strategy, sagemaker.utils.local.data.SingleRecordStrategy)
 
     # Multi Record
-    strategy = sagemaker.local.data.get_batch_strategy_instance("MultiRecord", None)
-    assert isinstance(strategy, sagemaker.local.data.MultiRecordStrategy)
+    strategy = sagemaker.utils.local.data.get_batch_strategy_instance("MultiRecord", None)
+    assert isinstance(strategy, sagemaker.utils.local.data.MultiRecordStrategy)
 
 
 def test_get_batch_strategy_instance_with_invalid_type():
     with pytest.raises(ValueError):
         # something invalid
-        sagemaker.local.data.get_batch_strategy_instance("NiceRecord", None)
+        sagemaker.utils.local.data.get_batch_strategy_instance("NiceRecord", None)
 
 
 def test_single_record_strategy_with_small_records():
     splitter = Mock()
 
-    single_record = sagemaker.local.data.SingleRecordStrategy(splitter)
+    single_record = sagemaker.utils.local.data.SingleRecordStrategy(splitter)
     data = ["123", "456", "789"]
     splitter.split.return_value = data
 
@@ -188,7 +188,7 @@ def test_single_record_strategy_with_large_records():
     splitter = Mock()
     mb = 1024 * 1024
 
-    single_record = sagemaker.local.data.SingleRecordStrategy(splitter)
+    single_record = sagemaker.utils.local.data.SingleRecordStrategy(splitter)
     # We will construct a huge record greater than 1MB and we expect an exception
     # since there is no way to fit this with the payload size.
     buffer = ""
@@ -213,7 +213,7 @@ def test_single_record_strategy_with_no_payload_limit():
         buffer += "1" * 100
     splitter.split.return_value = [buffer]
 
-    single_record = sagemaker.local.data.SingleRecordStrategy(splitter)
+    single_record = sagemaker.utils.local.data.SingleRecordStrategy(splitter)
     batch_records = [r for r in single_record.pad("some_file", 0)]
     assert len(batch_records) == 1
 
@@ -221,7 +221,7 @@ def test_single_record_strategy_with_no_payload_limit():
 def test_multi_record_strategy_with_small_records():
     splitter = Mock()
 
-    multi_record = sagemaker.local.data.MultiRecordStrategy(splitter)
+    multi_record = sagemaker.utils.local.data.MultiRecordStrategy(splitter)
     data = ["123", "456", "789"]
     splitter.split.return_value = data
 
@@ -235,7 +235,7 @@ def test_multi_record_strategy_with_large_records():
     splitter = Mock()
     mb = 1024 * 1024
 
-    multi_record = sagemaker.local.data.MultiRecordStrategy(splitter)
+    multi_record = sagemaker.utils.local.data.MultiRecordStrategy(splitter)
     # we will construct several large records and we expect them to be merged into <1MB ones
     buffer = ""
     while sys.getsizeof(buffer) < 0.5 * mb:

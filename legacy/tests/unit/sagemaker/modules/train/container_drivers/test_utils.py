@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 import os
 
-from sagemaker.modules.train.container_drivers.common.utils import (
+from sagemaker.train import (
     safe_deserialize,
     safe_serialize,
     hyperparameters_to_cli_args,

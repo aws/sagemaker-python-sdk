@@ -13,12 +13,19 @@
 """This module contains the model for JumpStart HubContentDocument."""
 from __future__ import absolute_import, annotations
 
-from enum import StrEnum
+from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from pydantic import Field, ConfigDict
 
 from sagemaker.utils.jumpstart.configs import BaseConfig
 
+
+class StrEnum(str, Enum):
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return str(self)
 
 class ModelTypeEnum(StrEnum):
     """ModelTypeEnum"""

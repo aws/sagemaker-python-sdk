@@ -42,7 +42,7 @@ from sagemaker.workflow.pipeline_experiment_config import (
 )
 from sagemaker.workflow.step_collections import StepCollection
 from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep, CustomFunctionStep
-from sagemaker.local.local_session import LocalSession
+from sagemaker.utils.local import LocalSession
 from botocore.exceptions import ClientError
 from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
 
