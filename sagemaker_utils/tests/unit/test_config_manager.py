@@ -747,3 +747,100 @@ class TestSageMakerConfig:
                 "config": "value"
             }
         }
+
+    @patch.object(SageMakerConfig, 'load_sagemaker_config')
+    def test_load_default_configs_empty(self, mock_load_config):
+        """Test with empty config"""
+        mock_load_config.return_value = {}
+        result = self.config.load_default_configs_for_resource_name("test_resource")
+        assert result == {}
+
+    @patch.object(SageMakerConfig, 'load_sagemaker_config')
+    def test_load_default_configs_valid(self, mock_load_config):
+        """Test with valid config"""
+        mock_config = {
+            "SageMaker": {
+                "PythonSDK": {
+                    "Resources": {
+                        "test_resource": {"key": "value"}
+                    }
+                }
+            }
+        }
+        mock_load_config.return_value = mock_config
+        result = self.config.load_default_configs_for_resource_name("test_resource")
+        assert result == {"key": "value"}
+
+    @patch.object(SageMakerConfig, 'load_sagemaker_config')
+    def test_load_default_configs_nonexistent(self, mock_load_config):
+        """Test with non-existent resource"""
+        mock_config = {
+            "SageMaker": {
+                "PythonSDK": {
+                    "Resources": {
+                        "test_resource": {"key": "value"}
+                    }
+                }
+            }
+        }
+        mock_load_config.return_value = mock_config
+        result = self.config.load_default_configs_for_resource_name("non_existent_resource")
+        assert result is None
+
+    @patch.object(SageMakerConfig, 'load_sagemaker_config')
+    def test_load_default_configs_caching(self, mock_load_config):
+        """Test caching behavior"""
+        mock_config = {
+            "SageMaker": {
+                "PythonSDK": {
+                    "Resources": {
+                        "test_resource": {"key": "value"}
+                    }
+                }
+            }
+        }
+        mock_load_config.return_value = mock_config
+
+        # First call
+        self.config.load_default_configs_for_resource_name("test_resource")
+        # Second call with same resource name
+        self.config.load_default_configs_for_resource_name("test_resource")
+
+        # Should be calling load_sagemaker_config once due to caching
+        mock_load_config.assert_called_once()
+
+    def test_get_resolved_config_value(self):
+        # Test when value exists in resource_defaults
+        resource_defaults = {"attribute": "resource_value"}
+        global_defaults = {"attribute": "global_value"}
+        result = self.config.get_resolved_config_value("attribute", resource_defaults, global_defaults)
+        assert result == "resource_value"
+
+        # Test when value exists only in global_defaults
+        resource_defaults = {}
+        global_defaults = {"attribute": "global_value"}
+        result = self.config.get_resolved_config_value("attribute", resource_defaults, global_defaults)
+        assert result == "global_value"
+
+        # Test when value doesn't exist in either defaults
+        resource_defaults = {}
+        global_defaults = {}
+        result = self.config.get_resolved_config_value("attribute", resource_defaults, global_defaults)
+        assert result is None
+
+        # Test with None defaults
+        result = self.config.get_resolved_config_value("attribute", None, None)
+        assert result is None
+
+        # Test when attribute exists in both defaults (resource should take precedence)
+        resource_defaults = {"attribute": "resource_value"}
+        global_defaults = {"attribute": "global_value"}
+        result = self.config.get_resolved_config_value("attribute", resource_defaults, global_defaults)
+        assert result == "resource_value"
+
+        # Test logging behavior
+        with patch('sagemaker.utils.config.config_manager.logger') as mock_logger:
+            self.config.get_resolved_config_value("missing_attribute", {}, {})
+            mock_logger.debug.assert_called_once_with(
+                "Configurable value missing_attribute not entered in parameters or present in the Config")
+

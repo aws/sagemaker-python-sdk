@@ -18,6 +18,7 @@ from sagemaker.utils.config.config_utils import (
     _log_sagemaker_config_single_substitution,
     _log_sagemaker_config_merge,
 )
+from functools import lru_cache
 
 logger = get_sagemaker_config_logger()
 log_info_function = non_repeating_log_factory(logger, "info")
@@ -574,3 +575,21 @@ class SageMakerConfig:
         )
 
         return inferred_config_dict
+
+    @lru_cache(maxsize=None)
+    def load_default_configs_for_resource_name(self, resource_name: str):
+        configs_data = self.load_sagemaker_config()
+        if not configs_data:
+            logger.debug("No default configurations found for resource: %s", resource_name)
+            return {}
+        return configs_data["SageMaker"]["PythonSDK"]["Resources"].get(resource_name)
+
+    def get_resolved_config_value(self, attribute, resource_defaults, global_defaults):
+        if resource_defaults and attribute in resource_defaults:
+            return resource_defaults[attribute]
+        if global_defaults and attribute in global_defaults:
+            return global_defaults[attribute]
+        logger.debug(
+            f"Configurable value {attribute} not entered in parameters or present in the Config"
+        )
+        return None

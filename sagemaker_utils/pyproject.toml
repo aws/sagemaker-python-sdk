@@ -36,15 +36,11 @@ dependencies = [
   "boto3>=1.35.75,<2.0",
   "jsonschema",
   "platformdirs",
-  "sagemaker-core>=1.0.17,<2.0.0"
 ]
 
 [project.urls]
 Homepage = "https://github.com/aws/sagemaker-python-sdk"
 
-[tool.setuptools.packages.find]
-where = ["src/"]
-include = ["sagemaker.utils"]
 
 [tool.setuptools.dynamic]
 version = { file = "VERSION"}

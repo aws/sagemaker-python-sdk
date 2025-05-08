@@ -191,9 +191,10 @@ class ResourcesCodeGen:
             "from sagemaker.core.utils.code_injection.constants import Color",
             "from sagemaker.core.utils.utils import SageMakerClient, ResourceIterator, Unassigned, get_textual_rich_logger, "
             "snake_to_pascal, pascal_to_snake, is_not_primitive, is_not_str_dict, is_primitive_list, serialize",
-            "from sagemaker.core.utils.intelligent_defaults_helper import load_default_configs_for_resource_name, get_config_value",
+            "from sagemaker.utils.config.config_manager import SageMakerConfig",
             "from sagemaker.core.utils.logs import MultiLogStreamHandler",
             "from sagemaker.core.utils.exceptions import *",
+            "from typing import ClassVar",
         ]
 
         formated_imports = "\n".join(imports)

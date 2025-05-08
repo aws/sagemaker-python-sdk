@@ -601,6 +601,7 @@ DESERIALIZE_INPUT_AND_RESPONSE_TO_CLS_TEMPLATE = """
 RESOURCE_BASE_CLASS_TEMPLATE = """
 class Base(BaseModel):
     model_config = ConfigDict(protected_namespaces=(), validate_assignment=True, extra="forbid")
+    config_manager: ClassVar[SageMakerConfig] = SageMakerConfig()
     
     @classmethod
     def get_sagemaker_client(cls, session = None, region_name = None, service_name = 'sagemaker'):
@@ -613,13 +614,13 @@ class Base(BaseModel):
         try:
             for configurable_attribute in config_schema_for_resource:
                 if kwargs.get(configurable_attribute) is None:
-                    resource_defaults = load_default_configs_for_resource_name(
+                    resource_defaults = Base.config_manager.load_default_configs_for_resource_name(
                         resource_name=resource_name
                     )
-                    global_defaults = load_default_configs_for_resource_name(
+                    global_defaults = Base.config_manager.load_default_configs_for_resource_name(
                         resource_name="GlobalDefaults"
                     )
-                    if config_value := get_config_value(
+                    if config_value := Base.config_manager.get_resolved_config_value(
                         configurable_attribute, resource_defaults, global_defaults
                     ):
                         resource_name = snake_to_pascal(configurable_attribute)
