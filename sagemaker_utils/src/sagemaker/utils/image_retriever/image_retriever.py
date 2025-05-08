@@ -6,9 +6,6 @@ from sagemaker_core.helper.session_helper import Session
 from legacy.src.sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from legacy.src.sagemaker.training_compiler.config import TrainingCompilerConfig
 from sagemaker.utils.utils import _botocore_resolver
-from sagemaker.utils.jumpstart.utils import (
-    is_jumpstart_model_input,
-)
 from sagemaker.utils.workflow import is_pipeline_variable
 from image_retriever_utils import (
     _config_for_framework_and_scope,
@@ -478,7 +475,7 @@ class ImageRetriever:
                     "(%s) since pipeline variables are only interpreted in the pipeline execution time."
                     % (name, type(val))
                 )
-        if is_jumpstart_model_input(model_id, model_version):
+        if model_id:
             return ImageRetriever.retrieve_jumpstart_uri()
 
         if framework == HUGGING_FACE_FRAMEWORK:

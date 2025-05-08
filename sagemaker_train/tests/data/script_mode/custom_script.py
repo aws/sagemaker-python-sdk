@@ -16,6 +16,7 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
+
 def get_train_data(train_dir):
     """
     Get the training data and convert to tensors

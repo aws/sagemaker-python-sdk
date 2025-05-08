@@ -23,15 +23,26 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 
 from sagemaker.train import DIR_PARAM_NAME, logger
-from sagemaker.utils.local.image import _stream_output, _pull_image, _write_json_file, _aws_credentials, _Volume, \
-    _check_output
+from sagemaker.utils.local.image import (
+    _stream_output,
+    _pull_image,
+    _write_json_file,
+    _aws_credentials,
+    _Volume,
+    _check_output,
+)
 
 from sagemaker.utils.local.utils import check_for_studio, recursive_copy
 from sagemaker_core.helper.session_helper import Session
 from sagemaker_core.main.shapes import Channel
 
 
-from sagemaker.utils.utils import ECR_URI_PATTERN, create_tar_file, _module_import_error, download_folder
+from sagemaker.utils.utils import (
+    ECR_URI_PATTERN,
+    create_tar_file,
+    _module_import_error,
+    download_folder,
+)
 from sagemaker_core.main.utils import Unassigned
 from sagemaker_core.shapes import DataSource
 

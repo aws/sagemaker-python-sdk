@@ -144,7 +144,7 @@ def test_single_container_local_mode_s3_data(sagemaker_session):
             )
 
             model_trainer.train()
-            #assert os.path.exists(os.path.join(CWD, "compressed_artifacts/model.tar.gz"))
+            # assert os.path.exists(os.path.join(CWD, "compressed_artifacts/model.tar.gz"))
             operation_successful = True
         except Exception:
             operation_successful = False
@@ -206,7 +206,7 @@ def test_multi_container_local_mode(sagemaker_session):
             )
 
             model_trainer.train()
-           # assert os.path.exists(os.path.join(CWD, "compressed_artifacts/model.tar.gz"))
+            # assert os.path.exists(os.path.join(CWD, "compressed_artifacts/model.tar.gz"))
             operation_successful = True
         except Exception:
             operation_successful = False

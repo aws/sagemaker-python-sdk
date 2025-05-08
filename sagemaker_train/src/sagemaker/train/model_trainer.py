@@ -299,7 +299,9 @@ class ModelTrainer(BaseModel):
             if default_enable_network_isolation is not None or default_vpc_config is not None:
                 self.networking = Networking(
                     default_enable_network_isolation=default_enable_network_isolation,
-                    subnets=self.config_mgr.resolve_value_from_config(config_path=TRAINING_JOB_SUBNETS_PATH),
+                    subnets=self.config_mgr.resolve_value_from_config(
+                        config_path=TRAINING_JOB_SUBNETS_PATH
+                    ),
                     security_group_ids=self.config_mgr.resolve_value_from_config(
                         config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
                     ),
@@ -414,28 +416,45 @@ class ModelTrainer(BaseModel):
                         "If 'requirements' or 'entry_script' is provided in 'source_code', "
                         + "'source_dir' must also be provided.",
                     )
-                if not _is_valid_path(source_dir, path_type="Directory"):
+                if not (
+                    _is_valid_path(source_dir, path_type="Directory")
+                    or _is_valid_s3_uri(source_dir, path_type="Directory")
+                    or (
+                        _is_valid_path(source_dir, path_type="File")
+                        and source_dir.endswith(".tar.gz")
+                    )
+                    or (
+                        _is_valid_s3_uri(source_dir, path_type="File")
+                        and source_dir.endswith(".tar.gz")
+                    )
+                ):
                     raise ValueError(
-                        f"Invalid 'source_dir' path: {source_dir}. " + "Must be a valid directory.",
+                        f"Invalid 'source_dir' path: {source_dir}. "
+                        "Must be a valid local directory, "
+                        "s3 uri or path to tar.gz file stored locally or in s3."
                     )
                 if requirements:
-                    if not _is_valid_path(
-                        f"{source_dir}/{requirements}",
-                        path_type="File",
-                    ):
-                        raise ValueError(
-                            f"Invalid 'requirements': {requirements}. "
-                            + "Must be a valid file within the 'source_dir'.",
-                        )
+                    if not source_dir.endswith(".tar.gz"):
+                        if not _is_valid_path(
+                            f"{source_dir}/{requirements}", path_type="File"
+                        ) and not _is_valid_s3_uri(
+                            f"{source_dir}/{requirements}", path_type="File"
+                        ):
+                            raise ValueError(
+                                f"Invalid 'requirements': {requirements}. "
+                                "Must be a valid file within the 'source_dir'.",
+                            )
                 if entry_script:
-                    if not _is_valid_path(
-                        f"{source_dir}/{entry_script}",
-                        path_type="File",
-                    ):
-                        raise ValueError(
-                            f"Invalid 'entry_script': {entry_script}. "
-                            + "Must be a valid file within the 'source_dir'.",
-                        )
+                    if not source_dir.endswith(".tar.gz"):
+                        if not _is_valid_path(
+                            f"{source_dir}/{entry_script}", path_type="File"
+                        ) and not _is_valid_s3_uri(
+                            f"{source_dir}/{entry_script}", path_type="File"
+                        ):
+                            raise ValueError(
+                                f"Invalid 'entry_script': {entry_script}. "
+                                "Must be a valid file within the 'source_dir'.",
+                            )
 
     def model_post_init(self, __context: Any):
         """Post init method to perform custom validation and set default values."""
@@ -853,7 +872,10 @@ class ModelTrainer(BaseModel):
 
         working_dir = ""
         if source_code.source_dir:
-            working_dir = f"cd {SM_CODE_CONTAINER_PATH}"
+            working_dir = f"cd {SM_CODE_CONTAINER_PATH}\n"
+            if source_code.source_dir.endswith(".tar.gz"):
+                tarfile_name = os.path.basename(source_code.source_dir)
+                working_dir += f"tar -xzf {tarfile_name}\n"
 
         if base_command:
             execute_driver = EXECUTE_BASE_COMMANDS.format(base_command=base_command)

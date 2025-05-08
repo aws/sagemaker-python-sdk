@@ -39,10 +39,11 @@ from sagemaker.utils.config.config_schema import (
 )
 
 import os
-#from sagemaker.train.distributed import Torchrun, SMP, MPI
-#from sagemaker.train.sm_recipes.utils import _load_recipes_cfg
-#from sagemaker.templates import EXEUCTE_DISTRIBUTED_DRIVER
-#from tests.unit import DATA_DIR
+
+# from sagemaker.train.distributed import Torchrun, SMP, MPI
+# from sagemaker.train.sm_recipes.utils import _load_recipes_cfg
+# from sagemaker.templates import EXEUCTE_DISTRIBUTED_DRIVER
+# from tests.unit import DATA_DIR
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../../", "data")
 DEFAULT_BASE_NAME = "dummy-image-job"
 DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest"
@@ -65,9 +66,6 @@ DEFAULT_STOPPING_CONDITION = StoppingCondition(
 DEFAULT_SOURCE_CODE = SourceCode(
     source_dir=DEFAULT_SOURCE_DIR,
     entry_script="custom_script.py",
-)
-UNSUPPORTED_SOURCE_CODE = SourceCode(
-    entry_script="train.py",
 )
 DEFAULT_ENTRYPOINT = ["/bin/bash"]
 DEFAULT_ARGUMENTS = [
@@ -126,7 +124,17 @@ def model_trainer():
         {
             "init_params": {
                 "training_image": DEFAULT_IMAGE,
-                "source_code": UNSUPPORTED_SOURCE_CODE,
+                "source_code": SourceCode(entry_script="train.py"),
+            },
+            "should_throw": True,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/requirements.txt",
+                    entry_script="custom_script.py",
+                ),
             },
             "should_throw": True,
         },
@@ -137,13 +145,47 @@ def model_trainer():
             },
             "should_throw": False,
         },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir=f"{DEFAULT_SOURCE_DIR}/code.tar.gz",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/code/",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir="s3://bucket/code/code.tar.gz",
+                    entry_script="custom_script.py",
+                ),
+            },
+            "should_throw": False,
+        },
     ],
     ids=[
         "no_params",
         "training_image_and_algorithm_name",
         "only_training_image",
-        "unsupported_source_code",
-        "supported_source_code",
+        "unsupported_source_code_missing_source_dir",
+        "unsupported_source_code_s3_other_file",
+        "supported_source_code_local_dir",
+        "supported_source_code_local_tar_file",
+        "supported_source_code_s3_dir",
+        "supported_source_code_s3_tar_file",
     ],
 )
 def test_model_trainer_param_validation(test_case, modules_session):
@@ -298,7 +340,8 @@ def test_train_with_intelligent_defaults_training_job_space(
     training_job_instance = mock_training_job.create.return_value
     training_job_instance.wait.assert_called_once_with(logs=True)
 
-'''
+
+"""
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 @patch.object(ModelTrainer, "_get_input_data_config")
 def test_train_with_input_data_channels(mock_get_input_config, mock_training_job, model_trainer):
@@ -1160,4 +1203,4 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
                 compute=DEFAULT_COMPUTE_CONFIG,
                 hyperparameters="hyperparameters.yaml",
             )
-'''
+"""

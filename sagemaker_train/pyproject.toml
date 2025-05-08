@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sagemaker_train"
-dynamic = ["version", "optional-dependencies"]
+dynamic = ["version"]
 description = "Open source library for training and deploying models on Amazon SageMaker."
 readme = "README.rst"
 requires-python = ">=3.9"
@@ -43,7 +43,7 @@ Homepage = "https://github.com/aws/sagemaker-python-sdk"
 
 [tool.setuptools.packages.find]
 where = ["src/"]
-include = ["sagemaker.utils", "sagemaker.train"]
+include = ["sagemaker.train"]
 
 [tool.setuptools.dynamic]
 version = { file = "VERSION"}

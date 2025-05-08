@@ -24,7 +24,7 @@ import logging
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sagemaker.train.container_drivers.common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
+from common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
     safe_serialize,
     safe_deserialize,
     read_distributed_json,
