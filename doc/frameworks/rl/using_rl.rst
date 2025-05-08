@@ -19,26 +19,34 @@ Training RL models using ``RLEstimator`` is a two-step process:
 You should prepare your script in a separate source file than the notebook, terminal session, or source file you're
 using to submit the script to SageMaker via an ``RLEstimator``. This will be discussed in further detail below.
 
-Suppose that you already have a training script called ``coach-train.py``.
+Suppose that you already have a training script called ``coach-train.py`` and have an RL image in your ECR registry
+called ``123123123123.dkr.ecr.us-west-2.amazonaws.com/your-rl-registry:your-cool-image-tag`` in ``us-west-2`` region.
 You can then create an ``RLEstimator`` with keyword arguments to point to this script and define how SageMaker runs it:
 
 .. code:: python
 
     from sagemaker.rl import RLEstimator, RLToolkit, RLFramework
 
-    rl_estimator = RLEstimator(entry_point='coach-train.py',
-                               toolkit=RLToolkit.COACH,
-                               toolkit_version='0.11.1',
-                               framework=RLFramework.TENSORFLOW,
-                               role='SageMakerRole',
-                               instance_type='ml.p3.2xlarge',
-                               instance_count=1)
+    # Train my estimator
+    rl_estimator = RLEstimator(
+        entry_point='coach-train.py',
+        image_uri='123123123123.dkr.ecr.us-west-2.amazonaws.com/your-rl-registry:your-cool-image-tag',
+        role='SageMakerRole',
+        instance_type='ml.c4.2xlarge',
+        instance_count=1
+    )
+
+
+.. tip::
+   Refer to `SageMaker RL Docker Containers <#sagemaker-rl-docker-containers>`_ for the more information on how to
+   build your custom RL image.
 
 After that, you simply tell the estimator to start a training job:
 
 .. code:: python
 
     rl_estimator.fit()
+
 
 In the following sections, we'll discuss how to prepare a training script for execution on SageMaker
 and how to run that script on SageMaker using ``RLEstimator``.
@@ -47,21 +55,20 @@ and how to run that script on SageMaker using ``RLEstimator``.
 Preparing the RL Training Script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Your RL training script must be a Python 3.5 compatible source file from MXNet framework or Python 3.6 for TensorFlow.
-
 The training script is very similar to a training script you might run outside of SageMaker, but you
 can access useful properties about the training environment through various environment variables, such as
 
-* ``SM_MODEL_DIR``: A string representing the path to the directory to write model artifacts to.
-  These artifacts are uploaded to S3 for model hosting.
-* ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
-* ``SM_OUTPUT_DATA_DIR``: A string representing the filesystem path to write output artifacts to. Output artifacts may
-  include checkpoints, graphs, and other files to save, not including model artifacts. These artifacts are compressed
-  and uploaded to S3 to the same S3 prefix as the model artifacts.
+*  ``SM_MODEL_DIR``: A string representing the path to the directory to write model artifacts to.
+   These artifacts are uploaded to S3 for model hosting.
+*  ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
+*  ``SM_OUTPUT_DATA_DIR``: A string representing the filesystem path to write output artifacts to. Output artifacts may
+   include checkpoints, graphs, and other files to save, not including model artifacts. These artifacts are compressed
+   and uploaded to S3 to the same S3 prefix as the model artifacts.
 
 For the exhaustive list of available environment variables, see the
 `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
 
+Note that your RL training script must have the Python version compatible with your custom RL Docker image.
 
 RL Estimators
 -------------
@@ -81,28 +88,16 @@ these in the constructor, either positionally or as keyword arguments.
    endpoints use this role to access training data and model artifacts.
    After the endpoint is created, the inference code might use the IAM
    role, if accessing AWS resource.
--  ``instance_count`` Number of Amazon EC2 instances to use for
-   training.
+-  ``instance_count`` Number of Amazon EC2 instances to use for training.
 -  ``instance_type`` Type of EC2 instance to use for training, for
    example, 'ml.m4.xlarge'.
 
-You must as well include either:
+You must also provide:
 
--  ``toolkit`` RL toolkit (Ray RLlib or Coach) you want to use for executing your model training code.
-
--  ``toolkit_version`` RL toolkit version you want to be use for executing your model training code.
-
--  ``framework`` Framework (MXNet or TensorFlow) you want to be used as
-   a toolkit backed for reinforcement learning training.
-
-or provide:
-
--  ``image_uri`` An alternative Docker image to use for training and
-   serving.  If specified, the estimator will use this image for training and
-   hosting, instead of selecting the appropriate SageMaker official image based on
-   framework_version and py_version. Refer to: `SageMaker RL Docker Containers
-   <#sagemaker-rl-docker-containers>`_ for details on what the Official images support
-   and where to find the source code to build your custom image.
+-  ``image_uri`` An alternative Docker image to use for training and serving.
+   If specified, the estimator will use this image for training and
+   hosting. Refer to: `SageMaker RL Docker Containers <#sagemaker-rl-docker-containers>`_
+   for the source code to build your custom RL image.
 
 
 Optional arguments
@@ -140,10 +135,8 @@ Deploying RL Models
 After an RL Estimator has been fit, you can host the newly created model in SageMaker.
 
 After calling ``fit``, you can call ``deploy`` on an ``RLEstimator`` Estimator to create a SageMaker Endpoint.
-The Endpoint runs one of the SageMaker-provided model server based on the ``framework`` parameter
-specified in the ``RLEstimator`` constructor and hosts the model produced by your training script,
-which was run when you called ``fit``. This was the model you saved to ``model_dir``.
-In case if ``image_uri`` was specified it would use provided image for the deployment.
+The Endpoint runs provided image specified with ``image_uri`` and hosts the model produced by your
+training script, which was run when you called ``fit``. This is the model you saved to ``model_dir``.
 
 ``deploy`` returns a ``sagemaker.mxnet.MXNetPredictor`` for MXNet or
 ``sagemaker.tensorflow.TensorFlowPredictor`` for TensorFlow.
@@ -153,19 +146,22 @@ In case if ``image_uri`` was specified it would use provided image for the deplo
 .. code:: python
 
     # Train my estimator
-    rl_estimator = RLEstimator(entry_point='coach-train.py',
-                               toolkit=RLToolkit.COACH,
-                               toolkit_version='0.11.0',
-                               framework=RLFramework.MXNET,
-                               role='SageMakerRole',
-                               instance_type='ml.c4.2xlarge',
-                               instance_count=1)
+    region = 'us-west-2' # the AWS region of your training job
+    rl_estimator = RLEstimator(
+        entry_point='coach-train.py',
+        image_uri=f'123123123123.dkr.ecr.{region}.amazonaws.com/your-rl-registry:your-cool-image-tag',
+        role='SageMakerRole',
+        instance_type='ml.c4.2xlarge',
+        instance_count=1
+    )
 
     rl_estimator.fit()
 
     # Deploy my estimator to a SageMaker Endpoint and get a MXNetPredictor
-    predictor = rl_estimator.deploy(instance_type='ml.m4.xlarge',
-                                    initial_instance_count=1)
+    predictor = rl_estimator.deploy(
+        instance_type='ml.m4.xlarge',
+        initial_instance_count=1
+    )
 
     response = predictor.predict(data)
 
@@ -193,10 +189,8 @@ attach will block and display log messages from the training job, until the trai
 
 The ``attach`` method accepts the following arguments:
 
--  ``training_job_name:`` The name of the training job to attach
-   to.
--  ``sagemaker_session:`` The Session used
-   to interact with SageMaker
+-  ``training_job_name:`` The name of the training job to attach to.
+-  ``sagemaker_session:`` The Session used to interact with SageMaker
 
 RL Training Examples
 --------------------
@@ -212,4 +206,6 @@ These are also available in SageMaker Notebook Instance hosted Jupyter notebooks
 SageMaker RL Docker Containers
 ------------------------------
 
-For more about the Docker images themselves, visit `the SageMaker RL containers repository <https://github.com/aws/sagemaker-rl-container>`_.
+For more information about how build your own RL image and use script mode with your image, see
+`Building your image section on SageMaker RL containers repository <https://github.com/aws/sagemaker-rl-container?tab=readme-ov-file#building-your-image/>`_
+and `Bring your own model with Amazon SageMaker script mode <https://aws.amazon.com/blogs/machine-learning/bring-your-own-model-with-amazon-sagemaker-script-mode/>`_.
