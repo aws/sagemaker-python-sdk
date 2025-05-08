@@ -199,11 +199,11 @@ class TestNotebookJobStep(unittest.TestCase):
             in str(context.exception)
         )
         self.assertTrue(
-            "The required input notebook(None) is not a valid file." in str(context.exception)
+            "The required input notebook (None) is not a valid file." in str(context.exception)
         )
         self.assertTrue(
-            "The image uri(specified as None) is required and should be hosted in "
-            "same region of the session(us-west-2)." in str(context.exception)
+            "The image uri (specified as None) is required and should be hosted in "
+            "same region of the session (us-west-2)." in str(context.exception)
         )
         self.assertTrue("The kernel name is required." in str(context.exception))
 
@@ -222,19 +222,19 @@ class TestNotebookJobStep(unittest.TestCase):
             ).arguments
 
         self.assertTrue(
-            "The required input notebook(path/non-existing-file) is not a valid file."
+            "The required input notebook (path/non-existing-file) is not a valid file."
             in str(context.exception)
         )
         self.assertTrue(
-            "The initialization script(path/non-existing-file) is not a valid file."
+            "The initialization script (non-existing-script) is not a valid file."
             in str(context.exception)
         )
         self.assertTrue(
-            "The path(/tmp/non-existing-folder) specified in additional dependencies "
+            "The path (/tmp/non-existing-folder) specified in additional dependencies "
             "does not exist." in str(context.exception)
         )
         self.assertTrue(
-            "The path(path2/non-existing-file) specified in additional dependencies "
+            "The path (path2/non-existing-file) specified in additional dependencies "
             "does not exist." in str(context.exception)
         )
 
@@ -251,9 +251,9 @@ class TestNotebookJobStep(unittest.TestCase):
             ).arguments
 
         self.assertTrue(
-            "The image uri(specified as 236514542706.dkr.ecr.us-east-9.amazonaws.com/"
+            "The image uri (specified as 236514542706.dkr.ecr.us-east-9.amazonaws.com/"
             "sagemaker-data-science) is required and should be hosted in "
-            "same region of the session(us-west-2)." in str(context.exception)
+            "same region of the session (us-west-2)." in str(context.exception)
         )
 
     def test_invalid_notebook_job_name(self):
