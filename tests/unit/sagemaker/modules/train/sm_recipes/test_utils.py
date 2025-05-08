@@ -180,14 +180,11 @@ def test_get_args_from_recipe_compute(
             assert mock_trainium_args.call_count == 0
             assert args is None
 
+
 @pytest.mark.parametrize(
     "test_case",
     [
-        {
-            "model_type": "llama_v4",
-            "script": "llama_pretrain.py",
-            "model_base_name": "llama"
-        },
+        {"model_type": "llama_v4", "script": "llama_pretrain.py", "model_base_name": "llama"},
         {
             "model_type": "llama_v3",
             "script": "llama_pretrain.py",
@@ -213,8 +210,6 @@ def test_get_args_from_recipe_compute(
 def test_get_trainining_recipe_gpu_model_name_and_script(test_case):
     model_type = test_case["model_type"]
     script = test_case["script"]
-    model_base_name, script = _get_trainining_recipe_gpu_model_name_and_script(
-        model_type
-    )
+    model_base_name, script = _get_trainining_recipe_gpu_model_name_and_script(model_type)
     assert model_base_name == test_case["model_base_name"]
     assert script == test_case["script"]
