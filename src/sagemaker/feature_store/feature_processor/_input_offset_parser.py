@@ -72,7 +72,9 @@ class InputOffsetParser:
 
         return self.now + offset_td
 
-    def get_offset_date_year_month_day_hour(self, offset: Optional[str]) -> Tuple[str, str, str, str]:
+    def get_offset_date_year_month_day_hour(
+        self, offset: Optional[str]
+    ) -> Tuple[str, str, str, str]:
         """Get the year, month, day and hour based on offset diff.
 
         Args:
