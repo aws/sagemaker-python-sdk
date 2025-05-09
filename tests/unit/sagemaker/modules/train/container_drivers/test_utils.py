@@ -61,12 +61,12 @@ def test_safe_deserialize_boolean_strings():
     assert safe_deserialize("false") is False
 
     # The below are not valid JSON booleans
-    assert safe_deserialize("True") is "True"
-    assert safe_deserialize("False") is "False"
-    assert safe_deserialize("TRUE") is "TRUE"
-    assert safe_deserialize("FALSE") is "FALSE"
-    assert safe_deserialize("tRuE") is "tRuE"
-    assert safe_deserialize("fAlSe") is "fAlSe"
+    assert safe_deserialize("True") == "True"
+    assert safe_deserialize("False") == "False"
+    assert safe_deserialize("TRUE") == "TRUE"
+    assert safe_deserialize("FALSE") == "FALSE"
+    assert safe_deserialize("tRuE") == "tRuE"
+    assert safe_deserialize("fAlSe") == "fAlSe"
 
 
 def test_safe_deserialize_valid_json_string():
