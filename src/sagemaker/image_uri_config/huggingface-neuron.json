@@ -17,6 +17,7 @@
                     ],
                     "repository": "huggingface-pytorch-inference-neuron",
                     "registries": {
+                        "ap-east-2": "975050140332",
                         "ap-northeast-1": "763104351884",
                         "ap-south-1": "763104351884",
                         "ap-south-2": "772153158452",
