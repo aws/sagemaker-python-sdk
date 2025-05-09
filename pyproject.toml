@@ -40,7 +40,7 @@ dependencies = [
   "importlib-metadata>=1.4.0,<7.0",
   "jsonschema",
   "numpy==1.26.4",
-  "omegaconf>=2.2,<=2.3",
+  "omegaconf>=2.2,<3",
   "packaging>=23.0,<25",
   "pandas",
   "pathos",
