@@ -865,7 +865,7 @@ class ModelTrainer(BaseModel):
             working_dir = f"cd {SM_CODE_CONTAINER_PATH} \n"
             if source_code.source_dir.endswith(".tar.gz"):
                 tarfile_name = os.path.basename(source_code.source_dir)
-                working_dir += f"tar --strip-components=1 -xzf {tarfile_name} \n"
+                working_dir += f"tar -xzf {tarfile_name} \n"
 
         if base_command:
             execute_driver = EXECUTE_BASE_COMMANDS.format(base_command=base_command)
