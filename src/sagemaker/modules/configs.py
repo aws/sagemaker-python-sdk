@@ -240,8 +240,8 @@ class OutputDataConfig(shapes.OutputDataConfig):
             SageMaker uses to encrypt the model artifacts at rest using Amazon S3 server-side
             encryption.
         compression_type (Optional[str]):
-            The model output compression type. Select None to output an uncompressed model,
-            recommended for large model outputs. Defaults to gzip.
+            The model output compression type. Select `NONE` to output an uncompressed model,
+            recommended for large model outputs. Defaults to `GZIP`.
     """
 
     s3_output_path: Optional[str] = None

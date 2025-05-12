@@ -597,14 +597,16 @@ class ModelTrainer(BaseModel):
         current_training_job_name = _get_unique_name(self.base_job_name)
         input_data_key_prefix = f"{self.base_job_name}/{current_training_job_name}/input"
         if input_data_config and self.input_data_config:
-            self.input_data_config = input_data_config
-            # Add missing input data channels to the existing input_data_config
-            final_input_channel_names = {i.channel_name for i in input_data_config}
-            for input_data in self.input_data_config:
-                if input_data.channel_name not in final_input_channel_names:
-                    input_data_config.append(input_data)
-
-        self.input_data_config = input_data_config or self.input_data_config or []
+            final_channels = {
+                input_data.channel_name: input_data for input_data in self.input_data_config
+            }
+            # Update with precedence on the input_data_config passed into the train method
+            final_channels.update(
+                {input_data.channel_name: input_data for input_data in input_data_config}
+            )
+            self.input_data_config = list(final_channels.values())
+        else:
+            self.input_data_config = input_data_config or self.input_data_config or []
 
         if self.input_data_config:
             input_data_config = self._get_input_data_config(
@@ -699,7 +701,7 @@ class ModelTrainer(BaseModel):
                 training_job_name=current_training_job_name,
                 algorithm_specification=algorithm_specification,
                 hyper_parameters=string_hyper_parameters,
-                input_data_config=input_data_config,
+                input_data_config=self.input_data_config,
                 resource_config=resource_config,
                 vpc_config=vpc_config,
                 # Public Instance Attributes
