@@ -181,7 +181,7 @@ class ModelTrainer(BaseModel):
             The output data configuration. This is used to specify the output data location
             for the training job.
             If not specified in the session, will default to
-            ``s3://<default_bucket>/<default_prefix>/<base_job_name>/``.
+            s3://<default_bucket>/<default_prefix>/<base_job_name>/.
         input_data_config (Optional[List[Union[Channel, InputData]]]):
             The input data config for the training job.
             Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
@@ -477,6 +477,20 @@ class ModelTrainer(BaseModel):
             )
             logger.warning(f"Compute not provided. Using default:\n{self.compute}")
 
+        if self.compute.instance_type is None:
+            self.compute.instance_type = DEFAULT_INSTANCE_TYPE
+            logger.warning(f"Instance type not provided. Using default:\n{DEFAULT_INSTANCE_TYPE}")
+        if self.compute.instance_count is None:
+            self.compute.instance_count = 1
+            logger.warning(
+                f"Instance count not provided. Using default:\n{self.compute.instance_count}"
+            )
+        if self.compute.volume_size_in_gb is None:
+            self.compute.volume_size_in_gb = 30
+            logger.warning(
+                f"Volume size not provided. Using default:\n{self.compute.volume_size_in_gb}"
+            )
+
         if self.stopping_condition is None:
             self.stopping_condition = StoppingCondition(
                 max_runtime_in_seconds=3600,
@@ -485,6 +499,12 @@ class ModelTrainer(BaseModel):
             )
             logger.warning(
                 f"StoppingCondition not provided. Using default:\n{self.stopping_condition}"
+            )
+        if self.stopping_condition.max_runtime_in_seconds is None:
+            self.stopping_condition.max_runtime_in_seconds = 3600
+            logger.info(
+                "Max runtime not provided. Using default:\n"
+                f"{self.stopping_condition.max_runtime_in_seconds}"
             )
 
         if self.hyperparameters and isinstance(self.hyperparameters, str):
@@ -511,23 +531,40 @@ class ModelTrainer(BaseModel):
                         )
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
-            session = self.sagemaker_session
-            base_job_name = self.base_job_name
-            self.output_data_config = OutputDataConfig(
-                s3_output_path=f"s3://{self._fetch_bucket_name_and_prefix(session)}"
-                f"/{base_job_name}",
-                compression_type="GZIP",
-                kms_key_id=None,
-            )
-            logger.warning(
-                f"OutputDataConfig not provided. Using default:\n{self.output_data_config}"
-            )
+            if self.output_data_config is None:
+                session = self.sagemaker_session
+                base_job_name = self.base_job_name
+                self.output_data_config = OutputDataConfig(
+                    s3_output_path=f"s3://{self._fetch_bucket_name_and_prefix(session)}"
+                    f"/{base_job_name}",
+                    compression_type="GZIP",
+                    kms_key_id=None,
+                )
+                logger.warning(
+                    f"OutputDataConfig not provided. Using default:\n{self.output_data_config}"
+                )
+            if self.output_data_config.s3_output_path is None:
+                session = self.sagemaker_session
+                base_job_name = self.base_job_name
+                self.output_data_config.s3_output_path = (
+                    f"s3://{self._fetch_bucket_name_and_prefix(session)}/{base_job_name}"
+                )
+                logger.warning(
+                    f"OutputDataConfig s3_output_path not provided. Using default:\n"
+                    f"{self.output_data_config.s3_output_path}"
+                )
+            if self.output_data_config.compression_type is None:
+                self.output_data_config.compression_type = "GZIP"
+                logger.warning(
+                    f"OutputDataConfig compression type not provided. Using default:\n"
+                    f"{self.output_data_config.compression_type}"
+                )
 
-        # TODO: Autodetect which image to use if source_code is provided
         if self.training_image:
             logger.info(f"Training image URI: {self.training_image}")
 
-    def _fetch_bucket_name_and_prefix(self, session: Session) -> str:
+    @staticmethod
+    def _fetch_bucket_name_and_prefix(session: Session) -> str:
         """Helper function to get the bucket name with the corresponding prefix if applicable"""
         if session.default_bucket_prefix is not None:
             return f"{session.default_bucket()}/{session.default_bucket_prefix}"
@@ -558,15 +595,27 @@ class ModelTrainer(BaseModel):
         """
         self._populate_intelligent_defaults()
         current_training_job_name = _get_unique_name(self.base_job_name)
-        input_data_key_prefix = f"{self.base_job_name}/{current_training_job_name}/input"
-        if input_data_config:
+        default_artifact_path = f"{self.base_job_name}/{current_training_job_name}"
+        input_data_key_prefix = f"{default_artifact_path}/input"
+        if input_data_config and self.input_data_config:
             self.input_data_config = input_data_config
+            # Add missing input data channels to the existing input_data_config
+            final_input_channel_names = {i.channel_name for i in input_data_config}
+            for input_data in self.input_data_config:
+                if input_data.channel_name not in final_input_channel_names:
+                    input_data_config.append(input_data)
 
-        input_data_config = []
+        self.input_data_config = input_data_config or self.input_data_config or []
+
         if self.input_data_config:
             input_data_config = self._get_input_data_config(
                 self.input_data_config, input_data_key_prefix
             )
+
+        if self.checkpoint_config and not self.checkpoint_config.s3_uri:
+            self.checkpoint_config.s3_uri = f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/{default_artifact_path}"
+        if self._tensorboard_output_config and not self._tensorboard_output_config.s3_uri:
+            self._tensorboard_output_config.s3_uri = f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/{default_artifact_path}"
 
         string_hyper_parameters = {}
         if self.hyperparameters:
