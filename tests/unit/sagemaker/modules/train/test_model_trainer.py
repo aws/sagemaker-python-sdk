@@ -1228,3 +1228,37 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
                 compute=DEFAULT_COMPUTE_CONFIG,
                 hyperparameters="hyperparameters.yaml",
             )
+
+
+@patch("sagemaker.modules.train.model_trainer._get_unique_name")
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_model_trainer_default_paths(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        return f"s3://{bucket}/{key_prefix}"
+
+    unique_name = "base-job-0123456789"
+    base_name = "base-job"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_unique_name.return_value = unique_name
+
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        sagemaker_session=modules_session,
+        checkpoint_config=CheckpointConfig(),
+        base_job_name=base_name,
+    ).with_tensorboard_output_config(TensorBoardOutputConfig())
+    model_trainer.train()
+
+    _, kwargs = mock_training_job.create.call_args
+
+    default_base_path = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{base_name}"
+
+    assert kwargs["output_data_config"].s3_output_path == default_base_path
+    assert kwargs["output_data_config"].compression_type == "GZIP"
+
+    assert kwargs["checkpoint_config"].s3_uri == f"{default_base_path}/{unique_name}/checkpoints"
+    assert kwargs["checkpoint_config"].local_path == "/opt/ml/checkpoints"
+
+    assert kwargs["tensor_board_output_config"].s3_output_path == default_base_path
+    assert kwargs["tensor_board_output_config"].local_path == "/opt/ml/output/tensorboard"

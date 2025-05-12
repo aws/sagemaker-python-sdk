@@ -181,7 +181,7 @@ class ModelTrainer(BaseModel):
             The output data configuration. This is used to specify the output data location
             for the training job.
             If not specified in the session, will default to
-            s3://<default_bucket>/<default_prefix>/<base_job_name>/.
+            ``s3://<default_bucket>/<default_prefix>/<base_job_name>/``.
         input_data_config (Optional[List[Union[Channel, InputData]]]):
             The input data config for the training job.
             Takes a list of Channel or InputData objects. An InputDataSource can be an S3 URI
@@ -595,8 +595,7 @@ class ModelTrainer(BaseModel):
         """
         self._populate_intelligent_defaults()
         current_training_job_name = _get_unique_name(self.base_job_name)
-        default_artifact_path = f"{self.base_job_name}/{current_training_job_name}"
-        input_data_key_prefix = f"{default_artifact_path}/input"
+        input_data_key_prefix = f"{self.base_job_name}/{current_training_job_name}/input"
         if input_data_config and self.input_data_config:
             self.input_data_config = input_data_config
             # Add missing input data channels to the existing input_data_config
@@ -613,9 +612,15 @@ class ModelTrainer(BaseModel):
             )
 
         if self.checkpoint_config and not self.checkpoint_config.s3_uri:
-            self.checkpoint_config.s3_uri = f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/{default_artifact_path}"
-        if self._tensorboard_output_config and not self._tensorboard_output_config.s3_uri:
-            self._tensorboard_output_config.s3_uri = f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/{default_artifact_path}"
+            self.checkpoint_config.s3_uri = (
+                f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/"
+                f"{self.base_job_name}/{current_training_job_name}/checkpoints"
+            )
+        if self._tensorboard_output_config and not self._tensorboard_output_config.s3_output_path:
+            self._tensorboard_output_config.s3_output_path = (
+                f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/"
+                f"{self.base_job_name}"
+            )
 
         string_hyper_parameters = {}
         if self.hyperparameters:
@@ -646,7 +651,7 @@ class ModelTrainer(BaseModel):
                     data_source=self.source_code.source_dir,
                     key_prefix=input_data_key_prefix,
                 )
-                input_data_config.append(source_code_channel)
+                self.input_data_config.append(source_code_channel)
 
             self._prepare_train_script(
                 tmp_dir=tmp_dir,
@@ -667,7 +672,7 @@ class ModelTrainer(BaseModel):
                 data_source=tmp_dir.name,
                 key_prefix=input_data_key_prefix,
             )
-            input_data_config.append(sm_drivers_channel)
+            self.input_data_config.append(sm_drivers_channel)
 
             # If source_code is provided, we will always use
             # the default container entrypoint and arguments
@@ -970,10 +975,43 @@ class ModelTrainer(BaseModel):
     ) -> "ModelTrainer":
         """Create a ModelTrainer from a training recipe.
 
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import Compute
+
+            recipe_overrides = {
+                "run": {
+                    "results_dir": "/opt/ml/model",
+                },
+                "model": {
+                    "data": {
+                        "use_synthetic_data": True
+                    }
+                }
+            }
+
+            compute = Compute(
+                instance_type="ml.p5.48xlarge",
+                keep_alive_period_in_seconds=3600
+            )
+
+            model_trainer = ModelTrainer.from_recipe(
+                training_recipe="fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq8k_gpu_fine_tuning",
+                recipe_overrides=recipe_overrides,
+                compute=compute,
+            )
+
+            model_trainer.train(wait=False)
+
+
         Args:
             training_recipe (str):
                 The training recipe to use for training the model. This must be the name of
                 a sagemaker training recipe or a path to a local training recipe .yaml file.
+                For available training recipes, see: https://github.com/aws/sagemaker-hyperpod-recipes/
             compute (Compute):
                 The compute configuration. This is used to specify the compute resources for
                 the training job. If not specified, will default to 1 instance of ml.m5.xlarge.
@@ -1081,55 +1119,116 @@ class ModelTrainer(BaseModel):
         return model_trainer
 
     def with_tensorboard_output_config(
-        self, tensorboard_output_config: TensorBoardOutputConfig
+        self, tensorboard_output_config: Optional[TensorBoardOutputConfig] = None
     ) -> "ModelTrainer":
         """Set the TensorBoard output configuration.
+
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_tensorboard_output_config()
 
         Args:
             tensorboard_output_config (sagemaker.modules.configs.TensorBoardOutputConfig):
                 The TensorBoard output configuration.
         """
-        self._tensorboard_output_config = tensorboard_output_config
+        self._tensorboard_output_config = tensorboard_output_config or TensorBoardOutputConfig()
         return self
 
     def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":
         """Set the retry strategy for the training job.
 
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import RetryStrategy
+
+            retry_strategy = RetryStrategy(maximum_retry_attempts=3)
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_retry_strategy(retry_strategy)
+
         Args:
-            retry_strategy (RetryStrategy):
+            retry_strategy (sagemaker.modules.configs.RetryStrategy):
                 The retry strategy for the training job.
         """
         self._retry_strategy = retry_strategy
         return self
 
-    def with_infra_check_config(self, infra_check_config: InfraCheckConfig) -> "ModelTrainer":
+    def with_infra_check_config(
+        self, infra_check_config: Optional[InfraCheckConfig] = None
+    ) -> "ModelTrainer":
         """Set the infra check configuration for the training job.
 
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_infra_check_config()
+
         Args:
-            infra_check_config (InfraCheckConfig):
+            infra_check_config (sagemaker.modules.configs.InfraCheckConfig):
                 The infra check configuration for the training job.
         """
-        self._infra_check_config = infra_check_config
+        self._infra_check_config = infra_check_config or InfraCheckConfig(enable_infra_check=True)
         return self
 
     def with_session_chaining_config(
-        self, session_chaining_config: SessionChainingConfig
+        self, session_chaining_config: Optional[SessionChainingConfig] = None
     ) -> "ModelTrainer":
         """Set the session chaining configuration for the training job.
 
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_session_chaining_config()
+
         Args:
-            session_chaining_config (SessionChainingConfig):
+            session_chaining_config (sagemaker.modules.configs.SessionChainingConfig):
                 The session chaining configuration for the training job.
         """
-        self._session_chaining_config = session_chaining_config
+        self._session_chaining_config = session_chaining_config or SessionChainingConfig(
+            enable_session_tag_chaining=True
+        )
         return self
 
-    def with_remote_debug_config(self, remote_debug_config: RemoteDebugConfig) -> "ModelTrainer":
+    def with_remote_debug_config(
+        self, remote_debug_config: Optional[RemoteDebugConfig] = None
+    ) -> "ModelTrainer":
         """Set the remote debug configuration for the training job.
 
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_remote_debug_config()
+
         Args:
-            remote_debug_config (RemoteDebugConfig):
+            remote_debug_config (sagemaker.modules.configs.RemoteDebugConfig):
                 The remote debug configuration for the training job.
         """
-        self._remote_debug_config = remote_debug_config
+        self._remote_debug_config = remote_debug_config or RemoteDebugConfig(
+            enable_remote_debug=True
+        )
         return self

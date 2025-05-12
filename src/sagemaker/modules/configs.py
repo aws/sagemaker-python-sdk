@@ -258,8 +258,9 @@ class TensorBoardOutputConfig(shapes.TensorBoardOutputConfig):
 
     Parameters:
         s3_output_path (Optional[str]):
-            Path to Amazon S3 storage location for TensorBoard output. If not specified, will default to the default artifact location for the training job.
-            ``s3://<default_bucket>/<default_prefix>/<base_job_name>/<job_name>/``
+            Path to Amazon S3 storage location for TensorBoard output. If not specified, will
+            default to
+            ``s3://<default_bucket>/<default_prefix>/<base_job_name>/<job_name>/tensorboard-output``
         local_path (Optional[str]):
             Path to local storage location for tensorBoard output. Defaults to /opt/ml/output/tensorboard.
     """
@@ -276,8 +277,9 @@ class CheckpointConfig(shapes.CheckpointConfig):
 
     Parameters:
         s3_uri (Optional[str]):
-            Path to Amazon S3 storage location for the Checkpoint data. If not specified, will default to the default artifact location for the training job.
-            ``s3://<default_bucket>/<default_prefix>/<base_job_name>/<job_name>/``
+            Path to Amazon S3 storage location for the Checkpoint data. If not specified, will
+            default to
+            ``s3://<default_bucket>/<default_prefix>/<base_job_name>/<job_name>/checkpoints``
         local_path (Optional[str]):
             The local directory where checkpoints are written. The default directory is /opt/ml/checkpoints.
     """
