@@ -41,7 +41,7 @@ from sagemaker_core.shapes import (
     InfraCheckConfig,
     RemoteDebugConfig,
     SessionChainingConfig,
-    InstanceGroup
+    InstanceGroup,
 )
 
 from sagemaker.modules.utils import convert_unassigned_to_none
