@@ -972,7 +972,7 @@ class ModelTrainer(BaseModel):
         sagemaker_session: Optional[Session] = None,
         role: Optional[str] = None,
         base_job_name: Optional[str] = None,
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Create a ModelTrainer from a training recipe.
 
         Example:
@@ -1120,7 +1120,7 @@ class ModelTrainer(BaseModel):
 
     def with_tensorboard_output_config(
         self, tensorboard_output_config: Optional[TensorBoardOutputConfig] = None
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the TensorBoard output configuration.
 
         Example:
@@ -1140,7 +1140,7 @@ class ModelTrainer(BaseModel):
         self._tensorboard_output_config = tensorboard_output_config or TensorBoardOutputConfig()
         return self
 
-    def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":
+    def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":  # noqa: D412
         """Set the retry strategy for the training job.
 
         Example:
@@ -1165,7 +1165,7 @@ class ModelTrainer(BaseModel):
 
     def with_infra_check_config(
         self, infra_check_config: Optional[InfraCheckConfig] = None
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the infra check configuration for the training job.
 
         Example:
@@ -1187,7 +1187,7 @@ class ModelTrainer(BaseModel):
 
     def with_session_chaining_config(
         self, session_chaining_config: Optional[SessionChainingConfig] = None
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the session chaining configuration for the training job.
 
         Example:
@@ -1211,7 +1211,7 @@ class ModelTrainer(BaseModel):
 
     def with_remote_debug_config(
         self, remote_debug_config: Optional[RemoteDebugConfig] = None
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the remote debug configuration for the training job.
 
         Example:
