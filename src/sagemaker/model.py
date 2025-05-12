@@ -1805,7 +1805,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     container_startup_health_check_timeout=container_startup_health_check_timeout,
                     explainer_config_dict=explainer_config_dict,
                     async_inference_config_dict=async_inference_config_dict,
-                    serverless_inference_config=serverless_inference_config_dict,
+                    serverless_inference_config_dict=serverless_inference_config_dict,
                     routing_config=routing_config,
                     inference_ami_version=inference_ami_version,
                 )
