@@ -26,9 +26,7 @@ from graphene.utils.str_converters import to_camel_case, to_snake_case
 from sagemaker_core.main import resources
 from sagemaker_core.resources import TrainingJob
 from sagemaker_core import shapes
-from sagemaker_core.shapes import (
-    AlgorithmSpecification
-)
+from sagemaker_core.shapes import AlgorithmSpecification
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 
