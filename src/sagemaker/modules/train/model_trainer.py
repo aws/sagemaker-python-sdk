@@ -25,7 +25,12 @@ from graphene.utils.str_converters import to_camel_case, to_snake_case
 
 from sagemaker_core.main import resources
 from sagemaker_core.resources import TrainingJob
-from sagemaker_core.shapes import AlgorithmSpecification
+from sagemaker_core.shapes import (
+    AlgorithmSpecification,
+    OutputDataConfig,
+    CheckpointConfig,
+    TensorBoardOutputConfig
+)
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 
@@ -52,7 +57,6 @@ from sagemaker.modules.configs import (
     Compute,
     StoppingCondition,
     RetryStrategy,
-    OutputDataConfig,
     SourceCode,
     TrainingImageConfig,
     Channel,
@@ -64,8 +68,6 @@ from sagemaker.modules.configs import (
     InfraCheckConfig,
     RemoteDebugConfig,
     SessionChainingConfig,
-    TensorBoardOutputConfig,
-    CheckpointConfig,
     InputData,
 )
 
@@ -737,7 +739,7 @@ class ModelTrainer(BaseModel):
                 sagemaker_session=self.sagemaker_session,
                 container_entrypoint=algorithm_specification.container_entrypoint,
                 container_arguments=algorithm_specification.container_arguments,
-                input_data_config=input_data_config,
+                input_data_config=self.input_data_config,
                 hyper_parameters=string_hyper_parameters,
                 environment=self.environment,
             )
