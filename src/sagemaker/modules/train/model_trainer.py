@@ -1233,7 +1233,7 @@ class ModelTrainer(BaseModel):
 
     def with_checkpoint_config(
         self, checkpoint_config: Optional[CheckpointConfig] = None
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the checkpoint configuration for the training job.
 
         Example:
