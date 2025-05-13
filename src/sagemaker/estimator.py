@@ -2492,7 +2492,7 @@ class _TrainingJob(_Job):
     """Placeholder docstring"""
 
     @classmethod
-    def start_new(cls, estimator, inputs, experiment_config, accept_eula):
+    def start_new(cls, estimator, inputs, experiment_config, accept_eula=None):
         """Create a new Amazon SageMaker training job from the estimator.
 
         Args:
@@ -2529,7 +2529,7 @@ class _TrainingJob(_Job):
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
     @classmethod
-    def _get_train_args(cls, estimator, inputs, experiment_config, accept_eula):
+    def _get_train_args(cls, estimator, inputs, experiment_config, accept_eula=None):
         """Constructs a dict of arguments for an Amazon SageMaker training job from the estimator.
 
         Args:
