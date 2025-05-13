@@ -29,7 +29,7 @@ from sagemaker_core.shapes import (
     AlgorithmSpecification,
     OutputDataConfig,
     CheckpointConfig,
-    TensorBoardOutputConfig
+    TensorBoardOutputConfig,
 )
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
