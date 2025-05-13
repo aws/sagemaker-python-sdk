@@ -596,20 +596,11 @@ class ModelTrainer(BaseModel):
         self._populate_intelligent_defaults()
         current_training_job_name = _get_unique_name(self.base_job_name)
         input_data_key_prefix = f"{self.base_job_name}/{current_training_job_name}/input"
-        if input_data_config and self.input_data_config:
-            final_channels = {
-                input_data.channel_name: input_data for input_data in self.input_data_config
-            }
-            # Update with precedence on the input_data_config passed into the train method
-            final_channels.update(
-                {input_data.channel_name: input_data for input_data in input_data_config}
-            )
-            self.input_data_config = list(final_channels.values())
-        else:
-            self.input_data_config = input_data_config or self.input_data_config or []
+
+        self.input_data_config = input_data_config or self.input_data_config or []
 
         if self.input_data_config:
-            input_data_config = self._get_input_data_config(
+            self.input_data_config = self._get_input_data_config(
                 self.input_data_config, input_data_key_prefix
             )
 
