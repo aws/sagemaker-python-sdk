@@ -53,6 +53,7 @@ from sagemaker.config.config_schema import (
 
 from sagemaker.utils import resolve_value_from_config
 from sagemaker.modules import Session, get_execution_role
+from sagemaker.modules import configs
 from sagemaker.modules.configs import (
     Compute,
     StoppingCondition,
@@ -1132,7 +1133,9 @@ class ModelTrainer(BaseModel):
             tensorboard_output_config (sagemaker.modules.configs.TensorBoardOutputConfig):
                 The TensorBoard output configuration.
         """
-        self._tensorboard_output_config = tensorboard_output_config or TensorBoardOutputConfig()
+        self._tensorboard_output_config = (
+            tensorboard_output_config or configs.TensorBoardOutputConfig()
+        )
         return self
 
     def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":  # noqa: D412
@@ -1226,4 +1229,26 @@ class ModelTrainer(BaseModel):
         self._remote_debug_config = remote_debug_config or RemoteDebugConfig(
             enable_remote_debug=True
         )
+        return self
+
+    def with_checkpoint_config(
+        self, checkpoint_config: Optional[CheckpointConfig] = None
+    ) -> "ModelTrainer":
+        """Set the checkpoint configuration for the training job.
+
+        Example:
+
+        .. code:: python
+
+            from sagemaker.modules.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_checkpoint_config()
+
+        Args:
+            checkpoint_config (sagemaker.modules.configs.CheckpointConfig):
+                The checkpoint configuration for the training job.
+        """
+        self.checkpoint_config = checkpoint_config or configs.CheckpointConfig()
         return self

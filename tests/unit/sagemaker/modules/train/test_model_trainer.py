@@ -1242,12 +1242,16 @@ def test_model_trainer_default_paths(mock_training_job, mock_unique_name, module
     modules_session.upload_data.side_effect = mock_upload_data
     mock_unique_name.return_value = unique_name
 
-    model_trainer = ModelTrainer(
-        training_image=DEFAULT_IMAGE,
-        sagemaker_session=modules_session,
-        checkpoint_config=CheckpointConfig(),
-        base_job_name=base_name,
-    ).with_tensorboard_output_config(TensorBoardOutputConfig())
+    model_trainer = (
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            sagemaker_session=modules_session,
+            base_job_name=base_name,
+        )
+        .with_tensorboard_output_config()
+        .with_checkpoint_config()
+    )
+
     model_trainer.train()
 
     _, kwargs = mock_training_job.create.call_args
