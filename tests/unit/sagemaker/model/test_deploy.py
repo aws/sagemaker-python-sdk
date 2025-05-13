@@ -1090,7 +1090,7 @@ def test_deploy_with_update_endpoint(production_variant, name_from_base, sagemak
         container_startup_health_check_timeout=None,
         explainer_config_dict=None,
         async_inference_config_dict=None,
-        serverless_inference_config=None,
+        serverless_inference_config_dict=None,
         routing_config=None,
         inference_ami_version=None,
     )
@@ -1124,7 +1124,7 @@ def test_deploy_with_update_endpoint(production_variant, name_from_base, sagemak
         container_startup_health_check_timeout=None,
         explainer_config_dict=None,
         async_inference_config_dict=None,
-        serverless_inference_config=serverless_inference_config_dict,
+        serverless_inference_config_dict=serverless_inference_config_dict,
         routing_config=None,
         inference_ami_version=None,
     )
@@ -1164,7 +1164,7 @@ def test_deploy_with_update_endpoint(production_variant, name_from_base, sagemak
         container_startup_health_check_timeout=None,
         explainer_config_dict=None,
         async_inference_config_dict=async_inference_config_dict,
-        serverless_inference_config=None,
+        serverless_inference_config_dict=None,
         routing_config=None,
         inference_ami_version=None,
     )
