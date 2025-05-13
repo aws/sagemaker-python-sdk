@@ -713,6 +713,7 @@ class JumpStartEstimator(Estimator):
             sagemaker_session=self.sagemaker_session,
             config_name=self.config_name,
             hub_access_config=self.hub_access_config,
+            accept_eula=accept_eula,
         )
         remove_env_var_from_estimator_kwargs_if_model_access_config_present(
             self.init_kwargs, self.model_access_config

@@ -266,6 +266,7 @@ def get_fit_kwargs(
     sagemaker_session: Optional[Session] = None,
     config_name: Optional[str] = None,
     hub_access_config: Optional[Dict] = None,
+    accept_eula: Optional[bool] = None,
 ) -> JumpStartEstimatorFitKwargs:
     """Returns kwargs required call `fit` on `sagemaker.estimator.Estimator` object."""
 
@@ -283,6 +284,7 @@ def get_fit_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         sagemaker_session=sagemaker_session,
         config_name=config_name,
+        accept_eula=accept_eula,
     )
 
     estimator_fit_kwargs, _ = _set_temp_sagemaker_session_if_not_set(kwargs=estimator_fit_kwargs)

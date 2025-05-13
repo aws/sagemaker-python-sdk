@@ -1940,9 +1940,6 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     def use_training_model_artifact(self) -> bool:
         """Returns True if the model should use a model uri when kicking off training job."""
-        # gated model never use training model artifact
-        if self.gated_bucket:
-            return False
 
         # otherwise, return true is a training model package is not set
         return len(self.training_model_package_artifact_uris or {}) == 0
@@ -2595,6 +2592,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "sagemaker_session",
         "config_name",
         "specs",
+        "accept_eula",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2625,6 +2623,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         tolerate_vulnerable_model: Optional[bool] = None,
         sagemaker_session: Optional[Session] = None,
         config_name: Optional[str] = None,
+        accept_eula: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2642,6 +2641,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
         self.sagemaker_session = sagemaker_session
         self.config_name = config_name
+        self.accept_eula = accept_eula
 
 
 class JumpStartEstimatorDeployKwargs(JumpStartKwargs):

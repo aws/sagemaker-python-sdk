@@ -1310,6 +1310,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         logs: str = "All",
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
+        accept_eula: Optional[bool] = None,
     ):
         """Train a model using the input training dataset.
 
@@ -1363,6 +1364,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 * Both `ExperimentName` and `TrialName` will be ignored if the Estimator instance
                 is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
                 However, the value of `TrialComponentDisplayName` is honored for display in Studio.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                    False to indicate whether model terms of use have been accepted.
+                    The `accept_eula` value must be explicitly defined as `True` in order to
+                    accept the end-user license agreement (EULA) that some
+                    models require. (Default: None).
         Returns:
             None or pipeline step arguments in case the Estimator instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
@@ -1370,7 +1376,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._prepare_for_training(job_name=job_name)
 
         experiment_config = check_and_get_run_experiment_config(experiment_config)
-        self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config)
+        self.latest_training_job = _TrainingJob.start_new(
+            self, inputs, experiment_config, accept_eula
+        )
         self.jobs.append(self.latest_training_job)
         forward_to_mlflow_tracking_server = False
         if os.environ.get("MLFLOW_TRACKING_URI") and self.enable_network_isolation():
@@ -2484,7 +2492,7 @@ class _TrainingJob(_Job):
     """Placeholder docstring"""
 
     @classmethod
-    def start_new(cls, estimator, inputs, experiment_config):
+    def start_new(cls, estimator, inputs, experiment_config, accept_eula):
         """Create a new Amazon SageMaker training job from the estimator.
 
         Args:
@@ -2504,11 +2512,16 @@ class _TrainingJob(_Job):
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
                 * `RunName` is used to record an experiment run.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the started training job.
         """
-        train_args = cls._get_train_args(estimator, inputs, experiment_config)
+        train_args = cls._get_train_args(estimator, inputs, experiment_config, accept_eula)
 
         logger.debug("Train args after processing defaults: %s", train_args)
         estimator.sagemaker_session.train(**train_args)
@@ -2516,7 +2529,7 @@ class _TrainingJob(_Job):
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
     @classmethod
-    def _get_train_args(cls, estimator, inputs, experiment_config):
+    def _get_train_args(cls, estimator, inputs, experiment_config, accept_eula):
         """Constructs a dict of arguments for an Amazon SageMaker training job from the estimator.
 
         Args:
@@ -2536,6 +2549,11 @@ class _TrainingJob(_Job):
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
                 * `RunName` is used to record an experiment run.
+            accept_eula (bool): For models that require a Model Access Config, specify True or
+                False to indicate whether model terms of use have been accepted.
+                The `accept_eula` value must be explicitly defined as `True` in order to
+                accept the end-user license agreement (EULA) that some
+                models require. (Default: None).
 
         Returns:
             Dict: dict for `sagemaker.session.Session.train` method
@@ -2652,6 +2670,9 @@ class _TrainingJob(_Job):
         if estimator.get_session_chaining_config() is not None:
             train_args["session_chaining_config"] = estimator.get_session_chaining_config()
 
+        if accept_eula is not None:
+            cls._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
         return train_args
 
     @classmethod
@@ -2673,6 +2694,42 @@ class _TrainingJob(_Job):
             if local_mode:
                 raise ValueError("Setting checkpoint_local_path is not supported in local mode.")
             train_args["checkpoint_local_path"] = estimator.checkpoint_local_path
+
+    @classmethod
+    def _set_accept_eula_for_input_data_config(cls, train_args, accept_eula):
+        """Set the AcceptEula flag for all input data configurations.
+
+        This method sets the AcceptEula flag in the ModelAccessConfig for all S3DataSources
+        in the InputDataConfig array. It handles cases where keys might not exist in the
+        nested dictionary structure.
+
+        Args:
+            train_args (dict): The training job arguments dictionary
+            accept_eula (bool): The value to set for AcceptEula flag
+        """
+        if "InputDataConfig" not in train_args:
+            return
+
+        eula_count = 0
+        s3_uris = []
+
+        for idx in range(len(train_args["InputDataConfig"])):
+            if "DataSource" in train_args["InputDataConfig"][idx]:
+                data_source = train_args["InputDataConfig"][idx]["DataSource"]
+                if "S3DataSource" in data_source:
+                    s3_data_source = data_source["S3DataSource"]
+                    if "ModelAccessConfig" not in s3_data_source:
+                        s3_data_source["ModelAccessConfig"] = {}
+                    s3_data_source["ModelAccessConfig"]["AcceptEula"] = accept_eula
+                    eula_count += 1
+
+                    # Collect S3 URI if available
+                    if "S3Uri" in s3_data_source:
+                        s3_uris.append(s3_data_source["S3Uri"])
+
+        # Log info if more than one EULA needs to be accepted
+        if eula_count > 1:
+            logger.info("Accepting EULA for %d S3 data sources: %s", eula_count, ", ".join(s3_uris))
 
     @classmethod
     def _is_local_channel(cls, input_uri):
