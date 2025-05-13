@@ -25,6 +25,7 @@ from graphene.utils.str_converters import to_camel_case, to_snake_case
 from sagemaker.utils.config.config_manager import SageMakerConfig
 from sagemaker_core.main import resources
 from sagemaker_core.resources import TrainingJob
+from sagemaker_core import shapes
 from sagemaker_core.shapes import AlgorithmSpecification
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
@@ -46,11 +47,11 @@ from sagemaker.utils.config.config_schema import (
 )
 
 from sagemaker.train import Session, get_execution_role
+from sagemaker.train import configs
 from sagemaker.train.configs import (
     Compute,
     StoppingCondition,
     RetryStrategy,
-    OutputDataConfig,
     SourceCode,
     TrainingImageConfig,
     Channel,
@@ -62,8 +63,6 @@ from sagemaker.train.configs import (
     InfraCheckConfig,
     RemoteDebugConfig,
     SessionChainingConfig,
-    TensorBoardOutputConfig,
-    CheckpointConfig,
     InputData,
 )
 
@@ -221,9 +220,9 @@ class ModelTrainer(BaseModel):
     training_image: Optional[str] = None
     training_image_config: Optional[TrainingImageConfig] = None
     algorithm_name: Optional[str] = None
-    output_data_config: Optional[OutputDataConfig] = None
+    output_data_config: Optional[shapes.OutputDataConfig] = None
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
-    checkpoint_config: Optional[CheckpointConfig] = None
+    checkpoint_config: Optional[shapes.CheckpointConfig] = None
     training_input_mode: Optional[str] = "File"
     environment: Optional[Dict[str, str]] = {}
     hyperparameters: Optional[Union[Dict[str, Any], str]] = {}
@@ -234,7 +233,7 @@ class ModelTrainer(BaseModel):
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
 
     # Private TrainingJob Parameters
-    _tensorboard_output_config: Optional[TensorBoardOutputConfig] = PrivateAttr(default=None)
+    _tensorboard_output_config: Optional[shapes.TensorBoardOutputConfig] = PrivateAttr(default=None)
     _retry_strategy: Optional[RetryStrategy] = PrivateAttr(default=None)
     _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
     _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
@@ -265,8 +264,8 @@ class ModelTrainer(BaseModel):
         "networking": Networking,
         "stopping_condition": StoppingCondition,
         "training_image_config": TrainingImageConfig,
-        "output_data_config": OutputDataConfig,
-        "checkpoint_config": CheckpointConfig,
+        "output_data_config": configs.OutputDataConfig,
+        "checkpoint_config": configs.CheckpointConfig,
     }
 
     config_mgr: SageMakerConfig = SageMakerConfig()
@@ -323,7 +322,7 @@ class ModelTrainer(BaseModel):
                 config_path=TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH
             )
             if default_output_data_config:
-                self.output_data_config = OutputDataConfig(
+                self.output_data_config = configs.OutputDataConfig(
                     **self._convert_keys_to_snake(default_output_data_config)
                 )
 
@@ -465,18 +464,18 @@ class ModelTrainer(BaseModel):
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
             if self.sagemaker_session is None:
                 self.sagemaker_session = Session()
-                logger.warning("SageMaker session not provided. Using default Session.")
+                logger.info("SageMaker session not provided. Using default Session.")
 
             if self.role is None:
                 self.role = get_execution_role(sagemaker_session=self.sagemaker_session)
-                logger.warning(f"Role not provided. Using default role:\n{self.role}")
+                logger.info(f"Role not provided. Using default role:\n{self.role}")
 
         if self.base_job_name is None:
             if self.algorithm_name:
                 self.base_job_name = f"{self.algorithm_name}-job"
             elif self.training_image:
                 self.base_job_name = f"{_get_repo_name_from_image(self.training_image)}-job"
-            logger.warning(f"Base name not provided. Using default name:\n{self.base_job_name}")
+            logger.info(f"Base name not provided. Using default name:\n{self.base_job_name}")
 
         if self.compute is None:
             self.compute = Compute(
@@ -484,7 +483,20 @@ class ModelTrainer(BaseModel):
                 instance_count=1,
                 volume_size_in_gb=30,
             )
-            logger.warning(f"Compute not provided. Using default:\n{self.compute}")
+            logger.info(f"Compute not provided. Using default:\n{self.compute}")
+        if self.compute.instance_type is None:
+            self.compute.instance_type = DEFAULT_INSTANCE_TYPE
+            logger.info(f"Instance type not provided. Using default:\n{DEFAULT_INSTANCE_TYPE}")
+        if self.compute.instance_count is None:
+            self.compute.instance_count = 1
+            logger.info(
+                f"Instance count not provided. Using default:\n{self.compute.instance_count}"
+            )
+        if self.compute.volume_size_in_gb is None:
+            self.compute.volume_size_in_gb = 30
+            logger.info(
+                f"Volume size not provided. Using default:\n{self.compute.volume_size_in_gb}"
+            )
 
         if self.stopping_condition is None:
             self.stopping_condition = StoppingCondition(
@@ -492,8 +504,14 @@ class ModelTrainer(BaseModel):
                 max_pending_time_in_seconds=None,
                 max_wait_time_in_seconds=None,
             )
-            logger.warning(
+            logger.info(
                 f"StoppingCondition not provided. Using default:\n{self.stopping_condition}"
+            )
+        if self.stopping_condition.max_runtime_in_seconds is None:
+            self.stopping_condition.max_runtime_in_seconds = 3600
+            logger.info(
+                "Max runtime not provided. Using default:\n"
+                f"{self.stopping_condition.max_runtime_in_seconds}"
             )
 
         if self.hyperparameters and isinstance(self.hyperparameters, str):
@@ -520,23 +538,40 @@ class ModelTrainer(BaseModel):
                         )
 
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
-            session = self.sagemaker_session
-            base_job_name = self.base_job_name
-            self.output_data_config = OutputDataConfig(
-                s3_output_path=f"s3://{self._fetch_bucket_name_and_prefix(session)}"
-                f"/{base_job_name}",
-                compression_type="GZIP",
-                kms_key_id=None,
-            )
-            logger.warning(
-                f"OutputDataConfig not provided. Using default:\n{self.output_data_config}"
-            )
+            if self.output_data_config is None:
+                session = self.sagemaker_session
+                base_job_name = self.base_job_name
+                self.output_data_config = configs.OutputDataConfig(
+                    s3_output_path=f"s3://{self._fetch_bucket_name_and_prefix(session)}"
+                    f"/{base_job_name}",
+                    compression_type="GZIP",
+                    kms_key_id=None,
+                )
+                logger.info(
+                    f"OutputDataConfig not provided. Using default:\n{self.output_data_config}"
+                )
+            if self.output_data_config.s3_output_path is None:
+                session = self.sagemaker_session
+                base_job_name = self.base_job_name
+                self.output_data_config.s3_output_path = (
+                    f"s3://{self._fetch_bucket_name_and_prefix(session)}/{base_job_name}"
+                )
+                logger.info(
+                    f"OutputDataConfig s3_output_path not provided. Using default:\n"
+                    f"{self.output_data_config.s3_output_path}"
+                )
+            if self.output_data_config.compression_type is None:
+                self.output_data_config.compression_type = "GZIP"
+                logger.info(
+                    f"OutputDataConfig compression type not provided. Using default:\n"
+                    f"{self.output_data_config.compression_type}"
+                )
 
-        # TODO: Autodetect which image to use if source_code is provided
         if self.training_image:
             logger.info(f"Training image URI: {self.training_image}")
 
-    def _fetch_bucket_name_and_prefix(self, session: Session) -> str:
+    @staticmethod
+    def _fetch_bucket_name_and_prefix(session: Session) -> str:
         """Helper function to get the bucket name with the corresponding prefix if applicable"""
         if session.default_bucket_prefix is not None:
             return f"{session.default_bucket()}/{session.default_bucket_prefix}"
@@ -568,13 +603,23 @@ class ModelTrainer(BaseModel):
         self._populate_intelligent_defaults()
         current_training_job_name = _get_unique_name(self.base_job_name)
         input_data_key_prefix = f"{self.base_job_name}/{current_training_job_name}/input"
-        if input_data_config:
-            self.input_data_config = input_data_config
 
-        input_data_config = []
+        self.input_data_config = input_data_config or self.input_data_config or []
+
         if self.input_data_config:
-            input_data_config = self._get_input_data_config(
+            self.input_data_config = self._get_input_data_config(
                 self.input_data_config, input_data_key_prefix
+            )
+
+        if self.checkpoint_config and not self.checkpoint_config.s3_uri:
+            self.checkpoint_config.s3_uri = (
+                f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/"
+                f"{self.base_job_name}/{current_training_job_name}/checkpoints"
+            )
+        if self._tensorboard_output_config and not self._tensorboard_output_config.s3_output_path:
+            self._tensorboard_output_config.s3_output_path = (
+                f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/"
+                f"{self.base_job_name}"
             )
 
         string_hyper_parameters = {}
@@ -606,7 +651,7 @@ class ModelTrainer(BaseModel):
                     data_source=self.source_code.source_dir,
                     key_prefix=input_data_key_prefix,
                 )
-                input_data_config.append(source_code_channel)
+                self.input_data_config.append(source_code_channel)
 
             self._prepare_train_script(
                 tmp_dir=tmp_dir,
@@ -627,7 +672,7 @@ class ModelTrainer(BaseModel):
                 data_source=tmp_dir.name,
                 key_prefix=input_data_key_prefix,
             )
-            input_data_config.append(sm_drivers_channel)
+            self.input_data_config.append(sm_drivers_channel)
 
             # If source_code is provided, we will always use
             # the default container entrypoint and arguments
@@ -654,7 +699,7 @@ class ModelTrainer(BaseModel):
                 training_job_name=current_training_job_name,
                 algorithm_specification=algorithm_specification,
                 hyper_parameters=string_hyper_parameters,
-                input_data_config=input_data_config,
+                input_data_config=self.input_data_config,
                 resource_config=resource_config,
                 vpc_config=vpc_config,
                 # Public Instance Attributes
@@ -701,7 +746,7 @@ class ModelTrainer(BaseModel):
                 sagemaker_session=self.sagemaker_session,
                 container_entrypoint=algorithm_specification.container_entrypoint,
                 container_arguments=algorithm_specification.container_arguments,
-                input_data_config=input_data_config,
+                input_data_config=self.input_data_config,
                 hyper_parameters=string_hyper_parameters,
                 environment=self.environment,
             )
@@ -919,22 +964,54 @@ class ModelTrainer(BaseModel):
         requirements: Optional[str] = None,
         training_image: Optional[str] = None,
         training_image_config: Optional[TrainingImageConfig] = None,
-        output_data_config: Optional[OutputDataConfig] = None,
+        output_data_config: Optional[shapes.OutputDataConfig] = None,
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
-        checkpoint_config: Optional[CheckpointConfig] = None,
+        checkpoint_config: Optional[shapes.CheckpointConfig] = None,
         training_input_mode: Optional[str] = "File",
         environment: Optional[Dict[str, str]] = None,
         tags: Optional[List[Tag]] = None,
         sagemaker_session: Optional[Session] = None,
         role: Optional[str] = None,
         base_job_name: Optional[str] = None,
-    ) -> "ModelTrainer":
+    ) -> "ModelTrainer":  # noqa: D412
         """Create a ModelTrainer from a training recipe.
+
+        Example:
+
+        .. code:: python
+
+            from sagemaker.train import ModelTrainer
+            from sagemaker.train.configs import Compute
+
+            recipe_overrides = {
+                "run": {
+                    "results_dir": "/opt/ml/model",
+                },
+                "model": {
+                    "data": {
+                        "use_synthetic_data": True
+                    }
+                }
+            }
+
+            compute = Compute(
+                instance_type="ml.p5.48xlarge",
+                keep_alive_period_in_seconds=3600
+            )
+
+            model_trainer = ModelTrainer.from_recipe(
+                training_recipe="fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq8k_gpu_fine_tuning",
+                recipe_overrides=recipe_overrides,
+                compute=compute,
+            )
+
+            model_trainer.train(wait=False)
 
         Args:
             training_recipe (str):
                 The training recipe to use for training the model. This must be the name of
                 a sagemaker training recipe or a path to a local training recipe .yaml file.
+                For available training recipes, see: https://github.com/aws/sagemaker-hyperpod-recipes/
             compute (Compute):
                 The compute configuration. This is used to specify the compute resources for
                 the training job. Specifying instance_type is required for training recipes.
@@ -1000,10 +1077,10 @@ class ModelTrainer(BaseModel):
 
         if sagemaker_session is None:
             sagemaker_session = Session()
-            logger.warning("SageMaker session not provided. Using default Session.")
+            logger.info("SageMaker session not provided. Using default Session.")
         if role is None:
             role = get_execution_role(sagemaker_session=sagemaker_session)
-            logger.warning(f"Role not provided. Using default role:\n{role}")
+            logger.info(f"Role not provided. Using default role:\n{role}")
 
         # The training recipe is used to prepare the following args:
         # - source_code
@@ -1049,9 +1126,9 @@ class ModelTrainer(BaseModel):
         stopping_condition: Optional[StoppingCondition] = None,
         training_image: Optional[str] = None,
         training_image_config: Optional[TrainingImageConfig] = None,
-        output_data_config: Optional[OutputDataConfig] = None,
+        output_data_config: Optional[shapes.OutputDataConfig] = None,
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
-        checkpoint_config: Optional[CheckpointConfig] = None,
+        checkpoint_config: Optional[shapes.CheckpointConfig] = None,
         training_input_mode: Optional[str] = "File",
         environment: Optional[Dict[str, str]] = {},
         hyperparameters: Optional[Union[Dict[str, Any], str]] = {},
@@ -1059,7 +1136,7 @@ class ModelTrainer(BaseModel):
         sagemaker_session: Optional[Session] = None,
         role: Optional[str] = None,
         base_job_name: Optional[str] = None,
-    ):
+    ) -> "ModelTrainer":  # noqa: D412
         """Create a ModelTrainer from a JumpStart Model ID.
 
         .. code:: python
@@ -1136,10 +1213,10 @@ class ModelTrainer(BaseModel):
         """
         if sagemaker_session is None:
             sagemaker_session = Session()
-            logger.warning("SageMaker session not provided. Using default Session.")
+            logger.info("SageMaker session not provided. Using default Session.")
         if role is None:
             role = get_execution_role(sagemaker_session=sagemaker_session)
-            logger.warning(f"Role not provided. Using default role:\n{role}")
+            logger.info(f"Role not provided. Using default role:\n{role}")
 
         model_metadata = get_hub_content_document(
             jumpstart_config=jumpstart_config, sagemaker_session=sagemaker_session
@@ -1147,55 +1224,139 @@ class ModelTrainer(BaseModel):
         pass
 
     def with_tensorboard_output_config(
-        self, tensorboard_output_config: TensorBoardOutputConfig
-    ) -> "ModelTrainer":
+        self, tensorboard_output_config: Optional[shapes.TensorBoardOutputConfig] = None
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the TensorBoard output configuration.
 
+        Example:
+
+        .. code:: python
+
+            from sagemaker.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_tensorboard_output_config()
+
         Args:
-            tensorboard_output_config (sagemaker.modules.configs.TensorBoardOutputConfig):
+            tensorboard_output_config (sagemaker.train.configs.TensorBoardOutputConfig):
                 The TensorBoard output configuration.
         """
-        self._tensorboard_output_config = tensorboard_output_config
+        self._tensorboard_output_config = (
+            tensorboard_output_config or configs.TensorBoardOutputConfig()
+        )
         return self
 
-    def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":
+    def with_retry_strategy(self, retry_strategy: RetryStrategy) -> "ModelTrainer":  # noqa: D412
         """Set the retry strategy for the training job.
 
+        Example:
+
+        ..code:: python
+
+            from sagemaker.train import ModelTrainer
+            from sagemaker.train.configs import RetryStrategy
+
+            retry_strategy = RetryStrategy(maximum_retry_attempts=3)
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_retry_strategy(retry_strategy)
+
         Args:
-            retry_strategy (RetryStrategy):
+            retry_strategy (sagemaker.train.configs.RetryStrategy):
                 The retry strategy for the training job.
         """
         self._retry_strategy = retry_strategy
         return self
 
-    def with_infra_check_config(self, infra_check_config: InfraCheckConfig) -> "ModelTrainer":
+    def with_infra_check_config(
+        self, infra_check_config: Optional[InfraCheckConfig] = None
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the infra check configuration for the training job.
 
+        Example:
+
+        ..code:: python
+            from sagemaker.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_infra_check_config(infra_check_config)
+
         Args:
-            infra_check_config (InfraCheckConfig):
+            infra_check_config (sagemaker.train.configs.InfraCheckConfig):
                 The infra check configuration for the training job.
         """
-        self._infra_check_config = infra_check_config
+        self._infra_check_config = infra_check_config or InfraCheckConfig(enable_infra_check=True)
         return self
 
     def with_session_chaining_config(
-        self, session_chaining_config: SessionChainingConfig
-    ) -> "ModelTrainer":
+        self, session_chaining_config: Optional[SessionChainingConfig] = None
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the session chaining configuration for the training job.
 
+        Example:
+
+        ..code:: python
+
+            from sagemaker.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_session_chaining_config()
+
         Args:
-            session_chaining_config (SessionChainingConfig):
+            session_chaining_config (sagemaker.train.configs.SessionChainingConfig):
                 The session chaining configuration for the training job.
         """
-        self._session_chaining_config = session_chaining_config
+        self._session_chaining_config = session_chaining_config or SessionChainingConfig(
+            enable_session_tag_chaining=True
+        )
         return self
 
-    def with_remote_debug_config(self, remote_debug_config: RemoteDebugConfig) -> "ModelTrainer":
+    def with_remote_debug_config(
+        self, remote_debug_config: RemoteDebugConfig
+    ) -> "ModelTrainer":  # noqa: D412
         """Set the remote debug configuration for the training job.
 
+        Example:
+
+        ..code:: python
+
+            from sagemaker.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_remote_debug_config()
+
         Args:
-            remote_debug_config (RemoteDebugConfig):
+            remote_debug_config (sagemaker.train.configs.RemoteDebugConfig):
                 The remote debug configuration for the training job.
         """
-        self._remote_debug_config = remote_debug_config
+        self._remote_debug_config = remote_debug_config or RemoteDebugConfig(
+            enable_remote_debug=True
+        )
+        return self
+
+    def with_checkpoint_config(
+        self, checkpoint_config: Optional[shapes.CheckpointConfig] = None
+    ) -> "ModelTrainer":  # noqa: D412
+        """Set the checkpoint configuration for the training job.
+
+        Example:
+
+        .. code:: python
+
+            from sagemaker.train import ModelTrainer
+
+            model_trainer = ModelTrainer(
+                ...
+            ).with_checkpoint_config()
+
+        Args:
+            checkpoint_config (sagemaker.modules.configs.CheckpointConfig):
+                The checkpoint configuration for the training job.
+        """
+        self.checkpoint_config = checkpoint_config or configs.CheckpointConfig()
         return self
