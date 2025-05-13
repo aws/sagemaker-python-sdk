@@ -25,11 +25,9 @@ from graphene.utils.str_converters import to_camel_case, to_snake_case
 
 from sagemaker_core.main import resources
 from sagemaker_core.resources import TrainingJob
+from sagemaker_core import shapes
 from sagemaker_core.shapes import (
-    AlgorithmSpecification,
-    OutputDataConfig,
-    CheckpointConfig,
-    TensorBoardOutputConfig,
+    AlgorithmSpecification
 )
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
@@ -224,9 +222,9 @@ class ModelTrainer(BaseModel):
     training_image: Optional[str] = None
     training_image_config: Optional[TrainingImageConfig] = None
     algorithm_name: Optional[str] = None
-    output_data_config: Optional[OutputDataConfig] = None
+    output_data_config: Optional[shapes.OutputDataConfig] = None
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
-    checkpoint_config: Optional[CheckpointConfig] = None
+    checkpoint_config: Optional[shapes.CheckpointConfig] = None
     training_input_mode: Optional[str] = "File"
     environment: Optional[Dict[str, str]] = {}
     hyperparameters: Optional[Union[Dict[str, Any], str]] = {}
@@ -237,7 +235,7 @@ class ModelTrainer(BaseModel):
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
 
     # Private TrainingJob Parameters
-    _tensorboard_output_config: Optional[TensorBoardOutputConfig] = PrivateAttr(default=None)
+    _tensorboard_output_config: Optional[shapes.TensorBoardOutputConfig] = PrivateAttr(default=None)
     _retry_strategy: Optional[RetryStrategy] = PrivateAttr(default=None)
     _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
     _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
@@ -268,8 +266,8 @@ class ModelTrainer(BaseModel):
         "networking": Networking,
         "stopping_condition": StoppingCondition,
         "training_image_config": TrainingImageConfig,
-        "output_data_config": OutputDataConfig,
-        "checkpoint_config": CheckpointConfig,
+        "output_data_config": configs.OutputDataConfig,
+        "checkpoint_config": configs.CheckpointConfig,
     }
 
     def _populate_intelligent_defaults(self):
@@ -321,7 +319,7 @@ class ModelTrainer(BaseModel):
                 config_path=TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH
             )
             if default_output_data_config:
-                self.output_data_config = OutputDataConfig(
+                self.output_data_config = configs.OutputDataConfig(
                     **self._convert_keys_to_snake(default_output_data_config)
                 )
 
@@ -537,7 +535,7 @@ class ModelTrainer(BaseModel):
             if self.output_data_config is None:
                 session = self.sagemaker_session
                 base_job_name = self.base_job_name
-                self.output_data_config = OutputDataConfig(
+                self.output_data_config = configs.OutputDataConfig(
                     s3_output_path=f"s3://{self._fetch_bucket_name_and_prefix(session)}"
                     f"/{base_job_name}",
                     compression_type="GZIP",
@@ -959,9 +957,9 @@ class ModelTrainer(BaseModel):
         requirements: Optional[str] = None,
         training_image: Optional[str] = None,
         training_image_config: Optional[TrainingImageConfig] = None,
-        output_data_config: Optional[OutputDataConfig] = None,
+        output_data_config: Optional[shapes.OutputDataConfig] = None,
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
-        checkpoint_config: Optional[CheckpointConfig] = None,
+        checkpoint_config: Optional[shapes.CheckpointConfig] = None,
         training_input_mode: Optional[str] = "File",
         environment: Optional[Dict[str, str]] = None,
         tags: Optional[List[Tag]] = None,
@@ -1115,7 +1113,7 @@ class ModelTrainer(BaseModel):
         return model_trainer
 
     def with_tensorboard_output_config(
-        self, tensorboard_output_config: Optional[TensorBoardOutputConfig] = None
+        self, tensorboard_output_config: Optional[shapes.TensorBoardOutputConfig] = None
     ) -> "ModelTrainer":  # noqa: D412
         """Set the TensorBoard output configuration.
 
@@ -1232,7 +1230,7 @@ class ModelTrainer(BaseModel):
         return self
 
     def with_checkpoint_config(
-        self, checkpoint_config: Optional[CheckpointConfig] = None
+        self, checkpoint_config: Optional[shapes.CheckpointConfig] = None
     ) -> "ModelTrainer":  # noqa: D412
         """Set the checkpoint configuration for the training job.
 
