@@ -150,8 +150,12 @@ class Compute(shapes.ResourceConfig):
         compute_config_dict = self.model_dump()
         resource_config_fields = set(shapes.ResourceConfig.__annotations__.keys())
         filtered_dict = {
-            k: v for k, v in compute_config_dict.items() if k in resource_config_fields
+            k: v
+            for k, v in compute_config_dict.items()
+            if k in resource_config_fields and v is not None
         }
+        if not filtered_dict:
+            return None
         return shapes.ResourceConfig(**filtered_dict)
 
 
@@ -193,10 +197,14 @@ class Networking(shapes.VpcConfig):
     def _to_vpc_config(self) -> shapes.VpcConfig:
         """Convert to a sagemaker_core.shapes.VpcConfig object."""
         compute_config_dict = self.model_dump()
-        resource_config_fields = set(shapes.VpcConfig.__annotations__.keys())
+        vpc_config_fields = set(shapes.VpcConfig.__annotations__.keys())
         filtered_dict = {
-            k: v for k, v in compute_config_dict.items() if k in resource_config_fields
+            k: v
+            for k, v in compute_config_dict.items()
+            if k in vpc_config_fields and v is not None
         }
+        if not filtered_dict:
+            return None
         return shapes.VpcConfig(**filtered_dict)
 
 
