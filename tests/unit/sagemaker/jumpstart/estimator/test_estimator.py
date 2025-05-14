@@ -656,7 +656,7 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_gated_model_non_model_package_s3_uri(
+    def test_gated_model_gated_model_no_model_channel_due_to_gated_env_var(
         self,
         mock_estimator_deploy: mock.Mock,
         mock_estimator_fit: mock.Mock,
@@ -675,7 +675,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
 
-        model_id, _ = "js-gated-artifact-non-model-package-trainable-model", "*"
+        model_id, _ = "js-gated-artifact-gated-env-var-trainable-model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
@@ -683,6 +683,161 @@ class EstimatorTest(unittest.TestCase):
         mock_session_model.return_value = sagemaker_session
 
         estimator = JumpStartEstimator(model_id=model_id, environment={"accept_eula": True})
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.g5.12xlarge",
+            instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pyt"
+            "orch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-d"
+            "irectory-tarballs/meta/transfer_learning/textgeneration/prepack/v1.0.1/sourcedir.tar.gz",
+            entry_point="transfer_learning.py",
+            hyperparameters={
+                "int8_quantization": "False",
+                "enable_fsdp": "True",
+                "epoch": "5",
+                "learning_rate": "0.0001",
+                "lora_r": "8",
+                "lora_alpha": "32",
+                "lora_dropout": "0.05",
+                "instruction_tuned": "False",
+                "chat_dataset": "False",
+                "add_input_output_demarcation_key": "True",
+                "per_device_train_batch_size": "4",
+                "per_device_eval_batch_size": "1",
+                "max_train_samples": "-1",
+                "max_val_samples": "-1",
+                "seed": "10",
+                "max_input_length": "-1",
+                "validation_split_ratio": "0.2",
+                "train_data_split_seed": "0",
+                "preprocessing_num_workers": "None",
+            },
+            metric_definitions=[
+                {
+                    "Name": "huggingface-textgeneration:eval-loss",
+                    "Regex": "eval_epoch_loss=tensor\\(([0-9\\.]+)",
+                },
+                {
+                    "Name": "huggingface-textgeneration:eval-ppl",
+                    "Regex": "eval_ppl=tensor\\(([0-9\\.]+)",
+                },
+                {
+                    "Name": "huggingface-textgeneration:train-loss",
+                    "Regex": "train_epoch_loss=([0-9\\.]+)",
+                },
+            ],
+            role="fake role! do not use!",
+            max_run=360000,
+            sagemaker_session=sagemaker_session,
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-gated-env-var-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "3.0.0"},
+            ],
+            encrypt_inter_container_traffic=True,
+            enable_network_isolation=True,
+            environment={
+                "SELF_DESTRUCT": "true",
+                "accept_eula": True,
+                "SageMakerGatedModelS3Uri": "s3://top-secret-private-"
+                "models-bucket/meta-training/train-meta-textgeneration-llama-2-7b.tar.gz",
+            },
+        )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        estimator.fit(channels)
+
+        mock_estimator_fit.assert_called_once_with(
+            inputs=channels, wait=True, job_name="meta-textgeneration-llama-2-7b-8675309"
+        )
+
+        estimator.deploy()
+
+        mock_estimator_deploy.assert_called_once_with(
+            instance_type="ml.g5.2xlarge",
+            initial_instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytor"
+            "ch-tgi-inference:2.0.1-tgi1.1.0-gpu-py39-cu118-ubuntu20.04",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "MAX_INPUT_LENGTH": "4095",
+                "MAX_TOTAL_TOKENS": "4096",
+                "SM_NUM_GPUS": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
+            predictor_cls=Predictor,
+            endpoint_name="meta-textgeneration-llama-2-7b-8675309",
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-gated-env-var-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "3.0.0"},
+            ],
+            wait=True,
+            model_data_download_timeout=1200,
+            container_startup_health_check_timeout=1200,
+            role="fake role! do not use!",
+            enable_network_isolation=True,
+            model_name="meta-textgeneration-llama-2-7b-8675309",
+            use_compiled_model=False,
+        )
+
+    @mock.patch(
+        "sagemaker.jumpstart.artifacts.environment_variables.get_jumpstart_gated_content_bucket"
+    )
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_gated_model_gated_model_with_model_channel(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
+        mock_timestamp: mock.Mock,
+        mock_get_jumpstart_gated_content_bucket: mock.Mock,
+    ):
+        mock_estimator_deploy.return_value = default_predictor
+
+        mock_get_jumpstart_gated_content_bucket.return_value = "top-secret-private-models-bucket"
+        mock_timestamp.return_value = "8675309"
+
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
+
+        model_id, _ = "js-gated-artifact-use-model-channel", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(model_id=model_id)
 
         mock_estimator_init.assert_called_once_with(
             instance_type="ml.g5.12xlarge",
@@ -734,18 +889,13 @@ class EstimatorTest(unittest.TestCase):
             tags=[
                 {
                     "Key": "sagemaker-sdk:jumpstart-model-id",
-                    "Value": "js-gated-artifact-non-model-package-trainable-model",
+                    "Value": "js-gated-artifact-use-model-channel",
                 },
                 {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "3.0.0"},
             ],
             encrypt_inter_container_traffic=True,
             enable_network_isolation=True,
-            environment={
-                "SELF_DESTRUCT": "true",
-                "accept_eula": True,
-                "SageMakerGatedModelS3Uri": "s3://top-secret-private-"
-                "models-bucket/meta-training/train-meta-textgeneration-llama-2-7b.tar.gz",
-            },
+            environment={"SELF_DESTRUCT": "true"},
         )
 
         channels = {
@@ -782,7 +932,7 @@ class EstimatorTest(unittest.TestCase):
             tags=[
                 {
                     "Key": "sagemaker-sdk:jumpstart-model-id",
-                    "Value": "js-gated-artifact-non-model-package-trainable-model",
+                    "Value": "js-gated-artifact-use-model-channel",
                 },
                 {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "3.0.0"},
             ],
