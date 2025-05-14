@@ -199,9 +199,7 @@ class Networking(shapes.VpcConfig):
         compute_config_dict = self.model_dump()
         vpc_config_fields = set(shapes.VpcConfig.__annotations__.keys())
         filtered_dict = {
-            k: v
-            for k, v in compute_config_dict.items()
-            if k in vpc_config_fields and v is not None
+            k: v for k, v in compute_config_dict.items() if k in vpc_config_fields and v is not None
         }
         if not filtered_dict:
             return None
