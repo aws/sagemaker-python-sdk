@@ -1940,9 +1940,20 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     def use_training_model_artifact(self) -> bool:
         """Returns True if the model should use a model uri when kicking off training job."""
+        # old models with this environment variable present don't use model channel
+        if any(
+            self.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value(
+                instance_type
+            )
+            for instance_type in self.supported_training_instance_types
+        ):
+            return False
 
-        # otherwise, return true is a training model package is not set
-        return len(self.training_model_package_artifact_uris or {}) == 0
+        # even older models with training model package artifact uris present also don't use model channel
+        if len(self.training_model_package_artifact_uris or {}) > 0:
+            return False
+
+        return getattr(self, "training_artifact_key", None) is not None
 
     def is_gated_model(self) -> bool:
         """Returns True if the model has a EULA key or the model bucket is gated."""
