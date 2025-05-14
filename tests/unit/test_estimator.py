@@ -341,7 +341,7 @@ def test_set_accept_eula_for_input_data_config_no_input_data_config():
     train_args = {}
     accept_eula = True
 
-    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+    _TrainingJob._set_accept_eula_for_input_data_config(train_args, accept_eula)
 
     # Verify train_args remains unchanged
     assert train_args == {}
@@ -352,7 +352,7 @@ def test_set_accept_eula_for_input_data_config_none_accept_eula():
     train_args = {"InputDataConfig": [{"DataSource": {"S3DataSource": {}}}]}
     accept_eula = None
 
-    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+    _TrainingJob._set_accept_eula_for_input_data_config(train_args, accept_eula)
 
     # Verify train_args remains unchanged
     assert train_args == {"InputDataConfig": [{"DataSource": {"S3DataSource": {}}}]}
@@ -366,7 +366,7 @@ def test_set_accept_eula_for_input_data_config_single_data_source():
         }
         accept_eula = True
 
-        EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+        _TrainingJob._set_accept_eula_for_input_data_config(train_args, accept_eula)
 
         # Verify ModelAccessConfig and AcceptEula are set correctly
         assert train_args["InputDataConfig"][0]["DataSource"]["S3DataSource"][
@@ -388,7 +388,7 @@ def test_set_accept_eula_for_input_data_config_multiple_data_sources():
         }
         accept_eula = True
 
-        EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+        _TrainingJob._set_accept_eula_for_input_data_config(train_args, accept_eula)
 
         # Verify ModelAccessConfig and AcceptEula are set correctly for both data sources
         assert train_args["InputDataConfig"][0]["DataSource"]["S3DataSource"][
@@ -422,7 +422,7 @@ def test_set_accept_eula_for_input_data_config_existing_model_access_config():
     }
     accept_eula = True
 
-    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+    _TrainingJob._set_accept_eula_for_input_data_config(train_args, accept_eula)
 
     # Verify AcceptEula is added to existing ModelAccessConfig
     assert train_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["ModelAccessConfig"] == {
@@ -436,7 +436,7 @@ def test_set_accept_eula_for_input_data_config_missing_s3_data_source():
     train_args = {"InputDataConfig": [{"DataSource": {"OtherDataSource": {}}}]}
     accept_eula = True
 
-    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+    _TrainingJob._set_accept_eula_for_input_data_config(train_args, accept_eula)
 
     # Verify train_args remains unchanged
     assert train_args == {"InputDataConfig": [{"DataSource": {"OtherDataSource": {}}}]}
@@ -447,7 +447,7 @@ def test_set_accept_eula_for_input_data_config_missing_data_source():
     train_args = {"InputDataConfig": [{"OtherKey": {}}]}
     accept_eula = True
 
-    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+    _TrainingJob._set_accept_eula_for_input_data_config(train_args, accept_eula)
 
     # Verify train_args remains unchanged
     assert train_args == {"InputDataConfig": [{"OtherKey": {}}]}
@@ -464,7 +464,7 @@ def test_set_accept_eula_for_input_data_config_mixed_data_sources():
         }
         accept_eula = True
 
-        EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+        _TrainingJob._set_accept_eula_for_input_data_config(train_args, accept_eula)
 
         # Verify ModelAccessConfig and AcceptEula are set correctly for S3DataSource only
         assert train_args["InputDataConfig"][0]["DataSource"]["S3DataSource"][
