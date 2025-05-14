@@ -336,6 +336,148 @@ def training_job_description(sagemaker_session):
     return returned_job_description
 
 
+def test_set_accept_eula_for_input_data_config_no_input_data_config():
+    """Test when InputDataConfig is not in train_args."""
+    train_args = {}
+    accept_eula = True
+
+    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
+    # Verify train_args remains unchanged
+    assert train_args == {}
+
+
+def test_set_accept_eula_for_input_data_config_none_accept_eula():
+    """Test when accept_eula is None."""
+    train_args = {"InputDataConfig": [{"DataSource": {"S3DataSource": {}}}]}
+    accept_eula = None
+
+    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
+    # Verify train_args remains unchanged
+    assert train_args == {"InputDataConfig": [{"DataSource": {"S3DataSource": {}}}]}
+
+
+def test_set_accept_eula_for_input_data_config_single_data_source():
+    """Test with a single S3DataSource."""
+    with patch("sagemaker.estimator.logger") as logger:
+        train_args = {
+            "InputDataConfig": [{"DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/model"}}}]
+        }
+        accept_eula = True
+
+        EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
+        # Verify ModelAccessConfig and AcceptEula are set correctly
+        assert train_args["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+            "ModelAccessConfig"
+        ] == {"AcceptEula": True}
+
+        # Verify no logging occurred since there's only one data source
+        logger.info.assert_not_called()
+
+
+def test_set_accept_eula_for_input_data_config_multiple_data_sources():
+    """Test with multiple S3DataSources."""
+    with patch("sagemaker.estimator.logger") as logger:
+        train_args = {
+            "InputDataConfig": [
+                {"DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/model1"}}},
+                {"DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/model2"}}},
+            ]
+        }
+        accept_eula = True
+
+        EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
+        # Verify ModelAccessConfig and AcceptEula are set correctly for both data sources
+        assert train_args["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+            "ModelAccessConfig"
+        ] == {"AcceptEula": True}
+        assert train_args["InputDataConfig"][1]["DataSource"]["S3DataSource"][
+            "ModelAccessConfig"
+        ] == {"AcceptEula": True}
+
+        # Verify logging occurred with correct information
+        logger.info.assert_called_once()
+        args = logger.info.call_args[0]
+        assert args[0] == "Accepting EULA for %d S3 data sources: %s"
+        assert args[1] == 2
+        assert args[2] == "s3://bucket/model1, s3://bucket/model2"
+
+
+def test_set_accept_eula_for_input_data_config_existing_model_access_config():
+    """Test when ModelAccessConfig already exists."""
+    train_args = {
+        "InputDataConfig": [
+            {
+                "DataSource": {
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/model",
+                        "ModelAccessConfig": {"OtherSetting": "value"},
+                    }
+                }
+            }
+        ]
+    }
+    accept_eula = True
+
+    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
+    # Verify AcceptEula is added to existing ModelAccessConfig
+    assert train_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["ModelAccessConfig"] == {
+        "OtherSetting": "value",
+        "AcceptEula": True,
+    }
+
+
+def test_set_accept_eula_for_input_data_config_missing_s3_data_source():
+    """Test when S3DataSource is missing."""
+    train_args = {"InputDataConfig": [{"DataSource": {"OtherDataSource": {}}}]}
+    accept_eula = True
+
+    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
+    # Verify train_args remains unchanged
+    assert train_args == {"InputDataConfig": [{"DataSource": {"OtherDataSource": {}}}]}
+
+
+def test_set_accept_eula_for_input_data_config_missing_data_source():
+    """Test when DataSource is missing."""
+    train_args = {"InputDataConfig": [{"OtherKey": {}}]}
+    accept_eula = True
+
+    EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
+    # Verify train_args remains unchanged
+    assert train_args == {"InputDataConfig": [{"OtherKey": {}}]}
+
+
+def test_set_accept_eula_for_input_data_config_mixed_data_sources():
+    """Test with a mix of S3DataSource and other data sources."""
+    with patch("sagemaker.estimator.logger") as logger:
+        train_args = {
+            "InputDataConfig": [
+                {"DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/model"}}},
+                {"DataSource": {"OtherDataSource": {}}},
+            ]
+        }
+        accept_eula = True
+
+        EstimatorBase._set_accept_eula_for_input_data_config(train_args, accept_eula)
+
+        # Verify ModelAccessConfig and AcceptEula are set correctly for S3DataSource only
+        assert train_args["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+            "ModelAccessConfig"
+        ] == {"AcceptEula": True}
+        assert "ModelAccessConfig" not in train_args["InputDataConfig"][1]["DataSource"].get(
+            "OtherDataSource", {}
+        )
+
+        # Verify no logging occurred since there's only one S3 data source
+        logger.info.assert_not_called()
+
+
 def test_validate_smdistributed_unsupported_image_raises(sagemaker_session):
     # Test unsupported image raises error.
     for unsupported_image in DummyFramework.UNSUPPORTED_DLC_IMAGE_FOR_SM_PARALLELISM:

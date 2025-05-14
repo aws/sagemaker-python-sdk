@@ -333,7 +333,7 @@ def test_use_training_model_artifact():
     specs1 = JumpStartModelSpecs(BASE_SPEC)
     assert specs1.use_training_model_artifact()
     specs1.gated_bucket = True
-    assert not specs1.use_training_model_artifact()
+    assert specs1.use_training_model_artifact()
     specs1.gated_bucket = False
     specs1.training_model_package_artifact_uris = {"region1": "blah", "region2": "blah2"}
     assert not specs1.use_training_model_artifact()

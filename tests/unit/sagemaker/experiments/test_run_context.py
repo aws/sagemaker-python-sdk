@@ -54,7 +54,7 @@ def test_auto_pass_in_exp_config_to_train_job(mock_start_job, run_obj, sagemaker
         assert _RunContext.get_current_run() == run_obj
 
     expected_exp_config = run_obj.experiment_config
-    mock_start_job.assert_called_once_with(estimator, _train_input_path, expected_exp_config)
+    mock_start_job.assert_called_once_with(estimator, _train_input_path, expected_exp_config, None)
 
     # _RunContext is cleaned up after exiting the with statement
     assert not _RunContext.get_current_run()
@@ -94,7 +94,7 @@ def test_auto_pass_in_exp_config_under_load_run(
         assert loaded_run.experiment_config == run_obj.experiment_config
 
     expected_exp_config = run_obj.experiment_config
-    mock_start_job.assert_called_once_with(estimator, _train_input_path, expected_exp_config)
+    mock_start_job.assert_called_once_with(estimator, _train_input_path, expected_exp_config, None)
 
     # _RunContext is cleaned up after exiting the with statement
     assert not _RunContext.get_current_run()
@@ -174,7 +174,7 @@ def test_user_supply_exp_config_to_train_job(mock_start_job, run_obj, sagemaker_
 
         assert _RunContext.get_current_run() == run_obj
 
-    mock_start_job.assert_called_once_with(estimator, _train_input_path, supplied_exp_cfg)
+    mock_start_job.assert_called_once_with(estimator, _train_input_path, supplied_exp_cfg, None)
 
     # _RunContext is cleaned up after exiting the with statement
     assert not _RunContext.get_current_run()

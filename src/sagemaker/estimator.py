@@ -2710,6 +2710,9 @@ class _TrainingJob(_Job):
         if "InputDataConfig" not in train_args:
             return
 
+        if accept_eula is None:
+            return
+
         eula_count = 0
         s3_uris = []
 
