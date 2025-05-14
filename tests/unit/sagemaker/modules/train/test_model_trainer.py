@@ -324,9 +324,7 @@ def test_train_with_intelligent_defaults_training_job_space(
         hyper_parameters={},
         input_data_config=[],
         resource_config=ResourceConfig(
-            volume_size_in_gb=30,
-            instance_type="ml.m5.xlarge",
-            instance_count=1
+            volume_size_in_gb=30, instance_type="ml.m5.xlarge", instance_count=1
         ),
         vpc_config=None,
         session=ANY,
