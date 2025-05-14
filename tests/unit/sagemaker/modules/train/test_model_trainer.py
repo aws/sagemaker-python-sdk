@@ -326,11 +326,7 @@ def test_train_with_intelligent_defaults_training_job_space(
         resource_config=ResourceConfig(
             volume_size_in_gb=30,
             instance_type="ml.m5.xlarge",
-            instance_count=1,
-            volume_kms_key_id=None,
-            keep_alive_period_in_seconds=None,
-            instance_groups=None,
-            training_plan_arn=None,
+            instance_count=1
         ),
         vpc_config=None,
         session=ANY,
@@ -870,8 +866,6 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
             volume_size_in_gb=compute.volume_size_in_gb,
             volume_kms_key_id=compute.volume_kms_key_id,
             keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
-            instance_groups=None,
-            training_plan_arn=None,
         ),
         vpc_config=VpcConfig(
             security_group_ids=networking.security_group_ids,
