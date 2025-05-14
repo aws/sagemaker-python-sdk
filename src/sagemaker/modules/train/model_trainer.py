@@ -529,7 +529,7 @@ class ModelTrainer(BaseModel):
                             "Must be a valid JSON or YAML file."
                         )
 
-        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
+        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
             if self.output_data_config is None:
                 session = self.sagemaker_session
                 base_job_name = self.base_job_name
