@@ -360,45 +360,42 @@ def test_set_accept_eula_for_model_channel_input_data_config_none_accept_eula():
 
 def test_set_accept_eula_for_model_channel_input_data_config_single_data_source():
     """Test with a single S3DataSource."""
-    with patch("sagemaker.estimator.logger") as logger:
-        train_args = {
-            "input_config": [
-                {
-                    "ChannelName": "model",
-                    "DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/model"}},
-                }
-            ]
-        }
-        accept_eula = True
+    train_args = {
+        "input_config": [
+            {
+                "ChannelName": "model",
+                "DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/model"}},
+            }
+        ]
+    }
+    accept_eula = True
 
-        _TrainingJob._set_accept_eula_for_model_channel_input_data_config(train_args, accept_eula)
+    _TrainingJob._set_accept_eula_for_model_channel_input_data_config(train_args, accept_eula)
 
-        # Verify ModelAccessConfig and AcceptEula are set correctly
-        assert train_args["input_config"][0]["DataSource"]["S3DataSource"]["ModelAccessConfig"] == {
-            "AcceptEula": True
-        }
+    # Verify ModelAccessConfig and AcceptEula are set correctly
+    assert train_args["input_config"][0]["DataSource"]["S3DataSource"]["ModelAccessConfig"] == {
+        "AcceptEula": True
+    }
 
 
 def test_set_accept_eula_for_nonmodel_channel_input_data_config_single_data_source():
     """Test with a single S3DataSource."""
-    with patch("sagemaker.estimator.logger") as logger:
-        train_args = {
-            "input_config": [
-                {
-                    "ChannelName": "NotModel",
-                    "DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/not-model"}},
-                }
-            ]
-        }
-        accept_eula = True
+    train_args = {
+        "input_config": [
+            {
+                "ChannelName": "NotModel",
+                "DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/not-model"}},
+            }
+        ]
+    }
+    accept_eula = True
 
-        _TrainingJob._set_accept_eula_for_model_channel_input_data_config(train_args, accept_eula)
+    _TrainingJob._set_accept_eula_for_model_channel_input_data_config(train_args, accept_eula)
 
-        # Verify ModelAccessConfig and AcceptEula are set correctly
-        assert (
-            train_args["input_config"][0]["DataSource"]["S3DataSource"].get("ModelAccessConfig")
-            == None
-        )
+    # Verify ModelAccessConfig and AcceptEula are set correctly
+    assert (
+        train_args["input_config"][0]["DataSource"]["S3DataSource"].get("ModelAccessConfig") is None
+    )
 
 
 def test_set_accept_eula_for_model_channel_input_data_config_multiple_model_channels():
