@@ -2700,14 +2700,14 @@ class _TrainingJob(_Job):
         """Set the AcceptEula flag for all input data configurations.
 
         This method sets the AcceptEula flag in the ModelAccessConfig for all S3DataSources
-        in the InputDataConfig array. It handles cases where keys might not exist in the
+        in the input_config array. It handles cases where keys might not exist in the
         nested dictionary structure.
 
         Args:
             train_args (dict): The training job arguments dictionary
             accept_eula (bool): The value to set for AcceptEula flag
         """
-        if "InputDataConfig" not in train_args:
+        if "input_config" not in train_args:
             return
 
         if accept_eula is None:
@@ -2716,9 +2716,9 @@ class _TrainingJob(_Job):
         eula_count = 0
         s3_uris = []
 
-        for idx in range(len(train_args["InputDataConfig"])):
-            if "DataSource" in train_args["InputDataConfig"][idx]:
-                data_source = train_args["InputDataConfig"][idx]["DataSource"]
+        for idx in range(len(train_args["input_config"])):
+            if "DataSource" in train_args["input_config"][idx]:
+                data_source = train_args["input_config"][idx]["DataSource"]
                 if "S3DataSource" in data_source:
                     s3_data_source = data_source["S3DataSource"]
                     if "ModelAccessConfig" not in s3_data_source:
