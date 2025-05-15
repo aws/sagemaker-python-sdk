@@ -600,7 +600,7 @@ DESERIALIZE_INPUT_AND_RESPONSE_TO_CLS_TEMPLATE = """
 
 RESOURCE_BASE_CLASS_TEMPLATE = """
 class Base(BaseModel):
-    model_config = ConfigDict(protected_namespaces=(), validate_assignment=True, extra="forbid")
+    model_config = ConfigDict(protected_namespaces=(), validate_assignment=True, extra="forbid", arbitrary_types_allowed=True)
     config_manager: ClassVar[SageMakerConfig] = SageMakerConfig()
     
     @classmethod
@@ -711,3 +711,28 @@ Raises:
             error_message = e.response['Error']['Message']
             error_code = e.response['Error']['Code']
         ```"""
+
+SERIALIZE_INPUT_ENDPOINT_TEMPLATE = """
+    use_serializer = False
+    if ((self.serializer is not None and self.deserializer is None) or
+    (self.serializer is None and self.deserializer is not None)):
+        raise ValueError("Both serializer and deserializer must be provided together, or neither should be provided")
+    if self.serializer is not None and self.deserializer is not None:
+        use_serializer = True
+    if use_serializer:
+        body = self.serializer.serialize(body)
+    operation_input_args = {{
+{operation_input_args}
+    }}
+    # serialize the input request
+    operation_input_args = serialize(operation_input_args)
+    logger.debug(f"Serialized input request: {{operation_input_args}}")"""
+
+DESERIALIZE_RESPONSE_ENDPOINT_TEMPLATE = """
+    transformed_response = transform(response, 'InvokeEndpointOutput')
+    # Deserialize the body if a deserializer is provided
+    if use_serializer:
+        body_content = transformed_response["body"]
+        deserialized_body = self.deserializer.deserialize(body_content, transformed_response["content_type"])
+        transformed_response["body"] = deserialized_body
+    return {return_type_conversion}(**transformed_response)"""

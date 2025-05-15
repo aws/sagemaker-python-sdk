@@ -41,13 +41,11 @@ from botocore.utils import merge_dicts
 from six.moves.urllib import parse
 from six import viewitems
 
-from sagemaker.utils import deprecations
-from sagemaker.utils.config_manager import SageMakerConfig
-from sagemaker.utils.config_utils import (
+from sagemaker.utils.config.config_manager import SageMakerConfig
+from sagemaker.utils.config.config_utils import (
     _log_sagemaker_config_single_substitution,
     _log_sagemaker_config_merge,
 )
-from sagemaker.utils.enums import RoutingStrategy
 from sagemaker.utils.session_settings import SessionSettings
 from sagemaker.utils.workflow import is_pipeline_variable, is_pipeline_parameter_string
 from sagemaker.utils.workflow.entities import PipelineVariable
@@ -901,7 +899,6 @@ class S3DataConfig(DataConfig):
         return config[region] if region in config.keys() else config["default"]
 
 
-get_ecr_image_uri_prefix = deprecations.removed_function("get_ecr_image_uri_prefix")
 
 
 def update_container_with_inference_params(
@@ -1708,7 +1705,7 @@ def deep_override_dict(
     flattened_dict1.update(flattened_dict2)
     return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
 
-
+'''
 def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Resolve Routing Config
 
@@ -1737,7 +1734,7 @@ def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optiona
                 "or RoutingStrategy.LEAST_OUTSTANDING_REQUESTS"
             )
     return None
-
+'''
 
 @lru_cache
 def get_instance_rate_per_hour(

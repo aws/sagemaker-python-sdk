@@ -848,6 +848,14 @@ def invoke(
     """
 
 
+    use_serializer = False
+    if ((self.serializer is not None and self.deserializer is None) or
+    (self.serializer is None and self.deserializer is not None)):
+        raise ValueError("Both serializer and deserializer must be provided together, or neither should be provided")
+    if self.serializer is not None and self.deserializer is not None:
+        use_serializer = True
+    if use_serializer:
+        body = self.serializer.serialize(body)
     operation_input_args = {
         'EndpointName': self.endpoint_name,
         'Body': body,
@@ -873,6 +881,11 @@ def invoke(
     logger.debug(f"Response: {response}")
 
     transformed_response = transform(response, 'InvokeEndpointOutput')
+    # Deserialize the body if a deserializer is provided
+    if use_serializer:
+        body_content = transformed_response["body"]
+        deserialized_body = self.deserializer.deserialize(body_content, transformed_response["content_type"])
+        transformed_response["body"] = deserialized_body
     return InvokeEndpointOutput(**transformed_response)
 '''
         method = Method(

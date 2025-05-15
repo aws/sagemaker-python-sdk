@@ -74,6 +74,8 @@ from sagemaker.core.tools.templates import (
     RESOURCE_METHOD_EXCEPTION_DOCSTRING,
     INIT_WAIT_LOGS_TEMPLATE,
     PRINT_WAIT_LOGS,
+    SERIALIZE_INPUT_ENDPOINT_TEMPLATE,
+    DESERIALIZE_RESPONSE_ENDPOINT_TEMPLATE,
 )
 from sagemaker.core.tools.data_extractor import (
     load_combined_shapes_data,
@@ -195,6 +197,8 @@ class ResourcesCodeGen:
             "from sagemaker.core.utils.logs import MultiLogStreamHandler",
             "from sagemaker.core.utils.exceptions import *",
             "from typing import ClassVar",
+            "from sagemaker.utils.base_serializers import BaseSerializer",
+            "from sagemaker.utils.base_deserializers import BaseDeserializer",
         ]
 
         formated_imports = "\n".join(imports)
@@ -518,6 +522,18 @@ class ResourcesCodeGen:
                 class_attributes_string = (
                     class_attributes_string + "hub_name: Optional[str] = Unassigned()"
                 )
+            if resource_name == "Endpoint":
+                class_attributes["serializer"] = "Optional[BaseSerializer] = None"
+                class_attributes_string = class_attributes_string.replace("serializer: BaseSerializer", "")
+                class_attributes_string = (
+                        class_attributes_string + "serializer: Optional[BaseSerializer] = None\n"
+                )
+                class_attributes["deserializer"] = "Optional[BaseDeserializer] = None"
+                class_attributes_string = class_attributes_string.replace("deserializer: BaseDeserializer", "")
+                class_attributes_string = (
+                        class_attributes_string + "deserializer: Optional[BaseDeserializer] = None\n"
+                )
+
 
             return class_attributes, class_attributes_string, attributes_and_documentation
         elif "get_all" in class_methods:
@@ -1471,9 +1487,21 @@ class ResourcesCodeGen:
         initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name=method.service_name)
         if len(self.shapes[operation_input_shape_name]["members"]) != 0:
             # the method has input arguments
-            serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
-                operation_input_args=operation_input_args
-            )
+            if method.resource_name == "Endpoint" and method.method_name == "invoke":
+                serialize_operation_input = SERIALIZE_INPUT_ENDPOINT_TEMPLATE.format(
+                    operation_input_args=operation_input_args
+                )
+                return_type_conversion = method.return_type
+                operation_output_shape = operation_metadata["output"]["shape"]
+                deserialize_response = DESERIALIZE_RESPONSE_ENDPOINT_TEMPLATE.format(
+                    operation_output_shape=operation_output_shape,
+                    return_type_conversion=return_type_conversion,
+                )
+
+            else:
+                serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
+                    operation_input_args=operation_input_args
+                )
             call_operation_api = CALL_OPERATION_API_TEMPLATE.format(
                 operation=convert_to_snake_case(method.operation_name)
             )

@@ -32,13 +32,15 @@ from sagemaker.utils.config.config_manager import SageMakerConfig
 from sagemaker.core.utils.logs import MultiLogStreamHandler
 from sagemaker.core.utils.exceptions import *
 from typing import ClassVar
+from sagemaker.utils.base_serializers import BaseSerializer
+from sagemaker.utils.base_deserializers import BaseDeserializer
 
 
 logger = get_textual_rich_logger(__name__)
 
 
 class Base(BaseModel):
-    model_config = ConfigDict(protected_namespaces=(), validate_assignment=True, extra="forbid")
+    model_config = ConfigDict(protected_namespaces=(), validate_assignment=True, extra="forbid", arbitrary_types_allowed=True)
     config_manager: ClassVar[SageMakerConfig] = SageMakerConfig()
     
     @classmethod
@@ -8744,6 +8746,8 @@ class Endpoint(Base):
     pending_deployment_summary: Optional[PendingDeploymentSummary] = Unassigned()
     explainer_config: Optional[ExplainerConfig] = Unassigned()
     shadow_production_variants: Optional[List[ProductionVariantSummary]] = Unassigned()
+    serializer: Optional[BaseSerializer] = None
+    deserializer: Optional[BaseDeserializer] = None
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -9318,6 +9322,14 @@ class Endpoint(Base):
         """
     
     
+        use_serializer = False
+        if ((self.serializer is not None and self.deserializer is None) or
+        (self.serializer is None and self.deserializer is not None)):
+            raise ValueError("Both serializer and deserializer must be provided together, or neither should be provided")
+        if self.serializer is not None and self.deserializer is not None:
+            use_serializer = True
+        if use_serializer:
+            body = self.serializer.serialize(body)
         operation_input_args = {
             'EndpointName': self.endpoint_name,
             'Body': body,
@@ -9343,6 +9355,11 @@ class Endpoint(Base):
         logger.debug(f"Response: {response}")
     
         transformed_response = transform(response, 'InvokeEndpointOutput')
+        # Deserialize the body if a deserializer is provided
+        if use_serializer:
+            body_content = transformed_response["body"]
+            deserialized_body = self.deserializer.deserialize(body_content, transformed_response["content_type"])
+            transformed_response["body"] = deserialized_body
         return InvokeEndpointOutput(**transformed_response)
     
     

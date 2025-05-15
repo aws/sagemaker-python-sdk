@@ -22,7 +22,7 @@ from sagemaker.core.utils.code_injection.constants import (
     LIST_TYPE,
     MAP_TYPE,
 )
-
+from io import BytesIO
 
 def pascal_to_snake(pascal_str):
     """
@@ -244,6 +244,15 @@ def transform(data, shape, object_instance=None) -> dict:
         elif _member_type == MAP_TYPE:
             _map_type_shape = SHAPE_DAG[_member_shape]
             evaluated_value = _evaluate_map_type(data[_member_name], _map_type_shape)
+        elif _member_type == 'blob':
+            blob_data = data[_member_name]
+            if isinstance(blob_data, bytes):
+                evaluated_value = BytesIO(blob_data)
+            elif hasattr(blob_data, 'read'):
+                # If it's already a file-like object, use it as is
+                evaluated_value = blob_data
+            else:
+                raise ValueError(f"Unexpected blob data type: {type(blob_data)}")
         else:
             raise ValueError(f"Unexpected member type encountered: {_member_type}")
 
