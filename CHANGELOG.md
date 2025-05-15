@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.244.1 (2025-05-15)
+
+### Bug Fixes and Other Changes
+
+ * Fix Flask-Limiter version
+ * Fix test_huggingface_tei_uris()
+ * huggingface-llm-neuronx dlc
+ * huggingface-neuronx dlc image_uri
+ * huggingface-tei dlc image_uri
+ * Fix test_deploy_with_update_endpoint()
+ * add AG v1.3
+ * parameter mismatch in update_endpoint
+ * remove --strip-component for untar source tar.gz
+ * Fix type annotations
+ * chore: Allow omegaconf >=2.2,<3
+ * honor json serialization of HPs
+ * Map llama models to correct script
+ * pin test dependency
+ * fix bad initialization script error message
+ * Improve error logging and documentation for issue 4007
+ * build(deps): bump scikit-learn
+ * build(deps): bump mlflow
+ * build(deps): bump mlflow in /tests/data/serve_resources/mlflow/pytorch
+ * chore: Add tei 1.6.0 image
+
 ## v2.244.0 (2025-05-02)
 
 ### Features
