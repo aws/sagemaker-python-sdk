@@ -2671,7 +2671,7 @@ class _TrainingJob(_Job):
             train_args["session_chaining_config"] = estimator.get_session_chaining_config()
 
         if accept_eula is not None:
-            cls._set_accept_eula_for_input_data_config(train_args, accept_eula)
+            cls._set_accept_eula_for_model_channel_input_data_config(train_args, accept_eula)
 
         return train_args
 
@@ -2696,11 +2696,11 @@ class _TrainingJob(_Job):
             train_args["checkpoint_local_path"] = estimator.checkpoint_local_path
 
     @classmethod
-    def _set_accept_eula_for_input_data_config(cls, train_args, accept_eula):
-        """Set the AcceptEula flag for all input data configurations.
+    def _set_accept_eula_for_model_channel_input_data_config(cls, train_args, accept_eula):
+        """Set the AcceptEula flag for model channel in input data configurations.
 
-        This method sets the AcceptEula flag in the ModelAccessConfig for all S3DataSources
-        in the input_config array. It handles cases where keys might not exist in the
+        This method sets the AcceptEula flag in the ModelAccessConfig for the model channel
+        S3DataSource in the input_config array. It handles cases where keys might not exist in the
         nested dictionary structure.
 
         Args:
@@ -2713,26 +2713,17 @@ class _TrainingJob(_Job):
         if accept_eula is None:
             return
 
-        eula_count = 0
-        s3_uris = []
-
         for idx in range(len(train_args["input_config"])):
-            if "DataSource" in train_args["input_config"][idx]:
+            if (
+                "DataSource" in train_args["input_config"][idx]
+                and train_args["input_config"][idx]["ChannelName"].lower().strip() == "model"
+            ):
                 data_source = train_args["input_config"][idx]["DataSource"]
                 if "S3DataSource" in data_source:
                     s3_data_source = data_source["S3DataSource"]
                     if "ModelAccessConfig" not in s3_data_source:
                         s3_data_source["ModelAccessConfig"] = {}
                     s3_data_source["ModelAccessConfig"]["AcceptEula"] = accept_eula
-                    eula_count += 1
-
-                    # Collect S3 URI if available
-                    if "S3Uri" in s3_data_source:
-                        s3_uris.append(s3_data_source["S3Uri"])
-
-        # Log info if more than one EULA needs to be accepted
-        if eula_count > 1:
-            logger.info("Accepting EULA for %d S3 data sources: %s", eula_count, ", ".join(s3_uris))
 
     @classmethod
     def _is_local_channel(cls, input_uri):
