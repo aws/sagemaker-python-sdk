@@ -55,7 +55,8 @@ dependencies = [
   "tblib>=1.7.0,<4",
   "tqdm",
   "urllib3>=1.26.8,<3.0.0",
-  "uvicorn"
+  "uvicorn",
+  "graphene>=3,<4"
 ]
 
 [project.scripts]
