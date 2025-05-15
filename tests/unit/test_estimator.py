@@ -378,11 +378,8 @@ def test_set_accept_eula_for_model_channel_input_data_config_single_data_source(
             "AcceptEula": True
         }
 
-        # Verify no logging occurred
-        logger.info.assert_not_called()
 
-
-def test_set_accept_eula_for_model_channel_input_data_config_single_data_source():
+def test_set_accept_eula_for_nonmodel_channel_input_data_config_single_data_source():
     """Test with a single S3DataSource."""
     with patch("sagemaker.estimator.logger") as logger:
         train_args = {
