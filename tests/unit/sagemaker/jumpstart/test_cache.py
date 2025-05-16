@@ -1288,3 +1288,78 @@ def test_jumpstart_cache_handles_versioning_correctly_non_sem_ver(retrieval_func
     assert_key = JumpStartVersionedModelId("test-model", "abc")
 
     assert result == assert_key
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+def test_get_json_file_from_s3():
+    """Test _get_json_file retrieves from S3 in normal mode."""
+    cache = JumpStartModelsCache()
+    test_key = "test/file/path.json"
+    test_json_data = {"key": "value"}
+    test_etag = "test-etag-123"
+
+    with patch.object(
+        JumpStartModelsCache,
+        "_get_json_file_and_etag_from_s3",
+        return_value=(test_json_data, test_etag),
+    ) as mock_s3_get:
+        result, etag = cache._get_json_file(test_key, JumpStartS3FileType.OPEN_WEIGHT_MANIFEST)
+
+        mock_s3_get.assert_called_once_with(test_key)
+        assert result == test_json_data
+        assert etag == test_etag
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+def test_get_json_file_from_local_supported_type():
+    """Test _get_json_file retrieves from local override for supported file types."""
+    cache = JumpStartModelsCache()
+    test_key = "test/file/path.json"
+    test_json_data = {"key": "value"}
+
+    with (
+        patch.object(JumpStartModelsCache, "_is_local_metadata_mode", return_value=True),
+        patch.object(
+            JumpStartModelsCache, "_get_json_file_from_local_override", return_value=test_json_data
+        ) as mock_local_get,
+    ):
+        result, etag = cache._get_json_file(test_key, JumpStartS3FileType.OPEN_WEIGHT_MANIFEST)
+
+        mock_local_get.assert_called_once_with(test_key, JumpStartS3FileType.OPEN_WEIGHT_MANIFEST)
+        assert result == test_json_data
+        assert etag is None
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+def test_get_json_file_local_mode_unsupported_type():
+    """Test _get_json_file falls back to S3 for unsupported file types in local mode."""
+    cache = JumpStartModelsCache()
+    test_key = "test/file/path.json"
+    test_json_data = {"key": "value"}
+    test_etag = "test-etag-123"
+
+    with (
+        patch.object(JumpStartModelsCache, "_is_local_metadata_mode", return_value=True),
+        patch.object(
+            JumpStartModelsCache,
+            "_get_json_file_and_etag_from_s3",
+            return_value=(test_json_data, test_etag),
+        ) as mock_s3_get,
+        patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning") as mock_warning,
+    ):
+        result, etag = cache._get_json_file(test_key, JumpStartS3FileType.PROPRIETARY_MANIFEST)
+
+        mock_s3_get.assert_called_once_with(test_key)
+        mock_warning.assert_called_once()
+        assert "not supported for local override" in mock_warning.call_args[0][0]
+        assert result == test_json_data
+        assert etag == test_etag
