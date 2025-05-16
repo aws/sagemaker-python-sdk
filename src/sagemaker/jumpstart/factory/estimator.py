@@ -56,7 +56,6 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_LOGGER,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
-    JUMPSTART_MODEL_HUB_NAME,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.jumpstart.factory import model
