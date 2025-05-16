@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 import pytest
 from unittest.mock import patch
+from sagemaker.jumpstart.constants import JUMPSTART_MODEL_HUB_NAME
 from sagemaker.jumpstart.factory.estimator import (
     _add_model_uri_to_kwargs,
     get_model_info_default_kwargs,
@@ -118,4 +119,44 @@ class TestAddModelUriToKwargs:
         result = _add_model_uri_to_kwargs(mock_kwargs)
 
         mock_supports_training.assert_called_once()
+        assert result.model_uri is None
+
+    @patch(
+        "sagemaker.jumpstart.factory.estimator._model_supports_training_model_uri",
+        return_value=False,
+    )
+    @patch("sagemaker.jumpstart.factory.estimator.model_uris.retrieve")
+    def test_add_model_uri_to_kwargs_private_hub(
+        self, mock_retrieve, mock_supports_training, mock_kwargs
+    ):
+        """Test when model is from a private hub."""
+        default_uri = "s3://jumpstart-models/training/test-model/1.0.0"
+        mock_retrieve.return_value = default_uri
+        mock_kwargs.hub_arn = "arn:aws:sagemaker:us-west-2:123456789012:hub/private-hub"
+
+        result = _add_model_uri_to_kwargs(mock_kwargs)
+
+        # Should not check if model supports training model URI for private hub
+        mock_supports_training.assert_not_called()
+        mock_retrieve.assert_called_once()
+        assert result.model_uri == default_uri
+
+    @patch(
+        "sagemaker.jumpstart.factory.estimator._model_supports_training_model_uri",
+        return_value=False,
+    )
+    @patch("sagemaker.jumpstart.factory.estimator.model_uris.retrieve")
+    def test_add_model_uri_to_kwargs_public_hub(
+        self, mock_retrieve, mock_supports_training, mock_kwargs
+    ):
+        """Test when model is from the public hub."""
+        mock_kwargs.hub_arn = (
+            f"arn:aws:sagemaker:us-west-2:123456789012:hub/{JUMPSTART_MODEL_HUB_NAME}"
+        )
+
+        result = _add_model_uri_to_kwargs(mock_kwargs)
+
+        # Should check if model supports training model URI for public hub
+        mock_supports_training.assert_called_once()
+        mock_retrieve.assert_not_called()
         assert result.model_uri is None

@@ -54,6 +54,7 @@ from sagemaker.jumpstart.artifacts import (
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
+    JUMPSTART_MODEL_HUB_NAME,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
 )
@@ -631,7 +632,13 @@ def _add_model_reference_arn_to_kwargs(
 
 def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets model uri in kwargs based on default or override, returns full kwargs."""
-    if _model_supports_training_model_uri(**get_model_info_default_kwargs(kwargs)):
+    # hub_arn is by default None unless the user specifies the hub_name
+    # If no hub_name is specified, it is assumed the public hub
+    # Training platform enforces that private hub models must use model channel
+    is_private_hub = JUMPSTART_MODEL_HUB_NAME not in kwargs.hub_arn if kwargs.hub_arn else False
+    if is_private_hub or _model_supports_training_model_uri(
+        **get_model_info_default_kwargs(kwargs)
+    ):
         default_model_uri = model_uris.retrieve(
             model_scope=JumpStartScriptScope.TRAINING,
             instance_type=kwargs.instance_type,
