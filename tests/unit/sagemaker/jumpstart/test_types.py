@@ -361,7 +361,8 @@ class TestUseTrainingModelArtifact:
             None
         )
         mock_specs.training_model_package_artifact_uris = {
-            "ml.p3.2xlarge": "arn:aws:sagemaker:ap-southeast-1:192199979996:model-package/llama2-13b-e155a2e0347b323fb882f1875851c5d3"
+            "ml.p3.2xlarge": "arn:aws:sagemaker:ap-southeast-1:192199979996:model-package/"
+            "llama2-13b-e155a2e0347b323fb882f1875851c5d3"
         }
 
         result = JumpStartModelSpecs.use_training_model_artifact(mock_specs)
