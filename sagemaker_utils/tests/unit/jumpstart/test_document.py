@@ -21,9 +21,9 @@ import pytest
 from unittest.mock import patch
 
 from sagemaker_core.resources import HubContent
-from sagemaker.utils.jumpstart.document import get_hub_content_document
+from sagemaker.utils.jumpstart.document import get_hub_content_and_document
 from sagemaker.utils.jumpstart.configs import JumpStartConfig
-from sagemaker.utils.jumpstart.model import HubContentDocument
+from sagemaker.utils.jumpstart.models import HubContentDocument
 
 DEFAULT_ROLE = "arn:aws:iam::123456789012:role/role-name"
 DEFAULT_REGION = "us-west-2"
@@ -60,10 +60,11 @@ def test_get_hub_content_document_happy(valid_hub_content, jumpstart_session):
 
     with patch("sagemaker.utils.jumpstart.document.HubContent.get") as mock_get:
         mock_get.return_value = valid_hub_content
-        hub_content_document = get_hub_content_document(
+        hub_content, hub_content_document = get_hub_content_and_document(
             jumpstart_config=jumpstart_config, sagemaker_session=jumpstart_session
         )
         assert isinstance(hub_content_document, HubContentDocument)
+        assert isinstance(hub_content, HubContent)
 
 
 def test_get_hub_content_document_failure(jumpstart_session):
@@ -77,6 +78,6 @@ def test_get_hub_content_document_failure(jumpstart_session):
             operation_name="DescribeHubContent",
         )
         with pytest.raises(ClientError) as excinfo:
-            get_hub_content_document(
+            get_hub_content_and_document(
                 jumpstart_config=jumpstart_config, sagemaker_session=jumpstart_session
             )

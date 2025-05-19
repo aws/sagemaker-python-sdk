@@ -24,6 +24,21 @@ echo "Running Basic Script driver"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/distributed_drivers/basic_script_driver.py
 """
 
+INSTALL_AUTO_REQUIREMENTS = """
+if [ -f requirements.txt ]; then
+    echo "Installing requirements"
+    cat requirements.txt
+    $SM_PIP_CMD install -r requirements.txt
+else
+    echo "No requirements.txt file found. Skipping installation."
+fi
+"""
+
+INSTALL_REQUIREMENTS = """
+echo "Installing requirements"
+$SM_PIP_CMD install -r {requirements_file}
+"""
+
 EXEUCTE_DISTRIBUTED_DRIVER = """
 echo "Running {driver_name} Driver"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/distributed_drivers/{driver_script}
@@ -61,6 +76,7 @@ trap 'handle_error' ERR
 
 check_python
 
+set -x
 $SM_PYTHON_CMD --version
 
 echo "/opt/ml/input/config/resourceconfig.json:"
@@ -73,7 +89,10 @@ echo
 
 echo "Setting up environment variables"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/scripts/environment.py
+
+set +x
 source /opt/ml/input/sm_training.env
+set -x
 
 {working_dir}
 {install_requirements}

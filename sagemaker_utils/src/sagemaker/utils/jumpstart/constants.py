@@ -10,5 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains the Integ Tests for SageMaker PySDK Training."""
+"""This module contains constants for JumpStart."""
 from __future__ import absolute_import
+
+SAGEMAKER_PUBLIC_HUB = "SageMakerPublicHub"
+DEFAULT_TRAINING_ENTRY_POINT = "transfer_learning.py"

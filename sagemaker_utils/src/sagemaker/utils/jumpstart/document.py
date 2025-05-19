@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import json
-from typing import Optional
+from typing import Optional, Tuple
 from functools import lru_cache
 from botocore.exceptions import ClientError
 
@@ -22,14 +22,15 @@ from sagemaker_core.helper.session_helper import Session
 from sagemaker_core.main.utils import logger
 from sagemaker_core.resources import HubContent
 from sagemaker.utils.jumpstart.configs import JumpStartConfig
-from sagemaker.utils.jumpstart.model import HubContentDocument
+from sagemaker.utils.jumpstart.models import HubContentDocument
+from sagemaker.utils.jumpstart.constants import SAGEMAKER_PUBLIC_HUB
 
 
 @lru_cache(maxsize=128)
-def get_hub_content_document(
+def get_hub_content_and_document(
     jumpstart_config: JumpStartConfig,
     sagemaker_session: Optional[Session] = None,
-) -> HubContentDocument:
+) -> Tuple[HubContent,HubContentDocument]:
     """Get model metadata for JumpStart.
 
 
@@ -45,8 +46,8 @@ def get_hub_content_document(
         sagemaker_session = Session()
         logger.debug("No sagemaker session provided. Using default session.")
 
-    hub_name = jumpstart_config.hub_name if jumpstart_config.hub_name else "SageMakerPublicHub"
-    hub_content_type = "Model" if hub_name == "SageMakerPublicHub" else "ModelReference"
+    hub_name = jumpstart_config.hub_name if jumpstart_config.hub_name else SAGEMAKER_PUBLIC_HUB
+    hub_content_type = "Model" if hub_name == SAGEMAKER_PUBLIC_HUB else "ModelReference"
 
     region = sagemaker_session.boto_region_name
 
@@ -72,4 +73,4 @@ def get_hub_content_document(
         f"hub_content_version: {hub_content.hub_content_version}"
     )
     document_json = json.loads(hub_content.hub_content_document)
-    return HubContentDocument(**document_json)
+    return (hub_content, HubContentDocument(**document_json))

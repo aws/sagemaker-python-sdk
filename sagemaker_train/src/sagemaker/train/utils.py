@@ -22,8 +22,50 @@ from pathlib import Path
 from datetime import datetime
 from typing import Literal, Any
 
+from sagemaker_core.helper.session_helper import Session
 from sagemaker_core.shapes import Unassigned
 from sagemaker.train import logger
+
+
+def _default_bucket_and_prefix(session: Session) -> str:
+    """Helper function to get the bucket name with the corresponding prefix if applicable
+
+    Returns a string like:
+    * ``default_bucket/default_bucket_prefix`` if the prefix is set
+    * ``default_bucket`` if the prefix is not set
+
+    Args:
+        session (Session): The SageMaker session to use
+
+    Returns:
+        str: The bucket name with the prefix if applicable
+    """
+    if session.default_bucket_prefix is not None:
+        return f"{session.default_bucket()}/{session.default_bucket_prefix}"
+    return session.default_bucket()
+
+
+def _default_s3_uri(session: Session, additional_path: str = "") -> str:
+    """Helper function to get the default S3 URI for the SageMaker session.
+
+    Returns a string like:
+    * ``s3://default_bucket/default_bucket_prefix`` if the prefix is set
+    * ``s3://default_bucket`` if the prefix is not set
+
+    Args:
+        session (Session): The SageMaker session to use
+        additional_path (str): Additional path to append to the S3 URI. Defaults to "".
+
+    Returns:
+        str: The default S3 URI for the SageMaker session
+    """
+    bucket_and_prefix = _default_bucket_and_prefix(session)
+    additional_path = additional_path.lstrip("/")  # Remove leading slash if present
+    return (
+        f"s3://{bucket_and_prefix}/{additional_path}"
+        if additional_path
+        else f"s3://{bucket_and_prefix}"
+    )
 
 
 def _is_valid_s3_uri(path: str, path_type: Literal["File", "Directory", "Any"] = "Any") -> bool:
@@ -113,7 +155,7 @@ def _get_repo_name_from_image(image: str) -> str:
     Returns:
         str: The repository name
     """
-    return image.split("/")[-1].split(":")[0]
+    return image.split("/")[-1].split(":")[0].split("@")[0]
 
 
 def convert_unassigned_to_none(instance) -> Any:

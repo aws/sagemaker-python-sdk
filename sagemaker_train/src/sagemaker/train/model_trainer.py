@@ -68,7 +68,7 @@ from sagemaker.train.configs import (
 
 from sagemaker.train.distributed import Torchrun, DistributedConfig
 from sagemaker.train.utils import (
-    _get_repo_name_from_image,
+    _default_s3_uri,
     _get_unique_name,
     _is_valid_path,
     _is_valid_s3_uri,
@@ -76,7 +76,6 @@ from sagemaker.train.utils import (
 )
 from sagemaker.train.types import DataSourceType
 from sagemaker.train.constants import (
-    DEFAULT_INSTANCE_TYPE,
     SM_CODE,
     SM_CODE_CONTAINER_PATH,
     SM_DRIVERS,
@@ -92,6 +91,8 @@ from sagemaker.train.templates import (
     EXECUTE_BASE_COMMANDS,
     EXEUCTE_DISTRIBUTED_DRIVER,
     EXECUTE_BASIC_SCRIPT_DRIVER,
+    INSTALL_AUTO_REQUIREMENTS,
+    INSTALL_REQUIREMENTS,
 )
 from sagemaker.utils.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.utils.telemetry.constants import Feature
@@ -99,8 +100,9 @@ from sagemaker.train import logger
 from sagemaker.train.sm_recipes.utils import _get_args_from_recipe, _determine_device_type
 
 from sagemaker.utils.jumpstart.configs import JumpStartConfig
-
-from sagemaker.utils.jumpstart.document import get_hub_content_document
+from sagemaker.utils.jumpstart.document import get_hub_content_and_document
+from sagemaker.utils.jumpstart.utils import get_eula_url
+from sagemaker.train.defaults import TrainDefaults, JumpStartTrainDefaults
 
 
 class Mode(Enum):
@@ -239,7 +241,11 @@ class ModelTrainer(BaseModel):
     _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
     _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
 
+    # Private Attributes for Recipes
     _temp_recipe_train_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
+
+    # Private Attributes for JumpStart
+    _jumpstart_config: Optional[JumpStartConfig] = PrivateAttr(default=None)
 
     CONFIGURABLE_ATTRIBUTES: ClassVar[List[str]] = [
         "role",
@@ -402,7 +408,6 @@ class ModelTrainer(BaseModel):
                 "Must provide 'entry_script' if 'distribution' " + "is provided in 'source_code'.",
             )
 
-    # TODO: Move to use pydantic model validators
     def _validate_source_code(self, source_code: Optional[SourceCode]):
         """Validate the source code configuration."""
         if source_code:
@@ -413,7 +418,7 @@ class ModelTrainer(BaseModel):
                 if not source_dir:
                     raise ValueError(
                         "If 'requirements' or 'entry_script' is provided in 'source_code', "
-                        + "'source_dir' must also be provided.",
+                        "'source_dir' must also be provided."
                     )
                 if not (
                     _is_valid_path(source_dir, path_type="Directory")
@@ -455,127 +460,68 @@ class ModelTrainer(BaseModel):
                                 "Must be a valid file within the 'source_dir'.",
                             )
 
+    @staticmethod
+    def _validate_and_fetch_hyperparameters_file(hyperparameters_file: str):
+        """Validate and fetch hyperparameters from a file."""
+        if not os.path.exists(hyperparameters_file):
+            raise ValueError(f"Hyperparameters file not found: {hyperparameters_file}")
+        logger.info(f"Loading hyperparameters from file: {hyperparameters_file}")
+        with open(hyperparameters_file, "r") as f:
+            contents = f.read()
+            try:
+                hyperparameters = json.loads(contents)
+                logger.debug("Hyperparameters loaded as JSON")
+            except json.JSONDecodeError:
+                try:
+                    logger.info(f"contents: {contents}")
+                    hyperparameters = yaml.safe_load(contents)
+                    if not isinstance(hyperparameters, dict):
+                        raise ValueError("YAML contents must be a valid mapping")
+                    logger.info(f"hyperparameters: {hyperparameters}")
+                    logger.debug("Hyperparameters loaded as YAML")
+                except (yaml.YAMLError, ValueError):
+                    raise ValueError(
+                        f"Invalid hyperparameters file: {hyperparameters_file}. "
+                        "Must be a valid JSON or YAML file."
+                    )
+        return hyperparameters
+
     def model_post_init(self, __context: Any):
         """Post init method to perform custom validation and set default values."""
         self._validate_training_image_and_algorithm_name(self.training_image, self.algorithm_name)
         self._validate_source_code(self.source_code)
         self._validate_distributed_config(self.source_code, self.distributed)
 
-        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
-            if self.sagemaker_session is None:
-                self.sagemaker_session = Session()
-                logger.info("SageMaker session not provided. Using default Session.")
-
-            if self.role is None:
-                self.role = get_execution_role(sagemaker_session=self.sagemaker_session)
-                logger.info(f"Role not provided. Using default role:\n{self.role}")
-
-        if self.base_job_name is None:
-            if self.algorithm_name:
-                self.base_job_name = f"{self.algorithm_name}-job"
-            elif self.training_image:
-                self.base_job_name = f"{_get_repo_name_from_image(self.training_image)}-job"
-            logger.info(f"Base name not provided. Using default name:\n{self.base_job_name}")
-
-        if self.compute is None:
-            self.compute = Compute(
-                instance_type=DEFAULT_INSTANCE_TYPE,
-                instance_count=1,
-                volume_size_in_gb=30,
-            )
-            logger.info(f"Compute not provided. Using default:\n{self.compute}")
-        if self.compute.instance_type is None:
-            self.compute.instance_type = DEFAULT_INSTANCE_TYPE
-            logger.info(f"Instance type not provided. Using default:\n{DEFAULT_INSTANCE_TYPE}")
-        if self.compute.instance_count is None:
-            self.compute.instance_count = 1
-            logger.info(
-                f"Instance count not provided. Using default:\n{self.compute.instance_count}"
-            )
-        if self.compute.volume_size_in_gb is None:
-            self.compute.volume_size_in_gb = 30
-            logger.info(
-                f"Volume size not provided. Using default:\n{self.compute.volume_size_in_gb}"
-            )
-
-        if self.stopping_condition is None:
-            self.stopping_condition = StoppingCondition(
-                max_runtime_in_seconds=3600,
-                max_pending_time_in_seconds=None,
-                max_wait_time_in_seconds=None,
-            )
-            logger.info(
-                f"StoppingCondition not provided. Using default:\n{self.stopping_condition}"
-            )
-        if self.stopping_condition.max_runtime_in_seconds is None:
-            self.stopping_condition.max_runtime_in_seconds = 3600
-            logger.info(
-                "Max runtime not provided. Using default:\n"
-                f"{self.stopping_condition.max_runtime_in_seconds}"
-            )
-
         if self.hyperparameters and isinstance(self.hyperparameters, str):
-            if not os.path.exists(self.hyperparameters):
-                raise ValueError(f"Hyperparameters file not found: {self.hyperparameters}")
-            logger.info(f"Loading hyperparameters from file: {self.hyperparameters}")
-            with open(self.hyperparameters, "r") as f:
-                contents = f.read()
-                try:
-                    self.hyperparameters = json.loads(contents)
-                    logger.debug("Hyperparameters loaded as JSON")
-                except json.JSONDecodeError:
-                    try:
-                        logger.info(f"contents: {contents}")
-                        self.hyperparameters = yaml.safe_load(contents)
-                        if not isinstance(self.hyperparameters, dict):
-                            raise ValueError("YAML contents must be a valid mapping")
-                        logger.info(f"hyperparameters: {self.hyperparameters}")
-                        logger.debug("Hyperparameters loaded as YAML")
-                    except (yaml.YAMLError, ValueError):
-                        raise ValueError(
-                            f"Invalid hyperparameters file: {self.hyperparameters}. "
-                            "Must be a valid JSON or YAML file."
-                        )
+            self.hyperparameters = self._validate_and_fetch_hyperparameters_file(
+                hyperparameters_file=self.hyperparameters
+            )
 
-        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB and self.output_data_config is None:
-            if self.output_data_config is None:
-                session = self.sagemaker_session
-                base_job_name = self.base_job_name
-                self.output_data_config = configs.OutputDataConfig(
-                    s3_output_path=f"s3://{self._fetch_bucket_name_and_prefix(session)}"
-                    f"/{base_job_name}",
-                    compression_type="GZIP",
-                    kms_key_id=None,
-                )
-                logger.info(
-                    f"OutputDataConfig not provided. Using default:\n{self.output_data_config}"
-                )
-            if self.output_data_config.s3_output_path is None:
-                session = self.sagemaker_session
-                base_job_name = self.base_job_name
-                self.output_data_config.s3_output_path = (
-                    f"s3://{self._fetch_bucket_name_and_prefix(session)}/{base_job_name}"
-                )
-                logger.info(
-                    f"OutputDataConfig s3_output_path not provided. Using default:\n"
-                    f"{self.output_data_config.s3_output_path}"
-                )
-            if self.output_data_config.compression_type is None:
-                self.output_data_config.compression_type = "GZIP"
-                logger.info(
-                    f"OutputDataConfig compression type not provided. Using default:\n"
-                    f"{self.output_data_config.compression_type}"
-                )
+        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
+            self.sagemaker_session = TrainDefaults.get_sagemaker_session(self.sagemaker_session)
+            self.role = TrainDefaults.get_role(
+                role=self.role, sagemaker_session=self.sagemaker_session
+            )
+
+        self.base_job_name = TrainDefaults.get_base_job_name(
+            base_job_name=self.base_job_name,
+            algorithm_name=self.algorithm_name,
+            training_image=self.training_image,
+        )
+        self.compute = TrainDefaults.get_compute(compute=self.compute)
+        self.stopping_condition = TrainDefaults.get_stopping_condition(
+            stopping_condition=self.stopping_condition
+        )
+
+        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
+            self.output_data_config = TrainDefaults.get_output_data_config(
+                base_job_name=self.base_job_name,
+                output_data_config=self.output_data_config,
+                sagemaker_session=self.sagemaker_session,
+            )
 
         if self.training_image:
             logger.info(f"Training image URI: {self.training_image}")
-
-    @staticmethod
-    def _fetch_bucket_name_and_prefix(session: Session) -> str:
-        """Helper function to get the bucket name with the corresponding prefix if applicable"""
-        if session.default_bucket_prefix is not None:
-            return f"{session.default_bucket()}/{session.default_bucket_prefix}"
-        return session.default_bucket()
 
     @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
     @validate_call
@@ -588,7 +534,7 @@ class ModelTrainer(BaseModel):
         """Train a model using AWS SageMaker.
 
         Args:
-            input_data_config (Optional[Union[List[Channel], Dict[str, DataSourceType]]]):
+            input_data_config (Optional[List[Union[Channel, InputData]]]):
                 The input data config for the training job.
                 Takes a list of Channel objects or a dictionary of channel names to DataSourceType.
                 DataSourceType can be an S3 URI string, local file path string,
@@ -612,14 +558,14 @@ class ModelTrainer(BaseModel):
             )
 
         if self.checkpoint_config and not self.checkpoint_config.s3_uri:
-            self.checkpoint_config.s3_uri = (
-                f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/"
-                f"{self.base_job_name}/{current_training_job_name}/checkpoints"
+            self.checkpoint_config.s3_uri = _default_s3_uri(
+                self.sagemaker_session,
+                f"{self.base_job_name}/{current_training_job_name}/checkpoints",
             )
+
         if self._tensorboard_output_config and not self._tensorboard_output_config.s3_output_path:
-            self._tensorboard_output_config.s3_output_path = (
-                f"s3://{self._fetch_bucket_name_and_prefix(self.sagemaker_session)}/"
-                f"{self.base_job_name}"
+            self._tensorboard_output_config.s3_output_path = _default_s3_uri(
+                self.sagemaker_session, self.base_job_name
             )
 
         string_hyper_parameters = {}
@@ -785,10 +731,6 @@ class ModelTrainer(BaseModel):
                     ),
                     input_mode="File",
                 )
-                if key_prefix:
-                    logger.warning(
-                        "key_prefix is only applicable when data_source is a local file path."
-                    )
             elif _is_valid_path(data_source):
                 if self.training_mode == Mode.LOCAL_CONTAINER:
                     channel = Channel(
@@ -866,7 +808,7 @@ class ModelTrainer(BaseModel):
             else:
                 raise ValueError(
                     f"Invalid input data channel: {input_data}. "
-                    + "Must be a Channel or InputDataSource."
+                    "Must be a Channel or InputDataSource."
                 )
         return channels
 
@@ -905,22 +847,25 @@ class ModelTrainer(BaseModel):
             if source_code.entry_script:
                 logger.warning(
                     "Both 'command' and 'entry_script' are provided in the SourceCode. "
-                    + "Defaulting to 'command'."
+                    "Defaulting to 'command'."
                 )
             base_command = source_code.command.split()
             base_command = " ".join(base_command)
 
         install_requirements = ""
         if source_code.requirements:
-            install_requirements = "echo 'Installing requirements'\n"
-            install_requirements = f"$SM_PIP_CMD install -r {source_code.requirements}"
-
+            if self._jumpstart_config and source_code.requirements == "auto":
+                install_requirements = INSTALL_AUTO_REQUIREMENTS
+            else:
+                install_requirements = INSTALL_REQUIREMENTS.format(
+                    requirements_file=source_code.requirements
+                )
         working_dir = ""
         if source_code.source_dir:
-            working_dir = f"cd {SM_CODE_CONTAINER_PATH}\n"
+            working_dir = f"cd {SM_CODE_CONTAINER_PATH} \n"
             if source_code.source_dir.endswith(".tar.gz"):
                 tarfile_name = os.path.basename(source_code.source_dir)
-                working_dir += f"tar -xzf {tarfile_name}\n"
+                working_dir += f"tar -xzf {tarfile_name} \n"
 
         if base_command:
             execute_driver = EXECUTE_BASE_COMMANDS.format(base_command=base_command)
@@ -940,8 +885,8 @@ class ModelTrainer(BaseModel):
             # This should never be reached, as the source_code should have been validated.
             raise ValueError(
                 f"Unsupported SourceCode or DistributedConfig: {source_code}, {distributed}."
-                + "Please provide a valid configuration with atleast one of 'command'"
-                + " or entry_script'."
+                "Please provide a valid configuration with atleast one of 'command'"
+                " or 'entry_script'."
             )
 
         train_script = TRAIN_SCRIPT_TEMPLATE.format(
@@ -1069,18 +1014,14 @@ class ModelTrainer(BaseModel):
         if device_type == "cpu":
             raise ValueError(
                 "Training recipes are not supported for CPU instances. "
-                + "Please provide a GPU or Tranium instance type."
+                "Please provide a GPU or Tranium instance type."
             )
 
         if training_image_config and training_image is None:
             raise ValueError("training_image must be provided when using training_image_config.")
 
-        if sagemaker_session is None:
-            sagemaker_session = Session()
-            logger.info("SageMaker session not provided. Using default Session.")
-        if role is None:
-            role = get_execution_role(sagemaker_session=sagemaker_session)
-            logger.info(f"Role not provided. Using default role:\n{role}")
+        sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session)
+        role = TrainDefaults.get_role(role=role, sagemaker_session=sagemaker_session)
 
         # The training recipe is used to prepare the following args:
         # - source_code
@@ -1117,6 +1058,7 @@ class ModelTrainer(BaseModel):
         model_trainer._temp_recipe_train_dir = recipe_train_dir
         return model_trainer
 
+    @classmethod
     def from_jumpstart_config(
         cls,
         jumpstart_config: JumpStartConfig,
@@ -1146,12 +1088,13 @@ class ModelTrainer(BaseModel):
             from sagemaker.utils.jumpstart import JumpStartConfig
 
             jumpstart_config = JumpStartConfig(model_id="xxxxxxx")
+
             model_trainer = ModelTrainer.from_jumpstart_config(
                 jumpstart_config=jumpstart_config
             )
 
-            train_data = InputData(channel_name="train", data_source="s3://bucket/train")
-            model_trainer.train(input_data_config=[train_data])
+            training_data = InputData(channel_name="training", data_source="s3://bucket/path")
+            model_trainer.train(input_data_config=[training_data])
 
         Args:
             jumpstart_config (JumpStart):
@@ -1211,17 +1154,123 @@ class ModelTrainer(BaseModel):
                 If not specified, a default name will be generated using the algorithm name
                 or training image name.
         """
-        if sagemaker_session is None:
-            sagemaker_session = Session()
-            logger.info("SageMaker session not provided. Using default Session.")
-        if role is None:
-            role = get_execution_role(sagemaker_session=sagemaker_session)
-            logger.info(f"Role not provided. Using default role:\n{role}")
+        sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
+        role = TrainDefaults.get_role(role=role, sagemaker_session=sagemaker_session)
 
-        model_metadata = get_hub_content_document(
+        _, document = get_hub_content_and_document(
             jumpstart_config=jumpstart_config, sagemaker_session=sagemaker_session
         )
-        pass
+        # Basic Validation
+        if not document.TrainingSupported:
+            raise ValueError(
+                f"Training is not supported for the model ID: {jumpstart_config.model_id}.\n"
+                "Please check that the model ID is available for training."
+            )
+        if compute and document.SupportedTrainingInstanceTypes:
+            if compute.instance_type not in document.SupportedTrainingInstanceTypes:
+                raise ValueError(
+                    "Training is not supported for model ID with instance type: "
+                    f" {compute.instance_type}.\n"
+                    "This model ID is only supported for the following instance types:\n"
+                    f"{document.SupportedTrainingInstanceTypes}.\n"
+                )
+        if document.GatedBucket:
+            eula_url = get_eula_url(sagemaker_session=sagemaker_session, document=document)
+            if not jumpstart_config.accept_eula:
+                raise ValueError(
+                    f"Model {jumpstart_config.model_id} is a gated model "
+                    "and requires accepting the EULA via the `accept_eula` parameter.\n"
+                    f"See {eula_url} for terms of use."
+                )
+            logger.warning(f"Model {jumpstart_config.model_id} is a gated model ")
+            print(f"See {eula_url} for terms of use.")
+
+        compute = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=jumpstart_config,
+            compute=compute,
+            sagemaker_session=sagemaker_session,
+        )
+        networking = JumpStartTrainDefaults.get_networking(
+            jumpstart_config=jumpstart_config,
+            networking=networking,
+            sagemaker_session=sagemaker_session,
+        )
+        training_image = JumpStartTrainDefaults.get_training_image(
+            jumpstart_config=jumpstart_config,
+            compute=compute,
+            training_image=training_image,
+            sagemaker_session=sagemaker_session,
+        )
+        base_job_name = JumpStartTrainDefaults.get_base_job_name(
+            jumpstart_config=jumpstart_config,
+            base_job_name=base_job_name,
+        )
+        environment = JumpStartTrainDefaults.get_enviornment(
+            jumpstart_config=jumpstart_config,
+            compute=compute,
+            environment=environment,
+            sagemaker_session=sagemaker_session,
+        )
+
+        if hyperparameters and isinstance(hyperparameters, str):
+            hyperparameters = cls._validate_and_fetch_hyperparameters_file(hyperparameters)
+
+        hyperparameters = JumpStartTrainDefaults.get_hyperparameters(
+            jumpstart_config=jumpstart_config,
+            compute=compute,
+            hyperparameters=hyperparameters,
+            environment=environment,
+            sagemaker_session=sagemaker_session,
+        )
+        source_code = JumpStartTrainDefaults.get_source_code(
+            jumpstart_config=jumpstart_config,
+            source_code=source_code,
+            sagemaker_session=sagemaker_session,
+        )
+        input_data_config = JumpStartTrainDefaults.get_training_dataset_input(
+            jumpstart_config=jumpstart_config,
+            input_data_config=input_data_config,
+            sagemaker_session=sagemaker_session,
+        )
+        input_data_config = JumpStartTrainDefaults.get_model_artifact_input(
+            jumpstart_config=jumpstart_config,
+            compute=compute,
+            input_data_config=input_data_config,
+            environment=environment,
+            sagemaker_session=sagemaker_session,
+        )
+        output_data_config = JumpStartTrainDefaults.get_output_data_config(
+            jumpstart_config=jumpstart_config,
+            base_job_name=base_job_name,
+            output_data_config=output_data_config,
+            sagemaker_session=sagemaker_session,
+        )
+        tags = JumpStartTrainDefaults.get_tags(
+            jumpstart_config=jumpstart_config,
+            tags=tags,
+            sagemaker_session=sagemaker_session,
+        )
+
+        model_trainer = cls(
+            source_code=source_code,
+            compute=compute,
+            networking=networking,
+            stopping_condition=stopping_condition,
+            training_image=training_image,
+            training_image_config=training_image_config,
+            output_data_config=output_data_config,
+            input_data_config=input_data_config,
+            checkpoint_config=checkpoint_config,
+            training_input_mode=training_input_mode,
+            environment=environment,
+            hyperparameters=hyperparameters,
+            tags=tags,
+            sagemaker_session=sagemaker_session,
+            role=role,
+            base_job_name=base_job_name,
+        )
+        model_trainer._jumpstart_config = jumpstart_config
+        return model_trainer
 
     def with_tensorboard_output_config(
         self, tensorboard_output_config: Optional[shapes.TensorBoardOutputConfig] = None

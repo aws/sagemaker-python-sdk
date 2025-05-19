@@ -13,6 +13,7 @@ dist/
 **/*.pyc
 **.pyc
 scratch*.py
+scratch/
 .eggs
 *.egg
 examples/tensorflow/distributed_mnist/data

@@ -45,6 +45,6 @@ class JumpStartConfig(BaseConfig):
     model_id: str
     model_version: Optional[str] = None
     hub_name: Optional[str] = None
-    accept_eula: Optional[bool] = None
+    accept_eula: Optional[bool] = False
     training_config_name: Optional[str] = None
     inference_config_name: Optional[str] = None

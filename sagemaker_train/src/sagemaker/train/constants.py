@@ -14,8 +14,6 @@
 from __future__ import absolute_import
 import os
 
-DEFAULT_INSTANCE_TYPE = "ml.m5.xlarge"
-
 SM_CODE = "code"
 SM_CODE_CONTAINER_PATH = "/opt/ml/input/data/code"
 

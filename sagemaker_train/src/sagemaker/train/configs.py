@@ -42,6 +42,8 @@ from sagemaker_core.shapes import (
     RemoteDebugConfig,
     SessionChainingConfig,
     InstanceGroup,
+    HubAccessConfig,
+    ModelAccessConfig,
 )
 
 from sagemaker.train.utils import convert_unassigned_to_none
@@ -65,6 +67,8 @@ __all__ = [
     "InstanceGroup",
     "TensorBoardOutputConfig",
     "CheckpointConfig",
+    "HubAccessConfig",
+    "ModelAccessConfig",
     "Compute",
     "Networking",
     "InputData",
@@ -85,7 +89,8 @@ class SourceCode(BaseConfig):
 
     Parameters:
         source_dir (Optional[str]):
-            The local directory containing the source code to be used in the training job container.
+            The local directory, s3 uri, or path to tar.gz file stored locally or in s3 that
+            contains the source code to be used in the training job container.
         requirements (Optional[str]):
             The path within ``source_dir`` to a ``requirements.txt`` file. If specified, the listed
             requirements will be installed in the training job container.
@@ -101,6 +106,29 @@ class SourceCode(BaseConfig):
     requirements: Optional[str] = None
     entry_script: Optional[str] = None
     command: Optional[str] = None
+
+
+class OutputDataConfig(shapes.OutputDataConfig):
+    """OutputDataConfig.
+
+    Provides the configuration for the output data location of the training job.
+
+    Parameters:
+        s3_output_path (Optional[str]):
+            The S3 URI where the output data will be stored. This is the location where the
+            training job will save its output data, such as model artifacts and logs.
+        kms_key_id (Optional[str]):
+            The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that
+            SageMaker uses to encrypt the model artifacts at rest using Amazon S3 server-side
+            encryption.
+        compression_type (Optional[str]):
+            The model output compression type. Select None to output an uncompressed model,
+            recommended for large model outputs. Defaults to gzip.
+    """
+
+    s3_output_path: Optional[str] = None
+    kms_key_id: Optional[str] = None
+    compression_type: Optional[str] = None
 
 
 class Compute(shapes.ResourceConfig):
@@ -149,8 +177,12 @@ class Compute(shapes.ResourceConfig):
         compute_config_dict = self.model_dump()
         resource_config_fields = set(shapes.ResourceConfig.__annotations__.keys())
         filtered_dict = {
-            k: v for k, v in compute_config_dict.items() if k in resource_config_fields
+            k: v
+            for k, v in compute_config_dict.items()
+            if k in resource_config_fields and v is not None
         }
+        if not filtered_dict:
+            return None
         return shapes.ResourceConfig(**filtered_dict)
 
 
@@ -181,6 +213,8 @@ class Networking(shapes.VpcConfig):
             algorithm in distributed training.
     """
 
+    security_group_ids: Optional[list[str]] = None
+    subnets: Optional[list[str]] = None
     enable_network_isolation: Optional[bool] = None
     enable_inter_container_traffic_encryption: Optional[bool] = None
 
@@ -192,10 +226,12 @@ class Networking(shapes.VpcConfig):
     def _to_vpc_config(self) -> shapes.VpcConfig:
         """Convert to a sagemaker_core.shapes.VpcConfig object."""
         compute_config_dict = self.model_dump()
-        resource_config_fields = set(shapes.VpcConfig.__annotations__.keys())
+        vpc_config_fields = set(shapes.VpcConfig.__annotations__.keys())
         filtered_dict = {
-            k: v for k, v in compute_config_dict.items() if k in resource_config_fields
+            k: v for k, v in compute_config_dict.items() if k in vpc_config_fields and v is not None
         }
+        if not filtered_dict:
+            return None
         return shapes.VpcConfig(**filtered_dict)
 
 

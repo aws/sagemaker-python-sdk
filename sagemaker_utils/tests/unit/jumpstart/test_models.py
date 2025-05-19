@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import json
 import os
-from sagemaker.utils.jumpstart.model import HubContentDocument
+from sagemaker.utils.jumpstart.models import HubContentDocument
 
 
 TEST_HUB_CONTENT_DOCUMENT = "hub_content_document.json"
