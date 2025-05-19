@@ -1,0 +1,57 @@
+name: Submodule PR Checks
+on:
+  pull_request_target:
+    branches:
+      - "master-v3"
+    paths:
+      - 'sagemaker_train/**'
+      - 'sagemaker_utils/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      submodules: ${{ steps.check-changes.outputs.submodules }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: check-changes
+        run: |
+          CHANGES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+          SUBMODULES=[]
+          
+          if echo "$CHANGES" | grep -q "^sagemaker_train/"; then
+            SUBMODULES=$(echo $SUBMODULES | jq '. + ["sagemaker_train"]')
+          fi
+          if echo "$CHANGES" | grep -q "^sagemaker_utils/"; then
+            SUBMODULES=$(echo $SUBMODULES | jq '. + ["sagemaker_utils"]')
+          fi
+          
+          echo "submodules=$SUBMODULES" >> $GITHUB_OUTPUT
+
+  submodule-tests:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.submodules != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        submodule: ${{ fromJson(needs.detect-changes.outputs.submodules) }}
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+
+      - name: Run CodeBuild for ${{ matrix.submodule }}
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
