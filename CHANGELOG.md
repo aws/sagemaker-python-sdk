@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.244.2 (2025-05-19)
+
+### Bug Fixes and Other Changes
+
+ * include model channel for gated uncompressed models
+ * clarify model monitor one time schedule bug
+ * update jumpstart region_config 05-15-2025 07:18:15 PST
+ * update image_uri_configs 05-14-2025 07:18:16 PST
+ * Add image configs and region config for TPE (ap-east-2)
+ * Improve defaults handling in ModelTrainer
+
 ## v2.244.1 (2025-05-15)
 
 ### Bug Fixes and Other Changes
