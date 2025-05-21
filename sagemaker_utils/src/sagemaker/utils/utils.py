@@ -41,6 +41,7 @@ from botocore.utils import merge_dicts
 from six.moves.urllib import parse
 from six import viewitems
 
+from sagemaker.utils import deprecations
 from sagemaker.utils.config.config_manager import SageMakerConfig
 from sagemaker.utils.config.config_utils import (
     _log_sagemaker_config_single_substitution,

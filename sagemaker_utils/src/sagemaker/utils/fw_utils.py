@@ -26,7 +26,7 @@ from typing import Dict, List, Optional, Union
 from packaging import version
 
 import sagemaker.utils
-from sagemaker.utils.deprecations import deprecation_warn_base, renamed_kwargs, renamed_warning
+from sagemaker.utils.deprecations import deprecation_warn_base, renamed_kwargs
 from sagemaker.utils.instance_group import InstanceGroup
 from sagemaker.utils.s3_utils import s3_path_join
 from sagemaker.utils.session_settings import SessionSettings

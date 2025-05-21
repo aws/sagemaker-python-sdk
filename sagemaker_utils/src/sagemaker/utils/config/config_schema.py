@@ -117,6 +117,7 @@ REGION_NAME = "region_name"
 TELEMETRY_OPT_OUT = "TelemetryOptOut"
 NOTEBOOK_JOB = "NotebookJob"
 MODEL_TRAINER = "ModelTrainer"
+IMAGE_RETRIEVER = "ImageRetriever"
 
 
 def _simple_path(*args: str):
@@ -666,6 +667,12 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
         },
         "baseJobName": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
         "sourceCode": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "version": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "py_version": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "instance_type": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "accelerator_type": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "image_scope": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "container_version": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
         "distributed": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
         "compute": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
         "networking": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
@@ -677,6 +684,14 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
         "trainingInputMode": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
         "environment": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
         "hyperparameters": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "smp": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "base_framework_version": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "training_compiler_config": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "model_id": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "model_version": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "sdk_version": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "inference_tool": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+        "serverless_inference_config": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
     },
     PROPERTIES: {
         SCHEMA_VERSION: {
@@ -731,6 +746,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     },
                                 },
                                 MODEL_TRAINER: {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+                                IMAGE_RETRIEVER: {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
                                 ESTIMATOR: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
@@ -1231,6 +1247,7 @@ SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA = {
                 },
                 CONTAINER_CONFIG: {
                     TYPE: OBJECT,
+                    PROPERTIES: {}
                 },
             },
         },

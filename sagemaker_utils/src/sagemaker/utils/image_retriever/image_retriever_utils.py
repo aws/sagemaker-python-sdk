@@ -18,10 +18,11 @@ import logging
 import os
 from typing import Optional
 from packaging.version import Version
+import requests
 
 
-from legacy.src.sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
-from legacy.src.sagemaker.training_compiler.config import TrainingCompilerConfig
+from sagemaker.utils.serverless_inference_config import ServerlessInferenceConfig
+from sagemaker.utils.training_compiler_config import TrainingCompilerConfig
 from sagemaker.utils.fw_utils import (
     GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY,
     GRAVITON_ALLOWED_FRAMEWORKS,
@@ -184,6 +185,8 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
 
 def config_for_framework(framework):
     """Loads the JSON config for the given framework."""
+    response = requests.get(s3_url)
+    return response.json()
     fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
     with open(fname) as f:
         return json.load(f)

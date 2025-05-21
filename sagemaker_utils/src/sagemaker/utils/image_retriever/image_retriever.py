@@ -1,6 +1,6 @@
 import re
 from typing import Optional
-from sagemaker_core.helper.session_helper import Session
+from graphene.utils.str_converters import to_camel_case
 
 # TODO: Update these dependencies after they are moved to corresponding submodule
 from legacy.src.sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
@@ -26,10 +26,30 @@ from image_retriever_utils import (
     config_for_framework,
 )
 from sagemaker.utils.workflow.utilities import override_pipeline_parameter_var
+from sagemaker.utils.config.config_schema import IMAGE_RETRIEVER, MODULES, SAGEMAKER, _simple_path
+from sagemaker.utils.config.config_manager import SageMakerConfig
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 PYTORCH_FRAMEWORK = "pytorch"
+
+CONFIGURABLE_ATTRIBUTES = [
+    "version",
+    "py_version",
+    "instance_type",
+    "accelerator_type",
+    "image_scope",
+    "container_version",
+    "distributed",
+    "smp",
+    "base_framework_version",
+    "training_compiler_config",
+    "model_id",
+    "model_version",
+    "sdk_version",
+    "inference_tool",
+    "serverless_inference_config",
+]
 
 
 class ImageRetriever:
@@ -88,6 +108,15 @@ class ImageRetriever:
         Returns:
             str: The ECR URI for the corresponding SageMaker Docker image.
         """
+        args = dict(locals())
+        for name, val in args.items():
+            if name in CONFIGURABLE_ATTRIBUTES and not val:
+                default_value = SageMakerConfig.resolve_value_from_config(
+                    config_path=_simple_path(SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name))
+                )
+                if default_value is not None:
+                    locals()[name] = default_value
+
         if training_compiler_config:
             final_image_scope = image_scope
             config = _config_for_framework_and_scope(
@@ -468,6 +497,14 @@ class ImageRetriever:
             DeprecatedJumpStartModelError: If the version of the model is deprecated.
         """
         args = dict(locals())
+        for name, val in args.items():
+            if name in CONFIGURABLE_ATTRIBUTES and not val:
+                default_value = SageMakerConfig.resolve_value_from_config(
+                    config_path=_simple_path(SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name))
+                )
+                if default_value is not None:
+                    locals()[name] = default_value
+
         for name, val in args.items():
             if is_pipeline_variable(val):
                 raise ValueError(
