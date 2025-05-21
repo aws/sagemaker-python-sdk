@@ -1268,3 +1268,44 @@ def test_model_trainer_default_paths(mock_training_job, mock_unique_name, module
 
     assert kwargs["tensor_board_output_config"].s3_output_path == default_base_path
     assert kwargs["tensor_board_output_config"].local_path == "/opt/ml/output/tensorboard"
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_input_merge(mock_training_job, modules_session):
+    model_input = InputData(channel_name="model", data_source="s3://bucket/model/model.tar.gz")
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        input_data_config=[model_input],
+    )
+
+    train_input = InputData(channel_name="train", data_source="s3://bucket/data/train")
+    model_trainer.train(input_data_config=[train_input])
+
+    mock_training_job.create.assert_called_once()
+    assert mock_training_job.create.call_args.kwargs["input_data_config"] == [
+        Channel(
+            channel_name="model",
+            data_source=DataSource(
+                s3_data_source=S3DataSource(
+                    s3_data_type="S3Prefix",
+                    s3_uri="s3://bucket/model/model.tar.gz",
+                    s3_data_distribution_type="FullyReplicated",
+                )
+            ),
+            input_mode="File",
+        ),
+        Channel(
+            channel_name="train",
+            data_source=DataSource(
+                s3_data_source=S3DataSource(
+                    s3_data_type="S3Prefix",
+                    s3_uri="s3://bucket/data/train",
+                    s3_data_distribution_type="FullyReplicated",
+                )
+            ),
+            input_mode="File",
+        ),
+    ]
