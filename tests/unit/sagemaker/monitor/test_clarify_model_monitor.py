@@ -89,6 +89,7 @@ NETWORK_CONFIG = NetworkConfig(
     subnets=SUBNETS,
 )
 CRON_HOURLY = CronExpressionGenerator.hourly()
+CRON_NOW = CronExpressionGenerator.now()
 ENDPOINT_NAME = "endpoint"
 GROUND_TRUTH_S3_URI = "s3://bucket/monitoring_captured/actuals"
 ANALYSIS_CONFIG_S3_URI = "s3://bucket/analysis_config.json"
@@ -568,11 +569,12 @@ def test_clarify_model_monitor():
 
     # The subclass should has monitoring_type() defined
     # noinspection PyAbstractClass
-    class DummyClarifyModelMonitoir(ClarifyModelMonitor):
+    class DummyClarifyModelMonitor(ClarifyModelMonitor):
+        _TEST_CLASS = True
         pass
 
     with pytest.raises(TypeError):
-        DummyClarifyModelMonitoir.monitoring_type()
+        DummyClarifyModelMonitor.monitoring_type()
 
 
 def test_clarify_model_monitor_invalid_update(clarify_model_monitors):
@@ -593,6 +595,8 @@ def test_clarify_model_monitor_invalid_attach(sagemaker_session):
     )
     # attach, invalid monitoring type
     for clarify_model_monitor_cls in ClarifyModelMonitor.__subclasses__():
+        if hasattr(clarify_model_monitor_cls, "_TEST_CLASS"):
+            continue
         with pytest.raises(TypeError):
             clarify_model_monitor_cls.attach(SCHEDULE_NAME, sagemaker_session)
 
@@ -1300,6 +1304,66 @@ def test_model_explainability_monitor(model_explainability_monitor, sagemaker_se
         model_explainability_monitor=model_explainability_monitor,
         sagemaker_session=sagemaker_session,
     )
+
+
+def test_model_explainability_create_one_time_schedule(
+    model_explainability_monitor, sagemaker_session
+):
+    endpoint_input = EndpointInput(
+        endpoint_name=ENDPOINT_NAME,
+        destination=ENDPOINT_INPUT_LOCAL_PATH,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=str(INFERENCE_ATTRIBUTE),
+    )
+
+    # Create one-time schedule
+    with patch(
+        "sagemaker.s3.S3Uploader.upload_string_as_file_body", return_value=ANALYSIS_CONFIG_S3_URI
+    ) as _:
+        model_explainability_monitor.create_monitoring_schedule(
+            endpoint_input=endpoint_input,
+            analysis_config=ANALYSIS_CONFIG_S3_URI,
+            output_s3_uri=OUTPUT_S3_URI,
+            monitor_schedule_name=SCHEDULE_NAME,
+            schedule_cron_expression=CRON_NOW,
+            data_analysis_start_time=START_TIME_OFFSET,
+            data_analysis_end_time=END_TIME_OFFSET,
+        )
+
+    # Validate job definition creation
+    sagemaker_session.sagemaker_client.create_model_explainability_job_definition.assert_called_once()
+    job_definition_args = (
+        sagemaker_session.sagemaker_client.create_model_explainability_job_definition.call_args[1]
+    )
+    assert (
+        job_definition_args["JobDefinitionName"] == model_explainability_monitor.job_definition_name
+    )
+    assert job_definition_args == {
+        "JobDefinitionName": model_explainability_monitor.job_definition_name,
+        **EXPLAINABILITY_JOB_DEFINITION,
+        "Tags": TAGS,
+    }
+
+    # Validate monitoring schedule creation
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_once()
+    schedule_args = sagemaker_session.sagemaker_client.create_monitoring_schedule.call_args[1]
+    assert schedule_args == {
+        "MonitoringScheduleName": SCHEDULE_NAME,
+        "MonitoringScheduleConfig": {
+            "MonitoringJobDefinitionName": model_explainability_monitor.job_definition_name,
+            "MonitoringType": "ModelExplainability",
+            "ScheduleConfig": {
+                "ScheduleExpression": CRON_NOW,
+                "DataAnalysisStartTime": START_TIME_OFFSET,
+                "DataAnalysisEndTime": END_TIME_OFFSET,
+            },
+        },
+        "Tags": TAGS,
+    }
+
+    # Check if the monitoring schedule is stored in the monitor object
+    assert model_explainability_monitor.monitoring_schedule_name == SCHEDULE_NAME
+    assert model_explainability_monitor.job_definition_name is not None
 
 
 def test_model_explainability_batch_transform_monitor(

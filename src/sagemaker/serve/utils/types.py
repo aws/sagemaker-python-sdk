@@ -19,6 +19,7 @@ class ModelServer(Enum):
     TRITON = 5
     TGI = 6
     TEI = 7
+    SMD = 8
 
 
 class HardwareType(Enum):

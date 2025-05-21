@@ -24,11 +24,12 @@ ROLE_NAME = "SageMakerRole"
 def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_expected(
     sagemaker_session,
 ):
-    with patch.object(
-        Session, "create_model", return_value="mock_model"
-    ) as mock_create_model, patch.object(
-        Session, "endpoint_from_production_variants"
-    ) as mock_endpoint_from_production_variants:
+    with (
+        patch.object(Session, "create_model", return_value="mock_model") as mock_create_model,
+        patch.object(
+            Session, "endpoint_from_production_variants"
+        ) as mock_endpoint_from_production_variants,
+    ):
         iam_client = sagemaker_session.boto_session.client("iam")
         role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
 
@@ -63,6 +64,7 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
                 "Image": ANY,
                 "Environment": {
                     "SAGEMAKER_PROGRAM": "inference.py",
+                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
                     "ENDPOINT_SERVER_TIMEOUT": "3600",
                     "MODEL_CACHE_ROOT": "/opt/ml/model",
                     "SAGEMAKER_ENV": "1",
@@ -100,17 +102,18 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
 def test_js_model_with_optimize_sharding_and_resource_requirements_requests_are_expected(
     sagemaker_session,
 ):
-    with patch.object(
-        Session,
-        "wait_for_optimization_job",
-        return_value={"OptimizationJobName": "mock_optimization_job"},
-    ), patch.object(
-        Session, "create_model", return_value="mock_model"
-    ) as mock_create_model, patch.object(
-        Session, "endpoint_from_production_variants", return_value="mock_endpoint_name"
-    ) as mock_endpoint_from_production_variants, patch.object(
-        Session, "create_inference_component"
-    ) as mock_create_inference_component:
+    with (
+        patch.object(
+            Session,
+            "wait_for_optimization_job",
+            return_value={"OptimizationJobName": "mock_optimization_job"},
+        ),
+        patch.object(Session, "create_model", return_value="mock_model") as mock_create_model,
+        patch.object(
+            Session, "endpoint_from_production_variants", return_value="mock_endpoint_name"
+        ) as mock_endpoint_from_production_variants,
+        patch.object(Session, "create_inference_component") as mock_create_inference_component,
+    ):
         iam_client = sagemaker_session.boto_session.client("iam")
         role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
 
@@ -148,6 +151,7 @@ def test_js_model_with_optimize_sharding_and_resource_requirements_requests_are_
                 "Image": ANY,
                 "Environment": {
                     "SAGEMAKER_PROGRAM": "inference.py",
+                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
                     "ENDPOINT_SERVER_TIMEOUT": "3600",
                     "MODEL_CACHE_ROOT": "/opt/ml/model",
                     "SAGEMAKER_ENV": "1",
@@ -185,15 +189,17 @@ def test_js_model_with_optimize_sharding_and_resource_requirements_requests_are_
 def test_js_model_with_optimize_quantization_on_pre_optimized_model_requests_are_expected(
     sagemaker_session,
 ):
-    with patch.object(
-        Session,
-        "wait_for_optimization_job",
-        return_value={"OptimizationJobName": "mock_optimization_job"},
-    ), patch.object(
-        Session, "create_model", return_value="mock_model"
-    ) as mock_create_model, patch.object(
-        Session, "endpoint_from_production_variants", return_value="mock_endpoint_name"
-    ) as mock_endpoint_from_production_variants:
+    with (
+        patch.object(
+            Session,
+            "wait_for_optimization_job",
+            return_value={"OptimizationJobName": "mock_optimization_job"},
+        ),
+        patch.object(Session, "create_model", return_value="mock_model") as mock_create_model,
+        patch.object(
+            Session, "endpoint_from_production_variants", return_value="mock_endpoint_name"
+        ) as mock_endpoint_from_production_variants,
+    ):
         iam_client = sagemaker_session.boto_session.client("iam")
         role_arn = iam_client.get_role(RoleName=ROLE_NAME)["Role"]["Arn"]
 
@@ -233,6 +239,7 @@ def test_js_model_with_optimize_quantization_on_pre_optimized_model_requests_are
                 "Image": ANY,
                 "Environment": {
                     "SAGEMAKER_PROGRAM": "inference.py",
+                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
                     "ENDPOINT_SERVER_TIMEOUT": "3600",
                     "MODEL_CACHE_ROOT": "/opt/ml/model",
                     "SAGEMAKER_ENV": "1",

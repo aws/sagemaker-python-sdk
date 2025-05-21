@@ -29,6 +29,7 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.cache import (
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY,
+    DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     JumpStartModelsCache,
 )
 from sagemaker.jumpstart.constants import (
@@ -55,6 +56,25 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_PROPRIETARY_MANIFEST,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+@patch("boto3.client")
+def test_jumpstart_cache_init(mock_boto3_client):
+    cache = JumpStartModelsCache()
+    assert cache._region == "dummy-region"
+    assert cache.s3_bucket_name == "dummy-bucket"
+    assert cache._manifest_file_s3_key == JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
+    assert cache._proprietary_manifest_s3_key == JUMPSTART_DEFAULT_PROPRIETARY_MANIFEST_KEY
+    assert cache._sagemaker_session == DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+    mock_boto3_client.assert_called_once_with("s3", region_name="dummy-region")
+
+    # Some callers override the session to None, should still be set to default
+    cache = JumpStartModelsCache(sagemaker_session=None)
+    assert cache._sagemaker_session == DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
 
 @patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
@@ -162,6 +182,30 @@ def test_jumpstart_cache_get_header():
     ) == cache.get_header(
         model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
         semantic_version_str="1.0.*",
+    )
+
+    assert JumpStartModelHeader(
+        {
+            "model_id": "meta-textgeneration-llama-2-7b",
+            "version": "4.13.0",
+            "min_version": "2.49.0",
+            "spec_key": "community_models/meta-textgeneration-llama-2-7b/specs_v4.13.0.json",
+        }
+    ) == cache.get_header(
+        model_id="meta-textgeneration-llama-2-7b",
+        semantic_version_str="*",
+    )
+
+    assert JumpStartModelHeader(
+        {
+            "model_id": "meta-textgeneration-llama-2-7b",
+            "version": "4.13.0",
+            "min_version": "2.49.0",
+            "spec_key": "community_models/meta-textgeneration-llama-2-7b/specs_v4.13.0.json",
+        }
+    ) == cache.get_header(
+        model_id="meta-textgeneration-llama-2-7b",
+        semantic_version_str="4.*",
     )
 
     assert JumpStartModelHeader(
@@ -1244,3 +1288,78 @@ def test_jumpstart_cache_handles_versioning_correctly_non_sem_ver(retrieval_func
     assert_key = JumpStartVersionedModelId("test-model", "abc")
 
     assert result == assert_key
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+def test_get_json_file_from_s3():
+    """Test _get_json_file retrieves from S3 in normal mode."""
+    cache = JumpStartModelsCache()
+    test_key = "test/file/path.json"
+    test_json_data = {"key": "value"}
+    test_etag = "test-etag-123"
+
+    with patch.object(
+        JumpStartModelsCache,
+        "_get_json_file_and_etag_from_s3",
+        return_value=(test_json_data, test_etag),
+    ) as mock_s3_get:
+        result, etag = cache._get_json_file(test_key, JumpStartS3FileType.OPEN_WEIGHT_MANIFEST)
+
+        mock_s3_get.assert_called_once_with(test_key)
+        assert result == test_json_data
+        assert etag == test_etag
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+def test_get_json_file_from_local_supported_type():
+    """Test _get_json_file retrieves from local override for supported file types."""
+    cache = JumpStartModelsCache()
+    test_key = "test/file/path.json"
+    test_json_data = {"key": "value"}
+
+    with (
+        patch.object(JumpStartModelsCache, "_is_local_metadata_mode", return_value=True),
+        patch.object(
+            JumpStartModelsCache, "_get_json_file_from_local_override", return_value=test_json_data
+        ) as mock_local_get,
+    ):
+        result, etag = cache._get_json_file(test_key, JumpStartS3FileType.OPEN_WEIGHT_MANIFEST)
+
+        mock_local_get.assert_called_once_with(test_key, JumpStartS3FileType.OPEN_WEIGHT_MANIFEST)
+        assert result == test_json_data
+        assert etag is None
+
+
+@patch("sagemaker.jumpstart.utils.get_region_fallback", lambda *args, **kwargs: "dummy-region")
+@patch(
+    "sagemaker.jumpstart.utils.get_jumpstart_content_bucket", lambda *args, **kwargs: "dummy-bucket"
+)
+def test_get_json_file_local_mode_unsupported_type():
+    """Test _get_json_file falls back to S3 for unsupported file types in local mode."""
+    cache = JumpStartModelsCache()
+    test_key = "test/file/path.json"
+    test_json_data = {"key": "value"}
+    test_etag = "test-etag-123"
+
+    with (
+        patch.object(JumpStartModelsCache, "_is_local_metadata_mode", return_value=True),
+        patch.object(
+            JumpStartModelsCache,
+            "_get_json_file_and_etag_from_s3",
+            return_value=(test_json_data, test_etag),
+        ) as mock_s3_get,
+        patch("sagemaker.jumpstart.cache.JUMPSTART_LOGGER.warning") as mock_warning,
+    ):
+        result, etag = cache._get_json_file(test_key, JumpStartS3FileType.PROPRIETARY_MANIFEST)
+
+        mock_s3_get.assert_called_once_with(test_key)
+        mock_warning.assert_called_once()
+        assert "not supported for local override" in mock_warning.call_args[0][0]
+        assert result == test_json_data
+        assert etag == test_etag

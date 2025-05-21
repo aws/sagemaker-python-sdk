@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import logging
 import os
 from typing import Dict, Set, Type
+import json
 import boto3
 from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
 from sagemaker.jumpstart.enums import (
@@ -35,180 +36,58 @@ from sagemaker.base_serializers import (
 from sagemaker.session import Session
 
 
+JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
+
+# disable logging if env var is set
+JUMPSTART_LOGGER.addHandler(
+    type(
+        "",
+        (logging.StreamHandler,),
+        {
+            "emit": lambda self, *args, **kwargs: (
+                logging.StreamHandler.emit(self, *args, **kwargs)
+                if not os.environ.get(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING)
+                else None
+            )
+        },
+    )()
+)
+
+
+_CURRENT_FILE_DIRECTORY_PATH = os.path.dirname(os.path.realpath(__file__))
+REGION_CONFIG_JSON_FILENAME = "region_config.json"
+REGION_CONFIG_JSON_FILEPATH = os.path.join(
+    _CURRENT_FILE_DIRECTORY_PATH, REGION_CONFIG_JSON_FILENAME
+)
+
+
+def _load_region_config(filepath: str) -> Set[JumpStartLaunchedRegionInfo]:
+    """Load the JumpStart region config from a JSON file."""
+    debug_msg = f"Loading JumpStart region config from '{filepath}'."
+    JUMPSTART_LOGGER.debug(debug_msg)
+    try:
+        with open(filepath) as f:
+            config = json.load(f)
+
+        return {
+            JumpStartLaunchedRegionInfo(
+                region_name=region,
+                content_bucket=data["content_bucket"],
+                gated_content_bucket=data.get("gated_content_bucket"),
+                neo_content_bucket=data.get("neo_content_bucket"),
+            )
+            for region, data in config.items()
+        }
+    except Exception:  # pylint: disable=W0703
+        JUMPSTART_LOGGER.error("Unable to load JumpStart region config.", exc_info=True)
+        return set()
+
+
 ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING = "DISABLE_JUMPSTART_LOGGING"
 ENV_VARIABLE_DISABLE_JUMPSTART_TELEMETRY = "DISABLE_JUMPSTART_TELEMETRY"
 
-JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
-    [
-        JumpStartLaunchedRegionInfo(
-            region_name="us-west-2",
-            content_bucket="jumpstart-cache-prod-us-west-2",
-            gated_content_bucket="jumpstart-private-cache-prod-us-west-2",
-            neo_content_bucket="sagemaker-sd-models-prod-us-west-2",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="us-east-1",
-            content_bucket="jumpstart-cache-prod-us-east-1",
-            gated_content_bucket="jumpstart-private-cache-prod-us-east-1",
-            neo_content_bucket="sagemaker-sd-models-prod-us-east-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="us-east-2",
-            content_bucket="jumpstart-cache-prod-us-east-2",
-            gated_content_bucket="jumpstart-private-cache-prod-us-east-2",
-            neo_content_bucket="sagemaker-sd-models-prod-us-east-2",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="eu-west-1",
-            content_bucket="jumpstart-cache-prod-eu-west-1",
-            gated_content_bucket="jumpstart-private-cache-prod-eu-west-1",
-            neo_content_bucket="sagemaker-sd-models-prod-eu-west-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="eu-central-1",
-            content_bucket="jumpstart-cache-prod-eu-central-1",
-            gated_content_bucket="jumpstart-private-cache-prod-eu-central-1",
-            neo_content_bucket="sagemaker-sd-models-prod-eu-central-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="eu-central-2",
-            content_bucket="jumpstart-cache-prod-eu-central-2",
-            gated_content_bucket="jumpstart-private-cache-prod-eu-central-2",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="eu-north-1",
-            content_bucket="jumpstart-cache-prod-eu-north-1",
-            gated_content_bucket="jumpstart-private-cache-prod-eu-north-1",
-            neo_content_bucket="sagemaker-sd-models-prod-eu-north-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="me-south-1",
-            content_bucket="jumpstart-cache-prod-me-south-1",
-            gated_content_bucket="jumpstart-private-cache-prod-me-south-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="me-central-1",
-            content_bucket="jumpstart-cache-prod-me-central-1",
-            gated_content_bucket="jumpstart-private-cache-prod-me-central-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-south-1",
-            content_bucket="jumpstart-cache-prod-ap-south-1",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-south-1",
-            neo_content_bucket="sagemaker-sd-models-prod-ap-south-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="eu-west-3",
-            content_bucket="jumpstart-cache-prod-eu-west-3",
-            gated_content_bucket="jumpstart-private-cache-prod-eu-west-3",
-            neo_content_bucket="sagemaker-sd-models-prod-eu-west-3",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="af-south-1",
-            content_bucket="jumpstart-cache-prod-af-south-1",
-            gated_content_bucket="jumpstart-private-cache-prod-af-south-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="sa-east-1",
-            content_bucket="jumpstart-cache-prod-sa-east-1",
-            gated_content_bucket="jumpstart-private-cache-prod-sa-east-1",
-            neo_content_bucket="sagemaker-sd-models-prod-sa-east-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-east-1",
-            content_bucket="jumpstart-cache-prod-ap-east-1",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-east-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-northeast-2",
-            content_bucket="jumpstart-cache-prod-ap-northeast-2",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-2",
-            neo_content_bucket="sagemaker-sd-models-prod-ap-northeast-2",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-northeast-3",
-            content_bucket="jumpstart-cache-prod-ap-northeast-3",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-3",
-            neo_content_bucket="sagemaker-sd-models-prod-ap-northeast-3",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-southeast-3",
-            content_bucket="jumpstart-cache-prod-ap-southeast-3",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-3",
-            neo_content_bucket="sagemaker-sd-models-prod-ap-southeast-3",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-southeast-5",
-            content_bucket="jumpstart-cache-prod-ap-southeast-5",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-5",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="eu-west-2",
-            content_bucket="jumpstart-cache-prod-eu-west-2",
-            gated_content_bucket="jumpstart-private-cache-prod-eu-west-2",
-            neo_content_bucket="sagemaker-sd-models-prod-eu-west-2",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="eu-south-1",
-            content_bucket="jumpstart-cache-prod-eu-south-1",
-            gated_content_bucket="jumpstart-private-cache-prod-eu-south-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-northeast-1",
-            content_bucket="jumpstart-cache-prod-ap-northeast-1",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-northeast-1",
-            neo_content_bucket="sagemaker-sd-models-prod-ap-northeast-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="us-west-1",
-            content_bucket="jumpstart-cache-prod-us-west-1",
-            gated_content_bucket="jumpstart-private-cache-prod-us-west-1",
-            neo_content_bucket="sagemaker-sd-models-prod-us-west-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-southeast-1",
-            content_bucket="jumpstart-cache-prod-ap-southeast-1",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-1",
-            neo_content_bucket="sagemaker-sd-models-prod-ap-southeast-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ap-southeast-2",
-            content_bucket="jumpstart-cache-prod-ap-southeast-2",
-            gated_content_bucket="jumpstart-private-cache-prod-ap-southeast-2",
-            neo_content_bucket="sagemaker-sd-models-prod-ap-southeast-2",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="ca-central-1",
-            content_bucket="jumpstart-cache-prod-ca-central-1",
-            gated_content_bucket="jumpstart-private-cache-prod-ca-central-1",
-            neo_content_bucket="sagemaker-sd-models-prod-ca-central-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="cn-north-1",
-            content_bucket="jumpstart-cache-prod-cn-north-1",
-            gated_content_bucket="jumpstart-private-cache-prod-cn-north-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="cn-northwest-1",
-            content_bucket="jumpstart-cache-prod-cn-northwest-1",
-            gated_content_bucket="jumpstart-private-cache-prod-cn-northwest-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="il-central-1",
-            content_bucket="jumpstart-cache-prod-il-central-1",
-            gated_content_bucket="jumpstart-private-cache-prod-il-central-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="us-gov-east-1",
-            content_bucket="jumpstart-cache-prod-us-gov-east-1",
-            gated_content_bucket="jumpstart-private-cache-prod-us-gov-east-1",
-        ),
-        JumpStartLaunchedRegionInfo(
-            region_name="us-gov-west-1",
-            content_bucket="jumpstart-cache-prod-us-gov-west-1",
-            gated_content_bucket="jumpstart-private-cache-prod-us-gov-west-1",
-        ),
-    ]
+JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = _load_region_config(
+    REGION_CONFIG_JSON_FILEPATH
 )
 
 JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT = {
@@ -296,23 +175,6 @@ MODEL_TYPE_TO_SPECS_MAP: Dict[Type[JumpStartModelType], Type[JumpStartS3FileType
 }
 
 MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
-
-JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
-
-# disable logging if env var is set
-JUMPSTART_LOGGER.addHandler(
-    type(
-        "",
-        (logging.StreamHandler,),
-        {
-            "emit": lambda self, *args, **kwargs: (
-                logging.StreamHandler.emit(self, *args, **kwargs)
-                if not os.environ.get(ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING)
-                else None
-            )
-        },
-    )()
-)
 
 try:
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(

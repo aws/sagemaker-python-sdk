@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import json
 
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import environment_variables, image_uris, instance_types, model_uris, script_uris
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
@@ -104,7 +104,7 @@ def get_default_predictor(
     """
 
     # if there's a non-default predictor, do not mutate -- return as is
-    if type(predictor) != Predictor:  # pylint: disable=C0123
+    if not isinstance(predictor, Predictor):
         raise RuntimeError(
             "Can only get default predictor from base Predictor class. "
             f"Using Predictor class '{type(predictor).__name__}'."
@@ -855,7 +855,7 @@ def get_init_kwargs(
     image_uri: Optional[Union[str, PipelineVariable]] = None,
     model_data: Optional[Union[str, PipelineVariable, dict]] = None,
     role: Optional[str] = None,
-    predictor_cls: Optional[callable] = None,
+    predictor_cls: Optional[Callable] = None,
     env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
     name: Optional[str] = None,
     vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,

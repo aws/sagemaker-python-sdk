@@ -157,6 +157,7 @@ class JumpStart(ABC):
             vpc_config=self.vpc_config,
             sagemaker_session=self.sagemaker_session,
             name=self.name,
+            instance_type=self.instance_type,
         )
 
         self._original_deploy = pysdk_model.deploy

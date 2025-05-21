@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 import sys
 
+import tempfile
 import pytest
 from mock import patch, Mock, ANY, mock_open
 from mock.mock import MagicMock
@@ -256,8 +257,6 @@ DESCRIBE_TRAINING_JOB_RESPONSE = {
     "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
 }
 
-OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "sm_training.env")
-
 TEST_JOB_NAME = "my-job-name"
 TEST_PIPELINE_NAME = "my-pipeline"
 TEST_EXP_NAME = "my-exp-name"
@@ -291,8 +290,8 @@ def mock_get_current_run():
     return current_run
 
 
-def describe_training_job_response(job_status):
-    return {
+def describe_training_job_response(job_status, disable_output_compression=False):
+    job_response = {
         "TrainingJobArn": TRAINING_JOB_ARN,
         "TrainingJobStatus": job_status,
         "ResourceConfig": {
@@ -300,14 +299,37 @@ def describe_training_job_response(job_status):
             "InstanceType": "ml.c4.xlarge",
             "VolumeSizeInGB": 30,
         },
-        "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
     }
+
+    if disable_output_compression:
+        output_config = {
+            "S3OutputPath": "s3://sagemaker-123/image_uri/output",
+            "CompressionType": "NONE",
+        }
+    else:
+        output_config = {
+            "S3OutputPath": "s3://sagemaker-123/image_uri/output",
+            "CompressionType": "NONE",
+        }
+
+    job_response["OutputDataConfig"] = output_config
+
+    return job_response
 
 
 COMPLETED_TRAINING_JOB = describe_training_job_response("Completed")
 INPROGRESS_TRAINING_JOB = describe_training_job_response("InProgress")
 CANCELLED_TRAINING_JOB = describe_training_job_response("Stopped")
 FAILED_TRAINING_JOB = describe_training_job_response("Failed")
+
+COMPLETED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response(
+    "Completed", True
+)
+INPROGRESS_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response(
+    "InProgress", True
+)
+CANCELLED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response("Stopped", True)
+FAILED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response("Failed", True)
 
 
 def mock_session():
@@ -1307,6 +1329,27 @@ def test_describe(session, *args):
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace")
 @patch("sagemaker.remote_function.job.StoredFunction")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_describe_disable_output_compression(session, *args):
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        instance_type="ml.m5.large",
+        disable_output_compression=True,
+    )
+    job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
+
+    job.describe()
+    assert job.describe() == COMPLETED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION
+
+    session().sagemaker_client.describe_training_job.assert_called_once()
+
+
+@patch("sagemaker.remote_function.job._prepare_and_upload_runtime_scripts")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 def test_stop(session, *args):
 
     job_settings = _JobSettings(
@@ -2071,37 +2114,36 @@ def test_set_env_single_node_cpu(
     mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
 ):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
-        set_env(
-            resource_config=dict(
-                current_host="algo-1",
-                hosts=["algo-1"],
-                current_group_name="homogeneousCluster",
-                current_instance_type="ml.t3.xlarge",
-                instance_groups=[
-                    dict(
-                        instance_group_name="homogeneousCluster",
-                        instance_type="ml.t3.xlarge",
-                        hosts=["algo-1"],
-                    )
-                ],
-                network_interface_name="eth0",
-            ),
-            distribution=None,
-            output_file=OUTPUT_FILE,
-        )
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.t3.xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.t3.xlarge",
+                            hosts=["algo-1"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution=None,
+                output_file=f.name,
+            )
 
-        mock_num_cpus.assert_called_once()
-        mock_num_gpus.assert_called_once()
-        mock_num_neurons.assert_called_once()
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
 
-        with open(OUTPUT_FILE, "r") as f:
-            env_file = f.read().strip()
-            expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_CPU)
-            env_file = _remove_extra_lines(env_file)
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_CPU)
+                env_file = _remove_extra_lines(env_file)
 
-            assert env_file == expected_env
-        os.remove(OUTPUT_FILE)
-        assert not os.path.exists(OUTPUT_FILE)
+                assert env_file == expected_env
 
 
 @patch(
@@ -2124,37 +2166,36 @@ def test_set_env_single_node_multi_gpu(
     mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
 ):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
-        set_env(
-            resource_config=dict(
-                current_host="algo-1",
-                hosts=["algo-1"],
-                current_group_name="homogeneousCluster",
-                current_instance_type="ml.g5.12xlarge",
-                instance_groups=[
-                    dict(
-                        instance_group_name="homogeneousCluster",
-                        instance_type="ml.g5.12xlarge",
-                        hosts=["algo-1"],
-                    )
-                ],
-                network_interface_name="eth0",
-            ),
-            distribution="torchrun",
-            output_file=OUTPUT_FILE,
-        )
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.12xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.12xlarge",
+                            hosts=["algo-1"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="torchrun",
+                output_file=f.name,
+            )
 
-        mock_num_cpus.assert_called_once()
-        mock_num_gpus.assert_called_once()
-        mock_num_neurons.assert_called_once()
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
 
-        with open(OUTPUT_FILE, "r") as f:
-            env_file = f.read().strip()
-            expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS)
-            env_file = _remove_extra_lines(env_file)
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS)
+                env_file = _remove_extra_lines(env_file)
 
-            assert env_file == expected_env
-        os.remove(OUTPUT_FILE)
-        assert not os.path.exists(OUTPUT_FILE)
+                assert env_file == expected_env
 
 
 @patch(
@@ -2177,37 +2218,36 @@ def test_set_env_multi_node_multi_gpu(
     mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
 ):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
-        set_env(
-            resource_config=dict(
-                current_host="algo-1",
-                hosts=["algo-1", "algo-2", "algo-3", "algo-4"],
-                current_group_name="homogeneousCluster",
-                current_instance_type="ml.g5.2xlarge",
-                instance_groups=[
-                    dict(
-                        instance_group_name="homogeneousCluster",
-                        instance_type="ml.g5.2xlarge",
-                        hosts=["algo-4", "algo-2", "algo-1", "algo-3"],
-                    )
-                ],
-                network_interface_name="eth0",
-            ),
-            distribution="torchrun",
-            output_file=OUTPUT_FILE,
-        )
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1", "algo-2", "algo-3", "algo-4"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.2xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.2xlarge",
+                            hosts=["algo-4", "algo-2", "algo-1", "algo-3"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="torchrun",
+                output_file=f.name,
+            )
 
-        mock_num_cpus.assert_called_once()
-        mock_num_gpus.assert_called_once()
-        mock_num_neurons.assert_called_once()
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
 
-        with open(OUTPUT_FILE, "r") as f:
-            env_file = f.read().strip()
-            expected_env = _remove_extra_lines(EXPECTED_ENV_MULTI_NODE_MULTI_GPUS)
-            env_file = _remove_extra_lines(env_file)
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_MULTI_NODE_MULTI_GPUS)
+                env_file = _remove_extra_lines(env_file)
 
-            assert env_file == expected_env
-        os.remove(OUTPUT_FILE)
-        assert not os.path.exists(OUTPUT_FILE)
+                assert env_file == expected_env
 
 
 @patch(
@@ -2230,37 +2270,36 @@ def test_set_env_single_node_multi_gpu_mpirun(
     mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
 ):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
-        set_env(
-            resource_config=dict(
-                current_host="algo-1",
-                hosts=["algo-1"],
-                current_group_name="homogeneousCluster",
-                current_instance_type="ml.g5.12xlarge",
-                instance_groups=[
-                    dict(
-                        instance_group_name="homogeneousCluster",
-                        instance_type="ml.g5.12xlarge",
-                        hosts=["algo-1"],
-                    )
-                ],
-                network_interface_name="eth0",
-            ),
-            distribution="mpirun",
-            output_file=OUTPUT_FILE,
-        )
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.12xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.12xlarge",
+                            hosts=["algo-1"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="mpirun",
+                output_file=f.name,
+            )
 
-        mock_num_cpus.assert_called_once()
-        mock_num_gpus.assert_called_once()
-        mock_num_neurons.assert_called_once()
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
 
-        with open(OUTPUT_FILE, "r") as f:
-            env_file = f.read().strip()
-            expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS_MPIRUN)
-            env_file = _remove_extra_lines(env_file)
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS_MPIRUN)
+                env_file = _remove_extra_lines(env_file)
 
-            assert env_file == expected_env
-        os.remove(OUTPUT_FILE)
-        assert not os.path.exists(OUTPUT_FILE)
+                assert env_file == expected_env
 
 
 @patch(
@@ -2283,37 +2322,36 @@ def test_set_env_multi_node_multi_gpu_mpirun(
     mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
 ):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
-        set_env(
-            resource_config=dict(
-                current_host="algo-1",
-                hosts=["algo-1", "algo-2", "algo-3", "algo-4"],
-                current_group_name="homogeneousCluster",
-                current_instance_type="ml.g5.2xlarge",
-                instance_groups=[
-                    dict(
-                        instance_group_name="homogeneousCluster",
-                        instance_type="ml.g5.2xlarge",
-                        hosts=["algo-4", "algo-2", "algo-1", "algo-3"],
-                    )
-                ],
-                network_interface_name="eth0",
-            ),
-            distribution="mpirun",
-            output_file=OUTPUT_FILE,
-        )
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1", "algo-2", "algo-3", "algo-4"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.2xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.2xlarge",
+                            hosts=["algo-4", "algo-2", "algo-1", "algo-3"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="mpirun",
+                output_file=f.name,
+            )
 
-        mock_num_cpus.assert_called_once()
-        mock_num_gpus.assert_called_once()
-        mock_num_neurons.assert_called_once()
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
 
-        with open(OUTPUT_FILE, "r") as f:
-            env_file = f.read().strip()
-            expected_env = _remove_extra_lines(EXPECTED_ENV_MULTI_NODE_MULTI_GPUS_MPIRUN)
-            env_file = _remove_extra_lines(env_file)
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_MULTI_NODE_MULTI_GPUS_MPIRUN)
+                env_file = _remove_extra_lines(env_file)
 
-            assert env_file == expected_env
-        os.remove(OUTPUT_FILE)
-        assert not os.path.exists(OUTPUT_FILE)
+                assert env_file == expected_env
 
 
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
@@ -2600,40 +2638,39 @@ def test_set_env_single_node_multi_gpu_mpirun_with_nproc_per_node(
     mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
 ):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
-        set_env(
-            resource_config=dict(
-                current_host="algo-1",
-                hosts=["algo-1"],
-                current_group_name="homogeneousCluster",
-                current_instance_type="ml.g5.12xlarge",
-                instance_groups=[
-                    dict(
-                        instance_group_name="homogeneousCluster",
-                        instance_type="ml.g5.12xlarge",
-                        hosts=["algo-1"],
-                    )
-                ],
-                network_interface_name="eth0",
-            ),
-            distribution="mpirun",
-            user_nproc_per_node=2,
-            output_file=OUTPUT_FILE,
-        )
-
-        mock_num_cpus.assert_called_once()
-        mock_num_gpus.assert_called_once()
-        mock_num_neurons.assert_called_once()
-
-        with open(OUTPUT_FILE, "r") as f:
-            env_file = f.read().strip()
-            expected_env = _remove_extra_lines(
-                EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS_MPIRUN_WITH_NPROC_PER_NODE
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.12xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.12xlarge",
+                            hosts=["algo-1"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="mpirun",
+                user_nproc_per_node=2,
+                output_file=f.name,
             )
-            env_file = _remove_extra_lines(env_file)
 
-            assert env_file == expected_env
-        os.remove(OUTPUT_FILE)
-        assert not os.path.exists(OUTPUT_FILE)
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
+
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(
+                    EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS_MPIRUN_WITH_NPROC_PER_NODE
+                )
+                env_file = _remove_extra_lines(env_file)
+
+                assert env_file == expected_env
 
 
 def _remove_extra_lines(string):

@@ -75,12 +75,12 @@ def test_constructor_node_should_be_modified(src, expected):
         ("sagemaker.predictor._NumpyDeserializer()", "deserializers.NumpyDeserializer()"),
         ("sagemaker.predictor._JsonDeserializer()", "deserializers.JSONDeserializer()"),
         (
-            "sagemaker.amazon.common.numpy_to_record_serializer()",
-            "sagemaker.amazon.common.RecordSerializer()",
+            "sagemaker.serializers.numpy_to_record_serializer()",
+            "sagemaker.serializers.RecordSerializer()",
         ),
         (
-            "sagemaker.amazon.common.record_deserializer()",
-            "sagemaker.amazon.common.RecordDeserializer()",
+            "sagemaker.deserializers.record_deserializer()",
+            "sagemaker.deserializers.RecordDeserializer()",
         ),
         ("_CsvSerializer()", "serializers.CSVSerializer()"),
         ("_JsonSerializer()", "serializers.JSONSerializer()"),
@@ -265,20 +265,12 @@ def test_import_from_amazon_common_node_should_be_modified(import_statement, exp
     "import_statement, expected",
     [
         (
-            "from sagemaker.amazon.common import numpy_to_record_serializer",
-            "from sagemaker.amazon.common import RecordSerializer",
+            "from sagemaker.serializers import numpy_to_record_serializer",
+            "from sagemaker.serializers import RecordSerializer",
         ),
         (
-            "from sagemaker.amazon.common import record_deserializer",
-            "from sagemaker.amazon.common import RecordDeserializer",
-        ),
-        (
-            "from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer",
-            "from sagemaker.amazon.common import RecordSerializer, RecordDeserializer",
-        ),
-        (
-            "from sagemaker.amazon.common import write_spmatrix_to_sparse_tensor, numpy_to_record_serializer",
-            "from sagemaker.amazon.common import write_spmatrix_to_sparse_tensor, RecordSerializer",
+            "from sagemaker.deserializers import record_deserializer",
+            "from sagemaker.deserializers import RecordDeserializer",
         ),
     ],
 )

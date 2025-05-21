@@ -13,10 +13,12 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+import abc
 import contextlib
 import copy
 import errno
 import inspect
+import json
 import logging
 import os
 import random
@@ -25,31 +27,30 @@ import shutil
 import tarfile
 import tempfile
 import time
-from functools import lru_cache
-from typing import Union, Any, List, Optional, Dict
-import json
-import abc
 import uuid
 from datetime import datetime
-from os.path import abspath, realpath, dirname, normpath, join as joinpath
-
+from functools import lru_cache
 from importlib import import_module
+from os.path import abspath, dirname
+from os.path import join as joinpath
+from os.path import normpath, realpath
+from typing import Any, Dict, List, Optional, Union
 
 import boto3
 import botocore
 from botocore.utils import merge_dicts
-from six.moves.urllib import parse
 from six import viewitems
+from six.moves.urllib import parse
 
 from sagemaker import deprecations
 from sagemaker.config import validate_sagemaker_config
 from sagemaker.config.config_utils import (
-    _log_sagemaker_config_single_substitution,
     _log_sagemaker_config_merge,
+    _log_sagemaker_config_single_substitution,
 )
 from sagemaker.enums import RoutingStrategy
 from sagemaker.session_settings import SessionSettings
-from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
+from sagemaker.workflow import is_pipeline_parameter_string, is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 
 ALTERNATE_DOMAINS = {
@@ -397,8 +398,7 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
     """
-    boto_session = sagemaker_session.boto_session
-    s3 = boto_session.resource("s3", region_name=boto_session.region_name)
+    s3 = sagemaker_session.s3_resource
 
     prefix = prefix.lstrip("/")
 
@@ -625,7 +625,24 @@ def _create_or_update_code_dir(
             if os.path.exists(os.path.join(code_dir, inference_script)):
                 pass
             else:
-                raise
+                raise FileNotFoundError(
+                    f"Could not find '{inference_script}'. Common solutions:\n"
+                    "1. Make sure inference.py exists in the code/ directory\n"
+                    "2. Package your model correctly:\n"
+                    "   - ✅ DO: Navigate to the directory containing model files and run:\n"
+                    "     cd /path/to/model_files\n"
+                    "     tar czvf ../model.tar.gz *\n"
+                    "   - ❌ DON'T: Create from parent directory:\n"
+                    "     tar czvf model.tar.gz model/\n"
+                    "\nExpected structure in model.tar.gz:\n"
+                    "   ├── model.pth (or your model file)\n"
+                    "   └── code/\n"
+                    "       ├── inference.py\n"
+                    "       └── requirements.txt\n"
+                    "\nFor more details, see the documentation:\n"
+                    + "https://sagemaker.readthedocs.io/en/stable/"
+                    + "frameworks/pytorch/using_pytorch.html#bring-your-own-model"
+                )
 
     for dependency in dependencies:
         lib_dir = os.path.join(code_dir, "lib")
@@ -726,7 +743,7 @@ def retry_with_backoff(callable_func, num_attempts=8, botocore_client_error_code
     """Retry with backoff until maximum attempts are reached
 
     Args:
-        callable_func (callable): The callable function to retry.
+        callable_func (Callable): The callable function to retry.
         num_attempts (int): The maximum number of attempts to retry.(Default: 8)
         botocore_client_error_code (str): The specific Botocore ClientError exception error code
             on which to retry on.

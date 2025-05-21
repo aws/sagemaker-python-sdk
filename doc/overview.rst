@@ -30,6 +30,11 @@ To train a model by using the SageMaker Python SDK, you:
 
 After you train a model, you can save it, and then serve the model as an endpoint to get real-time inferences or get inferences for an entire dataset by using batch transform.
 
+
+Important Note:
+
+*  When using torch to load Models, it is recommended to use version torch>=2.6.0 and torchvision>=0.17.0
+
 Prepare a Training script
 =========================
 

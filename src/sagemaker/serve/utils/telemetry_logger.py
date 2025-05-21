@@ -19,7 +19,7 @@ import requests
 
 from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH, MLFLOW_TRACKING_ARN
 from sagemaker.serve.utils.exceptions import ModelBuilderException
 from sagemaker.serve.utils.lineage_constants import (
     MLFLOW_LOCAL_PATH,
@@ -64,6 +64,7 @@ MODEL_SERVER_TO_CODE = {
     str(ModelServer.TRITON): 5,
     str(ModelServer.TGI): 6,
     str(ModelServer.TEI): 7,
+    str(ModelServer.SMD): 8,
 }
 
 MLFLOW_MODEL_PATH_CODE = {
@@ -144,6 +145,9 @@ def _capture_telemetry(func_name: str):
                 mlflow_model_path = self.model_metadata[MLFLOW_MODEL_PATH]
                 mlflow_model_path_type = _get_mlflow_model_path_type(mlflow_model_path)
                 extra += f"&x-mlflowModelPathType={MLFLOW_MODEL_PATH_CODE[mlflow_model_path_type]}"
+                mlflow_model_tracking_server_arn = self.model_metadata.get(MLFLOW_TRACKING_ARN)
+                if mlflow_model_tracking_server_arn is not None:
+                    extra += f"&x-mlflowTrackingServerArn={mlflow_model_tracking_server_arn}"
 
             if getattr(self, "model_hub", False):
                 extra += f"&x-modelHub={MODEL_HUB_TO_CODE[str(self.model_hub)]}"
