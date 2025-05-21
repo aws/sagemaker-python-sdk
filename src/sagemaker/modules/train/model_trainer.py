@@ -580,7 +580,7 @@ class ModelTrainer(BaseModel):
         """Train a model using AWS SageMaker.
 
         Args:
-            input_data_config (Optional[Union[List[Channel], Dict[str, DataSourceType]]]):
+            input_data_config (Optional[List[Union[Channel, InputData]]]):
                 The input data config for the training job.
                 Takes a list of Channel objects or a dictionary of channel names to DataSourceType.
                 DataSourceType can be an S3 URI string, local file path string,
