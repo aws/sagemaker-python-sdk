@@ -30,6 +30,11 @@ To train a model by using the SageMaker Python SDK, you:
 
 After you train a model, you can save it, and then serve the model as an endpoint to get real-time inferences or get inferences for an entire dataset by using batch transform.
 
+
+Important Note:
+
+*  When using torch to load Models, it is recommended to use version torch>=2.6.0 and torchvision>=0.17.0
+
 Prepare a Training script
 =========================
 
@@ -1958,7 +1963,7 @@ Make sure to have a Compose Version compatible with your Docker Engine installat
 Local mode configuration
 ========================
 
-The local mode uses a YAML configuration file located at ``~/.sagemaker/config.yaml`` to define the default values that are automatically passed to the ``config`` attribute of ``LocalSession``. This is an example of the configuration, for the full schema, see `sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/config/config_schema.py>`_.
+The local mode uses a YAML configuration file located at ``${user_config_directory}/sagemaker/config.yaml`` to define the default values that are automatically passed to the ``config`` attribute of ``LocalSession``. This is an example of the configuration, for the full schema, see `sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_LOCAL_MODE_CONFIG_SCHEMA <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/config/config_schema.py>`_.
 
 .. code:: yaml
 
@@ -1966,7 +1971,7 @@ The local mode uses a YAML configuration file located at ``~/.sagemaker/config.y
         local_code: true # Using everything locally
         region_name: "us-west-2" # Name of the region
         container_config: # Additional docker container config
-            shm_size: "128M
+            shm_size: "128M"
 
 If you want to keep everything local, and not use Amazon S3 either, you can enable "local code" in one of two ways:
 

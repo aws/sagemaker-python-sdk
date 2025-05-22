@@ -45,6 +45,19 @@ def parse_s3_url(url):
     return parsed_url.netloc, parsed_url.path.lstrip("/")
 
 
+def is_s3_url(url):
+    """Returns True if url is an s3 url, False if not
+
+    Args:
+        url (str):
+
+    Returns:
+        bool:
+    """
+    parsed_url = urlparse(url)
+    return parsed_url.scheme == "s3"
+
+
 def s3_path_join(*args, with_end_slash: bool = False):
     """Returns the arguments joined by a slash ("/"), similar to ``os.path.join()`` (on Unix).
 

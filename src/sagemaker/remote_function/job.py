@@ -81,6 +81,7 @@ if TYPE_CHECKING:
 
 # runtime script names
 BOOTSTRAP_SCRIPT_NAME = "bootstrap_runtime_environment.py"
+MPI_UTILS_SCRIPT_NAME = "mpi_utils_remote.py"
 ENTRYPOINT_SCRIPT_NAME = "job_driver.sh"
 PRE_EXECUTION_SCRIPT_NAME = "pre_exec.sh"
 RUNTIME_MANAGER_SCRIPT_NAME = "runtime_environment_manager.py"
@@ -167,6 +168,99 @@ else
 fi
 """
 
+ENTRYPOINT_MPIRUN_SCRIPT = f"""
+#!/bin/bash
+
+# Entry point for bootstrapping runtime environment and invoking remote function with mpirun
+
+set -eu
+
+PERSISTENT_CACHE_DIR=${{SAGEMAKER_MANAGED_WARMPOOL_CACHE_DIRECTORY:-/opt/ml/cache}}
+export CONDA_PKGS_DIRS=${{PERSISTENT_CACHE_DIR}}/sm_remotefunction_user_dependencies_cache/conda/pkgs
+printf "INFO: CONDA_PKGS_DIRS is set to '$CONDA_PKGS_DIRS'\\n"
+export PIP_CACHE_DIR=${{PERSISTENT_CACHE_DIR}}/sm_remotefunction_user_dependencies_cache/pip
+printf "INFO: PIP_CACHE_DIR is set to '$PIP_CACHE_DIR'\\n"
+
+printf "INFO: /opt/ml/input/config/resourceconfig.json:\\n"
+cat /opt/ml/input/config/resourceconfig.json
+
+printf "INFO: Bootstraping runtime environment.\\n"
+python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{BOOTSTRAP_SCRIPT_NAME} "$@"
+source /opt/ml/input/sm_training.env
+
+if [ -d {JOB_REMOTE_FUNCTION_WORKSPACE} ]
+then
+    if [ -f "remote_function_conda_env.txt" ]
+    then
+        cp remote_function_conda_env.txt {JOB_REMOTE_FUNCTION_WORKSPACE}/remote_function_conda_env.txt
+    fi
+    printf "INFO: Changing workspace to {JOB_REMOTE_FUNCTION_WORKSPACE}.\\n"
+    cd {JOB_REMOTE_FUNCTION_WORKSPACE}
+fi
+
+if [ -f "remote_function_conda_env.txt" ]
+then
+    conda_env=$(cat remote_function_conda_env.txt)
+
+    if which mamba >/dev/null; then
+        conda_exe="mamba"
+    else
+        conda_exe="conda"
+    fi
+
+    if [ "$SM_CURRENT_HOST" = "$SM_MASTER_ADDR" ]; then
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME}
+
+        printf "INFO: Invoking remote function with mpirun inside conda environment: $conda_env.\\n"
+        printf "INFO: $conda_exe run -n $conda_env mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
+        --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
+        -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
+        -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
+        -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
+
+        python -m mpi4py -m sagemaker.remote_function.invoke_function \\n"
+        $conda_exe run -n $conda_env mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
+        --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
+        -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
+        -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
+        -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
+        $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
+        python -m mpi4py -m sagemaker.remote_function.invoke_function "$@"
+
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME} --job_ended 1
+    else
+        printf "INFO: This is the instance $SM_CURRENT_HOST. mpirun command terminated\\n"
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME}
+    fi
+else
+    if [ "$SM_CURRENT_HOST" = "$SM_MASTER_ADDR" ]; then
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME}
+
+        printf "INFO: No conda env provided. Invoking remote function with mpirun\\n"
+        printf "INFO: mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
+        --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
+        -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
+        -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
+        -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
+        $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
+        python -m mpi4py -m sagemaker.remote_function.invoke_function \\n"
+
+        mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
+        --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
+        -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
+        -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
+        -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
+        $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
+        python -m mpi4py -m sagemaker.remote_function.invoke_function "$@"
+
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME} --job_ended 1
+    else
+        printf "INFO: This is the instance $SM_CURRENT_HOST.\\n"
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME}
+    fi
+fi
+"""
+
 ENTRYPOINT_TORCHRUN_SCRIPT = f"""
 #!/bin/bash
 
@@ -211,6 +305,7 @@ then
     printf "INFO: $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
     --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
     -m sagemaker.remote_function.invoke_function \\n"
+
     $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
     --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
     -m sagemaker.remote_function.invoke_function "$@"
@@ -218,6 +313,7 @@ else
     printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
     printf "INFO: torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
     --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.remote_function.invoke_function \\n"
+
     torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
     --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.remote_function.invoke_function "$@"
 fi
@@ -277,7 +373,9 @@ class _JobSettings:
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
+        disable_output_compression: bool = False,
         use_torchrun: bool = False,
+        use_mpirun: bool = False,
         nproc_per_node: Optional[int] = None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
@@ -461,10 +559,16 @@ class _JobSettings:
               After this amount of time Amazon SageMaker will stop waiting for managed spot
               training job to complete. Defaults to ``None``.
 
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded to
+              Amazon S3 without compression after training finishes.
+
             use_torchrun (bool): Specifies whether to use torchrun for distributed training.
               Defaults to ``False``.
 
-            nproc_per_node (Optional int): Specifies the number of processes per node for
+            use_mpirun (bool): Specifies whether to use mpirun for distributed training.
+              Defaults to ``False``.
+
+            nproc_per_node (int): Optional. Specifies the number of processes per node for
               distributed training. Defaults to ``None``.
               This is defined automatically configured on the instance type.
         """
@@ -625,7 +729,9 @@ class _JobSettings:
         tags = format_tags(tags)
         self.tags = self.sagemaker_session._append_sagemaker_config_tags(tags, REMOTE_FUNCTION_TAGS)
 
+        self.disable_output_compression = disable_output_compression
         self.use_torchrun = use_torchrun
+        self.use_mpirun = use_mpirun
         self.nproc_per_node = nproc_per_node
 
     @staticmethod
@@ -769,7 +875,7 @@ class _Job:
         job_settings: _JobSettings,
         job_name: str,
         s3_base_uri: str,
-        func: callable,
+        func: Callable,
         func_args: tuple,
         func_kwargs: dict,
         run_info=None,
@@ -853,6 +959,8 @@ class _Job:
             output_config = {"S3OutputPath": s3_base_uri}
         if job_settings.s3_kms_key is not None:
             output_config["KmsKeyId"] = job_settings.s3_kms_key
+        if job_settings.disable_output_compression:
+            output_config["CompressionType"] = "NONE"
         request_dict["OutputDataConfig"] = output_config
 
         container_args = ["--s3_base_uri", s3_base_uri]
@@ -874,6 +982,12 @@ class _Job:
                 ).to_string(),
             ]
         )
+        if job_settings.use_torchrun:
+            container_args.extend(["--distribution", "torchrun"])
+        elif job_settings.use_mpirun:
+            container_args.extend(["--distribution", "mpirun"])
+        if job_settings.nproc_per_node is not None and int(job_settings.nproc_per_node) > 0:
+            container_args.extend(["--user_nproc_per_node", str(job_settings.nproc_per_node)])
         if job_settings.s3_kms_key:
             container_args.extend(["--s3_kms_key", job_settings.s3_kms_key])
 
@@ -950,6 +1064,7 @@ class _Job:
         request_dict["Environment"].update({"REMOTE_FUNCTION_SECRET_KEY": hmac_key})
 
         extended_request = _extend_spark_config_to_request(request_dict, job_settings, s3_base_uri)
+        extended_request = _extend_mpirun_to_request(extended_request, job_settings)
         extended_request = _extend_torchrun_to_request(extended_request, job_settings)
 
         return extended_request
@@ -1031,7 +1146,7 @@ def _prepare_and_upload_runtime_scripts(
     s3_kms_key: str,
     sagemaker_session: Session,
     use_torchrun: bool = False,
-    nproc_per_node: Optional[int] = None,
+    use_mpirun: bool = False,
 ):
     """Copy runtime scripts to a folder and upload to S3.
 
@@ -1049,6 +1164,8 @@ def _prepare_and_upload_runtime_scripts(
         sagemaker_session (str): SageMaker boto client session.
 
         use_torchrun (bool): Whether to use torchrun or not.
+
+        use_mpirun (bool): Whether to use mpirun or not.
 
         nproc_per_node (Optional[int]): Number of processes per node
     """
@@ -1075,10 +1192,8 @@ def _prepare_and_upload_runtime_scripts(
         if use_torchrun:
             entry_point_script = ENTRYPOINT_TORCHRUN_SCRIPT
 
-            if nproc_per_node is not None and nproc_per_node > 0:
-                entry_point_script = entry_point_script.replace(
-                    "$SM_NPROC_PER_NODE", str(nproc_per_node)
-                )
+        if use_mpirun:
+            entry_point_script = ENTRYPOINT_MPIRUN_SCRIPT
 
         with open(entrypoint_script_path, "w", newline="\n") as file:
             file.writelines(entry_point_script)
@@ -1086,12 +1201,16 @@ def _prepare_and_upload_runtime_scripts(
         bootstrap_script_path = os.path.join(
             os.path.dirname(__file__), "runtime_environment", BOOTSTRAP_SCRIPT_NAME
         )
+        mpi_utils_path = os.path.join(
+            os.path.dirname(__file__), "runtime_environment", MPI_UTILS_SCRIPT_NAME
+        )
         runtime_manager_script_path = os.path.join(
             os.path.dirname(__file__), "runtime_environment", RUNTIME_MANAGER_SCRIPT_NAME
         )
 
         # copy runtime scripts to tmpdir
         shutil.copy2(bootstrap_script_path, bootstrap_scripts)
+        shutil.copy2(mpi_utils_path, bootstrap_scripts)
         shutil.copy2(runtime_manager_script_path, bootstrap_scripts)
 
         upload_path = S3Uploader.upload(
@@ -1118,7 +1237,7 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=job_settings.sagemaker_session,
         use_torchrun=job_settings.use_torchrun,
-        nproc_per_node=job_settings.nproc_per_node,
+        use_mpirun=job_settings.use_mpirun,
     )
 
     input_data_config = [
@@ -1457,6 +1576,35 @@ def _upload_serialized_spark_configuration(
     logger.info("Uploaded spark configuration json %s to %s", configuration, config_file_s3_uri)
 
     return config_file_s3_uri
+
+
+def _extend_mpirun_to_request(
+    request_dict: Dict,
+    job_settings: _JobSettings,
+) -> Dict:
+    """Extend the create training job request with mpirun configuration.
+
+    Args:
+        request_dict (Dict): create training job request dict.
+        job_settings (_JobSettings): the job settings.
+    """
+    use_mpirun = job_settings.use_mpirun
+    instance_count = job_settings.instance_count
+
+    if not use_mpirun:
+        return request_dict
+
+    if instance_count == 1:
+        return request_dict
+
+    extended_request = request_dict.copy()
+
+    for input_channel in extended_request["InputDataConfig"]:
+        s3_data_source = input_channel["DataSource"].get("S3DataSource", None)
+        if s3_data_source:
+            s3_data_source["S3DataDistributionType"] = "FullyReplicated"
+
+    return extended_request
 
 
 def _extend_torchrun_to_request(

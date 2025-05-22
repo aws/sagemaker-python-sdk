@@ -150,7 +150,8 @@ class JumpStartModelsCache:
             if s3_client_config
             else boto3.client("s3", region_name=self._region)
         )
-        self._sagemaker_session = sagemaker_session
+        # Fallback in case a caller overrides sagemaker_session to None
+        self._sagemaker_session = sagemaker_session or DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     def set_region(self, region: str) -> None:
         """Set region for cache. Clears cache after new region is set."""
@@ -262,7 +263,7 @@ class JumpStartModelsCache:
             return JumpStartVersionedModelId(model_id, sm_compatible_model_version)
 
         versions_incompatible_with_sagemaker = [
-            Version(header.version)
+            header.version
             for header in manifest.values()  # type: ignore
             if header.model_id == model_id
         ]
@@ -371,10 +372,18 @@ class JumpStartModelsCache:
         object and None when reading from the local file system.
         """
         if self._is_local_metadata_mode():
-            file_content, etag = self._get_json_file_from_local_override(key, filetype), None
-        else:
-            file_content, etag = self._get_json_file_and_etag_from_s3(key)
-        return file_content, etag
+            if filetype in {
+                JumpStartS3FileType.OPEN_WEIGHT_MANIFEST,
+                JumpStartS3FileType.OPEN_WEIGHT_SPECS,
+            }:
+                return self._get_json_file_from_local_override(key, filetype), None
+            else:
+                JUMPSTART_LOGGER.warning(
+                    "Local metadata mode is enabled, but the file type %s is not supported "
+                    "for local override. Falling back to s3.",
+                    filetype,
+                )
+        return self._get_json_file_and_etag_from_s3(key)
 
     def _get_json_md5_hash(self, key: str):
         """Retrieves md5 object hash for s3 objects, using `s3.head_object`.
@@ -540,9 +549,7 @@ class JumpStartModelsCache:
         """
 
         if version_str == "*":
-            if len(available_versions) == 0:
-                return None
-            return str(max(available_versions))
+            return utils.get_latest_version(available_versions)
 
         if model_type == JumpStartModelType.PROPRIETARY:
             if "*" in version_str:
@@ -552,6 +559,12 @@ class JumpStartModelsCache:
                     )
                 )
             return version_str if version_str in available_versions else None
+
+        if version_str[-1] == "*":
+            # major or minor version is pinned, e.g 1.* or 1.0.*
+            return utils.get_latest_version(
+                [version for version in available_versions if version.startswith(version_str[:-1])]
+            )
 
         try:
             spec = SpecifierSet(f"=={version_str}")

@@ -929,7 +929,7 @@ class DatasetBuilder:
                 selected_features += ", "
                 selected_features += ", ".join(
                     [
-                        f'fg_{i}."{feature_name}" as "{feature_name}.{(i+1)}"'
+                        f'fg_{i}."{feature_name}" as "{feature_name}.{(i + 1)}"'
                         for feature_name in feature_group.projected_feature_names
                     ]
                 )

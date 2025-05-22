@@ -17,7 +17,7 @@ import copy
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Any, List, Dict, Optional
+from typing import Type, Any, List, Dict, Optional, Tuple
 import logging
 
 from botocore.exceptions import ClientError
@@ -82,6 +82,7 @@ _JS_ENABLED_MODEL_SERVERS = {
     ModelServer.DJL_SERVING,
     ModelServer.TGI,
 }
+_JS_MINIMUM_VERSION_IMAGE = "{}:0.31.0-lmi13.0.0-cu124"
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,7 @@ class JumpStart(ABC):
             vpc_config=self.vpc_config,
             sagemaker_session=self.sagemaker_session,
             name=self.name,
+            instance_type=self.instance_type,
         )
 
         self._original_deploy = pysdk_model.deploy
@@ -829,7 +831,13 @@ class JumpStart(ABC):
             self.pysdk_model._enable_network_isolation = False
 
         if quantization_config or sharding_config or is_compilation:
-            return create_optimization_job_args
+            # only apply default image for vLLM usecases.
+            # vLLM does not support compilation for now so skip on compilation
+            return (
+                create_optimization_job_args
+                if is_compilation
+                else self._set_optimization_image_default(create_optimization_job_args)
+            )
         return None
 
     def _is_gated_model(self, model=None) -> bool:
@@ -986,3 +994,105 @@ class JumpStart(ABC):
                     )
                     return job_model.env
         return None
+
+    def _set_optimization_image_default(
+        self, create_optimization_job_args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Defaults the optimization image to the JumpStart deployment config default
+
+        Args:
+            create_optimization_job_args (Dict[str, Any]): create optimization job request
+
+        Returns:
+            Dict[str, Any]: create optimization job request with image uri default
+        """
+        default_image = self._get_default_vllm_image(self.pysdk_model.init_kwargs["image_uri"])
+
+        # find the latest vLLM image version
+        for optimization_config in create_optimization_job_args.get("OptimizationConfigs"):
+            if optimization_config.get("ModelQuantizationConfig"):
+                model_quantization_config = optimization_config.get("ModelQuantizationConfig")
+                provided_image = model_quantization_config.get("Image")
+                if provided_image and self._get_latest_lmi_version_from_list(
+                    default_image, provided_image
+                ):
+                    default_image = provided_image
+            if optimization_config.get("ModelShardingConfig"):
+                model_sharding_config = optimization_config.get("ModelShardingConfig")
+                provided_image = model_sharding_config.get("Image")
+                if provided_image and self._get_latest_lmi_version_from_list(
+                    default_image, provided_image
+                ):
+                    default_image = provided_image
+
+        # default to latest vLLM version
+        for optimization_config in create_optimization_job_args.get("OptimizationConfigs"):
+            if optimization_config.get("ModelQuantizationConfig") is not None:
+                optimization_config.get("ModelQuantizationConfig")["Image"] = default_image
+            if optimization_config.get("ModelShardingConfig") is not None:
+                optimization_config.get("ModelShardingConfig")["Image"] = default_image
+
+        logger.info("Defaulting to %s image for optimization job", default_image)
+
+        return create_optimization_job_args
+
+    def _get_default_vllm_image(self, image: str) -> bool:
+        """Ensures the minimum working image version for vLLM enabled optimization techniques
+
+        Args:
+            image (str): JumpStart provided default image
+
+        Returns:
+            str: minimum working image version
+        """
+        dlc_name, _ = image.split(":")
+        major_version_number, _, _ = self._parse_lmi_version(image)
+
+        if major_version_number < self._parse_lmi_version(_JS_MINIMUM_VERSION_IMAGE)[0]:
+            minimum_version_default = _JS_MINIMUM_VERSION_IMAGE.format(dlc_name)
+            return minimum_version_default
+        return image
+
+    def _get_latest_lmi_version_from_list(self, version: str, version_to_compare: str) -> bool:
+        """LMI version comparator
+
+        Args:
+            version (str): current version
+            version_to_compare (str): version to compare to
+
+        Returns:
+            bool: if version_to_compare larger or equal to version
+        """
+        parse_lmi_version = self._parse_lmi_version(version)
+        parse_lmi_version_to_compare = self._parse_lmi_version(version_to_compare)
+
+        # Check major version
+        if parse_lmi_version_to_compare[0] > parse_lmi_version[0]:
+            return True
+        # Check minor version
+        if parse_lmi_version_to_compare[0] == parse_lmi_version[0]:
+            if parse_lmi_version_to_compare[1] > parse_lmi_version[1]:
+                return True
+            if parse_lmi_version_to_compare[1] == parse_lmi_version[1]:
+                # Check patch version
+                if parse_lmi_version_to_compare[2] >= parse_lmi_version[2]:
+                    return True
+                return False
+            return False
+        return False
+
+    def _parse_lmi_version(self, image: str) -> Tuple[int, int, int]:
+        """Parse out LMI version
+
+        Args:
+            image (str): image to parse version out of
+
+        Returns:
+            Tuple[int, int, int]: LMI version split into major, minor, patch
+        """
+        _, dlc_tag = image.split(":")
+        _, lmi_version, _ = dlc_tag.split("-")
+        major_version, minor_version, patch_version = lmi_version.split(".")
+        major_version_number = major_version[3:]
+
+        return (int(major_version_number), int(minor_version), int(patch_version))

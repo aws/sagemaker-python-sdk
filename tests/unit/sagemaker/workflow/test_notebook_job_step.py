@@ -12,11 +12,13 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
 import unittest
+
 from mock import Mock, patch
 
-from sagemaker.workflow.notebook_job_step import NotebookJobStep
 from sagemaker.workflow.functions import Join
+from sagemaker.workflow.notebook_job_step import NotebookJobStep
 
 REGION = "us-west-2"
 PIPELINE_NAME = "test-pipeline-name"
@@ -197,11 +199,11 @@ class TestNotebookJobStep(unittest.TestCase):
             in str(context.exception)
         )
         self.assertTrue(
-            "The required input notebook(None) is not a valid file." in str(context.exception)
+            "The required input notebook (None) is not a valid file." in str(context.exception)
         )
         self.assertTrue(
-            "The image uri(specified as None) is required and should be hosted in "
-            "same region of the session(us-west-2)." in str(context.exception)
+            "The image uri (specified as None) is required and should be hosted in "
+            "same region of the session (us-west-2)." in str(context.exception)
         )
         self.assertTrue("The kernel name is required." in str(context.exception))
 
@@ -220,19 +222,19 @@ class TestNotebookJobStep(unittest.TestCase):
             ).arguments
 
         self.assertTrue(
-            "The required input notebook(path/non-existing-file) is not a valid file."
+            "The required input notebook (path/non-existing-file) is not a valid file."
             in str(context.exception)
         )
         self.assertTrue(
-            "The initialization script(path/non-existing-file) is not a valid file."
+            "The initialization script (non-existing-script) is not a valid file."
             in str(context.exception)
         )
         self.assertTrue(
-            "The path(/tmp/non-existing-folder) specified in additional dependencies "
+            "The path (/tmp/non-existing-folder) specified in additional dependencies "
             "does not exist." in str(context.exception)
         )
         self.assertTrue(
-            "The path(path2/non-existing-file) specified in additional dependencies "
+            "The path (path2/non-existing-file) specified in additional dependencies "
             "does not exist." in str(context.exception)
         )
 
@@ -249,9 +251,9 @@ class TestNotebookJobStep(unittest.TestCase):
             ).arguments
 
         self.assertTrue(
-            "The image uri(specified as 236514542706.dkr.ecr.us-east-9.amazonaws.com/"
+            "The image uri (specified as 236514542706.dkr.ecr.us-east-9.amazonaws.com/"
             "sagemaker-data-science) is required and should be hosted in "
-            "same region of the session(us-west-2)." in str(context.exception)
+            "same region of the session (us-west-2)." in str(context.exception)
         )
 
     def test_invalid_notebook_job_name(self):
@@ -572,4 +574,63 @@ class TestNotebookJobStep(unittest.TestCase):
             input_notebook=INPUT_NOTEBOOK,
             image_uri=IMAGE_URI,
             kernel_name=KERNEL_NAME,
+        )
+
+    def test_environment_variables_not_shared(self):
+        """Test that environment variables are not shared between NotebookJob steps"""
+        # Setup shared environment variables
+        shared_env_vars = {"test": "test"}
+
+        # Create two steps with the same environment variables dictionary
+        step1 = NotebookJobStep(
+            name="step1",
+            input_notebook=INPUT_NOTEBOOK,
+            image_uri=IMAGE_URI,
+            kernel_name=KERNEL_NAME,
+            environment_variables=shared_env_vars,
+        )
+
+        step2 = NotebookJobStep(
+            name="step2",
+            input_notebook=INPUT_NOTEBOOK,
+            image_uri=IMAGE_URI,
+            kernel_name=KERNEL_NAME,
+            environment_variables=shared_env_vars,
+        )
+
+        # Get the arguments for both steps
+        step1_args = step1.arguments
+        step2_args = step2.arguments
+
+        # Verify that the environment variables are different objects
+        self.assertIsNot(
+            step1_args["Environment"],
+            step2_args["Environment"],
+            "Environment dictionaries should be different objects",
+        )
+
+        # Verify that modifying one step's environment doesn't affect the other
+        step1_env = step1_args["Environment"]
+        step2_env = step2_args["Environment"]
+
+        # Both should have the original test value
+        self.assertEqual(step1_env["test"], "test")
+        self.assertEqual(step2_env["test"], "test")
+
+        # Modify step1's environment
+        step1_env["test"] = "modified"
+
+        # Verify step2's environment remains unchanged
+        self.assertEqual(step2_env["test"], "test")
+
+        # Verify notebook names are correct for each step
+        self.assertEqual(
+            step1_env["SM_INPUT_NOTEBOOK_NAME"],
+            os.path.basename(INPUT_NOTEBOOK),
+            "Step 1 should have its own notebook name",
+        )
+        self.assertEqual(
+            step2_env["SM_INPUT_NOTEBOOK_NAME"],
+            os.path.basename(INPUT_NOTEBOOK),
+            "Step 2 should have its own notebook name",
         )

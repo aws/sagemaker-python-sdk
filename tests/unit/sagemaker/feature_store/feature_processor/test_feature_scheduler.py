@@ -907,7 +907,9 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
         "use_spot_instances",
         "max_wait_time_in_seconds",
         "custom_file_filter",
+        "disable_output_compression",
         "use_torchrun",
+        "use_mpirun",
         "nproc_per_node",
     }
 

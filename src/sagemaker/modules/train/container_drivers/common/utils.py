@@ -99,10 +99,10 @@ def read_hyperparameters_json(hyperparameters_json: Dict[str, Any] = HYPERPARAME
     return hyperparameters_dict
 
 
-def get_process_count(distributed_dict: Dict[str, Any]) -> int:
+def get_process_count(process_count: Optional[int] = None) -> int:
     """Get the number of processes to run on each node in the training job."""
     return (
-        int(distributed_dict.get("process_count_per_node", 0))
+        process_count
         or int(os.environ.get("SM_NUM_GPUS", 0))
         or int(os.environ.get("SM_NUM_NEURONS", 0))
         or 1
@@ -124,8 +124,6 @@ def safe_deserialize(data: Any) -> Any:
 
     This function handles the following cases:
     1. If `data` is not a string, it returns the input as-is.
-    2. If `data` is a string and matches common boolean values ("true" or "false"),
-    it returns the corresponding boolean value (True or False).
     3. If `data` is a JSON-encoded string, it attempts to deserialize it using `json.loads()`.
     4. If `data` is a string but cannot be decoded as JSON, it returns the original string.
 
@@ -134,13 +132,6 @@ def safe_deserialize(data: Any) -> Any:
     """
     if not isinstance(data, str):
         return data
-
-    lower_data = data.lower()
-    if lower_data in ["true"]:
-        return True
-    if lower_data in ["false"]:
-        return False
-
     try:
         return json.loads(data)
     except json.JSONDecodeError:
