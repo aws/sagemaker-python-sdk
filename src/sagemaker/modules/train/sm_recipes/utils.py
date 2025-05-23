@@ -129,7 +129,7 @@ def _get_trainining_recipe_gpu_model_name_and_script(model_type: str):
     """Get the model base name and script for the training recipe."""
 
     model_type_to_script = {
-        "llama_v3": ("llama", "llama_pretrain.py"),
+        "llama": ("llama", "llama_pretrain.py"),
         "mistral": ("mistral", "mistral_pretrain.py"),
         "mixtral": ("mixtral", "mixtral_pretrain.py"),
         "deepseek": ("deepseek", "deepseek_pretrain.py"),

@@ -90,6 +90,7 @@ def remote(
     spark_config: SparkConfig = None,
     use_spot_instances=False,
     max_wait_time_in_seconds=None,
+    disable_output_compression: bool = False,
     use_torchrun: bool = False,
     use_mpirun: bool = False,
     nproc_per_node: Optional[int] = None,
@@ -283,13 +284,16 @@ def remote(
           After this amount of time Amazon SageMaker will stop waiting for managed spot training
           job to complete. Defaults to ``None``.
 
+        disable_output_compression (bool): Optional. When set to true, Model is uploaded to
+          Amazon S3 without compression after training finishes.
+
         use_torchrun (bool): Specifies whether to use torchrun for distributed training.
           Defaults to ``False``.
 
         use_mpirun (bool): Specifies whether to use mpirun for distributed training.
           Defaults to ``False``.
 
-        nproc_per_node (Optional int): Specifies the number of processes per node for
+        nproc_per_node (int): Optional. Specifies the number of processes per node for
           distributed training. Defaults to ``None``.
           This is defined automatically configured on the instance type.
     """
@@ -324,6 +328,7 @@ def remote(
             spark_config=spark_config,
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
+            disable_output_compression=disable_output_compression,
             use_torchrun=use_torchrun,
             use_mpirun=use_mpirun,
             nproc_per_node=nproc_per_node,
@@ -543,6 +548,7 @@ class RemoteExecutor(object):
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
+        disable_output_compression: bool = False,
         use_torchrun: bool = False,
         use_mpirun: bool = False,
         nproc_per_node: Optional[int] = None,
@@ -736,13 +742,16 @@ class RemoteExecutor(object):
               After this amount of time Amazon SageMaker will stop waiting for managed spot training
               job to complete. Defaults to ``None``.
 
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded to
+              Amazon S3 without compression after training finishes.
+
             use_torchrun (bool): Specifies whether to use torchrun for distributed training.
               Defaults to ``False``.
 
             use_mpirun (bool): Specifies whether to use mpirun for distributed training.
               Defaults to ``False``.
 
-            nproc_per_node (Optional int): Specifies the number of processes per node for
+            nproc_per_node (int): Optional. Specifies the number of processes per node for
               distributed training. Defaults to ``None``.
               This is defined automatically configured on the instance type.
         """
@@ -790,6 +799,7 @@ class RemoteExecutor(object):
             spark_config=spark_config,
             use_spot_instances=use_spot_instances,
             max_wait_time_in_seconds=max_wait_time_in_seconds,
+            disable_output_compression=disable_output_compression,
             use_torchrun=use_torchrun,
             use_mpirun=use_mpirun,
             nproc_per_node=nproc_per_node,

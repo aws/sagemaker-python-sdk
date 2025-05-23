@@ -74,6 +74,7 @@ supported_model_servers = {
     ModelServer.MMS,
     ModelServer.TGI,
     ModelServer.TEI,
+    ModelServer.SMD,
 }
 
 mock_session = MagicMock()
@@ -2890,6 +2891,86 @@ class TestModelBuilder(unittest.TestCase):
             },
         )
 
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_jumpstart")
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    def test_build_multiple_inference_component_modelbuilders(
+        self,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model_id,
+        mock_build_for_js,
+        mock_serve_settings,
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder1 = ModelBuilder(
+            model="gpt_llm_burt", inference_component_name="ic1", resource_requirements=Mock()
+        )
+        builder2 = ModelBuilder(
+            model="gpt_llm_burt", inference_component_name="ic2", resource_requirements=Mock()
+        )
+
+        builder3 = ModelBuilder(
+            model="gpt_llm_burt", inference_component_name="ic3", resource_requirements=Mock()
+        )
+
+        chain_builder = ModelBuilder(
+            modelbuilder_list=[builder1, builder2, builder3],
+        )
+        chain_builder.build(sagemaker_session=mock_session)
+        assert mock_build_for_js.call_count == 3
+
+    @patch("sagemaker.serve.builder.model_builder._ServeSettings")
+    @patch("sagemaker.serve.builder.model_builder.ModelBuilder._build_for_jumpstart")
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.serve.builder.jumpstart_builder.JumpStart._create_pre_trained_js_model",
+        return_value=MagicMock(),
+    )
+    @patch(
+        "sagemaker.serve.builder.model_builder.ModelBuilder._does_ic_exist",
+        return_value=True,
+    )
+    @patch(
+        "sagemaker.session.Session.update_inference_component",
+        return_value=MagicMock(),
+    )
+    def test_deploy_existing_inference_component_calls_update_inference_component(
+        self,
+        mock_update_inference_component,
+        mock_ic_exists,
+        mock_pre_trained_model,
+        mock_is_jumpstart_model_id,
+        mock_build_for_js,
+        mock_serve_settings,
+    ):
+        mock_setting_object = mock_serve_settings.return_value
+        mock_setting_object.role_arn = mock_role_arn
+        mock_setting_object.s3_model_data_url = mock_s3_model_data_url
+
+        builder1 = ModelBuilder(
+            model="gpt_llm_burt", inference_component_name="ic1", resource_requirements=Mock()
+        )
+
+        chain_builder = ModelBuilder(
+            modelbuilder_list=[builder1],
+        ).build()
+        inputs = {"endpoint_name": "endpoint-001"}
+        chain_builder.deploy(**inputs)
+        assert mock_update_inference_component.call_count == 1
+
     def test_deploy_invalid_inputs(self):
         model_builder = ModelBuilder(
             model="meta-llama/Meta-Llama-3-8B-Instruct",
@@ -2902,7 +2983,7 @@ class TestModelBuilder(unittest.TestCase):
         try:
             model_builder.deploy(**inputs)
         except ValueError as e:
-            assert "Model Needs to be built before deploying" in str(e)
+            assert "Model needs to be built before deploying" in str(e)
 
     @patch("sagemaker.serve.builder.model_builder.ModelBuilder._is_jumpstart_model_id")
     def test_display_benchmark_metrics_non_string_model(self, mock_is_jumpstart):
@@ -4041,14 +4122,30 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
 @pytest.mark.parametrize(
     "test_case",
     [
+        # Real-time deployment without update
         {
             "input_args": {"endpoint_name": "test"},
             "call_params": {
                 "instance_type": "ml.g5.2xlarge",
                 "initial_instance_count": 1,
                 "endpoint_name": "test",
+                "update_endpoint": False,
             },
         },
+        # Real-time deployment with update
+        {
+            "input_args": {
+                "endpoint_name": "existing-endpoint",
+                "update_endpoint": True,
+            },
+            "call_params": {
+                "instance_type": "ml.g5.2xlarge",
+                "initial_instance_count": 1,
+                "endpoint_name": "existing-endpoint",
+                "update_endpoint": True,
+            },
+        },
+        # Serverless deployment without update
         {
             "input_args": {
                 "endpoint_name": "test",
@@ -4057,8 +4154,23 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             "call_params": {
                 "serverless_inference_config": ServerlessInferenceConfig(),
                 "endpoint_name": "test",
+                "update_endpoint": False,
             },
         },
+        # Serverless deployment with update
+        {
+            "input_args": {
+                "endpoint_name": "existing-endpoint",
+                "inference_config": ServerlessInferenceConfig(),
+                "update_endpoint": True,
+            },
+            "call_params": {
+                "serverless_inference_config": ServerlessInferenceConfig(),
+                "endpoint_name": "existing-endpoint",
+                "update_endpoint": True,
+            },
+        },
+        # Async deployment without update
         {
             "input_args": {
                 "endpoint_name": "test",
@@ -4069,10 +4181,30 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
                 "instance_type": "ml.g5.2xlarge",
                 "initial_instance_count": 1,
                 "endpoint_name": "test",
+                "update_endpoint": False,
             },
         },
+        # Async deployment with update
         {
-            "input_args": {"endpoint_name": "test", "inference_config": RESOURCE_REQUIREMENTS},
+            "input_args": {
+                "endpoint_name": "existing-endpoint",
+                "inference_config": AsyncInferenceConfig(output_path="op-path"),
+                "update_endpoint": True,
+            },
+            "call_params": {
+                "async_inference_config": AsyncInferenceConfig(output_path="op-path"),
+                "instance_type": "ml.g5.2xlarge",
+                "initial_instance_count": 1,
+                "endpoint_name": "existing-endpoint",
+                "update_endpoint": True,
+            },
+        },
+        # Multi-Model deployment (update_endpoint not supported)
+        {
+            "input_args": {
+                "endpoint_name": "test",
+                "inference_config": RESOURCE_REQUIREMENTS,
+            },
             "call_params": {
                 "resources": RESOURCE_REQUIREMENTS,
                 "role": "role-arn",
@@ -4080,8 +4212,10 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
                 "instance_type": "ml.g5.2xlarge",
                 "mode": Mode.SAGEMAKER_ENDPOINT,
                 "endpoint_type": EndpointType.INFERENCE_COMPONENT_BASED,
+                "update_endpoint": False,
             },
         },
+        # Batch transform
         {
             "input_args": {
                 "inference_config": BatchTransformInferenceConfig(
@@ -4096,7 +4230,16 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
             "id": "Batch",
         },
     ],
-    ids=["Real Time", "Serverless", "Async", "Multi-Model", "Batch"],
+    ids=[
+        "Real Time",
+        "Real Time Update",
+        "Serverless",
+        "Serverless Update",
+        "Async",
+        "Async Update",
+        "Multi-Model",
+        "Batch",
+    ],
 )
 @patch("sagemaker.serve.builder.model_builder.unique_name_from_base")
 def test_deploy(mock_unique_name_from_base, test_case):
@@ -4119,3 +4262,20 @@ def test_deploy(mock_unique_name_from_base, test_case):
 
     diff = deepdiff.DeepDiff(kwargs, test_case["call_params"])
     assert diff == {}
+
+
+def test_deploy_multi_model_update_error():
+    model_builder = ModelBuilder(
+        model="meta-llama/Meta-Llama-3-8B-Instruct",
+        env_vars={"HUGGING_FACE_HUB_TOKEN": "token"},
+        role_arn="role-arn",
+        instance_type="ml.g5.2xlarge",
+    )
+    setattr(model_builder, "built_model", MagicMock())
+
+    with pytest.raises(
+        ValueError, match="Currently update_endpoint is supported for single model endpoints"
+    ):
+        model_builder.deploy(
+            endpoint_name="test", inference_config=RESOURCE_REQUIREMENTS, update_endpoint=True
+        )

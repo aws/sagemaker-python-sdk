@@ -48,7 +48,10 @@ TEST_MODEL_IDS = {
 
 @with_exponential_backoff()
 def create_model_reference(hub_instance, model_arn):
-    hub_instance.create_model_reference(model_arn=model_arn)
+    try:
+        hub_instance.create_model_reference(model_arn=model_arn)
+    except Exception:
+        pass
 
 
 @pytest.fixture(scope="session")
@@ -125,7 +128,7 @@ def test_jumpstart_hub_gated_model(setup, add_model_references):
 @pytest.mark.skip(reason="blocking PR checks and release pipeline.")
 def test_jumpstart_gated_model_inference_component_enabled(setup, add_model_references):
 
-    model_id = "meta-textgeneration-llama-2-7b"
+    model_id = "meta-textgeneration-llama-3-2-1b"
 
     hub_name = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
 

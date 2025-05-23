@@ -923,15 +923,13 @@ def test_hub_content_document_from_json_obj():
                 "g4dn": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/g4dn/v1.0.0/train-"
-                        "huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "training_artifact_uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/g4dn/v1.0.0/",  # noqa: E501
                     },
                 },
                 "g5": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/g5/v1.0.0/train-"
-                        "huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "training_artifact_uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/g5/v1.0.0/",  # noqa: E501
                     },
                 },
                 "local_gpu": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},
@@ -940,15 +938,13 @@ def test_hub_content_document_from_json_obj():
                 "p3dn": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/p3dn/v1.0.0/train-"
-                        "huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "training_artifact_uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/p3dn/v1.0.0/",  # noqa: E501
                     },
                 },
                 "p4d": {
                     "properties": {
                         "image_uri": "$gpu_ecr_uri_1",
-                        "gated_model_key_env_var_value": "huggingface-training/p4d/v1.0.0/train-"
-                        "huggingface-llm-gemma-2b-instruct.tar.gz",
+                        "training_artifact_uri": "s3://jumpstart-cache-prod-us-west-2/huggingface-training/p4d/v1.0.0/",  # noqa: E501
                     },
                 },
                 "p4de": {"properties": {"image_uri": "$gpu_ecr_uri_1"}},

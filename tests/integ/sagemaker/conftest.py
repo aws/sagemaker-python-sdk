@@ -46,7 +46,7 @@ DOCKERFILE_TEMPLATE_WITH_CONDA = (
     'SHELL ["/bin/bash", "-c"]\n'
     "RUN apt-get update -y \
         && apt-get install -y unzip curl\n\n"
-    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh' \
+    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/download/24.11.3-2/Miniforge3-Linux-x86_64.sh' \
         && bash Miniforge3-Linux-x86_64.sh -b -p '/opt/conda' \
         && /opt/conda/bin/conda init bash\n\n"
     "ENV PATH $PATH:/opt/conda/bin\n"

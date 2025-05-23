@@ -23,7 +23,7 @@ import json
 import numpy as np
 from six import with_metaclass
 
-from sagemaker.amazon.common import read_records
+from sagemaker.serializer_utils import read_records
 from sagemaker.utils import DeferredError
 
 try:

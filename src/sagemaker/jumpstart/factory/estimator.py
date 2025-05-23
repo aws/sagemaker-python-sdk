@@ -54,6 +54,7 @@ from sagemaker.jumpstart.artifacts import (
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_LOGGER,
+    JUMPSTART_MODEL_HUB_NAME,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
     SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY,
 )
@@ -71,7 +72,6 @@ from sagemaker.jumpstart.types import (
 from sagemaker.jumpstart.utils import (
     add_hub_content_arn_tags,
     add_jumpstart_model_info_tags,
-    get_eula_message,
     get_default_jumpstart_session_with_user_agent_suffix,
     get_top_ranked_config_name,
     update_dict_if_key_not_present,
@@ -265,6 +265,7 @@ def get_fit_kwargs(
     tolerate_deprecated_model: Optional[bool] = None,
     sagemaker_session: Optional[Session] = None,
     config_name: Optional[str] = None,
+    hub_access_config: Optional[Dict] = None,
 ) -> JumpStartEstimatorFitKwargs:
     """Returns kwargs required call `fit` on `sagemaker.estimator.Estimator` object."""
 
@@ -301,8 +302,45 @@ def get_fit_kwargs(
     estimator_fit_kwargs = _add_region_to_kwargs(estimator_fit_kwargs)
     estimator_fit_kwargs = _add_training_job_name_to_kwargs(estimator_fit_kwargs)
     estimator_fit_kwargs = _add_fit_extra_kwargs(estimator_fit_kwargs)
+    estimator_fit_kwargs = _add_hub_access_config_to_kwargs_inputs(
+        estimator_fit_kwargs, hub_access_config
+    )
 
     return estimator_fit_kwargs
+
+
+def _add_hub_access_config_to_kwargs_inputs(
+    kwargs: JumpStartEstimatorFitKwargs, hub_access_config=None
+):
+    """Adds HubAccessConfig to kwargs inputs"""
+
+    dataset_uri = kwargs.specs.default_training_dataset_uri
+    if isinstance(kwargs.inputs, str):
+        if dataset_uri is not None and dataset_uri == kwargs.inputs:
+            kwargs.inputs = TrainingInput(
+                s3_data=kwargs.inputs, hub_access_config=hub_access_config
+            )
+    elif isinstance(kwargs.inputs, TrainingInput):
+        if (
+            dataset_uri is not None
+            and dataset_uri == kwargs.inputs.config["DataSource"]["S3DataSource"]["S3Uri"]
+        ):
+            kwargs.inputs.add_hub_access_config(hub_access_config=hub_access_config)
+    elif isinstance(kwargs.inputs, dict):
+        for k, v in kwargs.inputs.items():
+            if isinstance(v, str):
+                training_input = TrainingInput(s3_data=v)
+                if dataset_uri is not None and dataset_uri == v:
+                    training_input.add_hub_access_config(hub_access_config=hub_access_config)
+                kwargs.inputs[k] = training_input
+            elif isinstance(kwargs.inputs, TrainingInput):
+                if (
+                    dataset_uri is not None
+                    and dataset_uri == kwargs.inputs.config["DataSource"]["S3DataSource"]["S3Uri"]
+                ):
+                    kwargs.inputs[k].add_hub_access_config(hub_access_config=hub_access_config)
+
+    return kwargs
 
 
 def get_deploy_kwargs(
@@ -594,8 +632,13 @@ def _add_model_reference_arn_to_kwargs(
 
 def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets model uri in kwargs based on default or override, returns full kwargs."""
-
-    if _model_supports_training_model_uri(**get_model_info_default_kwargs(kwargs)):
+    # hub_arn is by default None unless the user specifies the hub_name
+    # If no hub_name is specified, it is assumed the public hub
+    # Training platform enforces that private hub models must use model channel
+    is_private_hub = JUMPSTART_MODEL_HUB_NAME not in kwargs.hub_arn if kwargs.hub_arn else False
+    if is_private_hub or _model_supports_training_model_uri(
+        **get_model_info_default_kwargs(kwargs)
+    ):
         default_model_uri = model_uris.retrieve(
             model_scope=JumpStartScriptScope.TRAINING,
             instance_type=kwargs.instance_type,
@@ -667,18 +710,6 @@ def _add_env_to_kwargs(
             key,
             value,
         )
-
-    environment = getattr(kwargs, "environment", {}) or {}
-    if (
-        environment.get(SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY)
-        and str(environment.get("accept_eula", "")).lower() != "true"
-    ):
-        model_specs = kwargs.specs
-        if model_specs.is_gated_model():
-            raise ValueError(
-                "Need to define ‘accept_eula'='true' within Environment. "
-                f"{get_eula_message(model_specs, kwargs.region)}"
-            )
 
     return kwargs
 

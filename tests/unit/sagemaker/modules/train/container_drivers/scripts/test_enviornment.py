@@ -21,12 +21,10 @@ from unittest.mock import patch
 
 from sagemaker.modules.train.container_drivers.scripts.environment import (
     set_env,
-    log_key_value,
     log_env_variables,
-    mask_sensitive_info,
     HIDDEN_VALUE,
 )
-from sagemaker.modules.train.container_drivers.utils import safe_serialize, safe_deserialize
+from sagemaker.modules.train.container_drivers.common.utils import safe_serialize, safe_deserialize
 
 RESOURCE_CONFIG = dict(
     current_host="algo-1",
@@ -75,6 +73,15 @@ USER_HYPERPARAMETERS = {
     },
 }
 
+SOURCE_CODE = {
+    "source_dir": "code",
+    "entry_script": "train.py",
+}
+
+DISTRIBUTED_CONFIG = {
+    "process_count_per_node": 2,
+}
+
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "sm_training.env")
 
 # flake8: noqa
@@ -89,6 +96,10 @@ export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
 export SM_LOG_LEVEL='20'
 export SM_MASTER_ADDR='algo-1'
 export SM_MASTER_PORT='7777'
+export SM_SOURCE_DIR='/opt/ml/input/data/code'
+export SM_ENTRY_SCRIPT='train.py'
+export SM_DISTRIBUTED_DRIVER_DIR='/opt/ml/input/data/sm_drivers/distributed_drivers'
+export SM_DISTRIBUTED_CONFIG='{"process_count_per_node": 2}'
 export SM_CHANNEL_TRAIN='/opt/ml/input/data/train'
 export SM_CHANNEL_VALIDATION='/opt/ml/input/data/validation'
 export SM_CHANNELS='["train", "validation"]'
@@ -112,6 +123,14 @@ export SM_TRAINING_ENV='{"channel_input_dirs": {"train": "/opt/ml/input/data/tra
 """
 
 
+@patch(
+    "sagemaker.modules.train.container_drivers.scripts.environment.read_source_code_json",
+    return_value=SOURCE_CODE,
+)
+@patch(
+    "sagemaker.modules.train.container_drivers.scripts.environment.read_distributed_json",
+    return_value=DISTRIBUTED_CONFIG,
+)
 @patch("sagemaker.modules.train.container_drivers.scripts.environment.num_cpus", return_value=8)
 @patch("sagemaker.modules.train.container_drivers.scripts.environment.num_gpus", return_value=0)
 @patch("sagemaker.modules.train.container_drivers.scripts.environment.num_neurons", return_value=0)
@@ -124,7 +143,13 @@ export SM_TRAINING_ENV='{"channel_input_dirs": {"train": "/opt/ml/input/data/tra
     side_effect=safe_deserialize,
 )
 def test_set_env(
-    mock_safe_deserialize, mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+    mock_safe_deserialize,
+    mock_safe_serialize,
+    mock_num_neurons,
+    mock_num_gpus,
+    mock_num_cpus,
+    mock_read_distributed_json,
+    mock_read_source_code_json,
 ):
     with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
         set_env(
@@ -137,6 +162,8 @@ def test_set_env(
         mock_num_cpus.assert_called_once()
         mock_num_gpus.assert_called_once()
         mock_num_neurons.assert_called_once()
+        mock_read_distributed_json.assert_called_once()
+        mock_read_source_code_json.assert_called_once()
 
         with open(OUTPUT_FILE, "r") as f:
             env_file = f.read().strip()

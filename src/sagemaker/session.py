@@ -635,7 +635,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         elif self._default_bucket_set_by_sdk:
             self.general_bucket_check_if_user_has_permission(bucket_name, s3, bucket, region, False)
-
             expected_bucket_owner_id = self.account_id()
             self.expected_bucket_owner_id_bucket_check(bucket_name, s3, expected_bucket_owner_id)
 
@@ -649,9 +648,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         try:
-            s3.meta.client.head_bucket(
-                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
-            )
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name,
+                    Prefix=self.default_bucket_prefix,
+                    ExpectedBucketOwner=expected_bucket_owner_id,
+                )
+            else:
+                s3.meta.client.head_bucket(
+                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+                )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
@@ -682,7 +688,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
         """
         try:
-            s3.meta.client.head_bucket(Bucket=bucket_name)
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name, Prefix=self.default_bucket_prefix
+                )
+            else:
+                s3.meta.client.head_bucket(Bucket=bucket_name)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
@@ -4347,11 +4358,59 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if model_package_group_name is not None and not model_package_group_name.startswith(
                 "arn:"
             ):
-                _create_resource(
-                    lambda: self.sagemaker_client.create_model_package_group(
-                        ModelPackageGroupName=request["ModelPackageGroupName"]
+                is_model_package_group_present = False
+                try:
+                    model_package_groups_response = self.search(
+                        resource="ModelPackageGroup",
+                        search_expression={
+                            "Filters": [
+                                {
+                                    "Name": "ModelPackageGroupName",
+                                    "Value": request["ModelPackageGroupName"],
+                                    "Operator": "Equals",
+                                }
+                            ],
+                        },
                     )
-                )
+                    if len(model_package_groups_response.get("Results")) > 0:
+                        is_model_package_group_present = True
+                except Exception:  # pylint: disable=W0703
+                    model_package_groups = []
+                    model_package_groups_response = self.sagemaker_client.list_model_package_groups(
+                        NameContains=request["ModelPackageGroupName"],
+                    )
+                    model_package_groups = (
+                        model_package_groups
+                        + model_package_groups_response["ModelPackageGroupSummaryList"]
+                    )
+                    next_token = model_package_groups_response.get("NextToken")
+
+                    while next_token is not None and next_token != "":
+                        model_package_groups_response = (
+                            self.sagemaker_client.list_model_package_groups(
+                                NameContains=request["ModelPackageGroupName"], NextToken=next_token
+                            )
+                        )
+                        model_package_groups = (
+                            model_package_groups
+                            + model_package_groups_response["ModelPackageGroupSummaryList"]
+                        )
+                        next_token = model_package_groups_response.get("NextToken")
+
+                    filtered_model_package_group = list(
+                        filter(
+                            lambda mpg: mpg.get("ModelPackageGroupName")
+                            == request["ModelPackageGroupName"],
+                            model_package_groups,
+                        )
+                    )
+                    is_model_package_group_present = len(filtered_model_package_group) > 0
+                if not is_model_package_group_present:
+                    _create_resource(
+                        lambda: self.sagemaker_client.create_model_package_group(
+                            ModelPackageGroupName=request["ModelPackageGroupName"]
+                        )
+                    )
             if "SourceUri" in request and request["SourceUri"] is not None:
                 # Remove inference spec from request if the
                 # given source uri can lead to auto-population of it
@@ -4415,6 +4474,49 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
         return desc
 
+    def get_most_recently_created_approved_model_package(self, model_package_group_name):
+        """Returns the most recently created and Approved model package in a model package group
+
+        Args:
+            model_package_group_name (str): Name or Arn of the model package group
+
+        Returns:
+            dict: Returns a "sagemaker.model.ModelPackage" value.
+        """
+
+        approved_model_packages = self.sagemaker_client.list_model_packages(
+            ModelPackageGroupName=model_package_group_name,
+            ModelApprovalStatus="Approved",
+            SortBy="CreationTime",
+            SortOrder="Descending",
+            MaxResults=1,
+        )
+        next_token = approved_model_packages.get("NextToken")
+
+        while (
+            len(approved_model_packages.get("ModelPackageSummaryList")) == 0
+            and next_token is not None
+            and next_token != ""
+        ):
+            approved_model_packages = self.sagemaker_client.list_model_packages(
+                ModelPackageGroupName=model_package_group_name,
+                ModelApprovalStatus="Approved",
+                SortBy="CreationTime",
+                SortOrder="Descending",
+                MaxResults=1,
+                NextToken=next_token,
+            )
+            next_token = approved_model_packages.get("NextToken")
+
+        if len(approved_model_packages.get("ModelPackageSummaryList")) == 0:
+            return None
+
+        return sagemaker.model.ModelPackage(
+            model_package_arn=approved_model_packages.get("ModelPackageSummaryList")[0].get(
+                "ModelPackageArn"
+            )
+        )
+
     def describe_model(self, name):
         """Calls the DescribeModel API for the given model name.
 
@@ -4440,6 +4542,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         explainer_config_dict=None,
+        async_inference_config_dict=None,
+        serverless_inference_config_dict=None,
+        routing_config: Optional[Dict[str, Any]] = None,
+        inference_ami_version: Optional[str] = None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -4477,6 +4583,30 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 -inference-algo-ping-requests
             explainer_config_dict (dict): Specifies configuration to enable explainers.
                 Default: None.
+            async_inference_config_dict (dict): Specifies
+                configuration related to async endpoint. Use this configuration when trying
+                to create async endpoint and make async inference. If empty config object
+                passed through, will use default config to deploy async endpoint. Deploy a
+                real-time endpoint if it's None. (default: None).
+            serverless_inference_config_dict (dict):
+                Specifies configuration related to serverless endpoint. Use this configuration
+                when trying to create serverless endpoint and make serverless inference. If
+                empty object passed through, will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
+                instance based endpoint if it's None. (default: None).
+            routing_config (Optional[Dict[str, Any]): Settings the control how the endpoint routes
+                incoming traffic to the instances that the endpoint hosts.
+                Currently, support dictionary key ``RoutingStrategy``.
+
+                .. code:: python
+
+                    {
+                        "RoutingStrategy":  sagemaker.enums.RoutingStrategy.RANDOM
+                    }
+            inference_ami_version (Optional [str]):
+             Specifies an option from a collection of preconfigured
+             Amazon Machine Image (AMI) images. For a full list of options, see:
+             https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -4496,9 +4626,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             instance_type,
             initial_instance_count,
             accelerator_type=accelerator_type,
+            serverless_inference_config=serverless_inference_config_dict,
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
+            routing_config=routing_config,
+            inference_ami_version=inference_ami_version,
         )
         production_variants = [provided_production_variant]
         # Currently we just inject CoreDumpConfig.KmsKeyId from the config for production variant.
@@ -4537,6 +4670,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH, sagemaker_session=self
             )
             request["DataCaptureConfig"] = inferred_data_capture_config_dict
+
+        if async_inference_config_dict is not None:
+            inferred_async_inference_config_dict = update_nested_dictionary_with_values_from_config(
+                async_inference_config_dict,
+                ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+                sagemaker_session=self,
+            )
+            request["AsyncInferenceConfig"] = inferred_async_inference_config_dict
 
         if explainer_config_dict is not None:
             request["ExplainerConfig"] = explainer_config_dict

@@ -7,7 +7,7 @@ name = "sagemaker"
 dynamic = ["version", "optional-dependencies"]
 description = "Open source library for training and deploying models on Amazon SageMaker."
 readme = "README.rst"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "Amazon Web Services" },
 ]
@@ -25,10 +25,10 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
   "attrs>=23.1.0,<24",
@@ -39,15 +39,15 @@ dependencies = [
   "google-pasta",
   "importlib-metadata>=1.4.0,<7.0",
   "jsonschema",
-  "numpy>=1.9.0,<2.0",
-  "omegaconf>=2.2,<=2.3",
-  "packaging>=20.0",
+  "numpy==1.26.4",
+  "omegaconf>=2.2,<3",
+  "packaging>=23.0,<25",
   "pandas",
   "pathos",
   "platformdirs",
   "protobuf>=3.12,<6.0",
   "psutil",
-  "PyYAML~=6.0",
+  "PyYAML>=6.0.1",
   "requests",
   "sagemaker-core>=1.0.17,<2.0.0",
   "schema",
@@ -55,7 +55,8 @@ dependencies = [
   "tblib>=1.7.0,<4",
   "tqdm",
   "urllib3>=1.26.8,<3.0.0",
-  "uvicorn"
+  "uvicorn",
+  "graphene>=3,<4"
 ]
 
 [project.scripts]
