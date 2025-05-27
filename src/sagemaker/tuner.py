@@ -2128,8 +2128,8 @@ class HyperparameterTuner(object):
         trials_only: bool = False,
         advanced: bool = False
     ):
-        """Create an interactive visualization based on altair charts using the sagemaker.amtviz
-        package.
+        """Create interactive visualization via altair charts using the sagemaker.amtviz package.
+
         Args:
             tuning_jobs (str or sagemaker.tuner.HyperparameterTuner or list[str, sagemaker.tuner.HyperparameterTuner]):
             One or more tuning jobs to create
@@ -2147,9 +2147,9 @@ class HyperparameterTuner(object):
             importlib.import_module('altair')
 
         except ImportError:
-            print("Altair is not installed. To use the visualization feature, please install Altair:")
+            print("Altair is not installed. Install Altair to use the visualization feature:")
             print("  pip install altair")
-            print("After installing Altair, you can use the methods visualize_jobs or visualize_job.")
+            print("After installing Altair, use the methods visualize_jobs or visualize_job.")
             return None
 
         # If altair is installed, proceed with visualization
@@ -2170,6 +2170,7 @@ class HyperparameterTuner(object):
         advanced: bool = False
     ):
         """Convenience method on instance level for visualize_jobs().
+
         See static method visualize_jobs().
         """
         return HyperparameterTuner.visualize_jobs(

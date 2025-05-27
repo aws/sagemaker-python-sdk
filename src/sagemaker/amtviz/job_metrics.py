@@ -104,7 +104,7 @@ def _get_metric_data(
     start_time: datetime,
     end_time: datetime
 ) -> pd.DataFrame:
-    """Fetches CloudWatch metrics between timestamps and returns a DataFrame with selected columns."""
+    """Fetches CloudWatch metrics between timestamps, returns a DataFrame with selected columns."""
     start_time = start_time - timedelta(hours=1)
     end_time = end_time + timedelta(hours=1)
     response = cw.get_metric_data(MetricDataQueries=queries, StartTime=start_time, EndTime=end_time)
@@ -135,7 +135,7 @@ def _collect_metrics(
     start_time: datetime,
     end_time: Optional[datetime]
 ) -> pd.DataFrame:
-    """Collects SageMaker training job metrics from CloudWatch based on given dimensions and time range."""
+    """Collects SageMaker training job metrics from CloudWatch for dimensions and time range."""
     df = pd.DataFrame()
     for dim_name, dim_value in dimensions:
         response = cw.list_metrics(

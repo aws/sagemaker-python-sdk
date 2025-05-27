@@ -8,8 +8,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
-This module provides visualization capabilities for SageMaker hyperparameter tuning jobs.
+"""This module provides visualization capabilities for SageMaker hyperparameter tuning jobs.
 
 It contains utilities to create interactive visualizations of hyperparameter tuning results
 using Altair charts. The module enables users to analyze and understand the performance
@@ -83,8 +82,7 @@ def visualize_tuning_job(
     trials_only: bool = False,
     advanced: bool = False,
 ) -> Union[alt.Chart, Tuple[alt.Chart, pd.DataFrame, pd.DataFrame]]:
-    """
-    Visualize SageMaker hyperparameter tuning jobs.
+    """Visualize SageMaker hyperparameter tuning jobs.
 
     Args:
         tuning_jobs: Single tuning job or list of tuning jobs (name or HyperparameterTuner object)
@@ -147,8 +145,7 @@ def create_charts(
     color_trials: bool = False,
     advanced: bool = False,
 ) -> alt.Chart:
-    """
-    Create visualization charts for hyperparameter tuning results.
+    """Create visualization charts for hyperparameter tuning results.
 
     Args:
         trials_df: DataFrame containing trials data
@@ -240,7 +237,8 @@ def create_charts(
     # If we have multiple tuning jobs, we also want to be able
     # to discriminate based on the individual tuning job, so
     # we just treat them as an additional tuning parameter
-    tuning_parameters = tuning_parameters.copy() + (["TuningJobName"] if multiple_tuning_jobs else [])
+    tuning_job_param = ["TuningJobName"] if multiple_tuning_jobs else []
+    tuning_parameters = tuning_parameters.copy() + tuning_job_param
 
     # If we use early stopping and at least some jobs were
     # stopped early, we want to be able to discriminate
@@ -331,7 +329,7 @@ def create_charts(
                             bandwidth=0.01,
                             groupby=[tuning_parameter],
                             # https://github.com/vega/altair/issues/3203#issuecomment-2141558911
-                            # Specifying extent no longer necessary (>5.1.2). Leaving the work around in it for now.
+                            # Specifying extent no longer necessary (>5.1.2).
                             extent=[
                                 trials_df[objective_name].min(),
                                 trials_df[objective_name].max(),
@@ -612,7 +610,7 @@ def create_charts(
 
 
 def _clean_parameter_name(s):
-    """ Helper method to ensure proper parameter name characters for altair 5+ """
+    """Helper method to ensure proper parameter name characters for altair 5+"""
     return s.replace(":", "_").replace(".", "_")
 
 
@@ -664,8 +662,10 @@ def _prepare_consolidated_df(trials_df):
 
 
 def _get_df(tuning_job_name, filter_out_stopped=False):
-    """Retrieves hyperparameter tuning job results and returns preprocessed DataFrame with
-    tuning metrics and parameters."""
+    """Retrieves hyperparameter tuning job results and returns preprocessed DataFrame.
+
+    Returns a DataFrame containing tuning metrics and parameters for the specified job.
+    """
 
     tuner = sagemaker.HyperparameterTuningJobAnalytics(tuning_job_name)
 
@@ -707,10 +707,12 @@ def _get_df(tuning_job_name, filter_out_stopped=False):
                     # A float then?
                     df[parameter_name] = df[parameter_name].astype(float)
 
-            except Exception:
-                # Trouble, as this was not a number just pretending to be a string, but an actual string with
-                # characters. Leaving the value untouched
-                # Ex: Caught exception could not convert string to float: 'sqrt' <class 'ValueError'>
+            except (ValueError, TypeError, AttributeError):
+                # Catch exceptions that might occur during string manipulation or type conversion
+                # - ValueError: Could not convert string to float/int
+                # - TypeError: Object doesn't support the operation
+                # - AttributeError: Object doesn't have replace method
+                # Leaving the value untouched
                 pass
 
     return df
@@ -747,7 +749,7 @@ def get_job_analytics_data(tuning_job_names):
         tuning_job_names (str or list): Single tuning job name or list of names/tuner objects.
 
     Returns:
-        tuple: (DataFrame with training results, tuned parameters list, objective name, is_minimize flag).
+        tuple: (DataFrame with training results, tuned params list, objective name, is_minimize).
 
     Raises:
         ValueError: If tuning jobs have different objectives or optimization directions.
@@ -828,7 +830,8 @@ def get_job_analytics_data(tuning_job_names):
                 if isinstance(val, str) and val.startswith('"'):
                     try:
                         df[column_name] = df[column_name].apply(lambda x: int(x.replace('"', "")))
-                    except:  # noqa: E722 nosec b110 if we fail, we just continue with what we had
+                    except (ValueError, TypeError, AttributeError):
+                        # noqa: E722 nosec b110 if we fail, we just continue with what we had
                         pass  # Value is not an int, but a string
 
         df = df.sort_values("FinalObjectiveValue", ascending=is_minimize)
@@ -836,8 +839,9 @@ def get_job_analytics_data(tuning_job_names):
 
         # Fix potential issue with dates represented as objects, instead of a timestamp
         # This can in other cases lead to:
-        # https://www.markhneedham.com/blog/2020/01/10/altair-typeerror-object-type-date-not-json-serializable/
-        # Have only observed this for TrainingEndTime, but will be on the lookout dfor TrainingStartTime as well now
+        # https://www.markhneedham.com/blog/2020/01/10/altair-typeerror-object-type-
+        # date-not-json-serializable/
+        # Seen this for TrainingEndTime, but will watch TrainingStartTime as well now.
         df["TrainingEndTime"] = pd.to_datetime(df["TrainingEndTime"])
         df["TrainingStartTime"] = pd.to_datetime(df["TrainingStartTime"])
 
