@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.245.0 (2025-05-28)
+
+### Features
+
+ * Correct mypy type checking through PEP 561
+
+### Bug Fixes and Other Changes
+
+ * MLFLow update for dependabot
+ * addWaiterTimeoutHandling
+ * merge method inputs with class inputs
+ * update image_uri_configs 05-20-2025 07:18:17 PST
+
 ## v2.244.2 (2025-05-19)
 
 ### Bug Fixes and Other Changes
