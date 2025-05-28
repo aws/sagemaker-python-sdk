@@ -8,7 +8,7 @@ dependencies:
     - fastapi>=0.111.0
     - nest-asyncio
     - pip>=23.0.1
-    - attrs>=23.1.0,<24
+    - attrs>=24,<26
     - boto3>=1.34.142,<2.0
     - cloudpickle==2.2.1
     - google-pasta

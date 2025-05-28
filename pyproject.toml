@@ -31,7 +31,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "attrs>=23.1.0,<24",
+  "attrs>=24,<26",
   "boto3>=1.35.75,<2.0",
   "cloudpickle>=2.2.1",
   "docker",
