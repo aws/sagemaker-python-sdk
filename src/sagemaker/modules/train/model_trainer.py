@@ -757,9 +757,9 @@ class ModelTrainer(BaseModel):
             local_container.train(wait)
 
     def create_input_data_channel(
-        self, 
-        channel_name: str, 
-        data_source: DataSourceType, 
+        self,
+        channel_name: str,
+        data_source: DataSourceType,
         key_prefix: Optional[str] = None,
         ignore_patterns: Optional[List[str]] = None,
     ) -> Channel:
@@ -778,7 +778,7 @@ class ModelTrainer(BaseModel):
                 If specified, local data will be uploaded to:
                 ``s3://<default_bucket_path>/<key_prefix>/<channel_name>/``
             ignore_patterns: (Optional[List[str]]) :
-                The ignore patterns to ignore specific files/folders when uploading to S3. 
+                The ignore patterns to ignore specific files/folders when uploading to S3.
                 Example: ['.env', '.git', 'data', '__pycache__'].
         """
         channel = None
@@ -825,7 +825,7 @@ class ModelTrainer(BaseModel):
                             data_source,
                             os.path.join(tmp_dir.name, os.path.basename(data_source)),
                             dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns(*ignore_patterns)
+                            ignore=shutil.ignore_patterns(*ignore_patterns),
                         )
                         s3_uri = self.sagemaker_session.upload_data(
                             path=tmp_dir.name,

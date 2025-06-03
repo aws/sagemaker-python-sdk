@@ -97,7 +97,7 @@ class SourceCode(BaseConfig):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
         ignore_patterns: (Optional[List[str]]) :
-            The ignore patterns to ignore specific files/folders when uploading to S3. Example: 
+            The ignore patterns to ignore specific files/folders when uploading to S3. Example:
             ['.env', '.git', 'data', '__pycache__'].
     """
 
