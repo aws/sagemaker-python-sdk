@@ -1,0 +1,9 @@
+pytest
+pytest-cov
+pytest-xdist
+mock
+pydantic
+pandas
+scipy
+omegaconf
+graphene

@@ -30,7 +30,7 @@ from sagemaker.utils.jumpstart.constants import SAGEMAKER_PUBLIC_HUB
 def get_hub_content_and_document(
     jumpstart_config: JumpStartConfig,
     sagemaker_session: Optional[Session] = None,
-) -> Tuple[HubContent,HubContentDocument]:
+) -> Tuple[HubContent, HubContentDocument]:
     """Get model metadata for JumpStart.
 
 

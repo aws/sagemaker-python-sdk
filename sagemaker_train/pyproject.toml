@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,7 +24,7 @@ keywords = [
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: Apache Software License",
+  #"License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.9",
@@ -34,8 +34,8 @@ classifiers = [
 ]
 dependencies = [
   "sagemaker-core>=1.0.17,<2.0.0",
-  "sagemaker_utils",
-  "graphene>=3,<4"
+  "graphene>=3,<4",
+  "sagemaker_utils"
 ]
 
 [project.urls]
@@ -43,7 +43,8 @@ Homepage = "https://github.com/aws/sagemaker-python-sdk"
 
 [tool.setuptools.packages.find]
 where = ["src/"]
-include = ["sagemaker.train"]
+include = ["sagemaker*"]
+namespaces = true
 
 [tool.setuptools.dynamic]
 version = { file = "VERSION"}

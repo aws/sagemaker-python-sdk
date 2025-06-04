@@ -22,7 +22,7 @@ import numpy as np
 from pandas import DataFrame
 from six import with_metaclass
 
-#from sagemaker.serializer_utils import write_numpy_to_dense_tensor
+# from sagemaker.serializer_utils import write_numpy_to_dense_tensor
 from sagemaker.utils.utils import DeferredError
 
 try:
@@ -467,6 +467,7 @@ class TorchTensorSerializer(SimpleBaseSerializer):
                 )
 
         raise ValueError("Object of type %s is not a torch.Tensor" % type(data))
+
 
 '''
 #TODO fix the unit test for this serializer

@@ -13,7 +13,9 @@
 """Functions for generating ECR image URIs for pre-built SageMaker Docker images."""
 from __future__ import absolute_import
 
+import json
 import logging
+import os
 from typing import Optional
 from packaging.version import Version
 import requests
@@ -42,8 +44,6 @@ INFERENCE_GRAVITON = "inference_graviton"
 DATA_WRANGLER_FRAMEWORK = "data-wrangler"
 STABILITYAI_FRAMEWORK = "stabilityai"
 SAGEMAKER_TRITONSERVER_FRAMEWORK = "sagemaker-tritonserver"
-# TODO: Update to use a bucket in prod account when GA
-S3_URL_TEMPLATE = "https://image_uri_configs_beta.s3.amazonaws.com/{framework}.json"
 
 
 def _get_image_tag(
@@ -185,13 +185,11 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
 
 def config_for_framework(framework):
     """Loads the JSON config for the given framework."""
-    try:
-        s3_url = S3_URL_TEMPLATE.format(framework=framework)
-        response = requests.get(s3_url)
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error retrieving config from S3: {e}")
-        raise e
+    response = requests.get(s3_url)
+    return response.json()
+    fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
+    with open(fname) as f:
+        return json.load(f)
 
 
 def _get_final_image_scope(framework, instance_type, image_scope):

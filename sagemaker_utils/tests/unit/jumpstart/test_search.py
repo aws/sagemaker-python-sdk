@@ -19,20 +19,29 @@ from sagemaker.utils.jumpstart.search import _Filter, search_public_hub_models
 from sagemaker_core.resources import HubContent
 
 
-@pytest.mark.parametrize("query,keywords,expected", [
-    ("text-*", ["text-classification"], True),
-    ("@task:foo", ["@task:foo"], True),
-    ("@task:foo AND bar-*", ["@task:foo", "bar-baz"], True),
-    ("@task:foo AND bar-*", ["@task:foo"], False),
-    ("@task:foo OR bar-*", ["bar-qux"], True),
-    ("@task:foo OR bar-*", ["nothing"], False),
-    ("NOT @task:legacy", ["@task:modern"], True),
-    ("NOT @task:legacy", ["@task:legacy"], False),
-    ("(@framework:huggingface OR text-*) AND NOT @provider:qwen", 
-     ["@framework:huggingface", "text-generator"], True),
-    ("(@framework:huggingface OR text-*) AND NOT @provider:qwen", 
-     ["@framework:huggingface", "@provider:qwen"], False),
-])
+@pytest.mark.parametrize(
+    "query,keywords,expected",
+    [
+        ("text-*", ["text-classification"], True),
+        ("@task:foo", ["@task:foo"], True),
+        ("@task:foo AND bar-*", ["@task:foo", "bar-baz"], True),
+        ("@task:foo AND bar-*", ["@task:foo"], False),
+        ("@task:foo OR bar-*", ["bar-qux"], True),
+        ("@task:foo OR bar-*", ["nothing"], False),
+        ("NOT @task:legacy", ["@task:modern"], True),
+        ("NOT @task:legacy", ["@task:legacy"], False),
+        (
+            "(@framework:huggingface OR text-*) AND NOT @provider:qwen",
+            ["@framework:huggingface", "text-generator"],
+            True,
+        ),
+        (
+            "(@framework:huggingface OR text-*) AND NOT @provider:qwen",
+            ["@framework:huggingface", "@provider:qwen"],
+            False,
+        ),
+    ],
+)
 def test_filter_match(query, keywords, expected):
     f = _Filter(query)
     assert f.match(keywords) == expected
@@ -51,7 +60,7 @@ def test_search_public_hub_models():
             hub_content_search_keywords=["@task:text-generation", "@framework:huggingface"],
             hub_content_status="Published",
             creation_time="2023-01-01T00:00:00Z",
-            hub_name="SageMakerPublicHub"
+            hub_name="SageMakerPublicHub",
         ),
         HubContent(
             hub_content_type="Model",
@@ -64,12 +73,14 @@ def test_search_public_hub_models():
             hub_content_search_keywords=["@provider:qwen"],
             hub_content_status="Published",
             creation_time="2023-01-01T00:00:00Z",
-            hub_name="SageMakerPublicHub"
+            hub_name="SageMakerPublicHub",
         ),
     ]
 
     with patch("sagemaker.utils.jumpstart.search._list_all_hub_models", return_value=mock_models):
-        results = search_public_hub_models("(@task:text-generation OR huggingface) AND NOT @provider:qwen")
+        results = search_public_hub_models(
+            "(@task:text-generation OR huggingface) AND NOT @provider:qwen"
+        )
         assert len(results) == 1
         assert isinstance(results[0], HubContent)
         assert results[0].hub_content_name == "textgen"

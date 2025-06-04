@@ -33,6 +33,7 @@ from sagemaker.utils.base_serializers import (
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
+
 @pytest.fixture
 def csv_serializer():
     return CSVSerializer()

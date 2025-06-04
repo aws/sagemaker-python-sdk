@@ -23,7 +23,7 @@ import json
 import numpy as np
 from six import with_metaclass
 
-#from sagemaker.serializer_utils import read_records
+# from sagemaker.serializer_utils import read_records
 from sagemaker.utils.utils import DeferredError
 
 try:
@@ -389,6 +389,7 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
                 "Unable to deserialize your data to torch.Tensor.\
                     Please provide custom deserializer in InferenceSpec."
             )
+
 
 '''
 #TODO fix the unit test for this deserializer

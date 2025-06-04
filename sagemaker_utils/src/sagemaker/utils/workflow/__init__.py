@@ -1,4 +1,5 @@
 """Defines Types etc. used in workflow."""
+
 from __future__ import absolute_import
 
 from sagemaker.utils.workflow.entities import Expression

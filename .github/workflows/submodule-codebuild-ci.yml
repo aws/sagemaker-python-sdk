@@ -1,4 +1,4 @@
-name: Submodule PR Checks
+name: Sagemaker PR Checks
 on:
   pull_request_target:
     branches:
@@ -88,7 +88,7 @@ jobs:
           echo "Final SUBMODULES: $SUBMODULES"
           echo "submodules=$SUBMODULES" >> $GITHUB_OUTPUT
 
-  submodule-codestyle-doc-tests:
+  codestyle-doc-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
     if: needs.detect-changes.outputs.submodules != '[]'
@@ -109,7 +109,7 @@ jobs:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-codestyle-doc-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
 
-  submodule-unit-tests:
+  unit-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
     if: needs.detect-changes.outputs.submodules != '[]'
@@ -131,7 +131,7 @@ jobs:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-unit-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
 
-  submodule-integ-tests:
+  integ-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
     if: needs.detect-changes.outputs.submodules != '[]'

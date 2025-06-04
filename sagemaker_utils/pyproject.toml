@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=64", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,7 +24,7 @@ keywords = [
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: Apache Software License",
+  #"License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.9",
@@ -36,6 +36,7 @@ dependencies = [
   "boto3>=1.35.75,<2.0",
   "jsonschema",
   "platformdirs",
+  "sagemaker-core>=1.0.17,<2.0.0",
 ]
 
 [project.urls]
@@ -51,6 +52,3 @@ testpaths = ["tests"]
 
 [tool.black]
 line-length = 100
-
-[tool.setuptools]
-include-package-data = true

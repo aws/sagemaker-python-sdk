@@ -1,5 +1,4 @@
 import os
-from distutils.command.config import config
 
 import pytest
 import yaml
@@ -10,9 +9,14 @@ from yaml.constructor import ConstructorError
 
 from sagemaker.utils.config.config_manager import SageMakerConfig
 
-from sagemaker.utils.config.config_utils import non_repeating_log_factory, get_sagemaker_config_logger, _log_sagemaker_config_single_substitution, _log_sagemaker_config_merge
+from sagemaker.utils.config.config_utils import (
+    non_repeating_log_factory,
+    get_sagemaker_config_logger,
+)
+
 logger = get_sagemaker_config_logger()
 log_info_function = non_repeating_log_factory(logger, "info")
+
 
 @pytest.fixture()
 def config_file_as_yaml(get_data_dir):
@@ -30,6 +34,7 @@ def expected_merged_config(get_data_dir):
     with open(expected_merged_config_file_path, "r") as f:
         content = yaml.safe_load(f.read())
     return content
+
 
 class TestSageMakerConfig:
     @pytest.fixture(autouse=True)
@@ -55,13 +60,17 @@ class TestSageMakerConfig:
         with open(invalid_config_file_path, "r") as f:
             yaml.unsafe_load(f)
         with pytest.raises(ConstructorError) as exception_info:
-            self.config.load_sagemaker_config(additional_config_paths=[invalid_config_file_path], repeat_log=True)
+            self.config.load_sagemaker_config(
+                additional_config_paths=[invalid_config_file_path], repeat_log=True
+            )
         assert "python/object/apply:eval" in str(exception_info.value)
 
     def test_config_when_additional_config_file_path_is_not_found(self, get_data_dir):
         fake_config_file_path = os.path.join(get_data_dir, "config-not-found.yaml")
         with pytest.raises(ValueError):
-            self.config.load_sagemaker_config(additional_config_paths=[fake_config_file_path], repeat_log=True)
+            self.config.load_sagemaker_config(
+                additional_config_paths=[fake_config_file_path], repeat_log=True
+            )
 
     def test_config_factory_when_override_user_config_file_is_not_found(self, get_data_dir):
         fake_additional_override_config_file_path = os.path.join(
@@ -125,7 +134,8 @@ class TestSageMakerConfig:
         try:
             with pytest.raises(ValueError):
                 self.config.load_sagemaker_config(
-                    additional_config_paths=[fake_additional_override_config_file_path], repeat_log=True
+                    additional_config_paths=[fake_additional_override_config_file_path],
+                    repeat_log=True,
                 )
         finally:
             del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
@@ -147,7 +157,11 @@ class TestSageMakerConfig:
             del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
 
     def test_s3_config_file(
-        self, config_file_as_yaml, valid_config_with_all_the_scopes, base_config_with_schema, s3_resource_mock
+        self,
+        config_file_as_yaml,
+        valid_config_with_all_the_scopes,
+        base_config_with_schema,
+        s3_resource_mock,
     ):
         config_file_bucket = "config-file-bucket"
         config_file_s3_prefix = "config/config.yaml"
@@ -165,7 +179,9 @@ class TestSageMakerConfig:
         expected_config = base_config_with_schema
         expected_config["SageMaker"] = valid_config_with_all_the_scopes
         assert expected_config == self.config.load_sagemaker_config(
-            additional_config_paths=[config_file_s3_uri], s3_resource=s3_resource_mock, repeat_log=True
+            additional_config_paths=[config_file_s3_uri],
+            s3_resource=s3_resource_mock,
+            repeat_log=True,
         )
 
     def test_config_factory_when_default_s3_config_file_is_not_found(self, s3_resource_mock):
@@ -183,7 +199,11 @@ class TestSageMakerConfig:
             )
 
     def test_s3_config_file_when_uri_provided_corresponds_to_a_path(
-        self, config_file_as_yaml, valid_config_with_all_the_scopes, base_config_with_schema, s3_resource_mock,
+        self,
+        config_file_as_yaml,
+        valid_config_with_all_the_scopes,
+        base_config_with_schema,
+        s3_resource_mock,
     ):
         config_file_bucket = "config-file-bucket"
         config_file_s3_prefix = "config"
@@ -205,7 +225,9 @@ class TestSageMakerConfig:
         expected_config = base_config_with_schema
         expected_config["SageMaker"] = valid_config_with_all_the_scopes
         assert expected_config == self.config.load_sagemaker_config(
-            additional_config_paths=[config_file_s3_uri], s3_resource=s3_resource_mock, repeat_log=True
+            additional_config_paths=[config_file_s3_uri],
+            s3_resource=s3_resource_mock,
+            repeat_log=True,
         )
 
     def test_merge_of_s3_default_config_file_and_regular_config_file(
@@ -250,11 +272,15 @@ class TestSageMakerConfig:
             self.config.load_sagemaker_config(repeat_log=True)
             assert "Fetched defaults config from location: {}".format(get_data_dir) in caplog.text
             assert (
-                "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH)
+                "Not applying SDK defaults from location: {}".format(
+                    self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
+                )
                 not in caplog.text
             )
             assert (
-                "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_USER_CONFIG_FILE_PATH)
+                "Not applying SDK defaults from location: {}".format(
+                    self.config._DEFAULT_USER_CONFIG_FILE_PATH
+                )
                 not in caplog.text
             )
         finally:
@@ -272,7 +298,9 @@ class TestSageMakerConfig:
             self.config.load_sagemaker_config(repeat_log=True)
             assert "Fetched defaults config from location: {}".format(get_data_dir) in caplog.text
             assert (
-                "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_USER_CONFIG_FILE_PATH)
+                "Not applying SDK defaults from location: {}".format(
+                    self.config._DEFAULT_USER_CONFIG_FILE_PATH
+                )
                 in caplog.text
             )
             assert (
@@ -286,7 +314,7 @@ class TestSageMakerConfig:
             logger.propagate = False
 
     def test_logging_when_default_admin_not_found_and_overriden_user_config_is_found(
-            self, get_data_dir, caplog
+        self, get_data_dir, caplog
     ):
         logger.propagate = True
         caplog.set_level(logging.DEBUG, logger=logger.name)
@@ -295,14 +323,16 @@ class TestSageMakerConfig:
             self.config.load_sagemaker_config(repeat_log=True)
             assert "Fetched defaults config from location: {}".format(get_data_dir) in caplog.text
             assert (
-                    "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH)
-                    in caplog.text
+                "Not applying SDK defaults from location: {}".format(
+                    self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
+                )
+                in caplog.text
             )
             assert (
-                    "Unable to load the config file from the location: {}".format(
-                        self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
-                    )
-                    in caplog.text
+                "Unable to load the config file from the location: {}".format(
+                    self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
+                )
+                in caplog.text
             )
         finally:
             del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
@@ -313,30 +343,34 @@ class TestSageMakerConfig:
         caplog.set_level(logging.DEBUG, logger=logger.name)
         self.config.load_sagemaker_config(repeat_log=True)
         assert (
-                "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH)
-                in caplog.text
+            "Not applying SDK defaults from location: {}".format(
+                self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
+            )
+            in caplog.text
         )
         assert (
-                "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_USER_CONFIG_FILE_PATH)
-                in caplog.text
+            "Not applying SDK defaults from location: {}".format(
+                self.config._DEFAULT_USER_CONFIG_FILE_PATH
+            )
+            in caplog.text
         )
         assert (
-                "Unable to load the config file from the location: {}".format(
-                    self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
-                )
-                in caplog.text
+            "Unable to load the config file from the location: {}".format(
+                self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
+            )
+            in caplog.text
         )
         assert (
-                "Unable to load the config file from the location: {}".format(
-                    self.config._DEFAULT_USER_CONFIG_FILE_PATH
-                )
-                in caplog.text
+            "Unable to load the config file from the location: {}".format(
+                self.config._DEFAULT_USER_CONFIG_FILE_PATH
+            )
+            in caplog.text
         )
         logger.propagate = False
 
     def test_load_config_without_repeating_log(self):
         config = self.config
-        with patch.object(config, 'log_info_function') as mock_log_info:
+        with patch.object(config, "log_info_function") as mock_log_info:
             config.load_sagemaker_config(repeat_log=False)
             assert mock_log_info.call_count == 2
             mock_log_info.assert_has_calls(
@@ -354,7 +388,7 @@ class TestSageMakerConfig:
             )
 
     def test_logging_when_default_admin_not_found_and_overriden_user_config_not_found(
-            self, get_data_dir, caplog
+        self, get_data_dir, caplog
     ):
         logger.propagate = True
         fake_config_file_path = os.path.join(get_data_dir, "config-not-found.yaml")
@@ -363,19 +397,23 @@ class TestSageMakerConfig:
             with pytest.raises(ValueError):
                 self.config.load_sagemaker_config(repeat_log=True)
             assert (
-                    "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH)
-                    in caplog.text
+                "Not applying SDK defaults from location: {}".format(
+                    self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
+                )
+                in caplog.text
             )
             assert (
-                    "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_USER_CONFIG_FILE_PATH)
-                    not in caplog.text
+                "Not applying SDK defaults from location: {}".format(
+                    self.config._DEFAULT_USER_CONFIG_FILE_PATH
+                )
+                not in caplog.text
             )
         finally:
             del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
             logger.propagate = False
 
     def test_logging_when_overriden_admin_not_found_and_overridden_user_config_not_found(
-            self, get_data_dir, caplog
+        self, get_data_dir, caplog
     ):
         logger.propagate = True
         fake_config_file_path = os.path.join(get_data_dir, "config-not-found.yaml")
@@ -385,12 +423,16 @@ class TestSageMakerConfig:
             with pytest.raises(ValueError):
                 self.config.load_sagemaker_config(repeat_log=True)
             assert (
-                    "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH)
-                    not in caplog.text
+                "Not applying SDK defaults from location: {}".format(
+                    self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
+                )
+                not in caplog.text
             )
             assert (
-                    "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_USER_CONFIG_FILE_PATH)
-                    not in caplog.text
+                "Not applying SDK defaults from location: {}".format(
+                    self.config._DEFAULT_USER_CONFIG_FILE_PATH
+                )
+                not in caplog.text
             )
         finally:
             del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
@@ -400,26 +442,34 @@ class TestSageMakerConfig:
     def test_logging_with_additional_configs_and_none_are_found(self, caplog):
         logger.propagate = True
         with pytest.raises(ValueError):
-            self.config.load_sagemaker_config(additional_config_paths=["fake-path"], repeat_log=True)
+            self.config.load_sagemaker_config(
+                additional_config_paths=["fake-path"], repeat_log=True
+            )
         assert (
-                "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH)
-                in caplog.text
+            "Not applying SDK defaults from location: {}".format(
+                self.config._DEFAULT_ADMIN_CONFIG_FILE_PATH
+            )
+            in caplog.text
         )
         assert (
-                "Not applying SDK defaults from location: {}".format(self.config._DEFAULT_USER_CONFIG_FILE_PATH)
-                in caplog.text
+            "Not applying SDK defaults from location: {}".format(
+                self.config._DEFAULT_USER_CONFIG_FILE_PATH
+            )
+            in caplog.text
         )
         logger.propagate = False
 
     def test_load_local_mode_config(self):
-        with patch('sagemaker.utils.config.config_manager.SageMakerConfig._load_config_from_file') as mock_load:
+        with patch(
+            "sagemaker.utils.config.config_manager.SageMakerConfig._load_config_from_file"
+        ) as mock_load:
             self.config.load_local_mode_config()
             mock_load.assert_called_with(self.config._DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH)
 
     def test_load_local_mode_config_when_config_file_is_not_found(self):
         with patch(
-                'sagemaker.utils.config.config_manager.SageMakerConfig._load_config_from_file',
-                side_effect=ValueError
+            "sagemaker.utils.config.config_manager.SageMakerConfig._load_config_from_file",
+            side_effect=ValueError,
         ):
             assert self.config.load_local_mode_config() is None
 
@@ -518,32 +568,42 @@ class TestSageMakerConfig:
 
         # direct_input should be respected
         assert (
-                self.config.resolve_value_from_config("INPUT", config_key_path, "DEFAULT_VALUE", sagemaker_session)
-                == "INPUT"
+            self.config.resolve_value_from_config(
+                "INPUT", config_key_path, "DEFAULT_VALUE", sagemaker_session
+            )
+            == "INPUT"
         )
 
-        assert self.config.resolve_value_from_config("INPUT", config_key_path, None, sagemaker_session) == "INPUT"
+        assert (
+            self.config.resolve_value_from_config("INPUT", config_key_path, None, sagemaker_session)
+            == "INPUT"
+        )
 
         assert (
-                self.config.resolve_value_from_config("INPUT", "SageMaker.EndpointConfig.Tags", None, sagemaker_session)
-                == "INPUT"
+            self.config.resolve_value_from_config(
+                "INPUT", "SageMaker.EndpointConfig.Tags", None, sagemaker_session
+            )
+            == "INPUT"
         )
 
         # Config or default values should be returned if no direct_input
         assert (
-                self.config.resolve_value_from_config(None, None, "DEFAULT_VALUE", sagemaker_session) == "DEFAULT_VALUE"
+            self.config.resolve_value_from_config(None, None, "DEFAULT_VALUE", sagemaker_session)
+            == "DEFAULT_VALUE"
         )
 
         assert (
-                self.config.resolve_value_from_config(
-                    None, "SageMaker.EndpointConfig.Tags", "DEFAULT_VALUE", sagemaker_session
-                )
-                == "DEFAULT_VALUE"
+            self.config.resolve_value_from_config(
+                None, "SageMaker.EndpointConfig.Tags", "DEFAULT_VALUE", sagemaker_session
+            )
+            == "DEFAULT_VALUE"
         )
 
         assert (
-                self.config.resolve_value_from_config(None, config_key_path, "DEFAULT_VALUE", sagemaker_session)
-                == "CONFIG_VALUE"
+            self.config.resolve_value_from_config(
+                None, config_key_path, "DEFAULT_VALUE", sagemaker_session
+            )
+            == "CONFIG_VALUE"
         )
 
         assert self.config.resolve_value_from_config(None, None, None, sagemaker_session) is None
@@ -551,22 +611,41 @@ class TestSageMakerConfig:
         # Config value from sagemaker_config should be returned
         # if no direct_input and sagemaker_session is None
         assert (
-                self.config.resolve_value_from_config(None, config_key_path, None, None, sagemaker_config)
-                == "CONFIG_VALUE"
+            self.config.resolve_value_from_config(
+                None, config_key_path, None, None, sagemaker_config
+            )
+            == "CONFIG_VALUE"
         )
 
         # Different falsy direct_inputs
-        assert self.config.resolve_value_from_config("", config_key_path, None, sagemaker_session) == ""
+        assert (
+            self.config.resolve_value_from_config("", config_key_path, None, sagemaker_session)
+            == ""
+        )
 
-        assert self.config.resolve_value_from_config([], config_key_path, None, sagemaker_session) == []
+        assert (
+            self.config.resolve_value_from_config([], config_key_path, None, sagemaker_session)
+            == []
+        )
 
-        assert self.config.resolve_value_from_config(False, config_key_path, None, sagemaker_session) is False
+        assert (
+            self.config.resolve_value_from_config(False, config_key_path, None, sagemaker_session)
+            is False
+        )
 
-        assert self.config.resolve_value_from_config({}, config_key_path, None, sagemaker_session) == {}
+        assert (
+            self.config.resolve_value_from_config({}, config_key_path, None, sagemaker_session)
+            == {}
+        )
 
         # Different falsy config_values
-        sagemaker_session.sagemaker_config.update({"SageMaker": {"EndpointConfig": {"KmsKeyId": ""}}})
-        assert self.config.resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
+        sagemaker_session.sagemaker_config.update(
+            {"SageMaker": {"EndpointConfig": {"KmsKeyId": ""}}}
+        )
+        assert (
+            self.config.resolve_value_from_config(None, config_key_path, None, sagemaker_session)
+            == ""
+        )
 
         mock_info_logger.reset_mock()
 
@@ -589,36 +668,38 @@ class TestSageMakerConfig:
 
         # Tests that the function returns the correct value when the key exists in the sagemaker_session configuration.
         assert (
-                self.config.get_sagemaker_config_value(
-                    sagemaker_session=sagemaker_session, key=config_key_path, sagemaker_config=None
-                )
-                == "CONFIG_VALUE"
+            self.config.get_sagemaker_config_value(
+                sagemaker_session=sagemaker_session, key=config_key_path, sagemaker_config=None
+            )
+            == "CONFIG_VALUE"
         )
 
         # Tests that the function correctly uses the sagemaker_config to get value for the requested
         # config_key_path when sagemaker_session is None.
         assert (
-                self.config.get_sagemaker_config_value(
-                    sagemaker_session=None, key=config_key_path, sagemaker_config=sagemaker_config
-                )
-                == "CONFIG_VALUE"
+            self.config.get_sagemaker_config_value(
+                sagemaker_session=None, key=config_key_path, sagemaker_config=sagemaker_config
+            )
+            == "CONFIG_VALUE"
         )
 
         # Tests that the function returns None when the key does not exist in the configuration.
         invalid_key = "inavlid_key"
         assert (
-                self.config.get_sagemaker_config_value(
-                    sagemaker_session=sagemaker_session, key=invalid_key, sagemaker_config=sagemaker_config
-                )
-                is None
+            self.config.get_sagemaker_config_value(
+                sagemaker_session=sagemaker_session,
+                key=invalid_key,
+                sagemaker_config=sagemaker_config,
+            )
+            is None
         )
 
         # Tests that the function returns None when sagemaker_session and sagemaker_config are None.
         assert (
-                self.config.get_sagemaker_config_value(
-                    sagemaker_session=None, key=config_key_path, sagemaker_config=None
-                )
-                is None
+            self.config.get_sagemaker_config_value(
+                sagemaker_session=None, key=config_key_path, sagemaker_config=None
+            )
+            is None
         )
 
     @patch("jsonschema.validate")
@@ -632,11 +713,7 @@ class TestSageMakerConfig:
         mock_session.sagemaker_config = {"path": "config_value"}
 
         result = self.config.resolve_class_attribute_from_config(
-            TestClass,
-            None,
-            "attribute",
-            "path",
-            sagemaker_session=mock_session
+            TestClass, None, "attribute", "path", sagemaker_session=mock_session
         )
         assert result.attribute == "config_value"
 
@@ -644,11 +721,7 @@ class TestSageMakerConfig:
         instance = TestClass()
         instance.attribute = "existing"
         result = self.config.resolve_class_attribute_from_config(
-            TestClass,
-            instance,
-            "attribute",
-            "path",
-            sagemaker_session=mock_session
+            TestClass, instance, "attribute", "path", sagemaker_session=mock_session
         )
         assert result.attribute == "existing"
 
@@ -660,20 +733,14 @@ class TestSageMakerConfig:
 
         dictionary = {}
         result = self.config.resolve_nested_dict_value_from_config(
-            dictionary,
-            ["key1", "key2"],
-            "path",
-            sagemaker_session=mock_session
+            dictionary, ["key1", "key2"], "path", sagemaker_session=mock_session
         )
         assert result["key1"]["key2"] == "config_value"
 
         # Test with existing value
         dictionary = {"key1": {"key2": "existing"}}
         result = self.config.resolve_nested_dict_value_from_config(
-            dictionary,
-            ["key1", "key2"],
-            "path",
-            sagemaker_session=mock_session
+            dictionary, ["key1", "key2"], "path", sagemaker_session=mock_session
         )
         assert result["key1"]["key2"] == "existing"
 
@@ -682,49 +749,36 @@ class TestSageMakerConfig:
         # Test updating list with config values
         input_list = [{"key1": "value1"}]
         mock_session = Mock()
-        mock_session.sagemaker_config = {
-            "path": [{"key2": "value2"}]
-        }
+        mock_session.sagemaker_config = {"path": [{"key2": "value2"}]}
 
         self.config.update_list_of_dicts_with_values_from_config(
-            input_list,
-            "path",
-            sagemaker_session=mock_session
+            input_list, "path", sagemaker_session=mock_session
         )
         assert input_list[0] == {"key1": "value1", "key2": "value2"}
 
     @patch("jsonschema.validate")
     def test_validate_required_paths(self, mock_validate):
         # Test with all required paths present
-        test_dict = {
-            "required1": "value1",
-            "nested": {"required2": "value2"}
-        }
+        test_dict = {"required1": "value1", "nested": {"required2": "value2"}}
         assert self.config._validate_required_paths_in_a_dict(
-            test_dict,
-            ["required1", "nested.required2"]
+            test_dict, ["required1", "nested.required2"]
         )
 
         # Test with missing required path
         assert not self.config._validate_required_paths_in_a_dict(
-            test_dict,
-            ["required1", "nonexistent"]
+            test_dict, ["required1", "nonexistent"]
         )
 
     @patch("jsonschema.validate")
     def test_validate_union_paths(self, mock_validate):
         # Test valid union (only one option present)
         test_dict = {"option1": "value1"}
-        assert self.config._validate_union_key_paths_in_a_dict(
-            test_dict,
-            [["option1", "option2"]]
-        )
+        assert self.config._validate_union_key_paths_in_a_dict(test_dict, [["option1", "option2"]])
 
         # Test invalid union (both options present)
         test_dict["option2"] = "value2"
         assert not self.config._validate_union_key_paths_in_a_dict(
-            test_dict,
-            [["option1", "option2"]]
+            test_dict, [["option1", "option2"]]
         )
 
     @patch("jsonschema.validate")
@@ -732,72 +786,45 @@ class TestSageMakerConfig:
         # Test updating nested dictionary
         source_dict = {"level1": {"existing": "value"}}
         mock_session = Mock()
-        mock_session.sagemaker_config = {
-            "path": {"level1": {"config": "value"}}
-        }
+        mock_session.sagemaker_config = {"path": {"level1": {"config": "value"}}}
 
         result = self.config.update_nested_dictionary_with_values_from_config(
-            source_dict,
-            "path",
-            sagemaker_session=mock_session
+            source_dict, "path", sagemaker_session=mock_session
         )
-        assert result == {
-            "level1": {
-                "existing": "value",
-                "config": "value"
-            }
-        }
+        assert result == {"level1": {"existing": "value", "config": "value"}}
 
-    @patch.object(SageMakerConfig, 'load_sagemaker_config')
+    @patch.object(SageMakerConfig, "load_sagemaker_config")
     def test_load_default_configs_empty(self, mock_load_config):
         """Test with empty config"""
         mock_load_config.return_value = {}
         result = self.config.load_default_configs_for_resource_name("test_resource")
         assert result == {}
 
-    @patch.object(SageMakerConfig, 'load_sagemaker_config')
+    @patch.object(SageMakerConfig, "load_sagemaker_config")
     def test_load_default_configs_valid(self, mock_load_config):
         """Test with valid config"""
         mock_config = {
-            "SageMaker": {
-                "PythonSDK": {
-                    "Resources": {
-                        "test_resource": {"key": "value"}
-                    }
-                }
-            }
+            "SageMaker": {"PythonSDK": {"Resources": {"test_resource": {"key": "value"}}}}
         }
         mock_load_config.return_value = mock_config
         result = self.config.load_default_configs_for_resource_name("test_resource")
         assert result == {"key": "value"}
 
-    @patch.object(SageMakerConfig, 'load_sagemaker_config')
+    @patch.object(SageMakerConfig, "load_sagemaker_config")
     def test_load_default_configs_nonexistent(self, mock_load_config):
         """Test with non-existent resource"""
         mock_config = {
-            "SageMaker": {
-                "PythonSDK": {
-                    "Resources": {
-                        "test_resource": {"key": "value"}
-                    }
-                }
-            }
+            "SageMaker": {"PythonSDK": {"Resources": {"test_resource": {"key": "value"}}}}
         }
         mock_load_config.return_value = mock_config
         result = self.config.load_default_configs_for_resource_name("non_existent_resource")
         assert result is None
 
-    @patch.object(SageMakerConfig, 'load_sagemaker_config')
+    @patch.object(SageMakerConfig, "load_sagemaker_config")
     def test_load_default_configs_caching(self, mock_load_config):
         """Test caching behavior"""
         mock_config = {
-            "SageMaker": {
-                "PythonSDK": {
-                    "Resources": {
-                        "test_resource": {"key": "value"}
-                    }
-                }
-            }
+            "SageMaker": {"PythonSDK": {"Resources": {"test_resource": {"key": "value"}}}}
         }
         mock_load_config.return_value = mock_config
 
@@ -813,19 +840,25 @@ class TestSageMakerConfig:
         # Test when value exists in resource_defaults
         resource_defaults = {"attribute": "resource_value"}
         global_defaults = {"attribute": "global_value"}
-        result = self.config.get_resolved_config_value("attribute", resource_defaults, global_defaults)
+        result = self.config.get_resolved_config_value(
+            "attribute", resource_defaults, global_defaults
+        )
         assert result == "resource_value"
 
         # Test when value exists only in global_defaults
         resource_defaults = {}
         global_defaults = {"attribute": "global_value"}
-        result = self.config.get_resolved_config_value("attribute", resource_defaults, global_defaults)
+        result = self.config.get_resolved_config_value(
+            "attribute", resource_defaults, global_defaults
+        )
         assert result == "global_value"
 
         # Test when value doesn't exist in either defaults
         resource_defaults = {}
         global_defaults = {}
-        result = self.config.get_resolved_config_value("attribute", resource_defaults, global_defaults)
+        result = self.config.get_resolved_config_value(
+            "attribute", resource_defaults, global_defaults
+        )
         assert result is None
 
         # Test with None defaults
@@ -835,12 +868,14 @@ class TestSageMakerConfig:
         # Test when attribute exists in both defaults (resource should take precedence)
         resource_defaults = {"attribute": "resource_value"}
         global_defaults = {"attribute": "global_value"}
-        result = self.config.get_resolved_config_value("attribute", resource_defaults, global_defaults)
+        result = self.config.get_resolved_config_value(
+            "attribute", resource_defaults, global_defaults
+        )
         assert result == "resource_value"
 
         # Test logging behavior
-        with patch('sagemaker.utils.config.config_manager.logger') as mock_logger:
+        with patch("sagemaker.utils.config.config_manager.logger") as mock_logger:
             self.config.get_resolved_config_value("missing_attribute", {}, {})
             mock_logger.debug.assert_called_once_with(
-                "Configurable value missing_attribute not entered in parameters or present in the Config")
-
+                "Configurable value missing_attribute not entered in parameters or present in the Config"
+            )

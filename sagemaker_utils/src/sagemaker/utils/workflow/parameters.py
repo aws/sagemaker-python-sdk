@@ -1,6 +1,6 @@
 import attr
 from enum import Enum
-from typing import Dict, List, Type
+from typing import List, Type
 from functools import partial
 
 from sagemaker.utils.workflow.entities import (

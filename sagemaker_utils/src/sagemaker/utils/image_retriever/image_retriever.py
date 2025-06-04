@@ -1,27 +1,13 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You
-# may not use this file except in compliance with the License. A copy of
-# the License is located at
-#
-#     http://aws.amazon.com/apache2.0/
-#
-# or in the "license" file accompanying this file. This file is
-# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific
-# language governing permissions and limitations under the License.
-"""Functions for generating ECR image URIs for pre-built SageMaker Docker images."""
-from __future__ import absolute_import
-
 import re
 from typing import Optional
 from graphene.utils.str_converters import to_camel_case
 
-from sagemaker.utils.serverless_inference_config import ServerlessInferenceConfig
-from sagemaker.utils.training_compiler_config import TrainingCompilerConfig
+# TODO: Update these dependencies after they are moved to corresponding submodule
+from legacy.src.sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
+from legacy.src.sagemaker.training_compiler.config import TrainingCompilerConfig
 from sagemaker.utils.utils import _botocore_resolver
 from sagemaker.utils.workflow import is_pipeline_variable
-from sagemaker.utils.image_retriever.image_retriever_utils import (
+from image_retriever_utils import (
     _config_for_framework_and_scope,
     _get_final_image_scope,
     _get_image_tag,
@@ -40,7 +26,7 @@ from sagemaker.utils.image_retriever.image_retriever_utils import (
     config_for_framework,
 )
 from sagemaker.utils.workflow.utilities import override_pipeline_parameter_var
-from sagemaker.utils.config.config_schema import IMAGE_RETRIEVER, MODULES, PYTHON_SDK, SAGEMAKER, _simple_path
+from sagemaker.utils.config.config_schema import IMAGE_RETRIEVER, MODULES, SAGEMAKER, _simple_path
 from sagemaker.utils.config.config_manager import SageMakerConfig
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
@@ -123,13 +109,10 @@ class ImageRetriever:
             str: The ECR URI for the corresponding SageMaker Docker image.
         """
         args = dict(locals())
-        config = SageMakerConfig()
         for name, val in args.items():
             if name in CONFIGURABLE_ATTRIBUTES and not val:
-                default_value = config.resolve_value_from_config(
-                    config_path=_simple_path(
-                        SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, to_camel_case(name)
-                    )
+                default_value = SageMakerConfig.resolve_value_from_config(
+                    config_path=_simple_path(SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name))
                 )
                 if default_value is not None:
                     locals()[name] = default_value
@@ -514,13 +497,10 @@ class ImageRetriever:
             DeprecatedJumpStartModelError: If the version of the model is deprecated.
         """
         args = dict(locals())
-        config = SageMakerConfig()
         for name, val in args.items():
             if name in CONFIGURABLE_ATTRIBUTES and not val:
-                default_value = config.resolve_value_from_config(
-                    config_path=_simple_path(
-                        SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, to_camel_case(name)
-                    )
+                default_value = SageMakerConfig.resolve_value_from_config(
+                    config_path=_simple_path(SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name))
                 )
                 if default_value is not None:
                     locals()[name] = default_value

@@ -27,6 +27,7 @@ class StrEnum(str, Enum):
     def __repr__(self) -> str:
         return str(self)
 
+
 class ModelTypeEnum(StrEnum):
     """ModelTypeEnum"""
 

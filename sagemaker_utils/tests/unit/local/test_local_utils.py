@@ -17,8 +17,17 @@ import errno
 import pytest
 import json
 from mock import patch, Mock, mock_open
-from sagemaker.utils.local.utils import copy_directory_structure, move_to_destination, recursive_copy, \
-    kill_child_processes, get_child_process_ids, get_docker_host, get_using_dot_notation, check_for_studio
+
+from sagemaker.utils.local.utils import (
+    copy_directory_structure,
+    move_to_destination,
+    recursive_copy,
+    kill_child_processes,
+    get_child_process_ids,
+    get_docker_host,
+    get_using_dot_notation,
+    check_for_studio,
+)
 
 from sagemaker.utils.session_settings import SessionSettings
 
@@ -73,12 +82,9 @@ def test_move_to_destination_s3_with_prefix():
     sms = Mock(
         settings=SessionSettings(),
     )
-    uri = move_to_destination(
-        "/tmp/data", "s3://bucket/path", "job", sms, "foo_prefix"
-    )
+    uri = move_to_destination("/tmp/data", "s3://bucket/path", "job", sms, "foo_prefix")
     sms.upload_data.assert_called_with("/tmp/data", "bucket", "path/job/foo_prefix")
     assert uri == "s3://bucket/path/job/foo_prefix"
-
 
 def test_move_to_destination_illegal_destination():
     with pytest.raises(ValueError):

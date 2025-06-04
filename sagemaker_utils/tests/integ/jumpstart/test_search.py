@@ -56,7 +56,9 @@ def test_search_public_hub_models_all_args():
     # Provide both hub_name and session explicitly
     session = Session()
     query = "@task:natural-language-processing"
-    results = search_public_hub_models(query, hub_name="SageMakerPublicHub", sagemaker_session=session)
+    results = search_public_hub_models(
+        query, hub_name="SageMakerPublicHub", sagemaker_session=session
+    )
 
     assert isinstance(results, list)
     assert all(isinstance(m, HubContent) for m in results)

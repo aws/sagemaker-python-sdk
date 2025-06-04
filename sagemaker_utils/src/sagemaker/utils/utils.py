@@ -900,8 +900,6 @@ class S3DataConfig(DataConfig):
         return config[region] if region in config.keys() else config["default"]
 
 
-
-
 def update_container_with_inference_params(
     framework=None,
     framework_version=None,
@@ -1706,6 +1704,7 @@ def deep_override_dict(
     flattened_dict1.update(flattened_dict2)
     return unflatten_dict(flattened_dict1) if flattened_dict1 else {}
 
+
 '''
 def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Resolve Routing Config
@@ -1736,6 +1735,7 @@ def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optiona
             )
     return None
 '''
+
 
 @lru_cache
 def get_instance_rate_per_hour(
