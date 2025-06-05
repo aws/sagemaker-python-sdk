@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.246.0 (2025-06-04)
+
+### Features
+
+ * Triton v25.04 DLC
+
+### Bug Fixes and Other Changes
+
+ * Update Attrs version to widen support
+ * update estimator documentation regarding hyperparameters for source_dir
+
 ## v2.245.0 (2025-05-28)
 
 ### Features
