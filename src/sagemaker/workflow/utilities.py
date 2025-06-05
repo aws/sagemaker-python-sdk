@@ -28,6 +28,7 @@ try:
     from _hashlib import HASH as Hash
 except ImportError as e:
     import typing
+
     Hash = typing.Any
 
 from sagemaker.utils import base_from_name
