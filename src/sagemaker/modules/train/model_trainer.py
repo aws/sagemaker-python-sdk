@@ -891,7 +891,6 @@ class ModelTrainer(BaseModel):
                     input_data.channel_name,
                     input_data.data_source,
                     key_prefix=key_prefix,
-                    ignore_patterns=self.source_code.ignore_patterns,
                 )
                 channels.append(channel)
             else:
