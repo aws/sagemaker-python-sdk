@@ -26,7 +26,7 @@ try:
     # _hashlib is an internal python module, and is not present in
     # statically linked interpreters.
     from _hashlib import HASH as Hash
-except ImportError as e:
+except ImportError:
     import typing
 
     Hash = typing.Any
