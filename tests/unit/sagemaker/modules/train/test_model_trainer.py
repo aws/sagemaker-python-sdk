@@ -208,7 +208,7 @@ def model_trainer():
                 "source_code": SourceCode(
                     source_dir=DEFAULT_SOURCE_DIR,
                     command="python custom_script.py",
-                    ignore_patterns=["data"]
+                    ignore_patterns=["data"],
                 ),
             },
             "should_throw": False,
@@ -224,7 +224,7 @@ def model_trainer():
         "supported_source_code_local_tar_file",
         "supported_source_code_s3_dir",
         "supported_source_code_s3_tar_file",
-        "supported_source_code_ignore_patterns"
+        "supported_source_code_ignore_patterns",
     ],
 )
 def test_model_trainer_param_validation(test_case, modules_session):
