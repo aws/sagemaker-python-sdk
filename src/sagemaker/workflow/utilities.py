@@ -21,7 +21,15 @@ from typing import List, Sequence, Union, Set, TYPE_CHECKING, Optional
 import hashlib
 from urllib.parse import unquote, urlparse
 from contextlib import contextmanager
-from _hashlib import HASH as Hash
+
+try:
+    # _hashlib is an internal python module, and is not present in
+    # statically linked interpreters.
+    from _hashlib import HASH as Hash
+except ImportError:
+    import typing
+
+    Hash = typing.Any
 
 from sagemaker.utils import base_from_name
 from sagemaker.workflow.parameters import Parameter
