@@ -7509,7 +7509,7 @@ def get_model_package_args(
     if source_uri is not None:
         model_package_args["source_uri"] = source_uri
     if model_life_cycle is not None:
-        model_package_args["model_life_cycle"] = model_life_cycle
+        model_package_args["model_life_cycle"] = model_life_cycle._to_request_dict()
     if model_card is not None:
         original_req = model_card._create_request_args()
         if original_req.get("ModelCardName") is not None:
@@ -7685,7 +7685,7 @@ def get_create_model_package_request(
     if model_card is not None:
         request_dict["ModelCard"] = model_card
     if model_life_cycle is not None:
-        request_dict["ModelLifeCycle"] = model_life_cycle
+        request_dict["ModelLifeCycle"] = model_life_cycle._to_request_dict()
     return request_dict
 
 
