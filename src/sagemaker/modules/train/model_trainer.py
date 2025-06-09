@@ -780,7 +780,8 @@ class ModelTrainer(BaseModel):
                 ``s3://<default_bucket_path>/<key_prefix>/<channel_name>/``
             ignore_patterns: (Optional[List[str]]) :
                 The ignore patterns to ignore specific files/folders when uploading to S3.
-                If not specified, default to: ['.env', '.git', '__pycache__', '.DS_Store'].
+                If not specified, default to: ['.env', '.git', '__pycache__', '.DS_Store',
+                 '.cache', '.ipynb_checkpoints'].
         """
         channel = None
         if isinstance(data_source, str):
