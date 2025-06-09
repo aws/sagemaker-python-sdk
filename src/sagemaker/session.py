@@ -7685,7 +7685,7 @@ def get_create_model_package_request(
     if model_card is not None:
         request_dict["ModelCard"] = model_card
     if model_life_cycle is not None:
-        request_dict["ModelLifeCycle"] = model_life_cycle._to_request_dict()
+        request_dict["ModelLifeCycle"] = model_life_cycle
     return request_dict
 
 
