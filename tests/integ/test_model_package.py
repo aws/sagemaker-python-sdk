@@ -103,15 +103,14 @@ def test_update_model_life_cycle_model_package(sagemaker_session):
         inference_instances=["ml.m5.large"],
         transform_instances=["ml.m5.large"],
         model_package_group_name=model_group_name,
-        model_life_cycle=create_model_life_cycle._to_request_dict(),
+        model_life_cycle=create_model_life_cycle,
     )
 
     desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
         ModelPackageName=model_package.model_package_arn
     )
-    create_model_life_cycle_req = create_model_life_cycle._to_request_dict()
 
-    assert desc_model_package["ModelLifeCycle"] == create_model_life_cycle_req
+    assert desc_model_package["ModelLifeCycle"] == create_model_life_cycle
 
     update_model_life_cycle = ModelLifeCycle(
         stage="Staging",
@@ -125,7 +124,7 @@ def test_update_model_life_cycle_model_package(sagemaker_session):
     desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
         ModelPackageName=model_package.model_package_arn
     )
-    assert desc_model_package["ModelLifeCycle"] == update_model_life_cycle_req
+    assert desc_model_package["ModelLifeCycle"] == update_model_life_cycle
 
     sagemaker_session.sagemaker_client.delete_model_package(
         ModelPackageName=model_package.model_package_arn

@@ -59,6 +59,7 @@ from sagemaker.workflow.conditions import (
     ConditionGreaterThanOrEqualTo,
     ConditionIn,
 )
+from sagemaker.model_life_cycle import ModelLifeCycle
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ import DATA_DIR
 from sagemaker.model_card import (
@@ -1005,11 +1006,11 @@ def test_model_registration_with_model_life_cycle_object(
         py_version="py3",
         role=role,
     )
-    create_model_life_cycle = {
-        "Stage": "Development",
-        "StageStatus": "In-Progress",
-        "StageDescription": "Development In Progress",
-    }
+    create_model_life_cycle = ModelLifeCycle(
+        stage="Development",
+        stage_status="In-Progress",
+        stage_description="Development In Progress",
+    )
 
     step_register = RegisterModel(
         name="MyRegisterModelStep",
