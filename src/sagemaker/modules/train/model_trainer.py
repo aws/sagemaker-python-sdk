@@ -1300,14 +1300,17 @@ class ModelTrainer(BaseModel):
         Example:
 
         .. code:: python
+
             from sagemaker.modules.train import ModelTrainer
             from sagemaker.modules.configs import MetricDefinition
+
             metric_definitions = [
                 MetricDefinition(
                     name="loss",
                     regex="Loss: (.*?)",
                 )
             ]
+
             model_trainer = ModelTrainer(
                 ...
             ).with_metric_definitions(metric_definitions)
