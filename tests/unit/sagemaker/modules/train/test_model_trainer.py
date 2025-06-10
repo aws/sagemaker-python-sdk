@@ -849,6 +849,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
             training_input_mode=training_input_mode,
             training_image=training_image,
             algorithm_name=None,
+            metric_definitions=None,
             container_entrypoint=DEFAULT_ENTRYPOINT,
             container_arguments=DEFAULT_ARGUMENTS,
             training_image_config=training_image_config,
