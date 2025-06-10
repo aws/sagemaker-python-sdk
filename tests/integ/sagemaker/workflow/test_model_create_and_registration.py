@@ -48,6 +48,7 @@ from sagemaker.pytorch import PyTorch
 from sagemaker.s3 import S3Uploader
 from sagemaker.sklearn import SKLearnModel, SKLearnProcessor
 from sagemaker.mxnet.model import MXNetModel
+from sagemaker.model_life_cycle import ModelLifeCycle
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
@@ -1005,11 +1006,11 @@ def test_model_registration_with_model_life_cycle_object(
         py_version="py3",
         role=role,
     )
-    create_model_life_cycle = {
-        "Stage": "Development",
-        "StageStatus": "In-Progress",
-        "StageDescription": "Development In Progress",
-    }
+    create_model_life_cycle = ModelLifeCycle(
+        stage="Development",
+        stage_status="In-Progress",
+        stage_description="Development In Progress",
+    )
 
     step_register = RegisterModel(
         name="MyRegisterModelStep",
