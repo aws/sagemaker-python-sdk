@@ -1291,12 +1291,14 @@ class ModelTrainer(BaseModel):
         """
         self.checkpoint_config = checkpoint_config or configs.CheckpointConfig()
         return self
-    
+
     def with_metric_definitions(
         self, metric_definitions: List[MetricDefinition]
     ) -> "ModelTrainer":  # noqa: D412
         """Set the metric definitions for the training job.
+
         Example:
+
         .. code:: python
             from sagemaker.modules.train import ModelTrainer
             from sagemaker.modules.configs import MetricDefinition
@@ -1309,6 +1311,7 @@ class ModelTrainer(BaseModel):
             model_trainer = ModelTrainer(
                 ...
             ).with_metric_definitions(metric_definitions)
+
         Args:
             metric_definitions (List[MetricDefinition]):
                 The metric definitions for the training job.
