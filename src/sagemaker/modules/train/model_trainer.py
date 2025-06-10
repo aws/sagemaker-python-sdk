@@ -66,6 +66,7 @@ from sagemaker.modules.configs import (
     RemoteDebugConfig,
     SessionChainingConfig,
     InputData,
+    MetricDefinition,
 )
 
 from sagemaker.modules.local_core.local_container import _LocalContainer
@@ -1289,4 +1290,28 @@ class ModelTrainer(BaseModel):
                 The checkpoint configuration for the training job.
         """
         self.checkpoint_config = checkpoint_config or configs.CheckpointConfig()
+        return self
+    
+    def with_metric_definitions(
+        self, metric_definitions: List[MetricDefinition]
+    ) -> "ModelTrainer":  # noqa: D412
+        """Set the metric definitions for the training job.
+        Example:
+        .. code:: python
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import MetricDefinition
+            metric_definitions = [
+                MetricDefinition(
+                    name="loss",
+                    regex="Loss: (.*?)",
+                )
+            ]
+            model_trainer = ModelTrainer(
+                ...
+            ).with_metric_definitions(metric_definitions)
+        Args:
+            metric_definitions (List[MetricDefinition]):
+                The metric definitions for the training job.
+        """
+        self._metric_definitions = metric_definitions
         return self

@@ -64,6 +64,7 @@ from sagemaker.modules.configs import (
     FileSystemDataSource,
     Channel,
     DataSource,
+    MetricDefinition,
 )
 from sagemaker.modules.distributed import Torchrun, SMP, MPI
 from sagemaker.modules.train.sm_recipes.utils import _load_recipes_cfg
@@ -702,6 +703,32 @@ def test_remote_debug_config(mock_training_job, modules_session):
         mock_training_job.create.assert_called_once()
         assert (
             mock_training_job.create.call_args.kwargs["remote_debug_config"] == remote_debug_config
+        )
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_metric_definitions(mock_training_job, modules_session):
+    image_uri = DEFAULT_IMAGE
+    role = DEFAULT_ROLE
+    metric_definitions = [
+        MetricDefinition(
+            name="loss",
+            regex="Loss: (.*?);",
+        )
+    ]
+
+    model_trainer = ModelTrainer(
+        training_image=image_uri, sagemaker_session=modules_session, role=role
+    ).with_metric_definitions(metric_definitions)
+
+    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
+        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
+        model_trainer.train()
+
+        mock_training_job.create.assert_called_once()
+        assert (
+            mock_training_job.create.call_args.kwargs["algorithm_specification"].metric_definitions
+            == metric_definitions
         )
 
 

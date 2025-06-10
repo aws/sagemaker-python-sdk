@@ -42,6 +42,7 @@ from sagemaker_core.shapes import (
     RemoteDebugConfig,
     SessionChainingConfig,
     InstanceGroup,
+    MetricDefinition,
 )
 
 from sagemaker.modules.utils import convert_unassigned_to_none
@@ -68,6 +69,7 @@ __all__ = [
     "Compute",
     "Networking",
     "InputData",
+    "MetricDefinition",
 ]
 
 
