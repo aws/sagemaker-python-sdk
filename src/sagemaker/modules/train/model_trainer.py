@@ -240,6 +240,7 @@ class ModelTrainer(BaseModel):
     _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
     _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
     _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
+    _metric_definitions: Optional[List[MetricDefinition]] = PrivateAttr(default=None)
 
     _temp_recipe_train_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
 
@@ -697,6 +698,7 @@ class ModelTrainer(BaseModel):
             training_image_config=self.training_image_config,
             container_entrypoint=container_entrypoint,
             container_arguments=container_arguments,
+            metric_definitions=self._metric_definitions,
         )
 
         resource_config = self.compute._to_resource_config()
