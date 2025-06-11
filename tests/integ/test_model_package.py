@@ -103,7 +103,7 @@ def test_update_model_life_cycle_model_package(sagemaker_session):
         inference_instances=["ml.m5.large"],
         transform_instances=["ml.m5.large"],
         model_package_group_name=model_group_name,
-        model_life_cycle=create_model_life_cycle._to_request_dict(),
+        model_life_cycle=create_model_life_cycle,
     )
 
     desc_model_package = sagemaker_session.sagemaker_client.describe_model_package(
