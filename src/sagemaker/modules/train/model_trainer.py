@@ -119,7 +119,8 @@ class ModelTrainer(BaseModel):
         from sagemaker.modules.train import ModelTrainer
         from sagemaker.modules.configs import SourceCode, Compute, InputData
 
-        source_code = SourceCode(source_dir="source", entry_script="train.py")
+        ignore_patterns = ['.env', '.git', '__pycache__', '.DS_Store', 'data']
+        source_code = SourceCode(source_dir="source", entry_script="train.py", ignore_patterns=ignore_patterns)
         training_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-training-image"
         model_trainer = ModelTrainer(
             training_image=training_image,
@@ -654,6 +655,7 @@ class ModelTrainer(BaseModel):
                     channel_name=SM_CODE,
                     data_source=self.source_code.source_dir,
                     key_prefix=input_data_key_prefix,
+                    ignore_patterns=self.source_code.ignore_patterns,
                 )
                 final_input_data_config.append(source_code_channel)
 
@@ -675,6 +677,7 @@ class ModelTrainer(BaseModel):
                 channel_name=SM_DRIVERS,
                 data_source=tmp_dir.name,
                 key_prefix=input_data_key_prefix,
+                ignore_patterns=self.source_code.ignore_patterns,
             )
             final_input_data_config.append(sm_drivers_channel)
 
@@ -755,7 +758,11 @@ class ModelTrainer(BaseModel):
             local_container.train(wait)
 
     def create_input_data_channel(
-        self, channel_name: str, data_source: DataSourceType, key_prefix: Optional[str] = None
+        self,
+        channel_name: str,
+        data_source: DataSourceType,
+        key_prefix: Optional[str] = None,
+        ignore_patterns: Optional[List[str]] = None,
     ) -> Channel:
         """Create an input data channel for the training job.
 
@@ -771,6 +778,10 @@ class ModelTrainer(BaseModel):
 
                 If specified, local data will be uploaded to:
                 ``s3://<default_bucket_path>/<key_prefix>/<channel_name>/``
+            ignore_patterns: (Optional[List[str]]) :
+                The ignore patterns to ignore specific files/folders when uploading to S3.
+                If not specified, default to: ['.env', '.git', '__pycache__', '.DS_Store',
+                '.cache', '.ipynb_checkpoints'].
         """
         channel = None
         if isinstance(data_source, str):
@@ -810,11 +821,28 @@ class ModelTrainer(BaseModel):
                     )
                     if self.sagemaker_session.default_bucket_prefix:
                         key_prefix = f"{self.sagemaker_session.default_bucket_prefix}/{key_prefix}"
-                    s3_uri = self.sagemaker_session.upload_data(
-                        path=data_source,
-                        bucket=self.sagemaker_session.default_bucket(),
-                        key_prefix=key_prefix,
-                    )
+                    if ignore_patterns and _is_valid_path(data_source, path_type="Directory"):
+                        tmp_dir = TemporaryDirectory()
+                        copied_path = os.path.join(
+                            tmp_dir.name, os.path.basename(os.path.normpath(data_source))
+                        )
+                        shutil.copytree(
+                            data_source,
+                            copied_path,
+                            dirs_exist_ok=True,
+                            ignore=shutil.ignore_patterns(*ignore_patterns),
+                        )
+                        s3_uri = self.sagemaker_session.upload_data(
+                            path=copied_path,
+                            bucket=self.sagemaker_session.default_bucket(),
+                            key_prefix=key_prefix,
+                        )
+                    else:
+                        s3_uri = self.sagemaker_session.upload_data(
+                            path=data_source,
+                            bucket=self.sagemaker_session.default_bucket(),
+                            key_prefix=key_prefix,
+                        )
                     channel = Channel(
                         channel_name=channel_name,
                         data_source=DataSource(
@@ -861,7 +889,9 @@ class ModelTrainer(BaseModel):
                 channels.append(input_data)
             elif isinstance(input_data, InputData):
                 channel = self.create_input_data_channel(
-                    input_data.channel_name, input_data.data_source, key_prefix=key_prefix
+                    input_data.channel_name,
+                    input_data.data_source,
+                    key_prefix=key_prefix,
                 )
                 channels.append(channel)
             else:
