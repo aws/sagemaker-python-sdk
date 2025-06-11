@@ -5361,7 +5361,7 @@ SPECIAL_MODEL_SPECS_DICT = {
             "safetensors==0.3.1",
             "sagemaker_jumpstart_huggingface_script_utilities==1.1.3",
             "sagemaker_jumpstart_script_utilities==1.1.9",
-             "scipy==1.13.0",
+            "scipy==1.13.0",
             "termcolor==2.3.0",
             "texttable==1.6.7",
             "tokenize-rt==5.1.0",
