@@ -22,6 +22,7 @@ sys.path.insert(0, str(_src_dir))
 
 # Import the module directly with a different name to avoid conflicts
 import importlib.util
+
 spec = importlib.util.spec_from_file_location(
     "local_model", 
     _src_dir / "sagemaker" / "serve" / "model.py"

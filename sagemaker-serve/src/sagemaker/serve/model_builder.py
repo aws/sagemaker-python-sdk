@@ -15,116 +15,94 @@ from __future__ import absolute_import, annotations
 
 import importlib.util
 import json
-import uuid
-from typing import Any, Type, List, Dict, Optional, Union
-from dataclasses import dataclass, field
 import logging
 import os
 import re
-
+import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Type, Union
 
 from botocore.exceptions import ClientError
-from sagemaker_core.main.resources import TrainingJob
-
-from sagemaker.transformer import Transformer
-from sagemaker.async_inference import AsyncInferenceConfig
-from sagemaker.batch_inference.batch_transform_inference_config import BatchTransformInferenceConfig
-from sagemaker.compute_resource_requirements import ResourceRequirements
-from sagemaker.enums import Tag, EndpointType
-from sagemaker.estimator import Estimator
-from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
-from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
-from sagemaker.s3 import S3Downloader
 from sagemaker import Session
-from sagemaker.model import Model
-from sagemaker.jumpstart.model import JumpStartModel
+from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.base_predictor import PredictorBase
-from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
+from sagemaker.batch_inference.batch_transform_inference_config import \
+    BatchTransformInferenceConfig
+from sagemaker.compute_resource_requirements import ResourceRequirements
 from sagemaker.deserializers import JSONDeserializer, TorchTensorDeserializer
-from sagemaker.serve.builder.schema_builder import SchemaBuilder
-from sagemaker.serve.builder.tf_serving_builder import TensorflowServing
-from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
-from sagemaker.serve.mode.local_container_mode import LocalContainerMode
-from sagemaker.serve.mode.in_process_mode import InProcessMode
-from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
-from sagemaker.serve.builder.serve_settings import _ServeSettings
-from sagemaker.serve.builder.djl_builder import DJL
-from sagemaker.serve.builder.tei_builder import TEI
-from sagemaker.serve.builder.tgi_builder import TGI
-from sagemaker.serve.builder.jumpstart_builder import JumpStart
-from sagemaker.serve.builder.transformers_builder import Transformers
+from sagemaker.enums import EndpointType, Tag
+from sagemaker.estimator import Estimator
+from sagemaker.huggingface.llm_utils import (
+    download_huggingface_model_metadata, get_huggingface_model_metadata)
+from sagemaker.jumpstart.accessors import JumpStartS3PayloadAccessor
+from sagemaker.jumpstart.model import JumpStartModel
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.model import Model
+from sagemaker.modules import logger
+from sagemaker.modules.train import ModelTrainer
 from sagemaker.predictor import Predictor
+from sagemaker.s3 import S3Downloader
+from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
+from sagemaker.serve.builder.djl_builder import DJL
+from sagemaker.serve.builder.jumpstart_builder import JumpStart
+from sagemaker.serve.builder.schema_builder import SchemaBuilder
+from sagemaker.serve.builder.serve_settings import _ServeSettings
+from sagemaker.serve.builder.tei_builder import TEI
+from sagemaker.serve.builder.tf_serving_builder import TensorflowServing
+from sagemaker.serve.builder.tgi_builder import TGI
+from sagemaker.serve.builder.transformers_builder import Transformers
+from sagemaker.serve.detector.image_detector import (
+    _detect_framework_and_version, _get_model_base, auto_detect_container)
+from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
+from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.mode.in_process_mode import InProcessMode
+from sagemaker.serve.mode.local_container_mode import LocalContainerMode
+from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
 from sagemaker.serve.model_format.mlflow.constants import (
-    MLFLOW_MODEL_PATH,
-    MLFLOW_TRACKING_ARN,
-    MLFLOW_RUN_ID_REGEX,
-    MLFLOW_REGISTRY_PATH_REGEX,
-    MODEL_PACKAGE_ARN_REGEX,
-    MLFLOW_METADATA_FILE,
-    MLFLOW_PIP_DEPENDENCY_FILE,
-)
+    MLFLOW_METADATA_FILE, MLFLOW_MODEL_PATH, MLFLOW_PIP_DEPENDENCY_FILE,
+    MLFLOW_REGISTRY_PATH_REGEX, MLFLOW_RUN_ID_REGEX, MLFLOW_TRACKING_ARN,
+    MODEL_PACKAGE_ARN_REGEX)
 from sagemaker.serve.model_format.mlflow.utils import (
-    _get_default_model_server_for_mlflow,
-    _download_s3_artifacts,
-    _select_container_for_mlflow_model,
-    _generate_mlflow_artifact_path,
-    _get_all_flavor_metadata,
-    _get_deployment_flavor,
-    _validate_input_for_mlflow,
-    _copy_directory_contents,
-)
-from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import Metadata
+    _copy_directory_contents, _download_s3_artifacts,
+    _generate_mlflow_artifact_path, _get_all_flavor_metadata,
+    _get_default_model_server_for_mlflow, _get_deployment_flavor,
+    _select_container_for_mlflow_model, _validate_input_for_mlflow)
+from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
+from sagemaker.serve.model_server.torchserve.prepare import \
+    prepare_for_torchserve
+from sagemaker.serve.model_server.triton.triton_builder import Triton
+from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import (
+    Metadata, get_metadata)
+from sagemaker.serve.save_retrive.version_1_0_0.save.save_handler import \
+    SaveHandler
+from sagemaker.serve.spec.inference_base import (AsyncCustomOrchestrator,
+                                                 CustomOrchestrator)
 from sagemaker.serve.spec.inference_spec import InferenceSpec
-from sagemaker.serve.spec.inference_base import CustomOrchestrator, AsyncCustomOrchestrator
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
-from sagemaker.serve.utils.lineage_utils import _maintain_lineage_tracking_for_mlflow_model
-from sagemaker.serve.utils.optimize_utils import (
-    _generate_optimized_model,
-    _generate_model_source,
-    _extract_optimization_config_and_env,
-    _is_s3_uri,
-    _custom_speculative_decoding,
-    _extract_speculative_draft_model_provider,
-    _jumpstart_speculative_decoding,
-)
-from sagemaker.serve.utils.predictors import (
-    _get_local_mode_predictor,
-    _get_in_process_mode_predictor,
-)
 from sagemaker.serve.utils.hardware_detector import (
-    _get_gpu_info,
-    _get_gpu_info_fallback,
-    _total_inference_model_size_mib,
-)
-from sagemaker.serve.detector.image_detector import (
-    auto_detect_container,
-    _detect_framework_and_version,
-    _get_model_base,
-)
-from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
-from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
-from sagemaker.serve.model_server.triton.triton_builder import Triton
+    _get_gpu_info, _get_gpu_info_fallback, _total_inference_model_size_mib)
+from sagemaker.serve.utils.lineage_utils import \
+    _maintain_lineage_tracking_for_mlflow_model
+from sagemaker.serve.utils.optimize_utils import (
+    _custom_speculative_decoding, _extract_optimization_config_and_env,
+    _extract_speculative_draft_model_provider, _generate_model_source,
+    _generate_optimized_model, _is_s3_uri, _jumpstart_speculative_decoding)
+from sagemaker.serve.utils.predictors import (_get_in_process_mode_predictor,
+                                              _get_local_mode_predictor)
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
-from sagemaker.serve.utils.types import ModelServer, ModelHub
+from sagemaker.serve.utils.types import ModelHub, ModelServer
+from sagemaker.serve.validations.check_image_and_hardware_type import \
+    validate_image_uri_and_hardware
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
-from sagemaker.serve.save_retrive.version_1_0_0.save.save_handler import SaveHandler
-from sagemaker.serve.save_retrive.version_1_0_0.metadata.metadata import get_metadata
-from sagemaker.serve.validations.check_image_and_hardware_type import (
-    validate_image_uri_and_hardware,
-)
+from sagemaker.serve.validations.optimization import \
+    _validate_optimization_configuration
 from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.transformer import Transformer
 from sagemaker.utils import Tags, unique_name_from_base
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.huggingface.llm_utils import (
-    get_huggingface_model_metadata,
-    download_huggingface_model_metadata,
-)
-from sagemaker.serve.validations.optimization import _validate_optimization_configuration
-from sagemaker.modules.train import ModelTrainer
-from sagemaker.modules import logger
+from sagemaker_core.main.resources import TrainingJob
 
 # Any new server type should be added here
 supported_model_servers = {
@@ -1176,8 +1154,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         Returns:
             str: SMD Inference Image URI.
         """
-        from sagemaker import image_uris
         import sys
+
+        from sagemaker import image_uris
 
         self.sagemaker_session = self.sagemaker_session or Session()
         from packaging.version import Version
@@ -1469,7 +1448,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 sample_inputs, sample_outputs = task.retrieve_local_schemas(model_task)
             except ValueError:
                 # samples could not be loaded locally, try to fetch remote hf schema
-                from sagemaker_schema_inference_artifacts.huggingface import remote_schema_retriever
+                from sagemaker_schema_inference_artifacts.huggingface import \
+                    remote_schema_retriever
 
                 if model_task in ("text-to-image", "automatic-speech-recognition"):
                     logger.warning(

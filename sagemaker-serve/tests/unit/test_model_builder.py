@@ -12,25 +12,21 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from unittest.mock import MagicMock, patch, Mock, mock_open, ANY
-
 import unittest
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
+from unittest.mock import ANY, MagicMock, Mock, mock_open, patch
 
 import deepdiff
 import pytest
+from sagemaker.async_inference.async_inference_config import \
+    AsyncInferenceConfig
+from sagemaker.batch_inference.batch_transform_inference_config import \
+    BatchTransformInferenceConfig
+from sagemaker.compute_resource_requirements.resource_requirements import \
+    ResourceRequirements
 from sagemaker.enums import EndpointType
-
-from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
-from sagemaker.batch_inference.batch_transform_inference_config import BatchTransformInferenceConfig
-
-from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
-
-from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
-
 from sagemaker.model import Model
-
 from sagemaker.serve import SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
@@ -39,7 +35,10 @@ from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.predictors import TensorflowServingLocalPredictor
 from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.validations.optimization import _validate_optimization_configuration
+from sagemaker.serve.validations.optimization import \
+    _validate_optimization_configuration
+from sagemaker.serverless.serverless_inference_config import \
+    ServerlessInferenceConfig
 
 schema_builder = MagicMock()
 mock_inference_spec = Mock()

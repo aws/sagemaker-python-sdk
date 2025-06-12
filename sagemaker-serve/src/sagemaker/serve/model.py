@@ -56,7 +56,6 @@ from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.session import (get_add_model_package_inference_args,
                                get_update_model_package_inference_args)
-from sagemaker_core.helper.session_helper import Session
 from sagemaker.transformer import Transformer
 from sagemaker.utils import (Tags, _resolve_routing_config, _validate_new_tags,
                              format_tags, remove_tag_with_key,
@@ -68,6 +67,7 @@ from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import (PipelineSession,
                                                  runnable_by_pipeline)
+from sagemaker_core.helper.session_helper import Session
 
 # Setting LOGGER for backward compatibility, in case users import it...
 logger = LOGGER = logging.getLogger("sagemaker")
