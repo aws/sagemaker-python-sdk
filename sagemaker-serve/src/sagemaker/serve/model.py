@@ -54,8 +54,9 @@ from sagemaker.model_metrics import ModelMetrics
 from sagemaker.predictor import PredictorBase
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.serverless import ServerlessInferenceConfig
-from sagemaker.session import (Session, get_add_model_package_inference_args,
+from sagemaker.session import (get_add_model_package_inference_args,
                                get_update_model_package_inference_args)
+from sagemaker_core.helper.session_helper import Session
 from sagemaker.transformer import Transformer
 from sagemaker.utils import (Tags, _resolve_routing_config, _validate_new_tags,
                              format_tags, remove_tag_with_key,
