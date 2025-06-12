@@ -29,7 +29,7 @@ cloudpickle==2.2.1
 jsonpickle<4.0.0
 PyYAML>=6.0.1
 # TODO find workaround
-xgboost>=1.6.2,<=1.7.6
+xgboost>=1.6.2,<=2.1.0
 pillow>=10.0.1,<=11
 opentelemetry-proto==1.27.0
 protobuf==4.25.5
