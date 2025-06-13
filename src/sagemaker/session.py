@@ -4986,6 +4986,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         response = self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
         return response
+    
+    def describe_endpoint_config(self, endpoint_config_name):
+        """Describe an Amazon SageMaker ``EndpointConfig``.
+
+        Args:
+            endpoint_config_name (str): Name of the Amazon SageMaker ``EndpointConfig`` to describe.
+        """
+        response = self.sagemaker_client.describe_endpoint_config(EndpointConfigName=endpoint_config_name)
+        return response
 
     def delete_endpoint(self, endpoint_name):
         """Delete an Amazon SageMaker ``Endpoint``.
