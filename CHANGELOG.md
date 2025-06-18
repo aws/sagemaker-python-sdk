@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.247.0 (2025-06-13)
+
+### Features
+
+ * Add support for MetricDefinitions in ModelTrainer
+
+### Bug Fixes and Other Changes
+
+ * update jumpstart region_config, update image_uri_configs 06-12-2025 07:18:12 PST
+ * Add ignore_patterns in ModelTrainer to ignore specific files/folders
+ * Allow import failure for internal _hashlib module
+
 ## v2.246.0 (2025-06-04)
 
 ### Features
