@@ -1063,7 +1063,7 @@ def validate_torch_distributed_distribution(
             )
 
     # Check entry point type
-    if not entry_point.endswith(".py"):
+    if entry_point is not None and not entry_point.endswith(".py"):
         err_msg += (
             "Unsupported entry point type for the distribution torch_distributed.\n"
             "Only python programs (*.py) are supported."
