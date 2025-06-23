@@ -95,6 +95,9 @@ html_theme_options = {
     "collapse_navigation": True
 }
 
+html_title = ''
+html_logo = None
+
 html_static_path = ["_static"]
 
 htmlhelp_basename = "%sdoc" % project

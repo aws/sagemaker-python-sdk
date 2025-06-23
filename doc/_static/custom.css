@@ -54,6 +54,39 @@ p {
     margin-bottom: 1.2em;
 }
 
+h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--pst-color-text-base, #2e2e2e);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+}
+
+p {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--pst-color-text-base, #2e2e2e);
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
 /* Improve code blocks */
 pre {
     padding: 1em;

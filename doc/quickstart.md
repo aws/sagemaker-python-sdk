@@ -1,3 +1,4 @@
+(quickstart)=
 # Quickstart
 
 The SageMaker Python SDK provides a high-level interface for training and deploying machine learning models. The new `ModelTrainer` class simplifies the process even further.
