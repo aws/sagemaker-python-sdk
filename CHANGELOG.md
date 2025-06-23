@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.247.1 (2025-06-23)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs 06-19-2025 07:18:34 PST
+
 ## v2.247.0 (2025-06-13)
 
 ### Features
