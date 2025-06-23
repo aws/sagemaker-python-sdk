@@ -351,7 +351,7 @@ def create_jumpstart_model_table():
 
     proprietary_content_entries = create_proprietary_model_table()
 
-    f = open("doc_utils/pretrainedmodels.rst", "a")
+    f = open("doc_utils/pretrainedmodels.rst", "w")
     f.writelines(file_content_intro)
     f.writelines(open_weight_content_entries)
     f.writelines(proprietary_content_entries)

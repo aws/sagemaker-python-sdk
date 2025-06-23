@@ -35,12 +35,34 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosectionlabel",
+    "myst_parser",
+    "sphinx_design",
+    "sphinx_tabs.tabs"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
-source_suffix = ".rst"  # The suffix of source filenames.
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
+
+# MyST parser settings
+# myst_heading_anchors = 3
+myst_enable_extensions = [
+    "amsmath",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "html_admonition",
+    "html_image",
+    "replacements",
+    "smartquotes",
+    "substitution",
+    "tasklist",
+]
+myst_url_schemes = ("http", "https", "mailto")
 master_doc = "index"  # The master toctree document.
 
 copyright = "%s, Amazon" % datetime.now().year
@@ -58,16 +80,20 @@ autoclass_content = "both"
 autodoc_default_flags = ["show-inheritance", "members", "undoc-members"]
 autodoc_member_order = "bysource"
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "sphinx_book_theme"
 
 html_theme_options = {
-    "collapse_navigation": True,
-    "sticky_navigation": True,
-    "navigation_depth": 6,
-    "includehidden": True,
-    "titles_only": False,
+    "use_repository_button": False,
+    "use_edit_page_button": False,
+    "use_issues_button": False,
+    "use_download_button": False,
+    "toc_title": "On This Page",
+    "navbar_start": ["custom-logo.html"],
+    "navbar_center": [],
+    "navbar_end": ["navbar-right.html"],
+    "navigation_depth": 2,
+    "collapse_navigation": True
 }
-
 
 html_static_path = ["_static"]
 
@@ -82,10 +108,12 @@ html_js_files = [
 ]
 
 html_css_files = [
+    "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css",
     "https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css",
     "theme_overrides.css",
     "pagination.css",
     "search_accessories.css",
+    "custom.css"
 ]
 
 # Example configuration for intersphinx: refer to the Python standard library.
