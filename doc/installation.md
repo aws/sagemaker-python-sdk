@@ -1,3 +1,4 @@
+(installation)=
 # Installing the SageMaker Python SDK
 
 The SageMaker Python SDK is built to PyPI and the latest version of the SageMaker Python SDK can be installed with pip as follows:
