@@ -1,4 +1,4 @@
-mlflow==2.20.3
+mlflow==3.1.0
 astunparse==1.6.3
 cffi==1.16.0
 cloudpickle==2.2.1
