@@ -1,16 +1,33 @@
-Training with SageMaker Hyperpod
-==================================
+.. _training-with-hyperpod:
 
-This section covers the tools and methods for creating, configuring, and managing distributed training jobs on HyperPod clusters.
+Training with SageMaker HyperPod
+================================
+
+This section explains how to launch and manage distributed training jobs on SageMaker HyperPod clusters using both the CLI and Python SDK. Whether you're quickly iterating on a model or scaling production workloads, HyperPod offers flexible ways to define and manage training jobs.
+
+.. note::
+
+   This guide applies to HyperPod CLI v0.5+ and SDK v0.3+.  
+   Run ``hp version`` or ``pip show sagemaker`` to check your versions.
 
 Using CLI
-------------
+---------
+
+You can create training jobs via CLI using one of four approaches:
+
+- Minimal CLI parameters (quick start)
+- Config file (for reproducibility)
+- Kubernetes YAML (Kubernetes-native)
+- Built-in recipes (preconfigured workflows)
+
+Create a Training Job with CLI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. tabs::
 
-   .. tab:: Create Training Job
+   .. tab:: Quick Start
 
-      **Minimal parameters for quick job creation:**
+      Ideal for prototyping and quick iteration.
 
       .. code-block:: bash
 
@@ -19,171 +36,163 @@ Using CLI
            --image <docker-image> \
            --node-count 4
 
-      **Using Config File for more complex configurations:**
+   .. tab:: Using Config File
+
+      Recommended for reproducible and team-shared jobs.
 
       .. code-block:: bash
 
-         hp hp-pytorch-job create --config-file <path-to-config.yaml>
+         hp hp-pytorch-job create --config-file config.yaml
 
-      **Using Kubernetes YAML for advanced Kubernetes-native configurations:**
+   .. tab:: Using Kubernetes YAML
 
-      .. code-block:: bash
-
-         hp hp-pytorch-job create --k8s-yaml <path-to-k8s-spec.yaml>
-
-      **Using Built-in Recipe for standardized training workflows:**
+      For full control using standard Kubernetes specs.
 
       .. code-block:: bash
 
-         hp hp-pytorch-job create --recipe <recipe-name>
+         hp hp-pytorch-job create --k8s-yaml k8s-spec.yaml
 
-   .. tab:: Dry Runs and Interactive Modes
+   .. tab:: Using Built-in Recipe
 
-      **Generate Config File**
-
-      .. code-block:: bash
-
-         hp hp-pytorch-job create \
-         --job-name my-job \
-         --image <docker-image> \
-         --node-count 4 \
-         --generate-config
-
-      **Generate Kubernetes YAML**
+      Launch common workloads using predefined templates.
 
       .. code-block:: bash
 
-         hp hp-pytorch-job create \
-         --job-name my-job \
-         --image <docker-image> \
-         --node-count 4 \
-         --generate-k8s-yaml
+         hp hp-pytorch-job create --recipe resnet50
 
-      **Generate Recipe with Customizations**
+Dry Runs and Interactive Editing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use these options to preview or modify your job before launching:
+
+.. tabs::
+
+   .. tab:: Generate Config
 
       .. code-block:: bash
 
          hp hp-pytorch-job create \
-         --recipe <recipe-name> \
-         --generate-recipe
+           --job-name my-job \
+           --image <docker-image> \
+           --node-count 4 \
+           --generate-config
 
-      **Interactive Config Editing**
+   .. tab:: Generate Kubernetes YAML
 
       .. code-block:: bash
 
          hp hp-pytorch-job create \
-         --job-name my-job \
-         --image <docker-image> \
-         --node-count 4 \
-         --editable
+           --job-name my-job \
+           --image <docker-image> \
+           --node-count 4 \
+           --generate-k8s-yaml
 
-      **Interactive Recipe Editing**
+   .. tab:: Generate Recipe
 
       .. code-block:: bash
 
          hp hp-pytorch-job create \
            --recipe <recipe-name> \
-           --editable
+           --generate-recipe
 
-   .. tab:: Manage Training Jobs
+   .. tab:: Interactive Editing
+
+      Customize config or recipe using interactive editor:
 
       .. code-block:: bash
 
-         # List all training jobs in the current namespace
-         hp hp-pytorch-job list
+         hp hp-pytorch-job create --editable
 
-         # Get detailed information about a specific job
-         hp hp-pytorch-job get --job-name <job-name>
+.. note::
 
-         # Remove a job and its associated resources
-         hp hp-pytorch-job delete --job-name <job-name>
+   Use ``--editable`` to tweak job parameters before launching — ideal for debugging or quick experimentation.
 
-         # Temporarily pause a running job
-         hp hp-pytorch-job patch --job-name <job-name> --suspend
+Manage Training Jobs with CLI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-         # Continue execution of a suspended job
-         hp hp-pytorch-job patch --job-name <job-name> --resume
+.. code-block:: bash
 
-         # View all pods associated with a specific job
-         hp hp-pytorch-job list-pods --job-name <job-name>
+   # List all jobs
+   hp hp-pytorch-job list
 
-         # Execute commands inside a running pod
-         hp hp-pytorch-job exec --job-name <job-name> --pod <pod> -- <command>
+   # Describe a specific job
+   hp hp-pytorch-job get --job-name <job-name>
 
-         # Retrieve and display logs from a specific pod
-         hp hp-pytorch-job get-logs --job-name <job-name> --pod <pod>
+   # Delete a job and its resources
+   hp hp-pytorch-job delete --job-name <job-name>
 
-   .. tab:: CLI Configuration Options
+   # Suspend and resume jobs
+   hp hp-pytorch-job patch --job-name <job-name> --suspend
+   hp hp-pytorch-job patch --job-name <job-name> --resume
 
-      **Job Identification**
+   # List pods or view logs
+   hp hp-pytorch-job list-pods --job-name <job-name>
+   hp hp-pytorch-job get-logs --job-name <job-name> --pod <pod>
 
-      - --job-name (Required): Unique name for the training job
+   # Execute commands inside a pod
+   hp hp-pytorch-job exec --job-name <job-name> --pod <pod> -- <command>
 
-      - --namespace (Optional): Kubernetes namespace
+CLI Configuration Reference
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      **Container Configuration**
+**Job Identification**
 
-      - --image (Required): Docker image for training
+- ``--job-name`` *(Required)*: Unique job name  
+- ``--namespace`` *(Optional)*: Kubernetes namespace
 
-      - --entry-script (Optional): Script to execute
+**Container Configuration**
 
-      - --script-args (Optional): Arguments for entry script
+- ``--image`` *(Required)*: Docker image  
+- ``--entry-script`` *(Optional)*  
+- ``--script-args`` *(Optional)*  
+- ``--environment`` *(Optional)*: KEY=VALUE  
+- ``--pull-policy`` *(Optional)*: Always \| IfNotPresent \| Never
 
-      - --environment (Optional): Key-value env variables
+**Resources and Scheduling**
 
-      - --pull-policy (Optional): Always | IfNotPresent | Never
+- ``--node-count`` *(Required)*  
+- ``--instance-type`` *(Optional)*  
+- ``--tasks-per-node`` *(Optional)*  
+- ``--label-selector`` *(Optional)*  
+- ``--deep-health-check-passed-nodes-only`` *(Optional)*  
+- ``--scheduler-type`` *(Optional)*: Kueue \| SageMaker \| None  
+- ``--queue-name`` *(Optional)*  
+- ``--priority`` *(Optional)*
 
-      **Resource Allocation**
+**Storage and Lifecycle**
 
-      - --node-count (Required): Number of nodes
+- ``--volumes`` *(Optional)*  
+- ``--persistent-volume-claims`` *(Optional)*  
+- ``--results-dir`` *(Optional)*  
+- ``--service-account-name`` *(Optional)*  
+- ``--pre-script`` / ``--post-script`` *(Optional)*
 
-      - --instance-type (Optional): AWS instance type
+Using Python SDK
+----------------
 
-      - --tasks-per-node (Optional): Number of tasks per node
+The Python SDK is ideal when integrating HyperPod jobs into notebooks, pipelines, or custom automation scripts.
 
-      **Node Selection**
+Choose the right method depending on your level of customization:
 
-      - --label-selector (Optional): Node label filter
+.. list-table::
+   :header-rows: 1
 
-      - --deep-health-check-passed-nodes-only (Optional)
+   * - Method
+     - Use When
+     - Example
+   * - ``create()``
+     - Standard jobs using basic parameters
+     - Entry script, env vars, container image
+   * - ``create_from_spec()``
+     - Advanced jobs needing custom pod specs or multi-container configs
+     - Multiple replicas, fine-grained control
 
-      **Scheduling**
-
-      - --scheduler-type (Optional): Kueue | SageMaker | None
-
-      - --queue-name (Optional): Name of the queue
-
-      - --priority (Optional): Priority level
-
-      **Resilience**
-
-      - --max-retry (Optional): Retry count on failure
-
-      **Storage**
-
-      - --volumes (Optional): List of volumes
-
-      - --persistent-volume-claims (Optional): PVC mounts
-
-      - --results-dir (Optional): Job results path
-
-      - --service-account-name (Optional): K8s service account
-
-      **Lifecycle Hooks**
-
-      - --pre-script (Optional): Pre-job shell commands
-
-      - --post-script (Optional): Post-job shell commands
-
-
-Using SDK
----------
+Create a Training Job with Python SDK
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. tabs::
 
-   .. tab:: Create Training Job
-
-      **Basic Job**
+   .. tab:: Basic Job
 
       .. code-block:: python
 
@@ -199,7 +208,7 @@ Using SDK
              namespace="kubeflow"
          )
 
-      **Advanced Job via Spec**
+   .. tab:: Advanced Job (Spec)
 
       .. code-block:: python
 
@@ -230,15 +239,55 @@ Using SDK
              spec=spec
          )
 
-   .. tab:: Manage Training Job
+Manage Training Jobs with Python SDK
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      .. code-block:: python
+.. code-block:: python
 
-         # Retrieve a list of all jobs in the specified namespace
-         job.list_jobs(namespace="default")
+   from sagemaker.hyperpod.training import HyperPodPytorchJob
 
-         # Get detailed information about a specific job
-         job.describe_job(name="my-job", namespace="default")
+   # List all jobs
+   HyperPodPytorchJob.list_jobs(namespace="default")
 
-         # Remove a job and its associated resources
-         job.delete_job(name="my-job", namespace="default")
+   # Describe a job
+   HyperPodPytorchJob.describe_job(name="my-job", namespace="default")
+
+   # Delete a job
+   HyperPodPytorchJob.delete_job(name="my-job", namespace="default")
+
+.. note::
+   Coming soon: SDK support for streaming logs, retrying failed jobs, and waiting for job completion.
+
+Examples
+--------
+
+Sample Config File (`config.yaml`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: yaml
+
+   jobName: my-training-job
+   image: python:tag
+   nodeCount: 4
+   entryScript: train.py
+   scriptArgs: "--epochs 10"
+   environment:
+     LEARNING_RATE: 0.001
+
+Sample Kubernetes YAML (`k8s-spec.yaml`)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: yaml
+
+   apiVersion: batch/v1
+   kind: Job
+   metadata:
+     name: my-training-job
+   spec:
+     template:
+       spec:
+         containers:
+           - name: trainer
+             image: python:tag
+             command: ["python", "train.py"]
+         restartPolicy: Never

@@ -49,15 +49,50 @@ hyperpod/index
 ```
 
 ```{toctree}
-:caption: ML Lifecycle
+:caption: Training Models
 :hidden:
 :maxdepth: 1
 
 train
-hyperpod/train
+algorithms/index
+frameworks/index
+amazon_sagemaker_debugger
+amazon_sagemaker_featurestore
+```
+
+```{toctree}
+:caption: Deploying Models
+:hidden:
+:maxdepth: 1
+
 deploy
-hyperpod/inference
+```
+
+```{toctree}
+:caption: Data Processing
+:hidden:
+:maxdepth: 1
+
+deploy
+```
+
+```{toctree}
+:caption: ML Workflows
+:hidden:
+:maxdepth: 1
+
 workflows/index
+
+amazon_sagemaker_model_building_pipeline
+amazon_sagemaker_model_monitoring
+```
+
+```{toctree}
+:caption: API Reference
+:hidden:
+:maxdepth: 1
+
+api/index
 ```
 
 ```{toctree}
@@ -65,13 +100,6 @@ workflows/index
 :hidden:
 :maxdepth: 1
 
-api/index
-algorithms/index
-frameworks/index
-amazon_sagemaker_debugger
-amazon_sagemaker_featurestore
-amazon_sagemaker_model_building_pipeline
-amazon_sagemaker_model_monitoring
 examples/index
 release-notes
 ```

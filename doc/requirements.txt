@@ -11,3 +11,4 @@ sphinx-design>=0.4.1
 sphinx-book-theme
 sphinx-tabs
 sphinx-copybutton
+myst-nb
