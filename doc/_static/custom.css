@@ -40,32 +40,42 @@
     color: var(--pst-color-text-base, #2e2e2e); /* Uses theme variable if available */
 }
 
+header {
+    background-color: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* shadow-sm */
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
 h1 {
-    font-size: 2.25rem;
-    font-weight: 700;
-    line-height: 1.3;
-    margin-bottom: 1rem;
+    font-size: 1.875rem;      /* text-3xl */
+    font-weight: 700;         /* font-bold */
+    color: #111827;           /* text-gray-900 */
+    margin-bottom: 0.5rem;    /* mb-2 */
 }
 
 h2 {
-    font-size: 1.75rem;
-    font-weight: 600;
-    line-height: 1.4;
-    margin-bottom: 1rem;
+    font-size: 1.5rem;        /* text-2xl */
+    font-weight: 700;         /* font-bold */
+    color: #111827;
+    margin-bottom: 1.5rem;      /* mb-4 */
 }
 
 h3 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
+    font-weight: 500;         /* font-medium */
+    margin-bottom: 0.25rem;   /* mb-1 */
 }
 
 p {
-    font-size: 1rem;
-    font-weight: 400;
-    line-height: 1.6;
-    margin-bottom: 1rem;
+    font-size: 0.875rem;     /* Tailwind's text-sm */
+    color: #4b5563;          /* Tailwind's gray-600 */
+    margin-bottom: 1rem
 }
+
+/*p + .container {*/
+/*    margin-top: 1.5rem;  !* space after heading or paragraph before container *!*/
+/*}*/
 
 /* Improve code blocks */
 pre {

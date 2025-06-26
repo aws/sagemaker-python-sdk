@@ -1,23 +1,18 @@
 (hyperpod-overview)=
-# SageMaker Hyperpod
+# Installing SageMaker Hyperpod CLI and SDK
 
-SageMaker HyperPod is an AWS service designed for large-scale, distributed machine learning training and inference. It provides a high-level abstraction over Kubernetes, offering a CLI and Python SDK to:
+## Prerequisites
 
-* **Manage training clusters**
-* **Run distributed training jobs**
-* **Deploy inference endpoints (JumpStart or custom models)**
+1. AWS CLI configured with the appropriate region
+2. Python 3.8–3.11
+3. MacOS or Linux (Windows not currently supported)  
 
-SageMaker HyperPod accelerates ML workflows by reducing the operational complexity of managing infrastructure at scale.
+Now let’s get set up with the SageMaker Hyperpod command line interface (CLI) and SDK. Install them via pip into your python3 environment:
 
-```{toctree}
-:caption: Getting Started
-:hidden:
-:maxdepth: 1
-
-installation
-train
-inference
-reference
-examples/index
-troubleshooting
+```bash
+pip install sagemaker-hyperpod
+```
+To verify CLI installation:
+```bash
+hp --version
 ```
