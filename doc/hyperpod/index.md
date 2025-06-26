@@ -7,7 +7,7 @@
 2. Python 3.8–3.11
 3. MacOS or Linux (Windows not currently supported)  
 
-Let’s get set up with the SageMaker Hyperpod command line interface (CLI) and SDK. Install them via pip into your python3 environment:
+Now let’s get set up with the SageMaker Hyperpod command line interface (CLI) and SDK. Install them via pip into your python3 environment:
 
 ```bash
 pip install sagemaker-hyperpod
