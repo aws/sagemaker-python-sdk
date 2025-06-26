@@ -52,6 +52,8 @@ source_suffix = {
     '.md': 'myst-nb',
 }
 
+suppress_warnings = ['misc.not_in_toctree']
+
 # MyST parser settings
 # myst_heading_anchors = 3
 myst_enable_extensions = [
@@ -87,6 +89,7 @@ autodoc_member_order = "bysource"
 html_theme = "sphinx_book_theme"
 
 html_theme_options = {
+    'home_page_in_toc': True,
     "use_repository_button": False,
     "use_edit_page_button": False,
     "use_issues_button": False,
@@ -96,7 +99,8 @@ html_theme_options = {
     "navbar_center": [],
     "navbar_end": ["navbar-right.html"],
     "navigation_depth": 2,
-    "collapse_navigation": True
+    "collapse_navigation": False,
+    "use_fullscreen_button": False
 }
 
 html_title = ''
@@ -116,6 +120,7 @@ html_js_files = [
 
 html_css_files = [
     "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css",
     "https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css",
     "theme_overrides.css",
     "pagination.css",

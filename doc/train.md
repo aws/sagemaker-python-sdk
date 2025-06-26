@@ -2,7 +2,7 @@
 title: Training with SageMaker Python SDK
 description: Learn about different training approaches in the SageMaker Python SDK
 ---
-
+(training-overview)=
 # Training with SageMaker Python SDK
 
 The SageMaker Python SDK provides multiple approaches to train machine learning models on Amazon SageMaker, from high-level abstractions to resource-level controls. This guide covers the key training interfaces and helps you choose the right approach for your needs.
@@ -102,4 +102,14 @@ model_trainer = ModelTrainer(
     base_job_name="my-training-job",
 )
 model_trainer.train()
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+train/modeltrainer
+train/estimator
+train/remote-decorator
+train/others
 ```
