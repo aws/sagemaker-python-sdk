@@ -399,3 +399,10 @@ monitor.create_monitoring_schedule(
     schedule_cron_expression="cron(0 * ? * * *)"  # Hourly
 )
 ```
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+modelbuilder
+```

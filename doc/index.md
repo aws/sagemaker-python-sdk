@@ -159,3 +159,15 @@ api/index
 examples/index
 release-notes
 ```
+
+```{toctree}
+:caption: Temporary
+:hidden:
+:maxdepth: 1
+
+overview
+hyperpod/troubleshooting
+hyperpod/examples/index
+hyperpod/reference
+hyperpod/installation
+```
