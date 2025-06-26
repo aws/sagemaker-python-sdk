@@ -243,25 +243,27 @@ class NotebookJobStep(ConfigurableRetryStep):
         # input notebook is required
         if not self.input_notebook or not os.path.isfile(self.input_notebook):
             errors.append(
-                f"The required input notebook({self.input_notebook}) is not a valid " f"file."
+                f"The required input notebook ({self.input_notebook}) is not a valid file."
             )
 
         # init script is optional
         if self.initialization_script and not os.path.isfile(self.initialization_script):
-            errors.append(f"The initialization script({self.input_notebook}) is not a valid file.")
+            errors.append(
+                f"The initialization script ({self.initialization_script}) is not a valid file."
+            )
 
         if self.additional_dependencies:
             for path in self.additional_dependencies:
                 if not os.path.exists(path):
                     errors.append(
-                        f"The path({path}) specified in additional dependencies does not exist."
+                        f"The path ({path}) specified in additional dependencies does not exist."
                     )
         # image uri is required
         if not self.image_uri or self._region_from_session not in self.image_uri:
             errors.append(
-                f"The image uri(specified as {self.image_uri}) is required and "
+                f"The image uri (specified as {self.image_uri}) is required and "
                 f"should be hosted in same region of the session"
-                f"({self._region_from_session})."
+                f" ({self._region_from_session})."
             )
 
         if not self.kernel_name:

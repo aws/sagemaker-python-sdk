@@ -64,6 +64,7 @@ from sagemaker.modules.configs import (
     FileSystemDataSource,
     Channel,
     DataSource,
+    MetricDefinition,
 )
 from sagemaker.modules.distributed import Torchrun, SMP, MPI
 from sagemaker.modules.train.sm_recipes.utils import _load_recipes_cfg
@@ -202,6 +203,17 @@ def model_trainer():
             },
             "should_throw": False,
         },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir=DEFAULT_SOURCE_DIR,
+                    command="python custom_script.py",
+                    ignore_patterns=["data"],
+                ),
+            },
+            "should_throw": False,
+        },
     ],
     ids=[
         "no_params",
@@ -213,6 +225,7 @@ def model_trainer():
         "supported_source_code_local_tar_file",
         "supported_source_code_s3_dir",
         "supported_source_code_s3_tar_file",
+        "supported_source_code_ignore_patterns",
     ],
 )
 def test_model_trainer_param_validation(test_case, modules_session):
@@ -324,13 +337,7 @@ def test_train_with_intelligent_defaults_training_job_space(
         hyper_parameters={},
         input_data_config=[],
         resource_config=ResourceConfig(
-            volume_size_in_gb=30,
-            instance_type="ml.m5.xlarge",
-            instance_count=1,
-            volume_kms_key_id=None,
-            keep_alive_period_in_seconds=None,
-            instance_groups=None,
-            training_plan_arn=None,
+            volume_size_in_gb=30, instance_type="ml.m5.xlarge", instance_count=1
         ),
         vpc_config=None,
         session=ANY,
@@ -699,6 +706,32 @@ def test_remote_debug_config(mock_training_job, modules_session):
         )
 
 
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_metric_definitions(mock_training_job, modules_session):
+    image_uri = DEFAULT_IMAGE
+    role = DEFAULT_ROLE
+    metric_definitions = [
+        MetricDefinition(
+            name="loss",
+            regex="Loss: (.*?);",
+        )
+    ]
+
+    model_trainer = ModelTrainer(
+        training_image=image_uri, sagemaker_session=modules_session, role=role
+    ).with_metric_definitions(metric_definitions)
+
+    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
+        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
+        model_trainer.train()
+
+        mock_training_job.create.assert_called_once()
+        assert (
+            mock_training_job.create.call_args.kwargs["algorithm_specification"].metric_definitions
+            == metric_definitions
+        )
+
+
 @patch("sagemaker.modules.train.model_trainer._get_unique_name")
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_session):
@@ -816,6 +849,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
             training_input_mode=training_input_mode,
             training_image=training_image,
             algorithm_name=None,
+            metric_definitions=None,
             container_entrypoint=DEFAULT_ENTRYPOINT,
             container_arguments=DEFAULT_ARGUMENTS,
             training_image_config=training_image_config,
@@ -870,8 +904,6 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
             volume_size_in_gb=compute.volume_size_in_gb,
             volume_kms_key_id=compute.volume_kms_key_id,
             keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
-            instance_groups=None,
-            training_plan_arn=None,
         ),
         vpc_config=VpcConfig(
             security_group_ids=networking.security_group_ids,
@@ -1228,3 +1260,82 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
                 compute=DEFAULT_COMPUTE_CONFIG,
                 hyperparameters="hyperparameters.yaml",
             )
+
+
+@patch("sagemaker.modules.train.model_trainer._get_unique_name")
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_model_trainer_default_paths(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        return f"s3://{bucket}/{key_prefix}"
+
+    unique_name = "base-job-0123456789"
+    base_name = "base-job"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_unique_name.return_value = unique_name
+
+    model_trainer = (
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            sagemaker_session=modules_session,
+            base_job_name=base_name,
+        )
+        .with_tensorboard_output_config()
+        .with_checkpoint_config()
+    )
+
+    model_trainer.train()
+
+    _, kwargs = mock_training_job.create.call_args
+
+    default_base_path = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{base_name}"
+
+    assert kwargs["output_data_config"].s3_output_path == default_base_path
+    assert kwargs["output_data_config"].compression_type == "GZIP"
+
+    assert kwargs["checkpoint_config"].s3_uri == f"{default_base_path}/{unique_name}/checkpoints"
+    assert kwargs["checkpoint_config"].local_path == "/opt/ml/checkpoints"
+
+    assert kwargs["tensor_board_output_config"].s3_output_path == default_base_path
+    assert kwargs["tensor_board_output_config"].local_path == "/opt/ml/output/tensorboard"
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_input_merge(mock_training_job, modules_session):
+    model_input = InputData(channel_name="model", data_source="s3://bucket/model/model.tar.gz")
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        input_data_config=[model_input],
+    )
+
+    train_input = InputData(channel_name="train", data_source="s3://bucket/data/train")
+    model_trainer.train(input_data_config=[train_input])
+
+    mock_training_job.create.assert_called_once()
+    assert mock_training_job.create.call_args.kwargs["input_data_config"] == [
+        Channel(
+            channel_name="model",
+            data_source=DataSource(
+                s3_data_source=S3DataSource(
+                    s3_data_type="S3Prefix",
+                    s3_uri="s3://bucket/model/model.tar.gz",
+                    s3_data_distribution_type="FullyReplicated",
+                )
+            ),
+            input_mode="File",
+        ),
+        Channel(
+            channel_name="train",
+            data_source=DataSource(
+                s3_data_source=S3DataSource(
+                    s3_data_type="S3Prefix",
+                    s3_uri="s3://bucket/data/train",
+                    s3_data_distribution_type="FullyReplicated",
+                )
+            ),
+            input_mode="File",
+        ),
+    ]

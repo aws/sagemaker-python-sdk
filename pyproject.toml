@@ -31,7 +31,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "attrs>=23.1.0,<24",
+  "attrs>=24,<26",
   "boto3>=1.35.75,<2.0",
   "cloudpickle>=2.2.1",
   "docker",
@@ -40,12 +40,12 @@ dependencies = [
   "importlib-metadata>=1.4.0,<7.0",
   "jsonschema",
   "numpy==1.26.4",
-  "omegaconf>=2.2,<=2.3",
+  "omegaconf>=2.2,<3",
   "packaging>=23.0,<25",
   "pandas",
   "pathos",
   "platformdirs",
-  "protobuf>=3.12,<6.0",
+  "protobuf>=3.12,<6.32",
   "psutil",
   "PyYAML>=6.0.1",
   "requests",
@@ -55,7 +55,8 @@ dependencies = [
   "tblib>=1.7.0,<4",
   "tqdm",
   "urllib3>=1.26.8,<3.0.0",
-  "uvicorn"
+  "uvicorn",
+  "graphene>=3,<4"
 ]
 
 [project.scripts]

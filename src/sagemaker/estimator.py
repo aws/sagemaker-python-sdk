@@ -456,6 +456,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 A dictionary containing the hyperparameters to
                 initialize this estimator with. (Default: None).
 
+                If a source directory is specified, the set_hyperparameters method escapes
+                the dict argument as JSON, and updates the private hyperparameter attribute.
+
                 .. caution::
                     You must not include any security-sensitive information, such as
                     account access IDs, secrets, and tokens, in the dictionary for configuring
