@@ -2117,6 +2117,72 @@ class HyperparameterTuner(object):
 
     delete_endpoint = removed_function("delete_endpoint")
 
+    @staticmethod
+    def visualize_jobs(
+        tuning_jobs: Union[
+            str,
+            "sagemaker.tuner.HyperparameterTuner",
+            List[Union[str, "sagemaker.tuner.HyperparameterTuner"]],
+        ],
+        return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False,
+    ):
+        """Create interactive visualization via altair charts using the sagemaker.amtviz package.
+
+        Args:
+            tuning_jobs (str or sagemaker.tuner.HyperparameterTuner or list[str, sagemaker.tuner.HyperparameterTuner]):
+            One or more tuning jobs to create
+            visualization for.
+            return_dfs: (bool): Option to return trials and full dataframe.
+            job_metrics: (list[str]): Metrics to be used in charts.
+            trials_only: (bool): Whether to show trials only or full dataframe.
+            advanced: (bool): Show a cumulative step line in the progress over time chart.
+        Returns:
+            A collection of charts (altair.VConcatChart); or charts, trials_df (pandas.DataFrame),
+            full_df (pandas.DataFrame) if ``return_dfs=True``.
+        """
+        try:
+            # Check if altair is installed
+            importlib.import_module("altair")
+
+        except ImportError:
+            print("Altair is not installed. Install Altair to use the visualization feature:")
+            print("  pip install altair")
+            print("After installing Altair, use the methods visualize_jobs or visualize_job.")
+            return None
+
+        # If altair is installed, proceed with visualization
+        from sagemaker.amtviz import visualize_tuning_job
+
+        return visualize_tuning_job(
+            tuning_jobs,
+            return_dfs=return_dfs,
+            job_metrics=job_metrics,
+            trials_only=trials_only,
+            advanced=advanced,
+        )
+
+    def visualize_job(
+        self,
+        return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False,
+    ):
+        """Convenience method on instance level for visualize_jobs().
+
+        See static method visualize_jobs().
+        """
+        return HyperparameterTuner.visualize_jobs(
+            self,
+            return_dfs=return_dfs,
+            job_metrics=job_metrics,
+            trials_only=trials_only,
+            advanced=advanced,
+        )
+
 
 class _TuningJob(_Job):
     """Placeholder docstring"""
