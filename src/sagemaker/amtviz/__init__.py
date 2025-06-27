@@ -23,4 +23,5 @@ Example:
 from __future__ import absolute_import
 
 from sagemaker.amtviz.visualization import visualize_tuning_job
-__all__ = ['visualize_tuning_job']
+
+__all__ = ["visualize_tuning_job"]

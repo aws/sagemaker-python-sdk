@@ -2120,13 +2120,14 @@ class HyperparameterTuner(object):
     @staticmethod
     def visualize_jobs(
         tuning_jobs: Union[
-            str, 'sagemaker.tuner.HyperparameterTuner',
-            List[Union[str, 'sagemaker.tuner.HyperparameterTuner']]
+            str,
+            "sagemaker.tuner.HyperparameterTuner",
+            List[Union[str, "sagemaker.tuner.HyperparameterTuner"]],
         ],
         return_dfs: bool = False,
         job_metrics: Optional[List[str]] = None,
         trials_only: bool = False,
-        advanced: bool = False
+        advanced: bool = False,
     ):
         """Create interactive visualization via altair charts using the sagemaker.amtviz package.
 
@@ -2144,7 +2145,7 @@ class HyperparameterTuner(object):
         """
         try:
             # Check if altair is installed
-            importlib.import_module('altair')
+            importlib.import_module("altair")
 
         except ImportError:
             print("Altair is not installed. Install Altair to use the visualization feature:")
@@ -2164,10 +2165,11 @@ class HyperparameterTuner(object):
         )
 
     def visualize_job(
-        self, return_dfs: bool = False,
+        self,
+        return_dfs: bool = False,
         job_metrics: Optional[List[str]] = None,
         trials_only: bool = False,
-        advanced: bool = False
+        advanced: bool = False,
     ):
         """Convenience method on instance level for visualize_jobs().
 

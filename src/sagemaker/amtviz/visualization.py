@@ -100,6 +100,7 @@ def visualize_tuning_job(
 
     try:
         from IPython import get_ipython, display
+
         if get_ipython():
             # Running in a Jupyter Notebook
             display(trials_df.head(10))
@@ -110,9 +111,7 @@ def visualize_tuning_job(
         # Not running in a Jupyter Notebook
         logger.info(trials_df.head(10).to_string())
 
-    full_df = (
-        _prepare_consolidated_df(trials_df) if not trials_only else pd.DataFrame()
-    )
+    full_df = _prepare_consolidated_df(trials_df) if not trials_only else pd.DataFrame()
 
     trials_df.columns = trials_df.columns.map(_clean_parameter_name)
     full_df.columns = full_df.columns.map(_clean_parameter_name)
@@ -216,9 +215,11 @@ def create_charts(
         jobs_props["stroke"] = alt.condition(
             job_highlight_selection,
             alt.StrokeValue("gold"),
-            alt.Stroke("TuningJobName:N", legend=None)
-            if multiple_tuning_jobs
-            else alt.StrokeValue("white"),
+            (
+                alt.Stroke("TuningJobName:N", legend=None)
+                if multiple_tuning_jobs
+                else alt.StrokeValue("white")
+            ),
         )
 
     opacity = alt.condition(brush, alt.value(1.0), alt.value(0.35))
@@ -759,9 +760,11 @@ def get_job_analytics_data(tuning_job_names):
 
     # Ensure to create a list of tuning job names (strings)
     tuning_job_names = [
-        tuning_job.describe()["HyperParameterTuningJobName"]
-        if isinstance(tuning_job, sagemaker.tuner.HyperparameterTuner)
-        else tuning_job
+        (
+            tuning_job.describe()["HyperParameterTuningJobName"]
+            if isinstance(tuning_job, sagemaker.tuner.HyperparameterTuner)
+            else tuning_job
+        )
         for tuning_job in tuning_job_names
     ]
 

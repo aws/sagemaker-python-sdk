@@ -19,14 +19,13 @@ from mock import Mock, patch, MagicMock
 import sagemaker
 from sagemaker.estimator import Estimator
 from sagemaker.session_settings import SessionSettings
-from sagemaker.tuner import (
-    HyperparameterTuner
-)
+from sagemaker.tuner import HyperparameterTuner
 from tests.unit.tuner_test_utils import (
     OBJECTIVE_METRIC_NAME,
     HYPERPARAMETER_RANGES,
-    METRIC_DEFINITIONS
+    METRIC_DEFINITIONS,
 )
+
 # Visualization specific imports
 from sagemaker.amtviz.visualization import visualize_tuning_job, get_job_analytics_data
 from tests.unit.tuner_visualize_test_utils import (
@@ -44,7 +43,7 @@ from tests.unit.tuner_visualize_test_utils import (
     TRIALS_DF_TRAINING_JOB_STATUSES,
     TRIALS_DF_VALID_F1_VALUES,
     FILTERED_TUNING_JOB_DF_DATA,
-    TUNING_RANGES
+    TUNING_RANGES,
 )
 import altair as alt
 
@@ -56,7 +55,7 @@ def create_sagemaker_session():
         boto_session=boto_mock,
         config=None,
         local_mode=False,
-        settings=SessionSettings()
+        settings=SessionSettings(),
     )
     sms.sagemaker_config = {}
     return sms
@@ -103,12 +102,7 @@ def mock_visualize_tuning_job():
 @pytest.fixture
 def mock_get_job_analytics_data():
     with patch("sagemaker.amtviz.visualization.get_job_analytics_data") as mock:
-        mock.return_value = (
-            pd.DataFrame(TRIALS_DF_DATA),
-            TUNED_PARAMETERS,
-            OBJECTIVE_NAME,
-            True
-        )
+        mock.return_value = (pd.DataFrame(TRIALS_DF_DATA), TUNED_PARAMETERS, OBJECTIVE_NAME, True)
         yield mock
 
 
@@ -144,21 +138,22 @@ def test_visualize_jobs(mock_visualize_tuning_job):
     result = HyperparameterTuner.visualize_jobs(TUNING_JOB_NAMES)
     assert result == "mock_chart"
     mock_visualize_tuning_job.assert_called_once_with(
-        TUNING_JOB_NAMES,
-        return_dfs=False,
-        job_metrics=None,
-        trials_only=False,
-        advanced=False
+        TUNING_JOB_NAMES, return_dfs=False, job_metrics=None, trials_only=False, advanced=False
     )
     # Vary the parameters and check if they have been passed correctly
     result = HyperparameterTuner.visualize_jobs(
-        [TUNING_JOB_NAME_1], return_dfs=True, job_metrics="job_metrics", trials_only=True, advanced=True)
+        [TUNING_JOB_NAME_1],
+        return_dfs=True,
+        job_metrics="job_metrics",
+        trials_only=True,
+        advanced=True,
+    )
     mock_visualize_tuning_job.assert_called_with(
         [TUNING_JOB_NAME_1],
         return_dfs=True,
         job_metrics="job_metrics",
         trials_only=True,
-        advanced=True
+        advanced=True,
     )
 
 
@@ -168,21 +163,15 @@ def test_visualize_job(tuner, mock_visualize_tuning_job):
     result = tuner.visualize_job()
     assert result == "mock_chart"
     mock_visualize_tuning_job.assert_called_once_with(
-        tuner,
-        return_dfs=False,
-        job_metrics=None,
-        trials_only=False,
-        advanced=False
+        tuner, return_dfs=False, job_metrics=None, trials_only=False, advanced=False
     )
     # With varying parameters
-    result = tuner.visualize_job(return_dfs=True, job_metrics="job_metrics", trials_only=True, advanced=True)
+    result = tuner.visualize_job(
+        return_dfs=True, job_metrics="job_metrics", trials_only=True, advanced=True
+    )
     assert result == "mock_chart"
     mock_visualize_tuning_job.assert_called_with(
-        tuner,
-        return_dfs=True,
-        job_metrics="job_metrics",
-        trials_only=True,
-        advanced=True
+        tuner, return_dfs=True, job_metrics="job_metrics", trials_only=True, advanced=True
     )
 
 
@@ -191,21 +180,22 @@ def test_visualize_multiple_jobs(tuner, tuner2, mock_visualize_tuning_job):
     result = HyperparameterTuner.visualize_jobs([tuner, tuner2])
     assert result == "mock_chart"
     mock_visualize_tuning_job.assert_called_once_with(
-        [tuner, tuner2],
-        return_dfs=False,
-        job_metrics=None,
-        trials_only=False,
-        advanced=False
+        [tuner, tuner2], return_dfs=False, job_metrics=None, trials_only=False, advanced=False
     )
     # Vary the parameters and check if they have been passed correctly
     result = HyperparameterTuner.visualize_jobs(
-        [[tuner, tuner2]], return_dfs=True, job_metrics="job_metrics", trials_only=True, advanced=True)
+        [[tuner, tuner2]],
+        return_dfs=True,
+        job_metrics="job_metrics",
+        trials_only=True,
+        advanced=True,
+    )
     mock_visualize_tuning_job.assert_called_with(
         [[tuner, tuner2]],
         return_dfs=True,
         job_metrics="job_metrics",
         trials_only=True,
-        advanced=True
+        advanced=True,
     )
 
 
@@ -226,10 +216,10 @@ def test_visualize_tuning_job_return_dfs(mock_get_job_analytics_data, mock_prepa
     assert isinstance(trials_df, pd.DataFrame)
     assert trials_df.shape == (2, len(TRIALS_DF_COLUMNS))
     assert trials_df.columns.tolist() == TRIALS_DF_COLUMNS
-    assert trials_df['TrainingJobName'].tolist() == TRIALS_DF_TRAINING_JOB_NAMES
-    assert trials_df['TrainingJobStatus'].tolist() == TRIALS_DF_TRAINING_JOB_STATUSES
-    assert trials_df['TuningJobName'].tolist() == TUNING_JOB_NAMES
-    assert trials_df['valid-f1'].tolist() == TRIALS_DF_VALID_F1_VALUES
+    assert trials_df["TrainingJobName"].tolist() == TRIALS_DF_TRAINING_JOB_NAMES
+    assert trials_df["TrainingJobStatus"].tolist() == TRIALS_DF_TRAINING_JOB_STATUSES
+    assert trials_df["TuningJobName"].tolist() == TUNING_JOB_NAMES
+    assert trials_df["valid-f1"].tolist() == TRIALS_DF_VALID_F1_VALUES
 
     # Assertions for full_df
     assert isinstance(full_df, pd.DataFrame)
@@ -244,7 +234,7 @@ def test_visualize_tuning_job_empty_trials(mock_get_job_analytics_data):
         pd.DataFrame(),  # empty dataframe
         TUNED_PARAMETERS,
         OBJECTIVE_NAME,
-        True
+        True,
     )
     charts = visualize_tuning_job("empty_job")
     assert charts.empty
@@ -267,9 +257,7 @@ def test_visualize_tuning_job_trials_only(mock_get_job_analytics_data):
 # Check if all parameters are correctly passed to the (mocked) create_charts method
 @patch("sagemaker.amtviz.visualization.create_charts")
 def test_visualize_tuning_job_with_full_df(
-    mock_create_charts,
-    mock_get_job_analytics_data,
-    mock_prepare_consolidated_df
+    mock_create_charts, mock_get_job_analytics_data, mock_prepare_consolidated_df
 ):
     mock_create_charts.return_value = alt.Chart()
     visualize_tuning_job("dummy_job")
@@ -298,10 +286,15 @@ def test_visualize_tuning_job_with_full_df(
 @patch("sagemaker.HyperparameterTuningJobAnalytics")
 def test_get_job_analytics_data(mock_hyperparameter_tuning_job_analytics):
     # Mock sagemaker's describe_hyper_parameter_tuning_job and some internal methods
-    sagemaker.amtviz.visualization.sm.describe_hyper_parameter_tuning_job = Mock(return_value=TUNING_JOB_RESULT)
+    sagemaker.amtviz.visualization.sm.describe_hyper_parameter_tuning_job = Mock(
+        return_value=TUNING_JOB_RESULT
+    )
     sagemaker.amtviz.visualization._get_tuning_job_names_with_parents = Mock(
-        return_value=[TUNING_JOB_NAME_1, TUNING_JOB_NAME_2])
-    sagemaker.amtviz.visualization._get_df = Mock(return_value=pd.DataFrame(FILTERED_TUNING_JOB_DF_DATA))
+        return_value=[TUNING_JOB_NAME_1, TUNING_JOB_NAME_2]
+    )
+    sagemaker.amtviz.visualization._get_df = Mock(
+        return_value=pd.DataFrame(FILTERED_TUNING_JOB_DF_DATA)
+    )
     mock_tuning_job_instance = MagicMock()
     mock_hyperparameter_tuning_job_analytics.return_value = mock_tuning_job_instance
     mock_tuning_job_instance.tuning_ranges.values.return_value = TUNING_RANGES

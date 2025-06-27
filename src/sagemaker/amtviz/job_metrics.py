@@ -100,9 +100,7 @@ def _metric_data_query_tpl(metric_name: str, dim_name: str, dim_value: str) -> D
 
 
 def _get_metric_data(
-    queries: List[Dict[str, Any]],
-    start_time: datetime,
-    end_time: datetime
+    queries: List[Dict[str, Any]], start_time: datetime, end_time: datetime
 ) -> pd.DataFrame:
     """Fetches CloudWatch metrics between timestamps, returns a DataFrame with selected columns."""
     start_time = start_time - timedelta(hours=1)
@@ -131,9 +129,7 @@ def _get_metric_data(
 
 @disk_cache
 def _collect_metrics(
-    dimensions: List[Tuple[str, str]],
-    start_time: datetime,
-    end_time: Optional[datetime]
+    dimensions: List[Tuple[str, str]], start_time: datetime, end_time: Optional[datetime]
 ) -> pd.DataFrame:
     """Collects SageMaker training job metrics from CloudWatch for dimensions and time range."""
     df = pd.DataFrame()
@@ -159,9 +155,7 @@ def _collect_metrics(
 
 
 def get_cw_job_metrics(
-    job_name: str,
-    start_time: Optional[datetime] = None,
-    end_time: Optional[datetime] = None
+    job_name: str, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None
 ) -> pd.DataFrame:
     """Retrieves CloudWatch metrics for a SageMaker training job.
 
