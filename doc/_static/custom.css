@@ -89,3 +89,14 @@ table {
     margin-bottom: 1.5em;
 }
 
+.admonition.important ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin: 1em 0;
+    color: #9CA4AF;
+}
+
+.admonition.important li {
+    margin-bottom: 0.4em;
+}
+

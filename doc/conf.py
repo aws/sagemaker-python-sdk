@@ -98,8 +98,8 @@ html_theme_options = {
     "navbar_start": ["custom-logo.html"],
     "navbar_center": [],
     "navbar_end": ["navbar-right.html"],
-    "navigation_depth": 2,
-    "collapse_navigation": False,
+    "navigation_depth": 1,
+    "show_nav_level": 0,
     "use_fullscreen_button": False
 }
 
@@ -116,6 +116,7 @@ html_js_files = [
     "https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js",
     "https://kit.fontawesome.com/a076d05399.js",
     "js/datatable.js",
+    "js/move_version_selector.js"
 ]
 
 html_css_files = [
