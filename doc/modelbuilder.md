@@ -4,19 +4,19 @@
 
 SageMaker ModelBuilder is a high-level interface for building and deploying machine learning models on Amazon SageMaker. It provides a streamlined workflow for model deployment with support for various deployment options including real-time endpoints, serverless, asynchronous inference, batch transforms, and multi-model endpoints.
 
-ModelBuilder integrates seamlessly with other SageMaker components like ModelTrainer, making it easier to build and deploy models with minimal code.
+ModelBuilder integrates seamlessly with other SageMaker components like ModelTrainer, making it easier to build and deploy models with minimal code. This unified deployment interface simplifies the process of moving from model training to production deployment.
 
 ## Key Features
 
-- **Integration with ModelTrainer**: Direct handshake between ModelTrainer and ModelBuilder
+- **Integration with ModelTrainer**: Direct handshake between ModelTrainer and ModelBuilder for seamless workflow
 - **Latest Container Image Utility**: Enhanced `image_uris.retrieve()` method to fetch the latest version of an image automatically
 - **Unified Deployment Interface**: Single interface for deploying models to different types of endpoints
 - **Support for Multiple Deployment Types**:
-  - Real-time endpoints
-  - Serverless endpoints
-  - Asynchronous inference endpoints
-  - Batch transforms
-  - Multi-model endpoints
+  - Real-time endpoints for synchronous, low-latency inference
+  - Serverless endpoints for auto-scaling with no infrastructure management
+  - Asynchronous inference endpoints for processing large payloads
+  - Batch transforms for offline inference on large datasets
+  - Multi-model endpoints for hosting multiple models efficiently
 
 ## Basic Usage
 
@@ -304,3 +304,5 @@ Different deployment types require different configuration objects:
 ## Conclusion
 
 SageMaker ModelBuilder provides a unified interface for building and deploying machine learning models on Amazon SageMaker. It simplifies the deployment process by abstracting away the complexities of different deployment types and providing a consistent API for all deployment options.
+
+By integrating directly with ModelTrainer and supporting various deployment configurations, ModelBuilder helps streamline the ML workflow from training to production, reducing the time and effort required to deploy models at scale.
