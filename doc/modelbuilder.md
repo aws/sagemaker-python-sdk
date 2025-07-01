@@ -304,5 +304,3 @@ Different deployment types require different configuration objects:
 ## Conclusion
 
 SageMaker ModelBuilder provides a unified interface for building and deploying machine learning models on Amazon SageMaker. It simplifies the deployment process by abstracting away the complexities of different deployment types and providing a consistent API for all deployment options.
-
-By integrating directly with ModelTrainer and supporting various deployment configurations, ModelBuilder helps streamline the ML workflow from training to production, reducing the time and effort required to deploy models at scale.
