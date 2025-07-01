@@ -602,7 +602,7 @@ def test_missing_required_parameters(sagemaker_session):
             instance_type=INSTANCE_TYPE,
         )
     assert (
-        "Please provide `toolkit`, `toolkit_version`, `framework`" + " or `image_uri` parameter."
+        "Provide `toolkit`, `toolkit_version`, `framework`" + " or `image_uri` parameter."
         in str(e.value)
     )
 
