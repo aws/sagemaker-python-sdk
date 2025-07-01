@@ -714,11 +714,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         Returns:
             dict: A container definition object usable with the CreateModel API.
         """
-        deploy_key_prefix = fw_utils.model_code_key_prefix(
-            self.key_prefix, self.name, self.image_uri
-        )
         deploy_env = copy.deepcopy(self.env)
         if self.source_dir or self.dependencies or self.entry_point or self.git_config:
+            deploy_key_prefix = fw_utils.model_code_key_prefix(
+                self.key_prefix, self.name, self.image_uri
+            )
             self._upload_code(deploy_key_prefix, repack=self.is_repack())
             deploy_env.update(self._script_mode_env_vars())
 
