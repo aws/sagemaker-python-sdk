@@ -41,7 +41,7 @@ def test_sagemaker_distribution_ecr_uri(load_config):
                     account=SAGEMAKER_DISTRIBUTION_ACCOUNTS[region],
                     region=region,
                     version=version,
-                    tag="3.0.0",
+                    tag="3.2.0",
                     instance_type=INSTANCE_TYPES[processor],
                     processor=processor,
                 )

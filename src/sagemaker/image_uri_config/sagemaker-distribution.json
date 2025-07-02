@@ -2,10 +2,10 @@
     "processors": ["cpu", "gpu"],
     "scope": ["inference"],
     "version_aliases": {
-            "3.0": "3.0.0"
+            "3.2": "3.2.0"
         },
     "versions": {
-        "3.0.0": {
+        "3.2.0": {
             "registries": {
                 "us-east-1": "885854791233",
                 "us-east-2": "137914896644",
