@@ -199,9 +199,6 @@
                 }
             },
             "1.7.1": {
-                "py_versions": [
-                    "py310"
-                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -239,7 +236,7 @@
                     "us-west-1": "746614075791",
                     "us-west-2": "246618743249"
                 },
-                "tag_prefix": "2.0.1-tei1.7.1",
+                "tag_prefix": "tei1.7.1",
                 "repository": "tei",
                 "container_version": {
                     "gpu": "cu122-ubuntu22.04"
