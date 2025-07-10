@@ -64,6 +64,7 @@ from sagemaker.modules.configs import (
     FileSystemDataSource,
     Channel,
     DataSource,
+    MetricDefinition,
 )
 from sagemaker.modules.distributed import Torchrun, SMP, MPI
 from sagemaker.modules.train.sm_recipes.utils import _load_recipes_cfg
@@ -202,6 +203,17 @@ def model_trainer():
             },
             "should_throw": False,
         },
+        {
+            "init_params": {
+                "training_image": DEFAULT_IMAGE,
+                "source_code": SourceCode(
+                    source_dir=DEFAULT_SOURCE_DIR,
+                    command="python custom_script.py",
+                    ignore_patterns=["data"],
+                ),
+            },
+            "should_throw": False,
+        },
     ],
     ids=[
         "no_params",
@@ -213,6 +225,7 @@ def model_trainer():
         "supported_source_code_local_tar_file",
         "supported_source_code_s3_dir",
         "supported_source_code_s3_tar_file",
+        "supported_source_code_ignore_patterns",
     ],
 )
 def test_model_trainer_param_validation(test_case, modules_session):
@@ -693,6 +706,32 @@ def test_remote_debug_config(mock_training_job, modules_session):
         )
 
 
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_metric_definitions(mock_training_job, modules_session):
+    image_uri = DEFAULT_IMAGE
+    role = DEFAULT_ROLE
+    metric_definitions = [
+        MetricDefinition(
+            name="loss",
+            regex="Loss: (.*?);",
+        )
+    ]
+
+    model_trainer = ModelTrainer(
+        training_image=image_uri, sagemaker_session=modules_session, role=role
+    ).with_metric_definitions(metric_definitions)
+
+    with patch("sagemaker.modules.train.model_trainer.Session.upload_data") as mock_upload_data:
+        mock_upload_data.return_value = "s3://dummy-bucket/dummy-prefix"
+        model_trainer.train()
+
+        mock_training_job.create.assert_called_once()
+        assert (
+            mock_training_job.create.call_args.kwargs["algorithm_specification"].metric_definitions
+            == metric_definitions
+        )
+
+
 @patch("sagemaker.modules.train.model_trainer._get_unique_name")
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_session):
@@ -810,6 +849,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
             training_input_mode=training_input_mode,
             training_image=training_image,
             algorithm_name=None,
+            metric_definitions=None,
             container_entrypoint=DEFAULT_ENTRYPOINT,
             container_arguments=DEFAULT_ARGUMENTS,
             training_image_config=training_image_config,
