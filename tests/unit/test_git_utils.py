@@ -501,6 +501,7 @@ def test_git_clone_repo_codecommit_https_creds_not_stored_locally(tempdir, mkdte
 # URL Sanitization Tests - Security vulnerability prevention
 # ============================================================================
 
+
 class TestGitUrlSanitization:
     """Test cases for Git URL sanitization to prevent injection attacks."""
 
@@ -513,7 +514,7 @@ class TestGitUrlSanitization:
             "https://user:pass@github.com/user/repo.git",
             "http://internal-git.company.com/repo.git",
         ]
-        
+
         for url in valid_urls:
             # Should not raise any exception
             result = git_utils._sanitize_git_url(url)
@@ -528,7 +529,7 @@ class TestGitUrlSanitization:
             "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/",  # 0 @ symbols - valid for ssh://
             "git@internal-git.company.com:repo.git",
         ]
-        
+
         for url in valid_urls:
             # Should not raise any exception
             result = git_utils._sanitize_git_url(url)
@@ -542,7 +543,7 @@ class TestGitUrlSanitization:
             "https://a@b@c@github.com/repo.git",
             "https://user@malicious-host@github.com/legit/repo.git",
         ]
-        
+
         for url in malicious_urls:
             with pytest.raises(ValueError) as error:
                 git_utils._sanitize_git_url(url)
@@ -556,16 +557,16 @@ class TestGitUrlSanitization:
             "ssh://git@malicious@github.com/repo.git",
             "git@a@b@c:repo.git",
         ]
-        
+
         for url in malicious_urls:
             with pytest.raises(ValueError) as error:
                 git_utils._sanitize_git_url(url)
             # git@ URLs should give "exactly one @ symbol" error
             # ssh:// URLs should give "multiple @ symbols detected" error
-            assert any(phrase in str(error.value) for phrase in [
-                "multiple @ symbols detected",
-                "exactly one @ symbol"
-            ])
+            assert any(
+                phrase in str(error.value)
+                for phrase in ["multiple @ symbols detected", "exactly one @ symbol"]
+            )
 
     def test_sanitize_git_url_blocks_invalid_schemes_and_git_at_format(self):
         """Test that invalid schemes and git@ format violations are blocked."""
@@ -573,17 +574,17 @@ class TestGitUrlSanitization:
         unsupported_scheme_urls = [
             "git-github.com:user/repo.git",  # Doesn't start with git@, ssh://, http://, https://
         ]
-        
+
         for url in unsupported_scheme_urls:
             with pytest.raises(ValueError) as error:
                 git_utils._sanitize_git_url(url)
             assert "Unsupported URL scheme" in str(error.value)
-        
+
         # Test git@ URLs with wrong @ count
         invalid_git_at_urls = [
             "git@github.com@evil.com:repo.git",  # 2 @ symbols
         ]
-        
+
         for url in invalid_git_at_urls:
             with pytest.raises(ValueError) as error:
                 git_utils._sanitize_git_url(url)
@@ -597,15 +598,15 @@ class TestGitUrlSanitization:
             "https://github.com%2Fevil.com/repo.git",
             "https://github.com%3Aevil.com/repo.git",
         ]
-        
+
         for url in obfuscated_urls:
             with pytest.raises(ValueError) as error:
                 git_utils._sanitize_git_url(url)
             # The error could be either suspicious encoding or invalid characters
-            assert any(phrase in str(error.value) for phrase in [
-                "Suspicious URL encoding detected",
-                "Invalid characters in hostname"
-            ])
+            assert any(
+                phrase in str(error.value)
+                for phrase in ["Suspicious URL encoding detected", "Invalid characters in hostname"]
+            )
 
     def test_sanitize_git_url_blocks_invalid_hostname_chars(self):
         """Test that hostnames with invalid characters are blocked."""
@@ -615,16 +616,19 @@ class TestGitUrlSanitization:
             "https://github[].com/repo.git",
             "https://github{}.com/repo.git",
         ]
-        
+
         for url in invalid_urls:
             with pytest.raises(ValueError) as error:
                 git_utils._sanitize_git_url(url)
             # The error could be various types due to URL parsing edge cases
-            assert any(phrase in str(error.value) for phrase in [
-                "Invalid characters in hostname",
-                "Failed to parse URL",
-                "does not appear to be an IPv4 or IPv6 address"
-            ])
+            assert any(
+                phrase in str(error.value)
+                for phrase in [
+                    "Invalid characters in hostname",
+                    "Failed to parse URL",
+                    "does not appear to be an IPv4 or IPv6 address",
+                ]
+            )
 
     def test_sanitize_git_url_blocks_unsupported_schemes(self):
         """Test that unsupported URL schemes are blocked."""
@@ -634,7 +638,7 @@ class TestGitUrlSanitization:
             "javascript:alert('xss')",
             "data:text/html,<script>alert('xss')</script>",
         ]
-        
+
         for url in unsupported_urls:
             with pytest.raises(ValueError) as error:
                 git_utils._sanitize_git_url(url)
@@ -644,10 +648,10 @@ class TestGitUrlSanitization:
         """Test that git_clone_repo blocks malicious HTTPS URLs."""
         malicious_git_config = {
             "repo": "https://user@attacker.com@github.com/legit/repo.git",
-            "branch": "main"
+            "branch": "main",
         }
         entry_point = "train.py"
-        
+
         with pytest.raises(ValueError) as error:
             git_utils.git_clone_repo(malicious_git_config, entry_point)
         assert "multiple @ symbols detected" in str(error.value)
@@ -656,10 +660,10 @@ class TestGitUrlSanitization:
         """Test that git_clone_repo blocks malicious SSH URLs."""
         malicious_git_config = {
             "repo": "git@OBVIOUS@github.com:sage-maker/temp-sev2.git",
-            "branch": "main"
+            "branch": "main",
         }
         entry_point = "train.py"
-        
+
         with pytest.raises(ValueError) as error:
             git_utils.git_clone_repo(malicious_git_config, entry_point)
         assert "exactly one @ symbol" in str(error.value)
@@ -668,10 +672,10 @@ class TestGitUrlSanitization:
         """Test that git_clone_repo blocks URL-encoded attacks."""
         malicious_git_config = {
             "repo": "https://github.com%40attacker.com/repo.git",
-            "branch": "main"
+            "branch": "main",
         }
         entry_point = "train.py"
-        
+
         with pytest.raises(ValueError) as error:
             git_utils.git_clone_repo(malicious_git_config, entry_point)
         assert "Suspicious URL encoding detected" in str(error.value)
@@ -690,17 +694,20 @@ class TestGitUrlSanitization:
             "https://github.com%40evil.com/repo.git",
             "https://user@github.com%2Fevil.com/repo.git",
         ]
-        
+
         entry_point = "train.py"
-        
+
         for malicious_url in attack_scenarios:
             git_config = {"repo": malicious_url}
             with pytest.raises(ValueError) as error:
                 git_utils.git_clone_repo(git_config, entry_point)
             # Should be blocked by sanitization
-            assert any(phrase in str(error.value) for phrase in [
-                "multiple @ symbols detected",
-                "exactly one @ symbol",
-                "Suspicious URL encoding detected",
-                "Invalid characters in hostname"
-            ])
+            assert any(
+                phrase in str(error.value)
+                for phrase in [
+                    "multiple @ symbols detected",
+                    "exactly one @ symbol",
+                    "Suspicious URL encoding detected",
+                    "Invalid characters in hostname",
+                ]
+            )
