@@ -27,7 +27,7 @@ class Feature(Enum):
     REMOTE_FUNCTION = 3
     MODEL_TRAINER = 4
     ESTIMATOR = 5
-    HYPERPOD = 6
+    HYPERPOD = 6 # Added to support telemetry in sagemaker-hyperpod-cli
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""
