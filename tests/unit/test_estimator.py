@@ -2794,7 +2794,7 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
     )
     with pytest.raises(ValueError) as error:
         fw.fit()
-    assert "Invalid Git url provided." in str(error)
+    assert "Unsupported URL scheme" in str(error)
 
 
 @patch(
@@ -4369,7 +4369,6 @@ def test_register_default_image(sagemaker_session):
         stage_status="In-Progress",
         stage_description="Sending for Staging Verification",
     )
-    update_model_life_cycle_req = update_model_life_cycle._to_request_dict()
 
     estimator.register(
         content_types=content_types,
@@ -4384,7 +4383,7 @@ def test_register_default_image(sagemaker_session):
         nearest_model_name=nearest_model_name,
         data_input_configuration=data_input_config,
         model_card=model_card,
-        model_life_cycle=update_model_life_cycle_req,
+        model_life_cycle=update_model_life_cycle,
     )
     sagemaker_session.create_model.assert_not_called()
     exp_model_card = {
