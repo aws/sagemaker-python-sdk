@@ -497,11 +497,6 @@ def test_git_clone_repo_codecommit_https_creds_not_stored_locally(tempdir, mkdte
     assert "returned non-zero exit status" in str(error.value)
 
 
-# ============================================================================
-# URL Sanitization Tests - Security vulnerability prevention
-# ============================================================================
-
-
 class TestGitUrlSanitization:
     """Test cases for Git URL sanitization to prevent injection attacks."""
 
@@ -681,8 +676,6 @@ class TestGitUrlSanitization:
         assert "Suspicious URL encoding detected" in str(error.value)
 
     def test_sanitize_git_url_comprehensive_attack_scenarios(self):
-        """Test comprehensive attack scenarios from the vulnerability report."""
-        # These are the exact attack patterns from the security report
         attack_scenarios = [
             # Original PoC attack
             "https://USER@YOUR_NGROK_OR_LOCALHOST/malicious.git@github.com%25legit%25repo.git",
