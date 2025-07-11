@@ -52,6 +52,13 @@ def _sanitize_git_url(repo_url):
         if at_count > 1:
             raise ValueError("Invalid HTTPS URL format: multiple @ symbols detected")
 
+        # Check for invalid characters in the URL before parsing
+        # These characters should not appear in legitimate URLs
+        invalid_chars = ["<", ">", "[", "]", "{", "}", "\\", "^", "`", "|"]
+        for char in invalid_chars:
+            if char in repo_url:
+                raise ValueError("Invalid characters in hostname")
+
         try:
             parsed = urlparse(repo_url)
 
