@@ -2794,7 +2794,7 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
     )
     with pytest.raises(ValueError) as error:
         fw.fit()
-    assert "Invalid Git url provided." in str(error)
+    assert "Unsupported URL scheme" in str(error)
 
 
 @patch(

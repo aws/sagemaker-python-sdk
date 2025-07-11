@@ -55,6 +55,7 @@ FEATURE_TO_CODE = {
     str(Feature.REMOTE_FUNCTION): 3,
     str(Feature.MODEL_TRAINER): 4,
     str(Feature.ESTIMATOR): 5,
+    str(Feature.HYPERPOD): 6,  # Added to support telemetry in sagemaker-hyperpod-cli
 }
 
 STATUS_TO_CODE = {
