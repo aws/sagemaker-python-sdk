@@ -179,8 +179,8 @@ def get_docker_host():
                 logger.warning(
                     "RootlessDocker not detected, falling back to remote host IP or localhost."
                 )
-    except subprocess.SubprocessError:
-        pass
+    except subprocess.SubprocessError as e:
+        logger.warning("Failed to run 'docker info' command when checking rootlessDocker: %s.", e)
 
     # Fallback to existing logic for remote Docker hosts
     cmd = "docker context inspect".split()
