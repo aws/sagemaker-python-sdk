@@ -15,7 +15,7 @@ dependencies:
     - numpy==1.26.4
     - protobuf>=3.12,<5.0
     - smdebug_rulesconfig==1.0.1
-    - importlib-metadata>=1.4.0,<9.0
+    - importlib-metadata>=1.4.0,<7.0
     - packaging>=23.0,<25
     - pandas
     - pathos
@@ -85,7 +85,8 @@ dependencies:
             - pyyaml>=6.0.1
             - regex>=2023.3.23
             - requests>=2.28.2
-            - rich>=13.3.4
+            - rich>=13.3.4,<14.0.0
+            - safetensors>=0.4.0
             - rsa>=4.7.2
             - s3transfer>=0.6.0
             - sagemaker>=2.148.0

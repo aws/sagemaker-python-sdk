@@ -49,7 +49,7 @@ dependencies = [
   "psutil",
   "PyYAML>=6.0.1",
   "requests",
-  "sagemaker-core>=1.0.17,<2.0.0",
+  "sagemaker-core>=1.0.42,<2.0.0",
   "schema",
   "smdebug_rulesconfig==1.0.1",
   "tblib>=1.7.0,<4",
