@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.248.0 (2025-07-15)
+
+### Features
+
+ * integrate amtviz for visualization of tuning jobs
+
+### Bug Fixes and Other Changes
+
+ * build(deps): bump requests in /tests/data/serve_resources/mlflow/pytorch
+ * build(deps): bump protobuf from 4.25.5 to 4.25.8 in /requirements/extras
+ * build(deps): bump mlflow in /tests/data/serve_resources/mlflow/xgboost
+ * build(deps): bump torch in /tests/data/modules/script_mode
+ * sanitize git clone repo input url
+ * Adding Hyperpod feature to enable hyperpod telemetry
+ * Adding Hyperpod feature to enable hyperpod telemetry
+ * Bump SMD version to enable custom workflow deployment.
+ * Update TF DLC python version to py312
+ * update image_uri_configs 07-04-2025 07:18:27 PST
+ * update image_uri_configs 06-26-2025 07:18:35 PST
+ * relax protobuf to <6.32
+
 ## v2.247.1 (2025-06-23)
 
 ### Bug Fixes and Other Changes
