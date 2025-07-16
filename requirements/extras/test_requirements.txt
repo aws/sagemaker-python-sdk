@@ -14,9 +14,11 @@ awslogs==0.14.0
 black==24.3.0
 stopit==1.1.2
 # Update tox.ini to have correct version of airflow constraints file
-apache-airflow==3.0.4
-apache-airflow-providers-amazon==8.30.0
-Flask-Limiter==2.9.2
+apache-airflow==3.0.3
+apache-airflow-providers-amazon==7.2.1
+Flask-Limiter==3.5.0
+rich==13.7.0
+importlib-metadata==6.11.0
 attrs>=24,<26
 fabric==3.2.2
 requests==2.32.2
