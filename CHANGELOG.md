@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.248.1 (2025-07-16)
+
+### Bug Fixes and Other Changes
+
+ * Nova training support
+
 ## v2.248.0 (2025-07-15)
 
 ### Features
