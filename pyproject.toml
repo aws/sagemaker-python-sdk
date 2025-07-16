@@ -41,7 +41,7 @@ dependencies = [
   "jsonschema",
   "numpy==1.26.4",
   "omegaconf>=2.2,<3",
-  "packaging>=25.0,<26",
+  "packaging>=24.0,<26",
   "pandas",
   "pathos",
   "platformdirs",

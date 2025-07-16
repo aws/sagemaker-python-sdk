@@ -2,7 +2,7 @@
 # This forces specific versions to be used regardless of what other packages require
 
 # Core conflicts
-importlib-metadata==6.11.0
+importlib-metadata>=7.0.0,<9.0
 rich==13.7.0
 Flask-Limiter==3.5.0
 
@@ -15,7 +15,7 @@ apache-airflow-providers-amazon==7.2.1
 sphinx==7.2.6
 sphinx-rtd-theme==3.0.0
 docutils>=0.18.1,<0.21
-packaging>=25.0,<26
+packaging>=24.0,<26
 jinja2==3.1.6
 schema==0.7.5
 accelerate>=0.24.1,<=0.27.0
