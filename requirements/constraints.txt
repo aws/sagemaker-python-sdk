@@ -3,11 +3,11 @@
 
 # Core conflicts
 importlib-metadata>=1.4.0,<9.0
-rich==13.7.0
+rich>=13.7.0
 Flask-Limiter==3.5.0
 
 # Additional constraints to ensure compatibility
-sagemaker-core==1.0.30
+sagemaker-core>=1.0.17
 apache-airflow==3.0.3
 apache-airflow-providers-amazon==7.2.1
 
