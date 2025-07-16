@@ -2,7 +2,7 @@
 # This forces specific versions to be used regardless of what other packages require
 
 # Core conflicts
-importlib-metadata>=7.0.0,<9.0
+importlib-metadata>=1.4.0,<9.0
 rich==13.7.0
 Flask-Limiter==3.5.0
 

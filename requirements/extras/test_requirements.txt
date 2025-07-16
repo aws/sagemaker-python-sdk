@@ -17,8 +17,8 @@ stopit==1.1.2
 apache-airflow==3.0.3
 apache-airflow-providers-amazon==7.2.1
 Flask-Limiter==3.5.0
-rich==13.7.0
-importlib-metadata>=7.0.0,<9.0
+rich>=13.7.0
+importlib-metadata>=1.4.0,<9.0
 attrs>=24,<26
 fabric==3.2.2
 requests==2.32.2
