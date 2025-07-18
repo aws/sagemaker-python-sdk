@@ -1,0 +1,31 @@
+#!/bin/sh
+# This pre-commit hook validates S3 bucket references in modified files
+
+set -e
+
+# Get list of staged files
+staged_files=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(py|ipynb|md|rst|yaml|yml|json)$' || true)
+
+if [ -z "$staged_files" ]; then
+    echo "No relevant files to check for S3 bucket references."
+    exit 0
+fi
+
+echo "Checking S3 bucket references in staged files..."
+has_invalid_buckets=0
+
+for file in $staged_files; do
+    echo "Validating S3 references in $file"
+    python s3_bucket_validator.py "$file"
+    if [ $? -ne 0 ]; then
+        has_invalid_buckets=1
+    fi
+done
+
+if [ $has_invalid_buckets -ne 0 ]; then
+    echo "ERROR: Invalid S3 bucket references found. Please fix them before committing."
+    exit 1
+fi
+
+echo "S3 bucket validation passed."
+exit 0
