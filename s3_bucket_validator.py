@@ -5,12 +5,12 @@ from botocore.exceptions import ClientError
 
 
 def is_bucket_accessible(bucket_name):
-    s3 = boto3.client('s3')
+    s3 = boto3.client("s3")
     try:
         s3.head_bucket(Bucket=bucket_name)
         return True
     except ClientError as e:
-        error_code = int(e.response['Error']['Code'])
+        error_code = int(e.response["Error"]["Code"])
         if error_code == 403:
             print(f"Bucket {bucket_name} exists, but you don't have permission to access it.")
         elif error_code == 404:
@@ -19,11 +19,12 @@ def is_bucket_accessible(bucket_name):
             print(f"Error checking bucket {bucket_name}: {e}")
         return False
 
+
 def validate_s3_references(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         content = file.read()
 
-    s3_pattern = re.compile(r's3:\/\/([a-zA-Z0-9._-]+)')
+    s3_pattern = re.compile(r"s3:\/\/([a-zA-Z0-9._-]+)")
     matches = s3_pattern.findall(content)
 
     invalid_buckets = []
@@ -33,8 +34,10 @@ def validate_s3_references(file_path):
 
     return invalid_buckets
 
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print("Usage: python s3_bucket_validator.py <file_path>")
         sys.exit(1)
