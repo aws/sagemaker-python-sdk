@@ -32,7 +32,7 @@ classifiers = [
 ]
 dependencies = [
   "attrs>=24,<26",
-  "boto3>=1.35.75,<2.0",
+  "boto3>=1.35.36,<2.0",
   "cloudpickle>=2.2.1",
   "docker",
   "fastapi",
