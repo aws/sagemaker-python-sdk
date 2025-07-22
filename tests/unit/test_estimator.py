@@ -76,6 +76,8 @@ from tests.unit import (
 )
 from sagemaker.model_life_cycle import ModelLifeCycle
 
+from tests.unit.test_job import INSTANCE_PLACEMENT_CONFIG
+
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
@@ -877,6 +879,22 @@ def test_framework_with_training_plan(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["resource_config"]["TrainingPlanArn"] == TRAINING_PLAN
+
+
+def test_framework_with_instance_placement(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_type="ml.c4.xlarge",
+        instance_count=2,
+        training_plan=TRAINING_PLAN,
+        instance_placement_config=INSTANCE_PLACEMENT_CONFIG,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["InstancePlacementConfig"] == INSTANCE_PLACEMENT_CONFIG
 
 
 def test_framework_with_both_training_repository_config(sagemaker_session):
