@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.248.2 (2025-07-22)
+
+### Bug Fixes and Other Changes
+
+ * Relax boto3 version requirement
+ * update image_uri_configs 07-22-2025 07:18:25 PST
+ * update image_uri_configs 07-18-2025 07:18:28 PST
+ * add hard dependency on sagemaker-core pypi lib
+ * When rootlessDocker is enabled, return a fixed SageMaker IP
+
 ## v2.248.1 (2025-07-16)
 
 ### Bug Fixes and Other Changes
