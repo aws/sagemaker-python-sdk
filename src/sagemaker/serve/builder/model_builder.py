@@ -116,7 +116,7 @@ from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
 from sagemaker.serverless import ServerlessInferenceConfig
-from sagemaker.utils import Tags, unique_name_from_base
+from sagemaker.utils import Tags
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import (
     get_huggingface_model_metadata,
@@ -1983,8 +1983,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
-        if not update_endpoint:
-            endpoint_name = unique_name_from_base(endpoint_name)
 
         if not hasattr(self, "_deployables"):
             if not inference_config:  # Real-time Deployment

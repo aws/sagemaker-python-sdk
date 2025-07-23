@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 import tests.integ
+import uuid
 
 from botocore.exceptions import ClientError
 from sagemaker.predictor import Predictor
@@ -88,7 +89,7 @@ def test_model_builder_ic_sagemaker_endpoint(
     with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
-            endpoint_name = "llama-ic-endpoint-name"
+            endpoint_name = f"llama-ic-endpoint-name-{uuid.uuid1().hex}"
             predictors = chain.deploy(
                 instance_type=INSTANCE_TYPE,
                 initial_instance_count=1,
