@@ -124,6 +124,7 @@ class Pipeline:
         self._event_bridge_scheduler_helper = EventBridgeSchedulerHelper(
             self.sagemaker_session.boto_session.client("scheduler"),
         )
+        self.latest_pipeline_version_id = None
 
     def create(
         self,
@@ -166,7 +167,9 @@ class Pipeline:
             kwargs,
             Tags=tags,
         )
-        return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
+        response = self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
+        self.latest_pipeline_version_id = 1
+        return response
 
     def _create_args(
         self, role_arn: str, description: str, parallelism_config: ParallelismConfiguration
@@ -214,15 +217,21 @@ class Pipeline:
         )
         return kwargs
 
-    def describe(self) -> Dict[str, Any]:
+    def describe(self, pipeline_version_id: int = None) -> Dict[str, Any]:
         """Describes a Pipeline in the Workflow service.
+
+        Args:
+            pipeline_version_id (Optional[str]): version ID of the pipeline to describe.
 
         Returns:
             Response dict from the service. See `boto3 client documentation
             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
 sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """
-        return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
+        kwargs = dict(PipelineName=self.name)
+        if pipeline_version_id:
+            kwargs["PipelineVersionId"] = pipeline_version_id
+        return self.sagemaker_session.sagemaker_client.describe_pipeline(**kwargs)
 
     def update(
         self,
@@ -257,7 +266,10 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             return self.sagemaker_session.sagemaker_client.update_pipeline(self, description)
 
         kwargs = self._create_args(role_arn, description, parallelism_config)
-        return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
+        response = self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
+        if "PipelineVersionId" in response:
+            self.latest_pipeline_version_id = response["PipelineVersionId"]
+        return response
 
     def upsert(
         self,
@@ -332,6 +344,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         execution_description: str = None,
         parallelism_config: ParallelismConfiguration = None,
         selective_execution_config: SelectiveExecutionConfig = None,
+        pipeline_version_id: int = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -345,6 +358,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 over the parallelism configuration of the parent pipeline.
             selective_execution_config (Optional[SelectiveExecutionConfig]): The configuration for
                 selective step execution.
+            pipeline_version_id (Optional[str]): version ID of the pipeline to start the execution from. If not
+                specified, uses the latest version ID.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
@@ -366,6 +381,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
             SelectiveExecutionConfig=selective_execution_config,
+            PipelineVersionId=pipeline_version_id,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
@@ -460,6 +476,32 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             for key in ["PipelineExecutionSummaries", "NextToken"]
             if key in response
         }
+
+    def list_pipeline_versions(
+        self, sort_order: str = None, max_results: int = None, next_token: str = None
+    ) -> str:
+        """Lists a pipeline's versions.
+
+        Args:
+            sort_order (str): The sort order for results (Ascending/Descending).
+            max_results (int): The maximum number of pipeline executions to return in the response.
+            next_token (str):  If the result of the previous `ListPipelineExecutions` request was
+                truncated, the response includes a `NextToken`. To retrieve the next set of pipeline
+                executions, use the token in the next request.
+
+        Returns:
+            List of Pipeline Version Summaries. See
+            boto3 client list_pipeline_versions
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker/client/list_pipeline_versions.html#
+        """
+        kwargs = dict(PipelineName=self.name)
+        update_args(
+            kwargs,
+            SortOrder=sort_order,
+            NextToken=next_token,
+            MaxResults=max_results,
+        )
+        return self.sagemaker_session.sagemaker_client.list_pipeline_versions(**kwargs)
 
     def _get_latest_execution_arn(self):
         """Retrieves the latest execution of this pipeline"""
@@ -855,7 +897,7 @@ class _PipelineExecution:
 sagemaker.html#SageMaker.Client.describe_pipeline_execution>`_.
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline_execution(
-            PipelineExecutionArn=self.arn,
+            PipelineExecutionArn=self.arn
         )
 
     def list_steps(self):
