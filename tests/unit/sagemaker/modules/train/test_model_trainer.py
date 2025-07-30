@@ -1302,6 +1302,53 @@ def test_model_trainer_default_paths(mock_training_job, mock_unique_name, module
     assert kwargs["tensor_board_output_config"].local_path == "/opt/ml/output/tensorboard"
 
 
+def test_create_training_job_args(modules_session):
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+    )
+
+    args = model_trainer._create_training_job_args()
+    assert args["algorithm_specification"] == AlgorithmSpecification(
+        training_image=DEFAULT_IMAGE,
+        algorithm_name=None,
+        training_input_mode="File",
+        container_entrypoint=None,
+        container_arguments=None,
+        training_image_config=None,
+        metric_definitions=None,
+    )
+    assert args["resource_config"] == ResourceConfig(
+        instance_type=DEFAULT_INSTANCE_TYPE,
+        instance_count=1,
+        volume_size_in_gb=30,
+    )
+    assert args["role_arn"] == DEFAULT_ROLE
+
+
+def test_create_training_job_args_boto3(modules_session):
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+    )
+
+    args = model_trainer._create_training_job_args(boto3=True)
+    assert args["AlgorithmSpecification"] == {
+        "TrainingImage": DEFAULT_IMAGE,
+        "TrainingInputMode": "File",
+    }
+    assert args["ResourceConfig"] == {
+        "InstanceType": DEFAULT_INSTANCE_TYPE,
+        "InstanceCount": 1,
+        "VolumeSizeInGB": 30,
+    }
+    assert args["RoleArn"] == DEFAULT_ROLE
+
+
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 def test_input_merge(mock_training_job, modules_session):
     model_input = InputData(channel_name="model", data_source="s3://bucket/model/model.tar.gz")
