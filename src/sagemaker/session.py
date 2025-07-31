@@ -782,6 +782,268 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return all_tags
 
+    def get_train_request(
+        self,
+        input_mode,
+        input_config,
+        role=None,
+        job_name=None,
+        output_config=None,
+        resource_config=None,
+        vpc_config=None,
+        hyperparameters=None,
+        stop_condition=None,
+        tags=None,
+        metric_definitions=None,
+        enable_network_isolation=None,
+        image_uri=None,
+        training_image_config=None,
+        infra_check_config=None,
+        container_entry_point=None,
+        container_arguments=None,
+        algorithm_arn=None,
+        encrypt_inter_container_traffic=None,
+        use_spot_instances=False,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
+        experiment_config=None,
+        debugger_rule_configs=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
+        enable_sagemaker_metrics=None,
+        profiler_rule_configs=None,
+        profiler_config=None,
+        environment: Optional[Dict[str, str]] = None,
+        retry_strategy=None,
+        remote_debug_config=None,
+        session_chaining_config=None,
+    ) -> Dict:
+        """Create an Amazon SageMaker training job.
+
+        Args:
+            input_mode (str): The input mode that the algorithm supports. Valid modes:
+                * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
+                a directory in the Docker container.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
+                Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
+            input_config (list): A list of Channel objects. Each channel is a named input source.
+                Please refer to the format details described:
+                https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts. You must grant sufficient permissions to this
+                role.
+            job_name (str): Name of the training job being created.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            resource_config (dict): Contains values for ResourceConfig:
+                * instance_count (int): Number of EC2 instances to use for training.
+                The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+            vpc_config (dict): Contains values for VpcConfig:
+                * subnets (list[str]): List of subnet ids.
+                The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                The key in vpc_config is 'SecurityGroupIds'.
+            hyperparameters (dict): Hyperparameters for model training. The hyperparameters are
+                made accessible as a dict[str, str] to the training code on SageMaker. For
+                convenience, this accepts other types for keys and values, but ``str()`` will be
+                called to convert them before training.
+            stop_condition (dict): Defines when training shall finish. Contains entries that can
+                be understood by the service like ``MaxRuntimeInSeconds``.
+            tags (Optional[Tags]): Tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
+                used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
+                the name of the metric, and 'Regex' for the regular expression used to extract the
+                metric from the logs.
+            enable_network_isolation (bool): Whether to request for the training job to run with
+                network isolation or not.
+            image_uri (str): Docker image containing training code.
+            training_image_config(dict): Training image configuration.
+                Optionally, the dict can contain 'TrainingRepositoryAccessMode' and
+                'TrainingRepositoryCredentialsProviderArn' (under 'TrainingRepositoryAuthConfig').
+                For example,
+
+                .. code:: python
+
+                    training_image_config = {
+                        "TrainingRepositoryAccessMode": "Vpc",
+                        "TrainingRepositoryAuthConfig": {
+                            "TrainingRepositoryCredentialsProviderArn":
+                              "arn:aws:lambda:us-west-2:1234567890:function:test"
+                        },
+                    }
+
+                If TrainingRepositoryAccessMode is set to Vpc, the training image is accessed
+                through a private Docker registry in customer Vpc. If it's set to Platform or None,
+                the training image is accessed through ECR.
+                If TrainingRepositoryCredentialsProviderArn is provided, the credentials to
+                authenticate to the private Docker registry will be retrieved from this AWS Lambda
+                function. (default: ``None``). When it's set to None, SageMaker will not do
+                authentication before pulling the image in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
+            algorithm_arn (str): Algorithm Arn from Marketplace.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
+                containers is encrypted for the training job (default: ``False``).
+            use_spot_instances (bool): whether to use spot instances for training.
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName',  'TrialComponentDisplayName' and 'RunName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html
+                #SageMaker-Type
+                -AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``).
+            profiler_rule_configs (list[dict]): A list of profiler rule
+                configurations.src/sagemaker/lineage/artifact.py:285
+            profiler_config (dict): Configuration for how profiling information is emitted
+                with SageMaker Profiler. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
+            session_chaining_config(dict): Configuration for SessionChaining. (default: ``None``)
+                The dict can contain 'EnableSessionTagChaining'(bool).
+                For example,
+
+                .. code:: python
+
+                    session_chaining_config = {
+                        "EnableSessionTagChaining": True,
+                    }
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
+            retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
+                * max_retry_attsmpts (int): Number of times a job should be retried.
+                The key in RetryStrategy is 'MaxRetryAttempts'.
+            infra_check_config(dict): Infra check configuration.
+                Optionally, the dict can contain 'EnableInfraCheck'(bool).
+                For example,
+
+                .. code:: python
+
+                    infra_check_config = {
+                        "EnableInfraCheck": True,
+                    }
+        Returns:
+            Dict: a Dict containing CreateTrainingJob request.
+        """
+        tags = _append_project_tags(format_tags(tags))
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
+        )
+
+        _encrypt_inter_container_traffic = resolve_value_from_config(
+            direct_input=encrypt_inter_container_traffic,
+            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            default_value=False,
+            sagemaker_session=self,
+        )
+        role = resolve_value_from_config(role, TRAINING_JOB_ROLE_ARN_PATH, sagemaker_session=self)
+        enable_network_isolation = resolve_value_from_config(
+            direct_input=enable_network_isolation,
+            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
+            sagemaker_session=self,
+        )
+        inferred_vpc_config = update_nested_dictionary_with_values_from_config(
+            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
+        )
+        customer_supplied_kms_key = "VolumeKmsKeyId" in resource_config
+        inferred_resource_config = update_nested_dictionary_with_values_from_config(
+            resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_profiler_config = update_nested_dictionary_with_values_from_config(
+            profiler_config, TRAINING_JOB_PROFILE_CONFIG_PATH, sagemaker_session=self
+        )
+        if (
+            not customer_supplied_kms_key
+            and "InstanceType" in inferred_resource_config
+            and not instance_supports_kms(inferred_resource_config["InstanceType"])
+            and "VolumeKmsKeyId" in inferred_resource_config
+        ):
+            del inferred_resource_config["VolumeKmsKeyId"]
+
+        environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
+        )
+        train_request = self._get_train_request(
+            input_mode=input_mode,
+            input_config=input_config,
+            role=role,
+            job_name=job_name,
+            output_config=inferred_output_config,
+            resource_config=inferred_resource_config,
+            vpc_config=inferred_vpc_config,
+            hyperparameters=hyperparameters,
+            stop_condition=stop_condition,
+            tags=tags,
+            metric_definitions=metric_definitions,
+            enable_network_isolation=enable_network_isolation,
+            image_uri=image_uri,
+            training_image_config=training_image_config,
+            infra_check_config=infra_check_config,
+            container_entry_point=container_entry_point,
+            container_arguments=container_arguments,
+            algorithm_arn=algorithm_arn,
+            encrypt_inter_container_traffic=_encrypt_inter_container_traffic,
+            use_spot_instances=use_spot_instances,
+            checkpoint_s3_uri=checkpoint_s3_uri,
+            checkpoint_local_path=checkpoint_local_path,
+            experiment_config=experiment_config,
+            debugger_rule_configs=debugger_rule_configs,
+            debugger_hook_config=debugger_hook_config,
+            tensorboard_output_config=tensorboard_output_config,
+            enable_sagemaker_metrics=enable_sagemaker_metrics,
+            profiler_rule_configs=profiler_rule_configs,
+            profiler_config=inferred_profiler_config,
+            remote_debug_config=remote_debug_config,
+            session_chaining_config=session_chaining_config,
+            environment=environment,
+            retry_strategy=retry_strategy,
+        )
+        return train_request
+
     def train(  # noqa: C901
         self,
         input_mode,
@@ -967,85 +1229,40 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training job.
             - ValueError: If both image_uri and algorithm are provided, or if neither is provided.
         """
-        tags = _append_project_tags(format_tags(tags))
-        tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
-        )
-
-        _encrypt_inter_container_traffic = resolve_value_from_config(
-            direct_input=encrypt_inter_container_traffic,
-            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
-            default_value=False,
-            sagemaker_session=self,
-        )
-        role = resolve_value_from_config(role, TRAINING_JOB_ROLE_ARN_PATH, sagemaker_session=self)
-        enable_network_isolation = resolve_value_from_config(
-            direct_input=enable_network_isolation,
-            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-            default_value=False,
-            sagemaker_session=self,
-        )
-        inferred_vpc_config = update_nested_dictionary_with_values_from_config(
-            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH, sagemaker_session=self
-        )
-        inferred_output_config = update_nested_dictionary_with_values_from_config(
-            output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
-        )
-        customer_supplied_kms_key = "VolumeKmsKeyId" in resource_config
-        inferred_resource_config = update_nested_dictionary_with_values_from_config(
-            resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
-        )
-        inferred_profiler_config = update_nested_dictionary_with_values_from_config(
-            profiler_config, TRAINING_JOB_PROFILE_CONFIG_PATH, sagemaker_session=self
-        )
-        if (
-            not customer_supplied_kms_key
-            and "InstanceType" in inferred_resource_config
-            and not instance_supports_kms(inferred_resource_config["InstanceType"])
-            and "VolumeKmsKeyId" in inferred_resource_config
-        ):
-            del inferred_resource_config["VolumeKmsKeyId"]
-
-        environment = resolve_value_from_config(
-            direct_input=environment,
-            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
-            default_value=None,
-            sagemaker_session=self,
-        )
-        train_request = self._get_train_request(
-            input_mode=input_mode,
-            input_config=input_config,
-            role=role,
-            job_name=job_name,
-            output_config=inferred_output_config,
-            resource_config=inferred_resource_config,
-            vpc_config=inferred_vpc_config,
-            hyperparameters=hyperparameters,
-            stop_condition=stop_condition,
-            tags=tags,
-            metric_definitions=metric_definitions,
-            enable_network_isolation=enable_network_isolation,
-            image_uri=image_uri,
-            training_image_config=training_image_config,
-            infra_check_config=infra_check_config,
-            container_entry_point=container_entry_point,
-            container_arguments=container_arguments,
-            algorithm_arn=algorithm_arn,
-            encrypt_inter_container_traffic=_encrypt_inter_container_traffic,
-            use_spot_instances=use_spot_instances,
-            checkpoint_s3_uri=checkpoint_s3_uri,
-            checkpoint_local_path=checkpoint_local_path,
-            experiment_config=experiment_config,
-            debugger_rule_configs=debugger_rule_configs,
-            debugger_hook_config=debugger_hook_config,
-            tensorboard_output_config=tensorboard_output_config,
-            enable_sagemaker_metrics=enable_sagemaker_metrics,
-            profiler_rule_configs=profiler_rule_configs,
-            profiler_config=inferred_profiler_config,
-            remote_debug_config=remote_debug_config,
-            session_chaining_config=session_chaining_config,
-            environment=environment,
-            retry_strategy=retry_strategy,
+        train_request = self.get_train_request(
+            input_mode,
+            input_config,
+            role,
+            job_name,
+            output_config,
+            resource_config,
+            vpc_config,
+            hyperparameters,
+            stop_condition,
+            tags,
+            metric_definitions,
+            enable_network_isolation,
+            image_uri,
+            training_image_config,
+            infra_check_config,
+            container_entry_point,
+            container_arguments,
+            algorithm_arn,
+            encrypt_inter_container_traffic,
+            use_spot_instances,
+            checkpoint_s3_uri,
+            checkpoint_local_path,
+            experiment_config,
+            debugger_rule_configs,
+            debugger_hook_config,
+            tensorboard_output_config,
+            enable_sagemaker_metrics,
+            profiler_rule_configs,
+            profiler_config,
+            environment,
+            retry_strategy,
+            remote_debug_config,
+            session_chaining_config,
         )
 
         def submit(request):

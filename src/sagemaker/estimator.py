@@ -2547,6 +2547,11 @@ class _TrainingJob(_Job):
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
     @classmethod
+    def get_train_args(cls, estimator, inputs, experiment_config):
+        """A public function which is same as _get_train_args function."""
+        return cls._get_train_args(estimator, inputs, experiment_config)
+
+    @classmethod
     def _get_train_args(cls, estimator, inputs, experiment_config):
         """Constructs a dict of arguments for an Amazon SageMaker training job from the estimator.
 
