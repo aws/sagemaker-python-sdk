@@ -312,6 +312,7 @@ def test_three_step_definition(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
+        assert pipeline.latest_pipeline_version_id == 1
     finally:
         try:
             pipeline.delete()
@@ -937,7 +938,6 @@ def test_large_pipeline(sagemaker_session_for_pipeline, role, pipeline_name, reg
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
-        response = pipeline.describe()
         assert len(json.loads(pipeline.describe()["PipelineDefinition"])["Steps"]) == 2000
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
@@ -1386,4 +1386,57 @@ def test_caching_behavior(
             pipeline.delete()
         except Exception:
             os.remove(script_dir + "/dummy_script.py")
+            pass
+
+
+def test_pipeline_versioning(pipeline_session, role, pipeline_name, script_dir):
+    sklearn_train = SKLearn(
+        framework_version="0.20.0",
+        entry_point=os.path.join(script_dir, "train.py"),
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=pipeline_session,
+        role=role,
+    )
+
+    step1 = TrainingStep(
+        name="my-train-1",
+        display_name="TrainingStep",
+        description="description for Training step",
+        step_args=sklearn_train.fit(),
+    )
+
+    step2 = TrainingStep(
+        name="my-train-2",
+        display_name="TrainingStep",
+        description="description for Training step",
+        step_args=sklearn_train.fit(),
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=[step1],
+        sagemaker_session=pipeline_session,
+    )
+
+    try:
+        pipeline.create(role)
+
+        assert pipeline.latest_pipeline_version_id == 1
+
+        describe_response = pipeline.describe(pipeline_version_id=1)
+        assert len(json.loads(describe_response["PipelineDefinition"])["Steps"]) == 1
+
+        pipeline.steps.append(step2)
+        pipeline.upsert(role)
+
+        assert pipeline.latest_pipeline_version_id == 2
+
+        describe_response = pipeline.describe(pipeline_version_id=2)
+        assert len(json.loads(describe_response["PipelineDefinition"])["Steps"]) == 2
+
+        assert len(pipeline.list_pipeline_versions()["PipelineVersionSummaries"]) == 2
+
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
             pass
