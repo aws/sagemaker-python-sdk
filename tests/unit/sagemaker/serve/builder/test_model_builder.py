@@ -4241,9 +4241,7 @@ class TestModelBuilderOptimizeValidations(unittest.TestCase):
         "Batch",
     ],
 )
-@patch("sagemaker.serve.builder.model_builder.unique_name_from_base")
-def test_deploy(mock_unique_name_from_base, test_case):
-    mock_unique_name_from_base.return_value = "test"
+def test_deploy(test_case):
     model: Model = MagicMock()
     model_builder = ModelBuilder(
         model="meta-llama/Meta-Llama-3-8B-Instruct",
