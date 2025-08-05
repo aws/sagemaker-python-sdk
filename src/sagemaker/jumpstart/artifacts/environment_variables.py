@@ -85,6 +85,61 @@ def _retrieve_default_environment_variables(
         sagemaker_session=sagemaker_session,
     )
 
+    # Auto-detect config_name based on instance_type, even if a default config was provided
+    auto_detected_config_name = config_name
+    
+    # For any instance type, check all available configs to find the best match
+    if instance_type:
+        from sagemaker.utils import get_instance_type_family
+        instance_type_family = get_instance_type_family(instance_type)
+        
+        # Get all available configs to check
+        temp_model_specs = verify_model_region_and_return_specs(
+            model_id=model_id,
+            version=model_version,
+            hub_arn=hub_arn,
+            scope=script,
+            region=region,
+            tolerate_vulnerable_model=tolerate_vulnerable_model,
+            tolerate_deprecated_model=tolerate_deprecated_model,
+            sagemaker_session=sagemaker_session,
+            config_name=None,  # Get default config first
+            model_type=model_type,
+        )
+        
+        if temp_model_specs.inference_configs:
+            # Get config rankings to prioritize correctly
+            config_rankings = []
+            if hasattr(temp_model_specs, 'inference_config_rankings') and temp_model_specs.inference_config_rankings:
+                overall_rankings = temp_model_specs.inference_config_rankings.get('overall')
+                if overall_rankings and hasattr(overall_rankings, 'rankings'):
+                    config_rankings = overall_rankings.rankings
+            
+            # Check configs in ranking priority order (highest to lowest priority)
+            matching_configs = []
+            for config_name_candidate, config in temp_model_specs.inference_configs.configs.items():
+                config_resolved = config.resolved_config
+                
+                if 'hosting_instance_type_variants' in config_resolved and config_resolved['hosting_instance_type_variants']:
+                    from sagemaker.jumpstart.types import JumpStartInstanceTypeVariants
+                    variants_dict = config_resolved['hosting_instance_type_variants']
+                    variants = JumpStartInstanceTypeVariants(variants_dict)
+                    
+                    # Check if this config specifically supports this instance type or family
+                    if (variants.variants and 
+                        (instance_type in variants.variants or instance_type_family in variants.variants)):
+                        matching_configs.append(config_name_candidate)
+            
+            # Select the highest priority matching config based on rankings
+            if matching_configs and config_rankings:
+                for ranked_config in config_rankings:
+                    if ranked_config in matching_configs:
+                        auto_detected_config_name = ranked_config
+                        break
+            elif matching_configs:
+                # Fallback to first match if no rankings available
+                auto_detected_config_name = matching_configs[0]
+
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
@@ -94,7 +149,7 @@ def _retrieve_default_environment_variables(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
-        config_name=config_name,
+        config_name=auto_detected_config_name,
         model_type=model_type,
     )
 
@@ -225,6 +280,61 @@ def _retrieve_gated_model_uri_env_var_value(
         sagemaker_session=sagemaker_session,
     )
 
+    # Auto-detect config_name based on instance_type, even if a default config was provided
+    auto_detected_config_name = config_name
+    
+    # For any instance type, check all available configs to find the best match
+    if instance_type:
+        from sagemaker.utils import get_instance_type_family
+        instance_type_family = get_instance_type_family(instance_type)
+        
+        # Get all available configs to check
+        temp_model_specs = verify_model_region_and_return_specs(
+            model_id=model_id,
+            version=model_version,
+            hub_arn=hub_arn,
+            scope=JumpStartScriptScope.TRAINING,
+            region=region,
+            tolerate_vulnerable_model=tolerate_vulnerable_model,
+            tolerate_deprecated_model=tolerate_deprecated_model,
+            sagemaker_session=sagemaker_session,
+            config_name=None,  # Get default config first
+            model_type=model_type,
+        )
+        
+        if temp_model_specs.inference_configs:
+            # Get config rankings to prioritize correctly
+            config_rankings = []
+            if hasattr(temp_model_specs, 'inference_config_rankings') and temp_model_specs.inference_config_rankings:
+                overall_rankings = temp_model_specs.inference_config_rankings.get('overall')
+                if overall_rankings and hasattr(overall_rankings, 'rankings'):
+                    config_rankings = overall_rankings.rankings
+            
+            # Check configs in ranking priority order (highest to lowest priority)
+            matching_configs = []
+            for config_name_candidate, config in temp_model_specs.inference_configs.configs.items():
+                config_resolved = config.resolved_config
+                
+                if 'hosting_instance_type_variants' in config_resolved and config_resolved['hosting_instance_type_variants']:
+                    from sagemaker.jumpstart.types import JumpStartInstanceTypeVariants
+                    variants_dict = config_resolved['hosting_instance_type_variants']
+                    variants = JumpStartInstanceTypeVariants(variants_dict)
+                    
+                    # Check if this config specifically supports this instance type or family
+                    if (variants.variants and 
+                        (instance_type in variants.variants or instance_type_family in variants.variants)):
+                        matching_configs.append(config_name_candidate)
+            
+            # Select the highest priority matching config based on rankings
+            if matching_configs and config_rankings:
+                for ranked_config in config_rankings:
+                    if ranked_config in matching_configs:
+                        auto_detected_config_name = ranked_config
+                        break
+            elif matching_configs:
+                # Fallback to first match if no rankings available
+                auto_detected_config_name = matching_configs[0]
+
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
@@ -234,7 +344,7 @@ def _retrieve_gated_model_uri_env_var_value(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
-        config_name=config_name,
+        config_name=auto_detected_config_name,
         model_type=model_type,
     )
 

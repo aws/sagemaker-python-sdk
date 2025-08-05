@@ -911,12 +911,21 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             # We return None, indicating the field does not exist.
             return None
 
-        if self.regional_aliases and region not in self.regional_aliases:
-            return None
-
         if self.regional_aliases:
-            alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
-            return alias_value
+            if region not in self.regional_aliases:
+                # If the requested region is not available, try to find a fallback region
+                # This handles cases where models only have regional_aliases for limited regions
+                available_regions = list(self.regional_aliases.keys())
+                if available_regions:
+                    # Use the first available region as fallback
+                    fallback_region = available_regions[0]
+                    alias_value = self.regional_aliases[fallback_region].get(regional_property_alias[1:], None)
+                    return alias_value
+                else:
+                    return None
+            else:
+                alias_value = self.regional_aliases[region].get(regional_property_alias[1:], None)
+                return alias_value
         return regional_property_value
 
 
