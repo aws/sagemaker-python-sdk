@@ -28,6 +28,7 @@ from sagemaker.compute_resource_requirements.resource_requirements import \
 from sagemaker.enums import EndpointType
 from sagemaker.model import Model
 from sagemaker.serve import SchemaBuilder
+# TODO: target v3 model builder. currently not possible due to patch magicmocks
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.model_format.mlflow.constants import MLFLOW_TRACKING_ARN
@@ -39,6 +40,9 @@ from sagemaker.serve.validations.optimization import \
     _validate_optimization_configuration
 from sagemaker.serverless.serverless_inference_config import \
     ServerlessInferenceConfig
+from sagemaker.serve.model_builder import DEFAULT_SERIALIZERS_BY_FRAMEWORK
+from sagemaker.base_deserializers import JSONDeserializer
+from sagemaker.base_serializers import NumpySerializer
 
 schema_builder = MagicMock()
 mock_inference_spec = Mock()
@@ -3439,6 +3443,20 @@ class TestModelBuilder(unittest.TestCase):
             ),
         )
 
+    def test_fetch_serializer_and_deserializer_for_framework(self):
+        """Test that _fetch_serializer_and_deserializer_for_framework returns the correct serializer/deserializer pairs."""
+        builder = ModelBuilder()
+
+        # Test for known frameworks
+        for framework, expected_pair in DEFAULT_SERIALIZERS_BY_FRAMEWORK.items():
+            serializer, deserializer = builder._fetch_serializer_and_deserializer_for_framework(framework)
+            self.assertEqual(type(serializer), type(expected_pair[0]))
+            self.assertEqual(type(deserializer), type(expected_pair[1]))
+
+        # Test for unknown framework - should return default (NumpySerializer, JSONDeserializer)
+        serializer, deserializer = builder._fetch_serializer_and_deserializer_for_framework("UnknownFramework")
+        self.assertIsInstance(serializer, NumpySerializer)
+        self.assertIsInstance(deserializer, JSONDeserializer)
 
 class TestModelBuilderOptimizationSharding(unittest.TestCase):
     @patch.object(ModelBuilder, "_prepare_for_mode")

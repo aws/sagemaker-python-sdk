@@ -30,7 +30,10 @@ from sagemaker.base_predictor import PredictorBase
 from sagemaker.batch_inference.batch_transform_inference_config import \
     BatchTransformInferenceConfig
 from sagemaker.compute_resource_requirements import ResourceRequirements
-from sagemaker.deserializers import JSONDeserializer, TorchTensorDeserializer
+from sagemaker.deserializers import (CSVDeserializer, JSONDeserializer,
+                                     RecordDeserializer,
+                                     TorchTensorDeserializer,
+                                     NumpyDeserializer)
 from sagemaker.enums import EndpointType, Tag
 from sagemaker.estimator import Estimator
 from sagemaker.huggingface.llm_utils import (
@@ -43,7 +46,9 @@ from sagemaker.modules import logger
 from sagemaker.modules.train import ModelTrainer
 from sagemaker.predictor import Predictor
 from sagemaker.s3 import S3Downloader
-from sagemaker.serializers import NumpySerializer, TorchTensorSerializer
+from sagemaker.serializers import (LibSVMSerializer, NumpySerializer,
+                                   RecordSerializer, TorchTensorSerializer,
+                                   JSONSerializer)
 from sagemaker.serve.builder.djl_builder import DJL
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
@@ -114,6 +119,21 @@ supported_model_servers = {
     ModelServer.TGI,
     ModelServer.TEI,
     ModelServer.SMD,
+}
+
+# Default serializers and deserializers by framework
+DEFAULT_SERIALIZERS_BY_FRAMEWORK = {
+    "XGBoost": (LibSVMSerializer(), CSVDeserializer()),
+    "LDA": (RecordSerializer(), RecordDeserializer()),
+    "PyTorch": (TorchTensorSerializer(), JSONDeserializer()),
+    "TensorFlow": (NumpySerializer(), JSONDeserializer()),
+    "MXNet": (RecordSerializer(), JSONDeserializer()),  # MxNetPredictor
+    "Chainer": (NumpySerializer(), JSONDeserializer()),  # ChainerPredictor
+    "SKLearn": (NumpySerializer(), NumpyDeserializer()),  # SKLearnPredictor
+    "HuggingFace": (JSONSerializer(), JSONDeserializer()),  # HuggingFacePredictor
+    "DJL": (JSONSerializer(), JSONDeserializer()),  # DJLPredictor
+    "SparkML": (NumpySerializer(), JSONDeserializer()),  # SparkMLPredictor
+    "NTM": (RecordSerializer(), JSONDeserializer()),  # NTMPredictor
 }
 
 
@@ -465,9 +485,27 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             % (Mode.LOCAL_CONTAINER, Mode.SAGEMAKER_ENDPOINT, Mode.IN_PROCESS)
         )
 
+    def _fetch_serializer_and_deserializer_for_framework(self, framework: str):
+        """Fetch the default serializer and deserializer for a given framework.
+
+        Args:
+            framework (str): The framework name.
+
+        Returns:
+            tuple: A tuple containing (serializer, deserializer).
+        """
+        if framework in DEFAULT_SERIALIZERS_BY_FRAMEWORK:
+            return DEFAULT_SERIALIZERS_BY_FRAMEWORK[framework]
+
+        # Default to JSON serialization if framework not found
+        return NumpySerializer(), JSONDeserializer()
+
     def _get_client_translators(self):
-        """Placeholder docstring"""
+        """Get serializer and deserializer for client-side translation."""
         serializer = None
+        deserializer = None
+
+        # If content_type or accept_type are explicitly provided, use those
         if self.content_type == "application/x-npy":
             serializer = NumpySerializer()
         elif self.content_type == "tensor/pt":
@@ -476,10 +514,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             serializer = self.schema_builder.custom_input_translator
         elif self.schema_builder:
             serializer = self.schema_builder.input_serializer
-        else:
-            raise Exception("Cannot serialize. Try providing a SchemaBuilder if not present.")
 
-        deserializer = None
         if self.accept_type == "application/json":
             deserializer = JSONDeserializer()
         elif self.accept_type == "tensor/pt":
@@ -488,29 +523,31 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             deserializer = self.schema_builder.custom_output_translator
         elif self.schema_builder:
             deserializer = self.schema_builder.output_deserializer
-        else:
+
+        # If serializer or deserializer are still None, try to infer from framework
+        if (serializer is None or deserializer is None) and hasattr(self, "_framework"):
+            default_serializer, default_deserializer = self._fetch_serializer_and_deserializer_for_framework(
+                self._framework
+            )
+            if serializer is None:
+                serializer = default_serializer
+            if deserializer is None:
+                deserializer = default_deserializer
+
+        # If still None, raise an exception
+        if serializer is None:
+            raise Exception("Cannot serialize. Try providing a SchemaBuilder if not present.")
+        if deserializer is None:
             raise Exception("Cannot deserialize. Try providing a SchemaBuilder if not present.")
 
         return serializer, deserializer
 
-    def _get_predictor(
-        self, endpoint_name: str, sagemaker_session: Session, component_name: Optional[str] = None
-    ) -> Predictor:
-        """Placeholder docstring"""
-        serializer, deserializer = self._get_client_translators()
-
-        return Predictor(
-            endpoint_name=endpoint_name,
-            sagemaker_session=sagemaker_session,
-            serializer=serializer,
-            deserializer=deserializer,
-            component_name=component_name,
-        )
-
     def _create_model(self):
-        """Placeholder docstring"""
-        # TODO: we should create model as per the framework
-        self.pysdk_model = Model(
+        """Create a sagemaker-core Model instance."""
+        from sagemaker_core.resources import Model as CoreModel
+
+        # Create the sagemaker-core Model
+        core_model = CoreModel(
             image_uri=self.image_uri,
             image_config=self.image_config,
             vpc_config=self.vpc_config,
@@ -518,28 +555,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             role=self.serve_settings.role_arn,
             env=self.env_vars,
             sagemaker_session=self.sagemaker_session,
-            predictor_cls=self._get_predictor,
-            name=self.name,
+            name=self.name
         )
 
-        # store the modes in the model so that we may
-        # reference the configurations for local deploy() & predict()
-        self.pysdk_model.mode = self.mode
-        self.pysdk_model.modes = self.modes
-        self.pysdk_model.serve_settings = self.serve_settings
-        if self.role_arn:
-            self.pysdk_model.role = self.role_arn
-        if self.sagemaker_session:
-            self.pysdk_model.sagemaker_session = self.sagemaker_session
+        # Store any necessary information for later use in deploy()
+        self._serializer, self._deserializer = self._get_client_translators()
 
-        # dynamically generate a method to direct model.deploy() logic based on mode
-        # unique method to models created via ModelBuilder()
-        self._original_deploy = self.pysdk_model.deploy
-        self.pysdk_model.deploy = self._model_builder_deploy_wrapper
-        self._original_register = self.pysdk_model.register
-        self.pysdk_model.register = self._model_builder_register_wrapper
-        self.model_package = None
-        return self.pysdk_model
+        return core_model
 
     @_capture_telemetry("register")
     def _model_builder_register_wrapper(self, *args, **kwargs):
@@ -766,8 +788,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
 
         self._prepare_for_mode()
-        self.model = self._create_model()
-        return self.model
+        model = self._create_model()
+        return model
 
     def _build_for_smd(self) -> Type[Model]:
         """Build the model for SageMaker Distribution"""
@@ -784,8 +806,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
 
         self._prepare_for_mode()
-        self.model = self._create_model()
-        return self.model
+        model = self._create_model()
+        return model
 
     def _user_agent_decorator(self, func):
         """Placeholder docstring"""
@@ -1204,7 +1226,12 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         Returns:
             Type[Model]: A deployable ``Model`` object.
+
+        .. note::
+            In a future version, this method will return a sagemaker-core Model object instead.
         """
+        # Store serializers/deserializers for later use
+        self._serializer, self._deserializer = self._get_client_translators()
 
         self.modes = dict()
 
@@ -1314,8 +1341,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         # Set TorchServe as default model server
         if not self.model_server:
             self.model_server = ModelServer.TORCHSERVE
-            self.built_model = self._build_for_torchserve()
-            return self.built_model
+            model = self._build_for_torchserve()
+            self.built_model = model
+            return model
 
         raise ValueError("%s model server is not supported" % self.model_server)
 
