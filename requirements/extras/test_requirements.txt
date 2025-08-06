@@ -1,3 +1,5 @@
+-c "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.4/constraints-3.9.txt"
+# Constraints for apache-airflow 2.10.4
 tox==3.24.5
 numpy==1.26.4
 build[virtualenv]==1.2.1
