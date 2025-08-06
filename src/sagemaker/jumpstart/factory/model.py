@@ -929,12 +929,6 @@ def get_init_kwargs(
 
     model_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
-
-    # Add instance type before config selection so config compatibility can be checked
-    model_init_kwargs = _add_instance_type_to_kwargs(
-        kwargs=model_init_kwargs, disable_instance_type_logging=disable_instance_type_logging
-    )
-
     model_init_kwargs = _add_config_name_to_init_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_sagemaker_session_with_custom_user_agent_to_kwargs(
@@ -943,6 +937,10 @@ def get_init_kwargs(
     model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_model_name_to_kwargs(kwargs=model_init_kwargs)
+
+    model_init_kwargs = _add_instance_type_to_kwargs(
+        kwargs=model_init_kwargs, disable_instance_type_logging=disable_instance_type_logging
+    )
 
     model_init_kwargs = _add_image_uri_to_kwargs(kwargs=model_init_kwargs)
 

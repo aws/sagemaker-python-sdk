@@ -1237,10 +1237,6 @@ def get_top_ranked_config_name(
 ) -> Optional[str]:
     """Returns the top ranked config name for the given model ID and region.
 
-    Args:
-        instance_type (Optional[str]): The instance type to filter configs by compatibility.
-            If provided, only configs that support this instance type will be considered.
-
     Raises:
         ValueError: If the script scope is not supported by JumpStart.
     """
