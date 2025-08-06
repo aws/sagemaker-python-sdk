@@ -1233,8 +1233,13 @@ def get_top_ranked_config_name(
     tolerate_vulnerable_model: bool = False,
     hub_arn: Optional[str] = None,
     ranking_name: enums.JumpStartConfigRankingName = enums.JumpStartConfigRankingName.DEFAULT,
+    instance_type: Optional[str] = None,
 ) -> Optional[str]:
     """Returns the top ranked config name for the given model ID and region.
+
+    Args:
+        instance_type (Optional[str]): The instance type to filter configs by compatibility.
+            If provided, only configs that support this instance type will be considered.
 
     Raises:
         ValueError: If the script scope is not supported by JumpStart.
@@ -1254,7 +1259,7 @@ def get_top_ranked_config_name(
     if scope == enums.JumpStartScriptScope.INFERENCE:
         return (
             model_specs.inference_configs.get_top_config_from_ranking(
-                ranking_name=ranking_name
+                ranking_name=ranking_name, instance_type=instance_type
             ).config_name
             if model_specs.inference_configs
             else None
@@ -1262,7 +1267,7 @@ def get_top_ranked_config_name(
     if scope == enums.JumpStartScriptScope.TRAINING:
         return (
             model_specs.training_configs.get_top_config_from_ranking(
-                ranking_name=ranking_name
+                ranking_name=ranking_name, instance_type=instance_type
             ).config_name
             if model_specs.training_configs
             else None

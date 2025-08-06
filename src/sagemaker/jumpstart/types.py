@@ -1723,10 +1723,10 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
             ranked_config_names = rankings.rankings
         for config_name in ranked_config_names:
             resolved_config = self.configs[config_name].resolved_config
-            if instance_type and instance_type not in getattr(
-                resolved_config, instance_type_attribute
-            ):
-                continue
+            if instance_type:
+                supported_instance_types = getattr(resolved_config, instance_type_attribute, [])
+                if supported_instance_types and instance_type not in supported_instance_types:
+                    continue
             return self.configs[config_name]
 
         return None
