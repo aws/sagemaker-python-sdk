@@ -1,5 +1,3 @@
--c "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.4/constraints-3.9.txt"
-# Constraints for apache-airflow 2.10.4
 tox==3.24.5
 numpy==1.26.4
 build[virtualenv]==1.2.1
@@ -34,6 +32,7 @@ PyYAML>=6.0.1
 xgboost>=1.6.2,<=1.7.6
 pillow>=10.0.1,<=11
 opentelemetry-proto==1.27.0
+opentelemetry_exporter_otlp==1.27.0
 protobuf==4.25.8
 tensorboard>=2.16.2,<=2.18.0
 transformers==4.48.0
@@ -55,3 +54,10 @@ sagemaker-mlflow>=0.1.0
 deepdiff>=8.0.0
 orderly-set<5.4.0
 lexicon
+networkx==3.2.1
+mypy-boto3-appflow==1.35.39
+mypy-boto3-rds==1.35.72
+mypy-boto3-redshift-data==1.35.51
+mypy-boto3-s3==1.35.76
+mypy-extensions==1.0.0
+mypy==1.9.0
