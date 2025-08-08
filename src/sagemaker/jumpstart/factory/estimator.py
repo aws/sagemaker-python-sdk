@@ -837,6 +837,7 @@ def _add_config_name_to_kwargs(
 
     kwargs.config_name = kwargs.config_name or get_top_ranked_config_name(
         scope=JumpStartScriptScope.TRAINING,
+        instance_type=kwargs.instance_type,
         **get_model_info_default_kwargs(kwargs, include_config_name=False),
     )
 
