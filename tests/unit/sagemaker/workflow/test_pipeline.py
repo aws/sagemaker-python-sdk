@@ -391,7 +391,6 @@ def test_pipeline_upsert_resource_already_exists(sagemaker_session_mock, role_ar
     sagemaker_session_mock.sagemaker_client.create_pipeline = Mock(
         name="create_pipeline", side_effect=_raise_does_already_exists_client_error
     )
-
     sagemaker_session_mock.sagemaker_client.update_pipeline.return_value = {
         "PipelineArn": "pipeline-arn"
     }
@@ -428,6 +427,12 @@ def test_pipeline_upsert_resource_already_exists(sagemaker_session_mock, role_ar
     sagemaker_session_mock.sagemaker_client.add_tags.assert_called_with(
         ResourceArn="pipeline-arn", Tags=tags
     )
+
+    sagemaker_session_mock.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": [{"PipelineVersionId": 2}]
+    }
+
+    assert pipeline.latest_pipeline_version_id == 2
 
 
 def test_pipeline_upsert_create_unexpected_failure(sagemaker_session_mock, role_arn):
@@ -476,17 +481,10 @@ def test_pipeline_upsert_create_unexpected_failure(sagemaker_session_mock, role_
     sagemaker_session_mock.sagemaker_client.add_tags.assert_not_called()
 
 
-def test_pipeline_upsert_resourse_doesnt_exist(sagemaker_session_mock, role_arn):
+def test_pipeline_upsert_resource_doesnt_exist(sagemaker_session_mock, role_arn):
 
     # case 3: resource does not exist
     sagemaker_session_mock.sagemaker_client.create_pipeline = Mock(name="create_pipeline")
-
-    sagemaker_session_mock.sagemaker_client.update_pipeline.return_value = {
-        "PipelineArn": "pipeline-arn"
-    }
-    sagemaker_session_mock.sagemaker_client.list_tags.return_value = {
-        "Tags": [{"Key": "dummy", "Value": "dummy_tag"}]
-    }
 
     tags = [
         {"Key": "foo", "Value": "abc"},
@@ -542,6 +540,11 @@ def test_pipeline_describe(sagemaker_session_mock):
         PipelineName="MyPipeline",
     )
 
+    pipeline.describe(pipeline_version_id=5)
+    sagemaker_session_mock.sagemaker_client.describe_pipeline.assert_called_with(
+        PipelineName="MyPipeline", PipelineVersionId=5
+    )
+
 
 def test_pipeline_start(sagemaker_session_mock):
     sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = {
@@ -566,6 +569,11 @@ def test_pipeline_start(sagemaker_session_mock):
     pipeline.start(parameters=dict(alpha="epsilon"))
     sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
+    )
+
+    pipeline.start(pipeline_version_id=5)
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
+        PipelineName="MyPipeline", PipelineVersionId=5
     )
 
 
@@ -807,6 +815,29 @@ def test_pipeline_list_executions(sagemaker_session_mock):
     assert len(executions) == 2
     assert len(executions["PipelineExecutionSummaries"]) == 2
     assert executions["NextToken"] == "token"
+
+
+def test_pipeline_list_versions(sagemaker_session_mock):
+    sagemaker_session_mock.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": [Mock()],
+        "NextToken": "token",
+    }
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[ParameterString("alpha", "beta"), ParameterString("gamma", "delta")],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    versions = pipeline.list_pipeline_versions()
+    assert len(versions["PipelineVersionSummaries"]) == 1
+    assert versions["NextToken"] == "token"
+
+    sagemaker_session_mock.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": [Mock(), Mock()],
+    }
+    versions = pipeline.list_pipeline_versions(next_token=versions["NextToken"])
+    assert len(versions["PipelineVersionSummaries"]) == 2
+    assert "NextToken" not in versions
 
 
 def test_pipeline_build_parameters_from_execution(sagemaker_session_mock):
