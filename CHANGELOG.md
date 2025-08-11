@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.250.0 (2025-08-08)
+
+### Features
+
+ * Add support for InstancePlacementConfig in Estimator for training jobs running on ultraserver capacity
+
+### Bug Fixes and Other Changes
+
+ * Add more constraints to test requirements
+
 ## v2.249.0 (2025-07-31)
 
 ### Features
