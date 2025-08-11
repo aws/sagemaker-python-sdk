@@ -186,6 +186,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         training_plan: Optional[Union[str, PipelineVariable]] = None,
+        instance_placement_config: Optional[Dict] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -560,6 +561,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 Specifies whether SessionTagChaining is enabled for the training job.
             training_plan (str or PipelineVariable): Optional.
                 Specifies which training plan arn to use for the training job
+            instance_placement_config (dict): Optional.
+                Specifies UltraServer placement configuration for the training job
+
+                .. code:: python
+
+                    instance_placement_config={
+                        "EnableMultipleJobs": True,
+                        "PlacementSpecifications":[
+                            {
+                                "UltraServerId": "ultraserver-1",
+                                "InstanceCount": "2"
+                            }
+                        ]
+                    }
+
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -812,6 +828,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
         self.training_plan = training_plan
+
+        self.instance_placement_config = instance_placement_config
 
         # Internal flag
         self._is_output_path_set_from_default_bucket_and_prefix = False
@@ -1997,6 +2015,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if "TrainingPlanArn" in job_details["ResourceConfig"]:
             init_params["training_plan"] = job_details["ResourceConfig"]["TrainingPlanArn"]
 
+        if "InstancePlacementConfig" in job_details["ResourceConfig"]:
+            init_params["instance_placement_config"] = job_details["ResourceConfig"][
+                "InstancePlacementConfig"
+            ]
+
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
 
@@ -2547,6 +2570,11 @@ class _TrainingJob(_Job):
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
     @classmethod
+    def get_train_args(cls, estimator, inputs, experiment_config):
+        """A public function which is same as _get_train_args function."""
+        return cls._get_train_args(estimator, inputs, experiment_config)
+
+    @classmethod
     def _get_train_args(cls, estimator, inputs, experiment_config):
         """Constructs a dict of arguments for an Amazon SageMaker training job from the estimator.
 
@@ -2877,6 +2905,7 @@ class Estimator(EstimatorBase):
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         training_plan: Optional[Union[str, PipelineVariable]] = None,
+        instance_placement_config: Optional[Dict] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -3244,6 +3273,20 @@ class Estimator(EstimatorBase):
                  Specifies whether SessionTagChaining is enabled for the training job
             training_plan (str or PipelineVariable): Optional.
                 Specifies which training plan arn to use for the training job
+            instance_placement_config (dict): Optional.
+                Specifies UltraServer placement configuration for the training job
+
+                .. code:: python
+
+                    instance_placement_config={
+                        "EnableMultipleJobs": True,
+                        "PlacementSpecifications":[
+                            {
+                                "UltraServerId": "ultraserver-1",
+                                "InstanceCount": "2"
+                            }
+                        ]
+                    }
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -3298,6 +3341,7 @@ class Estimator(EstimatorBase):
             enable_remote_debug=enable_remote_debug,
             enable_session_tag_chaining=enable_session_tag_chaining,
             training_plan=training_plan,
+            instance_placement_config=instance_placement_config,
             **kwargs,
         )
 

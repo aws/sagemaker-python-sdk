@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.250.0 (2025-08-08)
+
+### Features
+
+ * Add support for InstancePlacementConfig in Estimator for training jobs running on ultraserver capacity
+
+### Bug Fixes and Other Changes
+
+ * Add more constraints to test requirements
+
+## v2.249.0 (2025-07-31)
+
+### Features
+
+ * AWS Batch for SageMaker Training jobs
+
+### Bug Fixes and Other Changes
+
+ * Directly use customer-provided endpoint name for ModelBuilder deployment.
+ * update image_uri_configs 07-23-2025 07:18:25 PST
+
+## v2.248.2 (2025-07-22)
+
+### Bug Fixes and Other Changes
+
+ * Relax boto3 version requirement
+ * update image_uri_configs 07-22-2025 07:18:25 PST
+ * update image_uri_configs 07-18-2025 07:18:28 PST
+ * add hard dependency on sagemaker-core pypi lib
+ * When rootlessDocker is enabled, return a fixed SageMaker IP
+
 ## v2.248.1 (2025-07-16)
 
 ### Bug Fixes and Other Changes
