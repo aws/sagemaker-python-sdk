@@ -31,9 +31,8 @@ from sagemaker.batch_inference.batch_transform_inference_config import \
     BatchTransformInferenceConfig
 from sagemaker.compute_resource_requirements import ResourceRequirements
 from sagemaker.deserializers import (CSVDeserializer, JSONDeserializer,
-                                     RecordDeserializer,
-                                     TorchTensorDeserializer,
-                                     NumpyDeserializer)
+                                     NumpyDeserializer, RecordDeserializer,
+                                     TorchTensorDeserializer)
 from sagemaker.enums import EndpointType, Tag
 from sagemaker.estimator import Estimator
 from sagemaker.huggingface.llm_utils import (
@@ -46,9 +45,9 @@ from sagemaker.modules import logger
 from sagemaker.modules.train import ModelTrainer
 from sagemaker.predictor import Predictor
 from sagemaker.s3 import S3Downloader
-from sagemaker.serializers import (LibSVMSerializer, NumpySerializer,
-                                   RecordSerializer, TorchTensorSerializer,
-                                   JSONSerializer)
+from sagemaker.serializers import (JSONSerializer, LibSVMSerializer,
+                                   NumpySerializer, RecordSerializer,
+                                   TorchTensorSerializer)
 from sagemaker.serve.builder.djl_builder import DJL
 from sagemaker.serve.builder.jumpstart_builder import JumpStart
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
@@ -137,6 +136,22 @@ DEFAULT_SERIALIZERS_BY_FRAMEWORK = {
 }
 
 
+@dataclass
+class Network:
+    """Network configuration for model deployment."""
+    subnets: Optional[List[str]] = None
+    security_group_ids: Optional[List[str]] = None
+    enable_network_isolation: bool = False
+    vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None
+
+
+@dataclass
+class Compute:
+    """Compute configuration for model deployment."""
+    instance_type: Optional[str]
+    instance_count: Optional[int] = 1
+
+
 # pylint: disable=attribute-defined-outside-init, disable=E1101, disable=R0901, disable=R1705
 @dataclass
 class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing, TEI):
@@ -147,42 +162,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         model_path (Optional[str]): The path of the model directory.
         sagemaker_session (Optional[sagemaker.session.Session]): The
             SageMaker session to use for the execution.
-        name (Optional[str]): The model name.
-        mode (Optional[Mode]): The mode of operation. The following
-            modes are supported:
-
-            * ``Mode.SAGEMAKER_ENDPOINT``: Launch on a SageMaker endpoint
-            * ``Mode.LOCAL_CONTAINER``: Launch locally with a container
-            * ``Mode.IN_PROCESS``: Launch locally to a FastAPI server instead of using a container.
-        shared_libs (List[str]): Any shared libraries you want to bring into
-            the model packaging.
-        dependencies (Optional[Dict[str, Any]): The dependencies of the model
-            or container. Takes a dict as an input where you can specify
-            autocapture as ``True`` or ``False``, a requirements file, or custom
-            dependencies as a list. A sample ``dependencies`` dict:
-
-            .. code:: python
-
-                {
-                    "auto": False,
-                    "requirements": "/path/to/requirements.txt",
-                    "custom": ["custom_module==1.2.3",
-                      "other_module@http://some/website.whl"],
-                }
-
         env_vars (Optional[Dict[str, str]): The environment variables for the runtime
             execution.
-        log_level (Optional[int]): The log level. Possible values are ``CRITICAL``,
-            ``ERROR``, ``WARNING``, ``INFO``, ``DEBUG``, and ``NOTSET``.
-        content_type (Optional[str]): The content type of the endpoint input data. This value
-            is automatically derived from the input sample, but you can override it.
-        accept_type (Optional[str]): The content type of the data accepted from the endpoint.
-            This value is automatically derived from the output sample, but you can override
-            the value.
         s3_model_data_url (Optional[str]): The S3 location where you want to upload the model
             package. Defaults to a S3 bucket prefixed with the account ID.
-        instance_type (Optional[str]): The instance type of the endpoint. Defaults to the CPU
-            instance type to help narrow the container type based on the instance family.
         schema_builder (Optional[SchemaBuilder]): The input/output schema of the model.
             The schema builder translates the input into bytes and converts the response
             into a stream. All translations between the server and the client are handled
@@ -198,15 +181,10 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             ``invoke`` and ``load`` functions.
         image_uri (Optional[str]): The container image uri (which is derived from a
             SageMaker-based container).
-        image_config (dict[str, str] or dict[str, PipelineVariable]): Specifies
-            whether the image of model container is pulled from ECR, or private
-            registry in your VPC. By default it is set to pull model container
-            image from ECR. (default: None).
-        vpc_config ( Optional[Dict[str, List[Union[str, PipelineVariable]]]]):
-                The VpcConfig set on the model (default: None)
-                * 'Subnets' (List[Union[str, PipelineVariable]]): List of subnet ids.
-                * 'SecurityGroupIds' (List[Union[str, PipelineVariable]]]): List of security group
-                ids.
+        network (Optional[Network]): Network configuration including VPC settings,
+            subnets, security groups, and network isolation.
+        compute (Optional[Compute]): Compute configuration including instance type
+            and instance count.
         model_server (Optional[ModelServer]): The model server to which to deploy.
             You need to provide this argument when you specify an ``image_uri``
             in order for model builder to build the artifacts correctly (according
@@ -247,50 +225,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     sagemaker_session: Optional[Session] = field(
         default=None, metadata={"help": "Define sagemaker session for execution"}
     )
-    name: Optional[str] = field(
-        default_factory=lambda: "model-name-" + uuid.uuid1().hex,
-        metadata={"help": "Define the model name"},
-    )
-    mode: Optional[Mode] = field(
-        default=Mode.SAGEMAKER_ENDPOINT,
-        metadata={
-            "help": "Define the mode of operation"
-            "Model Builder supports three modes "
-            "1/ SageMaker Endpoint"
-            "2/ Local launch with container"
-            "3/ Local launch in process"
-        },
-    )
-    shared_libs: List[str] = field(
-        default_factory=lambda: [],
-        metadata={"help": "Define any shared lib you want to bring into the model " "packaging"},
-    )
-    dependencies: Optional[Dict[str, Any]] = field(
-        default_factory=lambda: {"auto": False},
-        metadata={"help": "Define the dependencies of the model/container"},
-    )
     env_vars: Optional[Dict[str, str]] = field(
         default_factory=lambda: {},
         metadata={"help": "Define the environment variables"},
     )
-    log_level: Optional[int] = field(
-        default=logging.DEBUG, metadata={"help": "Define the log level"}
-    )
-    content_type: Optional[str] = field(
-        default=None,
-        metadata={"help": "Define the content type of the input data to the endpoint"},
-    )
-    accept_type: Optional[str] = field(
-        default=None,
-        metadata={"help": "Define the accept type of the output data from the endpoint"},
-    )
     s3_model_data_url: Optional[str] = field(
         default=None,
         metadata={"help": "Define the s3 location where you want to upload the model package"},
-    )
-    instance_type: Optional[str] = field(
-        default="ml.c5.xlarge",
-        metadata={"help": "Define the instance_type of the endpoint"},
     )
     schema_builder: Optional[SchemaBuilder] = field(
         default=None, metadata={"help": "Defines the i/o schema of the model"}
@@ -306,22 +247,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
     image_uri: Optional[str] = field(
         default=None, metadata={"help": "Define the container image uri"}
     )
-    image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = field(
+    network: Optional[Network] = field(
         default=None,
-        metadata={
-            "help": "Specifies whether the image of model container is pulled from ECR,"
-            " or private registry in your VPC. By default it is set to pull model "
-            "container image from ECR. (default: None)."
-        },
+        metadata={"help": "Network configuration including VPC settings and network isolation"},
     )
-    vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = field(
+    compute: Optional[Compute] = field(
         default=None,
-        metadata={
-            "help": "The VpcConfig set on the model (default: None)."
-            "* 'Subnets' (List[Union[str, PipelineVariable]]): List of subnet ids."
-            "* ''SecurityGroupIds'' (List[Union[str, PipelineVariable]]): List of"
-            " security group ids."
-        },
+        metadata={"help": "Compute configuration including instance type and count"},
     )
     model_server: Optional[ModelServer] = field(
         default=None, metadata={"help": "Define the model server to deploy to."}
@@ -352,6 +284,112 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             " to the inference component."
         },
     )
+    
+    # Internal attributes for backward compatibility and state management
+    name: Optional[str] = field(
+        default_factory=lambda: "model-name-" + uuid.uuid1().hex,
+        metadata={"help": "Internal: model name, set via build()"},
+    )
+    mode: Optional[Mode] = field(
+        default=Mode.SAGEMAKER_ENDPOINT,
+        metadata={"help": "Internal: mode of operation, set via build()"},
+    )
+    instance_type: Optional[str] = field(
+        default="ml.c5.xlarge",
+        metadata={"help": "Internal: instance type, derived from compute config"},
+    )
+    instance_count: Optional[int] = field(
+        default=1,
+        metadata={"help": "Internal: instance count, derived from compute config"},
+    )
+    vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = field(
+        default=None,
+        metadata={"help": "Internal: VPC config, derived from network config"},
+    )
+    enable_network_isolation: bool = field(
+        default=False,
+        metadata={"help": "Internal: network isolation, derived from network config"},
+    )
+    
+    # Deprecated fields - kept for backward compatibility but will be removed
+    shared_libs: List[str] = field(
+        default_factory=lambda: [],
+        metadata={"help": "DEPRECATED: Use configure_for_torchserve() instead"},
+    )
+    dependencies: Optional[Dict[str, Any]] = field(
+        default_factory=lambda: {"auto": False},
+        metadata={"help": "DEPRECATED: Use configure_for_torchserve() instead"},
+    )
+    image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = field(
+        default=None,
+        metadata={"help": "DEPRECATED: Use configure_for_torchserve() instead"},
+    )
+
+    def __post_init__(self):
+        """Initialize derived attributes from Network and Compute configurations."""
+        import warnings
+
+        # Initialize sagemaker_session if not provided
+        if self.sagemaker_session is None:
+            self.sagemaker_session = Session()
+        
+        # Warn about deprecated parameters
+        if self.shared_libs and len(self.shared_libs) > 0:
+            warnings.warn(
+                "The 'shared_libs' parameter is deprecated. Use configure_for_torchserve() instead.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+        
+        if self.dependencies and self.dependencies != {"auto": False}:
+            warnings.warn(
+                "The 'dependencies' parameter is deprecated. Use configure_for_torchserve() instead.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+        
+        if self.image_config is not None:
+            warnings.warn(
+                "The 'image_config' parameter is deprecated. Use configure_for_torchserve() instead.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+        
+        # Set compute-related attributes from compute config
+        if self.compute:
+            self.instance_type = self.compute.instance_type or "ml.c5.xlarge"
+            self.instance_count = self.compute.instance_count or 1
+        else:
+            # Set defaults if no compute config provided
+            if not hasattr(self, 'instance_type') or self.instance_type is None:
+                self.instance_type = "ml.c5.xlarge"
+            if not hasattr(self, 'instance_count') or self.instance_count is None:
+                self.instance_count = 1
+        
+        # Set network-related attributes from network config
+        if self.network:
+            if self.network.vpc_config:
+                self.vpc_config = self.network.vpc_config
+            else:
+                self.vpc_config = {
+                    'Subnets': self.network.subnets or [],
+                    'SecurityGroupIds': self.network.security_group_ids or []
+                } if (self.network.subnets or self.network.security_group_ids) else None
+            self.enable_network_isolation = self.network.enable_network_isolation
+        else:
+            # Set defaults if no network config provided
+            if not hasattr(self, 'vpc_config'):
+                self.vpc_config = None
+            if not hasattr(self, 'enable_network_isolation'):
+                self.enable_network_isolation = False
+        
+        # Initialize default name if not set
+        if not hasattr(self, 'name') or self.name is None:
+            self.name = "model-name-" + uuid.uuid1().hex
+        
+        # Initialize default mode if not set
+        if not hasattr(self, 'mode') or self.mode is None:
+            self.mode = Mode.SAGEMAKER_ENDPOINT
 
     def _save_model_inference_spec(self):
         """Placeholder docstring"""
@@ -992,26 +1030,28 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
     def build(
         self,
-        mode: Type[Mode] = None,
-        role_arn: str = None,
-        sagemaker_session: Optional[Session] = None,
+        model_name: str,
+        s3_model_data_url: str,
+        mode: Type[Mode]
     ) -> Union[ModelBuilder, Type[Model]]:
         """Creates deployable ``Model`` instances with all provided ``ModelBuilder`` objects.
 
         Args:
-            mode (Type[Mode], optional): The mode. Defaults to ``None``.
-            role_arn (str, optional): The IAM role arn. Defaults to ``None``.
-            sagemaker_session (Optional[Session]): Session object which manages interactions
-                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
-                function creates one using the default AWS configuration chain.
+            model_name (str): The model name.
+            s3_model_data_url (str): The S3 URL where the model data is stored.
+            mode (Type[Mode]): The deployment mode.
 
         Returns:
             Union[ModelBuilder, Type[Model]]: A deployable ``ModelBuilder`` object if multiple
             ``ModelBuilders`` were built, or a deployable ``Model`` object.
         """
-        if role_arn:
-            self.role_arn = role_arn
-        self.sagemaker_session = sagemaker_session or self.sagemaker_session or Session()
+        # Set required parameters
+        self.name = model_name
+        self.mode = mode
+        self.s3_model_data_url = s3_model_data_url
+        
+        # Ensure sagemaker_session is set
+        self.sagemaker_session = self.sagemaker_session or Session()
 
         deployables = {}
 
@@ -1020,9 +1060,9 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         ):
             self.serve_settings = self._get_serve_setting()
             return self._build_single_modelbuilder(
-                mode=mode,
+                mode=self.mode,
                 role_arn=self.role_arn,
-                sagemaker_session=sagemaker_session,
+                sagemaker_session=self.sagemaker_session,
             )
 
         # Multi-ModelBuilder case: deploy
@@ -1126,6 +1166,64 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
 
         self._deployables = deployables
         return self
+
+    def configure_for_torchserve(
+        self,
+        shared_libs: Optional[List[str]] = None,
+        dependencies: Optional[Dict[str, Any]] = None,
+        image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    ) -> "ModelBuilder":
+        """Configure ModelBuilder for TorchServe deployment.
+        
+        Args:
+            shared_libs (Optional[List[str]]): Shared libraries for TorchServe packaging.
+            dependencies (Optional[Dict[str, Any]]): Dependencies for TorchServe container.
+            image_config (Optional[Dict[str, Union[str, PipelineVariable]]]): Image configuration.
+            
+        Returns:
+            ModelBuilder: Self for method chaining.
+        """
+        if shared_libs is not None:
+            self.shared_libs = shared_libs
+        if dependencies is not None:
+            self.dependencies = dependencies
+        if image_config is not None:
+            self.image_config = image_config
+        
+        # Set TorchServe as the model server
+        self.model_server = ModelServer.TORCHSERVE
+        
+        return self
+
+    def build_torchserve(
+        self,
+        model_name: Optional[str] = None,
+        shared_libs: Optional[List[str]] = None,
+        dependencies: Optional[Dict[str, Any]] = None,
+        image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        **kwargs
+    ) -> Type[Model]:
+        """Build a model specifically for TorchServe deployment.
+        
+        Args:
+            model_name (Optional[str]): The model name.
+            shared_libs (Optional[List[str]]): Shared libraries for TorchServe packaging.
+            dependencies (Optional[Dict[str, Any]]): Dependencies for TorchServe container.
+            image_config (Optional[Dict[str, Union[str, PipelineVariable]]]): Image configuration.
+            **kwargs: Additional arguments passed to build().
+            
+        Returns:
+            Type[Model]: A deployable Model object configured for TorchServe.
+        """
+        # Configure TorchServe-specific settings
+        self.configure_for_torchserve(
+            shared_libs=shared_libs,
+            dependencies=dependencies,
+            image_config=image_config
+        )
+        
+        # Build the model
+        return self.build(model_name=model_name, **kwargs)
 
     def _get_processing_unit(self):
         """Detects if the resource requirements are intended for a CPU or GPU instance."""

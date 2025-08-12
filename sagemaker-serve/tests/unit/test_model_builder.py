@@ -21,6 +21,8 @@ import deepdiff
 import pytest
 from sagemaker.async_inference.async_inference_config import \
     AsyncInferenceConfig
+from sagemaker.base_deserializers import JSONDeserializer
+from sagemaker.base_serializers import NumpySerializer
 from sagemaker.batch_inference.batch_transform_inference_config import \
     BatchTransformInferenceConfig
 from sagemaker.compute_resource_requirements.resource_requirements import \
@@ -31,6 +33,7 @@ from sagemaker.serve import SchemaBuilder
 # TODO: target v3 model builder. currently not possible due to patch magicmocks
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.model_builder import DEFAULT_SERIALIZERS_BY_FRAMEWORK
 from sagemaker.serve.model_format.mlflow.constants import MLFLOW_TRACKING_ARN
 from sagemaker.serve.utils import task
 from sagemaker.serve.utils.exceptions import TaskNotFoundException
@@ -40,9 +43,6 @@ from sagemaker.serve.validations.optimization import \
     _validate_optimization_configuration
 from sagemaker.serverless.serverless_inference_config import \
     ServerlessInferenceConfig
-from sagemaker.serve.model_builder import DEFAULT_SERIALIZERS_BY_FRAMEWORK
-from sagemaker.base_deserializers import JSONDeserializer
-from sagemaker.base_serializers import NumpySerializer
 
 schema_builder = MagicMock()
 mock_inference_spec = Mock()
