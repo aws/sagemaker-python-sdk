@@ -687,9 +687,8 @@ def download_file(bucket_name, path, target, sagemaker_session):
             interact with S3.
     """
     path = path.lstrip("/")
-    boto_session = sagemaker_session.boto_session
 
-    s3 = boto_session.resource("s3", region_name=sagemaker_session.boto_region_name)
+    s3 = sagemaker_session.s3_resource
     bucket = s3.Bucket(bucket_name)
     bucket.download_file(path, target)
 
