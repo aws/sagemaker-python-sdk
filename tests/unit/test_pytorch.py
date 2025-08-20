@@ -1087,6 +1087,14 @@ def test_training_recipe_for_trainium(sagemaker_session):
                 },
             },
         },
+        {
+            "script": "custom_pretrain.py",
+            "recipe": {
+                "model": {
+                    "model_type": "gpt_oss",
+                },
+            },
+        },
     ],
 )
 @patch("shutil.copyfile")
