@@ -136,6 +136,7 @@ def _get_trainining_recipe_gpu_model_name_and_script(model_type: str):
         "mistral": ("mistral", "mistral_pretrain.py"),
         "mixtral": ("mixtral", "mixtral_pretrain.py"),
         "deepseek": ("deepseek", "deepseek_pretrain.py"),
+        "gpt_oss": ("custom_model", "custom_pretrain.py"),
     }
 
     for key in model_type_to_script:
