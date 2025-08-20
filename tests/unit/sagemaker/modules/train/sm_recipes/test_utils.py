@@ -240,7 +240,7 @@ def test_get_args_from_recipe_with_nova_and_role(mock_get_args_from_nova_recipe,
         {
             "model_type": "gpt_oss",
             "script": "custom_pretrain.py",
-            "model_base_name": "gpt_oss",
+            "model_base_name": "custom_model",
         },
     ],
 )
