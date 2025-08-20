@@ -237,6 +237,11 @@ def test_get_args_from_recipe_with_nova_and_role(mock_get_args_from_nova_recipe,
             "script": "deepseek_pretrain.py",
             "model_base_name": "deepseek",
         },
+        {
+            "model_type": "gpt_oss",
+            "script": "custom_pretrain.py",
+            "model_base_name": "custom_model",
+        },
     ],
 )
 def test_get_trainining_recipe_gpu_model_name_and_script(test_case):
