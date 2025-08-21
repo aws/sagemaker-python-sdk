@@ -559,6 +559,7 @@ def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpSta
     kwargs.config_name = kwargs.config_name or get_top_ranked_config_name(
         **get_model_info_default_kwargs(kwargs, include_config_name=False),
         scope=JumpStartScriptScope.INFERENCE,
+        instance_type=kwargs.instance_type,
     )
 
     if kwargs.config_name is None:
@@ -618,6 +619,7 @@ def _add_config_name_to_deploy_kwargs(
         default_config_name = kwargs.config_name or get_top_ranked_config_name(
             **get_model_info_default_kwargs(kwargs, include_config_name=False),
             scope=JumpStartScriptScope.INFERENCE,
+            instance_type=kwargs.instance_type,
         )
 
     kwargs.config_name = kwargs.config_name or default_config_name
