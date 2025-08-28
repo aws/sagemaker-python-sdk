@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.251.0 (2025-08-21)
+
+### Features
+
+ * support pipeline versioning
+
+### Bug Fixes and Other Changes
+
+ * GPT OSS Hotfix
+ * dockerfile stuck on interactive shell
+ * add sleep for model deployment
+
 ## v2.250.0 (2025-08-08)
 
 ### Features
