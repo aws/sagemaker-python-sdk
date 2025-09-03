@@ -80,10 +80,11 @@ def test_repack_model_step(estimator):
     assert hyperparameters["inference_script"] == '"dummy_script.py"'
     assert hyperparameters["model_archive"] == '"s3://my-bucket/model.tar.gz"'
     assert hyperparameters["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
-    assert (
-        hyperparameters["sagemaker_submit_directory"]
-        == '"s3://my-bucket/MyRepackModelStep-b5ea77f701b47a8d075605497462ccc2/source/sourcedir.tar.gz"'
-    )
+
+    # ex: "gits3://my-bucket/sagemaker-scikit-learn-2025-04-07-20-39-38-854/source/sourcedir.tar.gz"
+    sagemaker_submit_directory = hyperparameters["sagemaker_submit_directory"]
+    assert sagemaker_submit_directory.startswith('"s3://my-bucket/sagemaker-scikit-learn-')
+    assert sagemaker_submit_directory.endswith('/source/sourcedir.tar.gz"')
 
     del request_dict["Arguments"]["HyperParameters"]
     del request_dict["Arguments"]["AlgorithmSpecification"]["TrainingImage"]

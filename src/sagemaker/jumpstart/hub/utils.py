@@ -14,14 +14,21 @@
 """This module contains utilities related to SageMaker JumpStart Hub."""
 from __future__ import absolute_import
 import re
-from typing import Optional
-from sagemaker.jumpstart.hub.types import S3ObjectLocation
-from sagemaker.s3_utils import parse_s3_url
+from typing import Optional, List, Any
 from sagemaker.session import Session
 from sagemaker.utils import aws_partition
 from sagemaker.jumpstart.types import HubContentType, HubArnExtractedInfo
 from sagemaker.jumpstart import constants
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
+from packaging import version
+
+PROPRIETARY_VERSION_KEYWORD = "@marketplace-version:"
+
+
+def _convert_str_to_optional(string: str) -> Optional[str]:
+    if string == "None":
+        string = None
+    return string
 
 
 def get_info_from_hub_resource_arn(
@@ -37,7 +44,7 @@ def get_info_from_hub_resource_arn(
         hub_name = match.group(4)
         hub_content_type = match.group(5)
         hub_content_name = match.group(6)
-        hub_content_version = match.group(7)
+        hub_content_version = _convert_str_to_optional(match.group(7))
 
         return HubArnExtractedInfo(
             partition=partition,
@@ -67,10 +74,14 @@ def construct_hub_arn_from_name(
     hub_name: str,
     region: Optional[str] = None,
     session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+    account_id: Optional[str] = None,
 ) -> str:
     """Constructs a Hub arn from the Hub name using default Session values."""
+    if session is None:
+        # session is overridden to none by some callers
+        session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
-    account_id = session.account_id()
+    account_id = account_id or session.account_id()
     region = region or session.boto_region_name
     partition = aws_partition(region)
 
@@ -97,7 +108,7 @@ def construct_hub_model_reference_arn_from_inputs(
     info = get_info_from_hub_resource_arn(hub_arn)
     arn = (
         f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub-content/"
-        f"{info.hub_name}/{HubContentType.MODEL_REFERENCE}/{model_name}/{version}"
+        f"{info.hub_name}/{HubContentType.MODEL_REFERENCE.value}/{model_name}/{version}"
     )
 
     return arn
@@ -126,61 +137,6 @@ def generate_hub_arn_for_init_kwargs(
     return hub_arn
 
 
-def generate_default_hub_bucket_name(
-    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> str:
-    """Return the name of the default bucket to use in relevant Amazon SageMaker Hub interactions.
-
-    Returns:
-        str: The name of the default bucket. If the name was not explicitly specified through
-            the Session or sagemaker_config, the bucket will take the form:
-            ``sagemaker-hubs-{region}-{AWS account ID}``.
-    """
-
-    region: str = sagemaker_session.boto_region_name
-    account_id: str = sagemaker_session.account_id()
-
-    # TODO: Validate and fast fail
-
-    return f"sagemaker-hubs-{region}-{account_id}"
-
-
-def create_s3_object_reference_from_uri(s3_uri: Optional[str]) -> Optional[S3ObjectLocation]:
-    """Utiity to help generate an S3 object reference"""
-    if not s3_uri:
-        return None
-
-    bucket, key = parse_s3_url(s3_uri)
-
-    return S3ObjectLocation(
-        bucket=bucket,
-        key=key,
-    )
-
-
-def create_hub_bucket_if_it_does_not_exist(
-    bucket_name: Optional[str] = None,
-    sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
-) -> str:
-    """Creates the default SageMaker Hub bucket if it does not exist.
-
-    Returns:
-        str: The name of the default bucket. Takes the form:
-            ``sagemaker-hubs-{region}-{AWS account ID}``.
-    """
-
-    region: str = sagemaker_session.boto_region_name
-    if bucket_name is None:
-        bucket_name: str = generate_default_hub_bucket_name(sagemaker_session)
-
-    sagemaker_session._create_s3_bucket_if_it_does_not_exist(
-        bucket_name=bucket_name,
-        region=region,
-    )
-
-    return bucket_name
-
-
 def is_gated_bucket(bucket_name: str) -> bool:
     """Returns true if the bucket name is the JumpStart gated bucket."""
     return bucket_name in constants.JUMPSTART_GATED_BUCKET_NAME_SET
@@ -193,23 +149,70 @@ def get_hub_model_version(
     hub_model_version: Optional[str] = None,
     sagemaker_session: Session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 ) -> str:
-    """Returns available Jumpstart hub model version
+    """Returns available Jumpstart hub model version.
+
+    It will attempt both a semantic HubContent version search and Marketplace version search.
+    If the Marketplace version is also semantic, this function will default to HubContent version.
 
     Raises:
         ClientError: If the specified model is not found in the hub.
+        KeyError: If the specified model version is not found.
     """
+    if sagemaker_session is None:
+        # sagemaker_session is overridden to none by some callers
+        sagemaker_session = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 
     try:
-        hub_content_summaries = sagemaker_session.list_hub_content_versions(
-            hub_name=hub_name, hub_content_name=hub_model_name, hub_content_type=hub_model_type
-        ).get("HubContentSummaries")
+        hub_content_summaries = _list_hub_content_versions_helper(
+            hub_name=hub_name,
+            hub_content_name=hub_model_name,
+            hub_content_type=hub_model_type,
+            sagemaker_session=sagemaker_session,
+        )
     except Exception as ex:
         raise Exception(f"Failed calling list_hub_content_versions: {str(ex)}")
 
+    try:
+        return _get_hub_model_version_for_open_weight_version(
+            hub_content_summaries, hub_model_version
+        )
+    except KeyError:
+        marketplace_hub_content_version = _get_hub_model_version_for_marketplace_version(
+            hub_content_summaries, hub_model_version
+        )
+        if marketplace_hub_content_version:
+            return marketplace_hub_content_version
+        raise
+
+
+def _list_hub_content_versions_helper(
+    hub_name, hub_content_name, hub_content_type, sagemaker_session
+):
+    all_hub_content_summaries = []
+    list_hub_content_versions_response = sagemaker_session.list_hub_content_versions(
+        hub_name=hub_name, hub_content_name=hub_content_name, hub_content_type=hub_content_type
+    )
+    all_hub_content_summaries.extend(list_hub_content_versions_response.get("HubContentSummaries"))
+    while "NextToken" in list_hub_content_versions_response:
+        list_hub_content_versions_response = sagemaker_session.list_hub_content_versions(
+            hub_name=hub_name,
+            hub_content_name=hub_content_name,
+            hub_content_type=hub_content_type,
+            next_token=list_hub_content_versions_response["NextToken"],
+        )
+        all_hub_content_summaries.extend(
+            list_hub_content_versions_response.get("HubContentSummaries")
+        )
+    return all_hub_content_summaries
+
+
+def _get_hub_model_version_for_open_weight_version(
+    hub_content_summaries: List[Any], hub_model_version: Optional[str] = None
+) -> str:
     available_model_versions = [model.get("HubContentVersion") for model in hub_content_summaries]
 
     if hub_model_version == "*" or hub_model_version is None:
-        return str(max(available_model_versions))
+        return str(max(version.parse(v) for v in available_model_versions))
 
     try:
         spec = SpecifierSet(f"=={hub_model_version}")
@@ -221,3 +224,37 @@ def get_hub_model_version(
     hub_model_version = str(max(available_versions_filtered))
 
     return hub_model_version
+
+
+def _get_hub_model_version_for_marketplace_version(
+    hub_content_summaries: List[Any], marketplace_version: str
+) -> Optional[str]:
+    """Returns the HubContent version associated with the Marketplace version.
+
+    This function will check within the HubContentSearchKeywords for the proprietary version.
+    """
+    for model in hub_content_summaries:
+        model_search_keywords = model.get("HubContentSearchKeywords", [])
+        if _hub_search_keywords_contains_marketplace_version(
+            model_search_keywords, marketplace_version
+        ):
+            return model.get("HubContentVersion")
+
+    return None
+
+
+def _hub_search_keywords_contains_marketplace_version(
+    model_search_keywords: List[str], marketplace_version: str
+) -> bool:
+    proprietary_version_keyword = next(
+        filter(lambda s: s.startswith(PROPRIETARY_VERSION_KEYWORD), model_search_keywords), None
+    )
+
+    if not proprietary_version_keyword:
+        return False
+
+    proprietary_version = proprietary_version_keyword.lstrip(PROPRIETARY_VERSION_KEYWORD)
+    if proprietary_version == marketplace_version:
+        return True
+
+    return False

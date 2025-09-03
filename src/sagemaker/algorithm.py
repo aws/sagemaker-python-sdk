@@ -157,6 +157,20 @@ class AlgorithmEstimator(EstimatorBase):
                 available (default: ``None``).
             **kwargs: Additional kwargs. This is unused. It's only added for AlgorithmEstimator
                 to ignore the irrelevant arguments.
+
+        Raises:
+            ValueError:
+            - If an AWS IAM Role is not provided.
+            - Bad value for instance type.
+            RuntimeError:
+            - When setting up custom VPC, both subnets and security_group_ids are not provided
+            - If instance_count > 1 (distributed training) with instance type local or local gpu
+            - If LocalSession is not used with instance type local or local gpu
+            - file:// output path used outside of local mode
+            botocore.exceptions.ClientError:
+            - algorithm arn is incorrect
+            - insufficient permission to access/ describe algorithm
+            - algorithm is in a different region
         """
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(

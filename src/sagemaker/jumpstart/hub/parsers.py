@@ -72,7 +72,11 @@ def get_model_spec_arg_keys(
     """
     arg_keys: List[str] = []
     if arg_type == ModelSpecKwargType.DEPLOY:
-        arg_keys = ["ModelDataDownloadTimeout", "ContainerStartupHealthCheckTimeout"]
+        arg_keys = [
+            "ModelDataDownloadTimeout",
+            "ContainerStartupHealthCheckTimeout",
+            "InferenceAmiVersion",
+        ]
     elif arg_type == ModelSpecKwargType.ESTIMATOR:
         arg_keys = [
             "EncryptInterContainerTraffic",
@@ -137,6 +141,8 @@ def make_model_specs_from_describe_hub_content_response(
     hub_model_document: HubModelDocument = response.hub_content_document
     specs["url"] = hub_model_document.url
     specs["min_sdk_version"] = hub_model_document.min_sdk_version
+    specs["model_types"] = hub_model_document.model_types
+    specs["capabilities"] = hub_model_document.capabilities
     specs["training_supported"] = bool(hub_model_document.training_supported)
     specs["incremental_training_supported"] = bool(
         hub_model_document.incremental_training_supported
@@ -146,15 +152,19 @@ def make_model_specs_from_describe_hub_content_response(
     specs["inference_config_components"] = hub_model_document.inference_config_components
     specs["inference_config_rankings"] = hub_model_document.inference_config_rankings
 
-    hosting_artifact_bucket, hosting_artifact_key = parse_s3_url(  # pylint: disable=unused-variable
-        hub_model_document.hosting_artifact_uri
-    )
-    specs["hosting_artifact_key"] = hosting_artifact_key
-    specs["hosting_artifact_uri"] = hub_model_document.hosting_artifact_uri
-    hosting_script_bucket, hosting_script_key = parse_s3_url(  # pylint: disable=unused-variable
-        hub_model_document.hosting_script_uri
-    )
-    specs["hosting_script_key"] = hosting_script_key
+    if hub_model_document.hosting_artifact_uri:
+        _, hosting_artifact_key = parse_s3_url(  # pylint: disable=unused-variable
+            hub_model_document.hosting_artifact_uri
+        )
+        specs["hosting_artifact_key"] = hosting_artifact_key
+        specs["hosting_artifact_uri"] = hub_model_document.hosting_artifact_uri
+
+    if hub_model_document.hosting_script_uri:
+        _, hosting_script_key = parse_s3_url(  # pylint: disable=unused-variable
+            hub_model_document.hosting_script_uri
+        )
+        specs["hosting_script_key"] = hosting_script_key
+
     specs["inference_environment_variables"] = hub_model_document.inference_environment_variables
     specs["inference_vulnerable"] = False
     specs["inference_dependencies"] = hub_model_document.inference_dependencies
@@ -220,6 +230,8 @@ def make_model_specs_from_describe_hub_content_response(
     if hub_model_document.hosting_model_package_arn:
         specs["hosting_model_package_arns"] = {region: hub_model_document.hosting_model_package_arn}
 
+    specs["model_subscription_link"] = hub_model_document.model_subscription_link
+
     specs["hosting_use_script_uri"] = hub_model_document.hosting_use_script_uri
 
     specs["hosting_instance_type_variants"] = hub_model_document.hosting_instance_type_variants
@@ -267,4 +279,10 @@ def make_model_specs_from_describe_hub_content_response(
         specs["training_instance_type_variants"] = (
             hub_model_document.training_instance_type_variants
         )
+        if hub_model_document.default_training_dataset_uri:
+            _, default_training_dataset_key = parse_s3_url(  # pylint: disable=unused-variable
+                hub_model_document.default_training_dataset_uri
+            )
+            specs["default_training_dataset_key"] = default_training_dataset_key
+            specs["default_training_dataset_uri"] = hub_model_document.default_training_dataset_uri
     return JumpStartModelSpecs(_to_json(specs), is_hub_content=True)

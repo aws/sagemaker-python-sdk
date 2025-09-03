@@ -49,13 +49,14 @@ from sagemaker.serve.utils.local_hardware import (
     _get_gpu_info_fallback,
 )
 from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
-from sagemaker.serve.utils.predictors import TgiLocalModePredictor
+from sagemaker.serve.utils.predictors import TgiLocalModePredictor, InProcessModePredictor
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.telemetry_logger import _capture_telemetry
 from sagemaker.base_predictor import PredictorBase
 
 logger = logging.getLogger(__name__)
+LOCAL_MODES = [Mode.LOCAL_CONTAINER, Mode.IN_PROCESS]
 
 _CODE_FOLDER = "code"
 _INVALID_SAMPLE_DATA_EX = (
@@ -92,6 +93,7 @@ class TGI(ABC):
         self.ram_usage_model_load = None
         self.secret_key = None
         self.role_arn = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self, *args, **kwargs):
@@ -142,6 +144,7 @@ class TGI(ABC):
             env=self.env_vars,
             role=self.role_arn,
             sagemaker_session=self.sagemaker_session,
+            name=self.name,
         )
 
         self._original_deploy = pysdk_model.deploy
@@ -174,6 +177,17 @@ class TGI(ABC):
 
         serializer = self.schema_builder.input_serializer
         deserializer = self.schema_builder._output_deserializer
+
+        if self.mode == Mode.IN_PROCESS:
+            predictor = InProcessModePredictor(
+                self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
+            )
+
+            self.modes[str(Mode.IN_PROCESS)].create_server(
+                predictor,
+            )
+            return predictor
+
         if self.mode == Mode.LOCAL_CONTAINER:
             timeout = kwargs.get("model_data_download_timeout")
 
@@ -278,7 +292,7 @@ class TGI(ABC):
             ] = _default_max_new_tokens
         self.pysdk_model = self._create_tgi_model()
 
-        if self.mode == Mode.LOCAL_CONTAINER:
+        if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
 
         return self.pysdk_model

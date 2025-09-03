@@ -19,7 +19,7 @@ import requests
 
 from sagemaker import Session, exceptions
 from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH
+from sagemaker.serve.model_format.mlflow.constants import MLFLOW_MODEL_PATH, MLFLOW_TRACKING_ARN
 from sagemaker.serve.utils.exceptions import ModelBuilderException
 from sagemaker.serve.utils.lineage_constants import (
     MLFLOW_LOCAL_PATH,
@@ -64,6 +64,7 @@ MODEL_SERVER_TO_CODE = {
     str(ModelServer.TRITON): 5,
     str(ModelServer.TGI): 6,
     str(ModelServer.TEI): 7,
+    str(ModelServer.SMD): 8,
 }
 
 MLFLOW_MODEL_PATH_CODE = {
@@ -122,13 +123,12 @@ def _capture_telemetry(func_name: str):
                 extra += f"&x-modelServer={MODEL_SERVER_TO_CODE[str(self.model_server)]}"
 
             if self.image_uri:
-                image_uri_tail = self.image_uri.split("/")[1]
                 image_uri_option = _get_image_uri_option(
                     self.image_uri, getattr(self, "_is_custom_image_uri", False)
                 )
-
-            if self.image_uri:
-                extra += f"&x-imageTag={image_uri_tail}"
+                split_image_uri = self.image_uri.split("/")
+                if len(split_image_uri) > 1:
+                    extra += f"&x-imageTag={split_image_uri[1]}"
 
             extra += f"&x-sdkVersion={SDK_VERSION}"
 
@@ -145,6 +145,9 @@ def _capture_telemetry(func_name: str):
                 mlflow_model_path = self.model_metadata[MLFLOW_MODEL_PATH]
                 mlflow_model_path_type = _get_mlflow_model_path_type(mlflow_model_path)
                 extra += f"&x-mlflowModelPathType={MLFLOW_MODEL_PATH_CODE[mlflow_model_path_type]}"
+                mlflow_model_tracking_server_arn = self.model_metadata.get(MLFLOW_TRACKING_ARN)
+                if mlflow_model_tracking_server_arn is not None:
+                    extra += f"&x-mlflowTrackingServerArn={mlflow_model_tracking_server_arn}"
 
             if getattr(self, "model_hub", False):
                 extra += f"&x-modelHub={MODEL_HUB_TO_CODE[str(self.model_hub)]}"
@@ -165,9 +168,13 @@ def _capture_telemetry(func_name: str):
                 model_provider_value = SD_DRAFT_MODEL_SOURCE_TO_CODE[str(model_provider_enum)]
                 extra += f"&x-sdDraftModelSource={model_provider_value}"
 
+            if getattr(self, "deployment_config_name", False):
+                config_name_code = self.deployment_config_name.lower()
+                extra += f"&x-configName={config_name_code}"
+
             extra += f"&x-latency={round(elapsed, 2)}"
 
-            if not self.serve_settings.telemetry_opt_out:
+            if hasattr(self, "serve_settings") and not self.serve_settings.telemetry_opt_out:
                 _send_telemetry(
                     status,
                     MODE_TO_CODE[str(self.mode)],

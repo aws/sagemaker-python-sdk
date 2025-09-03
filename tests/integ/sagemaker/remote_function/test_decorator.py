@@ -825,7 +825,7 @@ def test_decorator_torchrun(
     dummy_container_without_error,
     gpu_instance_type,
     use_torchrun=False,
-    nproc_per_node=1,
+    use_mpirun=False,
 ):
     @remote(
         role=ROLE,
@@ -834,7 +834,7 @@ def test_decorator_torchrun(
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
         use_torchrun=use_torchrun,
-        nproc_per_node=nproc_per_node,
+        use_mpirun=use_mpirun,
     )
     def divide(x, y):
         return x / y

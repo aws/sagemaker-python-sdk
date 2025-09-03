@@ -26,7 +26,7 @@ VALID_COMPRESSED_MODEL_DATA = "s3://mybucket/model.tar.gz"
 HF_MODEL_ID = "hf_hub_model_id"
 ROLE = "dummy_role"
 REGION = "us-west-2"
-VERSION = "0.28.0"
+VERSION = "latest"
 
 LMI_IMAGE_URI = image_uris.retrieve(framework="djl-lmi", version=VERSION, region=REGION)
 TRT_IMAGE_URI = image_uris.retrieve(framework="djl-tensorrtllm", version=VERSION, region=REGION)

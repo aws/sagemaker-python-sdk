@@ -13,16 +13,17 @@
 from __future__ import absolute_import
 import os
 from unittest import TestCase
-from unittest.mock import call
-
+from unittest.mock import call, mock_open, Mock, patch
+import json
 from botocore.exceptions import ClientError
-from mock.mock import Mock, patch
 import pytest
 import boto3
 import random
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import session
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
+    _load_region_config,
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     ENV_VARIABLE_DISABLE_JUMPSTART_LOGGING,
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
@@ -37,6 +38,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_RESOURCE_BASE_NAME,
     NEO_DEFAULT_REGION_NAME,
     JumpStartScriptScope,
+    JUMPSTART_LAUNCHED_REGIONS,
 )
 from functools import partial
 from sagemaker.jumpstart.enums import JumpStartTag, MIMEType, JumpStartModelType
@@ -48,6 +50,7 @@ from sagemaker.jumpstart.types import (
     JumpStartBenchmarkStat,
     JumpStartModelHeader,
     JumpStartVersionedModelId,
+    JumpStartLaunchedRegionInfo,
 )
 from tests.unit.sagemaker.jumpstart.utils import (
     get_base_spec_with_prototype_configs,
@@ -1363,7 +1366,7 @@ class TestIsValidModelId(TestCase):
             )
 
             assert (
-                utils.validate_model_id_and_get_type("pytorch-eqa-bert-base-cased")
+                utils.validate_model_id_and_get_type("pytorch-ic-mobilenet-v2")
                 == JumpStartModelType.OPEN_WEIGHTS
             )
             mock_get_manifest.assert_called_with(
@@ -1385,7 +1388,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_sagemaker_session.list_tags = mock_list_tags
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, None),
         )
@@ -1400,7 +1403,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_ID, "Value": "model_id"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             ("model_id", None, None, None),
         )
@@ -1415,7 +1418,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, "model_version", None, None),
         )
@@ -1427,7 +1430,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
         mock_sagemaker_session.list_tags = mock_list_tags
         mock_list_tags.return_value = [{"Key": "blah", "Value": "blah1"}]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, None),
         )
@@ -1442,7 +1445,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, "config_name", None),
         )
@@ -1457,7 +1460,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "config_name"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, "config_name"),
         )
@@ -1473,7 +1476,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "training_config_name"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, "inference_config_name", "training_config_name"),
         )
@@ -1489,7 +1492,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             ("model_id", "model_version", None, None),
         )
@@ -1507,7 +1510,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.MODEL_VERSION, "Value": "model_version_2"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, None),
         )
@@ -1525,7 +1528,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_1"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             ("model_id_1", "model_version_1", None, None),
         )
@@ -1543,7 +1546,7 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": random.choice(EXTRA_MODEL_VERSION_TAGS), "Value": "model_version_2"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             (None, None, None, None),
         )
@@ -1561,11 +1564,114 @@ class TestGetModelIdVersionFromResourceArn(TestCase):
             {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "config_name_2"},
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             utils.get_jumpstart_model_info_from_resource_arn("some-arn", mock_sagemaker_session),
             ("model_id_1", "model_version_1", None, None),
         )
         mock_list_tags.assert_called_once_with("some-arn")
+
+
+class TestJumpStartLaunchedRegions(TestCase):
+    def test_regions_not_empty(self):
+        self.assertTrue(len(JUMPSTART_LAUNCHED_REGIONS) > 0)
+
+
+class TestLoadRegionConfig(TestCase):
+    def setUp(self):
+        # Sample valid config that matches the expected structure
+        self.valid_config = {
+            "us-east-1": {
+                "content_bucket": "jumpstart-cache-prod-us-east-1",
+                "gated_content_bucket": "jumpstart-private-cache-prod-us-east-1",
+                "neo_content_bucket": "jumpstart-neo-cache-prod-us-east-1",
+            },
+            "us-west-2": {
+                "content_bucket": "jumpstart-cache-prod-us-west-2",
+            },
+        }
+        self.config_json = json.dumps(self.valid_config)
+
+    @patch("builtins.open", new_callable=mock_open)
+    def test_successful_config_load(self, mock_file):
+        # Setup mock to return valid config
+        mock_file.return_value.__enter__().read.return_value = self.config_json
+
+        result = _load_region_config("dummy/path")
+
+        # Verify the returned dictionary contains JumpStartLaunchedRegionInfo objects
+        self.assertTrue(all(isinstance(region, JumpStartLaunchedRegionInfo) for region in result))
+
+        for region in result:
+            if region.region_name == "us-east-1":
+                self.assertEqual(region.region_name, "us-east-1")
+                self.assertEqual(region.content_bucket, "jumpstart-cache-prod-us-east-1")
+                self.assertEqual(
+                    region.gated_content_bucket, "jumpstart-private-cache-prod-us-east-1"
+                )
+                self.assertEqual(region.neo_content_bucket, "jumpstart-neo-cache-prod-us-east-1")
+
+            elif region.region_name == "us-west-2":
+                self.assertEqual(region.region_name, "us-west-2")
+                self.assertEqual(region.content_bucket, "jumpstart-cache-prod-us-west-2")
+                self.assertIsNone(region.gated_content_bucket)
+                self.assertIsNone(region.neo_content_bucket)
+            else:
+                raise AssertionError(f"Unexpected region name found: {region.region_name}")
+
+    @patch("builtins.open", new_callable=mock_open)
+    def test_missing_required_field(self, mock_file):
+        # Config missing required content_bucket field
+        invalid_config = {
+            "us-east-1": {
+                "gated_content_bucket": "XXXXXXXXXXX",
+                "neo_content_bucket": "some-other-bucket",
+            }
+        }
+        mock_file.return_value.__enter__().read.return_value = json.dumps(invalid_config)
+
+        # Should return empty dict due to exception handling
+        result = _load_region_config("dummy/path")
+        self.assertEqual(result, set())
+
+    @patch("builtins.open")
+    def test_file_not_found(self, mock_file):
+        # Simulate file not found
+        mock_file.side_effect = FileNotFoundError()
+
+        # Should return empty dict due to exception handling
+        result = _load_region_config("dummy/path")
+        self.assertEqual(result, set())
+
+    @patch("builtins.open", new_callable=mock_open)
+    def test_invalid_json(self, mock_file):
+        # Setup mock to return invalid JSON
+        mock_file.return_value.__enter__().read.return_value = "invalid json content"
+
+        # Should return empty dict due to exception handling
+        result = _load_region_config("dummy/path")
+        self.assertEqual(result, set())
+
+    @patch("builtins.open", new_callable=mock_open)
+    def test_empty_config(self, mock_file):
+        # Setup mock to return empty JSON object
+        mock_file.return_value.__enter__().read.return_value = "{}"
+
+        result = _load_region_config("dummy/path")
+        self.assertEqual(result, set())
+
+    @patch("sagemaker.jumpstart.constants.JUMPSTART_LOGGER")
+    @patch("builtins.open")
+    def test_logging_on_error(self, mock_file, mock_logger):
+
+        # Simulate an error
+        mock_file.side_effect = Exception("Test error")
+
+        result = _load_region_config("dummy/path")
+
+        self.assertEqual(result, set())
+
+        # Verify error was logged
+        mock_logger.error.assert_called_once()
 
 
 class TestJumpStartLogger(TestCase):
@@ -2143,6 +2249,22 @@ def test_has_instance_rate_stat(stats, expected):
     assert utils.has_instance_rate_stat(stats) is expected
 
 
+def test_get_latest_version():
+    assert utils.get_latest_version(["2.9.1", "2.16.0", "1.0.0"]) == "2.16.0"
+
+
+def test_get_latest_version_empty_list_is_none():
+    assert utils.get_latest_version([]) is None
+
+
+def test_get_latest_version_none_is_none():
+    assert utils.get_latest_version(None) is None
+
+
+def test_get_latest_version_with_invalid_sem_ver():
+    assert utils.get_latest_version(["2.9.1", "2.16.0", "1.0.0", "abc"]) == "abc"
+
+
 @pytest.mark.parametrize(
     "data, expected",
     [(None, []), ([], []), (get_base_deployment_configs_metadata(), get_base_deployment_configs())],
@@ -2150,3 +2272,268 @@ def test_has_instance_rate_stat(stats, expected):
 def test_deployment_config_response_data(data, expected):
     out = utils.deployment_config_response_data(data)
     assert out == expected
+
+
+class TestGetEulaMessage(TestCase):
+    mock_model_specs = Mock(model_id="some-model-id", hosting_eula_key="some-eula-key")
+
+    def test_get_domain_for_region(self):
+        self.assertEqual(
+            utils.get_eula_message(self.mock_model_specs, "us-west-2"),
+            "Model 'some-model-id' requires accepting end-user license agreement (EULA). See"
+            " https://jumpstart-cache-prod-us-west-2.s3.us-west-2.amazonaws.com/some-eula-key "
+            "for terms of use.",
+        )
+        self.assertEqual(
+            utils.get_eula_message(self.mock_model_specs, "cn-north-1"),
+            "Model 'some-model-id' requires accepting end-user license agreement (EULA). See"
+            " https://jumpstart-cache-prod-cn-north-1.s3.cn-north-1.amazonaws.com.cn/some-eula-key "
+            "for terms of use.",
+        )
+
+
+class TestAcceptEulaModelAccessConfig(TestCase):
+    MOCK_PUBLIC_MODEL_ID = "mock_public_model_id"
+    MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL = [
+        {
+            "ChannelName": "draft_model",
+            "S3DataSource": {
+                "CompressionType": "None",
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://jumpstart_bucket/path/to/public/resources/",
+            },
+            "HostingEulaKey": None,
+        }
+    ]
+    MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL = [
+        {
+            "ChannelName": "draft_model",
+            "S3DataSource": {
+                "CompressionType": "None",
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://jumpstart_bucket/path/to/public/resources/",
+            },
+        }
+    ]
+    MOCK_GATED_MODEL_ID = "mock_gated_model_id"
+    MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL = [
+        {
+            "ChannelName": "draft_model",
+            "S3DataSource": {
+                "CompressionType": "None",
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://jumpstart_bucket/path/to/gated/resources/",
+            },
+            "HostingEulaKey": "fmhMetadata/eula/llama3_2Eula.txt",
+        }
+    ]
+    MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL = [
+        {
+            "ChannelName": "draft_model",
+            "S3DataSource": {
+                "CompressionType": "None",
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://jumpstart_bucket/path/to/gated/resources/",
+                "ModelAccessConfig": {"AcceptEula": True},
+            },
+        }
+    ]
+
+    # Public Positive Cases
+
+    def test_public_additional_model_data_source_should_pass_through(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+            model_access_configs=None,
+            model_id=self.MOCK_PUBLIC_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert (
+            additional_model_data_sources
+            == self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_multiple_public_additional_model_data_source_should_pass_through_both(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=(
+                self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                + self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+            ),
+            model_access_configs=None,
+            model_id=self.MOCK_PUBLIC_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert additional_model_data_sources == (
+            self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+            + self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_public_additional_model_data_source_with_model_access_config_should_ignore_it(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert (
+            additional_model_data_sources
+            == self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_no_additional_model_data_source_should_pass_through(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=None,
+            model_access_configs=None,
+            model_id=self.MOCK_PUBLIC_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert not additional_model_data_sources
+
+    # Gated Positive Cases
+
+    def test_gated_additional_model_data_source_should_accept_it(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert (
+            additional_model_data_sources
+            == self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_multiple_gated_additional_model_data_source_should_accept_both(self):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=(
+                self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+            ),
+            model_access_configs={
+                self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True),
+                self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True),
+            },
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert additional_model_data_sources == (
+            self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+            + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    def test_gated_additional_model_data_source_already_accepted_with_no_hosting_eula_key_should_pass_through(
+        self,
+    ):
+        mock_gated_deploy_config_additional_model_data_pre_accepted = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "CompressionType": "None",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://jumpstart_bucket/path/to/gated/resources/",
+                    "ModelAccessConfig": {"AcceptEula": True},
+                },
+            }
+        ]
+
+        utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=mock_gated_deploy_config_additional_model_data_pre_accepted,
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=False)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+    # Mixed Positive Cases
+
+    def test_multiple_mixed_additional_model_data_source_should_pass_through_one_accept_the_other(
+        self,
+    ):
+        # WHERE / WHEN
+        additional_model_data_sources = utils._add_model_access_configs_to_model_data_sources(
+            model_data_sources=(
+                self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+            ),
+            model_access_configs={self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=True)},
+            model_id=self.MOCK_GATED_MODEL_ID,
+            region=JUMPSTART_DEFAULT_REGION_NAME,
+        )
+
+        # THEN
+        assert additional_model_data_sources == (
+            self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+            + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_POST_CALL
+        )
+
+    # Test Gated Negative Tests
+
+    def test_gated_additional_model_data_source_no_model_access_config_should_raise_value_error(
+        self,
+    ):
+        # WHERE / WHEN / THEN
+        with self.assertRaises(ValueError):
+            utils._add_model_access_configs_to_model_data_sources(
+                model_data_sources=self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+                model_access_configs=None,
+                model_id=self.MOCK_GATED_MODEL_ID,
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+            )
+
+    def test_multiple_mixed_additional_no_model_data_source_should_raise_value_error(self):
+        # WHERE / WHEN / THEN
+        with self.assertRaises(ValueError):
+            utils._add_model_access_configs_to_model_data_sources(
+                model_data_sources=(
+                    self.MOCK_PUBLIC_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                    + self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL
+                ),
+                model_access_configs=None,
+                model_id=self.MOCK_GATED_MODEL_ID,
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+            )
+
+    def test_gated_additional_model_data_source_wrong_model_access_config_should_raise_value_error(
+        self,
+    ):
+        # WHERE / WHEN / THEN
+        with self.assertRaises(ValueError):
+            utils._add_model_access_configs_to_model_data_sources(
+                model_data_sources=self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+                model_access_configs={
+                    self.MOCK_PUBLIC_MODEL_ID: ModelAccessConfig(accept_eula=True)
+                },
+                model_id=self.MOCK_GATED_MODEL_ID,
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+            )
+
+    def test_gated_additional_model_data_source_false_model_access_config_should_raise_value_error(
+        self,
+    ):
+        # WHERE / WHEN / THEN
+        with self.assertRaises(ValueError):
+            utils._add_model_access_configs_to_model_data_sources(
+                model_data_sources=self.MOCK_GATED_DEPLOY_CONFIG_ADDITIONAL_MODEL_DATA_SOURCE_PRE_CALL,
+                model_access_configs={
+                    self.MOCK_GATED_MODEL_ID: ModelAccessConfig(accept_eula=False)
+                },
+                model_id=self.MOCK_GATED_MODEL_ID,
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+            )

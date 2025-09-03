@@ -6,6 +6,7 @@ import requests
 import logging
 import platform
 from pathlib import Path
+
 from sagemaker import Session, fw_utils
 from sagemaker.serve.utils.exceptions import LocalModelInvocationException
 from sagemaker.base_predictor import PredictorBase
@@ -18,23 +19,6 @@ MODE_DIR_BINDING = "/opt/ml/model/"
 _DEFAULT_ENV_VARS = {}
 
 logger = logging.getLogger(__name__)
-
-
-class InProcessMultiModelServer:
-    """In Process Mode Multi Model server instance"""
-
-    def _start_serving(self):
-        """Initializes the start of the server"""
-        return Exception("Not implemented")
-
-    def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
-        """Invokes the MMS server by sending POST request"""
-        return Exception("Not implemented")
-
-    def _multi_model_server_deep_ping(self, predictor: PredictorBase):
-        """Sends a deep ping to ensure prediction"""
-        response = None
-        return (True, response)
 
 
 class LocalMultiModelServer:

@@ -33,6 +33,7 @@ class TestTransformersBuilder(unittest.TestCase):
         self.instance.image_config = {}
         self.instance.vpc_config = {}
         self.instance.modes = {}
+        self.instance.name = "model-name-mock-uuid-hex"
 
     @patch("os.makedirs")
     @patch("os.path.exists")
@@ -71,5 +72,6 @@ class TestTransformersBuilder(unittest.TestCase):
             env=self.instance.env_vars,
             sagemaker_session=self.instance.sagemaker_session,
             predictor_cls=self.instance._get_tensorflow_predictor,
+            name="model-name-mock-uuid-hex",
         )
         self.assertEqual(model, mock_model.return_value)

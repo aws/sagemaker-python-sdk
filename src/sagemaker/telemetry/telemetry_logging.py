@@ -27,6 +27,7 @@ from sagemaker.config.config_schema import TELEMETRY_OPT_OUT_PATH
 from sagemaker.telemetry.constants import (
     Feature,
     Status,
+    Region,
     DEFAULT_AWS_REGION,
 )
 from sagemaker.user_agent import SDK_VERSION, process_studio_metadata_file
@@ -52,6 +53,9 @@ FEATURE_TO_CODE = {
     str(Feature.SDK_DEFAULTS): 1,
     str(Feature.LOCAL_MODE): 2,
     str(Feature.REMOTE_FUNCTION): 3,
+    str(Feature.MODEL_TRAINER): 4,
+    str(Feature.ESTIMATOR): 5,
+    str(Feature.HYPERPOD): 6,  # Added to support telemetry in sagemaker-hyperpod-cli
 }
 
 STATUS_TO_CODE = {
@@ -61,7 +65,14 @@ STATUS_TO_CODE = {
 
 
 def _telemetry_emitter(feature: str, func_name: str):
-    """Decorator to emit telemetry logs for SageMaker Python SDK functions"""
+    """Telemetry Emitter
+
+    Decorator to emit telemetry logs for SageMaker Python SDK functions. This class needs
+    sagemaker_session object as a member. Default session object is a pysdk v2 Session object
+    in this repo. When collecting telemetry for classes using sagemaker-core Session object,
+    we should be aware of its differences, such as sagemaker_session.sagemaker_config does not
+    exist in new Session class.
+    """
 
     def decorator(func):
         @functools.wraps(func)
@@ -95,10 +106,18 @@ def _telemetry_emitter(feature: str, func_name: str):
                 # Construct the feature list to track feature combinations
                 feature_list: List[int] = [FEATURE_TO_CODE[str(feature)]]
 
-                if sagemaker_session.sagemaker_config and feature != Feature.SDK_DEFAULTS:
+                if (
+                    hasattr(sagemaker_session, "sagemaker_config")
+                    and sagemaker_session.sagemaker_config
+                    and feature != Feature.SDK_DEFAULTS
+                ):
                     feature_list.append(FEATURE_TO_CODE[str(Feature.SDK_DEFAULTS)])
 
-                if sagemaker_session.local_mode and feature != Feature.LOCAL_MODE:
+                if (
+                    hasattr(sagemaker_session, "local_mode")
+                    and sagemaker_session.local_mode
+                    and feature != Feature.LOCAL_MODE
+                ):
                     feature_list.append(FEATURE_TO_CODE[str(Feature.LOCAL_MODE)])
 
                 # Construct the extra info to track platform and environment usage metadata
@@ -111,7 +130,7 @@ def _telemetry_emitter(feature: str, func_name: str):
                 )
 
                 # Add endpoint ARN to the extra info if available
-                if sagemaker_session.endpoint_arn:
+                if hasattr(sagemaker_session, "endpoint_arn") and sagemaker_session.endpoint_arn:
                     extra += f"&x-endpointArn={sagemaker_session.endpoint_arn}"
 
                 start_timer = perf_counter()
@@ -171,8 +190,17 @@ def _send_telemetry_request(
 ) -> None:
     """Make GET request to an empty object in S3 bucket"""
     try:
-        accountId = _get_accountId(session)
+        accountId = _get_accountId(session) if session else "NotAvailable"
         region = _get_region_or_default(session)
+
+        try:
+            Region(region)  # Validate the region
+        except ValueError:
+            logger.warning(
+                "Region not found in supported regions. Telemetry request will not be emitted."
+            )
+            return
+
         url = _construct_url(
             accountId,
             region,
@@ -250,6 +278,7 @@ def _get_region_or_default(session):
 
 def _get_default_sagemaker_session():
     """Return the default sagemaker session"""
+
     boto_session = boto3.Session(region_name=DEFAULT_AWS_REGION)
     sagemaker_session = Session(boto_session=boto_session)
 

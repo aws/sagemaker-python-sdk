@@ -39,6 +39,8 @@ from tests.unit.sagemaker.jumpstart.constants import (
     INIT_KWARGS,
 )
 
+from unittest.mock import Mock
+
 INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
     {
         "regional_aliases": {
@@ -117,7 +119,7 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             "g4": {
                 "regional_properties": {"image_uri": "$gpu_image_uri"},
                 "properties": {
-                    "artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
+                    "training_artifact_key": "path/to/prepacked/training/artifact/prefix/number2/"
                 },
             },
             "g4dn": {"regional_properties": {"image_uri": "$gpu_image_uri"}},
@@ -193,7 +195,7 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             },
             "p9": {
                 "regional_properties": {"image_uri": "$gpu_image_uri"},
-                "properties": {"artifact_key": "do/re/mi"},
+                "properties": {"training_artifact_key": "do/re/mi"},
             },
             "m2": {
                 "regional_properties": {"image_uri": "$cpu_image_uri"},
@@ -272,13 +274,13 @@ INSTANCE_TYPE_VARIANT = JumpStartInstanceTypeVariants(
             "ml.p9.12xlarge": {
                 "properties": {
                     "environment_variables": {"TENSOR_PARALLEL_DEGREE": "4"},
-                    "artifact_key": "you/not/entertained",
+                    "training_artifact_key": "you/not/entertained",
                 }
             },
             "g6": {
                 "properties": {
                     "environment_variables": {"BLAH": "4"},
-                    "artifact_key": "path/to/training/artifact.tar.gz",
+                    "training_artifact_key": "path/to/training/artifact.tar.gz",
                     "prepacked_artifact_key": "path/to/prepacked/inference/artifact/prefix/",
                 }
             },
@@ -329,14 +331,67 @@ def test_jumpstart_model_header():
     assert header1 == header3
 
 
-def test_use_training_model_artifact():
-    specs1 = JumpStartModelSpecs(BASE_SPEC)
-    assert specs1.use_training_model_artifact()
-    specs1.gated_bucket = True
-    assert not specs1.use_training_model_artifact()
-    specs1.gated_bucket = False
-    specs1.training_model_package_artifact_uris = {"region1": "blah", "region2": "blah2"}
-    assert not specs1.use_training_model_artifact()
+class TestUseTrainingModelArtifact:
+    @pytest.fixture
+    def mock_specs(self):
+        specs = Mock(spec=JumpStartModelSpecs)
+        specs.training_instance_type_variants = Mock()
+        specs.supported_training_instance_types = ["ml.p3.2xlarge", "ml.g4dn.xlarge"]
+        specs.training_model_package_artifact_uris = {}
+        specs.training_artifact_key = None
+        return specs
+
+    def test_use_training_model_artifact_with_env_var(self, mock_specs):
+        """Test when instance type variants have env var values."""
+        mock_specs.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value.side_effect = [
+            "some-value",
+            None,
+        ]
+
+        result = JumpStartModelSpecs.use_training_model_artifact(mock_specs)
+
+        assert result is False
+        mock_specs.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value.assert_any_call(
+            "ml.p3.2xlarge"
+        )
+
+    def test_use_training_model_artifact_with_package_uris(self, mock_specs):
+        """Test when model has training package artifact URIs."""
+        mock_specs.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value.return_value = (
+            None
+        )
+        mock_specs.training_model_package_artifact_uris = {
+            "ml.p3.2xlarge": "arn:aws:sagemaker:ap-southeast-1:192199979996:model-package/"
+            "llama2-13b-e155a2e0347b323fb882f1875851c5d3"
+        }
+
+        result = JumpStartModelSpecs.use_training_model_artifact(mock_specs)
+
+        assert result is False
+
+    def test_use_training_model_artifact_with_artifact_key(self, mock_specs):
+        """Test when model has training artifact key."""
+        mock_specs.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value.return_value = (
+            None
+        )
+        mock_specs.training_model_package_artifact_uris = {}
+        mock_specs.training_artifact_key = "some-key"
+
+        result = JumpStartModelSpecs.use_training_model_artifact(mock_specs)
+
+        assert result is True
+
+    def test_use_training_model_artifact_without_artifact_key(self, mock_specs):
+        """Test when model has no training artifact key."""
+        mock_specs.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value.return_value = (
+            None
+        )
+        mock_specs.training_model_package_artifact_uris = {}
+        mock_specs.training_artifact_key = None
+
+        result = JumpStartModelSpecs.use_training_model_artifact(mock_specs)
+
+        assert result is False
 
 
 def test_jumpstart_model_specs():
@@ -344,65 +399,87 @@ def test_jumpstart_model_specs():
     specs1 = JumpStartModelSpecs(BASE_SPEC)
 
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
-    assert specs1.version == "1.0.0"
-    assert specs1.min_sdk_version == "2.49.0"
+    assert specs1.version == "3.0.6"
+    assert specs1.min_sdk_version == "2.189.0"
     assert specs1.training_supported
     assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
-    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
-    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.hosting_artifact_key
+        == "pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference/v2.0.0/"
+    )
+    assert (
+        specs1.training_artifact_key
+        == "pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz"
+    )
     assert (
         specs1.hosting_script_key
-        == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/inference/ic/v2.0.0/sourcedir.tar.gz"
     )
     assert (
         specs1.training_script_key
-        == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/transfer_learning/ic/v2.3.0/sourcedir.tar.gz"
     )
+    assert specs1.default_training_dataset_key == "training-datasets/tf_flowers/"
     assert specs1.hyperparameters == [
+        JumpStartHyperparameter(
+            {
+                "name": "train_only_top_layer",
+                "type": "text",
+                "options": ["True", "False"],
+                "default": "True",
+                "scope": "algorithm",
+            }
+        ),
         JumpStartHyperparameter(
             {
                 "name": "epochs",
                 "type": "int",
-                # "_is_hub_content": False,
-                "default": 3,
+                "default": 5,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1000,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "adam-learning-rate",
+                "name": "learning_rate",
                 "type": "float",
-                # "_is_hub_content": False,
-                "default": 0.05,
+                "default": 0.001,
+                "scope": "algorithm",
                 "min": 1e-08,
                 "max": 1,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "batch-size",
+                "name": "batch_size",
                 "type": "int",
-                # "_is_hub_content": False,
                 "default": 4,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1024,
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "reinitialize_top_layer",
+                "type": "text",
+                "options": ["Auto", "True", "False"],
+                "default": "Auto",
                 "scope": "algorithm",
             }
         ),
@@ -410,7 +487,6 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_submit_directory",
                 "type": "text",
-                # "_is_hub_content": False,
                 "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
                 "scope": "container",
             }
@@ -419,7 +495,6 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_program",
                 "type": "text",
-                # "_is_hub_content": False,
                 "default": "transfer_learning.py",
                 "scope": "container",
             }
@@ -428,13 +503,13 @@ def test_jumpstart_model_specs():
             {
                 "name": "sagemaker_container_log_level",
                 "type": "text",
-                # "_is_hub_content": False,
                 "default": "20",
                 "scope": "container",
             }
         ),
     ]
 
+    print(specs1.to_json())
     assert specs1.to_json() == BASE_SPEC
 
     BASE_SPEC_COPY = copy.deepcopy(BASE_SPEC)
@@ -933,27 +1008,35 @@ def test_jumpstart_hosting_prepacked_artifact_key_instance_variants():
 
 def test_jumpstart_training_artifact_key_instance_variants():
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.g6.xlarge")
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
+            instance_type="ml.g6.xlarge"
+        )
         == "path/to/training/artifact.tar.gz"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.g4.9xlarge")
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
+            instance_type="ml.g4.9xlarge"
+        )
         == "path/to/prepacked/training/artifact/prefix/number2/"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.p9.9xlarge")
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
+            instance_type="ml.p9.9xlarge"
+        )
         == "do/re/mi"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(instance_type="ml.p9.12xlarge")
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
+            instance_type="ml.p9.12xlarge"
+        )
         == "you/not/entertained"
     )
 
     assert (
-        INSTANCE_TYPE_VARIANT.get_instance_specific_artifact_key(
+        INSTANCE_TYPE_VARIANT.get_instance_specific_training_artifact_key(
             instance_type="ml.g9dsfsdfs.12xlarge"
         )
         is None
@@ -993,8 +1076,8 @@ def test_inference_configs_parsing():
 
     # Non-overrided fields in top config
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
-    assert specs1.version == "1.0.0"
-    assert specs1.min_sdk_version == "2.49.0"
+    assert specs1.version == "3.0.6"
+    assert specs1.min_sdk_version == "2.189.0"
     assert specs1.training_supported
     assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
@@ -1007,51 +1090,72 @@ def test_inference_configs_parsing():
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
     assert (
         specs1.hosting_artifact_key
         == "artifacts/meta-textgeneration-llama-2-7b/neuron-inference/model/"
     )
-    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.training_artifact_key
+        == "pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz"
+    )
     assert (
         specs1.hosting_script_key
-        == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/inference/ic/v2.0.0/sourcedir.tar.gz"
     )
     assert (
         specs1.training_script_key
-        == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/transfer_learning/ic/v2.3.0/sourcedir.tar.gz"
     )
     assert specs1.hyperparameters == [
         JumpStartHyperparameter(
             {
+                "name": "train_only_top_layer",
+                "type": "text",
+                "options": ["True", "False"],
+                "default": "True",
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
                 "name": "epochs",
                 "type": "int",
-                "default": 3,
+                "default": 5,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1000,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "adam-learning-rate",
+                "name": "learning_rate",
                 "type": "float",
-                "default": 0.05,
+                "default": 0.001,
+                "scope": "algorithm",
                 "min": 1e-08,
                 "max": 1,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "batch-size",
+                "name": "batch_size",
                 "type": "int",
                 "default": 4,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1024,
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "reinitialize_top_layer",
+                "type": "text",
+                "options": ["Auto", "True", "False"],
+                "default": "Auto",
                 "scope": "algorithm",
             }
         ),
@@ -1255,62 +1359,86 @@ def test_training_configs_parsing():
     # Non-overrided fields in top config
     # By default training config is not applied to model spec
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
-    assert specs1.version == "1.0.0"
-    assert specs1.min_sdk_version == "2.49.0"
+    assert specs1.version == "3.0.6"
+    assert specs1.min_sdk_version == "2.189.0"
     assert specs1.training_supported
     assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.5.0",
-            "py_version": "py3",
+            "framework_version": "1.10.0",
+            "py_version": "py38",
         }
     )
-    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
-    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert (
+        specs1.hosting_artifact_key
+        == "pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference/v2.0.0/"
+    )
+    assert (
+        specs1.training_artifact_key
+        == "pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz"
+    )
     assert (
         specs1.hosting_script_key
-        == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/inference/ic/v2.0.0/sourcedir.tar.gz"
     )
     assert (
         specs1.training_script_key
-        == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+        == "source-directory-tarballs/pytorch/transfer_learning/ic/v2.3.0/sourcedir.tar.gz"
     )
     assert specs1.hyperparameters == [
         JumpStartHyperparameter(
             {
+                "name": "train_only_top_layer",
+                "type": "text",
+                "options": ["True", "False"],
+                "default": "True",
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
                 "name": "epochs",
                 "type": "int",
-                "default": 3,
+                "default": 5,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1000,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "adam-learning-rate",
+                "name": "learning_rate",
                 "type": "float",
-                "default": 0.05,
+                "default": 0.001,
+                "scope": "algorithm",
                 "min": 1e-08,
                 "max": 1,
-                "scope": "algorithm",
             }
         ),
         JumpStartHyperparameter(
             {
-                "name": "batch-size",
+                "name": "batch_size",
                 "type": "int",
                 "default": 4,
+                "scope": "algorithm",
                 "min": 1,
                 "max": 1024,
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "reinitialize_top_layer",
+                "type": "text",
+                "options": ["Auto", "True", "False"],
+                "default": "Auto",
                 "scope": "algorithm",
             }
         ),
@@ -1477,11 +1605,9 @@ def test_set_training_config():
     specs1 = JumpStartModelSpecs(spec)
 
     assert specs1.supported_training_instance_types == [
-        "ml.p3.2xlarge",
-        "ml.p2.xlarge",
-        "ml.g4dn.2xlarge",
         "ml.m5.xlarge",
         "ml.c5.2xlarge",
+        "ml.m4.xlarge",
     ]
     specs1.set_config("gpu-training-budget", scope=JumpStartScriptScope.TRAINING)
 

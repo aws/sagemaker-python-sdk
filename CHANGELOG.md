@@ -1,5 +1,652 @@
 # Changelog
 
+## v2.251.1 (2025-08-29)
+
+### Bug Fixes and Other Changes
+
+ * chore: onboard tei 1.8.0
+
+## v2.251.0 (2025-08-21)
+
+### Features
+
+ * support pipeline versioning
+
+### Bug Fixes and Other Changes
+
+ * GPT OSS Hotfix
+ * dockerfile stuck on interactive shell
+ * add sleep for model deployment
+
+## v2.250.0 (2025-08-08)
+
+### Features
+
+ * Add support for InstancePlacementConfig in Estimator for training jobs running on ultraserver capacity
+
+### Bug Fixes and Other Changes
+
+ * Add more constraints to test requirements
+
+## v2.249.0 (2025-07-31)
+
+### Features
+
+ * AWS Batch for SageMaker Training jobs
+
+### Bug Fixes and Other Changes
+
+ * Directly use customer-provided endpoint name for ModelBuilder deployment.
+ * update image_uri_configs 07-23-2025 07:18:25 PST
+
+## v2.248.2 (2025-07-22)
+
+### Bug Fixes and Other Changes
+
+ * Relax boto3 version requirement
+ * update image_uri_configs 07-22-2025 07:18:25 PST
+ * update image_uri_configs 07-18-2025 07:18:28 PST
+ * add hard dependency on sagemaker-core pypi lib
+ * When rootlessDocker is enabled, return a fixed SageMaker IP
+
+## v2.248.1 (2025-07-16)
+
+### Bug Fixes and Other Changes
+
+ * Nova training support
+
+## v2.248.0 (2025-07-15)
+
+### Features
+
+ * integrate amtviz for visualization of tuning jobs
+
+### Bug Fixes and Other Changes
+
+ * build(deps): bump requests in /tests/data/serve_resources/mlflow/pytorch
+ * build(deps): bump protobuf from 4.25.5 to 4.25.8 in /requirements/extras
+ * build(deps): bump mlflow in /tests/data/serve_resources/mlflow/xgboost
+ * build(deps): bump torch in /tests/data/modules/script_mode
+ * sanitize git clone repo input url
+ * Adding Hyperpod feature to enable hyperpod telemetry
+ * Adding Hyperpod feature to enable hyperpod telemetry
+ * Bump SMD version to enable custom workflow deployment.
+ * Update TF DLC python version to py312
+ * update image_uri_configs 07-04-2025 07:18:27 PST
+ * update image_uri_configs 06-26-2025 07:18:35 PST
+ * relax protobuf to <6.32
+
+## v2.247.1 (2025-06-23)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs 06-19-2025 07:18:34 PST
+
+## v2.247.0 (2025-06-13)
+
+### Features
+
+ * Add support for MetricDefinitions in ModelTrainer
+
+### Bug Fixes and Other Changes
+
+ * update jumpstart region_config, update image_uri_configs 06-12-2025 07:18:12 PST
+ * Add ignore_patterns in ModelTrainer to ignore specific files/folders
+ * Allow import failure for internal _hashlib module
+
+## v2.246.0 (2025-06-04)
+
+### Features
+
+ * Triton v25.04 DLC
+
+### Bug Fixes and Other Changes
+
+ * Update Attrs version to widen support
+ * update estimator documentation regarding hyperparameters for source_dir
+
+## v2.245.0 (2025-05-28)
+
+### Features
+
+ * Correct mypy type checking through PEP 561
+
+### Bug Fixes and Other Changes
+
+ * MLFLow update for dependabot
+ * addWaiterTimeoutHandling
+ * merge method inputs with class inputs
+ * update image_uri_configs 05-20-2025 07:18:17 PST
+
+## v2.244.2 (2025-05-19)
+
+### Bug Fixes and Other Changes
+
+ * include model channel for gated uncompressed models
+ * clarify model monitor one time schedule bug
+ * update jumpstart region_config 05-15-2025 07:18:15 PST
+ * update image_uri_configs 05-14-2025 07:18:16 PST
+ * Add image configs and region config for TPE (ap-east-2)
+ * Improve defaults handling in ModelTrainer
+
+## v2.244.1 (2025-05-15)
+
+### Bug Fixes and Other Changes
+
+ * Fix Flask-Limiter version
+ * Fix test_huggingface_tei_uris()
+ * huggingface-llm-neuronx dlc
+ * huggingface-neuronx dlc image_uri
+ * huggingface-tei dlc image_uri
+ * Fix test_deploy_with_update_endpoint()
+ * add AG v1.3
+ * parameter mismatch in update_endpoint
+ * remove --strip-component for untar source tar.gz
+ * Fix type annotations
+ * chore: Allow omegaconf >=2.2,<3
+ * honor json serialization of HPs
+ * Map llama models to correct script
+ * pin test dependency
+ * fix bad initialization script error message
+ * Improve error logging and documentation for issue 4007
+ * build(deps): bump scikit-learn
+ * build(deps): bump mlflow
+ * build(deps): bump mlflow in /tests/data/serve_resources/mlflow/pytorch
+ * chore: Add tei 1.6.0 image
+
+## v2.244.0 (2025-05-02)
+
+### Features
+
+ * support custom workflow deployment in ModelBuilder using SMD image.
+
+### Bug Fixes and Other Changes
+
+ * Add Owner ID check for bucket with path when prefix is provided
+ * Add model server timeout
+ * pin mamba version to 24.11.3-2 to avoid inconsistent test runs
+ * Update ModelTrainer to support s3 uri and tar.gz file as source_dir
+ * chore: add huggingface images
+
+## v2.243.3 (2025-04-23)
+
+### Bug Fixes and Other Changes
+
+ * update readme to reflect py312 upgrade
+ * Revert the PR changes 5122
+ * Py312 upgrade step 2: Update dependencies, integ tests and unit tests
+ * update pr test to deprecate py38 and add py312
+ * update image_uri_configs 04-16-2025 07:18:18 PST
+ * update image_uri_configs 04-15-2025 07:18:10 PST
+ * update image_uri_configs 04-11-2025 07:18:19 PST
+
+## v2.243.2 (2025-04-16)
+
+### Bug Fixes and Other Changes
+
+ * tgi image uri unit tests
+ * Fix deepdiff dependencies
+
+## v2.243.1 (2025-04-11)
+
+### Bug Fixes and Other Changes
+
+ * Added handler for pipeline variable while creating process job
+ * Fix issue #4856 by copying environment variables
+ * remove historical job_name caching which causes long job name
+ * Update instance gpu info
+ * Master
+ * Add mlflow tracking arn telemetry
+ * chore: fix semantic versioning for wildcard identifier
+ * flaky test
+
+### Documentation Changes
+
+ * update pipelines step caching examples to include more steps
+ * update ModelStep data dependency info
+
+## v2.243.0 (2025-03-27)
+
+### Features
+
+ * Enabled update_endpoint through model_builder
+
+### Bug Fixes and Other Changes
+
+ * Update for PT 2.5.1, SMP 2.8.0
+ * chore: move jumpstart region definitions to json file
+ * fix flaky clarify model monitor test
+ * fix flaky spark processor integ
+ * use temp file in unit tests
+ * Update transformers version
+ * Aligned disable_output_compression for @remote with Estimator
+ * Update Jinja version
+ * update image_uri_configs  03-26-2025 07:18:16 PST
+ * chore: fix integ tests to use latest version of model
+ * update image_uri_configs  03-25-2025 07:18:13 PST
+ * Skip tests failed due to deprecated instance type
+ * update image_uri_configs  03-21-2025 07:17:55 PST
+ * factor in set instance type when building JumpStart models in ModelBuilder.
+ * ADD Documentation to ReadtheDocs for Upgrading torch versions
+ * add new regions to JUMPSTART_LAUNCHED_REGIONS
+
+## v2.242.0 (2025-03-14)
+
+### Features
+
+ * add integ tests for training JumpStart models in private hub
+
+### Bug Fixes and Other Changes
+
+ * Torch upgrade
+ * Prevent RunContext overlap between test_run tests
+ * remove s3 output location requirement from hub class init
+ * Fixing Pytorch training python version in tests
+ * update image_uri_configs  03-11-2025 07:18:09 PST
+ * resolve infinite loop in _find_config on Windows systems
+ * pipeline definition function doc update
+
+## v2.241.0 (2025-03-06)
+
+### Features
+
+ * Make DistributedConfig Extensible
+ * support training for JumpStart model references as part of Curated Hub Phase 2
+ * Allow ModelTrainer to accept hyperparameters file
+
+### Bug Fixes and Other Changes
+
+ * Skip tests with deprecated instance type
+ * Ensure Model.is_repack() returns a boolean
+ * Fix error when there is no session to call _create_model_request()
+ * Use sagemaker session's s3_resource in download_folder
+ * Added check for the presence of model package group before creating one
+ * Fix key error in _send_metrics()
+
+## v2.240.0 (2025-02-25)
+
+### Features
+
+ * Add support for TGI Neuronx 0.0.27 and HF PT 2.3.0 image in PySDK
+
+### Bug Fixes and Other Changes
+
+ * Remove main function entrypoint in ModelBuilder dependency manager.
+ * forbid extras in Configs
+ * altconfig hubcontent and reenable integ test
+ * Merge branch 'master-rba' into local_merge
+ * py_version doc fixes
+ * Add backward compatbility for RecordSerializer and RecordDeserializer
+ * update image_uri_configs  02-21-2025 06:18:10 PST
+ * update image_uri_configs  02-20-2025 06:18:08 PST
+
+### Documentation Changes
+
+ * Removed a line about python version requirements of training script which can misguide users.
+
+## v2.239.3 (2025-02-19)
+
+### Bug Fixes and Other Changes
+
+ * added ap-southeast-7 and mx-central-1 for Jumpstart
+ * update image_uri_configs  02-19-2025 06:18:15 PST
+
+## v2.239.2 (2025-02-18)
+
+### Bug Fixes and Other Changes
+
+ * Add warning about not supporting torch.nn.SyncBatchNorm
+ * pass in inference_ami_version to model_based endpoint type
+ * Fix hyperparameter strategy docs
+ * Add framework_version to all TensorFlowModel examples
+ * Move RecordSerializer and RecordDeserializer to sagemaker.serializers and sagemaker.deserialzers
+
+## v2.239.1 (2025-02-14)
+
+### Bug Fixes and Other Changes
+
+ * keep sagemaker_session from being overridden to None
+ * Fix all type hint and docstrings for callable
+ * Fix the workshop link for Step Functions
+ * Fix Tensorflow doc link
+ * Fix FeatureGroup docstring
+ * Add type hint for ProcessingOutput
+ * Fix sourcedir.tar.gz filenames in docstrings
+ * Fix documentation for local mode
+ * bug in get latest version was getting the max sorted alphabetically
+ * Add cleanup logic to model builder integ tests for endpoints
+ * Fixed pagination failing while listing collections
+ * fix ValueError when updating a data quality monitoring schedule
+ * Add docstring for image_uris.retrieve
+ * Create GitHub action to trigger canaries
+ * update image_uri_configs  02-04-2025 06:18:00 PST
+
+## v2.239.0 (2025-02-01)
+
+### Features
+
+ * Add support for deepseek recipes
+
+### Bug Fixes and Other Changes
+
+ * mpirun protocol - distributed training with @remote decorator
+ * Allow telemetry only in supported regions
+ * Fix ssh host policy
+
+## v2.238.0 (2025-01-29)
+
+### Features
+
+ * use jumpstart deployment config image as default optimization image
+
+### Bug Fixes and Other Changes
+
+ * chore: add new images for HF TGI
+ * update image_uri_configs  01-29-2025 06:18:08 PST
+ * skip TF tests for unsupported versions
+ * Merge branch 'master-rba' into local_merge
+ * Add missing attributes to local resourceconfig
+ * update image_uri_configs  01-27-2025 06:18:13 PST
+ * update image_uri_configs  01-24-2025 06:18:11 PST
+ * add missing schema definition in docs
+ * Omegaconf upgrade
+ * SageMaker @remote function: Added multi-node functionality
+ * remove option
+ * fix typo
+ * fix tests
+ * Add an option for user to remove inputs and container artifacts when using local model trainer
+
+## v2.237.3 (2025-01-09)
+
+### Bug Fixes and Other Changes
+
+ * pin metadata-version to 2.3
+ * model server might have already done a serialization. honor that by not decoding the request again if it is not already bytes or bytestream
+ * Disable jumpstart tests missing clean up logic
+ * Jumpstart ap southeast 5
+ * add autogluon 1.2
+ * updated inference script to cover context
+ * security update -> use sha256 instead of md5 for file hashing
+ * Fix Flake8 Violations
+ * Added parsing string support for situations where custom code might be used (ie. mlflow)
+ * Updating Inference Optimization Validations
+
+## v2.237.2 (2024-12-17)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  12-13-2024 17:07:12 PST
+ * Cloudpickle upgrade
+
+## v2.237.1 (2024-12-12)
+
+### Bug Fixes and Other Changes
+
+ * chore: remove support for ecr spec fallbacks for jumpstart models
+ * Cloudpickle Revert
+ * Cloudpickle update
+ * Numpy update
+ * Protobuf update
+ * Update to fetch latest Cloudpickle version
+
+## v2.237.0 (2024-12-05)
+
+### Features
+
+ * Support SageMakerTrainingPlan for training jobs
+ * AMI support for BRM
+ * Adding Bedrock Store model support for HubService
+
+### Bug Fixes and Other Changes
+
+ * Fix unit tests
+ * update boto3 and sagemaker-core version
+ * fix gpu_image uri
+ * Hotfix to construct rubik uri correctly
+ * fix codestyles
+ * fix merge artifact
+ * fix merge artifact
+ * fix test_requiremenets.txt
+ * chore: Merge from main
+
+## v2.236.0 (2024-12-04)
+
+### Features
+
+ * Partner App Auth Provider for SDK support
+ * add pre-processing and post-processing logic to inference_spec
+ * add utility function to capture local snapshot
+ * support script mode with local train.sh
+
+### Bug Fixes and Other Changes
+
+ * Add graphene to doc requirements
+ * Add graphne to the doc requirements
+ * Enable the Recipe tests marked with @pytest.mark.skip(reason="Hyperpod recipe code unavailable"
+ * Add model trainer documentation
+ * Usage docs for training recipes
+ * Neuron URIs update
+ * Update URIs to public for training recipes
+ * Changes for SMP v2.7.0
+ * Change default source directory to current, add option to specify source dir
+ * Remove default values for fields in recipe_overrides and fix recipe path.
+ * Update MANIFEST.in so that wheel builds correctly
+ * fix the file uploading signature verification error
+ * remove example notebooks artifacts
+ * Morpheus tests
+ * Integ tests for local mode model trainer
+ * Update hyperpod recipe uris
+ * Add interface units for ModelTrainer
+ * Model Trainer Bucket improvements
+ * Update ModelTrainer Interface Parameters
+ * add in-process mode definition to docs
+ * Intelligent defaults for Model Trainer
+ * Fix tests and codestyle
+ * add integ test for base_model_builder_deploy and remove print statement
+ * Revert image builder
+ * pin xgboost dlc to 1.7.1 to fix test
+ * Skip JS model mapping with env vars or image URI provided
+ * Use sagemaker core Session
+ * Integration tests for Model Builder Handshake
+ * [Updated] Add telemetry to ModelTrainer, Estimator and ModelBuilder
+ * Update kandinsky in ModelTrainer and allow setting requirements
+ * add modelID support to model builder InProcess model
+ * Add Rich Logging to Model Builder
+ * Notebooks update for Bugbash
+ * Add bugbash bootstrapping
+ * add inference morpheus nbs
+ * Update ModelTrainer Notebooks
+ * Bug fixes
+ * Single container local training
+ * update notebooks
+ * update notebooks
+ * Add recipes examples
+ * Unified Deployment interface in Model Builder
+ * Use exact python path in trainer template
+ * Support building image from Dockerfile
+ * Add Support for Training Recipes
+ * Trainer handshake
+ * Pass hyperparameters as CLI args
+ * Add in_process mode support for DJL and TorchServe servers
+ * Remove ignored files
+ * Simplify Config Class Names and DistributedRunner structures
+ * Fix bug in script mode setup ModelTrainer
+ * Mask Sensitive Env Logs in Container
+ * Add path to set Additional Settings in ModelTrainer
+ * Add Distributed Training Support Model Trainer
+ * Cleanup ModelTrainer code
+ * Latest Container Image
+ * General image builder
+ * Cleanup ModelTrainer
+ * Revert Image Spec
+ * Support intelligent parameters
+ * Add enviornment variable bootstrapping script
+ * Add example notebook
+ * Add unit tests for ModelTrainer
+ * Image Spec refactoring and updates
+ * Base model trainer
+
+## v2.235.2 (2024-11-22)
+
+## v2.235.1 (2024-11-20)
+
+### Bug Fixes and Other Changes
+
+ * Update sagemaker-core dep
+ * update image_uri_configs  11-20-2024 06:17:41 PST
+
+## v2.235.0 (2024-11-19)
+
+### Features
+
+ * Optimize() validations across TRT, VLLM, Neuron container optimizations
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  11-19-2024 06:17:58 PST
+
+## v2.234.0 (2024-11-19)
+
+### Features
+
+ * optimization technique related validations.
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: add TGI 2.4.0 image uri (#4922)"
+ * pin testing deps
+ * add TGI 2.4.0 image uri
+ * add jumpstart ap-southeast-5
+ * Move sagemaker-mlflow to extras
+
+## v2.233.0 (2024-11-04)
+
+### Features
+
+ * triton v24.09
+ * Marketplace model support in HubService
+
+### Bug Fixes and Other Changes
+
+ * Fixing JumpStart Tests
+ * bumping smp version from 2.6.0 to 2.6.1
+ * Updates for DJL 0.30.0 release
+
+## v2.232.3 (2024-10-30)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  10-29-2024 07:17:56 PST
+ * Skip pytorch tests incompatible with latest version 2.4.0
+ * adding eu-central-2 bucket info to JS constants
+ * update image_uri_configs  10-23-2024 11:26:03 PST
+ * update image_uri_configs  10-17-2024 07:17:55 PST
+ * update image_uri_configs  10-03-2024 07:17:59 PST
+ * update image_uri_configs  09-27-2024 07:18:01 PST
+ * modified pull request template
+ * fixing typo in dependecy setup
+ * release: huggingface tgi neuronx 0.0.25 image
+ * Revert "update cloudpickle version to >=2.2.1 in pyproject.toml (#4899)"
+ * update cloudpickle version to >=2.2.1 in pyproject.toml
+ * update cloudpickle version to >=2.2.1
+ * chore(deps): bump pyspark from 3.3.1 to 3.3.2 in /requirements/extras
+ * changes for PT 2.4 currency upgrade
+ * chore: add lmi image config in me-central-1
+ * tests: Implement integration tests covering JumpStart PrivateHub workflows
+ * Use Miniforge to replace MambaForge
+
+## v2.232.2 (2024-10-03)
+
+### Bug Fixes and Other Changes
+
+ * Pass kwargs to HuggingFaceModel.deploy()
+ * improve logging and exception messages
+ * remove deprecated distutils
+ * update image_uri_configs  09-24-2024 07:18:00 PST
+
+## v2.232.1 (2024-09-19)
+
+### Bug Fixes and Other Changes
+
+ * update image_uri_configs  09-17-2024 07:17:54 PST
+ * support latest container version in image_uris and DJLModel for lmi c…
+
+## v2.232.0 (2024-09-12)
+
+### Features
+
+ * add deployment config name in modelbuilder telemetry
+ * add Clarify image URIs for us-isof
+
+### Bug Fixes and Other Changes
+
+ * chore: add flaky test markers & skip region with low P3 instance capacity
+ * update image_uri_configs  09-11-2024 11:54:11 PST
+ * update image_uri_configs  09-10-2024 07:18:01 PST
+ * [change] add us-gov and cn region repo accounts to djl and hugging face image metadata
+ * update image_uri_configs  09-06-2024 07:17:55 PST
+ * add us-gov region repo accounts to djl image metadata
+ * pass name from modelbuilder constructor to created model
+
+## v2.231.0 (2024-08-30)
+
+### Features
+
+ * Add SageMaker Core to the dependency
+
+### Bug Fixes and Other Changes
+
+ * Disable test_mnist_async
+ * SMP v2.5
+ * update image_uri_configs  08-29-2024 07:17:59 PST
+
+## v2.230.0 (2024-08-28)
+
+### Features
+
+ * FastAPI integration for In_Process Mode (2/2)
+
+### Bug Fixes and Other Changes
+
+ * chore: add HF LLM neuronx 0.0.24 image
+ * TF-2.16 test modification and handling
+ * fix test fail
+ * Add troubleshooting links to exceptions
+ * cross account private hub model fine-tuning
+ * chore: cleanup jumpstart factory
+ * disable failing integration tests
+
+## v2.229.0 (2024-08-15)
+
+### Features
+
+ * Support for ModelBuilder In_Process Mode (1/2)
+ * Pulling in dependencies (in_process mode) using conda environment
+ * Add optional CodeArtifact login to FrameworkProcessing job script
+ * implemented security-monitoring to send metrics to CW #1510
+
+### Bug Fixes and Other Changes
+
+ * alt configs model deployment and training issues
+ * fix keras extension in integ test
+ * update image_uri_configs  08-13-2024 07:17:54 PST
+ * trn1 instance family does not support volume size
+ * Update model.py
+ * removed log statement
+ * update image_uri_configs  08-09-2024 07:18:00 PST
+ * Added torchrun compatibility for distributet training across multiple GPUs in a single node (single instance)
+ * BiasConfig type hint
+ * add model monitor image accounts for ap-southeast-5 and eu-central-2
+ * aligned UTC times with PST
+ * ensure hpt jobs inherit tags from config
+ * add JumpStart PDT and OSU regions
+ * chore(deps): bump certifi in /src/sagemaker/serve/utils
+ * Updates for DJL 0.29.0 release
+ * chore(deps): bump apache-airflow from 2.9.2 to 2.9.3 in /requirements/extras
+ * chore(deps): bump torch from 2.0.1 to 2.2.0 in /tests/data/serve_resources/mlflow/pytorch
+ * avoided printing stack trace and escaped input
+ * removing kwargs as this is breaking predictor_cls param for mode…
+
 ## v2.228.0 (2024-08-06)
 
 ### Features

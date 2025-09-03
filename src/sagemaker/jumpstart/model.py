@@ -14,10 +14,11 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, List, Optional, Any, Union
+from typing import Callable, Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
 
+from sagemaker_core.shapes import ModelAccessConfig
 from sagemaker import payloads
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -51,6 +52,7 @@ from sagemaker.jumpstart.utils import (
     add_instance_rate_stats_to_benchmark_metrics,
     deployment_config_response_data,
     _deployment_config_lru_cache,
+    _add_model_access_configs_to_model_data_sources,
 )
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.jumpstart.enums import JumpStartModelType
@@ -70,6 +72,7 @@ from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model_life_cycle import ModelLifeCycle
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
@@ -92,7 +95,7 @@ class JumpStartModel(Model):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
@@ -146,7 +149,7 @@ class JumpStartModel(Model):
                 It can be null if this is being used to create a Model to pass
                 to a ``PipelineModel`` which has its own Role field. (Default:
                 None).
-            predictor_cls (Optional[callable[string, sagemaker.session.Session]]): A
+            predictor_cls (Optional[Callable[[string, sagemaker.session.Session], Any]]): A
                 function to call to create a predictor (Default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name. (Default: None).
@@ -175,8 +178,8 @@ class JumpStartModel(Model):
             source_dir (Optional[str]): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
                 point file (Default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory is preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory is
+                preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
                 is used instead. (Default: None).
@@ -447,6 +450,7 @@ class JumpStartModel(Model):
         return payloads.retrieve_example(
             model_id=self.model_id,
             model_version=self.model_version,
+            hub_arn=self.hub_arn,
             model_type=self.model_type,
             region=self.region,
             tolerate_deprecated_model=self.tolerate_deprecated_model,
@@ -538,12 +542,16 @@ class JumpStartModel(Model):
         inferred_model_id = inferred_model_version = inferred_inference_component_name = None
 
         if inference_component_name is None or model_id is None or model_version is None:
-            inferred_model_id, inferred_model_version, inferred_inference_component_name, _, _ = (
-                get_model_info_from_endpoint(
-                    endpoint_name=endpoint_name,
-                    inference_component_name=inference_component_name,
-                    sagemaker_session=sagemaker_session,
-                )
+            (
+                inferred_model_id,
+                inferred_model_version,
+                inferred_inference_component_name,
+                _,
+                _,
+            ) = get_model_info_from_endpoint(
+                endpoint_name=endpoint_name,
+                inference_component_name=inference_component_name,
+                sagemaker_session=sagemaker_session,
             )
 
         model_id = model_id or inferred_model_id
@@ -657,6 +665,8 @@ class JumpStartModel(Model):
         managed_instance_scaling: Optional[str] = None,
         endpoint_type: EndpointType = EndpointType.MODEL_BASED,
         routing_config: Optional[Dict[str, Any]] = None,
+        model_access_configs: Optional[Dict[str, ModelAccessConfig]] = None,
+        inference_ami_version: Optional[str] = None,
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
@@ -753,6 +763,11 @@ class JumpStartModel(Model):
                 (Default: EndpointType.MODEL_BASED).
             routing_config (Optional[Dict]): Settings the control how the endpoint routes
                 incoming traffic to the instances that the endpoint hosts.
+            model_access_configs (Optional[Dict[str, ModelAccessConfig]]): For models that require
+                ModelAccessConfig, provide a `{ "model_id", ModelAccessConfig(accept_eula=True) }`
+                to indicate whether model terms of use have been accepted. The `accept_eula` value
+                must be explicitly defined as `True` in order to accept the end-user license
+                agreement (EULA) that some models require. (Default: None)
 
         Raises:
             MarketplaceModelSubscriptionError: If the caller is not subscribed to the model.
@@ -793,6 +808,8 @@ class JumpStartModel(Model):
             model_type=self.model_type,
             config_name=self.config_name,
             routing_config=routing_config,
+            model_access_configs=model_access_configs,
+            inference_ami_version=inference_ami_version,
         )
         if (
             self.model_type == JumpStartModelType.PROPRIETARY
@@ -801,6 +818,27 @@ class JumpStartModel(Model):
             raise ValueError(
                 f"{EndpointType.INFERENCE_COMPONENT_BASED} is not supported for Proprietary models."
             )
+
+        # No resources given to deploy() but present 'resources' key in deploy_kwargs means default
+        # JumpStart resource requirements are being used
+        if hasattr(self, "_is_sharded_model") and not resources and deploy_kwargs.resources:
+            if (
+                self._is_sharded_model
+                and deploy_kwargs.resources.num_cpus
+                and deploy_kwargs.resources.num_cpus > 0
+            ):
+                JUMPSTART_LOGGER.warning(
+                    "NumOfCpuCoresRequired should be 0 for the best experience with SageMaker Fast "
+                    "Model Loading. Overriding the requested `num_cpus` to 0."
+                )
+                deploy_kwargs.resources.num_cpus = 0
+
+        self.additional_model_data_sources = _add_model_access_configs_to_model_data_sources(
+            self.additional_model_data_sources,
+            deploy_kwargs.model_access_configs,
+            deploy_kwargs.model_id,
+            deploy_kwargs.region,
+        )
 
         try:
             predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
@@ -862,6 +900,7 @@ class JumpStartModel(Model):
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
         accept_eula: Optional[bool] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -916,6 +955,7 @@ class JumpStartModel(Model):
                 The `accept_eula` value must be explicitly defined as `True` in order to
                 accept the end-user license agreement (EULA) that some
                 models require. (Default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
         Returns:
             A `sagemaker.model.ModelPackage` instance.
         """
@@ -959,6 +999,7 @@ class JumpStartModel(Model):
             config_name=self.config_name,
             model_card=model_card,
             accept_eula=accept_eula,
+            model_life_cycle=model_life_cycle,
         )
 
         model_package = super(JumpStartModel, self).register(**register_kwargs.to_kwargs_dict())
@@ -1011,10 +1052,11 @@ class JumpStartModel(Model):
                 )
 
             if metadata_config.benchmark_metrics:
-                err, metadata_config.benchmark_metrics = (
-                    add_instance_rate_stats_to_benchmark_metrics(
-                        self.region, metadata_config.benchmark_metrics
-                    )
+                (
+                    err,
+                    metadata_config.benchmark_metrics,
+                ) = add_instance_rate_stats_to_benchmark_metrics(
+                    self.region, metadata_config.benchmark_metrics
                 )
 
             config_components = metadata_config.config_components.get(config_name)
@@ -1036,6 +1078,7 @@ class JumpStartModel(Model):
                 image_uri=image_uri,
                 region=self.region,
                 model_version=self.model_version,
+                hub_arn=self.hub_arn,
             )
             deploy_kwargs = get_deploy_kwargs(
                 model_id=self.model_id,
@@ -1043,6 +1086,7 @@ class JumpStartModel(Model):
                 sagemaker_session=self.sagemaker_session,
                 region=self.region,
                 model_version=self.model_version,
+                hub_arn=self.hub_arn,
             )
 
             deployment_config_metadata = DeploymentConfigMetadata(

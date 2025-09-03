@@ -167,6 +167,7 @@ def _retrieve_estimator_init_kwargs(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Estimator`.
 
@@ -193,6 +194,8 @@ def _retrieve_estimator_init_kwargs(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         dict: the kwargs to use for the use case.
     """
@@ -211,6 +214,7 @@ def _retrieve_estimator_init_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         config_name=config_name,
+        model_type=model_type,
     )
 
     kwargs = deepcopy(model_specs.estimator_kwargs)
@@ -233,6 +237,7 @@ def _retrieve_estimator_fit_kwargs(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> dict:
     """Retrieves kwargs for `Estimator.fit`.
 
@@ -257,6 +262,8 @@ def _retrieve_estimator_fit_kwargs(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
 
     Returns:
         dict: the kwargs to use for the use case.
@@ -276,6 +283,7 @@ def _retrieve_estimator_fit_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         config_name=config_name,
+        model_type=model_type,
     )
 
     return model_specs.fit_kwargs

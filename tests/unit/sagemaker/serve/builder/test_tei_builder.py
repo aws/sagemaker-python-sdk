@@ -79,6 +79,7 @@ class TestTEIBuilder(unittest.TestCase):
         # verify SAGEMAKER_ENDPOINT deploy
         builder = ModelBuilder(
             model=MOCK_MODEL_ID,
+            name="mock_model_name",
             schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.SAGEMAKER_ENDPOINT,
             model_metadata={
@@ -88,7 +89,10 @@ class TestTEIBuilder(unittest.TestCase):
 
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.return_value = (None, {})
+
         model = builder.build()
+        assert model.name == "mock_model_name"
+
         builder.serve_settings.telemetry_opt_out = True
         builder._original_deploy = MagicMock()
 

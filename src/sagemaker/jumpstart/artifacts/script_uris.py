@@ -19,6 +19,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE,
 )
 from sagemaker.jumpstart.enums import (
+    JumpStartModelType,
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.utils import (
@@ -39,6 +40,7 @@ def _retrieve_script_uri(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ):
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -67,6 +69,8 @@ def _retrieve_script_uri(
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
         config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -90,6 +94,7 @@ def _retrieve_script_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         config_name=config_name,
+        model_type=model_type,
     )
 
     if script_scope == JumpStartScriptScope.INFERENCE:
@@ -117,6 +122,7 @@ def _model_supports_inference_script_uri(
     tolerate_deprecated_model: bool = False,
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     config_name: Optional[str] = None,
+    model_type: Optional[str] = None,
 ) -> bool:
     """Returns True if the model supports inference with script uri field.
 
@@ -140,6 +146,8 @@ def _model_supports_inference_script_uri(
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         bool: the support status for script uri with inference.
     """
@@ -158,6 +166,7 @@ def _model_supports_inference_script_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         config_name=config_name,
+        model_type=model_type,
     )
 
     return model_specs.use_inference_script_uri()

@@ -1,0 +1,37 @@
+{
+    "processors": ["cpu", "gpu"],
+    "scope": ["inference"],
+    "version_aliases": {
+            "3.2": "3.2.0"
+        },
+    "versions": {
+        "3.2.0": {
+            "registries": {
+                "us-east-1": "885854791233",
+                "us-east-2": "137914896644",
+                "us-west-1": "053634841547",
+                "us-west-2": "542918446943",
+                "af-south-1": "238384257742",
+                "ap-east-1": "523751269255",
+                "ap-south-1": "245090515133",
+                "ap-northeast-2": "064688005998",
+                "ap-southeast-1": "022667117163",
+                "ap-southeast-2": "648430277019",
+                "ap-northeast-1": "010972774902",
+                "ca-central-1": "481561238223",
+                "eu-central-1": "545423591354",
+                "eu-west-1": "819792524951",
+                "eu-west-2": "021081402939",
+                "eu-west-3": "856416204555",
+                "eu-north-1": "175620155138",
+                "eu-south-1": "810671768855",
+                "sa-east-1": "567556641782",
+                "ap-northeast-3": "564864627153",
+                "ap-southeast-3": "370607712162",
+                "me-south-1": "523774347010",
+                "me-central-1": "358593528301"
+            },
+            "repository": "sagemaker-distribution-prod"
+        }
+    }
+}

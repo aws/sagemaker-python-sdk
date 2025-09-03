@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional, List, Dict
+from typing import Callable, Union, Optional, List, Dict
 
 import packaging.version
 
@@ -39,6 +39,7 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.utils import to_string
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 logger = logging.getLogger("sagemaker")
 
@@ -67,9 +68,9 @@ class MXNetPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            serializer (callable): Optional. Default serializes input data to
+            serializer (Callable): Optional. Default serializes input data to
                 json. Handles dicts, lists, and numpy arrays.
-            deserializer (callable): Optional. Default parses the response using
+            deserializer (Callable): Optional. Default parses the response using
                 ``json.load(...)``.
             component_name (str): Optional. Name of the Amazon SageMaker inference
                 component corresponding to the predictor.
@@ -97,7 +98,7 @@ class MXNetModel(FrameworkModel):
         framework_version: str = _LOWEST_MMS_VERSION,
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        predictor_cls: callable = MXNetPredictor,
+        predictor_cls: Optional[Callable] = MXNetPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs,
     ):
@@ -126,7 +127,7 @@ class MXNetModel(FrameworkModel):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
@@ -182,6 +183,7 @@ class MXNetModel(FrameworkModel):
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -235,6 +237,7 @@ class MXNetModel(FrameworkModel):
                 (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -276,6 +279,7 @@ class MXNetModel(FrameworkModel):
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
 
     def prepare_container_def(

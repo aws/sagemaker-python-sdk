@@ -38,7 +38,7 @@ from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.optimize_utils import _is_optimized
 from sagemaker.serve.utils.predictors import (
     TransformersLocalModePredictor,
-    TransformersInProcessModePredictor,
+    InProcessModePredictor,
 )
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -89,6 +89,7 @@ class Transformers(ABC):
         self.schema_builder = None
         self.inference_spec = None
         self.shared_libs = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self, *args, **kwargs):
@@ -105,6 +106,7 @@ class Transformers(ABC):
                 env=self.env_vars,
                 role=self.role_arn,
                 sagemaker_session=self.sagemaker_session,
+                name=self.name,
             )
 
         logger.info("Detected %s. Proceeding with the the deployment.", self.image_uri)
@@ -235,7 +237,7 @@ class Transformers(ABC):
         if self.mode == Mode.IN_PROCESS:
             timeout = kwargs.get("model_data_download_timeout")
 
-            predictor = TransformersInProcessModePredictor(
+            predictor = InProcessModePredictor(
                 self.modes[str(Mode.IN_PROCESS)], serializer, deserializer
             )
 
@@ -421,6 +423,6 @@ class Transformers(ABC):
         """Creating conda environment by running commands"""
 
         try:
-            RequirementsManager().capture_and_install_dependencies(self)
+            RequirementsManager().capture_and_install_dependencies
         except subprocess.CalledProcessError:
             print("Failed to create and activate conda environment.")

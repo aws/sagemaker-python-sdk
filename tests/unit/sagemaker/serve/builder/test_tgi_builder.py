@@ -18,7 +18,8 @@ from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.predictors import TgiLocalModePredictor
 
-MOCK_MODEL_ID = "meta-llama/Meta-Llama-3-8B"
+MOCK_MODEL_ID_GATED = "meta-llama/Meta-Llama-3-8B"
+MOCK_MODEL_ID_NON_GATED = "openai-community/gpt2.0"
 MOCK_PROMPT = "The man worked as a [MASK]."
 MOCK_SAMPLE_INPUT = {"inputs": "Hello, I'm a language model", "parameters": {"max_new_tokens": 128}}
 MOCK_SAMPLE_OUTPUT = [{"generated_text": "Hello, I'm a language modeler."}]
@@ -60,14 +61,18 @@ class TestTGIBuilder(TestCase):
     ):
         # verify SAGEMAKER_ENDPOINT deploy
         builder = ModelBuilder(
-            model=MOCK_MODEL_ID,
+            model=MOCK_MODEL_ID_NON_GATED,
+            name="mock_model_name",
             schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.SAGEMAKER_ENDPOINT,
         )
 
         builder._prepare_for_mode = MagicMock()
         builder._prepare_for_mode.return_value = (None, {})
+
         model = builder.build()
+        assert model.name == "mock_model_name"
+
         builder.serve_settings.telemetry_opt_out = True
         builder._original_deploy = MagicMock()
 
@@ -105,7 +110,7 @@ class TestTGIBuilder(TestCase):
     ):
         # verify LOCAL_CONTAINER deploy
         builder = ModelBuilder(
-            model=MOCK_MODEL_ID,
+            model=MOCK_MODEL_ID_NON_GATED,
             schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.LOCAL_CONTAINER,
             model_path=MOCK_MODEL_PATH,
@@ -165,7 +170,7 @@ class TestTGIBuilder(TestCase):
     ):
         # verify LOCAL_CONTAINER deploy
         builder = ModelBuilder(
-            model=MOCK_MODEL_ID,
+            model=MOCK_MODEL_ID_NON_GATED,
             schema_builder=MOCK_SCHEMA_BUILDER,
             mode=Mode.LOCAL_CONTAINER,
             model_path=MOCK_MODEL_PATH,
@@ -187,3 +192,119 @@ class TestTGIBuilder(TestCase):
 
         # verify that if optimized, no s3 upload occurs
         builder._prepare_for_mode.assert_called_with()
+
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
+    @patch("sagemaker.serve.builder.tgi_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.model_builder.get_huggingface_model_metadata",
+        return_value={"pipeline_tag": "text-generation"},
+    )
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_model_config_properties_from_hf",
+        return_value=({}, None),
+    )
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_default_tgi_configurations",
+        return_value=({}, None),
+    )
+    def test_tgi_builder_in_process_mode(
+        self,
+        mock_default_tgi_configurations,
+        mock_hf_model_config,
+        mock_hf_model_md,
+        mock_get_nb_instance,
+        mock_telemetry,
+    ):
+        # verify IN_PROCESS deploy
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID_GATED, schema_builder=MOCK_SCHEMA_BUILDER, mode=Mode.IN_PROCESS
+        )
+
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.side_effect = None
+        model = builder.build()
+        builder.serve_settings.telemetry_opt_out = True
+        builder.modes[str(Mode.IN_PROCESS)] = MagicMock()
+
+        model.deploy()
+
+        # verify SAGEMAKER_ENDPOINT overwritten deploy
+        builder._original_deploy = MagicMock()
+        builder._prepare_for_mode.return_value = (None, {})
+        # verify that if optimized, no s3 upload occurs
+        builder._prepare_for_mode.assert_called_with()
+
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_nb_instance",
+        return_value="ml.g5.24xlarge",
+    )
+    @patch("sagemaker.serve.builder.tgi_builder._capture_telemetry", side_effect=None)
+    @patch(
+        "sagemaker.serve.builder.model_builder.get_huggingface_model_metadata",
+        return_value={"pipeline_tag": "text-generation"},
+    )
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_model_config_properties_from_hf",
+        return_value=({}, None),
+    )
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_default_tgi_configurations",
+        return_value=({}, None),
+    )
+    @patch(
+        "sagemaker.serve.builder.tgi_builder._get_admissible_tensor_parallel_degrees",
+        return_value=[4, 8],
+    )
+    @patch("sagemaker.serve.builder.tgi_builder._get_admissible_dtypes", return_value=["fp16"])
+    @patch("sagemaker.serve.builder.tgi_builder.datetime")
+    @patch("sagemaker.serve.builder.tgi_builder.timedelta", return_value=1800)
+    @patch("sagemaker.serve.builder.tgi_builder._serial_benchmark")
+    @patch("sagemaker.serve.builder.tgi_builder._concurrent_benchmark")
+    def test_tgi_builder_tune_success(
+        self,
+        mock_concurrent_benchmark,
+        mock_serial_benchmark,
+        mock_timedelta,
+        mock_datetime,
+        mock_get_admissible_dtypes,
+        mock_get_admissible_tensor_parallel_degrees,
+        mock_default_tgi_configurations,
+        mock_hf_model_config,
+        mock_hf_model_md,
+        mock_get_nb_instance,
+        mock_telemetry,
+    ):
+        # WHERE
+        mock_datetime.now.side_effect = [0, 100, 200]
+        mock_serial_benchmark.side_effect = [(1000, 10000, 10), (500, 5000, 50)]
+        mock_concurrent_benchmark.side_effect = [(10, 10), (50, 5)]
+
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID_NON_GATED,
+            schema_builder=MOCK_SCHEMA_BUILDER,
+            mode=Mode.LOCAL_CONTAINER,
+            model_path=MOCK_MODEL_PATH,
+        )
+        builder._prepare_for_mode = MagicMock()
+        builder._prepare_for_mode.side_effect = None
+
+        model = builder.build()
+
+        builder.serve_settings.telemetry_opt_out = True
+        builder.modes[str(Mode.LOCAL_CONTAINER)] = MagicMock()
+        builder.pysdk_model = MagicMock()
+
+        # WHEN
+        ret_new_model = model.tune(max_tuning_duration=1800)
+
+        # THEN
+        assert ret_new_model != model
+        assert len(mock_datetime.now.call_args_list) == 3
+        assert len(mock_serial_benchmark.call_args_list) == 2
+        assert len(mock_concurrent_benchmark.call_args_list) == 2
+        assert ret_new_model.env["NUM_SHARD"] == "8"
+        assert ret_new_model.env["DTYPE"] == "fp16"
+        assert ret_new_model.env["SHARDED"] == "true"

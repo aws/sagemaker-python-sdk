@@ -16,7 +16,8 @@ from __future__ import absolute_import
 import re
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Union
+from sagemaker_core.shapes import ModelAccessConfig as CoreModelAccessConfig
 from sagemaker.model_card.model_card import ModelCard, ModelPackageModelCard
 from sagemaker.utils import (
     S3_PREFIX,
@@ -42,6 +43,7 @@ from sagemaker.jumpstart.hub.parser_utils import (
     camel_to_snake,
     walk_and_apply_json,
 )
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 
 class JumpStartDataHolderType:
@@ -617,6 +619,19 @@ class JumpStartInstanceTypeVariants(JumpStartDataHolderType):
             instance_type=instance_type, property_name="artifact_key"
         )
 
+    def get_instance_specific_training_artifact_key(self, instance_type: str) -> Optional[str]:
+        """Returns instance specific training artifact key.
+
+        Returns None if a model, instance type tuple does not have specific
+        training artifact key.
+        """
+
+        return self._get_instance_specific_property(
+            instance_type=instance_type, property_name="training_artifact_uri"
+        ) or self._get_instance_specific_property(
+            instance_type=instance_type, property_name="training_artifact_key"
+        )
+
     def get_instance_specific_resource_requirements(self, instance_type: str) -> Optional[str]:
         """Returns instance specific resource requirements.
 
@@ -1080,9 +1095,9 @@ class S3DataSource(JumpStartDataHolderType):
 class AdditionalModelDataSource(JumpStartDataHolderType):
     """Data class of additional model data source mirrors CreateModel API."""
 
-    SERIALIZATION_EXCLUSION_SET: Set[str] = set()
+    SERIALIZATION_EXCLUSION_SET = {"provider"}
 
-    __slots__ = ["channel_name", "s3_data_source"]
+    __slots__ = ["channel_name", "s3_data_source", "hosting_eula_key"]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a AdditionalModelDataSource object.
@@ -1100,6 +1115,8 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
         """
         self.channel_name: str = json_obj["channel_name"]
         self.s3_data_source: S3DataSource = S3DataSource(json_obj["s3_data_source"])
+        self.hosting_eula_key: str = json_obj.get("hosting_eula_key")
+        self.provider: Dict = json_obj.get("provider", {})
 
     def to_json(self, exclude_keys=True) -> Dict[str, Any]:
         """Returns json representation of AdditionalModelDataSource object."""
@@ -1118,7 +1135,9 @@ class AdditionalModelDataSource(JumpStartDataHolderType):
 class JumpStartModelDataSource(AdditionalModelDataSource):
     """Data class JumpStart additional model data source."""
 
-    SERIALIZATION_EXCLUSION_SET = {"artifact_version"}
+    SERIALIZATION_EXCLUSION_SET = AdditionalModelDataSource.SERIALIZATION_EXCLUSION_SET.union(
+        {"artifact_version"}
+    )
 
     __slots__ = list(SERIALIZATION_EXCLUSION_SET) + AdditionalModelDataSource.__slots__
 
@@ -1174,7 +1193,7 @@ class JumpStartConfigRanking(JumpStartDataHolderType):
             spec (Dict[str, Any]): Dictionary representation of training config ranking.
         """
         if is_hub_content:
-            spec = {camel_to_snake(key): val for key, val in spec.items()}
+            spec = walk_and_apply_json(spec, camel_to_snake)
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
@@ -1200,6 +1219,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "url",
         "version",
         "min_sdk_version",
+        "model_types",
+        "capabilities",
         "incremental_training_supported",
         "hosting_ecr_specs",
         "hosting_ecr_uri",
@@ -1258,6 +1279,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         "hosting_neuron_model_version",
         "hub_content_type",
         "_is_hub_content",
+        "default_training_dataset_key",
+        "default_training_dataset_uri",
     ]
 
     _non_serializable_slots = ["_is_hub_content"]
@@ -1287,6 +1310,8 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
             json_obj.get("incremental_training_supported", False)
         )
         if self._is_hub_content:
+            self.capabilities: Optional[List[str]] = json_obj.get("capabilities")
+            self.model_types: Optional[List[str]] = json_obj.get("model_types")
             self.hosting_ecr_uri: Optional[str] = json_obj.get("hosting_ecr_uri")
             self._non_serializable_slots.append("hosting_ecr_specs")
         else:
@@ -1353,9 +1378,10 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
         self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
             JumpStartPredictorSpecs(
-                json_obj["predictor_specs"], is_hub_content=self._is_hub_content
+                json_obj.get("predictor_specs"),
+                is_hub_content=self._is_hub_content,
             )
-            if "predictor_specs" in json_obj
+            if json_obj.get("predictor_specs")
             else None
         )
         self.default_payloads: Optional[Dict[str, JumpStartSerializablePayload]] = (
@@ -1379,6 +1405,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
         self.hosting_model_package_arns: Optional[Dict] = (
             model_package_arns if model_package_arns is not None else {}
         )
+
         self.hosting_use_script_uri: bool = json_obj.get("hosting_use_script_uri", True)
 
         self.hosting_instance_type_variants: Optional[JumpStartInstanceTypeVariants] = (
@@ -1400,7 +1427,7 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
 
         if self.training_supported:
             if self._is_hub_content:
-                self.training_ecr_uri: Optional[str] = json_obj["training_ecr_uri"]
+                self.training_ecr_uri: Optional[str] = json_obj.get("training_ecr_uri")
                 self._non_serializable_slots.append("training_ecr_specs")
             else:
                 self.training_ecr_specs: Optional[JumpStartECRSpecs] = (
@@ -1437,6 +1464,12 @@ class JumpStartMetadataBaseFields(JumpStartDataHolderType):
                 else None
             )
         self.model_subscription_link = json_obj.get("model_subscription_link")
+        self.default_training_dataset_key: Optional[str] = json_obj.get(
+            "default_training_dataset_key"
+        )
+        self.default_training_dataset_uri: Optional[str] = json_obj.get(
+            "default_training_dataset_uri"
+        )
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartMetadataBaseFields object."""
@@ -1490,6 +1523,9 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         "incremental_training_supported",
     ]
 
+    # Map of HubContent fields that map to custom names in MetadataBaseFields
+    CUSTOM_FIELD_MAP = {"sage_maker_sdk_predictor_specifications": "predictor_specs"}
+
     __slots__ = slots + JumpStartMetadataBaseFields.__slots__
 
     def __init__(
@@ -1520,6 +1556,11 @@ class JumpStartConfigComponent(JumpStartMetadataBaseFields):
         for field in json_obj.keys():
             if field in self.__slots__:
                 setattr(self, field, json_obj[field])
+
+        # Handle custom fields
+        for custom_field, field in self.CUSTOM_FIELD_MAP.items():
+            if custom_field in json_obj:
+                setattr(self, field, json_obj.get(custom_field))
 
 
 class JumpStartMetadataConfig(JumpStartDataHolderType):
@@ -1899,12 +1940,20 @@ class JumpStartModelSpecs(JumpStartMetadataBaseFields):
 
     def use_training_model_artifact(self) -> bool:
         """Returns True if the model should use a model uri when kicking off training job."""
-        # gated model never use training model artifact
-        if self.gated_bucket:
+        # old models with this environment variable present don't use model channel
+        if any(
+            self.training_instance_type_variants.get_instance_specific_gated_model_key_env_var_value(
+                instance_type
+            )
+            for instance_type in self.supported_training_instance_types
+        ):
             return False
 
-        # otherwise, return true is a training model package is not set
-        return len(self.training_model_package_artifact_uris or {}) == 0
+        # even older models with training model package artifact uris present also don't use model channel
+        if len(self.training_model_package_artifact_uris or {}) > 0:
+            return False
+
+        return getattr(self, "training_artifact_key", None) is not None
 
     def is_gated_model(self) -> bool:
         """Returns True if the model has a EULA key or the model bucket is gated."""
@@ -2055,14 +2104,20 @@ class JumpStartCachedContentValue(JumpStartDataHolderType):
 class JumpStartKwargs(JumpStartDataHolderType):
     """Data class for JumpStart object kwargs."""
 
+    BASE_SERIALIZATION_EXCLUSION_SET: Set[str] = ["specs"]
     SERIALIZATION_EXCLUSION_SET: Set[str] = set()
 
     def to_kwargs_dict(self, exclude_keys: bool = True):
         """Serializes object to dictionary to be used for kwargs for method arguments."""
         kwargs_dict = {}
         for field in self.__slots__:
-            if exclude_keys and field not in self.SERIALIZATION_EXCLUSION_SET or not exclude_keys:
-                att_value = getattr(self, field)
+            if (
+                exclude_keys
+                and field
+                not in self.SERIALIZATION_EXCLUSION_SET.union(self.BASE_SERIALIZATION_EXCLUSION_SET)
+                or not exclude_keys
+            ):
+                att_value = getattr(self, field, None)
                 if att_value is not None:
                     kwargs_dict[field] = getattr(self, field)
         return kwargs_dict
@@ -2104,6 +2159,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "additional_model_data_sources",
         "hub_content_type",
         "model_reference_arn",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2132,7 +2188,7 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         image_uri: Optional[Union[str, Any]] = None,
         model_data: Optional[Union[str, Any, dict]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, Any]]] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, Any]]]] = None,
@@ -2226,6 +2282,9 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "endpoint_type",
         "config_name",
         "routing_config",
+        "specs",
+        "model_access_configs",
+        "inference_ami_version",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2239,6 +2298,7 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "sagemaker_session",
         "training_instance_type",
         "config_name",
+        "model_access_configs",
     }
 
     def __init__(
@@ -2277,6 +2337,8 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         endpoint_type: Optional[EndpointType] = None,
         config_name: Optional[str] = None,
         routing_config: Optional[Dict[str, Any]] = None,
+        model_access_configs: Optional[Dict[str, CoreModelAccessConfig]] = None,
+        inference_ami_version: Optional[str] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -2314,6 +2376,8 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.endpoint_type = endpoint_type
         self.config_name = config_name
         self.routing_config = routing_config
+        self.model_access_configs = model_access_configs
+        self.inference_ami_version = inference_ami_version
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -2379,6 +2443,9 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "enable_session_tag_chaining",
         "hub_content_type",
         "model_reference_arn",
+        "specs",
+        "training_plan",
+        "instance_placement_config",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2452,6 +2519,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
+        training_plan: Optional[Union[str, PipelineVariable]] = None,
+        instance_placement_config: Optional[Dict] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2514,6 +2583,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.enable_remote_debug = enable_remote_debug
         self.config_name = config_name
         self.enable_session_tag_chaining = enable_session_tag_chaining
+        self.training_plan = training_plan
+        self.instance_placement_config = instance_placement_config
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
@@ -2534,6 +2605,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
         "sagemaker_session",
         "config_name",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2628,6 +2700,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "model_name",
         "use_compiled_model",
         "config_name",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2666,7 +2739,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         explainer_config: Optional[Any] = None,
         image_uri: Optional[Union[str, Any]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, Any]]] = None,
         model_name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, Any]]]] = None,
@@ -2764,9 +2837,11 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         "data_input_configuration",
         "skip_model_validation",
         "source_uri",
+        "model_life_cycle",
         "config_name",
         "model_card",
         "accept_eula",
+        "specs",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2812,6 +2887,7 @@ class JumpStartModelRegisterKwargs(JumpStartKwargs):
         data_input_configuration: Optional[str] = None,
         skip_model_validation: Optional[str] = None,
         source_uri: Optional[str] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
         config_name: Optional[str] = None,
         model_card: Optional[Dict[ModelCard, ModelPackageModelCard]] = None,
         accept_eula: Optional[bool] = None,

@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+
 from copy import copy
 import logging
 import os
@@ -20,8 +21,9 @@ from typing import Any, Dict, List, Set, Optional, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
 import botocore
+from sagemaker_core.shapes import ModelAccessConfig
 import sagemaker
 from sagemaker.config.config_schema import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
@@ -33,6 +35,7 @@ from sagemaker.config.config_schema import (
 
 from sagemaker.jumpstart import constants, enums
 from sagemaker.jumpstart import accessors
+from sagemaker.jumpstart.hub.parser_utils import camel_to_snake, snake_to_upper_camel
 from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
@@ -49,7 +52,13 @@ from sagemaker.jumpstart.types import (
 )
 from sagemaker.session import Session
 from sagemaker.config import load_sagemaker_config
-from sagemaker.utils import resolve_value_from_config, TagsDict, get_instance_rate_per_hour
+from sagemaker.utils import (
+    resolve_value_from_config,
+    TagsDict,
+    get_instance_rate_per_hour,
+    get_domain_for_region,
+    camel_case_to_pascal_case,
+)
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.user_agent import get_user_agent_extra_suffix
 
@@ -446,6 +455,21 @@ def add_hub_content_arn_tags(
     return tags
 
 
+def add_bedrock_store_tags(
+    tags: Optional[List[TagsDict]],
+    compatibility: str,
+) -> Optional[List[TagsDict]]:
+    """Adds custom Hub arn tag to JumpStart related resources."""
+
+    tags = add_single_jumpstart_tag(
+        compatibility,
+        enums.JumpStartTag.BEDROCK,
+        tags,
+        is_uri=False,
+    )
+    return tags
+
+
 def add_jumpstart_uri_tags(
     tags: Optional[List[TagsDict]] = None,
     inference_model_uri: Optional[Union[str, dict]] = None,
@@ -549,11 +573,18 @@ def get_eula_message(model_specs: JumpStartModelSpecs, region: str) -> str:
     """Returns EULA message to display if one is available, else empty string."""
     if model_specs.hosting_eula_key is None:
         return ""
+    return get_formatted_eula_message_template(
+        model_id=model_specs.model_id, region=region, hosting_eula_key=model_specs.hosting_eula_key
+    )
+
+
+def get_formatted_eula_message_template(model_id: str, region: str, hosting_eula_key: str) -> str:
+    """Returns a formatted EULA message."""
     return (
-        f"Model '{model_specs.model_id}' requires accepting end-user license agreement (EULA). "
+        f"Model '{model_id}' requires accepting end-user license agreement (EULA). "
         f"See https://{get_jumpstart_content_bucket(region=region)}.s3.{region}."
-        f"amazonaws.com{'.cn' if region.startswith('cn-') else ''}"
-        f"/{model_specs.hosting_eula_key} for terms of use."
+        f"{get_domain_for_region(region)}"
+        f"/{hosting_eula_key} for terms of use."
     )
 
 
@@ -850,7 +881,16 @@ def validate_model_id_and_get_type(
     if not isinstance(model_id, str):
         return None
     if hub_arn:
-        return None
+        model_types = _validate_hub_service_model_id_and_get_type(
+            model_id=model_id,
+            hub_arn=hub_arn,
+            region=region,
+            model_version=model_version,
+            sagemaker_session=sagemaker_session,
+        )
+        return (
+            model_types[0] if model_types else None
+        )  # Currently this function only supports one model type
 
     s3_client = sagemaker_session.s3_client if sagemaker_session else None
     region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
@@ -873,6 +913,37 @@ def validate_model_id_and_get_type(
             return enums.JumpStartModelType.PROPRIETARY
         raise ValueError(f"Unsupported script for Proprietary models: {script}")
     return None
+
+
+def _validate_hub_service_model_id_and_get_type(
+    model_id: Optional[str],
+    hub_arn: str,
+    region: Optional[str] = None,
+    model_version: Optional[str] = None,
+    sagemaker_session: Optional[Session] = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
+) -> List[enums.JumpStartModelType]:
+    """Returns a list of JumpStartModelType based off the HubContent.
+
+    Only returns valid JumpStartModelType. Returns an empty array if none are found.
+    """
+    hub_model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region,
+        model_id=model_id,
+        version=model_version,
+        hub_arn=hub_arn,
+        sagemaker_session=sagemaker_session,
+    )
+
+    hub_content_model_types = []
+    model_types_field: Optional[List[str]] = getattr(hub_model_specs, "model_types", [])
+    model_types = model_types_field if model_types_field else []
+    for model_type in model_types:
+        try:
+            hub_content_model_types.append(enums.JumpStartModelType[model_type])
+        except ValueError:
+            continue
+
+    return hub_content_model_types
 
 
 def _extract_value_from_list_of_tags(
@@ -1103,6 +1174,17 @@ def get_jumpstart_configs(
             metadata_configs.config_rankings.get("overall").rankings if metadata_configs else []
         )
 
+    if hub_arn:
+        return (
+            {
+                config_name: metadata_configs.configs[
+                    camel_to_snake(snake_to_upper_camel(config_name))
+                ]
+                for config_name in config_names
+            }
+            if metadata_configs
+            else {}
+        )
     return (
         {config_name: metadata_configs.configs[config_name] for config_name in config_names}
         if metadata_configs
@@ -1468,3 +1550,152 @@ def _deployment_config_lru_cache(_func=None, *, maxsize: int = 128, typed: bool 
     if _func is None:
         return wrapper_cache
     return wrapper_cache(_func)
+
+
+def _add_model_access_configs_to_model_data_sources(
+    model_data_sources: List[Dict[str, any]],
+    model_access_configs: Dict[str, ModelAccessConfig],
+    model_id: str,
+    region: str,
+) -> List[Dict[str, any]]:
+    """Iterate over the accept EULA configs to ensure all channels are matched
+
+    Args:
+        model_data_sources (DeploymentConfigMetadata): Model data sources that will be updated
+        model_access_configs (DeploymentConfigMetadata): Config holding accept_eula field
+        model_id (DeploymentConfigMetadata): Jumpstart model id.
+        region (str): Region where the user is operating in.
+    Returns:
+        List[Dict[str, Any]]: List of model data sources with accept EULA configs applied
+    Raise:
+        ValueError if at least one channel that requires EULA acceptance as not passed.
+    """
+    if not model_data_sources:
+        return model_data_sources
+
+    acked_model_data_sources = []
+    for model_data_source in model_data_sources:
+        hosting_eula_key = model_data_source.get("HostingEulaKey")
+        mutable_model_data_source = model_data_source.copy()
+        if hosting_eula_key:
+            if (
+                not model_access_configs
+                or not model_access_configs.get(model_id)
+                or not model_access_configs.get(model_id).accept_eula
+            ):
+                eula_message_template = (
+                    "{model_source}{base_eula_message}{model_access_configs_message}"
+                )
+                model_access_config_entry = (
+                    '"{model_id}":ModelAccessConfig(accept_eula=True)'.format(model_id=model_id)
+                )
+                raise ValueError(
+                    eula_message_template.format(
+                        model_source="Additional " if model_data_source.get("ChannelName") else "",
+                        base_eula_message=get_formatted_eula_message_template(
+                            model_id=model_id, region=region, hosting_eula_key=hosting_eula_key
+                        ),
+                        model_access_configs_message=(
+                            "Please add a ModelAccessConfig entry:"
+                            f" {model_access_config_entry} "
+                            "to model_access_configs to accept the EULA."
+                        ),
+                    )
+                )
+            mutable_model_data_source.pop(
+                "HostingEulaKey"
+            )  # pop when model access config is applied
+            mutable_model_data_source["S3DataSource"]["ModelAccessConfig"] = (
+                camel_case_to_pascal_case(model_access_configs.get(model_id).model_dump())
+            )
+            acked_model_data_sources.append(mutable_model_data_source)
+        else:
+            if "HostingEulaKey" in mutable_model_data_source:
+                mutable_model_data_source.pop(
+                    "HostingEulaKey"
+                )  # pop when model access config is not applicable
+            acked_model_data_sources.append(mutable_model_data_source)
+    return acked_model_data_sources
+
+
+def get_draft_model_content_bucket(provider: Dict, region: str) -> str:
+    """Returns the correct content bucket for a 1p draft model."""
+    neo_bucket = get_neo_content_bucket(region=region)
+    if not provider:
+        return neo_bucket
+    provider_name = provider.get("name", "")
+    if provider_name == "JumpStart":
+        classification = provider.get("classification", "ungated")
+        if classification == "gated":
+            return get_jumpstart_gated_content_bucket(region=region)
+        return get_jumpstart_content_bucket(region=region)
+    return neo_bucket
+
+
+def remove_env_var_from_estimator_kwargs_if_model_access_config_present(
+    init_kwargs: dict, model_access_config: Optional[dict]
+):
+    """Remove env vars if ModelAccessConfig is used
+
+    Args:
+        init_kwargs (dict): Dictionary of kwargs when Estimator is instantiated.
+        accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
+    """
+    if (
+        model_access_config is not None
+        and init_kwargs.get("environment") is not None
+        and init_kwargs.get("model_uri") is not None
+    ):
+        if (
+            constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY
+            in init_kwargs["environment"]
+        ):
+            del init_kwargs["environment"][
+                constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY
+            ]
+        if "accept_eula" in init_kwargs["environment"]:
+            del init_kwargs["environment"]["accept_eula"]
+
+
+def get_hub_access_config(hub_content_arn: Optional[str]):
+    """Get hub access config
+
+    Args:
+        hub_content_arn (Optional[bool]): Arn of the model reference hub content
+    """
+    if hub_content_arn is not None:
+        hub_access_config = {"HubContentArn": hub_content_arn}
+    else:
+        hub_access_config = None
+
+    return hub_access_config
+
+
+def get_model_access_config(accept_eula: Optional[bool], environment: Optional[dict]):
+    """Get access configs
+
+    Args:
+        accept_eula (Optional[bool]): Whether or not the EULA was accepted, optionally passed in to Estimator.fit().
+    """
+    env_var_eula = environment.get("accept_eula") if environment else None
+    if env_var_eula is not None and accept_eula is not None:
+        raise ValueError(
+            "Cannot pass in both accept_eula and environment variables. "
+            "Please remove the environment variable and pass in the accept_eula parameter."
+        )
+
+    model_access_config = None
+    if env_var_eula is not None:
+        model_access_config = {"AcceptEula": env_var_eula == "true"}
+    if accept_eula is not None:
+        model_access_config = {"AcceptEula": accept_eula}
+
+    return model_access_config
+
+
+def get_latest_version(versions: List[str]) -> Optional[str]:
+    """Returns the latest version using sem-ver when possible."""
+    try:
+        return None if not versions else max(versions, key=Version)
+    except InvalidVersion:
+        return max(versions)

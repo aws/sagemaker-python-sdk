@@ -198,6 +198,7 @@ class EstimatorTest(unittest.TestCase):
             ],
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
     @mock.patch(
         "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
@@ -220,7 +221,10 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator: mock.Mock,
         mock_session_model: mock.Mock,
         mock_validate_model_id_and_get_type: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
+        mock_sagemaker_timestamp.return_value = "8675309"
+
         mock_estimator_deploy.return_value = default_predictor
 
         mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
@@ -239,32 +243,71 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_init.assert_called_once_with(
             instance_type="ml.p3.16xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:1.10.2"
-            "-transformers4.17.0-gpu-py38-cu113-ubuntu20.04",
-            model_uri="s3://jumpstart-cache-prod-us-west-2/huggingface-training/train-huggingface"
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface"
+            "-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/huggingface-training"
+            "/train-huggingface"
             "-text2text-flan-t5-base.tar.gz",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/huggingface/"
-            "transfer_learning/text2text/prepack/v1.0.1/sourcedir.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs"
+            "/huggingface/transfer_learning/text2text/prepack/v2.0.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
             hyperparameters={
                 "epochs": "1",
+                "max_steps": "-1",
                 "seed": "42",
                 "batch_size": "64",
                 "learning_rate": "0.0001",
+                "lr_scheduler_type": "constant_with_warmup",
+                "warmup_ratio": "0.0",
+                "warmup_steps": "0",
                 "validation_split_ratio": "0.05",
                 "train_data_split_seed": "0",
+                "max_train_samples": "-1",
+                "max_eval_samples": "-1",
+                "max_input_length": "-1",
+                "max_output_length": "128",
+                "pad_to_max_length": "True",
+                "gradient_accumulation_steps": "1",
+                "weight_decay": "0.0",
+                "adam_beta1": "0.9",
+                "adam_beta2": "0.999",
+                "adam_epsilon": "1e-08",
+                "max_grad_norm": "1.0",
+                "load_best_model_at_end": "True",
+                "early_stopping_patience": "3",
+                "early_stopping_threshold": "0.0",
+                "label_smoothing_factor": "0",
+                "logging_strategy": "steps",
+                "logging_first_step": "False",
+                "logging_steps": "500",
+                "logging_nan_inf_filter": "True",
+                "save_strategy": "epoch",
+                "save_steps": "500",
+                "save_total_limit": "2",
+                "dataloader_drop_last": "False",
+                "dataloader_num_workers": "0",
+                "evaluation_strategy": "epoch",
+                "eval_steps": "500",
+                "eval_accumulation_steps": "None",
+                "gradient_checkpointing": "True",
+                "auto_find_batch_size": "False",
+                "preprocessing_num_workers": "None",
+                "peft_type": "none",
             },
             metric_definitions=[
                 {"Name": "huggingface-text2text:eval-loss", "Regex": "'eval_loss': ([0-9\\.]+)"}
             ],
             role=execution_role,
-            encrypt_inter_container_traffic=False,
+            encrypt_inter_container_traffic=True,
             sagemaker_session=sagemaker_session,
-            enable_network_isolation=False,
+            enable_network_isolation=True,
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model-prepacked"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.2.0"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "2.2.3"},
             ],
+            volume_size=512,
+            max_run=360000,
+            disable_output_compression=True,
         )
 
         channels = {
@@ -274,31 +317,41 @@ class EstimatorTest(unittest.TestCase):
 
         estimator.fit(channels)
 
-        mock_estimator_fit.assert_called_once_with(inputs=channels, wait=True)
+        mock_estimator_fit.assert_called_once_with(
+            inputs=channels, wait=True, job_name="hf-text2text-flan-t5-base-8675309"
+        )
 
         estimator.deploy()
 
         mock_estimator_deploy.assert_called_once_with(
-            instance_type="ml.g5.xlarge",
+            instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
-            "1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-pytorch-tgi-inference:2.1.1-tgi1.4.0-gpu-py310-cu121-ubuntu20.04",
             env={
                 "SAGEMAKER_PROGRAM": "inference.py",
                 "ENDPOINT_SERVER_TIMEOUT": "3600",
                 "MODEL_CACHE_ROOT": "/opt/ml/model",
                 "SAGEMAKER_ENV": "1",
+                "HF_MODEL_ID": "/opt/ml/model",
+                "SM_NUM_GPUS": "1",
+                "MAX_INPUT_LENGTH": "1024",
+                "MAX_TOTAL_TOKENS": "2048",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
             predictor_cls=Predictor,
+            endpoint_name="hf-text2text-flan-t5-base-8675309",
             role=execution_role,
             wait=True,
             use_compiled_model=False,
-            enable_network_isolation=False,
+            enable_network_isolation=True,
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "js-trainable-model-prepacked"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.2.0"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "2.2.3"},
             ],
+            model_data_download_timeout=1200,
+            container_startup_health_check_timeout=1200,
+            model_name="hf-text2text-flan-t5-base-8675309",
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -339,34 +392,53 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator.return_value = sagemaker_session
         mock_session_model.return_value = sagemaker_session
 
-        with pytest.raises(ValueError) as e:
-            JumpStartEstimator(
-                model_id=model_id,
-                environment={
-                    "accept_eula": "false",
-                    "what am i": "doing",
-                    "SageMakerGatedModelS3Uri": "none of your business",
-                },
-            )
-        assert str(e.value) == (
-            "Need to define ‘accept_eula'='true' within Environment. "
-            "Model 'meta-textgeneration-llama-2-7b-f' requires accepting end-user "
-            "license agreement (EULA). See "
-            "https://jumpstart-cache-prod-us-west-2.s3.us-west-2.amazonaws.com/fmhMetadata/eula/llamaEula.txt"
-            " for terms of use."
-        )
-
         mock_estimator_init.reset_mock()
 
         estimator = JumpStartEstimator(model_id=model_id, environment={"accept_eula": "true"})
 
         mock_estimator_init.assert_called_once_with(
-            instance_type="ml.p3.2xlarge",
+            instance_type="ml.g5.12xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-"
+            "pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
-            "meta/transfer_learning/textgeneration/v1.0.0/sourcedir.tar.gz",
+            "meta/transfer_learning/textgeneration/v1.0.6/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
+            hyperparameters={
+                "int8_quantization": "False",
+                "enable_fsdp": "True",
+                "epoch": "1",
+                "learning_rate": "0.0001",
+                "lora_r": "8",
+                "lora_alpha": "32",
+                "lora_dropout": "0.05",
+                "instruction_tuned": "False",
+                "chat_dataset": "True",
+                "add_input_output_demarcation_key": "True",
+                "per_device_train_batch_size": "1",
+                "per_device_eval_batch_size": "1",
+                "max_train_samples": "-1",
+                "max_val_samples": "-1",
+                "seed": "10",
+                "max_input_length": "-1",
+                "validation_split_ratio": "0.2",
+                "train_data_split_seed": "0",
+                "preprocessing_num_workers": "None",
+            },
+            metric_definitions=[
+                {
+                    "Name": "huggingface-textgeneration:eval-loss",
+                    "Regex": "eval_epoch_loss=tensor\\(([0-9\\.]+)",
+                },
+                {
+                    "Name": "huggingface-textgeneration:eval-ppl",
+                    "Regex": "eval_ppl=tensor\\(([0-9\\.]+)",
+                },
+                {
+                    "Name": "huggingface-textgeneration:train-loss",
+                    "Regex": "train_epoch_loss=([0-9\\.]+)",
+                },
+            ],
             role=execution_role,
             sagemaker_session=sagemaker_session,
             max_run=360000,
@@ -374,14 +446,15 @@ class EstimatorTest(unittest.TestCase):
             encrypt_inter_container_traffic=True,
             environment={
                 "accept_eula": "true",
-                "SageMakerGatedModelS3Uri": "s3://jumpstart-cache-alpha-us-west-2/dummy.tar.gz",
+                "SageMakerGatedModelS3Uri": "s3://sagemaker-repository-pdx/"
+                "model-data-model-package_llama2-7b-f-v4-71eeccf76ddf33f2a18d2e16b9c7f302",
             },
             tags=[
                 {
                     "Key": "sagemaker-sdk:jumpstart-model-id",
                     "Value": "js-gated-artifact-trainable-model",
                 },
-                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.0"},
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.4"},
             ],
         )
 
@@ -403,7 +476,7 @@ class EstimatorTest(unittest.TestCase):
             initial_instance_count=1,
             predictor_cls=Predictor,
             endpoint_name="meta-textgeneration-llama-2-7b-f-8675309",
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.3-cu117",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.23.0-deepspeed0.9.5-cu118",
             wait=True,
             model_data_download_timeout=3600,
             container_startup_health_check_timeout=3600,
@@ -416,7 +489,152 @@ class EstimatorTest(unittest.TestCase):
                     "Key": "sagemaker-sdk:jumpstart-model-id",
                     "Value": "js-gated-artifact-trainable-model",
                 },
-                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.0"},
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.4"},
+            ],
+        )
+
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
+    @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
+    @mock.patch(
+        "sagemaker.jumpstart.factory.model.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch(
+        "sagemaker.jumpstart.factory.estimator.get_default_jumpstart_session_with_user_agent_suffix"
+    )
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_gated_model_s3_uri_with_eula_in_fit(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_validate_model_id_and_get_type: mock.Mock,
+        mock_timestamp: mock.Mock,
+    ):
+        mock_estimator_deploy.return_value = default_predictor
+
+        mock_timestamp.return_value = "8675309"
+
+        mock_validate_model_id_and_get_type.return_value = JumpStartModelType.OPEN_WEIGHTS
+
+        model_id, _ = "js-gated-artifact-trainable-model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        mock_estimator_init.reset_mock()
+
+        estimator = JumpStartEstimator(model_id=model_id)
+
+        mock_estimator_init.assert_called_once_with(
+            instance_type="ml.g5.12xlarge",
+            instance_count=1,
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-"
+            "pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "meta/transfer_learning/textgeneration/v1.0.6/sourcedir.tar.gz",
+            entry_point="transfer_learning.py",
+            hyperparameters={
+                "int8_quantization": "False",
+                "enable_fsdp": "True",
+                "epoch": "1",
+                "learning_rate": "0.0001",
+                "lora_r": "8",
+                "lora_alpha": "32",
+                "lora_dropout": "0.05",
+                "instruction_tuned": "False",
+                "chat_dataset": "True",
+                "add_input_output_demarcation_key": "True",
+                "per_device_train_batch_size": "1",
+                "per_device_eval_batch_size": "1",
+                "max_train_samples": "-1",
+                "max_val_samples": "-1",
+                "seed": "10",
+                "max_input_length": "-1",
+                "validation_split_ratio": "0.2",
+                "train_data_split_seed": "0",
+                "preprocessing_num_workers": "None",
+            },
+            metric_definitions=[
+                {
+                    "Name": "huggingface-textgeneration:eval-loss",
+                    "Regex": "eval_epoch_loss=tensor\\(([0-9\\.]+)",
+                },
+                {
+                    "Name": "huggingface-textgeneration:eval-ppl",
+                    "Regex": "eval_ppl=tensor\\(([0-9\\.]+)",
+                },
+                {
+                    "Name": "huggingface-textgeneration:train-loss",
+                    "Regex": "train_epoch_loss=([0-9\\.]+)",
+                },
+            ],
+            role=execution_role,
+            sagemaker_session=sagemaker_session,
+            max_run=360000,
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
+            environment={
+                "SageMakerGatedModelS3Uri": "s3://sagemaker-repository-pdx/"
+                "model-data-model-package_llama2-7b-f-v4-71eeccf76ddf33f2a18d2e16b9c7f302",
+            },
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.4"},
+            ],
+        )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        estimator.fit(channels, accept_eula=True)
+
+        mock_estimator_fit.assert_called_once_with(
+            inputs=channels,
+            wait=True,
+            job_name="meta-textgeneration-llama-2-7b-f-8675309",
+        )
+
+        assert hasattr(estimator, "model_access_config")
+        assert hasattr(estimator, "hub_access_config")
+
+        assert estimator.model_access_config == {"AcceptEula": True}
+
+        estimator.deploy()
+
+        mock_estimator_deploy.assert_called_once_with(
+            instance_type="ml.g5.2xlarge",
+            initial_instance_count=1,
+            predictor_cls=Predictor,
+            endpoint_name="meta-textgeneration-llama-2-7b-f-8675309",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.23.0-deepspeed0.9.5-cu118",
+            wait=True,
+            model_data_download_timeout=3600,
+            container_startup_health_check_timeout=3600,
+            role=execution_role,
+            enable_network_isolation=True,
+            model_name="meta-textgeneration-llama-2-7b-f-8675309",
+            use_compiled_model=False,
+            tags=[
+                {
+                    "Key": "sagemaker-sdk:jumpstart-model-id",
+                    "Value": "js-gated-artifact-trainable-model",
+                },
+                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.0.4"},
             ],
         )
 
@@ -619,7 +837,7 @@ class EstimatorTest(unittest.TestCase):
         assert (
             str(e.value) == "Model package artifact s3 uri for 'js-gated-artifact-trainable-model' "
             "not supported in eu-north-1. Please try one of the following regions: "
-            "us-west-2, us-east-1, eu-west-1, ap-southeast-1."
+            "us-west-2, us-east-2, us-east-1, eu-west-1, ap-southeast-1, ap-southeast-2."
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
@@ -996,7 +1214,7 @@ class EstimatorTest(unittest.TestCase):
 
         js_tags = [
             {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "js-trainable-model-prepacked"},
-            {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.2.0"},
+            {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "2.2.3"},
         ]
 
         self.assertEqual(
@@ -1128,7 +1346,7 @@ class EstimatorTest(unittest.TestCase):
         and reach out to JumpStart team."""
 
         init_args_to_skip: Set[str] = set(["kwargs"])
-        fit_args_to_skip: Set[str] = set()
+        fit_args_to_skip: Set[str] = set(["accept_eula"])
         deploy_args_to_skip: Set[str] = set(["kwargs"])
 
         parent_class_init = Estimator.__init__
@@ -1153,8 +1371,8 @@ class EstimatorTest(unittest.TestCase):
         js_class_fit = JumpStartEstimator.fit
         js_class_fit_args = set(signature(js_class_fit).parameters.keys())
 
-        assert js_class_fit_args - parent_class_fit_args == set()
-        assert parent_class_fit_args - js_class_fit_args == fit_args_to_skip
+        assert js_class_fit_args - parent_class_fit_args == fit_args_to_skip
+        assert parent_class_fit_args - js_class_fit_args == set()
 
         model_class_init = Model.__init__
         model_class_init_args = set(signature(model_class_init).parameters.keys())
@@ -1425,6 +1643,7 @@ class EstimatorTest(unittest.TestCase):
             sagemaker_session=sagemaker_session,
             config_name=None,
             hub_arn=None,
+            model_type=JumpStartModelType.OPEN_WEIGHTS,
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.validate_model_id_and_get_type")
@@ -1482,6 +1701,7 @@ class EstimatorTest(unittest.TestCase):
             sagemaker_session=sagemaker_session,
             config_name=None,
             hub_arn=None,
+            model_type=JumpStartModelType.OPEN_WEIGHTS,
         )
 
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
@@ -1827,59 +2047,68 @@ class EstimatorTest(unittest.TestCase):
         mock_session.return_value = sagemaker_session
 
         # this instance type has a special model artifact
-        JumpStartEstimator(model_id=model_id, instance_type="ml.p2.xlarge")
+        JumpStartEstimator(model_id=model_id, instance_type="ml.m5.xlarge")
 
         mock_estimator_init.assert_called_once_with(
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:1.13.1"
-            "-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
-            model_uri="s3://jumpstart-cache-prod-us-west-2/hello-mars-1",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/hello-world-1",
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
-            "pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+            "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
-            hyperparameters={"epochs": "3", "adam-learning-rate": "0.05", "batch-size": "4"},
+            hyperparameters={
+                "train_only_top_layer": "True",
+                "epochs": "5",
+                "learning_rate": "0.001",
+                "batch_size": "4",
+                "reinitialize_top_layer": "Auto",
+            },
             metric_definitions=[
-                {"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}
+                {"Name": "pytorch-ic:val-accuracy", "Regex": "val_accuracy: ([0-9\\.]+)"}
             ],
             role=execution_role,
             sagemaker_session=sagemaker_session,
-            enable_network_isolation=False,
+            enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
-            volume_size=456,
+            max_run=360000,
             tags=[
                 {"Key": JumpStartTag.MODEL_ID, "Value": "model-artifact-variant-model"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "3.0.6"},
             ],
         )
 
         mock_estimator_init.reset_mock()
 
-        JumpStartEstimator(model_id=model_id, instance_type="ml.p99.xlarge")
+        JumpStartEstimator(model_id=model_id, instance_type="ml.p3.2xlarge")
 
         mock_estimator_init.assert_called_once_with(
-            instance_type="ml.p99.xlarge",
+            instance_type="ml.p3.2xlarge",
             instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3",
-            model_uri="s3://jumpstart-cache-prod-us-west-2/pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
-            "transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/pytorch-training/"
+            "v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
-            hyperparameters={"epochs": "3", "adam-learning-rate": "0.05", "batch-size": "4"},
+            hyperparameters={
+                "train_only_top_layer": "True",
+                "epochs": "5",
+                "learning_rate": "0.001",
+                "batch_size": "4",
+                "reinitialize_top_layer": "Auto",
+            },
             metric_definitions=[
-                {"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}
+                {"Name": "pytorch-ic:val-accuracy", "Regex": "val_accuracy: ([0-9\\.]+)"}
             ],
             role=execution_role,
             sagemaker_session=sagemaker_session,
-            enable_network_isolation=False,
+            enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
-            volume_size=456,
+            max_run=360000,
             tags=[
-                {
-                    "Key": "sagemaker-sdk:jumpstart-model-id",
-                    "Value": "model-artifact-variant-model",
-                },
-                {"Key": "sagemaker-sdk:jumpstart-model-version", "Value": "1.0.0"},
+                {"Key": JumpStartTag.MODEL_ID, "Value": "model-artifact-variant-model"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "3.0.6"},
             ],
         )
 
@@ -1933,6 +2162,7 @@ class EstimatorTest(unittest.TestCase):
         assert len(s3_clients) == 1
         assert list(s3_clients)[0] == session.s3_client
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -1946,14 +2176,18 @@ class EstimatorTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
+
+        mock_sagemaker_timestamp.return_value = "8675309"
+
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         mock_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
         mock_estimator_fit.return_value = default_predictor
 
-        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+        model_id, _ = "pytorch-ic-mobilenet-v2", "*"
 
         mock_session.return_value = sagemaker_session
 
@@ -1962,31 +2196,43 @@ class EstimatorTest(unittest.TestCase):
             config_name="gpu-training",
         )
 
-        mock_estimator_init.assert_called_once_with(
+        mock_estimator_init.assert_called_with(
             instance_type="ml.p2.xlarge",
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
             "huggingface-pytorch-training:1.13.1-neuronx-py310-sdk2.14.1-ubuntu20.04",
-            model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/meta-textgeneration-llama-2-7b/"
-            "gpu-training/model/",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/transfer_learning/"
-            "eqa/v1.0.0/sourcedir.tar.gz",
+            model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/"
+            "meta-textgeneration-llama-2-7b/gpu-training/model/",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
-            hyperparameters={"epochs": "3", "adam-learning-rate": "2e-05", "batch-size": "4"},
+            hyperparameters={
+                "train_only_top_layer": "True",
+                "epochs": "5",
+                "learning_rate": "0.001",
+                "batch_size": "4",
+                "reinitialize_top_layer": "Auto",
+            },
+            metric_definitions=[
+                {"Name": "pytorch-ic:val-accuracy", "Regex": "val_accuracy: ([0-9\\.]+)"}
+            ],
             role="fake role! do not use!",
+            max_run=360000,
             sagemaker_session=estimator.sagemaker_session,
             tags=[
-                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-ic-mobilenet-v2"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "3.0.6"},
                 {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "gpu-training"},
             ],
-            enable_network_isolation=False,
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
         )
 
         estimator.fit()
 
-        mock_estimator_fit.assert_called_once_with(wait=True)
+        mock_estimator_fit.assert_called_once_with(wait=True, job_name="pt-ic-mobilenet-v2-8675309")
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -2000,14 +2246,18 @@ class EstimatorTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
+
+        mock_sagemaker_timestamp.return_value = "8675309"
+
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         mock_get_manifest.side_effect = (
             lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
         )
         mock_estimator_fit.return_value = default_predictor
 
-        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+        model_id, _ = "pytorch-ic-mobilenet-v2", "*"
 
         mock_session.return_value = sagemaker_session
 
@@ -2022,24 +2272,36 @@ class EstimatorTest(unittest.TestCase):
             "pytorch-training:1.13.1-py310-sdk2.14.1-ubuntu20.04",
             model_uri="s3://jumpstart-cache-prod-us-west-2/artifacts/meta-textgeneration-llama-2-7b/"
             "gpu-training-budget/model/",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/pytorch/"
-            "transfer_learning/eqa/v1.0.0/sourcedir.tar.gz",
+            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
+            "pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
             entry_point="transfer_learning.py",
-            hyperparameters={"epochs": "3", "adam-learning-rate": "2e-05", "batch-size": "4"},
+            hyperparameters={
+                "train_only_top_layer": "True",
+                "epochs": "5",
+                "learning_rate": "0.001",
+                "batch_size": "4",
+                "reinitialize_top_layer": "Auto",
+            },
+            metric_definitions=[
+                {"Name": "pytorch-ic:val-accuracy", "Regex": "val_accuracy: ([0-9\\.]+)"}
+            ],
             role="fake role! do not use!",
+            max_run=360000,
             sagemaker_session=estimator.sagemaker_session,
             tags=[
-                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-ic-mobilenet-v2"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "3.0.6"},
                 {"Key": JumpStartTag.TRAINING_CONFIG_NAME, "Value": "gpu-training-budget"},
             ],
-            enable_network_isolation=False,
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
         )
 
         estimator.fit()
 
-        mock_estimator_fit.assert_called_once_with(wait=True)
+        mock_estimator_fit.assert_called_once_with(wait=True, job_name="pt-ic-mobilenet-v2-8675309")
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -2053,7 +2315,9 @@ class EstimatorTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
+        mock_sagemaker_timestamp.return_value = "8675309"
         mock_estimator_deploy.return_value = default_predictor
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         mock_get_manifest.side_effect = (
@@ -2061,7 +2325,7 @@ class EstimatorTest(unittest.TestCase):
         )
         mock_estimator_fit.return_value = default_predictor
 
-        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+        model_id, _ = "pytorch-ic-mobilenet-v2", "*"
 
         mock_session.return_value = sagemaker_session
 
@@ -2072,23 +2336,28 @@ class EstimatorTest(unittest.TestCase):
         estimator.deploy()
 
         mock_estimator_deploy.assert_called_once_with(
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.large",
             initial_instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-hosting"
-            ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
-            "pytorch/inference/eqa/v1.0.0/sourcedir.tar.gz",
-            entry_point="inference.py",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
             predictor_cls=Predictor,
             wait=True,
             role="fake role! do not use!",
             use_compiled_model=False,
-            enable_network_isolation=False,
+            enable_network_isolation=True,
             tags=[
-                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-ic-mobilenet-v2"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "3.0.6"},
                 {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "gpu-inference"},
             ],
+            model_name="pt-ic-mobilenet-v2-8675309",
+            endpoint_name="pt-ic-mobilenet-v2-8675309",
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.JumpStartEstimator._attach")
@@ -2110,7 +2379,7 @@ class EstimatorTest(unittest.TestCase):
         mock_attach: mock.Mock,
     ):
         mock_get_model_info_from_training_job.return_value = (
-            "pytorch-eqa-bert-base-cased",
+            "pytorch-ic-mobilenet-v2",
             "1.0.0",
             None,
             "gpu-training-budget",
@@ -2121,7 +2390,7 @@ class EstimatorTest(unittest.TestCase):
         )
         mock_estimator_fit.return_value = default_predictor
 
-        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+        model_id, _ = "pytorch-ic-mobilenet-v2", "*"
 
         mock_session.return_value = sagemaker_session
 
@@ -2138,7 +2407,7 @@ class EstimatorTest(unittest.TestCase):
             sagemaker_session=mock_session,
             model_channel_name="model",
             additional_kwargs={
-                "model_id": "pytorch-eqa-bert-base-cased",
+                "model_id": "pytorch-ic-mobilenet-v2",
                 "model_version": "1.0.0",
                 "tolerate_vulnerable_model": True,
                 "tolerate_deprecated_model": True,
@@ -2146,6 +2415,7 @@ class EstimatorTest(unittest.TestCase):
             },
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -2161,7 +2431,10 @@ class EstimatorTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_get_manifest: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
+
+        mock_sagemaker_timestamp.return_value = "8675309"
         mock_estimator_deploy.return_value = default_predictor
         mock_get_model_specs.side_effect = get_prototype_spec_with_configs
         mock_get_manifest.side_effect = (
@@ -2169,7 +2442,7 @@ class EstimatorTest(unittest.TestCase):
         )
         mock_estimator_fit.return_value = default_predictor
 
-        model_id, _ = "pytorch-eqa-bert-base-cased", "*"
+        model_id, _ = "pytorch-ic-mobilenet-v2", "*"
 
         mock_session.return_value = sagemaker_session
 
@@ -2180,23 +2453,28 @@ class EstimatorTest(unittest.TestCase):
         estimator.deploy()
 
         mock_estimator_deploy.assert_called_once_with(
-            instance_type="ml.p2.xlarge",
+            instance_type="ml.m5.large",
             initial_instance_count=1,
-            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
-            "pytorch-hosting:1.13.1-py310-sdk2.14.1-ubuntu20.04",
-            source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/"
-            "pytorch/inference/eqa/v1.0.0/sourcedir.tar.gz",
-            entry_point="inference.py",
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+            env={
+                "SAGEMAKER_PROGRAM": "inference.py",
+                "ENDPOINT_SERVER_TIMEOUT": "3600",
+                "MODEL_CACHE_ROOT": "/opt/ml/model",
+                "SAGEMAKER_ENV": "1",
+                "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+            },
             predictor_cls=Predictor,
             wait=True,
             role="fake role! do not use!",
             use_compiled_model=False,
-            enable_network_isolation=False,
+            enable_network_isolation=True,
             tags=[
-                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-eqa-bert-base-cased"},
-                {"Key": JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
+                {"Key": JumpStartTag.MODEL_ID, "Value": "pytorch-ic-mobilenet-v2"},
+                {"Key": JumpStartTag.MODEL_VERSION, "Value": "3.0.6"},
                 {"Key": JumpStartTag.INFERENCE_CONFIG_NAME, "Value": "gpu-inference-budget"},
             ],
+            model_name="pt-ic-mobilenet-v2-8675309",
+            endpoint_name="pt-ic-mobilenet-v2-8675309",
         )
 
 

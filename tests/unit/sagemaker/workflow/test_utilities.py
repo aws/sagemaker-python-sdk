@@ -31,14 +31,14 @@ def test_hash_file():
     with tempfile.NamedTemporaryFile() as tmp:
         tmp.write("hashme".encode())
         hash = hash_file(tmp.name)
-        assert hash == "d41d8cd98f00b204e9800998ecf8427e"
+        assert hash == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
 def test_hash_file_uri():
     with tempfile.NamedTemporaryFile() as tmp:
         tmp.write("hashme".encode())
         hash = hash_file(f"file:///{tmp.name}")
-        assert hash == "d41d8cd98f00b204e9800998ecf8427e"
+        assert hash == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
 def test_hash_files_or_dirs_with_file():

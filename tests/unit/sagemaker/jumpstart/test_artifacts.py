@@ -34,7 +34,7 @@ from sagemaker.jumpstart.artifacts.model_packages import _retrieve_model_package
 from sagemaker.jumpstart.artifacts.model_uris import _retrieve_model_uri
 from sagemaker.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
+from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 from tests.unit.sagemaker.workflow.conftest import mock_client
 
 
@@ -176,7 +176,7 @@ class ModelArtifactVariantsTest(unittest.TestCase):
                         "image_uri": "$alias_ecr_uri_1",
                     },
                     "properties": {
-                        "artifact_key": "in/the/way",
+                        "training_artifact_key": "in/the/way",
                     },
                 }
             },
@@ -220,12 +220,12 @@ class ModelArtifactVariantsTest(unittest.TestCase):
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 class RetrieveKwargsTest(unittest.TestCase):
 
-    model_id, model_version = "pytorch-eqa-bert-base-cased", "*"
+    model_id, model_version = "variant-model", "*"
     region = "us-west-2"
 
     def test_model_kwargs(self, patched_get_model_specs):
 
-        patched_get_model_specs.side_effect = get_spec_from_base_spec
+        patched_get_model_specs.side_effect = get_special_model_spec
 
         kwargs = artifacts._retrieve_model_init_kwargs(
             region=self.region,
@@ -242,7 +242,7 @@ class RetrieveKwargsTest(unittest.TestCase):
     def test_estimator_kwargs(self, patched_volume_size_supported, patched_get_model_specs):
 
         patched_volume_size_supported.return_value = False
-        patched_get_model_specs.side_effect = get_spec_from_base_spec
+        patched_get_model_specs.side_effect = get_special_model_spec
 
         kwargs = artifacts._retrieve_estimator_init_kwargs(
             region=self.region,
@@ -262,7 +262,7 @@ class RetrieveKwargsTest(unittest.TestCase):
     ):
 
         patched_volume_size_supported.return_value = True
-        patched_get_model_specs.side_effect = get_spec_from_base_spec
+        patched_get_model_specs.side_effect = get_special_model_spec
 
         kwargs = artifacts._retrieve_estimator_init_kwargs(
             region=self.region,
@@ -282,7 +282,7 @@ class RetrieveKwargsTest(unittest.TestCase):
 
         patched_volume_size_supported.return_value = False
 
-        patched_get_model_specs.side_effect = get_spec_from_base_spec
+        patched_get_model_specs.side_effect = get_special_model_spec
 
         kwargs = artifacts._retrieve_model_deploy_kwargs(
             region=self.region,
@@ -300,7 +300,7 @@ class RetrieveKwargsTest(unittest.TestCase):
 
         patched_volume_size_supported.return_value = True
 
-        patched_get_model_specs.side_effect = get_spec_from_base_spec
+        patched_get_model_specs.side_effect = get_special_model_spec
 
         kwargs = artifacts._retrieve_model_deploy_kwargs(
             region=self.region,
@@ -316,7 +316,7 @@ class RetrieveKwargsTest(unittest.TestCase):
 
     def test_estimator_fit_kwargs(self, patched_get_model_specs):
 
-        patched_get_model_specs.side_effect = get_spec_from_base_spec
+        patched_get_model_specs.side_effect = get_special_model_spec
 
         kwargs = artifacts._retrieve_estimator_fit_kwargs(
             region=self.region,

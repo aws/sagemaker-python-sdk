@@ -72,11 +72,12 @@ def model_input():
 
 
 @pytest.fixture
-def model_builder_model_schema_builder():
+def model_builder_model_schema_builder(sagemaker_session):
     return ModelBuilder(
         model_path=HF_DIR,
         model="bert-base-uncased",
         schema_builder=SchemaBuilder(sample_input, loaded_response),
+        sagemaker_session=sagemaker_session,
     )
 
 
@@ -96,6 +97,9 @@ def model_builder(request):
 def test_pytorch_transformers_sagemaker_endpoint(
     sagemaker_session, model_builder, model_input, **kwargs
 ):
+    if kwargs["instance_type"] == "ml.p2.xlarge":
+        pytest.skip("Instance type ml.p2.xlarge has been deprecated")
+
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
 

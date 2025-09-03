@@ -21,6 +21,7 @@ import sagemaker
 from sagemaker.model import ModelPackage
 from sagemaker.model_card.model_card import ModelCard, ModelOverview
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum, ModelCardStatusEnum
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 MODEL_PACKAGE_VERSIONED_ARN = (
     "arn:aws:sagemaker:us-west-2:001234567890:model-package/testmodelgroup/1"
@@ -491,4 +492,41 @@ def test_update_model_card(sagemaker_session):
     del update_my_card_req_1["Content"]
     sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
         ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN, ModelCard=update_my_card_req_1
+    )
+
+
+def test_update_model_life_cycle(sagemaker_session):
+    model_package_response = copy.deepcopy(DESCRIBE_MODEL_PACKAGE_RESPONSE)
+
+    sagemaker_session.sagemaker_client.describe_model_package = Mock(
+        return_value=model_package_response
+    )
+    model_package = ModelPackage(
+        role="role",
+        model_package_arn=MODEL_PACKAGE_VERSIONED_ARN,
+        sagemaker_session=sagemaker_session,
+    )
+
+    update_model_life_cycle = ModelLifeCycle(
+        stage="Development",
+        stage_status="Approved",
+        stage_description="Approving for Development",
+    )
+    update_model_life_cycle_req = update_model_life_cycle._to_request_dict()
+    model_package.update_model_life_cycle(update_model_life_cycle_req)
+
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
+        ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN, ModelLifeCycle=update_model_life_cycle_req
+    )
+
+    update_model_life_cycle1 = ModelLifeCycle(
+        stage="Staging",
+        stage_status="In-Progress",
+        stage_description="Sending for Staging Verification",
+    )
+    update_model_life_cycle_req1 = update_model_life_cycle1._to_request_dict()
+    model_package.update_model_life_cycle(update_model_life_cycle_req1)
+
+    sagemaker_session.sagemaker_client.update_model_package.assert_called_with(
+        ModelPackageArn=MODEL_PACKAGE_VERSIONED_ARN, ModelLifeCycle=update_model_life_cycle_req1
     )

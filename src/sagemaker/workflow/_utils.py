@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-FRAMEWORK_VERSION = "0.23-1"
+FRAMEWORK_VERSION = "1.2-1"
 INSTANCE_TYPE = "ml.m5.large"
 REPACK_SCRIPT = "_repack_model.py"
 REPACK_SCRIPT_LAUNCHER = "_repack_script_launcher.sh"
@@ -330,6 +330,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         skip_model_validation=None,
         source_uri=None,
         model_card=None,
+        model_life_cycle=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -384,6 +385,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
             source_uri (str): The URI of the source for the model package (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
@@ -422,6 +424,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.skip_model_validation = skip_model_validation
         self.source_uri = source_uri
         self.model_card = model_card
+        self.model_life_cycle = model_life_cycle
 
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeModelPackageOutput"
@@ -498,6 +501,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 skip_model_validation=self.skip_model_validation,
                 source_uri=self.source_uri,
                 model_card=self.model_card,
+                model_life_cycle=self.model_life_cycle,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)

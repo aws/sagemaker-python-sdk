@@ -38,6 +38,7 @@ from sagemaker.utils import (
     camel_case_to_pascal_case,
     deep_override_dict,
     flatten_dict,
+    get_domain_for_region,
     get_instance_type_family,
     retry_with_backoff,
     check_and_get_run_experiment_config,
@@ -1815,6 +1816,8 @@ class TestVolumeSizeSupported(TestCase):
             "local",
             "local_gpu",
             ParameterString(name="InstanceType", default_value="ml.m4.xlarge"),
+            "ml.trn1.32xlarge",
+            "ml.trn1n.32xlarge",
         ]
 
         for instance in instances_that_dont_support_volume_size:
@@ -2229,3 +2232,15 @@ class TestTags(TestCase):
     def test_remove_only_tag(self):
         original_tags = [{"Key": "Tag1", "Value": "Value1"}]
         self.assertIsNone(remove_tag_with_key("Tag1", original_tags))
+
+
+class TestGetDomainForRegion(TestCase):
+    def test_get_domain_for_region(self):
+        self.assertEqual(get_domain_for_region("us-west-2"), "amazonaws.com")
+        self.assertEqual(get_domain_for_region("eu-west-1"), "amazonaws.com")
+        self.assertEqual(get_domain_for_region("ap-northeast-1"), "amazonaws.com")
+        self.assertEqual(get_domain_for_region("us-gov-west-1"), "amazonaws.com")
+        self.assertEqual(get_domain_for_region("cn-northwest-1"), "amazonaws.com.cn")
+        self.assertEqual(get_domain_for_region("us-iso-east-1"), "c2s.ic.gov")
+        self.assertEqual(get_domain_for_region("us-isob-east-1"), "sc2s.sgov.gov")
+        self.assertEqual(get_domain_for_region("invalid-region"), "amazonaws.com")

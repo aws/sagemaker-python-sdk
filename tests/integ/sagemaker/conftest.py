@@ -14,16 +14,16 @@ from __future__ import absolute_import
 
 import base64
 import os
-import subprocess
-import shutil
-import pytest
-import docker
 import re
+import shutil
+import subprocess
 import sys
 
+import docker
+import pytest
 from docker.errors import BuildError
 
-from sagemaker.utils import sagemaker_timestamp, _tmpdir, sts_regional_endpoint
+from sagemaker.utils import _tmpdir, sagemaker_timestamp, sts_regional_endpoint
 
 REPO_ACCOUNT_ID = "033110030271"
 
@@ -46,8 +46,8 @@ DOCKERFILE_TEMPLATE_WITH_CONDA = (
     'SHELL ["/bin/bash", "-c"]\n'
     "RUN apt-get update -y \
         && apt-get install -y unzip curl\n\n"
-    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh' \
-        && bash Mambaforge-Linux-x86_64.sh -b -p '/opt/conda' \
+    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/download/24.11.3-2/Miniforge3-Linux-x86_64.sh' \
+        && bash Miniforge3-Linux-x86_64.sh -b -p '/opt/conda' \
         && /opt/conda/bin/conda init bash\n\n"
     "ENV PATH $PATH:/opt/conda/bin\n"
     "RUN mamba create -n integ_test_env python={py_version} -y \
@@ -68,7 +68,7 @@ DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = (
     "RUN curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' \
         && unzip awscliv2.zip \
         && ./aws/install\n\n"
-    "RUN apt install sudo\n"
+    "RUN apt install -y sudo\n"
     "RUN useradd -ms /bin/bash integ-test-user\n"
     # Add the user to sudo group
     "RUN usermod -aG sudo integ-test-user\n"
@@ -86,8 +86,8 @@ AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE = (
     'SHELL ["/bin/bash", "-c"]\n'
     "RUN apt-get update -y \
         && apt-get install -y unzip curl\n\n"
-    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh' \
-        && bash Mambaforge-Linux-x86_64.sh -b -p '/opt/conda' \
+    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh' \
+        && bash Miniforge3-Miniforge3-Linux-x86_64.sh -b -p '/opt/conda' \
         && /opt/conda/bin/conda init bash\n\n"
     "ENV PATH $PATH:/opt/conda/bin\n"
     "COPY {source_archive} ./\n"

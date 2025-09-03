@@ -12,14 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-ALTERNATE_DOMAINS = {
-    "cn-north-1": "amazonaws.com.cn",
-    "cn-northwest-1": "amazonaws.com.cn",
-    "us-iso-east-1": "c2s.ic.gov",
-    "us-isob-east-1": "sc2s.sgov.gov",
-    "us-isof-south-1": "csp.hci.ic.gov",
-    "us-isof-east-1": "csp.hci.ic.gov",
-}
+from sagemaker.utils import ALTERNATE_DOMAINS
+
 DOMAIN = "amazonaws.com"
 IMAGE_URI_FORMAT = "{}.dkr.ecr.{}.{}/{}:{}"
 MONITOR_URI_FORMAT = "{}.dkr.ecr.{}.{}/sagemaker-model-monitor-analyzer"
@@ -112,4 +106,13 @@ def stabilityai_framework_uri(repo, account, tag, region=REGION):
 def base_python_uri(repo, account, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     tag = "1.0"
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def sagemaker_distribution_uri(repo, account, tag, processor, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    if processor == "cpu":
+        tag = f"{tag}-cpu"
+    else:
+        tag = f"{tag}-gpu"
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)

@@ -18,12 +18,7 @@ from tests.unit.sagemaker.image_uris import expected_uris
 
 @pytest.mark.parametrize(
     "load_config_and_file_name",
-    [
-        "djl-neuronx.json",
-        "djl-fastertransformer.json",
-        "djl-deepspeed.json",
-        "djl-tensorrtllm.json",
-    ],
+    ["djl-neuronx.json", "djl-tensorrtllm.json", "djl-lmi.json"],
     indirect=True,
 )
 def test_djl_uris(load_config_and_file_name):

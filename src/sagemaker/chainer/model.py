@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional, Union, List, Dict
+from typing import Callable, Optional, Union, List, Dict
 
 import sagemaker
 from sagemaker import image_uris, ModelMetrics
@@ -37,6 +37,7 @@ from sagemaker.serializers import NumpySerializer
 from sagemaker.utils import to_string
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.model_life_cycle import ModelLifeCycle
 
 logger = logging.getLogger("sagemaker")
 
@@ -95,7 +96,7 @@ class ChainerModel(FrameworkModel):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
-        predictor_cls: callable = ChainerPredictor,
+        predictor_cls: Optional[Callable] = ChainerPredictor,
         model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs,
     ):
@@ -124,7 +125,7 @@ class ChainerModel(FrameworkModel):
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function
+            predictor_cls (Callable[[string, sagemaker.session.Session], Any]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
@@ -180,6 +181,7 @@ class ChainerModel(FrameworkModel):
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        model_life_cycle: Optional[ModelLifeCycle] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -233,6 +235,7 @@ class ChainerModel(FrameworkModel):
                 (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
 
         Returns:
             str: A string of SageMaker Model Package ARN.
@@ -274,6 +277,7 @@ class ChainerModel(FrameworkModel):
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            model_life_cycle=model_life_cycle,
         )
 
     def prepare_container_def(

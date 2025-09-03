@@ -17,7 +17,7 @@ import copy
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Any, List, Dict, Optional
+from typing import Type, Any, List, Dict, Optional, Tuple
 import logging
 
 from botocore.exceptions import ClientError
@@ -48,6 +48,9 @@ from sagemaker.serve.utils.optimize_utils import (
     _custom_speculative_decoding,
     SPECULATIVE_DRAFT_MODEL,
     _is_inferentia_or_trainium,
+    _jumpstart_speculative_decoding,
+    _deployment_config_contains_draft_model,
+    _is_draft_model_jumpstart_provided,
 )
 from sagemaker.serve.utils.predictors import (
     DjlLocalModePredictor,
@@ -79,6 +82,7 @@ _JS_ENABLED_MODEL_SERVERS = {
     ModelServer.DJL_SERVING,
     ModelServer.TGI,
 }
+_JS_MINIMUM_VERSION_IMAGE = "{}:0.31.0-lmi13.0.0-cu124"
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +125,8 @@ class JumpStart(ABC):
         self.is_compiled = False
         self.is_quantized = False
         self.speculative_decoding_draft_model_source = None
+        self.deployment_config_name = None
+        self.name = None
 
     @abstractmethod
     def _prepare_for_mode(self, **kwargs):
@@ -147,7 +153,11 @@ class JumpStart(ABC):
     def _create_pre_trained_js_model(self) -> Type[Model]:
         """Placeholder docstring"""
         pysdk_model = JumpStartModel(
-            self.model, vpc_config=self.vpc_config, sagemaker_session=self.sagemaker_session
+            self.model,
+            vpc_config=self.vpc_config,
+            sagemaker_session=self.sagemaker_session,
+            name=self.name,
+            instance_type=self.instance_type,
         )
 
         self._original_deploy = pysdk_model.deploy
@@ -511,6 +521,7 @@ class JumpStart(ABC):
             raise Exception("Cannot set deployment config to an uninitialized model.")
 
         self.pysdk_model.set_deployment_config(config_name, instance_type)
+        self.deployment_config_name = config_name
 
         self.instance_type = instance_type
 
@@ -675,6 +686,7 @@ class JumpStart(ABC):
         quantization_config: Optional[Dict] = None,
         compilation_config: Optional[Dict] = None,
         speculative_decoding_config: Optional[Dict] = None,
+        sharding_config: Optional[Dict] = None,
         env_vars: Optional[Dict] = None,
         vpc_config: Optional[Dict] = None,
         kms_key: Optional[str] = None,
@@ -696,6 +708,8 @@ class JumpStart(ABC):
             compilation_config (Optional[Dict]): Compilation configuration. Defaults to ``None``.
             speculative_decoding_config (Optional[Dict]): Speculative decoding configuration.
                 Defaults to ``None``
+            sharding_config (Optional[Dict]): Model sharding configuration.
+                Defaults to ``None``
             env_vars (Optional[Dict]): Additional environment variables to run the optimization
                 container. Defaults to ``None``.
             vpc_config (Optional[Dict]): The VpcConfig set on the model. Defaults to ``None``.
@@ -712,24 +726,39 @@ class JumpStart(ABC):
                 f"Model '{self.model}' requires accepting end-user license agreement (EULA)."
             )
 
-        is_compilation = (not quantization_config) and (
-            (compilation_config is not None) or _is_inferentia_or_trainium(instance_type)
+        is_compilation = (compilation_config is not None) or _is_inferentia_or_trainium(
+            instance_type
         )
 
         pysdk_model_env_vars = dict()
         if is_compilation:
             pysdk_model_env_vars = self._get_neuron_model_env_vars(instance_type)
 
-        optimization_config, override_env = _extract_optimization_config_and_env(
-            quantization_config, compilation_config
+        # optimization_config can contain configs for both quantization and compilation
+        (
+            optimization_config,
+            quantization_override_env,
+            compilation_override_env,
+            sharding_override_env,
+        ) = _extract_optimization_config_and_env(
+            quantization_config, compilation_config, sharding_config
         )
-        if not optimization_config and is_compilation:
-            override_env = override_env or pysdk_model_env_vars
-            optimization_config = {
-                "ModelCompilationConfig": {
-                    "OverrideEnvironment": override_env,
-                }
-            }
+
+        if not optimization_config:
+            optimization_config = {}
+
+        if not optimization_config.get("ModelCompilationConfig") and is_compilation:
+            # Fallback to default if override_env is None or empty
+            if not compilation_override_env:
+                compilation_override_env = pysdk_model_env_vars
+
+            # Update optimization_config with ModelCompilationConfig
+            override_compilation_config = (
+                {"OverrideEnvironment": compilation_override_env}
+                if compilation_override_env
+                else {}
+            )
+            optimization_config["ModelCompilationConfig"] = override_compilation_config
 
         if speculative_decoding_config:
             self._set_additional_model_source(speculative_decoding_config)
@@ -760,7 +789,7 @@ class JumpStart(ABC):
             "OptimizationJobName": job_name,
             "ModelSource": model_source,
             "DeploymentInstanceType": self.instance_type,
-            "OptimizationConfigs": [optimization_config],
+            "OptimizationConfigs": [{k: v} for k, v in optimization_config.items()],
             "OutputConfig": output_config,
             "RoleArn": self.role_arn,
         }
@@ -783,11 +812,32 @@ class JumpStart(ABC):
                     "AcceptEula": True
                 }
 
-        optimization_env_vars = _update_environment_variables(optimization_env_vars, override_env)
+        optimization_env_vars = _update_environment_variables(
+            optimization_env_vars,
+            {
+                **(quantization_override_env or {}),
+                **(compilation_override_env or {}),
+                **(sharding_override_env or {}),
+            },
+        )
         if optimization_env_vars:
             self.pysdk_model.env.update(optimization_env_vars)
-        if quantization_config or is_compilation:
-            return create_optimization_job_args
+
+        if sharding_config and self.pysdk_model._enable_network_isolation:
+            logger.warning(
+                "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
+                "Loading of model requires network access. Setting it to False."
+            )
+            self.pysdk_model._enable_network_isolation = False
+
+        if quantization_config or sharding_config or is_compilation:
+            # only apply default image for vLLM usecases.
+            # vLLM does not support compilation for now so skip on compilation
+            return (
+                create_optimization_job_args
+                if is_compilation
+                else self._set_optimization_image_default(create_optimization_job_args)
+            )
         return None
 
     def _is_gated_model(self, model=None) -> bool:
@@ -807,9 +857,7 @@ class JumpStart(ABC):
         return "private" in s3_uri
 
     def _set_additional_model_source(
-        self,
-        speculative_decoding_config: Optional[Dict[str, Any]] = None,
-        accept_eula: Optional[bool] = None,
+        self, speculative_decoding_config: Optional[Dict[str, Any]] = None
     ) -> None:
         """Set Additional Model Source to ``this`` model.
 
@@ -819,9 +867,10 @@ class JumpStart(ABC):
         """
         if speculative_decoding_config:
             model_provider = _extract_speculative_draft_model_provider(speculative_decoding_config)
+
             channel_name = _generate_channel_name(self.pysdk_model.additional_model_data_sources)
 
-            if model_provider == "sagemaker":
+            if model_provider in ["sagemaker", "auto"]:
                 additional_model_data_sources = (
                     self.pysdk_model.deployment_config.get("DeploymentArgs", {}).get(
                         "AdditionalDataSources"
@@ -834,24 +883,56 @@ class JumpStart(ABC):
                         speculative_decoding_config
                     )
                     if deployment_config:
-                        self.pysdk_model.set_deployment_config(
-                            config_name=deployment_config.get("DeploymentConfigName"),
-                            instance_type=deployment_config.get("InstanceType"),
-                        )
+                        if model_provider == "sagemaker" and _is_draft_model_jumpstart_provided(
+                            deployment_config
+                        ):
+                            raise ValueError(
+                                "No `Sagemaker` provided draft model was found for "
+                                f"{self.model}. Try setting `ModelProvider` "
+                                "to `Auto` instead."
+                            )
+
+                        try:
+                            self.pysdk_model.set_deployment_config(
+                                config_name=deployment_config.get("DeploymentConfigName"),
+                                instance_type=deployment_config.get("InstanceType"),
+                            )
+                        except ValueError as e:
+                            raise ValueError(
+                                f"{e} If using speculative_decoding_config, "
+                                "accept the EULA by setting `AcceptEula`=True."
+                            )
                     else:
                         raise ValueError(
                             "Cannot find deployment config compatible for optimization job."
                         )
+                else:
+                    if model_provider == "sagemaker" and _is_draft_model_jumpstart_provided(
+                        self.pysdk_model.deployment_config
+                    ):
+                        raise ValueError(
+                            "No `Sagemaker` provided draft model was found for "
+                            f"{self.model}. Try setting `ModelProvider` "
+                            "to `Auto` instead."
+                        )
 
                 self.pysdk_model.env.update(
-                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}"}
+                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
                 )
                 self.pysdk_model.add_tags(
-                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "sagemaker"},
+                    {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": model_provider},
+                )
+            elif model_provider == "jumpstart":
+                _jumpstart_speculative_decoding(
+                    model=self.pysdk_model,
+                    speculative_decoding_config=speculative_decoding_config,
+                    sagemaker_session=self.sagemaker_session,
                 )
             else:
                 self.pysdk_model = _custom_speculative_decoding(
-                    self.pysdk_model, speculative_decoding_config, accept_eula
+                    self.pysdk_model,
+                    speculative_decoding_config,
+                    speculative_decoding_config.get("AcceptEula", False),
                 )
 
     def _find_compatible_deployment_config(
@@ -869,15 +950,17 @@ class JumpStart(ABC):
         for deployment_config in self.pysdk_model.list_deployment_configs():
             image_uri = deployment_config.get("deployment_config", {}).get("ImageUri")
 
-            if _is_image_compatible_with_optimization_job(image_uri):
+            if _is_image_compatible_with_optimization_job(
+                image_uri
+            ) and _deployment_config_contains_draft_model(deployment_config):
                 if (
-                    model_provider == "sagemaker"
+                    model_provider in ["sagemaker", "auto"]
                     and deployment_config.get("DeploymentArgs", {}).get("AdditionalDataSources")
                 ) or model_provider == "custom":
                     return deployment_config
 
         # There's no matching config from jumpstart to add sagemaker draft model location
-        if model_provider == "sagemaker":
+        if model_provider in ["sagemaker", "auto"]:
             return None
 
         # fall back to the default jumpstart model deployment config for optimization job
@@ -911,3 +994,105 @@ class JumpStart(ABC):
                     )
                     return job_model.env
         return None
+
+    def _set_optimization_image_default(
+        self, create_optimization_job_args: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Defaults the optimization image to the JumpStart deployment config default
+
+        Args:
+            create_optimization_job_args (Dict[str, Any]): create optimization job request
+
+        Returns:
+            Dict[str, Any]: create optimization job request with image uri default
+        """
+        default_image = self._get_default_vllm_image(self.pysdk_model.init_kwargs["image_uri"])
+
+        # find the latest vLLM image version
+        for optimization_config in create_optimization_job_args.get("OptimizationConfigs"):
+            if optimization_config.get("ModelQuantizationConfig"):
+                model_quantization_config = optimization_config.get("ModelQuantizationConfig")
+                provided_image = model_quantization_config.get("Image")
+                if provided_image and self._get_latest_lmi_version_from_list(
+                    default_image, provided_image
+                ):
+                    default_image = provided_image
+            if optimization_config.get("ModelShardingConfig"):
+                model_sharding_config = optimization_config.get("ModelShardingConfig")
+                provided_image = model_sharding_config.get("Image")
+                if provided_image and self._get_latest_lmi_version_from_list(
+                    default_image, provided_image
+                ):
+                    default_image = provided_image
+
+        # default to latest vLLM version
+        for optimization_config in create_optimization_job_args.get("OptimizationConfigs"):
+            if optimization_config.get("ModelQuantizationConfig") is not None:
+                optimization_config.get("ModelQuantizationConfig")["Image"] = default_image
+            if optimization_config.get("ModelShardingConfig") is not None:
+                optimization_config.get("ModelShardingConfig")["Image"] = default_image
+
+        logger.info("Defaulting to %s image for optimization job", default_image)
+
+        return create_optimization_job_args
+
+    def _get_default_vllm_image(self, image: str) -> bool:
+        """Ensures the minimum working image version for vLLM enabled optimization techniques
+
+        Args:
+            image (str): JumpStart provided default image
+
+        Returns:
+            str: minimum working image version
+        """
+        dlc_name, _ = image.split(":")
+        major_version_number, _, _ = self._parse_lmi_version(image)
+
+        if major_version_number < self._parse_lmi_version(_JS_MINIMUM_VERSION_IMAGE)[0]:
+            minimum_version_default = _JS_MINIMUM_VERSION_IMAGE.format(dlc_name)
+            return minimum_version_default
+        return image
+
+    def _get_latest_lmi_version_from_list(self, version: str, version_to_compare: str) -> bool:
+        """LMI version comparator
+
+        Args:
+            version (str): current version
+            version_to_compare (str): version to compare to
+
+        Returns:
+            bool: if version_to_compare larger or equal to version
+        """
+        parse_lmi_version = self._parse_lmi_version(version)
+        parse_lmi_version_to_compare = self._parse_lmi_version(version_to_compare)
+
+        # Check major version
+        if parse_lmi_version_to_compare[0] > parse_lmi_version[0]:
+            return True
+        # Check minor version
+        if parse_lmi_version_to_compare[0] == parse_lmi_version[0]:
+            if parse_lmi_version_to_compare[1] > parse_lmi_version[1]:
+                return True
+            if parse_lmi_version_to_compare[1] == parse_lmi_version[1]:
+                # Check patch version
+                if parse_lmi_version_to_compare[2] >= parse_lmi_version[2]:
+                    return True
+                return False
+            return False
+        return False
+
+    def _parse_lmi_version(self, image: str) -> Tuple[int, int, int]:
+        """Parse out LMI version
+
+        Args:
+            image (str): image to parse version out of
+
+        Returns:
+            Tuple[int, int, int]: LMI version split into major, minor, patch
+        """
+        _, dlc_tag = image.split(":")
+        _, lmi_version, _ = dlc_tag.split("-")
+        major_version, minor_version, patch_version = lmi_version.split(".")
+        major_version_number = major_version[3:]
+
+        return (int(major_version_number), int(minor_version), int(patch_version))

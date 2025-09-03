@@ -20,7 +20,7 @@ def get_optional_dependencies(root):
 
     optional_dependencies = {"all": []}
 
-    for feature in ("feature-processor", "huggingface", "local", "scipy"):
+    for feature in ("feature-processor", "huggingface", "local", "scipy", "sagemaker-mlflow"):
         dependencies = read_feature_deps(feature)
         optional_dependencies[feature] = dependencies
         optional_dependencies["all"].extend(dependencies)

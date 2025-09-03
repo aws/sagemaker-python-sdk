@@ -18,6 +18,7 @@ from sagemaker.jumpstart.constants import (
     DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
 )
 from sagemaker.jumpstart.enums import (
+    JumpStartModelType,
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.utils import (
@@ -37,6 +38,7 @@ def _retrieve_default_training_metric_definitions(
     sagemaker_session: Session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION,
     instance_type: Optional[str] = None,
     config_name: Optional[str] = None,
+    model_type: JumpStartModelType = JumpStartModelType.OPEN_WEIGHTS,
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model.
 
@@ -63,6 +65,8 @@ def _retrieve_default_training_metric_definitions(
         instance_type (str): An instance type to optionally supply in order to get
             metric definitions specific for the instance type.
         config_name (Optional[str]): Name of the JumpStart Model config to apply. (Default: None).
+        model_type (JumpStartModelType): The type of the model, can be open weights model
+            or proprietary model. (Default: JumpStartModelType.OPEN_WEIGHTS).
     Returns:
         list: the default training metric definitions to use for the model or None.
     """
@@ -81,6 +85,7 @@ def _retrieve_default_training_metric_definitions(
         tolerate_deprecated_model=tolerate_deprecated_model,
         sagemaker_session=sagemaker_session,
         config_name=config_name,
+        model_type=model_type,
     )
 
     default_metric_definitions = (
@@ -96,16 +101,17 @@ def _retrieve_default_training_metric_definitions(
         else []
     )
 
-    instance_specific_metric_name: str
-    for instance_specific_metric_definition in instance_specific_metric_definitions:
-        instance_specific_metric_name = instance_specific_metric_definition["Name"]
-        default_metric_definitions = list(
-            filter(
-                lambda metric_definition: metric_definition["Name"]
-                != instance_specific_metric_name,
-                default_metric_definitions,
+    if instance_specific_metric_definitions:
+        instance_specific_metric_name: str
+        for instance_specific_metric_definition in instance_specific_metric_definitions:
+            instance_specific_metric_name = instance_specific_metric_definition["Name"]
+            default_metric_definitions = list(
+                filter(
+                    lambda metric_definition: metric_definition["Name"]
+                    != instance_specific_metric_name,
+                    default_metric_definitions,
+                )
             )
-        )
-        default_metric_definitions.append(instance_specific_metric_definition)
+            default_metric_definitions.append(instance_specific_metric_definition)
 
     return default_metric_definitions
