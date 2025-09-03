@@ -274,17 +274,17 @@ class _LocalTrainingJob(object):
             "AlgorithmSpecification": {
                 "ContainerEntrypoint": self.container.container_entrypoint,
             },
-            "FinalMetricDataList": self._extract_final_metrics()
+            "FinalMetricDataList": self._extract_final_metrics(),
         }
         return response
 
     def _extract_final_metrics(self):
         """Extract metrics from container logs using metric definitions."""
-        if not hasattr(self.container, 'logs') or not self.container.logs:
+        if not hasattr(self.container, "logs") or not self.container.logs:
             return []
 
         # Get metric definitions from container
-        metric_definitions = getattr(self.container, 'metric_definitions', [])
+        metric_definitions = getattr(self.container, "metric_definitions", [])
         if not metric_definitions:
             return []
 
@@ -292,8 +292,8 @@ class _LocalTrainingJob(object):
         logs = self.container.logs
 
         for metric_def in metric_definitions:
-            metric_name = metric_def.get('Name')
-            regex_pattern = metric_def.get('Regex')
+            metric_name = metric_def.get("Name")
+            regex_pattern = metric_def.get("Regex")
 
             if not metric_name or not regex_pattern:
                 continue
@@ -303,13 +303,16 @@ class _LocalTrainingJob(object):
             if matches:
                 # Use the last match as final metric
                 final_value = float(matches[-1])
-                final_metrics.append({
-                    'MetricName': metric_name,
-                    'Value': final_value,
-                    'Timestamp': self.end_time or datetime.now()
-                })
+                final_metrics.append(
+                    {
+                        "MetricName": metric_name,
+                        "Value": final_value,
+                        "Timestamp": self.end_time or datetime.now(),
+                    }
+                )
 
         return final_metrics
+
 
 class _LocalTransformJob(object):
     """Placeholder docstring"""
