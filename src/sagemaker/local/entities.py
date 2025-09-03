@@ -13,23 +13,25 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-import enum
 import datetime
+import enum
 import json
 import logging
 import os
+import re
 import tempfile
 import time
-from uuid import uuid4
 from copy import deepcopy
+from uuid import uuid4
+
 from botocore.exceptions import ClientError
 
 import sagemaker.local.data
-
-from sagemaker.local.image import _SageMakerContainer
-from sagemaker.local.utils import copy_directory_structure, move_to_destination, get_docker_host
-from sagemaker.utils import DeferredError, get_config_value, format_tags
 from sagemaker.local.exceptions import StepExecutionException
+from sagemaker.local.image import _SageMakerContainer
+from sagemaker.local.utils import (copy_directory_structure, get_docker_host,
+                                   move_to_destination)
+from sagemaker.utils import DeferredError, format_tags, get_config_value
 
 logger = logging.getLogger(__name__)
 
@@ -272,9 +274,42 @@ class _LocalTrainingJob(object):
             "AlgorithmSpecification": {
                 "ContainerEntrypoint": self.container.container_entrypoint,
             },
+            "FinalMetricDataList": self._extract_final_metrics()
         }
         return response
 
+    def _extract_final_metrics(self):
+        """Extract metrics from container logs using metric definitions."""
+        if not hasattr(self.container, 'logs') or not self.container.logs:
+            return []
+
+        # Get metric definitions from container
+        metric_definitions = getattr(self.container, 'metric_definitions', [])
+        if not metric_definitions:
+            return []
+
+        final_metrics = []
+        logs = self.container.logs
+
+        for metric_def in metric_definitions:
+            metric_name = metric_def.get('Name')
+            regex_pattern = metric_def.get('Regex')
+
+            if not metric_name or not regex_pattern:
+                continue
+
+            # Find all matches in logs
+            matches = re.findall(regex_pattern, logs)
+            if matches:
+                # Use the last match as final metric
+                final_value = float(matches[-1])
+                final_metrics.append({
+                    'MetricName': metric_name,
+                    'Value': final_value,
+                    'Timestamp': self.end_time or datetime.now()
+                })
+
+        return final_metrics
 
 class _LocalTransformJob(object):
     """Placeholder docstring"""
@@ -711,8 +746,8 @@ class _LocalPipelineExecution(object):
         PipelineExecutionDisplayName=None,
         local_session=None,
     ):
-        from sagemaker.workflow.pipeline import PipelineGraph
         from sagemaker import LocalSession
+        from sagemaker.workflow.pipeline import PipelineGraph
 
         self.pipeline = pipeline
         self.pipeline_execution_name = execution_id
@@ -809,7 +844,7 @@ class _LocalPipelineExecution(object):
 
     def _initialize_step_execution(self, steps):
         """Initialize step_execution dict."""
-        from sagemaker.workflow.steps import StepTypeEnum, Step
+        from sagemaker.workflow.steps import Step, StepTypeEnum
 
         supported_steps_types = (
             StepTypeEnum.TRAINING,
