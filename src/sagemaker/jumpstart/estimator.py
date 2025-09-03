@@ -119,6 +119,7 @@ class JumpStartEstimator(Estimator):
         config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         training_plan: Optional[Union[str, PipelineVariable]] = None,
+        instance_placement_config: Optional[Dict] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -517,6 +518,20 @@ class JumpStartEstimator(Estimator):
                 Specifies whether SessionTagChaining is enabled for the training job
             training_plan (str or PipelineVariable): Optional.
                 Specifies which training plan arn to use for the training job
+            instance_placement_config (dict): Optional.
+                Specifies UltraServer placement configuration for the training job
+
+                .. code:: python
+
+                    instance_placement_config={
+                        "EnableMultipleJobs": True,
+                        "PlacementSpecifications":[
+                            {
+                                "UltraServerId": "ultraserver-1",
+                                "InstanceCount": "2"
+                            }
+                        ]
+                    }
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -606,6 +621,7 @@ class JumpStartEstimator(Estimator):
             config_name=config_name,
             enable_session_tag_chaining=enable_session_tag_chaining,
             training_plan=training_plan,
+            instance_placement_config=instance_placement_config,
         )
 
         self.hub_arn = estimator_init_kwargs.hub_arn
