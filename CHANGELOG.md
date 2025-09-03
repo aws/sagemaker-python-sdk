@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.251.1 (2025-08-29)
+
+### Bug Fixes and Other Changes
+
+ * chore: onboard tei 1.8.0
+
 ## v2.251.0 (2025-08-21)
 
 ### Features
