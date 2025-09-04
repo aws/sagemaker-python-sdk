@@ -29,8 +29,7 @@ from botocore.exceptions import ClientError
 import sagemaker.local.data
 from sagemaker.local.exceptions import StepExecutionException
 from sagemaker.local.image import _SageMakerContainer
-from sagemaker.local.utils import (copy_directory_structure, get_docker_host,
-                                   move_to_destination)
+from sagemaker.local.utils import copy_directory_structure, get_docker_host, move_to_destination
 from sagemaker.utils import DeferredError, format_tags, get_config_value
 
 logger = logging.getLogger(__name__)
