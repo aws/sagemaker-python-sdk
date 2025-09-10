@@ -99,6 +99,7 @@ def _get_training_recipe_gpu_script(code_dir, recipe, source_dir):
         "mistral": ("mistral", "mistral_pretrain.py"),
         "mixtral": ("mixtral", "mixtral_pretrain.py"),
         "deepseek": ("deepseek", "deepseek_pretrain.py"),
+        "gpt_oss": ("custom_model", "custom_pretrain.py"),
     }
 
     if "model" not in recipe:

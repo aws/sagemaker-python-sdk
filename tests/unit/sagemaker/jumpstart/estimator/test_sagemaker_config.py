@@ -18,6 +18,7 @@ from sagemaker.base_predictor import Predictor
 from sagemaker.config.config_schema import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
+    TELEMETRY_OPT_OUT_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
@@ -75,6 +76,9 @@ def config_value_impl(sagemaker_session: Session, config_path: str, sagemaker_co
     if config_path == MODEL_ENABLE_NETWORK_ISOLATION_PATH:
         return config_inference_enable_network_isolation
 
+    if config_path == TELEMETRY_OPT_OUT_PATH:
+        return False  # Default to telemetry enabled for tests
+
     raise AssertionError(f"Bad config path: {config_path}")
 
 
@@ -130,7 +134,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         estimator.deploy()
 
-        self.assertEqual(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), config_inference_role)
 
@@ -200,7 +204,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         estimator.deploy()
 
-        self.assertEqual(mock_get_sagemaker_config_value.call_count, 6)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 7)
 
         self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), config_inference_role)
 
@@ -280,7 +284,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEqual(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEqual(
             mock_estimator_deploy.call_args[1].get("role"), mock_inference_override_role
@@ -355,7 +359,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEqual(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEqual(
             mock_estimator_deploy.call_args[1].get("role"), mock_inference_override_role
@@ -421,7 +425,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_retrieve_model_init_kwargs.return_value = {}
 
-        self.assertEqual(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), execution_role)
 
@@ -492,7 +496,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         estimator.deploy()
 
-        self.assertEqual(mock_get_sagemaker_config_value.call_count, 6)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 7)
 
         self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), execution_role)
 
@@ -568,7 +572,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEqual(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), override_inference_role)
 
@@ -634,7 +638,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEqual(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), override_inference_role)
 

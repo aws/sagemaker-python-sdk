@@ -145,6 +145,7 @@ def get_init_kwargs(
     config_name: Optional[str] = None,
     enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
     training_plan: Optional[Union[str, PipelineVariable]] = None,
+    instance_placement_config: Optional[Dict] = None,
 ) -> JumpStartEstimatorInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Estimator` object."""
 
@@ -207,6 +208,7 @@ def get_init_kwargs(
         config_name=config_name,
         enable_session_tag_chaining=enable_session_tag_chaining,
         training_plan=training_plan,
+        instance_placement_config=instance_placement_config,
     )
 
     estimator_init_kwargs, orig_session = _set_temp_sagemaker_session_if_not_set(

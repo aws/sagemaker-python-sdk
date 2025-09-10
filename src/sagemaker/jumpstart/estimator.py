@@ -52,6 +52,8 @@ from sagemaker.predictor import PredictorBase
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 
 class JumpStartEstimator(Estimator):
@@ -60,6 +62,7 @@ class JumpStartEstimator(Estimator):
     This class sets defaults based on the model ID and version.
     """
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="jumpstart_estimator.create")
     def __init__(
         self,
         model_id: Optional[str] = None,
@@ -119,6 +122,7 @@ class JumpStartEstimator(Estimator):
         config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         training_plan: Optional[Union[str, PipelineVariable]] = None,
+        instance_placement_config: Optional[Dict] = None,
     ):
         """Initializes a ``JumpStartEstimator``.
 
@@ -517,6 +521,20 @@ class JumpStartEstimator(Estimator):
                 Specifies whether SessionTagChaining is enabled for the training job
             training_plan (str or PipelineVariable): Optional.
                 Specifies which training plan arn to use for the training job
+            instance_placement_config (dict): Optional.
+                Specifies UltraServer placement configuration for the training job
+
+                .. code:: python
+
+                    instance_placement_config={
+                        "EnableMultipleJobs": True,
+                        "PlacementSpecifications":[
+                            {
+                                "UltraServerId": "ultraserver-1",
+                                "InstanceCount": "2"
+                            }
+                        ]
+                    }
 
         Raises:
             ValueError: If the model ID is not recognized by JumpStart.
@@ -606,6 +624,7 @@ class JumpStartEstimator(Estimator):
             config_name=config_name,
             enable_session_tag_chaining=enable_session_tag_chaining,
             training_plan=training_plan,
+            instance_placement_config=instance_placement_config,
         )
 
         self.hub_arn = estimator_init_kwargs.hub_arn
@@ -630,6 +649,7 @@ class JumpStartEstimator(Estimator):
 
         super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="jumpstart_estimator.fit")
     def fit(
         self,
         inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
@@ -817,6 +837,7 @@ class JumpStartEstimator(Estimator):
             additional_kwargs=additional_kwargs,
         )
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="jumpstart_estimator.deploy")
     def deploy(
         self,
         initial_instance_count: Optional[int] = None,
