@@ -24,6 +24,7 @@ import pathlib
 import logging
 import uuid
 from typing import Union, Optional, Dict, List
+import re
 import attr
 
 from six import string_types
@@ -44,6 +45,7 @@ from sagemaker.config.config_schema import (
     MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
     MONITORING_JOB_ROLE_ARN_PATH,
 )
+from sagemaker.dashboard.model_quality_dashboard import AutomaticModelQualityDashboard
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
 from sagemaker.model_monitor.monitoring_alert import (
@@ -66,6 +68,8 @@ from sagemaker.utils import (
 )
 from sagemaker.lineage._utils import get_resource_name_from_arn
 from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator
+
+from sagemaker.dashboard.data_quality_dashboard import AutomaticDataQualityDashboard
 
 DEFAULT_REPOSITORY_NAME = "sagemaker-model-monitor-analyzer"
 
@@ -1535,6 +1539,78 @@ class ModelMonitor(object):
             _LOGGER.error(message)
             raise ValueError(message)
 
+    def _check_dashboard_validity_without_checking_in_use(
+        self,
+        monitor_schedule_name,
+        enable_cloudwatch_metrics=True,
+        dashboard_name=None,
+    ):
+        """Checks if the parameters are valid, without checking if dashboard name is taken
+
+        Args:
+            monitor_schedule_name (str): Monitoring schedule name.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+            dashboard_name (str): The name to use when publishing dashboard
+        """
+        if not enable_cloudwatch_metrics:
+            message = (
+                "Could not create automatic dashboard. "
+                "Please set enable_cloudwatch_metrics to True."
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+        if dashboard_name is None:
+            dashboard_name = monitor_schedule_name
+        dashboard_name_validation = bool(re.match(r"^[0-9A-Za-z\-_]{1,255}$", dashboard_name))
+        if not dashboard_name_validation:
+            message = (
+                f"Dashboard name {dashboard_name} is not a valid dashboard name. "
+                "Dashboard name can be at most 255 characters long "
+                "and valid characters in dashboard names include '0-9A-Za-z-_'."
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+    def _check_automatic_dashboard_validity(
+        self,
+        cw_client,
+        monitor_schedule_name,
+        enable_cloudwatch_metrics=True,
+        dashboard_name=None,
+    ):
+        """Checks if the parameters provided to generate an automatic dashboard are valid
+
+        Args:
+            monitor_schedule_name (str): Monitoring schedule name.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+            dashboard_name (str): The name to use when publishing dashboard
+        """
+
+        self._check_dashboard_validity_without_checking_in_use(
+            monitor_schedule_name=monitor_schedule_name,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+            dashboard_name=dashboard_name,
+        )
+
+        # flag to check if dashboard with name dashboard_name exists already
+        dashboard_exists = True
+        try:
+            cw_client.get_dashboard(DashboardName=dashboard_name)
+        except ClientError as _:  # noqa: F841
+            dashboard_exists = False
+
+        if dashboard_exists:
+            message = (
+                f"Dashboard name {dashboard_name} is already in use. "
+                "Please provide a different dashboard name, or delete the already "
+                "existing dashboard."
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
     def _create_monitoring_schedule_from_job_definition(
         self,
         monitor_schedule_name,
@@ -1945,6 +2021,8 @@ class DefaultModelMonitor(ModelMonitor):
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
+        enable_automatic_dashboard=False,
+        dashboard_name=None,
         batch_transform_input=None,
         data_analysis_start_time=None,
         data_analysis_end_time=None,
@@ -1981,6 +2059,10 @@ class DefaultModelMonitor(ModelMonitor):
                 expressions. Default: Daily.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
+            enable_automatic_dashboard (bool): Whether to publish an automatic dashboard as part of
+                the baselining or monitoring jobs.
+            dashboard_name (str): Name to use for the published dashboard. When not provided,
+                defaults to monitoring schedule name.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform (default: None)
             data_analysis_start_time (str): Start time for the data analysis window
@@ -1988,6 +2070,7 @@ class DefaultModelMonitor(ModelMonitor):
             data_analysis_end_time (str): End time for the data analysis window
                 for the one time monitoring schedule (NOW), e.g. "-PT1H" (default: None)
         """
+
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
                 "It seems that this object was already used to create an Amazon Model "
@@ -2011,6 +2094,15 @@ class DefaultModelMonitor(ModelMonitor):
             data_analysis_start_time=data_analysis_start_time,
             data_analysis_end_time=data_analysis_end_time,
         )
+
+        if enable_automatic_dashboard:
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            self._check_automatic_dashboard_validity(
+                cw_client=cw_client,
+                monitor_schedule_name=monitor_schedule_name,
+                enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+                dashboard_name=dashboard_name,
+            )
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -2069,6 +2161,25 @@ class DefaultModelMonitor(ModelMonitor):
                 logger.exception(message)
             raise
 
+        if enable_automatic_dashboard:
+            if dashboard_name is None:
+                dashboard_name = monitor_schedule_name
+            if isinstance(endpoint_input, EndpointInput):
+                endpoint_name = endpoint_input.endpoint_name
+            else:
+                endpoint_name = endpoint_input
+
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            cw_client.put_dashboard(
+                DashboardName=dashboard_name,
+                DashboardBody=AutomaticDataQualityDashboard(
+                    endpoint_name=endpoint_name,
+                    monitoring_schedule_name=monitor_schedule_name,
+                    batch_transform_input=batch_transform_input,
+                    region_name=self.sagemaker_session.boto_region_name,
+                ).to_json(),
+            )
+
     def update_monitoring_schedule(
         self,
         endpoint_input=None,
@@ -2087,6 +2198,8 @@ class DefaultModelMonitor(ModelMonitor):
         env=None,
         network_config=None,
         enable_cloudwatch_metrics=None,
+        enable_automatic_dashboard=None,
+        dashboard_name=None,
         role=None,
         batch_transform_input=None,
         data_analysis_start_time=None,
@@ -2131,6 +2244,10 @@ class DefaultModelMonitor(ModelMonitor):
                 inter-container traffic, security group IDs, and subnets.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
+            enable_automatic_dashboard (bool): Whether to publish an automatic dashboard as part of
+                the baselining or monitoring jobs.
+            dashboard_name (str): Name to use for the published dashboard. When not provided,
+                defaults to monitoring schedule name.
             role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform (default: None)
@@ -2149,6 +2266,16 @@ class DefaultModelMonitor(ModelMonitor):
             )
             logger.error(message)
             raise ValueError(message)
+
+        # error checking for dashboard
+        if enable_automatic_dashboard:
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            self._check_automatic_dashboard_validity(
+                cw_client=cw_client,
+                monitor_schedule_name=self.monitoring_schedule_name,
+                enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+                dashboard_name=dashboard_name,
+            )
 
         # check if this schedule is in v2 format and update as per v2 format if it is
         if self.job_definition_name is not None:
@@ -2279,6 +2406,25 @@ class DefaultModelMonitor(ModelMonitor):
         )
 
         self._wait_for_schedule_changes_to_apply()
+
+        if enable_automatic_dashboard:
+            if dashboard_name is None:
+                dashboard_name = self.monitoring_schedule_name
+            if isinstance(endpoint_input, EndpointInput):
+                endpoint_name = endpoint_input.endpoint_name
+            else:
+                endpoint_name = endpoint_input
+
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            cw_client.put_dashboard(
+                DashboardName=dashboard_name,
+                DashboardBody=AutomaticDataQualityDashboard(
+                    endpoint_name=endpoint_name,
+                    monitoring_schedule_name=self.monitoring_schedule_name,
+                    batch_transform_input=batch_transform_input,
+                    region_name=self.sagemaker_session.boto_region_name,
+                ).to_json(),
+            )
 
     def _update_data_quality_monitoring_schedule(
         self,
@@ -3066,6 +3212,8 @@ class ModelQualityMonitor(ModelMonitor):
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
+        enable_automatic_dashboard=False,
+        dashboard_name=None,
         batch_transform_input=None,
         data_analysis_start_time=None,
         data_analysis_end_time=None,
@@ -3097,6 +3245,10 @@ class ModelQualityMonitor(ModelMonitor):
                 expressions. Default: Daily.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
+            enable_automatic_dashboard (bool): Whether to publish an automatic dashboard as part of
+                the baselining or monitoring jobs.
+            dashboard_name (str): Name to use for the published dashboard. When not provided,
+                defaults to monitoring schedule name.
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform
             data_analysis_start_time (str): Start time for the data analysis window
@@ -3135,6 +3287,15 @@ class ModelQualityMonitor(ModelMonitor):
             data_analysis_start_time=data_analysis_start_time,
             data_analysis_end_time=data_analysis_end_time,
         )
+
+        if enable_automatic_dashboard:
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            self._check_automatic_dashboard_validity(
+                cw_client=cw_client,
+                monitor_schedule_name=monitor_schedule_name,
+                enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+                dashboard_name=dashboard_name,
+            )
 
         # create job definition
         monitor_schedule_name = self._generate_monitoring_schedule_name(
@@ -3194,6 +3355,23 @@ class ModelQualityMonitor(ModelMonitor):
                 logger.exception(message)
             raise
 
+        if enable_automatic_dashboard:
+            if isinstance(endpoint_input, EndpointInput):
+                endpoint_name = endpoint_input.endpoint_name
+            else:
+                endpoint_name = endpoint_input
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            cw_client.put_dashboard(
+                DashboardName=dashboard_name,
+                DashboardBody=AutomaticModelQualityDashboard(
+                    endpoint_name=endpoint_name,
+                    monitoring_schedule_name=monitor_schedule_name,
+                    batch_transform_input=batch_transform_input,
+                    problem_type=problem_type,
+                    region_name=self.sagemaker_session.boto_region_name,
+                ).to_json(),
+            )
+
     def update_monitoring_schedule(
         self,
         endpoint_input=None,
@@ -3205,6 +3383,8 @@ class ModelQualityMonitor(ModelMonitor):
         constraints=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=None,
+        enable_automatic_dashboard=None,
+        dashboard_name=None,
         role=None,
         instance_count=None,
         instance_type=None,
@@ -3243,6 +3423,10 @@ class ModelQualityMonitor(ModelMonitor):
                 expressions. Default: Daily.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
+            enable_automatic_dashboard (bool): Whether to publish an automatic dashboard as part of
+                the baselining or monitoring jobs.
+            dashboard_name (str): Name to use for the published dashboard. When not provided,
+                defaults to monitoring schedule name.
             role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
             instance_count (int): The number of instances to run
                 the jobs with.
@@ -3291,6 +3475,15 @@ class ModelQualityMonitor(ModelMonitor):
             )
             logger.error(message)
             raise ValueError(message)
+
+        if enable_automatic_dashboard:
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            self._check_automatic_dashboard_validity(
+                cw_client=cw_client,
+                monitor_schedule_name=self.monitoring_schedule_name,
+                enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+                dashboard_name=dashboard_name,
+            )
 
         # Need to update schedule with a new job definition
         job_desc = self.sagemaker_session.sagemaker_client.describe_model_quality_job_definition(
@@ -3360,6 +3553,25 @@ class ModelQualityMonitor(ModelMonitor):
                 message = "Failed to delete job definition {}.".format(new_job_definition_name)
                 logger.exception(message)
             raise
+
+        if enable_automatic_dashboard:
+            if dashboard_name is None:
+                dashboard_name = self.monitoring_schedule_name
+            if isinstance(endpoint_input, EndpointInput):
+                endpoint_name = endpoint_input.endpoint_name
+            else:
+                endpoint_name = endpoint_input
+            cw_client = self.sagemaker_session.boto_session.client("cloudwatch")
+            cw_client.put_dashboard(
+                DashboardName=dashboard_name,
+                DashboardBody=AutomaticModelQualityDashboard(
+                    endpoint_name=endpoint_name,
+                    monitoring_schedule_name=self.monitoring_schedule_name,
+                    batch_transform_input=batch_transform_input,
+                    problem_type=problem_type,
+                    region_name=self.sagemaker_session.boto_region_name,
+                ).to_json(),
+            )
 
     def delete_monitoring_schedule(self):
         """Deletes the monitoring schedule and its job definition."""
