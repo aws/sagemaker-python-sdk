@@ -90,6 +90,8 @@ from sagemaker.session import (
     get_update_model_package_inference_args,
 )
 from sagemaker.model_life_cycle import ModelLifeCycle
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 # Setting LOGGER for backward compatibility, in case users import it...
 logger = LOGGER = logging.getLogger("sagemaker")
@@ -2541,6 +2543,22 @@ class ModelPackage(Model):
         )
 
         sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
+
+    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="model_package.deploy")
+    def deploy(self, *args, **kwargs):
+        """Deploy this ``ModelPackage`` to an ``Endpoint`` and optionally return a ``Predictor``.
+
+        This method overrides the parent Model.deploy() method to add telemetry tracking
+        specifically for ModelPackage deployments, which are used by JumpStart proprietary models.
+
+        Args:
+            *args: Positional arguments passed to the parent deploy method.
+            **kwargs: Keyword arguments passed to the parent deploy method.
+
+        Returns:
+            The result of the parent deploy method.
+        """
+        return super().deploy(*args, **kwargs)
 
     def update_model_card(self, model_card: Union[ModelCard, ModelPackageModelCard]):
         """Updates Created model card content which created with model package
