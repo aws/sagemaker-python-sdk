@@ -8,7 +8,7 @@ gmpy2==2.1.2
 numpy>=2.0.0,<2.3.0
 opt-einsum==3.3.0
 packaging>=23.0,<25
-pandas==2.2.3
+pandas>=2.3.0
 pyyaml==6.0.1
 requests==2.32.4
 torch>=2.6.0

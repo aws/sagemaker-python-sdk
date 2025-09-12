@@ -64,7 +64,7 @@ dependencies:
             - multiprocess>=0.70.14
             - networkx>=3.1
             - packaging>=23.1
-            - pandas==2.2.3
+            - pandas>=2.3.0
             - pathos>=0.3.0
             - pillow>=9.5.0
             - platformdirs>=3.2.0
