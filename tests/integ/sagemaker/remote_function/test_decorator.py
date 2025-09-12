@@ -20,6 +20,7 @@ import os
 import logging
 import random
 import string
+import numpy as np
 import pandas as pd
 import subprocess
 import shlex
@@ -327,7 +328,7 @@ def test_with_incompatible_dependencies(
     It is currently working with python 3.8+. However, running it with older versions
     or versions in the future may require changes to 'old_deps_requirements.txt'
     to fulfill testing scenario.
-    
+
     NOTE: Skipped for numpy >= 2.0 as serialization compatibility improved.
     """
 
