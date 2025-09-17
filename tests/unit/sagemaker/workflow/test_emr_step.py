@@ -29,6 +29,7 @@ from sagemaker.workflow.emr_step import (
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.retry import StepRetryPolicy, StepExceptionTypeEnum
 from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 
@@ -476,3 +477,325 @@ def test_emr_step_throws_exception_when_cluster_config_contains_restricted_entit
     actual_error_msg = exceptionInfo.value.args[0]
 
     assert actual_error_msg == expected_error_msg
+
+
+def test_emr_step_with_retry_policies(sagemaker_session):
+    """Test EMRStep with retry policies."""
+    emr_step_config = EMRStepConfig(
+        jar="s3:/script-runner/script-runner.jar",
+        args=["--arg_0", "arg_0_value"],
+        main_class="com.my.main",
+        properties=[{"Key": "Foo", "Value": "Foo_value"}, {"Key": "Bar", "Value": "Bar_value"}],
+    )
+
+    retry_policies = [
+        StepRetryPolicy(
+            exception_types=[StepExceptionTypeEnum.SERVICE_FAULT],
+            interval_seconds=1,
+            max_attempts=3,
+            backoff_rate=2.0,
+        ),
+        StepRetryPolicy(
+            exception_types=[StepExceptionTypeEnum.THROTTLING],
+            interval_seconds=5,
+            max_attempts=5,
+            backoff_rate=1.5,
+        ),
+    ]
+
+    emr_step = EMRStep(
+        name="MyEMRStep",
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_id="MyClusterID",
+        step_config=emr_step_config,
+        depends_on=["TestStep"],
+        cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+        retry_policies=retry_policies,
+    )
+
+    expected_request = {
+        "Name": "MyEMRStep",
+        "Type": "EMR",
+        "Arguments": {
+            "ClusterId": "MyClusterID",
+            "StepConfig": {
+                "HadoopJarStep": {
+                    "Args": ["--arg_0", "arg_0_value"],
+                    "Jar": "s3:/script-runner/script-runner.jar",
+                    "MainClass": "com.my.main",
+                    "Properties": [
+                        {"Key": "Foo", "Value": "Foo_value"},
+                        {"Key": "Bar", "Value": "Bar_value"},
+                    ],
+                }
+            },
+        },
+        "DependsOn": ["TestStep"],
+        "DisplayName": "MyEMRStep",
+        "Description": "MyEMRStepDescription",
+        "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+        "RetryPolicies": [
+            {
+                "ExceptionType": ["Step.SERVICE_FAULT"],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+            },
+            {
+                "ExceptionType": ["Step.THROTTLING"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 5,
+                "BackoffRate": 1.5,
+            },
+        ],
+    }
+
+    assert emr_step.to_request() == expected_request
+
+
+def test_emr_step_with_retry_policies_and_cluster_config():
+    """Test EMRStep with both retry policies and cluster configuration."""
+    retry_policies = [
+        StepRetryPolicy(
+            exception_types=[StepExceptionTypeEnum.SERVICE_FAULT],
+            interval_seconds=1,
+            max_attempts=3,
+            backoff_rate=2.0,
+        )
+    ]
+
+    emr_step = EMRStep(
+        name=g_emr_step_name,
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_id=None,
+        cluster_config=g_cluster_config,
+        step_config=g_emr_step_config,
+        cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+        retry_policies=retry_policies,
+    )
+
+    expected_request = {
+        "Name": "MyEMRStep",
+        "Type": "EMR",
+        "Arguments": {
+            "StepConfig": {"HadoopJarStep": {"Jar": "s3:/script-runner/script-runner.jar"}},
+            "ClusterConfig": {
+                "AdditionalInfo": "MyAdditionalInfo",
+                "AmiVersion": "3.8.0",
+                "Instances": {
+                    "HadoopVersion": "MyHadoopVersion",
+                    "InstanceCount": 1,
+                    "InstanceGroups": [
+                        {
+                            "InstanceCount": 1,
+                            "InstanceRole": "MASTER",
+                            "InstanceType": "m1.small",
+                            "Market": "ON_DEMAND",
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                },
+            },
+        },
+        "DisplayName": "MyEMRStep",
+        "Description": "MyEMRStepDescription",
+        "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+        "RetryPolicies": [
+            {
+                "ExceptionType": ["Step.SERVICE_FAULT"],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+            }
+        ],
+    }
+
+    assert emr_step.to_request() == expected_request
+
+
+def test_emr_step_with_retry_policy_expire_after():
+    """Test EMRStep with retry policy using expire_after_mins."""
+    emr_step_config = EMRStepConfig(
+        jar="s3:/script-runner/script-runner.jar",
+        args=["--arg_0", "arg_0_value"],
+    )
+
+    retry_policies = [
+        StepRetryPolicy(
+            exception_types=[StepExceptionTypeEnum.SERVICE_FAULT],
+            interval_seconds=1,
+            expire_after_mins=30,
+            backoff_rate=2.0,
+        )
+    ]
+
+    emr_step = EMRStep(
+        name="MyEMRStep",
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_id="MyClusterID",
+        step_config=emr_step_config,
+        retry_policies=retry_policies,
+    )
+
+    expected_request = {
+        "Name": "MyEMRStep",
+        "Type": "EMR",
+        "Arguments": {
+            "ClusterId": "MyClusterID",
+            "StepConfig": {
+                "HadoopJarStep": {
+                    "Args": ["--arg_0", "arg_0_value"],
+                    "Jar": "s3:/script-runner/script-runner.jar",
+                }
+            },
+        },
+        "DisplayName": "MyEMRStep",
+        "Description": "MyEMRStepDescription",
+        "RetryPolicies": [
+            {
+                "ExceptionType": ["Step.SERVICE_FAULT"],
+                "IntervalSeconds": 1,
+                "ExpireAfterMin": 30,
+                "BackoffRate": 2.0,
+            }
+        ],
+    }
+
+    assert emr_step.to_request() == expected_request
+
+
+def test_emr_step_with_all_exception_types():
+    """Test EMRStep with all available exception types."""
+    emr_step_config = EMRStepConfig(jar="s3:/script-runner/script-runner.jar")
+
+    retry_policies = [
+        StepRetryPolicy(
+            exception_types=[StepExceptionTypeEnum.SERVICE_FAULT, StepExceptionTypeEnum.THROTTLING],
+            interval_seconds=1,
+            max_attempts=3,
+            backoff_rate=2.0,
+        )
+    ]
+
+    emr_step = EMRStep(
+        name="MyEMRStep",
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_id="MyClusterID",
+        step_config=emr_step_config,
+        retry_policies=retry_policies,
+    )
+
+    expected_request = {
+        "Name": "MyEMRStep",
+        "Type": "EMR",
+        "Arguments": {
+            "ClusterId": "MyClusterID",
+            "StepConfig": {
+                "HadoopJarStep": {
+                    "Jar": "s3:/script-runner/script-runner.jar",
+                }
+            },
+        },
+        "DisplayName": "MyEMRStep",
+        "Description": "MyEMRStepDescription",
+        "RetryPolicies": [
+            {
+                "ExceptionType": ["Step.SERVICE_FAULT", "Step.THROTTLING"],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "BackoffRate": 2.0,
+            }
+        ],
+    }
+
+    assert emr_step.to_request() == expected_request
+
+
+def test_pipeline_interpolates_emr_outputs_with_retry_policies(sagemaker_session):
+    """Test pipeline definition with EMR steps that have retry policies."""
+    custom_step = CustomStep("TestStep")
+    parameter = ParameterString("MyStr")
+
+    retry_policies = [
+        StepRetryPolicy(
+            exception_types=[StepExceptionTypeEnum.SERVICE_FAULT],
+            interval_seconds=1,
+            max_attempts=3,
+            backoff_rate=2.0,
+        )
+    ]
+
+    step_emr = EMRStep(
+        name="emr_step_1",
+        cluster_id="MyClusterID",
+        display_name="emr_step_1",
+        description="MyEMRStepDescription",
+        depends_on=[custom_step],
+        step_config=EMRStepConfig(jar="s3:/script-runner/script-runner.jar"),
+        retry_policies=retry_policies,
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[step_emr, custom_step],
+        sagemaker_session=sagemaker_session,
+    )
+
+    pipeline_def = json.loads(pipeline.definition())
+    assert "RetryPolicies" in pipeline_def["Steps"][0]
+
+
+def test_emr_step_with_retry_policies_and_execution_role():
+    """Test EMRStep with both retry policies and execution role."""
+    retry_policies = [
+        StepRetryPolicy(
+            exception_types=[StepExceptionTypeEnum.SERVICE_FAULT],
+            interval_seconds=1,
+            max_attempts=3,
+            backoff_rate=2.0,
+        )
+    ]
+
+    emr_step = EMRStep(
+        name="MyEMRStep",
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_id="MyClusterID",
+        step_config=g_emr_step_config,
+        execution_role_arn="arn:aws:iam:000000000000:role/role",
+        retry_policies=retry_policies,
+    )
+
+    request = emr_step.to_request()
+    assert "RetryPolicies" in request
+    assert "ExecutionRoleArn" in request["Arguments"]
+
+
+def test_emr_step_properties_with_retry_policies():
+    """Test EMRStep properties when retry policies are provided."""
+    retry_policies = [
+        StepRetryPolicy(
+            exception_types=[StepExceptionTypeEnum.SERVICE_FAULT],
+            interval_seconds=1,
+            max_attempts=3,
+            backoff_rate=2.0,
+        )
+    ]
+
+    emr_step = EMRStep(
+        name="MyEMRStep",
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_id="MyClusterID",
+        step_config=g_emr_step_config,
+        retry_policies=retry_policies,
+    )
+
+    # Verify properties still work with retry policies
+    assert emr_step.properties.ClusterId == "MyClusterID"
+    assert emr_step.properties.Status.State.expr == {"Get": "Steps.MyEMRStep.Status.State"}
