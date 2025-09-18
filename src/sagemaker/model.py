@@ -2545,7 +2545,6 @@ class ModelPackage(Model):
 
         sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
 
-
     def update_model_card(self, model_card: Union[ModelCard, ModelPackageModelCard]):
         """Updates Created model card content which created with model package
 
