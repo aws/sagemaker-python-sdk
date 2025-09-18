@@ -1078,6 +1078,22 @@ def test_exit_fail(sagemaker_session, run_obj):
     assert isinstance(run_obj._trial_component.end_time, datetime.datetime)
 
 
+def test_exit_fail_message_too_long(sagemaker_session, run_obj):
+    sagemaker_session.sagemaker_client.update_trial_component.return_value = {}
+    # create an error message that is longer than the max status message length of 1024
+    # 3 x 342 = 1026
+    too_long_error_message = "Foo" * 342
+    try:
+        with run_obj:
+            raise ValueError(too_long_error_message)
+    except ValueError:
+        pass
+
+    assert run_obj._trial_component.status.primary_status == _TrialComponentStatusType.Failed.value
+    assert run_obj._trial_component.status.message == too_long_error_message[:1024]
+    assert isinstance(run_obj._trial_component.end_time, datetime.datetime)
+
+
 @pytest.mark.parametrize(
     "metric_value",
     [1.3, "nan", "inf", "-inf", None],

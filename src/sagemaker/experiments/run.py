@@ -68,6 +68,7 @@ RUN_NAME_BASE = "Sagemaker-Run".lower()
 TRIAL_NAME_TEMPLATE = "Default-Run-Group-{}"
 MAX_RUN_TC_ARTIFACTS_LEN = 30
 MAX_NAME_LEN_IN_BACKEND = 120
+MAX_STATUS_MESSAGE_LEN = 1024
 EXPERIMENT_NAME = "ExperimentName"
 TRIAL_NAME = "TrialName"
 RUN_NAME = "RunName"
@@ -759,7 +760,7 @@ class Run(object):
         if exc_value:
             self._trial_component.status = _api_types.TrialComponentStatus(
                 primary_status=_TrialComponentStatusType.Failed.value,
-                message=str(exc_value),
+                message=(str(exc_value) or "")[:MAX_STATUS_MESSAGE_LEN],
             )
         else:
             self._trial_component.status = _api_types.TrialComponentStatus(
