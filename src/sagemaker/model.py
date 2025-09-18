@@ -1359,6 +1359,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         return self
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="model.deploy")
     def deploy(
         self,
         initial_instance_count=None,
@@ -2544,21 +2545,6 @@ class ModelPackage(Model):
 
         sagemaker_session.sagemaker_client.update_model_package(**model_package_update_args)
 
-    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="model_package.deploy")
-    def deploy(self, *args, **kwargs):
-        """Deploy this ``ModelPackage`` to an ``Endpoint`` and optionally return a ``Predictor``.
-
-        This method overrides the parent Model.deploy() method to add telemetry tracking
-        specifically for ModelPackage deployments, which are used by JumpStart proprietary models.
-
-        Args:
-            *args: Positional arguments passed to the parent deploy method.
-            **kwargs: Keyword arguments passed to the parent deploy method.
-
-        Returns:
-            The result of the parent deploy method.
-        """
-        return super().deploy(*args, **kwargs)
 
     def update_model_card(self, model_card: Union[ModelCard, ModelPackageModelCard]):
         """Updates Created model card content which created with model package
