@@ -685,6 +685,50 @@ def test_framework_hyperparameters_nova():
 
 
 @patch("sagemaker.pytorch.estimator.PyTorch._recipe_resolve_and_save")
+def test_setup_for_nova_recipe_with_evaluation_lambda(mock_resolve_save, sagemaker_session):
+    """Test that _setup_for_nova_recipe correctly handles evaluation lambda configuration."""
+    # Create a mock recipe with evaluation and processor config
+    recipe = OmegaConf.create(
+        {
+            "run": {
+                "model_type": "amazon.nova.foobar3",
+                "model_name_or_path": "foobar/foobar-3-8b",
+                "replicas": 1,
+            },
+            "evaluation": {"task:": "gen_qa", "strategy": "gen_qa", "metric": "all"},
+            "processor": {
+                "lambda_arn": "arn:aws:lambda:us-west-2:123456789012:function:eval-function"
+            },
+        }
+    )
+
+    with patch(
+        "sagemaker.pytorch.estimator.PyTorch._recipe_load", return_value=("nova_recipe", recipe)
+    ):
+        mock_resolve_save.return_value = recipe
+
+        pytorch = PyTorch(
+            training_recipe="nova_recipe",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE_GPU,
+            image_uri=IMAGE_URI,
+            framework_version="1.13.1",
+            py_version="py3",
+        )
+
+        # Check that the Nova recipe was correctly identified
+        assert pytorch.is_nova_recipe is True
+
+        # Verify that eval_lambda_arn hyperparameter was set correctly
+        assert (
+            pytorch._hyperparameters.get("eval_lambda_arn")
+            == "arn:aws:lambda:us-west-2:123456789012:function:eval-function"
+        )
+
+
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_resolve_and_save")
 def test_setup_for_nova_recipe_with_distillation(mock_resolve_save, sagemaker_session):
     """Test that _setup_for_nova_recipe correctly handles distillation configurations."""
     # Create a mock recipe with distillation config
