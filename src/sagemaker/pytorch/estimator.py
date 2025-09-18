@@ -1224,6 +1224,15 @@ class PyTorch(Framework):
                 )
             args["hyperparameters"]["kms_key"] = kms_key
 
+        # Handle eval custom lambda configuration
+        if recipe.get("evaluation", {}):
+            processor = recipe.get("processor", {})
+            lambda_arn = processor.get("lambda_arn", "")
+            if lambda_arn:
+                args["hyperparameters"]["lambda_arn"] = lambda_arn
+            # Resolve and save the final recipe
+            self._recipe_resolve_and_save(recipe, recipe_name, args["source_dir"])
+
         # Resolve and save the final recipe
         self._recipe_resolve_and_save(recipe, recipe_name, args["source_dir"])
 
