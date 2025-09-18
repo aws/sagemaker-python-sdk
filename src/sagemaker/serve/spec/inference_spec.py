@@ -30,9 +30,11 @@ class InferenceSpec(abc.ABC):
 
     def preprocess(self, input_data: object):
         """Custom pre-processing function"""
+        return input_data
 
     def postprocess(self, predictions: object):
         """Custom post-processing function"""
+        return predictions
 
     def prepare(self, *args, **kwargs):
         """Custom prepare function"""
