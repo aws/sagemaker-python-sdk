@@ -310,7 +310,7 @@ def _get_args_from_nova_recipe(
         processor = recipe.get("processor", {})
         lambda_arn = processor.get("lambda_arn", "")
         if lambda_arn:
-            args["hyperparameters"]["lambda_arn"] = lambda_arn
+            args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
 
     _register_custom_resolvers()
 

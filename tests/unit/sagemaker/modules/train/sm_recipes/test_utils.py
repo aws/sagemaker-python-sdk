@@ -463,7 +463,7 @@ def test_get_args_from_nova_recipe_with_distillation_errors(test_case):
             "expected_args": {
                 "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
                 "hyperparameters": {
-                    "lambda_arn": "arn:aws:lambda:us-east-1:123456789012:function:MyLambdaFunction",
+                    "eval_lambda_arn": "arn:aws:lambda:us-east-1:123456789012:function:MyLambdaFunction",
                 },
                 "training_image": None,
                 "source_code": None,
