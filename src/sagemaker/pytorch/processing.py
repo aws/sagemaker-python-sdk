@@ -41,6 +41,7 @@ class PyTorchProcessor(FrameworkProcessor):
         py_version: str = "py3",  # New kwarg
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         command: Optional[List[str]] = None,
+        entrypoint: Optional[List[Union[str, PipelineVariable]]] = None,
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
@@ -74,6 +75,7 @@ class PyTorchProcessor(FrameworkProcessor):
             py_version,
             image_uri,
             command,
+            entrypoint,
             volume_size_in_gb,
             volume_kms_key,
             output_kms_key,
