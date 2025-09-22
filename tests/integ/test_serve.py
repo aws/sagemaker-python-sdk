@@ -52,7 +52,7 @@ def base_user_settings(sagemaker_session, cpu_instance_type):
 @pytest.fixture
 def xgb_user_settings(sagemaker_session, base_user_settings):
     base_user_settings["image"] = image_uris.retrieve(
-        "xgboost", sagemaker_session._region_name, "1.7-1", "py38"
+        "xgboost", sagemaker_session._region_name, "1.7-1-1", "py310"
     )
     base_user_settings["model_path"] = os.path.join(XGB_RESOURCE_DIR, "tmp")
     base_user_settings["content_type"] = "application/x-npy"

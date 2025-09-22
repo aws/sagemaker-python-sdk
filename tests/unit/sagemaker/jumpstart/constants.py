@@ -14330,7 +14330,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
         "incremental_training_supported": True,
         "hosting_ecr_specs": {
             "framework": "xgboost",
-            "framework_version": "1.7-1",
+            "framework_version": "1.7-1-1",
             "py_version": "py3",
         },
         "hosting_artifact_key": "xgboost-infer/infer-xgboost-classification-model.tar.gz",
@@ -14484,7 +14484,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
         "training_script_key": "source-directory-tarballs/training/xgboost-classification/v1.3.1/sourcedir.tar.gz",
         "training_ecr_specs": {
             "framework": "xgboost",
-            "framework_version": "1.7-1",
+            "framework_version": "1.7-1-1",
             "py_version": "py3",
         },
         "training_artifact_key": "xgboost-training/train-xgboost-classification-model.tar.gz",

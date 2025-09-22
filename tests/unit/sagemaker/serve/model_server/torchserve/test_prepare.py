@@ -22,7 +22,7 @@ SHARED_LIBS = ["/path/to/shared/libs"]
 DEPENDENCIES = "dependencies"
 INFERENCE_SPEC = Mock()
 IMAGE_URI = "mock_image_uri"
-XGB_1P_IMAGE_URI = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1"
+XGB_1P_IMAGE_URI = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1-1"
 INFERENCE_SPEC.prepare = Mock(return_value=None)
 
 SECRET_KEY = "secret-key"

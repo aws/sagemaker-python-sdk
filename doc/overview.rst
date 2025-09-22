@@ -914,7 +914,7 @@ If you want to bring your own container that is extended from a SageMaker contai
         model=model,
         model_server=ModelServer.TORCHSERVE,
         schema_builder=SchemaBuilder(X_test, y_pred),
-        image_uri="123123123123.dkr.ecr.ap-southeast-2.amazonaws.com/byoc-image:xgb-1.7-1")
+        image_uri="123123123123.dkr.ecr.ap-southeast-2.amazonaws.com/byoc-image:xgb-1.7-1-1")
     )
 
 

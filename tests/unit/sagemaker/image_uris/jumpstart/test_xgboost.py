@@ -55,11 +55,11 @@ def test_jumpstart_xgboost_image_uri(patched_get_model_specs, session):
     # framework classes dont use digest
     assert (
         framework_class_uri
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1"
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1-1"
     )
     assert (
         uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost@sha256:"
-        "ba417ec6d8d3e0c6b5f463bc9202e3b498b42260a29b61875f34beb6d99d8444"
+        "7901b5885e03785a4a6743e5a950e1a4a0fd69def76ab7d91e0a01c779cf5ca4"
     )
 
     # training
@@ -86,9 +86,9 @@ def test_jumpstart_xgboost_image_uri(patched_get_model_specs, session):
     # framework classes dont use digest
     assert (
         framework_class_uri
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1"
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1-1"
     )
     assert (
         uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost"
-        "@sha256:ba417ec6d8d3e0c6b5f463bc9202e3b498b42260a29b61875f34beb6d99d8444"
+        "@sha256:7901b5885e03785a4a6743e5a950e1a4a0fd69def76ab7d91e0a01c779cf5ca4"
     )
