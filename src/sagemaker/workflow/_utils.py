@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-FRAMEWORK_VERSION = "1.2-1"
+FRAMEWORK_VERSION = "1.2-1-1"
 INSTANCE_TYPE = "ml.m5.large"
 REPACK_SCRIPT = "_repack_model.py"
 REPACK_SCRIPT_LAUNCHER = "_repack_script_launcher.sh"

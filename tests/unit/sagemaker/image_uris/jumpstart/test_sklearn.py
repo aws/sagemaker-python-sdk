@@ -56,13 +56,12 @@ def test_jumpstart_sklearn_image_uri(patched_get_model_specs, session):
     # framework classes dont use digest.
     assert (
         framework_class_uri
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1"
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-1"
         "-cpu-py3"
     )
     assert (
         uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn@"
-        "sha256:e09bbb7686077a1db23d316b699020a786a6e1636b2b89384be9651368c40f95"
-    )
+        "sha256:a7a5a9097f078d3d0ccb7248ec076ad63e10c82e39a798408f5066450afe82bd"
 
     # training
     uri = image_uris.retrieve(
@@ -88,11 +87,11 @@ def test_jumpstart_sklearn_image_uri(patched_get_model_specs, session):
     # framework classes dont use digest.
     assert (
         framework_class_uri
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3"
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-1-cpu-py3"
     )
     assert (
         uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn"
-        "@sha256:e09bbb7686077a1db23d316b699020a786a6e1636b2b89384be9651368c40f95"
+        "@sha256:a7a5a9097f078d3d0ccb7248ec076ad63e10c82e39a798408f5066450afe82bd"
     )
 
     with pytest.raises(ValueError):

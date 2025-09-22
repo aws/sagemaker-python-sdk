@@ -55,7 +55,7 @@ from tests.unit.sagemaker.workflow.conftest import IMAGE_URI, ROLE, BUCKET, REGI
 
 MODEL_NAME = "gisele"
 MODEL_REPACKING_IMAGE_URI = (
-    "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3"
+    "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-1-cpu-py3"
 )
 
 
