@@ -680,7 +680,7 @@ class _LocalPipeline(object):
         """Start a pipeline execution. Returns a _LocalPipelineExecution object."""
         from sagemaker.local.pipeline import LocalPipelineExecutor
 
-        execution_id = str(uuid4())
+        execution_id = str(uuid4()).replace('-', '')[:12]
         execution = _LocalPipelineExecution(
             execution_id=execution_id,
             pipeline=self.pipeline,
