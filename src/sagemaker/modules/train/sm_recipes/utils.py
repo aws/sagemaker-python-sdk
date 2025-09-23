@@ -305,6 +305,13 @@ def _get_args_from_nova_recipe(
             )
         args["hyperparameters"]["kms_key"] = kms_key
 
+    # Handle eval custom lambda configuration
+    if recipe.get("evaluation", {}):
+        processor = recipe.get("processor", {})
+        lambda_arn = processor.get("lambda_arn", "")
+        if lambda_arn:
+            args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
+
     _register_custom_resolvers()
 
     # Resolve Final Recipe
