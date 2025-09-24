@@ -30,7 +30,15 @@
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
                 "us-west-2": "763104351884",
-                "ca-west-1": "204538143572"
+                "ca-west-1": "204538143572",
+                "eu-central-2": "380420809688",
+                "ap-south-2": "772153158452",
+                "me-central-1": "914824155844",
+                "eu-south-2": "503227376785",
+                "ap-southeast-7": "590183813437",
+                "ap-southeast-4": "457447274322",
+                "ap-southeast-5": "550225433462",
+                "mx-central-1": "637423239942"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.24.0-fastertransformer5.3.0-cu118"
@@ -62,7 +70,15 @@
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
                 "us-west-2": "763104351884",
-                "ca-west-1": "204538143572"
+                "ca-west-1": "204538143572",
+                "eu-central-2": "380420809688",
+                "ap-south-2": "772153158452",
+                "me-central-1": "914824155844",
+                "eu-south-2": "503227376785",
+                "ap-southeast-7": "590183813437",
+                "ap-southeast-4": "457447274322",
+                "ap-southeast-5": "550225433462",
+                "mx-central-1": "637423239942"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.23.0-fastertransformer5.3.0-cu118"
@@ -94,7 +110,15 @@
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
                 "us-west-2": "763104351884",
-                "ca-west-1": "204538143572"
+                "ca-west-1": "204538143572",
+                "eu-central-2": "380420809688",
+                "ap-south-2": "772153158452",
+                "me-central-1": "914824155844",
+                "eu-south-2": "503227376785",
+                "ap-southeast-7": "590183813437",
+                "ap-southeast-4": "457447274322",
+                "ap-southeast-5": "550225433462",
+                "mx-central-1": "637423239942"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.22.1-fastertransformer5.3.0-cu118"
@@ -126,7 +150,15 @@
                 "us-east-2": "763104351884",
                 "us-west-1": "763104351884",
                 "us-west-2": "763104351884",
-                "ca-west-1": "204538143572"
+                "ca-west-1": "204538143572",
+                "eu-central-2": "380420809688",
+                "ap-south-2": "772153158452",
+                "me-central-1": "914824155844",
+                "eu-south-2": "503227376785",
+                "ap-southeast-7": "590183813437",
+                "ap-southeast-4": "457447274322",
+                "ap-southeast-5": "550225433462",
+                "mx-central-1": "637423239942"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.21.0-fastertransformer5.3.0-cu117"
