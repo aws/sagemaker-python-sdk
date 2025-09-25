@@ -795,3 +795,40 @@ def test_setup_for_nova_recipe_with_distillation(mock_resolve_save, sagemaker_se
                 pytorch._hyperparameters.get("role_arn")
                 == "arn:aws:iam::123456789012:role/SageMakerRole"
             )
+
+
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_resolve_and_save")
+def test_setup_for_nova_recipe_sets_model_type(mock_resolve_save, sagemaker_session):
+    """Test that _setup_for_nova_recipe correctly sets model_type hyperparameter."""
+    # Create a mock nova recipe with model_type
+    recipe = OmegaConf.create(
+        {
+            "run": {
+                "model_type": "amazon.nova.llama-2-7b",
+                "model_name_or_path": "llama/llama-2-7b",
+                "replicas": 1,
+            }
+        }
+    )
+
+    with patch(
+        "sagemaker.pytorch.estimator.PyTorch._recipe_load", return_value=("nova_recipe", recipe)
+    ):
+        mock_resolve_save.return_value = recipe
+
+        pytorch = PyTorch(
+            training_recipe="nova_recipe",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE_GPU,
+            image_uri=IMAGE_URI,
+            framework_version="1.13.1",
+            py_version="py3",
+        )
+
+        # Check that the Nova recipe was correctly identified
+        assert pytorch.is_nova_recipe is True
+
+        # Verify that model_type hyperparameter was set correctly
+        assert pytorch._hyperparameters.get("model_type") == "amazon.nova.llama-2-7b"
