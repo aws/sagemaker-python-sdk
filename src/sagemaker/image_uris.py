@@ -32,6 +32,7 @@ from sagemaker.fw_utils import (
     GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY,
     GRAVITON_ALLOWED_FRAMEWORKS,
 )
+from sagemaker.deprecations import deprecation_warn
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,13 @@ INFERENCE_GRAVITON = "inference_graviton"
 DATA_WRANGLER_FRAMEWORK = "data-wrangler"
 STABILITYAI_FRAMEWORK = "stabilityai"
 SAGEMAKER_TRITONSERVER_FRAMEWORK = "sagemaker-tritonserver"
+RL_FRAMEWORKS = [
+    "coach-tensorflow",
+    "coach-mxnet",
+    "ray-tensorflow",
+    "ray-pytorch",
+    "vw",
+]
 
 
 @override_pipeline_parameter_var
@@ -208,6 +216,12 @@ def retrieve(
             )
         _validate_arg(full_base_framework_version, list(version_config.keys()), "base framework")
         version_config = version_config.get(full_base_framework_version)
+    elif framework in RL_FRAMEWORKS:
+        deprecation_warn(
+            "SageMaker-hosted RL images no longer accept new pull requests and",
+            "April 2024",
+            " Please pass in `image_uri` to use RLEstimator",
+        )
 
     py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     version_config = version_config.get(py_version) or version_config
