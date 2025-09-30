@@ -2384,9 +2384,9 @@ You can use the following machine learning frameworks to author, schedule and mo
 .. toctree::
     :maxdepth: 2
 
+    workflows/pipelines/index
     workflows/airflow/index
     workflows/step_functions/index
-    workflows/pipelines/index
     workflows/lineage/index
 
 ************************************
