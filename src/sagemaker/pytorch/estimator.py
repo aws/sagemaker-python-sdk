@@ -1180,6 +1180,9 @@ class PyTorch(Framework):
         # Set up Nova-specific configuration
         run_config = recipe.get("run", {})
         model_name_or_path = run_config.get("model_name_or_path")
+        # Set hyperparameters model_type
+        model_type = run_config.get("model_type")
+        args["hyperparameters"]["model_type"] = model_type
 
         # Set hyperparameters based on model_name_or_path
         if model_name_or_path:
