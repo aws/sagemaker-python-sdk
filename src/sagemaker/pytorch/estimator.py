@@ -162,6 +162,7 @@ def _is_nova_recipe(recipe):
 
     return bool(has_nova_model) or bool(has_distillation)
 
+
 def _is_eval_recipe(recipe):
     """Check if the recipe is an eval recipe.
 
@@ -177,6 +178,7 @@ def _is_eval_recipe(recipe):
     # Check for eval model
     eval_config = recipe.get("evaluation", {})
     return bool(eval_config)
+
 
 def _recipe_initialize_args(source_dir):
     """Initialize the arguments dictionary for recipe setup.
@@ -964,7 +966,7 @@ class PyTorch(Framework):
         if "instance_type" not in kwargs:
             raise ValueError("Must pass instance type to estimator when using training recipes.")
 
-        if not _is_nova_recipe(recipe) and "trainer" not in recipe  and not _is_eval_recipe(recipe):
+        if not _is_nova_recipe(recipe) and "trainer" not in recipe and not _is_eval_recipe(recipe):
             raise ValueError("Supplied recipe does not contain required field trainer.")
 
         instance_type = kwargs["instance_type"].split(".")[1]
