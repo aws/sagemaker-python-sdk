@@ -107,6 +107,7 @@ def tensorflow_schema_builder(custom_request_translator, custom_response_transla
     PYTHON_VERSION_IS_NOT_310,
     reason="The goal of these test are to test the serving components of our feature",
 )
+
 def test_happy_tensorflow_sagemaker_endpoint_with_tensorflow_serving(
     sagemaker_session,
     tensorflow_schema_builder,
