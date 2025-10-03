@@ -16,6 +16,7 @@ information to effectively respond to your bug report or contribution.
   * [Run the Unit Tests](#run-the-unit-tests)
   * [Run the Integration Tests](#run-the-integration-tests)
   * [Make and Test Your Change](#make-and-test-your-change)
+  * [Lint Your Change](#lint-your-change)
   * [Commit Your Change](#commit-your-change)
   * [Send a Pull Request](#send-a-pull-request)
 * [Documentation Guidelines](#documentation-guidelines)
@@ -117,6 +118,13 @@ If you are writing or modifying a test that creates a SageMaker job (training, t
 1. If your changes include documentation changes, please see the [Documentation Guidelines](#documentation-guidelines).
 1. If you include integration tests, do not mark them as canaries if they will not run in all regions.
 
+### Lint Your Change
+
+Before submitting, ensure your code meets our quality and style guidelines. Run:
+```shell
+tox -e flake8,pylint,docstyle,black-check,twine --parallel all
+```
+Address any errors or warnings before opening a pull request.
 
 ### Commit Your Change
 
