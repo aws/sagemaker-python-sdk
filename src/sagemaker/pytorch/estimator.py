@@ -1180,6 +1180,9 @@ class PyTorch(Framework):
         # Set up Nova-specific configuration
         run_config = recipe.get("run", {})
         model_name_or_path = run_config.get("model_name_or_path")
+        # Set hyperparameters model_type
+        model_type = run_config.get("model_type")
+        args["hyperparameters"]["model_type"] = model_type
 
         # Set hyperparameters based on model_name_or_path
         if model_name_or_path:
@@ -1223,6 +1226,13 @@ class PyTorch(Framework):
                     'Nova distillation job recipe requires "kms_key" field in "training_config"'
                 )
             args["hyperparameters"]["kms_key"] = kms_key
+
+        # Handle eval custom lambda configuration
+        if recipe.get("evaluation", {}):
+            processor = recipe.get("processor", {})
+            lambda_arn = processor.get("lambda_arn", "")
+            if lambda_arn:
+                args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
 
         # Resolve and save the final recipe
         self._recipe_resolve_and_save(recipe, recipe_name, args["source_dir"])
