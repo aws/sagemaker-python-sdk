@@ -543,7 +543,7 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        self.is_nova_recipe = False
+        self.is_nova_or_eval_recipe = False
         if training_recipe is not None:
             if entry_point is not None:
                 logger.warning("Argument entry_point will be ignored with training_recipe.")
@@ -555,7 +555,7 @@ class PyTorch(Framework):
                 training_recipe, recipe_overrides, source_dir, kwargs
             )
 
-            if self.is_nova_recipe and image_uri is None:
+            if self.is_nova_or_eval_recipe and image_uri is None:
                 raise ValueError("Must supply image_uri for nova jobs.")
 
             entry_point = args["entry_point"]
@@ -586,7 +586,7 @@ class PyTorch(Framework):
             source_dir,
             hyperparameters,
             image_uri=image_uri,
-            is_nova_job=self.is_nova_recipe,
+            is_nova_job=self.is_nova_or_eval_recipe,
             **kwargs,
         )
 
@@ -719,8 +719,8 @@ class PyTorch(Framework):
         """
         # Handle recipe upload and input channel creation if we have a recipe
         if (
-            self.is_nova_recipe is not None
-            and self.is_nova_recipe
+            self.is_nova_or_eval_recipe is not None
+            and self.is_nova_or_eval_recipe
             and hasattr(self, "training_recipe_file")
             and self.training_recipe_file
         ):
@@ -1154,8 +1154,8 @@ class PyTorch(Framework):
             # Merge with overrides
             recipe = OmegaConf.merge(recipe, recipe_overrides)
 
-            self.is_nova_recipe = _is_nova_recipe(recipe) or _is_eval_recipe(recipe)
-            if self.is_nova_recipe:
+            self.is_nova_or_eval_recipe = _is_nova_recipe(recipe) or _is_eval_recipe(recipe)
+            if self.is_nova_or_eval_recipe:
                 return self._setup_for_nova_recipe(
                     recipe,
                     recipe_name,
