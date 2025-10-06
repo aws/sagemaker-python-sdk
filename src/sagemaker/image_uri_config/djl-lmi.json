@@ -36,7 +36,14 @@
                 "us-gov-west-1": "442386744353",
                 "us-west-1": "763104351884",
                 "us-west-2": "763104351884",
-                "ca-west-1": "204538143572"
+                "ca-west-1": "204538143572",
+                "eu-central-2": "380420809688",
+                "ap-south-2": "772153158452",
+                "eu-south-2": "503227376785",
+                "ap-southeast-7": "590183813437",
+                "ap-southeast-4": "457447274322",
+                "ap-southeast-5": "550225433462",
+                "mx-central-1": "637423239942"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.30.0-lmi12.0.0-cu124"
@@ -71,7 +78,14 @@
                 "us-gov-west-1": "442386744353",
                 "us-west-1": "763104351884",
                 "us-west-2": "763104351884",
-                "ca-west-1": "204538143572"
+                "ca-west-1": "204538143572",
+                "eu-central-2": "380420809688",
+                "ap-south-2": "772153158452",
+                "eu-south-2": "503227376785",
+                "ap-southeast-7": "590183813437",
+                "ap-southeast-4": "457447274322",
+                "ap-southeast-5": "550225433462",
+                "mx-central-1": "637423239942"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.29.0-lmi11.0.0-cu124"
@@ -106,7 +120,14 @@
                 "us-gov-west-1": "442386744353",
                 "us-west-1": "763104351884",
                 "us-west-2": "763104351884",
-                "ca-west-1": "204538143572"
+                "ca-west-1": "204538143572",
+                "eu-central-2": "380420809688",
+                "ap-south-2": "772153158452",
+                "eu-south-2": "503227376785",
+                "ap-southeast-7": "590183813437",
+                "ap-southeast-4": "457447274322",
+                "ap-southeast-5": "550225433462",
+                "mx-central-1": "637423239942"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.28.0-lmi10.0.0-cu124"
