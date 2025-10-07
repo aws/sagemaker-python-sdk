@@ -37,7 +37,6 @@ import logging
 from sagemaker.serve.utils.lineage_constants import (
     MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
 )
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
