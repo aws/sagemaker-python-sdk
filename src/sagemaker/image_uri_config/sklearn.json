@@ -2,8 +2,12 @@
     "inference": {
         "versions": {
             "0.20.0": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -41,13 +45,17 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
+                "repository": "sagemaker-scikit-learn"
             },
             "0.23-1": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -85,13 +93,17 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
+                "repository": "sagemaker-scikit-learn"
             },
             "1.0-1": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -129,13 +141,17 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
+                "repository": "sagemaker-scikit-learn"
             },
             "1.2-1": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -173,17 +189,21 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
-            },
+                "repository": "sagemaker-scikit-learn"
+            }
         }
     },
     "training": {
         "versions": {
             "0.20.0": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -221,13 +241,17 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
+                "repository": "sagemaker-scikit-learn"
             },
             "0.23-1": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -265,13 +289,17 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
+                "repository": "sagemaker-scikit-learn"
             },
             "1.0-1": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -309,13 +337,17 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
+                "repository": "sagemaker-scikit-learn"
             },
             "1.2-1": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -353,13 +385,17 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
+                "repository": "sagemaker-scikit-learn"
             },
             "1.4-2": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -397,17 +433,21 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
-            },
+                "repository": "sagemaker-scikit-learn"
+            }
         }
     },
     "inference_graviton": {
         "versions": {
             "1.0-1": {
-                "processors": ["cpu"],
-                "py_versions": ["py3"],
+                "processors": [
+                    "cpu"
+                ],
+                "py_versions": [
+                    "py3"
+                ],
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -445,10 +485,10 @@
                     "us-isof-east-1": "108575199400",
                     "us-isof-south-1": "124985052026",
                     "us-west-1": "746614075791",
-                    "us-west-2": "246618743249",
+                    "us-west-2": "246618743249"
                 },
-                "repository": "sagemaker-scikit-learn",
+                "repository": "sagemaker-scikit-learn"
             }
         }
-    },
+    }
 }
