@@ -37,6 +37,7 @@ import logging
 from sagemaker.serve.utils.lineage_constants import (
     MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
 )
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -105,9 +106,9 @@ def tensorflow_schema_builder(custom_request_translator, custom_response_transla
 
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
+    np.__version__ >= "2.0.0",
     reason="The goal of these test are to test the serving components of our feature",
 )
-
 def test_happy_tensorflow_sagemaker_endpoint_with_tensorflow_serving(
     sagemaker_session,
     tensorflow_schema_builder,
