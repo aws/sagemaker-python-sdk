@@ -163,6 +163,23 @@ def _is_nova_recipe(recipe):
     return bool(has_nova_model) or bool(has_distillation)
 
 
+def _is_eval_recipe(recipe):
+    """Check if the recipe is an eval recipe.
+
+    An eval recipe is identified by:
+    1. Having a evaluation section
+
+    Args:
+        recipe (OmegaConf): The loaded recipe configuration
+
+    Returns:
+        bool: True if the recipe is an eval recipe, False otherwise
+    """
+    # Check for eval model
+    eval_config = recipe.get("evaluation", {})
+    return bool(eval_config)
+
+
 def _recipe_initialize_args(source_dir):
     """Initialize the arguments dictionary for recipe setup.
 
@@ -526,7 +543,7 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        self.is_nova_recipe = False
+        self.is_nova_or_eval_recipe = False
         if training_recipe is not None:
             if entry_point is not None:
                 logger.warning("Argument entry_point will be ignored with training_recipe.")
@@ -538,7 +555,7 @@ class PyTorch(Framework):
                 training_recipe, recipe_overrides, source_dir, kwargs
             )
 
-            if self.is_nova_recipe and image_uri is None:
+            if self.is_nova_or_eval_recipe and image_uri is None:
                 raise ValueError("Must supply image_uri for nova jobs.")
 
             entry_point = args["entry_point"]
@@ -569,7 +586,7 @@ class PyTorch(Framework):
             source_dir,
             hyperparameters,
             image_uri=image_uri,
-            is_nova_job=self.is_nova_recipe,
+            is_nova_job=self.is_nova_or_eval_recipe,
             **kwargs,
         )
 
@@ -702,8 +719,8 @@ class PyTorch(Framework):
         """
         # Handle recipe upload and input channel creation if we have a recipe
         if (
-            self.is_nova_recipe is not None
-            and self.is_nova_recipe
+            self.is_nova_or_eval_recipe is not None
+            and self.is_nova_or_eval_recipe
             and hasattr(self, "training_recipe_file")
             and self.training_recipe_file
         ):
@@ -949,7 +966,7 @@ class PyTorch(Framework):
         if "instance_type" not in kwargs:
             raise ValueError("Must pass instance type to estimator when using training recipes.")
 
-        if not _is_nova_recipe(recipe) and "trainer" not in recipe:
+        if not _is_nova_recipe(recipe) and "trainer" not in recipe and not _is_eval_recipe(recipe):
             raise ValueError("Supplied recipe does not contain required field trainer.")
 
         instance_type = kwargs["instance_type"].split(".")[1]
@@ -973,7 +990,7 @@ class PyTorch(Framework):
         """
         # Check if instance_count is already provided in kwargs
 
-        is_nova = _is_nova_recipe(recipe)
+        is_nova_or_eval = _is_nova_recipe(recipe) or _is_eval_recipe(recipe)
         if "instance_count" in kwargs:
             # Warn if there are conflicting configurations in the recipe
             if "num_nodes" in recipe.get("trainer", {}):
@@ -981,7 +998,7 @@ class PyTorch(Framework):
                     "Using instance_count argument to estimator to set number "
                     "of nodes. Ignoring trainer -> num_nodes in recipe."
                 )
-            if is_nova and "replicas" in recipe.get("run", {}):
+            if is_nova_or_eval and "replicas" in recipe.get("run", {}):
                 logger.warning(
                     "Using instance_count argument to estimator to set number "
                     "of nodes. Ignoring run -> replicas in recipe."
@@ -993,7 +1010,7 @@ class PyTorch(Framework):
             kwargs["instance_count"] = recipe["trainer"]["num_nodes"]
             return
 
-        if is_nova and "run" in recipe and "replicas" in recipe["run"]:
+        if is_nova_or_eval and "run" in recipe and "replicas" in recipe["run"]:
             kwargs["instance_count"] = recipe["run"]["replicas"]
             return
 
@@ -1137,8 +1154,8 @@ class PyTorch(Framework):
             # Merge with overrides
             recipe = OmegaConf.merge(recipe, recipe_overrides)
 
-            self.is_nova_recipe = _is_nova_recipe(recipe)
-            if self.is_nova_recipe:
+            self.is_nova_or_eval_recipe = _is_nova_recipe(recipe) or _is_eval_recipe(recipe)
+            if self.is_nova_or_eval_recipe:
                 return self._setup_for_nova_recipe(
                     recipe,
                     recipe_name,
