@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.252.0 (2025-09-29)
+
+### Features
+
+ * change S3 endpoint env name
+ * add eval custom lambda arn to hyperparameters
+
+### Bug Fixes and Other Changes
+
+ * merge rba without the iso region changes
+ * handle trial component status message longer than API supports
+ * Add nova custom lambda in hyperparameter from estimator
+ * add retryable option to emr step in SageMaker Pipelines
+ * Feature/js mlops telemetry
+ * latest tgi
+
 ## v2.251.1 (2025-08-29)
 
 ### Bug Fixes and Other Changes

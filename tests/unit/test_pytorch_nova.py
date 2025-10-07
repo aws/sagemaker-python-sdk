@@ -138,7 +138,7 @@ def test_setup_for_nova_recipe_with_model_name(mock_resolve_save, sagemaker_sess
             )
 
             # Check that the Nova recipe was correctly identified
-            assert pytorch.is_nova_recipe is True
+            assert pytorch.is_nova_or_eval_recipe is True
 
             # Verify _setup_for_nova_recipe was called
             mock_nova_setup.assert_called_once()
@@ -194,7 +194,7 @@ def test_setup_for_nova_recipe_with_s3_path(mock_resolve_save, sagemaker_session
             )
 
             # Check that the Nova recipe was correctly identified
-            assert pytorch.is_nova_recipe is True
+            assert pytorch.is_nova_or_eval_recipe is True
 
             # Verify _setup_for_nova_recipe was called
             mock_nova_setup.assert_called_once()
@@ -326,7 +326,7 @@ def test_upload_recipe_to_s3(mock_time, mock_recipe_load, sagemaker_session):
     )
 
     # Set Nova recipe attributes
-    pytorch.is_nova_recipe = True
+    pytorch.is_nova_or_eval_recipe = True
 
     # Create a temporary file to use as the recipe file
     with tempfile.NamedTemporaryFile(suffix=".yaml") as temp_file:
@@ -369,7 +369,7 @@ def test_recipe_resolve_and_save(
     )
 
     # Set Nova recipe attributes
-    pytorch.is_nova_recipe = True
+    pytorch.is_nova_or_eval_recipe = True
 
     # Mock the temporary file
     mock_temp_file_instance = Mock()
@@ -421,7 +421,7 @@ def test_fit_with_nova_recipe_s3_upload(mock_framework_fit, mock_recipe_load, sa
         )
 
         # Set Nova recipe attributes
-        pytorch.is_nova_recipe = True
+        pytorch.is_nova_or_eval_recipe = True
         pytorch.training_recipe_file = temp_file
 
         # Mock the _upload_recipe_to_s3 method
@@ -473,7 +473,7 @@ def test_fit_with_nova_recipe_and_inputs(
         )
 
         # Set Nova recipe attributes
-        pytorch.is_nova_recipe = True
+        pytorch.is_nova_or_eval_recipe = True
         pytorch.training_recipe_file = temp_file
 
         # Create training inputs
@@ -559,7 +559,7 @@ def test_fit_with_nova_recipe(
         )
 
         # Set Nova recipe attributes
-        pytorch.is_nova_recipe = True
+        pytorch.is_nova_or_eval_recipe = True
         pytorch.training_recipe_file = temp_file
 
         # Mock the upload_recipe_to_s3 method
@@ -642,7 +642,7 @@ def test_framework_set_hyperparameters_non_nova():
         py_version="py3",
         image_uri=IMAGE_URI,
     )
-    framework.is_nova_recipe = False
+    framework.is_nova_or_eval_recipe = False
 
     # Add hyperparameters
     framework.set_hyperparameters(string_param="string_value", int_param=42, bool_param=True)
@@ -719,7 +719,7 @@ def test_setup_for_nova_recipe_with_evaluation_lambda(mock_resolve_save, sagemak
         )
 
         # Check that the Nova recipe was correctly identified
-        assert pytorch.is_nova_recipe is True
+        assert pytorch.is_nova_or_eval_recipe is True
 
         # Verify that eval_lambda_arn hyperparameter was set correctly
         assert (
@@ -780,7 +780,7 @@ def test_setup_for_nova_recipe_with_distillation(mock_resolve_save, sagemaker_se
             )
 
             # Check that the Nova recipe was correctly identified
-            assert pytorch.is_nova_recipe is True
+            assert pytorch.is_nova_or_eval_recipe is True
 
             # Verify _setup_for_nova_recipe was called
             mock_nova_setup.assert_called_once()
@@ -795,3 +795,40 @@ def test_setup_for_nova_recipe_with_distillation(mock_resolve_save, sagemaker_se
                 pytorch._hyperparameters.get("role_arn")
                 == "arn:aws:iam::123456789012:role/SageMakerRole"
             )
+
+
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_resolve_and_save")
+def test_setup_for_nova_recipe_sets_model_type(mock_resolve_save, sagemaker_session):
+    """Test that _setup_for_nova_recipe correctly sets model_type hyperparameter."""
+    # Create a mock nova recipe with model_type
+    recipe = OmegaConf.create(
+        {
+            "run": {
+                "model_type": "amazon.nova.llama-2-7b",
+                "model_name_or_path": "llama/llama-2-7b",
+                "replicas": 1,
+            }
+        }
+    )
+
+    with patch(
+        "sagemaker.pytorch.estimator.PyTorch._recipe_load", return_value=("nova_recipe", recipe)
+    ):
+        mock_resolve_save.return_value = recipe
+
+        pytorch = PyTorch(
+            training_recipe="nova_recipe",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE_GPU,
+            image_uri=IMAGE_URI,
+            framework_version="1.13.1",
+            py_version="py3",
+        )
+
+        # Check that the Nova recipe was correctly identified
+        assert pytorch.is_nova_or_eval_recipe is True
+
+        # Verify that model_type hyperparameter was set correctly
+        assert pytorch._hyperparameters.get("model_type") == "amazon.nova.llama-2-7b"
