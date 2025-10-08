@@ -12,5 +12,6 @@ flavors:
     saved_model_dir: tf2model
 mlflow_version: 2.20.3
 model_size_bytes: 23823
-model_uuid: 129070f64c7b4ba4b24971c1840947e7
-utc_time_created: '2025-09-30 03:13:23.791740'
+model_uuid: 40d2323944294fce898d8693455f60e8
+run_id: 592132312fb84935b201de2c027c54c6
+utc_time_created: '2024-04-01 19:47:15.396517'

@@ -1,7 +1,4 @@
 mlflow==2.20.3
 cloudpickle>=2.2.1
-numpy>=2.0.0,<3.0.0
-tensorflow==2.19.0
-scipy==1.13.0
-scikit-learn==1.6.1
-pandas==2.3.0
+numpy>=1.26.4
+tensorflow==2.18.0
