@@ -193,7 +193,7 @@
                 },
                 "repository": "sagemaker-scikit-learn"
             },
-            "1.2-1-1": {
+            "1.2.1-1": {
                 "processors": [
                     "cpu"
                 ],
@@ -437,7 +437,7 @@
                 },
                 "repository": "sagemaker-scikit-learn"
             },
-            "1.2-1-1": {
+            "1.2.1-1": {
                 "processors": [
                     "cpu"
                 ],
