@@ -105,7 +105,7 @@ def tensorflow_schema_builder(custom_request_translator, custom_response_transla
 
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
-    np.__version__ >= "2.0.0",
+    #np.__version__ >= "2.0.0",
     reason="The goal of these test are to test the serving components of our feature and \
            the input model artifacts used here are generated with py310 and numpy<2",
 )

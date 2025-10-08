@@ -4,8 +4,8 @@ dependencies:
 - python=3.10.13
 - pip<=24.3
 - pip:
-  - mlflow>=2.16.1
+  - mlflow==2.20.3
   - cloudpickle>=2.2.1
-  - numpy>=1.26.4
-  - tensorflow==2.18.0
+  - numpy>=2.0.0
+  - tensorflow==2.19.0
 name: mlflow-env

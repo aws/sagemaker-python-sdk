@@ -1,2 +1,1 @@
-model_name: model
-model_version: '2'
+registered_model_name: numpy2-test-model
