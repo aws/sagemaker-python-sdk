@@ -396,7 +396,7 @@
                 },
                 "repository": "sagemaker-xgboost"
             },
-            "1.7-1-1": {
+            "1.7.1-1": {
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
@@ -837,7 +837,7 @@
                 },
                 "repository": "sagemaker-xgboost"
             },
-            "1.7-1-1": {
+            "1.7.1-1": {
                 "registries": {
                     "af-south-1": "510948584623",
                     "ap-east-1": "651117190479",
