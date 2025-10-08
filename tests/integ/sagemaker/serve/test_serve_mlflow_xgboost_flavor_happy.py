@@ -28,7 +28,7 @@ from tests.integ.sagemaker.serve.constants import (
     XGBOOST_MLFLOW_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
     # SERVE_LOCAL_CONTAINER_TIMEOUT,
-    PYTHON_VERSION_IS_NOT_310,
+    # PYTHON_VERSION_IS_NOT_310,
 )
 from tests.integ.timeout import timeout
 from tests.integ.utils import cleanup_model_resources

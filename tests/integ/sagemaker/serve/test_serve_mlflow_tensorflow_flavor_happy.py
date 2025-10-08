@@ -107,7 +107,7 @@ def tensorflow_schema_builder(custom_request_translator, custom_response_transla
     PYTHON_VERSION_IS_NOT_310,
     np.__version__ >= "2.0.0",
     reason="The goal of these test are to test the serving components of our feature and \
-           the input model artifacts used here are generated with py310 and numpy<2",
+           the input model artifacts used in this specific test are generated with py310 and numpy<2.",
 )
 def test_happy_tensorflow_sagemaker_endpoint_with_tensorflow_serving(
     sagemaker_session,
@@ -115,7 +115,6 @@ def test_happy_tensorflow_sagemaker_endpoint_with_tensorflow_serving(
     cpu_instance_type,
     test_data,
 ):
-    # TODO: Might need to add a new test for numpy 2.0
     logger.info("Running in SAGEMAKER_ENDPOINT mode...")
     caught_ex = None
 
