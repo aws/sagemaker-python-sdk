@@ -231,7 +231,7 @@ def test_feature_processor_transform_online_only_store_ingestion(
         )
 
 
-@pytest.mark.slow_test
+#@pytest.mark.slow_test
 def test_feature_processor_transform_with_customized_data_source(
     sagemaker_session,
 ):
