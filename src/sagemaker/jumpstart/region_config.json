@@ -57,6 +57,10 @@
         "content_bucket": "jumpstart-cache-prod-ap-southeast-5",
         "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-5"
     },
+    "ap-southeast-6": {
+        "content_bucket": "jumpstart-cache-prod-ap-southeast-6",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-6"
+    },
     "ap-southeast-7": {
         "content_bucket": "jumpstart-cache-prod-ap-southeast-7",
         "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-7"

@@ -211,7 +211,7 @@ def test_serverless_deployment(xgboost_model_builder):
 
 def test_async_deployment(xgboost_model_builder, mb_sagemaker_session):
     async_predictor = xgboost_model_builder.deploy(
-        endpoint_name="test2",
+        endpoint_name=f"test2-{uuid.uuid1().hex}",
         inference_config=AsyncInferenceConfig(
             output_path=s3_path_join(
                 "s3://", mb_sagemaker_session.default_bucket(), "async_inference/output"
