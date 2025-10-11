@@ -316,10 +316,6 @@ def test_with_non_existent_dependencies(
         divide(10, 2)
 
 
-@pytest.mark.skipif(
-    np.__version__ >= "2.0",
-    reason="Test only valid for numpy < 2.0 due to serialization compatibility changes",
-)
 def test_with_incompatible_dependencies(
     sagemaker_session, dummy_container_without_error, cpu_instance_type
 ):
@@ -329,7 +325,6 @@ def test_with_incompatible_dependencies(
     or versions in the future may require changes to 'old_deps_requirements.txt'
     to fulfill testing scenario.
 
-    NOTE: Skipped for numpy >= 2.0 as serialization compatibility improved.
     """
 
     dependencies_path = os.path.join(DATA_DIR, "remote_function", "old_deps_requirements.txt")

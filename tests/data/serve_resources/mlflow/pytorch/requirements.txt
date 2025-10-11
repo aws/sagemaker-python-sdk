@@ -5,10 +5,10 @@ cloudpickle==2.2.1
 defusedxml==0.7.1
 dill==0.3.9
 gmpy2==2.1.2
-numpy>=2.0.0,<2.3.3
+numpy==1.26.4
 opt-einsum==3.3.0
 packaging>=23.0,<25
-pandas>=2.3.0
+pandas==2.2.1
 pyyaml==6.0.1
 requests==2.32.4
 torch>=2.6.0
