@@ -14,7 +14,7 @@ flavors:
     code: null
     model_data: data
     pytorch_version: 2.0.1+cu117
-mlflow_version: 2.10.2
+mlflow_version: 2.11.1
 model_size_bytes: 4971001
 model_uuid: 2d85043bbf504b1e9950e124c46a1719
 run_id: 98b8d2e2c0e74ab59f4c26f7cb3de233
