@@ -23,6 +23,7 @@ import tests.integ
 from botocore.config import Config
 from packaging.version import Version
 from packaging.specifiers import SpecifierSet
+from sagemaker.utils import parse_sagemaker_version
 
 from sagemaker import Session, image_uris, utils, get_execution_role
 from sagemaker.local import LocalSession
@@ -790,7 +791,7 @@ def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
         versions = list(config["versions"].keys()) + list(config.get("version_aliases", {}).keys())
         metafunc.parametrize(fixture_name, versions, scope="session")
 
-    latest_version = sorted(config["versions"].keys(), key=lambda v: Version(v))[-1]
+    latest_version = sorted(config["versions"].keys(), key=parse_sagemaker_version)[-1]
 
     fixture_name = "{}_latest_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:

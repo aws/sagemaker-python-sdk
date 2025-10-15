@@ -18,7 +18,7 @@ import logging
 import os
 import re
 from typing import Optional
-from packaging.version import Version
+from sagemaker.utils import parse_sagemaker_version
 
 from sagemaker import utils
 from sagemaker.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
@@ -403,8 +403,12 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 def _validate_instance_deprecation(framework, instance_type, version):
     """Check if instance type is deprecated for a certain framework with a certain version"""
     if utils.get_instance_type_family(instance_type) == "p2":
-        if (framework == "pytorch" and Version(version) >= Version("1.13")) or (
-            framework == "tensorflow" and Version(version) >= Version("2.12")
+        if (
+            framework == "pytorch"
+            and parse_sagemaker_version(version) >= parse_sagemaker_version("1.13")
+        ) or (
+            framework == "tensorflow"
+            and parse_sagemaker_version(version) >= parse_sagemaker_version("2.12")
         ):
             raise ValueError(
                 "P2 instances have been deprecated for sagemaker jobs starting PyTorch 1.13 and TensorFlow 2.12"
@@ -804,7 +808,7 @@ def _fetch_latest_version_from_config(  # pylint: disable=R0911
             bottom_number = int(bottom_version[:-2])
             max_version = max(top_number, bottom_number)
             return f"{max_version}.x"
-        if Version(top_version) >= Version(bottom_version):
+        if parse_sagemaker_version(top_version) >= parse_sagemaker_version(bottom_version):
             return top_version
         return bottom_version
 
