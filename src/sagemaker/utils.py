@@ -1529,7 +1529,7 @@ def get_instance_type_family(instance_type: str) -> str:
     """
     instance_type_family = ""
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match is not None:
             instance_type_family = match[1]
     return instance_type_family

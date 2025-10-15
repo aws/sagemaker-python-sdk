@@ -2119,7 +2119,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             instance_type = instance_group.instance_type
             if is_pipeline_variable(instance_type):
                 continue
-            match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+            match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
 
             if match:
                 family = match[1]

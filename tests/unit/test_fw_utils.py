@@ -1066,6 +1066,13 @@ def test_validate_unsupported_distributions_trainium_raises():
         )
 
     with pytest.raises(ValueError):
+        mpi_enabled = {"mpi": {"enabled": True}}
+        fw_utils.validate_distribution_for_instance_type(
+            distribution=mpi_enabled,
+            instance_type="ml.trn1-n.2xlarge",
+        )
+
+    with pytest.raises(ValueError):
         pytorch_ddp_enabled = {"pytorch_ddp": {"enabled": True}}
         fw_utils.validate_distribution_for_instance_type(
             distribution=pytorch_ddp_enabled,
@@ -1082,6 +1089,7 @@ def test_validate_unsupported_distributions_trainium_raises():
 
 def test_instance_type_supports_profiler():
     assert fw_utils._instance_type_supports_profiler("ml.trn1.xlarge") is True
+    assert fw_utils._instance_type_supports_profiler("ml.trn1-n.xlarge") is True
     assert fw_utils._instance_type_supports_profiler("ml.m4.xlarge") is False
     assert fw_utils._instance_type_supports_profiler("local") is False
 
@@ -1097,6 +1105,8 @@ def test_is_gpu_instance():
         "ml.g4dn.xlarge",
         "ml.g5.xlarge",
         "ml.g5.48xlarge",
+        "ml.p6-b200.48xlarge",
+        "ml.g6e-12xlarge.xlarge",
         "local_gpu",
     ]
     non_gpu_instance_types = [
@@ -1116,6 +1126,7 @@ def test_is_trainium_instance():
     trainium_instance_types = [
         "ml.trn1.2xlarge",
         "ml.trn1.32xlarge",
+        "ml.trn1-n.2xlarge",
     ]
     non_trainum_instance_types = [
         "ml.t3.xlarge",
