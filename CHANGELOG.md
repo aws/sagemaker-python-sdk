@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.253.1 (2025-10-14)
+
+### Bug Fixes and Other Changes
+
+ * Update instance type regex to also include hyphens
+ * Revert the change "Add Numpy 2.0 support"
+ * [hf-tei] add image uri to utils
+ * add TEI 1.8.2
+
 ## v2.253.0 (2025-10-10)
 
 ### Features
