@@ -3,7 +3,6 @@
 import subprocess
 import sys
 import tempfile
-import os
 import pytest
 from pathlib import Path
 

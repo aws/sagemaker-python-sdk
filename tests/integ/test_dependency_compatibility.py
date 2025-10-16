@@ -80,4 +80,4 @@ def test_critical_imports():
             failed_imports.append(f"{package}: {e}")
 
     if failed_imports:
-        pytest.fail(f"Import failures:\n" + "\n".join(failed_imports))
+        pytest.fail("Import failures:\n" + "\n".join(failed_imports))
