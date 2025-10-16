@@ -61,7 +61,9 @@ class TestTensorFlowServingNumpy2:
         logger.info("Testing TensorFlow Serving with sample MLflow model")
 
         # Use constant MLflow model structure from test data
-        mlflow_model_dir = os.path.join(DATA_DIR, "serve_resources", "mlflow", "tensorflow_numpy2_removed")
+        mlflow_model_dir = os.path.join(
+            DATA_DIR, "serve_resources", "mlflow", "tensorflow_numpy2_removed"
+        )
 
         # Create schema builder with numpy 2.0 arrays
         input_data = np.array([[1.0, 2.0, 3.0, 4.0]], dtype=np.float32)
