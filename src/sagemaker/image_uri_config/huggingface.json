@@ -2181,7 +2181,8 @@
                     },
                     "repository": "huggingface-pytorch-inference",
                     "container_version": {
-                        "gpu": "cu124-ubuntu22.04"
+                        "gpu": "cu124-ubuntu22.04",
+                        "cpu": "ubuntu22.04"
                     }
                 }
             }
