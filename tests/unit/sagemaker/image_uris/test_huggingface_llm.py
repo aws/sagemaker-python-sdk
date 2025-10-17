@@ -26,6 +26,7 @@ TEI_VERSIONS_MAPPING = {
         "1.6.0": "2.0.1-tei1.6.0-gpu-py310-cu122-ubuntu22.04",
         "1.7.0": "2.0.1-tei1.7.0-gpu-py310-cu122-ubuntu22.04",
         "1.8.0": "2.0.1-tei1.8.0-gpu-py310-cu122-ubuntu22.04",
+        "1.8.2": "2.0.1-tei1.8.2-gpu-py310-cu122-ubuntu22.04",
     },
     "cpu": {
         "1.2.3": "2.0.1-tei1.2.3-cpu-py310-ubuntu22.04",
@@ -33,6 +34,7 @@ TEI_VERSIONS_MAPPING = {
         "1.6.0": "2.0.1-tei1.6.0-cpu-py310-ubuntu22.04",
         "1.7.0": "2.0.1-tei1.7.0-cpu-py310-ubuntu22.04",
         "1.8.0": "2.0.1-tei1.8.0-cpu-py310-ubuntu22.04",
+        "1.8.2": "2.0.1-tei1.8.2-cpu-py310-ubuntu22.04",
     },
 }
 HF_VERSIONS_MAPPING = {

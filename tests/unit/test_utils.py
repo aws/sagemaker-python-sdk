@@ -1844,6 +1844,7 @@ class TestVolumeSizeSupported(TestCase):
             "ml.afbsadjfbasfb.sdkjfnsa": "afbsadjfbasfb",
             "ml_fdsfsdf.xlarge": "fdsfsdf",
             "ml_c2.4xlarge": "c2",
+            "ml.p6-b200.48xlarge": "p6-b200",
             "sdfasfdda": "",
             "local": "",
             "c2.xlarge": "",

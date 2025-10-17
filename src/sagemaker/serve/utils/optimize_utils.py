@@ -38,7 +38,7 @@ def _is_inferentia_or_trainium(instance_type: Optional[str]) -> bool:
         bool: Whether the given instance type is Inferentia or Trainium.
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match:
             if match[1].startswith("inf") or match[1].startswith("trn"):
                 return True
