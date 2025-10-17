@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """Integration test to verify dependency compatibility."""
 
 import subprocess
