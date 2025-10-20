@@ -962,7 +962,7 @@ def validate_distribution_for_instance_type(instance_type, distribution):
     """
     err_msg = ""
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             keys = list(distribution.keys())
             if len(keys) == 0:
@@ -1083,7 +1083,7 @@ def _is_gpu_instance(instance_type):
         bool: Whether or not the instance_type supports GPU
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match:
             if match[1].startswith("p") or match[1].startswith("g"):
                 return True
@@ -1102,7 +1102,7 @@ def _is_trainium_instance(instance_type):
         bool: Whether or not the instance_type is a Trainium instance
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             return True
     return False
@@ -1149,7 +1149,7 @@ def _instance_type_supports_profiler(instance_type):
         bool: Whether or not the region supports Amazon SageMaker Debugger profiling feature.
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             return True
     return False

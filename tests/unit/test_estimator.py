@@ -2246,6 +2246,21 @@ def test_get_instance_type_gpu(sagemaker_session):
     assert "ml.p3.16xlarge" == estimator._get_instance_type()
 
 
+def test_get_instance_type_gpu_with_hyphens(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p6-b200.48xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.p6-b200.48xlarge" == estimator._get_instance_type()
+
+
 def test_estimator_with_output_compression_disabled(sagemaker_session):
     estimator = Estimator(
         image_uri="some-image",

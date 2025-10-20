@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.253.1 (2025-10-14)
+
+### Bug Fixes and Other Changes
+
+ * Update instance type regex to also include hyphens
+ * Revert the change "Add Numpy 2.0 support"
+ * [hf-tei] add image uri to utils
+ * add TEI 1.8.2
+
+## v2.253.0 (2025-10-10)
+
+### Features
+
+ * Added condition to allow eval recipe.
+ * add model_type hyperparameter support for Nova recipes
+
+### Bug Fixes and Other Changes
+
+ * Fix for a failed slow test: numpy fix
+ * Add numpy 2.0 support
+ * chore: domain support for eu-isoe-west-1
+ * Adding default identity implementations to InferenceSpec
+ * djl regions fixes #5273
+ * Fix flaky integ test
+
 ## v2.252.0 (2025-09-29)
 
 ### Features
