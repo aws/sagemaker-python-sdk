@@ -12095,7 +12095,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
         "inference_vulnerabilities": [],
         "training_vulnerable": False,
         "training_dependencies": [
-            "numpy>=2.0.0",
+            "numpy>=1.26.4",
             "opencv_python==4.7.0.68",
             "sagemaker_jumpstart_prepack_script_utilities==1.0.0",
         ],
@@ -14360,7 +14360,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
             "jmespath==1.0.1",
             "jsonschema==4.17.3",
             "multiprocess==0.70.14",
-            "numpy>=2.0.0",
+            "numpy>=1.26.4",
             "oscrypto==1.3.0",
             "packaging==23.1",
             "pandas>=2.3.0",
