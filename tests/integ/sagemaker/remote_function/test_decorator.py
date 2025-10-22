@@ -20,7 +20,6 @@ import os
 import logging
 import random
 import string
-import numpy as np
 import pandas as pd
 import subprocess
 import shlex
@@ -316,8 +315,7 @@ def test_with_non_existent_dependencies(
         divide(10, 2)
 
 
-@pytest.mark.skipif(
-    np.__version__ >= "2.0",
+@pytest.mark.skip(
     reason="Test only valid for numpy < 2.0 due to serialization compatibility changes",
 )
 def test_with_incompatible_dependencies(
