@@ -57,6 +57,11 @@ HF_VERSIONS_MAPPING = {
         "2.3.1": "2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04",
         "2.4.0": "2.4.0-tgi2.4.0-gpu-py311-cu124-ubuntu22.04-v2.2",
         "3.0.1": "2.4.0-tgi3.0.1-gpu-py311-cu124-ubuntu22.04-v2.1",
+        "3.1.1": "2.6.0-tgi3.1.1-gpu-py311-cu124-ubuntu22.04",
+        "3.2.0": "2.6.0-tgi3.2.0-gpu-py311-cu124-ubuntu22.04",
+        "3.2.3": "2.6.0-tgi3.2.3-gpu-py311-cu124-ubuntu22.04",
+        "3.3.4": "2.7.0-tgi3.3.4-gpu-py311-cu124-ubuntu22.04",
+        "3.3.6": "2.7.0-tgi3.3.6-gpu-py311-cu124-ubuntu22.04",
     },
     "inf2": {
         "0.0.16": "1.13.1-optimum0.0.16-neuronx-py310-ubuntu22.04",
