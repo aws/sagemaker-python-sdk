@@ -10,7 +10,7 @@ flavors:
     code: null
     model_type: tf2-module
     saved_model_dir: tf2model
-mlflow_version: 2.20.3
+mlflow_version: 2.11.1
 model_size_bytes: 23823
 model_uuid: 40d2323944294fce898d8693455f60e8
 run_id: 592132312fb84935b201de2c027c54c6

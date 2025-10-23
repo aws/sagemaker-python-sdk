@@ -1108,15 +1108,15 @@ def get_expected_dataframe():
     expected_dataframe = pd.read_csv(os.path.join(_FEATURE_PROCESSOR_DIR, "car-data.csv"))
     expected_dataframe["Model"].replace("^\d\d\d\d\s", "", regex=True, inplace=True)  # noqa: W605
     expected_dataframe["Mileage"].replace("(,)|(mi\.)", "", regex=True, inplace=True)  # noqa: W605
-    expected_dataframe["Mileage"].replace("Not available", np.NaN, inplace=True)
+    expected_dataframe["Mileage"].replace("Not available", np.nan, inplace=True)
     expected_dataframe["Price"].replace("\$", "", regex=True, inplace=True)  # noqa: W605
     expected_dataframe["Price"].replace(",", "", regex=True, inplace=True)
     expected_dataframe["MSRP"].replace(
         "(^MSRP\s\\$)|(,)", "", regex=True, inplace=True  # noqa: W605
     )
-    expected_dataframe["MSRP"].replace("Not specified", np.NaN, inplace=True)
+    expected_dataframe["MSRP"].replace("Not specified", np.nan, inplace=True)
     expected_dataframe["MSRP"].replace(
-        "\\$\d+[a-zA-Z\s]+", np.NaN, regex=True, inplace=True  # noqa: W605
+        "\\$\d+[a-zA-Z\s]+", np.nan, regex=True, inplace=True  # noqa: W605
     )
     expected_dataframe["Mileage"] = expected_dataframe["Mileage"].astype(float)
     expected_dataframe["Price"] = expected_dataframe["Price"].astype(float)

@@ -693,7 +693,7 @@ def _generate_estimator(
         sagemaker_client_config=sagemaker_client_config,
     )
     return SKLearn(
-        framework_version="1.2-1",
+        framework_version="1.4-2",
         entry_point=_ENTRY_POINT_PATH,
         dependencies=[sdk_tar],
         role=execution_role,
