@@ -53,6 +53,12 @@ from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_parameter_string, is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 
+try:
+    from packaging.version import Version, InvalidVersion
+except ImportError:
+    Version = None
+    InvalidVersion = None
+
 ALTERNATE_DOMAINS = {
     "cn-north-1": "amazonaws.com.cn",
     "cn-northwest-1": "amazonaws.com.cn",
@@ -1959,3 +1965,29 @@ def get_domain_for_region(region: str) -> str:
         region (str): AWS region name.
     """
     return ALTERNATE_DOMAINS.get(region, "amazonaws.com")
+
+
+def parse_sagemaker_version(version_str):
+    """Parse SageMaker version strings, handling custom formats like '1.7-1-1'
+
+    Args:
+        version_str (str): Version string to parse
+
+    Returns:
+        packaging.version.Version: Parsed version object
+
+    Raises:
+        InvalidVersion: If the version string cannot be parsed
+        ImportError: If packaging library is not available
+    """
+    if Version is None or InvalidVersion is None:
+        raise ImportError("packaging library is required for version parsing")
+
+    try:
+        return Version(version_str)
+    except InvalidVersion:
+        # Handle SageMaker custom format: '1.7-1-1' -> '1.7.1.1'
+        if version_str.count("-") >= 2:
+            normalized = version_str.replace("-", ".", 2)
+            return Version(normalized)
+        raise

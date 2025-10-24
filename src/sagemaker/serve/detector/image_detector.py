@@ -5,7 +5,7 @@ from typing import Tuple, List
 import platform
 import re
 import logging
-from packaging import version
+from sagemaker.utils import parse_sagemaker_version
 from sagemaker import image_uris
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
 def _cast_to_compatible_version(framework: str, fw_version: str) -> Tuple[str]:
     """Given fw_version, detect the available versions"""
     config = image_uris._config_for_framework_and_scope(framework, "inference", None)
-    available_versions = [version.parse(ver) for ver in list(config["versions"].keys())]
+    available_versions = [parse_sagemaker_version(ver) for ver in list(config["versions"].keys())]
     available_versions.sort()
 
     earliest_upcast_version = None
@@ -82,7 +82,7 @@ def _cast_to_compatible_version(framework: str, fw_version: str) -> Tuple[str]:
     latest_downcast_version = None
 
     major_version_pattern = r"^(\d+)"
-    parsed_fw_version = version.parse(fw_version)
+    parsed_fw_version = parse_sagemaker_version(fw_version)
     major_verson = int(re.match(major_version_pattern, str(parsed_fw_version)).group(1))
 
     for available_version in available_versions:
@@ -119,7 +119,7 @@ def _cast_to_compatible_version(framework: str, fw_version: str) -> Tuple[str]:
     return (exact_match_version, latest_downcast_version, earliest_upcast_version)
 
 
-def _process_version(ver: version.Version) -> str:
+def _process_version(ver) -> str:
     """Placeholder docstring"""
     if not ver:
         return None
