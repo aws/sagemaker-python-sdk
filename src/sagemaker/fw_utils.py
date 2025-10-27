@@ -156,7 +156,7 @@ TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = [
     "2.3.1",
     "2.4.1",
     "2.5.1",
-    "2.6.0", 
+    "2.6.0",
     "2.7.1",
     "2.8.0",
 ]
