@@ -8,7 +8,8 @@
             "4.34": "4.34.1",
             "4.36": "4.36.2",
             "4.43": "4.43.2",
-            "4.48": "4.48.1"
+            "4.48": "4.48.1",
+            "4.51": "4.51.0"
         },
         "versions": {
             "4.28.1": {
@@ -63,7 +64,7 @@
                     "py_versions": [
                         "py310"
                     ],
-                    "repository": "huggingface-pytorch-inference-neuronx",
+                    "repository": "huggingface-pytorch-training-neuronx",
                     "registries": {
                         "ap-east-2": "975050140332",
                         "ap-northeast-1": "763104351884",
@@ -107,7 +108,7 @@
                     "py_versions": [
                         "py310"
                     ],
-                    "repository": "huggingface-pytorch-inference-neuronx",
+                    "repository": "huggingface-pytorch-training-neuronx",
                     "registries": {
                         "ap-east-2": "975050140332",
                         "ap-northeast-1": "763104351884",
@@ -151,7 +152,7 @@
                     "py_versions": [
                         "py310"
                     ],
-                    "repository": "huggingface-pytorch-inference-neuronx",
+                    "repository": "huggingface-pytorch-training-neuronx",
                     "registries": {
                         "ap-northeast-1": "763104351884",
                         "ap-south-1": "763104351884",
@@ -194,7 +195,7 @@
                     "py_versions": [
                         "py310"
                     ],
-                    "repository": "huggingface-pytorch-inference-neuronx",
+                    "repository": "huggingface-pytorch-training-neuronx",
                     "registries": {
                         "ap-northeast-1": "763104351884",
                         "ap-south-1": "763104351884",
@@ -228,6 +229,49 @@
                         "sdk2.20.0"
                     ]
                 }
+            },
+            "4.51.0": {
+                "version_aliases": {
+                    "pytorch2.7": "pytorch2.7.0"
+                },
+                "pytorch2.7.0": {
+                    "py_versions": [
+                        "py310"
+                    ],
+                    "repository": "huggingface-pytorch-training-neuronx",
+                    "registries": {
+                        "ap-northeast-1": "763104351884",
+                        "ap-south-1": "763104351884",
+                        "ap-south-2": "772153158452",
+                        "ap-southeast-1": "763104351884",
+                        "ap-southeast-2": "763104351884",
+                        "ap-southeast-4": "457447274322",
+                        "ap-southeast-5": "550225433462",
+                        "ap-southeast-7": "590183813437",
+                        "cn-north-1": "727897471807",
+                        "cn-northwest-1": "727897471807",
+                        "eu-central-1": "763104351884",
+                        "eu-central-2": "380420809688",
+                        "eu-south-2": "503227376785",
+                        "eu-west-1": "763104351884",
+                        "eu-west-3": "763104351884",
+                        "il-central-1": "780543022126",
+                        "mx-central-1":"637423239942",
+                        "sa-east-1": "763104351884",
+                        "us-east-1": "763104351884",
+                        "us-east-2": "763104351884",
+                        "us-gov-east-1": "446045086412",
+                        "us-gov-west-1": "442386744353",
+                        "us-west-2": "763104351884",
+                        "ca-west-1": "204538143572"
+                    },
+                    "container_version": {
+                        "inf": "ubuntu22.04"
+                    },
+                    "sdk_versions": [
+                        "sdk2.24.1"
+                    ]
+                }
             }
         }
     },
@@ -239,7 +283,8 @@
             "4.28": "4.28.1",
             "4.34": "4.34.1",
             "4.36": "4.36.2",
-            "4.43": "4.43.2"
+            "4.43": "4.43.2",
+            "4.51": "4.51.3"
         },
         "versions": {
             "4.28.1": {
@@ -502,6 +547,49 @@
                     },
                     "sdk_versions": [
                         "sdk2.20.0"
+                    ]
+                }
+            },
+            "4.51.3": {
+                "version_aliases": {
+                    "pytorch2.7": "pytorch2.7.1"
+                },
+                "pytorch2.7.1": {
+                    "py_versions": [
+                        "py310"
+                    ],
+                    "repository": "huggingface-pytorch-inference-neuronx",
+                    "registries": {
+                        "ap-northeast-1": "763104351884",
+                        "ap-south-1": "763104351884",
+                        "ap-south-2": "772153158452",
+                        "ap-southeast-1": "763104351884",
+                        "ap-southeast-2": "763104351884",
+                        "ap-southeast-4": "457447274322",
+                        "ap-southeast-5": "550225433462",
+                        "ap-southeast-7": "590183813437",
+                        "cn-north-1": "727897471807",
+                        "cn-northwest-1": "727897471807",
+                        "eu-central-1": "763104351884",
+                        "eu-central-2": "380420809688",
+                        "eu-south-2": "503227376785",
+                        "eu-west-1": "763104351884",
+                        "eu-west-3": "763104351884",
+                        "il-central-1": "780543022126",
+                        "mx-central-1":"637423239942",
+                        "sa-east-1": "763104351884",
+                        "us-east-1": "763104351884",
+                        "us-east-2": "763104351884",
+                        "us-gov-east-1": "446045086412",
+                        "us-gov-west-1": "442386744353",
+                        "us-west-2": "763104351884",
+                        "ca-west-1": "204538143572"
+                    },
+                    "container_version": {
+                        "inf": "ubuntu22.04"
+                    },
+                    "sdk_versions": [
+                        "sdk2.24.1"
                     ]
                 }
             }
