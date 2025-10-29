@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.254.0 (2025-10-29)
+
+### Features
+
+ * Triton v25.09 DLC
+
+### Bug Fixes and Other Changes
+
+ * Add Numpy 2.0 support
+ * add HF Optimum Neuron DLCs
+ * [Hugging Face][Pytorch] Inference DLC 4.51.3
+ * [hf] HF Inference TGI
+
 ## v2.253.1 (2025-10-14)
 
 ### Bug Fixes and Other Changes
