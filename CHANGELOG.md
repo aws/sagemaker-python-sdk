@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.254.1 (2025-10-31)
+
+### Bug Fixes and Other Changes
+
+ * update get_execution_role to directly return the ExecutionRoleArn if it presents in the resource metadata file
+ * [hf] HF PT Training DLCs
+
 ## v2.254.0 (2025-10-29)
 
 ### Features
