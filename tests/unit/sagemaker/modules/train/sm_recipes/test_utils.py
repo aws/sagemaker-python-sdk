@@ -478,3 +478,57 @@ def test_get_args_from_nova_recipe_with_evaluation(test_case):
         recipe=recipe, compute=test_case["compute"], role=test_case["role"]
     )
     assert args == test_case["expected_args"]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "recipe": {
+                "run": {
+                    "model_type": "amazon.nova",
+                    "model_name_or_path": "dummy-test",
+                    "reward_lambda_arn": "arn:aws:lambda:us-east-1:123456789012:function:MyRewardLambdaFunction",
+                },
+            },
+            "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+            "role": "arn:aws:iam::123456789012:role/SageMakerRole",
+            "expected_args": {
+                "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+                "hyperparameters": {
+                    "base_model": "dummy-test",
+                    "reward_lambda_arn": "arn:aws:lambda:us-east-1:123456789012:function:MyRewardLambdaFunction",
+                },
+                "training_image": None,
+                "source_code": None,
+                "distributed": None,
+            },
+        },
+        {
+            "recipe": {
+                "run": {
+                    "model_type": "amazon.nova",
+                    "model_name_or_path": "dummy-test",
+                    # No reward_lambda_arn - should not be in hyperparameters
+                },
+            },
+            "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+            "role": "arn:aws:iam::123456789012:role/SageMakerRole",
+            "expected_args": {
+                "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+                "hyperparameters": {
+                    "base_model": "dummy-test",
+                },
+                "training_image": None,
+                "source_code": None,
+                "distributed": None,
+            },
+        },
+    ],
+)
+def test_get_args_from_nova_recipe_with_reward_lambda(test_case):
+    recipe = OmegaConf.create(test_case["recipe"])
+    args, _ = _get_args_from_nova_recipe(
+        recipe=recipe, compute=test_case["compute"], role=test_case["role"]
+    )
+    assert args == test_case["expected_args"]
