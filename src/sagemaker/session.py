@@ -6285,15 +6285,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 user_profile_name = metadata.get("UserProfileName")
                 execution_role_arn = metadata.get("ExecutionRoleArn")
             try:
+                # find execution role from the metadata file if present
+                if execution_role_arn is not None:
+                    return execution_role_arn
+
                 if domain_id is None:
                     instance_desc = self.sagemaker_client.describe_notebook_instance(
                         NotebookInstanceName=instance_name
                     )
                     return instance_desc["RoleArn"]
-
-                # find execution role from the metadata file if present
-                if execution_role_arn is not None:
-                    return execution_role_arn
 
                 user_profile_desc = self.sagemaker_client.describe_user_profile(
                     DomainId=domain_id, UserProfileName=user_profile_name
