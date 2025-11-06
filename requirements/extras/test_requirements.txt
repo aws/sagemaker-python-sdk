@@ -61,3 +61,4 @@ mypy-boto3-redshift-data==1.35.51
 mypy-boto3-s3==1.35.76
 mypy-extensions==1.0.0
 mypy==1.9.0
+google-re2<1.1.20250805
