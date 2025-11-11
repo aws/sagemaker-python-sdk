@@ -832,3 +832,81 @@ def test_setup_for_nova_recipe_sets_model_type(mock_resolve_save, sagemaker_sess
 
         # Verify that model_type hyperparameter was set correctly
         assert pytorch._hyperparameters.get("model_type") == "amazon.nova.llama-2-7b"
+
+
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_resolve_and_save")
+def test_setup_for_nova_recipe_with_reward_lambda(mock_resolve_save, sagemaker_session):
+    """Test that _setup_for_nova_recipe correctly handles reward lambda configuration."""
+    # Create a mock recipe with reward lambda config
+    recipe = OmegaConf.create(
+        {
+            "run": {
+                "model_type": "amazon.nova.foobar3",
+                "model_name_or_path": "foobar/foobar-3-8b",
+                "reward_lambda_arn": "arn:aws:lambda:us-west-2:123456789012:function:reward-function",
+                "replicas": 1,
+            },
+        }
+    )
+
+    with patch(
+        "sagemaker.pytorch.estimator.PyTorch._recipe_load", return_value=("nova_recipe", recipe)
+    ):
+        mock_resolve_save.return_value = recipe
+
+        pytorch = PyTorch(
+            training_recipe="nova_recipe",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE_GPU,
+            image_uri=IMAGE_URI,
+            framework_version="1.13.1",
+            py_version="py3",
+        )
+
+        # Check that the Nova recipe was correctly identified
+        assert pytorch.is_nova_or_eval_recipe is True
+
+        # Verify that reward_lambda_arn hyperparameter was set correctly
+        assert (
+            pytorch._hyperparameters.get("reward_lambda_arn")
+            == "arn:aws:lambda:us-west-2:123456789012:function:reward-function"
+        )
+
+
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_resolve_and_save")
+def test_setup_for_nova_recipe_without_reward_lambda(mock_resolve_save, sagemaker_session):
+    """Test that _setup_for_nova_recipe does not set reward_lambda_arn when not present."""
+    # Create a mock recipe without reward lambda config
+    recipe = OmegaConf.create(
+        {
+            "run": {
+                "model_type": "amazon.nova.foobar3",
+                "model_name_or_path": "foobar/foobar-3-8b",
+                "replicas": 1,
+            },
+        }
+    )
+
+    with patch(
+        "sagemaker.pytorch.estimator.PyTorch._recipe_load", return_value=("nova_recipe", recipe)
+    ):
+        mock_resolve_save.return_value = recipe
+
+        pytorch = PyTorch(
+            training_recipe="nova_recipe",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE_GPU,
+            image_uri=IMAGE_URI,
+            framework_version="1.13.1",
+            py_version="py3",
+        )
+
+        # Check that the Nova recipe was correctly identified
+        assert pytorch.is_nova_or_eval_recipe is True
+
+        # Verify that reward_lambda_arn hyperparameter was not set
+        assert "reward_lambda_arn" not in pytorch._hyperparameters

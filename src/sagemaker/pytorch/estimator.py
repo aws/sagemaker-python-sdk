@@ -1251,6 +1251,12 @@ class PyTorch(Framework):
             if lambda_arn:
                 args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
 
+        # Handle reward lambda configuration
+        run_config = recipe.get("run", {})
+        reward_lambda_arn = run_config.get("reward_lambda_arn", "")
+        if reward_lambda_arn:
+            args["hyperparameters"]["reward_lambda_arn"] = reward_lambda_arn
+
         # Resolve and save the final recipe
         self._recipe_resolve_and_save(recipe, recipe_name, args["source_dir"])
 
