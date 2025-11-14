@@ -37,6 +37,11 @@ TEI_VERSIONS_MAPPING = {
         "1.8.2": "2.0.1-tei1.8.2-cpu-py310-ubuntu22.04",
     },
 }
+HF_VLLM_VERSIONS_MAPPING = {
+    "inf2": {
+        "0.4.1": "0.10.2-neuronx-py310-sdk2.26.0-ubuntu22.04",
+    },
+}
 HF_VERSIONS_MAPPING = {
     "gpu": {
         "0.6.0": "2.0.0-tgi0.6.0-gpu-py39-cu118-ubuntu20.04",
@@ -119,6 +124,30 @@ def test_huggingface_uris(load_config):
                 ACCOUNTS[region],
                 version,
                 HF_VERSIONS_MAPPING[device][version],
+                region=region,
+            )
+            assert expected == uri
+
+
+@pytest.mark.parametrize("load_config", ["huggingface-vllm-neuronx.json"], indirect=True)
+def test_huggingface_vllm_neuronx_uris(load_config):
+    VERSIONS = load_config["inference"]["versions"]
+    device = load_config["inference"]["processors"][0]
+    assert device == "inf2"
+    backend = "huggingface-vllm-neuronx"
+
+    # Fail if device is not in mapping
+    if device not in HF_VLLM_VERSIONS_MAPPING:
+        raise ValueError(f"Device {device} not found in HF_VLLM_VERSIONS_MAPPING")
+    for version in VERSIONS:
+        ACCOUNTS = load_config["inference"]["versions"][version]["registries"]
+        for region in ACCOUNTS.keys():
+            uri = get_huggingface_llm_image_uri(backend, region=region, version=version)
+            expected = expected_uris.huggingface_llm_framework_uri(
+                "huggingface-vllm-inference-neuronx",
+                ACCOUNTS[region],
+                version,
+                HF_VLLM_VERSIONS_MAPPING[device][version],
                 region=region,
             )
             assert expected == uri
