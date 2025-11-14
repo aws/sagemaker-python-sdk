@@ -25,12 +25,16 @@ TEI_VERSIONS_MAPPING = {
         "1.4.0": "2.0.1-tei1.4.0-gpu-py310-cu122-ubuntu22.04",
         "1.6.0": "2.0.1-tei1.6.0-gpu-py310-cu122-ubuntu22.04",
         "1.7.0": "2.0.1-tei1.7.0-gpu-py310-cu122-ubuntu22.04",
+        "1.8.0": "2.0.1-tei1.8.0-gpu-py310-cu122-ubuntu22.04",
+        "1.8.2": "2.0.1-tei1.8.2-gpu-py310-cu122-ubuntu22.04",
     },
     "cpu": {
         "1.2.3": "2.0.1-tei1.2.3-cpu-py310-ubuntu22.04",
         "1.4.0": "2.0.1-tei1.4.0-cpu-py310-ubuntu22.04",
         "1.6.0": "2.0.1-tei1.6.0-cpu-py310-ubuntu22.04",
         "1.7.0": "2.0.1-tei1.7.0-cpu-py310-ubuntu22.04",
+        "1.8.0": "2.0.1-tei1.8.0-cpu-py310-ubuntu22.04",
+        "1.8.2": "2.0.1-tei1.8.2-cpu-py310-ubuntu22.04",
     },
 }
 HF_VERSIONS_MAPPING = {
@@ -53,6 +57,11 @@ HF_VERSIONS_MAPPING = {
         "2.3.1": "2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04",
         "2.4.0": "2.4.0-tgi2.4.0-gpu-py311-cu124-ubuntu22.04-v2.2",
         "3.0.1": "2.4.0-tgi3.0.1-gpu-py311-cu124-ubuntu22.04-v2.1",
+        "3.1.1": "2.6.0-tgi3.1.1-gpu-py311-cu124-ubuntu22.04",
+        "3.2.0": "2.6.0-tgi3.2.0-gpu-py311-cu124-ubuntu22.04",
+        "3.2.3": "2.6.0-tgi3.2.3-gpu-py311-cu124-ubuntu22.04",
+        "3.3.4": "2.7.0-tgi3.3.4-gpu-py311-cu124-ubuntu22.04",
+        "3.3.6": "2.7.0-tgi3.3.6-gpu-py311-cu124-ubuntu22.04",
     },
     "inf2": {
         "0.0.16": "1.13.1-optimum0.0.16-neuronx-py310-ubuntu22.04",
@@ -66,6 +75,9 @@ HF_VERSIONS_MAPPING = {
         "0.0.24": "2.1.2-optimum0.0.24-neuronx-py310-ubuntu22.04",
         "0.0.25": "2.1.2-optimum0.0.25-neuronx-py310-ubuntu22.04",
         "0.0.27": "2.1.2-optimum0.0.27-neuronx-py310-ubuntu22.04",
+        "0.0.28": "2.1.2-optimum0.0.28-neuronx-py310-ubuntu22.04",
+        "0.2.0": "2.5.1-optimum3.3.4-neuronx-py310-ubuntu22.04",
+        "0.3.0": "2.7.0-optimum3.3.6-neuronx-py310-ubuntu22.04",
     },
 }
 

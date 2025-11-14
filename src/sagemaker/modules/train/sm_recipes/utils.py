@@ -19,20 +19,21 @@ import json
 import shutil
 import tempfile
 from urllib.request import urlretrieve
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, Union
 
 import omegaconf
-from omegaconf import OmegaConf, dictconfig
+from omegaconf import OmegaConf, dictconfig, DictConfig
 
 from sagemaker.image_uris import retrieve
 
 from sagemaker.modules import logger
 from sagemaker.modules.utils import _run_clone_command_silent
+from sagemaker.modules.constants import SM_RECIPE_YAML
 from sagemaker.modules.configs import Compute, SourceCode
 from sagemaker.modules.distributed import Torchrun, SMP
 
 
-def _try_resolve_recipe(recipe, key=None):
+def _try_resolve_recipe(recipe: DictConfig, key=None) -> DictConfig:
     """Try to resolve recipe and return resolved recipe."""
     if key is not None:
         recipe = dictconfig.DictConfig({key: recipe})
@@ -86,6 +87,8 @@ def _load_base_recipe(
                 )
     else:
         recipe_launcher_dir = tempfile.TemporaryDirectory(prefix="launcher_")
+        if training_recipes_cfg is None:
+            training_recipes_cfg = _load_recipes_cfg()
 
         launcher_repo = os.environ.get("TRAINING_LAUNCHER_GIT", None) or training_recipes_cfg.get(
             "launcher_repo"
@@ -133,6 +136,7 @@ def _get_trainining_recipe_gpu_model_name_and_script(model_type: str):
         "mistral": ("mistral", "mistral_pretrain.py"),
         "mixtral": ("mixtral", "mixtral_pretrain.py"),
         "deepseek": ("deepseek", "deepseek_pretrain.py"),
+        "gpt_oss": ("custom_model", "custom_pretrain.py"),
     }
 
     for key in model_type_to_script:
@@ -149,7 +153,7 @@ def _get_trainining_recipe_gpu_model_name_and_script(model_type: str):
 def _configure_gpu_args(
     training_recipes_cfg: Dict[str, Any],
     region_name: str,
-    recipe: OmegaConf,
+    recipe: DictConfig,
     recipe_train_dir: tempfile.TemporaryDirectory,
 ) -> Dict[str, Any]:
     """Configure arguments specific to GPU."""
@@ -231,12 +235,117 @@ def _configure_trainium_args(
     return args
 
 
+def _is_nova_recipe(
+    recipe: DictConfig,
+) -> bool:
+    """Check if the recipe is a Nova recipe.
+
+    A recipe is considered a Nova recipe if it meets either of the following conditions:
+
+    1. It has a run section with:
+       - A model_type that includes "amazon.nova"
+       - A model_name_or_path field
+
+    OR
+
+    2. It has a training_config section with:
+       - A distillation_data field
+
+    Args:
+        recipe (DictConfig): The loaded recipe configuration
+
+    Returns:
+        bool: True if the recipe is a Nova recipe, False otherwise
+    """
+    run_config = recipe.get("run", {})
+    model_type = run_config.get("model_type", "").lower()
+    has_nova_model = (
+        model_type and "amazon.nova" in model_type and "model_name_or_path" in run_config
+    )
+
+    # Check for distillation data
+    training_config = recipe.get("training_config", {})
+    has_distillation = training_config.get("distillation_data") is not None
+    return bool(has_nova_model) or bool(has_distillation)
+
+
+def _get_args_from_nova_recipe(
+    recipe: DictConfig,
+    compute: Compute,
+    role: Optional[str] = None,
+) -> Tuple[Dict[str, Any], tempfile.TemporaryDirectory]:
+    if not compute.instance_count and not recipe.get("run", {}).get("replicas", None):
+        raise ValueError("Must set ``instance_type`` in compute or ``replicas`` in recipe.")
+    compute.instance_count = compute.instance_count or recipe.get("run", {}).get("replicas")
+
+    args = dict()
+    args.update({"hyperparameters": {}})
+
+    run_config = recipe.get("run", {})
+    model_name_or_path = run_config.get("model_name_or_path")
+    if model_name_or_path:
+        if model_name_or_path.startswith("s3://"):
+            args["hyperparameters"]["base_model_location"] = model_name_or_path
+        else:
+            args["hyperparameters"]["base_model"] = model_name_or_path
+
+    # Handle distillation configuration
+    training_config = recipe.get("training_config", {})
+    distillation_data = training_config.get("distillation_data")
+    if bool(distillation_data):
+        args["hyperparameters"]["distillation_data"] = distillation_data
+        if not role:
+            raise ValueError("Must provide 'role' parameter when using Nova distillation")
+        args["hyperparameters"]["role_arn"] = role
+
+        kms_key = training_config.get("kms_key")
+        if kms_key is None:
+            raise ValueError(
+                'Nova distillation job recipe requires "kms_key" field in "training_config"'
+            )
+        args["hyperparameters"]["kms_key"] = kms_key
+
+    # Handle eval custom lambda configuration
+    if recipe.get("evaluation", {}):
+        processor = recipe.get("processor", {})
+        lambda_arn = processor.get("lambda_arn", "")
+        if lambda_arn:
+            args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
+
+    _register_custom_resolvers()
+
+    # Resolve Final Recipe
+    final_recipe = _try_resolve_recipe(recipe)
+    if final_recipe is None:
+        final_recipe = _try_resolve_recipe(recipe, "recipes")
+    if final_recipe is None:
+        final_recipe = _try_resolve_recipe(recipe, "training")
+    if final_recipe is None:
+        raise RuntimeError("Could not resolve provided recipe.")
+
+    # Save Final Recipe to tmp dir
+    recipe_local_dir = tempfile.TemporaryDirectory(prefix="recipe_")
+    final_recipe_path = os.path.join(recipe_local_dir.name, SM_RECIPE_YAML)
+    OmegaConf.save(config=final_recipe, f=final_recipe_path)
+
+    args.update(
+        {
+            "compute": compute,
+            "training_image": None,
+            "source_code": None,
+            "distributed": None,
+        }
+    )
+    return args, recipe_local_dir
+
+
 def _get_args_from_recipe(
-    training_recipe: str,
+    training_recipe: Union[str, DictConfig],
     compute: Compute,
     region_name: str,
     recipe_overrides: Optional[Dict[str, Any]],
     requirements: Optional[str],
+    role: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], tempfile.TemporaryDirectory]:
     """Get arguments for ModelTrainer from a training recipe.
 
@@ -252,8 +361,8 @@ def _get_args_from_recipe(
     ```
 
     Args:
-        training_recipe (str):
-            Name of the training recipe or path to the recipe file.
+        training_recipe (Union[str, Dict[str, Any]]):
+            Name of the training recipe or path to the recipe file or loaded recipe Dict.
         compute (Compute):
             Compute configuration for training.
         region_name (str):
@@ -267,7 +376,13 @@ def _get_args_from_recipe(
         raise ValueError("Must set `instance_type` in compute when using training recipes.")
 
     training_recipes_cfg = _load_recipes_cfg()
-    recipe = _load_base_recipe(training_recipe, recipe_overrides, training_recipes_cfg)
+    if isinstance(training_recipe, str):
+        recipe = _load_base_recipe(training_recipe, recipe_overrides, training_recipes_cfg)
+    else:
+        recipe = training_recipe
+    if _is_nova_recipe(recipe):
+        args, recipe_local_dir = _get_args_from_nova_recipe(recipe, compute, role=role)
+        return args, recipe_local_dir
 
     if "trainer" not in recipe:
         raise ValueError("Supplied recipe does not contain required field trainer.")
@@ -281,7 +396,7 @@ def _get_args_from_recipe(
     if compute.instance_count is None:
         if "num_nodes" not in recipe["trainer"]:
             raise ValueError(
-                "Must provide Compute with instance_count or" " set trainer -> num_nodes in recipe."
+                "Must provide Compute with instance_count or set trainer -> num_nodes in recipe."
             )
         compute.instance_count = recipe["trainer"]["num_nodes"]
 
@@ -311,7 +426,7 @@ def _get_args_from_recipe(
 
     # Save Final Recipe to source_dir
     OmegaConf.save(
-        config=final_recipe, f=os.path.join(args["source_code"].source_dir, "recipe.yaml")
+        config=final_recipe, f=os.path.join(args["source_code"].source_dir, SM_RECIPE_YAML)
     )
 
     # If recipe_requirements is provided, copy it to source_dir
@@ -323,7 +438,7 @@ def _get_args_from_recipe(
     args.update(
         {
             "compute": compute,
-            "hyperparameters": {"config-path": ".", "config-name": "recipe.yaml"},
+            "hyperparameters": {"config-path": ".", "config-name": SM_RECIPE_YAML},
         }
     )
 

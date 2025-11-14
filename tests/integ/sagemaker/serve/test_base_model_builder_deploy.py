@@ -185,7 +185,7 @@ def xgboost_model_builder(mb_sagemaker_session):
 
 def test_real_time_deployment(xgboost_model_builder):
     real_time_predictor = xgboost_model_builder.deploy(
-        endpoint_name="test", initial_instance_count=1
+        endpoint_name=f"test-{uuid.uuid1().hex}", initial_instance_count=1
     )
 
     assert real_time_predictor is not None
@@ -198,7 +198,7 @@ def test_real_time_deployment(xgboost_model_builder):
 
 def test_serverless_deployment(xgboost_model_builder):
     serverless_predictor = xgboost_model_builder.deploy(
-        endpoint_name="test1", inference_config=ServerlessInferenceConfig()
+        endpoint_name=f"test1-{uuid.uuid1().hex}", inference_config=ServerlessInferenceConfig()
     )
 
     assert serverless_predictor is not None
@@ -211,7 +211,7 @@ def test_serverless_deployment(xgboost_model_builder):
 
 def test_async_deployment(xgboost_model_builder, mb_sagemaker_session):
     async_predictor = xgboost_model_builder.deploy(
-        endpoint_name="test2",
+        endpoint_name=f"test2-{uuid.uuid1().hex}",
         inference_config=AsyncInferenceConfig(
             output_path=s3_path_join(
                 "s3://", mb_sagemaker_session.default_bucket(), "async_inference/output"

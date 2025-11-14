@@ -1,5 +1,142 @@
 # Changelog
 
+## v2.254.1 (2025-10-31)
+
+### Bug Fixes and Other Changes
+
+ * update get_execution_role to directly return the ExecutionRoleArn if it presents in the resource metadata file
+ * [hf] HF PT Training DLCs
+
+## v2.254.0 (2025-10-29)
+
+### Features
+
+ * Triton v25.09 DLC
+
+### Bug Fixes and Other Changes
+
+ * Add Numpy 2.0 support
+ * add HF Optimum Neuron DLCs
+ * [Hugging Face][Pytorch] Inference DLC 4.51.3
+ * [hf] HF Inference TGI
+
+## v2.253.1 (2025-10-14)
+
+### Bug Fixes and Other Changes
+
+ * Update instance type regex to also include hyphens
+ * Revert the change "Add Numpy 2.0 support"
+ * [hf-tei] add image uri to utils
+ * add TEI 1.8.2
+
+## v2.253.0 (2025-10-10)
+
+### Features
+
+ * Added condition to allow eval recipe.
+ * add model_type hyperparameter support for Nova recipes
+
+### Bug Fixes and Other Changes
+
+ * Fix for a failed slow test: numpy fix
+ * Add numpy 2.0 support
+ * chore: domain support for eu-isoe-west-1
+ * Adding default identity implementations to InferenceSpec
+ * djl regions fixes #5273
+ * Fix flaky integ test
+
+## v2.252.0 (2025-09-29)
+
+### Features
+
+ * change S3 endpoint env name
+ * add eval custom lambda arn to hyperparameters
+
+### Bug Fixes and Other Changes
+
+ * merge rba without the iso region changes
+ * handle trial component status message longer than API supports
+ * Add nova custom lambda in hyperparameter from estimator
+ * add retryable option to emr step in SageMaker Pipelines
+ * Feature/js mlops telemetry
+ * latest tgi
+
+## v2.251.1 (2025-08-29)
+
+### Bug Fixes and Other Changes
+
+ * chore: onboard tei 1.8.0
+
+## v2.251.0 (2025-08-21)
+
+### Features
+
+ * support pipeline versioning
+
+### Bug Fixes and Other Changes
+
+ * GPT OSS Hotfix
+ * dockerfile stuck on interactive shell
+ * add sleep for model deployment
+
+## v2.250.0 (2025-08-08)
+
+### Features
+
+ * Add support for InstancePlacementConfig in Estimator for training jobs running on ultraserver capacity
+
+### Bug Fixes and Other Changes
+
+ * Add more constraints to test requirements
+
+## v2.249.0 (2025-07-31)
+
+### Features
+
+ * AWS Batch for SageMaker Training jobs
+
+### Bug Fixes and Other Changes
+
+ * Directly use customer-provided endpoint name for ModelBuilder deployment.
+ * update image_uri_configs 07-23-2025 07:18:25 PST
+
+## v2.248.2 (2025-07-22)
+
+### Bug Fixes and Other Changes
+
+ * Relax boto3 version requirement
+ * update image_uri_configs 07-22-2025 07:18:25 PST
+ * update image_uri_configs 07-18-2025 07:18:28 PST
+ * add hard dependency on sagemaker-core pypi lib
+ * When rootlessDocker is enabled, return a fixed SageMaker IP
+
+## v2.248.1 (2025-07-16)
+
+### Bug Fixes and Other Changes
+
+ * Nova training support
+
+## v2.248.0 (2025-07-15)
+
+### Features
+
+ * integrate amtviz for visualization of tuning jobs
+
+### Bug Fixes and Other Changes
+
+ * build(deps): bump requests in /tests/data/serve_resources/mlflow/pytorch
+ * build(deps): bump protobuf from 4.25.5 to 4.25.8 in /requirements/extras
+ * build(deps): bump mlflow in /tests/data/serve_resources/mlflow/xgboost
+ * build(deps): bump torch in /tests/data/modules/script_mode
+ * sanitize git clone repo input url
+ * Adding Hyperpod feature to enable hyperpod telemetry
+ * Adding Hyperpod feature to enable hyperpod telemetry
+ * Bump SMD version to enable custom workflow deployment.
+ * Update TF DLC python version to py312
+ * update image_uri_configs 07-04-2025 07:18:27 PST
+ * update image_uri_configs 06-26-2025 07:18:35 PST
+ * relax protobuf to <6.32
+
 ## v2.247.1 (2025-06-23)
 
 ### Bug Fixes and Other Changes

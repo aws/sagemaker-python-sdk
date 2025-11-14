@@ -156,6 +156,9 @@ TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = [
     "2.3.1",
     "2.4.1",
     "2.5.1",
+    "2.6.0",
+    "2.7.1",
+    "2.8.0",
 ]
 
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
@@ -962,7 +965,7 @@ def validate_distribution_for_instance_type(instance_type, distribution):
     """
     err_msg = ""
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             keys = list(distribution.keys())
             if len(keys) == 0:
@@ -1063,7 +1066,7 @@ def validate_torch_distributed_distribution(
             )
 
     # Check entry point type
-    if not entry_point.endswith(".py"):
+    if entry_point is not None and not entry_point.endswith(".py"):
         err_msg += (
             "Unsupported entry point type for the distribution torch_distributed.\n"
             "Only python programs (*.py) are supported."
@@ -1083,7 +1086,7 @@ def _is_gpu_instance(instance_type):
         bool: Whether or not the instance_type supports GPU
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match:
             if match[1].startswith("p") or match[1].startswith("g"):
                 return True
@@ -1102,7 +1105,7 @@ def _is_trainium_instance(instance_type):
         bool: Whether or not the instance_type is a Trainium instance
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             return True
     return False
@@ -1149,7 +1152,7 @@ def _instance_type_supports_profiler(instance_type):
         bool: Whether or not the region supports Amazon SageMaker Debugger profiling feature.
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             return True
     return False

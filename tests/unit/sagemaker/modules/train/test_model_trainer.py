@@ -21,6 +21,7 @@ import yaml
 import pytest
 from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
+from tempfile import NamedTemporaryFile
 
 from sagemaker import image_uris
 from sagemaker_core.main.resources import TrainingJob
@@ -43,6 +44,7 @@ from sagemaker.modules.constants import (
     DISTRIBUTED_JSON,
     SOURCE_CODE_JSON,
     TRAIN_SCRIPT,
+    SM_RECIPE_CONTAINER_PATH,
 )
 from sagemaker.modules.configs import (
     Compute,
@@ -1300,6 +1302,53 @@ def test_model_trainer_default_paths(mock_training_job, mock_unique_name, module
     assert kwargs["tensor_board_output_config"].local_path == "/opt/ml/output/tensorboard"
 
 
+def test_create_training_job_args(modules_session):
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+    )
+
+    args = model_trainer._create_training_job_args()
+    assert args["algorithm_specification"] == AlgorithmSpecification(
+        training_image=DEFAULT_IMAGE,
+        algorithm_name=None,
+        training_input_mode="File",
+        container_entrypoint=None,
+        container_arguments=None,
+        training_image_config=None,
+        metric_definitions=None,
+    )
+    assert args["resource_config"] == ResourceConfig(
+        instance_type=DEFAULT_INSTANCE_TYPE,
+        instance_count=1,
+        volume_size_in_gb=30,
+    )
+    assert args["role_arn"] == DEFAULT_ROLE
+
+
+def test_create_training_job_args_boto3(modules_session):
+    model_trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=modules_session,
+        compute=DEFAULT_COMPUTE_CONFIG,
+    )
+
+    args = model_trainer._create_training_job_args(boto3=True)
+    assert args["AlgorithmSpecification"] == {
+        "TrainingImage": DEFAULT_IMAGE,
+        "TrainingInputMode": "File",
+    }
+    assert args["ResourceConfig"] == {
+        "InstanceType": DEFAULT_INSTANCE_TYPE,
+        "InstanceCount": 1,
+        "VolumeSizeInGB": 30,
+    }
+    assert args["RoleArn"] == DEFAULT_ROLE
+
+
 @patch("sagemaker.modules.train.model_trainer.TrainingJob")
 def test_input_merge(mock_training_job, modules_session):
     model_input = InputData(channel_name="model", data_source="s3://bucket/model/model.tar.gz")
@@ -1339,3 +1388,91 @@ def test_input_merge(mock_training_job, modules_session):
             input_mode="File",
         ),
     ]
+
+
+@patch("sagemaker.modules.train.model_trainer._get_unique_name")
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        if os.path.isfile(path):
+            file_name = os.path.basename(path)
+            return f"s3://{bucket}/{key_prefix}/{file_name}"
+        else:
+            return f"s3://{bucket}/{key_prefix}"
+
+    unique_name = "base-job-0123456789"
+    base_name = "base-job"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_unique_name.return_value = unique_name
+
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            base_job_name=base_name,
+        )
+
+        assert trainer._is_nova_recipe
+
+        trainer.train()
+        mock_training_job.create.assert_called_once()
+        assert mock_training_job.create.call_args.kwargs["hyper_parameters"] == {
+            "base_model": "dummy-model",
+            "sagemaker_recipe_local_path": SM_RECIPE_CONTAINER_PATH,
+        }
+
+        default_base_path = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{base_name}"
+        assert mock_training_job.create.call_args.kwargs["input_data_config"] == [
+            Channel(
+                channel_name="recipe",
+                data_source=DataSource(
+                    s3_data_source=S3DataSource(
+                        s3_data_type="S3Prefix",
+                        s3_uri=f"{default_base_path}/{unique_name}/input/recipe/recipe.yaml",
+                        s3_data_distribution_type="FullyReplicated",
+                    )
+                ),
+                input_mode="File",
+            )
+        ]
+
+
+def test_nova_recipe_with_distillation(modules_session):
+    recipe_data = {"training_config": {"distillation_data": "true", "kms_key": "alias/my-kms-key"}}
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        # Create ModelTrainer from recipe
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        # Verify that the hyperparameters were set correctly
+        assert trainer.hyperparameters == {
+            "distillation_data": "true",
+            "role_arn": DEFAULT_ROLE,
+            "kms_key": "alias/my-kms-key",
+        }
+
+        # Clean up the temporary file
+        os.unlink(recipe.name)

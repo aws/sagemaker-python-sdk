@@ -153,7 +153,8 @@ def get_child_process_ids(pid):
 def get_docker_host():
     """Discover remote docker host address (if applicable) or use "localhost"
 
-    Use "docker context inspect" to read current docker host endpoint url,
+    When rootlessDocker is enabled (Cgroup Driver: none), use fixed SageMaker IP.
+    Otherwise, Use "docker context inspect" to read current docker host endpoint url,
     url must start with "tcp://"
 
     Args:
@@ -161,6 +162,27 @@ def get_docker_host():
     Returns:
         docker_host (str): Docker host DNS or IP address
     """
+    # Check if using SageMaker rootless Docker by examining storage driver
+    try:
+        cmd = ["docker", "info"]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, err = process.communicate()
+        if process.returncode == 0:  # Check return code instead of stderr
+            output_text = output.decode("utf-8")
+            # Check for rootless Docker by looking at Cgroup Driver
+            if "Cgroup Driver: none" in output_text:
+                # log the result of check
+                logger.warning("RootlessDocker detected (Cgroup Driver: none), returning fixed IP.")
+                # SageMaker rootless Docker detected - return fixed IP
+                return "172.17.0.1"
+            else:
+                logger.warning(
+                    "RootlessDocker not detected, falling back to remote host IP or localhost."
+                )
+    except subprocess.SubprocessError as e:
+        logger.warning("Failed to run 'docker info' command when checking rootlessDocker: %s.", e)
+
+    # Fallback to existing logic for remote Docker hosts
     cmd = "docker context inspect".split()
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, err = process.communicate()

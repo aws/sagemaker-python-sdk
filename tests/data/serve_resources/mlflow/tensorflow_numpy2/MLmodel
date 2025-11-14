@@ -1,0 +1,13 @@
+artifact_path: model
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.tensorflow
+    python_version: 3.10.0
+  tensorflow:
+    saved_model_dir: tf2model
+    model_type: tf2-module
+mlflow_version: 2.20.3
+model_uuid: test-uuid-numpy2

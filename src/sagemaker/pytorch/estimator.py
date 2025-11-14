@@ -19,6 +19,8 @@ import math
 import os
 import shutil
 import tempfile
+import time
+from datetime import datetime
 from typing import Union, Optional, Dict
 from urllib.request import urlretrieve
 
@@ -27,6 +29,7 @@ from omegaconf import OmegaConf, dictconfig
 from packaging.version import Version
 
 from sagemaker.estimator import Framework, EstimatorBase
+from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
@@ -96,6 +99,7 @@ def _get_training_recipe_gpu_script(code_dir, recipe, source_dir):
         "mistral": ("mistral", "mistral_pretrain.py"),
         "mixtral": ("mixtral", "mixtral_pretrain.py"),
         "deepseek": ("deepseek", "deepseek_pretrain.py"),
+        "gpt_oss": ("custom_model", "custom_pretrain.py"),
     }
 
     if "model" not in recipe:
@@ -124,6 +128,187 @@ def _get_training_recipe_trainium_script(code_dir, source_dir):
     script = "training_orchestrator.py"
     shutil.copytree(script_dir, source_dir, dirs_exist_ok=True)
     return script
+
+
+def _is_nova_recipe(recipe):
+    """Check if the recipe is a Nova recipe.
+
+    A Nova recipe is identified by:
+    1. Having a run section
+    2. The model_type in run has a "amazon.nova" prefix
+    3. The run contains model_name_or_path
+
+    OR
+
+    1. Has a training_config section
+    2. The training config_section has a distillation_data field
+
+    Args:
+        recipe (OmegaConf): The loaded recipe configuration
+
+    Returns:
+        bool: True if the recipe is a Nova recipe, False otherwise
+    """
+    # Check for nova model
+    run_config = recipe.get("run", {})
+    model_type = run_config.get("model_type", "").lower()
+    has_nova_model = (
+        model_type and "amazon.nova" in model_type and "model_name_or_path" in run_config
+    )
+
+    # Check for distillation data
+    training_config = recipe.get("training_config", {})
+    has_distillation = training_config.get("distillation_data") is not None
+
+    return bool(has_nova_model) or bool(has_distillation)
+
+
+def _is_eval_recipe(recipe):
+    """Check if the recipe is an eval recipe.
+
+    An eval recipe is identified by:
+    1. Having a evaluation section
+
+    Args:
+        recipe (OmegaConf): The loaded recipe configuration
+
+    Returns:
+        bool: True if the recipe is an eval recipe, False otherwise
+    """
+    # Check for eval model
+    eval_config = recipe.get("evaluation", {})
+    return bool(eval_config)
+
+
+def _recipe_initialize_args(source_dir):
+    """Initialize the arguments dictionary for recipe setup.
+
+    Args:
+        source_dir (str): Path to the source directory.
+
+    Returns:
+        dict: Initialized arguments dictionary.
+
+    Raises:
+        ValueError: If source_dir is not a local directory.
+    """
+    args = {"hyperparameters": {}}
+
+    if source_dir is None:
+        args["source_dir"] = "."
+    else:
+        if not os.path.exists(source_dir):
+            raise ValueError("When using training_recipe, source_dir must be a local directory.")
+        args["source_dir"] = source_dir
+
+    return args
+
+
+def _recipe_get_region_name(kwargs):
+    """Get the AWS region name from session or create a new session.
+
+    Args:
+        kwargs (dict): Dictionary of keyword arguments.
+
+    Returns:
+        str: AWS region name.
+    """
+    if kwargs.get("sagemaker_session") is not None:
+        return kwargs.get("sagemaker_session").boto_region_name
+    return Session().boto_region_name
+
+
+def _recipe_load_config():
+    """Load the training recipes configuration from JSON file.
+
+    Returns:
+        dict: Training recipes configuration.
+    """
+    training_recipes_cfg_filename = os.path.join(os.path.dirname(__file__), "training_recipes.json")
+    with open(training_recipes_cfg_filename) as training_recipes_cfg_file:
+        return json.load(training_recipes_cfg_file)
+
+
+def _recipe_load_from_yaml(training_recipe, temp_local_recipe):
+    """Load recipe from a YAML file or URL.
+
+    Args:
+        training_recipe (str): Path to the training recipe.
+        temp_local_recipe (str): Path to the temporary local recipe file.
+
+    Raises:
+        ValueError: If the recipe cannot be fetched.
+    """
+    if os.path.isfile(training_recipe):
+        shutil.copy(training_recipe, temp_local_recipe)
+    else:
+        try:
+            urlretrieve(training_recipe, temp_local_recipe)
+        except Exception as e:
+            raise ValueError(
+                f"Could not fetch the provided recipe {training_recipe}: exception {str(e)}"
+            )
+
+
+def _recipe_load_predefined(
+    training_recipe, recipe_launcher_dir, temp_local_recipe, training_recipes_cfg
+):
+    """Load a predefined recipe from the recipe launcher.
+
+    Args:
+        training_recipe (str): Name of the predefined recipe.
+        recipe_launcher_dir (str): Path to the recipe launcher directory.
+        temp_local_recipe (str): Path to the temporary local recipe file.
+        training_recipes_cfg (dict): Training recipes configuration.
+
+    Raises:
+        ValueError: If the recipe cannot be found.
+    """
+    launcher_repo = os.environ.get("TRAINING_LAUNCHER_GIT", None) or training_recipes_cfg.get(
+        "launcher_repo"
+    )
+    _run_clone_command(launcher_repo, recipe_launcher_dir)
+    recipe_path = os.path.join(
+        recipe_launcher_dir,
+        "recipes_collection",
+        "recipes",
+        training_recipe + ".yaml",
+    )
+    if os.path.isfile(recipe_path):
+        shutil.copy(recipe_path, temp_local_recipe)
+    else:
+        raise ValueError(f"Recipe {training_recipe} not found.")
+
+
+def _device_get_distribution(device_type):
+    """Get the distribution configuration based on device type.
+
+    Args:
+        device_type (str): Device type (gpu, trainium, or cpu).
+
+    Returns:
+        dict: Distribution configuration.
+
+    Raises:
+        ValueError: If the device type is not supported.
+    """
+    if device_type == "gpu":
+        smp_options = {
+            "enabled": True,
+            "parameters": {
+                "placement_strategy": "cluster",
+            },
+        }
+        return {
+            "smdistributed": {"modelparallel": smp_options},
+            "torch_distributed": {"enabled": True},
+        }
+    elif device_type == "trainium":
+        return {
+            "torch_distributed": {"enabled": True},
+        }
+    else:
+        return {}
 
 
 class PyTorch(Framework):
@@ -358,6 +543,7 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        self.is_nova_or_eval_recipe = False
         if training_recipe is not None:
             if entry_point is not None:
                 logger.warning("Argument entry_point will be ignored with training_recipe.")
@@ -368,6 +554,10 @@ class PyTorch(Framework):
             args = self._setup_for_training_recipe(
                 training_recipe, recipe_overrides, source_dir, kwargs
             )
+
+            if self.is_nova_or_eval_recipe and image_uri is None:
+                raise ValueError("Must supply image_uri for nova jobs.")
+
             entry_point = args["entry_point"]
             source_dir = args["source_dir"]
             hyperparameters = args["hyperparameters"]
@@ -392,7 +582,12 @@ class PyTorch(Framework):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(PyTorch, self).__init__(
-            entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
+            entry_point,
+            source_dir,
+            hyperparameters,
+            image_uri=image_uri,
+            is_nova_job=self.is_nova_or_eval_recipe,
+            **kwargs,
         )
 
         if "entry_point" not in kwargs:
@@ -499,6 +694,72 @@ class PyTorch(Framework):
 
         return hyperparameters
 
+    def fit(
+        self,
+        inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
+        wait: bool = True,
+        logs: str = "All",
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
+    ):
+        """Train a model using the input training dataset.
+
+        Adds the recipe file to the inputs when a training recipe is used.
+
+        Args:
+            inputs (str or dict or sagemaker.inputs.TrainingInput or
+                sagemaker.inputs.FileSystemInput): Information about the training data.
+            wait (bool): Whether the call should wait until the job completes (default: True).
+            logs ([str]): A list of strings specifying which logs to print.
+            job_name (str): Training job name.
+            experiment_config (dict[str, str]): Experiment management configuration.
+
+        Returns:
+            None or pipeline step arguments
+        """
+        # Handle recipe upload and input channel creation if we have a recipe
+        if (
+            self.is_nova_or_eval_recipe is not None
+            and self.is_nova_or_eval_recipe
+            and hasattr(self, "training_recipe_file")
+            and self.training_recipe_file
+        ):
+            # Upload the recipe to S3 if it hasn't been uploaded yet
+            if not hasattr(self, "recipe_s3_uri") or not self.recipe_s3_uri:
+                self.recipe_s3_uri = self._upload_recipe_to_s3(
+                    self.sagemaker_session, self.training_recipe_file.name
+                )
+
+            # Prepare inputs dictionary
+            from sagemaker.inputs import TrainingInput
+
+            if inputs is None:
+                inputs = {}
+            elif not isinstance(inputs, dict):
+                inputs = {"training": inputs}
+
+            # Add the recipe channel
+            recipe_channel_name = "recipe"
+            inputs[recipe_channel_name] = TrainingInput(
+                s3_data=os.path.dirname(self.recipe_s3_uri), input_mode="File"
+            )
+
+            # Update hyperparameters to reference the recipe location in the container
+            recipe_filename = os.path.basename(self.training_recipe_file.name)
+
+            self._hyperparameters.update(
+                {
+                    "sagemaker_recipe_local_path": f"/opt/ml/input/data/{recipe_channel_name}/{recipe_filename}",
+                }
+            )
+        return super(PyTorch, self).fit(
+            inputs=inputs,
+            wait=wait,
+            logs=logs,
+            job_name=job_name,
+            experiment_config=experiment_config,
+        )
+
     def create_model(
         self,
         model_server_workers=None,
@@ -604,155 +865,209 @@ class PyTorch(Framework):
 
         return init_params
 
-    @classmethod
-    def _setup_for_training_recipe(cls, training_recipe, recipe_overrides, source_dir, kwargs):
-        """Performs training recipe specific setup and returns recipe specific args.
+    # The old class methods have been replaced by static methods and module-level functions
 
-        Updates kwargs and returns a dictionary of args to use for estimator
-        initialization and setup when using a training recipe. Updates the paths in
-        the recipe for Sagemaker Jobs environment.
+    @staticmethod
+    def _recipe_load(training_recipe, recipe_launcher_dir, training_recipes_cfg):
+        """Load the recipe from file path, URL, or predefined recipe.
 
         Args:
-            training_recipe (str): A recipe which is a local file path, a url or a
-                                   sagemaker training recipe.
-            recipe_overrides (Dict): Dictionary specifying key values to override in the
-            source_dir (str): Path (absolute, or relative) to a directory where to copy
-                              the scripts for training recipe. requirements.txt can also
-                              go here.
-            kwargs (dict): Dictionary of args used for estimator initializaiton.
+            training_recipe (str): Path to the training recipe.
+            recipe_launcher_dir (str): Path to the recipe launcher directory.
+            training_recipes_cfg (dict): Training recipes configuration.
+
         Returns:
-            dict containing arg values for estimator initialization and setup.
+            tuple: Recipe name and loaded recipe.
 
+        Raises:
+            ValueError: If the recipe cannot be fetched or found.
         """
-        if kwargs.get("sagemaker_session") is not None:
-            region_name = kwargs.get("sagemaker_session").boto_region_name
-        else:
-            region_name = Session().boto_region_name
-
-        training_recipes_cfg_filename = os.path.join(
-            os.path.dirname(__file__), "training_recipes.json"
-        )
-        with open(training_recipes_cfg_filename) as training_recipes_cfg_file:
-            training_recipes_cfg = json.load(training_recipes_cfg_file)
-
-        if recipe_overrides is None:
-            recipe_overrides = dict()
-        recipe_train_dir = tempfile.TemporaryDirectory(prefix="training_")
-        recipe_launcher_dir = tempfile.TemporaryDirectory(prefix="launcher_")
-        args = dict()
-        if source_dir is None:
-            args["source_dir"] = "."
-        else:
-            if not os.path.exists(source_dir):
-                raise ValueError(
-                    "When using training_recipe, source_dir must be a local directory."
-                )
-            args["source_dir"] = source_dir
-
         recipe_name = os.path.splitext(os.path.basename(training_recipe))[0]
         temp_local_recipe = tempfile.NamedTemporaryFile(prefix=recipe_name, suffix=".yaml").name
-        if training_recipe.endswith(".yaml"):
-            if os.path.isfile(training_recipe):
-                shutil.copy(training_recipe, temp_local_recipe)
+
+        try:
+            if training_recipe.endswith(".yaml"):
+                _recipe_load_from_yaml(training_recipe, temp_local_recipe)
             else:
-                try:
-                    urlretrieve(training_recipe, temp_local_recipe)
-                except Exception as e:
-                    raise ValueError(
-                        f"Could not fetch the provided recipe {training_recipe}: exception {str(e)}"
-                    )
+                _recipe_load_predefined(
+                    training_recipe, recipe_launcher_dir, temp_local_recipe, training_recipes_cfg
+                )
+
+            recipe = OmegaConf.load(temp_local_recipe)
+            os.unlink(temp_local_recipe)
+            return recipe_name, recipe
+        except Exception as e:
+            if os.path.exists(temp_local_recipe):
+                os.unlink(temp_local_recipe)
+            raise e
+
+    @staticmethod
+    def _device_get_image_uri(args, device_type, recipe_config, region_name, recipe):
+        """Get the appropriate image URI based on device type.
+
+        Args:
+            args (dict): Arguments dictionary.
+            device_type (str): Device type (gpu, trainium, or cpu).
+            recipe_config (dict): Training recipes configuration.
+            region_name (str): AWS region name.
+            recipe (OmegaConf): Recipe configuration.
+
+        Returns:
+            str: Image URI or None if no image URI was found.
+        """
+        if "default_image_uri" in args:
+            logger.debug("Image URI already exists")
+            return args["default_image_uri"]
+        elif device_type == "gpu":
+            logger.info("Using GPU training image")
+            return _get_training_recipe_image_uri(recipe_config.get("gpu_image"), region_name)
+        elif device_type == "trainium":
+            logger.info("Using Trainium training image")
+            return _get_training_recipe_image_uri(recipe_config.get("neuron_image"), region_name)
         else:
-            launcher_repo = os.environ.get(
-                "TRAINING_LAUNCHER_GIT", None
-            ) or training_recipes_cfg.get("launcher_repo")
-            _run_clone_command(launcher_repo, recipe_launcher_dir.name)
-            recipe = os.path.join(
-                recipe_launcher_dir.name,
-                "recipes_collection",
-                "recipes",
-                training_recipe + ".yaml",
-            )
-            if os.path.isfile(recipe):
-                shutil.copy(recipe, temp_local_recipe)
+            return None
+
+    @staticmethod
+    def _recipe_setup_nova(args, recipe):
+        """Set up configuration for Nova recipes.
+
+        Args:
+            args (dict): Arguments dictionary.
+            recipe (OmegaConf): Recipe configuration.
+            kwargs (dict): Dictionary of keyword arguments.
+        """
+        run_config = recipe.get("run", {})
+        model_name_or_path = run_config.get("model_name_or_path")
+
+        # Set hyperparameters based on model_name_or_path
+        if model_name_or_path:
+            if model_name_or_path.startswith("s3://"):
+                args["hyperparameters"]["base_model_location"] = model_name_or_path
             else:
-                raise ValueError(f"Recipe {training_recipe} not found.")
+                args["hyperparameters"]["base_model"] = model_name_or_path
 
-        recipe = OmegaConf.load(temp_local_recipe)
-        os.unlink(temp_local_recipe)
-        recipe = OmegaConf.merge(recipe, recipe_overrides)
+        args["entry_point"] = None
+        args["source_dir"] = None
 
+    @staticmethod
+    def _device_validate_and_get_type(kwargs, recipe):
+        """Validate instance type and determine device type.
+
+        Args:
+            kwargs (dict): Dictionary of keyword arguments.
+            recipe (OmegaConf): Recipe configuration.
+
+        Returns:
+            str: Device type (gpu, trainium, or cpu).
+
+        Raises:
+            ValueError: If instance_type is not provided or recipe is invalid.
+        """
         if "instance_type" not in kwargs:
             raise ValueError("Must pass instance type to estimator when using training recipes.")
+
+        if not _is_nova_recipe(recipe) and "trainer" not in recipe and not _is_eval_recipe(recipe):
+            raise ValueError("Supplied recipe does not contain required field trainer.")
+
         instance_type = kwargs["instance_type"].split(".")[1]
         if instance_type.startswith(("p", "g")):
-            device_type = "gpu"
+            return "gpu"
         elif instance_type.startswith("trn"):
-            device_type = "trainium"
+            return "trainium"
         else:
-            device_type = "cpu"
+            return "cpu"
 
-        if "trainer" not in recipe:
-            raise ValueError("Supplied recipe does not contain required field trainer.")
-        if "instance_count" in kwargs and "num_nodes" in recipe["trainer"]:
-            logger.warning(
-                "Using instance_count argument to estimator to set number "
-                " of nodes. Ignoring trainer -> num_nodes in recipe."
-            )
-        if "instance_count" not in kwargs:
-            if "num_nodes" not in recipe["trainer"]:
-                raise ValueError(
-                    "Must set either instance_count argument for estimator or"
-                    "set trainer -> num_nodes in recipe."
+    @staticmethod
+    def _device_handle_instance_count(kwargs, recipe):
+        """Handle instance count configuration.
+
+        Args:
+            kwargs (dict): Dictionary of keyword arguments.
+            recipe (OmegaConf): Recipe configuration.
+
+        Raises:
+            ValueError: If instance_count is not provided and cannot be found in the recipe.
+        """
+        # Check if instance_count is already provided in kwargs
+
+        is_nova_or_eval = _is_nova_recipe(recipe) or _is_eval_recipe(recipe)
+        if "instance_count" in kwargs:
+            # Warn if there are conflicting configurations in the recipe
+            if "num_nodes" in recipe.get("trainer", {}):
+                logger.warning(
+                    "Using instance_count argument to estimator to set number "
+                    "of nodes. Ignoring trainer -> num_nodes in recipe."
                 )
-            kwargs["instance_count"] = recipe["trainer"]["num_nodes"]
+            if is_nova_or_eval and "replicas" in recipe.get("run", {}):
+                logger.warning(
+                    "Using instance_count argument to estimator to set number "
+                    "of nodes. Ignoring run -> replicas in recipe."
+                )
+            return
 
-        # [TODO] Add image uris to image_uri_config/_.json and use image_uris.retrieve
-        # to retrieve the image uri below before we go GA.
+        # Try to get instance_count from recipe
+        if "trainer" in recipe and "num_nodes" in recipe["trainer"]:
+            kwargs["instance_count"] = recipe["trainer"]["num_nodes"]
+            return
+
+        if is_nova_or_eval and "run" in recipe and "replicas" in recipe["run"]:
+            kwargs["instance_count"] = recipe["run"]["replicas"]
+            return
+
+        # If we get here, we couldn't find instance_count anywhere
+        raise ValueError(
+            "Must set either instance_count argument for estimator or "
+            "set trainer -> num_nodes or run -> replicas in recipe for nova jobs."
+        )
+
+    @staticmethod
+    def _device_get_entry_point_script(
+        device_type, recipe_train_dir, recipe, source_dir, training_recipes_cfg
+    ):
+        """Get the entry point script based on device type.
+
+        Args:
+            device_type (str): Device type (gpu, trainium, or cpu).
+            recipe_train_dir (str): Path to the recipe training directory.
+            recipe (OmegaConf): Recipe configuration.
+            source_dir (str): Path to the source directory.
+            training_recipes_cfg (dict): Training recipes configuration.
+
+        Returns:
+            str: Path to the entry point script or None if not applicable.
+        """
         if device_type == "gpu":
             adapter_repo = os.environ.get("TRAINING_ADAPTER_GIT", None) or training_recipes_cfg.get(
                 "adapter_repo"
             )
-            _run_clone_command(adapter_repo, recipe_train_dir.name)
-            script = _get_training_recipe_gpu_script(
-                recipe_train_dir.name, recipe, args["source_dir"]
-            )
-            args["default_image_uri"] = _get_training_recipe_image_uri(
-                training_recipes_cfg.get("gpu_image"), region_name
-            )
-            smp_options = {
-                "enabled": True,
-                "parameters": {
-                    "placement_strategy": "cluster",
-                },
-            }
-            args["distribution"] = {
-                "smdistributed": {"modelparallel": smp_options},
-                "torch_distributed": {"enabled": True},
-            }
+            _run_clone_command(adapter_repo, recipe_train_dir)
+            return _get_training_recipe_gpu_script(recipe_train_dir, recipe, source_dir)
         elif device_type == "trainium":
-            _run_clone_command(training_recipes_cfg.get("neuron_dist_repo"), recipe_train_dir.name)
-            script = _get_training_recipe_trainium_script(recipe_train_dir.name, args["source_dir"])
-            args["default_image_uri"] = _get_training_recipe_image_uri(
-                training_recipes_cfg.get("neuron_image"), region_name
-            )
-            args["distribution"] = {
-                "torch_distributed": {"enabled": True},
-            }
-        else:
+            _run_clone_command(training_recipes_cfg.get("neuron_dist_repo"), recipe_train_dir)
+            return _get_training_recipe_trainium_script(recipe_train_dir, source_dir)
+        elif device_type == "cpu":
             raise ValueError(
                 f"Devices of type {device_type} are not supported with training recipes."
             )
-        args["entry_point"] = os.path.basename(script)
+        return None
 
-        recipe_train_dir.cleanup()
-        recipe_launcher_dir.cleanup()
+    def _recipe_resolve_and_save(self, recipe, recipe_name, source_dir):
+        """Resolve and save the final recipe configuration.
 
-        if "container" in recipe and not recipe["container"]:
-            logger.warning(
-                "Ignoring container from training_recipe. Use image_uri arg for estimator."
-            )
+        Args:
+            recipe (OmegaConf): Recipe configuration.
+            recipe_name (str): Recipe name.
+            source_dir (str): Path to the source directory.
 
+        Returns:
+            OmegaConf: Resolved recipe configuration.
+
+        Raises:
+            RuntimeError: If the recipe cannot be resolved.
+        """
         _setup_omegaconf_resolvers()
+
+        # Try different resolution strategies
         final_recipe = _try_resolve_recipe(recipe)
         if final_recipe is None:
             final_recipe = _try_resolve_recipe(recipe, "recipes")
@@ -760,15 +1075,268 @@ class PyTorch(Framework):
             final_recipe = _try_resolve_recipe(recipe, "training")
         if final_recipe is None:
             raise RuntimeError("Could not resolve provided recipe.")
-        cls.training_recipe_file = tempfile.NamedTemporaryFile(
-            dir=args["source_dir"],
+
+        # Save the resolved recipe - this sets an instance attribute
+        self.training_recipe_file = tempfile.NamedTemporaryFile(
+            dir=source_dir,
             prefix=recipe_name + "_",
             suffix=".yaml",
         )
-        OmegaConf.save(config=final_recipe, f=cls.training_recipe_file.name)
-        args["hyperparameters"] = {
-            "config-path": ".",
-            "config-name": os.path.basename(cls.training_recipe_file.name),
-        }
+        OmegaConf.save(config=final_recipe, f=self.training_recipe_file.name)
+
+        return final_recipe
+
+    def _upload_recipe_to_s3(self, session, recipe_file_path):
+        """Upload the recipe file to S3.
+
+        Args:
+            session (sagemaker.session.Session): SageMaker session.
+            recipe_file_path (str): Path to the recipe file.
+
+        Returns:
+            str: S3 URI of the uploaded recipe file.
+        """
+        bucket = session.default_bucket()
+        key_prefix = session.default_bucket_prefix
+
+        recipe_filename = os.path.basename(recipe_file_path)
+
+        readable_date = datetime.fromtimestamp(int(time.time()))
+        date_format = readable_date.strftime("%Y-%m-%d")
+
+        if key_prefix != "None" and key_prefix is not None:
+            s3_key = f"{key_prefix}/recipes/{date_format}_{recipe_filename[:-5]}"
+        else:
+            s3_key = f"recipes/{date_format}_{recipe_filename[:-5]}"
+
+        # Upload the recipe file to S3
+        s3_uri = session.upload_data(
+            path=recipe_file_path,
+            bucket=bucket,
+            key_prefix=os.path.dirname(os.path.join(s3_key, recipe_filename)),
+        )
+
+        # Return the full S3 URI to the recipe file
+        return f"{s3_uri}"
+
+    def _setup_for_training_recipe(self, training_recipe, recipe_overrides, source_dir, kwargs):
+        """Performs training recipe specific setup and returns recipe specific args.
+
+        Updates kwargs and returns a dictionary of args to use for estimator
+        initialization and setup when using a training recipe.
+
+        Args:
+            training_recipe (str): A recipe which is a local file path, a url or a
+                                   sagemaker training recipe.
+            recipe_overrides (Dict): Dictionary specifying key values to override in the
+                                    training recipe.
+            source_dir (str): Path (absolute, or relative) to a directory where to copy
+                              the scripts for training recipe.
+            kwargs (dict): Dictionary of args used for estimator initialization.
+
+        Returns:
+            dict containing arg values for estimator initialization and setup.
+        """
+        region_name = _recipe_get_region_name(kwargs)
+        training_recipes_cfg = _recipe_load_config()
+        recipe_overrides = recipe_overrides or {}
+
+        # Create temporary directories for recipe processing
+        with (
+            tempfile.TemporaryDirectory(prefix="training_") as recipe_train_dir,
+            tempfile.TemporaryDirectory(prefix="launcher_") as recipe_launcher_dir,
+        ):
+            # Load and process the recipe
+            recipe_name, recipe = PyTorch._recipe_load(
+                training_recipe, recipe_launcher_dir, training_recipes_cfg
+            )
+
+            # Merge with overrides
+            recipe = OmegaConf.merge(recipe, recipe_overrides)
+
+            self.is_nova_or_eval_recipe = _is_nova_recipe(recipe) or _is_eval_recipe(recipe)
+            if self.is_nova_or_eval_recipe:
+                return self._setup_for_nova_recipe(
+                    recipe,
+                    recipe_name,
+                    source_dir,
+                    kwargs,
+                )
+            else:
+                return self._setup_for_standard_recipe(
+                    recipe,
+                    recipe_name,
+                    source_dir,
+                    kwargs,
+                    recipe_train_dir,
+                    training_recipes_cfg,
+                    region_name,
+                )
+
+    def _setup_for_nova_recipe(
+        self,
+        recipe,
+        recipe_name,
+        source_dir,
+        kwargs,
+    ):
+        """Set up configuration specifically for Nova recipes.
+
+        Args:
+            recipe (OmegaConf): Recipe configuration.
+            recipe_name (str): Recipe name.
+            source_dir (str): Path to the source directory.
+            kwargs (dict): Dictionary of keyword arguments.
+
+        Returns:
+            dict: Arguments dictionary for estimator initialization.
+        """
+        # Initialize args
+        args = _recipe_initialize_args(source_dir)
+
+        # Set up Nova-specific configuration
+        run_config = recipe.get("run", {})
+        model_name_or_path = run_config.get("model_name_or_path")
+        # Set hyperparameters model_type
+        model_type = run_config.get("model_type")
+        args["hyperparameters"]["model_type"] = model_type
+
+        # Set hyperparameters based on model_name_or_path
+        if model_name_or_path:
+            if model_name_or_path.startswith("s3://"):
+                args["hyperparameters"]["base_model_location"] = model_name_or_path
+            else:
+                args["hyperparameters"]["base_model"] = model_name_or_path
+
+        args["entry_point"] = None
+        args["source_dir"] = None
+        args["distribution"] = {}
+
+        logger.info("Remote debugging, profiler and debugger hooks are disabled for Nova recipes.")
+        kwargs["enable_remote_debug"] = False
+        kwargs["disable_profiler"] = True
+        kwargs["debugger_hook_config"] = False
+
+        # Handle instance count for Nova recipes
+        if "instance_count" in kwargs:
+            if "replicas" in recipe.get("run", {}):
+                logger.warning(
+                    "Using instance_count argument to estimator to set number "
+                    "of nodes. Ignoring run -> replicas in recipe."
+                )
+        elif "run" in recipe and "replicas" in recipe["run"]:
+            kwargs["instance_count"] = recipe["run"]["replicas"]
+        else:
+            raise ValueError(
+                "Must set either instance_count argument for estimator or "
+                "set run -> replicas in recipe for nova jobs."
+            )
+
+        training_config = recipe.get("training_config", {})
+        is_distillation = training_config.get("distillation_data", {})
+        if bool(is_distillation):
+            args["hyperparameters"]["distillation_data"] = is_distillation
+            args["hyperparameters"]["role_arn"] = kwargs["role"]
+            kms_key = training_config.get("kms_key")
+            if kms_key is None:
+                ValueError(
+                    'Nova distillation job recipe requires "kms_key" field in "training_config"'
+                )
+            args["hyperparameters"]["kms_key"] = kms_key
+
+        # Handle eval custom lambda configuration
+        if recipe.get("evaluation", {}):
+            processor = recipe.get("processor", {})
+            lambda_arn = processor.get("lambda_arn", "")
+            if lambda_arn:
+                args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
+
+        # Resolve and save the final recipe
+        self._recipe_resolve_and_save(recipe, recipe_name, args["source_dir"])
+
+        return args
+
+    def _setup_for_standard_recipe(
+        self,
+        recipe,
+        recipe_name,
+        source_dir,
+        kwargs,
+        recipe_train_dir,
+        training_recipes_cfg,
+        region_name,
+    ):
+        """Set up configuration for standard (non-Nova) recipes.
+
+        Args:
+            recipe (OmegaConf): Recipe configuration.
+            recipe_name (str): Recipe name.
+            source_dir (str): Path to the source directory.
+            kwargs (dict): Dictionary of keyword arguments.
+            recipe_train_dir (str): Path to the recipe training directory.
+            training_recipes_cfg (dict): Training recipes configuration.
+            region_name (str): AWS region name.
+
+        Returns:
+            dict: Arguments dictionary for estimator initialization.
+        """
+        # Initialize args
+        args = _recipe_initialize_args(source_dir)
+
+        # Validate recipe structure
+        if "trainer" not in recipe:
+            raise ValueError("Supplied recipe does not contain required field trainer.")
+
+        # Handle instance count for standard recipes
+        if "instance_count" in kwargs:
+            if "num_nodes" in recipe.get("trainer", {}):
+                logger.warning(
+                    "Using instance_count argument to estimator to set number "
+                    "of nodes. Ignoring trainer -> num_nodes in recipe."
+                )
+        elif "trainer" in recipe and "num_nodes" in recipe["trainer"]:
+            kwargs["instance_count"] = recipe["trainer"]["num_nodes"]
+        else:
+            raise ValueError(
+                "Must set either instance_count argument for estimator or "
+                "set trainer -> num_nodes in recipe."
+            )
+
+        # Determine device type
+        device_type = PyTorch._device_validate_and_get_type(kwargs, recipe)
+
+        # Get image URI
+        image_uri = PyTorch._device_get_image_uri(
+            args, device_type, training_recipes_cfg, region_name, recipe
+        )
+        args["default_image_uri"] = image_uri if image_uri is not None else ""
+
+        # Setup device-specific configuration
+        args["distribution"] = _device_get_distribution(device_type)
+
+        # Set entry point if not already set
+        if "entry_point" not in args:
+            script = PyTorch._device_get_entry_point_script(
+                device_type, recipe_train_dir, recipe, args["source_dir"], training_recipes_cfg
+            )
+            if script:
+                args["entry_point"] = os.path.basename(script)
+
+        # Handle container configuration
+        if "container" in recipe and not recipe["container"]:
+            logger.warning(
+                "Ignoring container from training_recipe. Use image_uri arg for estimator."
+            )
+
+        # Resolve and save the final recipe
+        self._recipe_resolve_and_save(recipe, recipe_name, args["source_dir"])
+
+        # Update hyperparameters with recipe configuration
+        args["hyperparameters"].update(
+            {
+                "config-path": ".",
+                "config-name": os.path.basename(self.training_recipe_file.name),
+            }
+        )
 
         return args

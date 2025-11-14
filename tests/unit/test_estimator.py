@@ -76,6 +76,8 @@ from tests.unit import (
 )
 from sagemaker.model_life_cycle import ModelLifeCycle
 
+from tests.unit.test_job import INSTANCE_PLACEMENT_CONFIG
+
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
@@ -877,6 +879,22 @@ def test_framework_with_training_plan(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["resource_config"]["TrainingPlanArn"] == TRAINING_PLAN
+
+
+def test_framework_with_instance_placement(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_type="ml.c4.xlarge",
+        instance_count=2,
+        training_plan=TRAINING_PLAN,
+        instance_placement_config=INSTANCE_PLACEMENT_CONFIG,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["InstancePlacementConfig"] == INSTANCE_PLACEMENT_CONFIG
 
 
 def test_framework_with_both_training_repository_config(sagemaker_session):
@@ -2228,6 +2246,21 @@ def test_get_instance_type_gpu(sagemaker_session):
     assert "ml.p3.16xlarge" == estimator._get_instance_type()
 
 
+def test_get_instance_type_gpu_with_hyphens(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p6-b200.48xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.p6-b200.48xlarge" == estimator._get_instance_type()
+
+
 def test_estimator_with_output_compression_disabled(sagemaker_session):
     estimator = Estimator(
         image_uri="some-image",
@@ -2794,7 +2827,7 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
     )
     with pytest.raises(ValueError) as error:
         fw.fit()
-    assert "Invalid Git url provided." in str(error)
+    assert "Unsupported URL scheme" in str(error)
 
 
 @patch(

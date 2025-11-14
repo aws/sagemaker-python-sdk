@@ -315,6 +315,9 @@ def test_with_non_existent_dependencies(
         divide(10, 2)
 
 
+@pytest.mark.skip(
+    reason="Test only valid for numpy < 2.0 due to serialization compatibility changes",
+)
 def test_with_incompatible_dependencies(
     sagemaker_session, dummy_container_without_error, cpu_instance_type
 ):

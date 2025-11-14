@@ -60,6 +60,7 @@ ALTERNATE_DOMAINS = {
     "us-isob-east-1": "sc2s.sgov.gov",
     "us-isof-south-1": "csp.hci.ic.gov",
     "us-isof-east-1": "csp.hci.ic.gov",
+    "eu-isoe-west-1": "cloud.adc-e.uk",
 }
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -1502,6 +1503,24 @@ def instance_supports_kms(instance_type: str) -> bool:
     return volume_size_supported(instance_type)
 
 
+def get_training_job_name_from_training_job_arn(training_job_arn: str) -> str:
+    """Extract Training job name from Training job arn.
+
+    Args:
+        training_job_arn: Training job arn.
+
+    Returns: Training job name.
+
+    """
+    if training_job_arn is None:
+        return None
+    pattern = "arn:aws[a-z-]*:sagemaker:[a-z0-9-]*:[0-9]{12}:training-job/(.+)"
+    match = re.match(pattern, training_job_arn)
+    if match:
+        return match.group(1)
+    return None
+
+
 def get_instance_type_family(instance_type: str) -> str:
     """Return the family of the instance type.
 
@@ -1510,7 +1529,7 @@ def get_instance_type_family(instance_type: str) -> str:
     """
     instance_type_family = ""
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match is not None:
             instance_type_family = match[1]
     return instance_type_family
