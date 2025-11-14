@@ -41,6 +41,7 @@ HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
 HUGGING_FACE_TEI_GPU_FRAMEWORK = "huggingface-tei"
 HUGGING_FACE_TEI_CPU_FRAMEWORK = "huggingface-tei-cpu"
 HUGGING_FACE_LLM_NEURONX_FRAMEWORK = "huggingface-llm-neuronx"
+HUGGING_FACE_VLLM_NEURONX_FRAMEWORK = "huggingface-vllm-neuronx"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
@@ -230,7 +231,11 @@ def retrieve(
         container_version = version_config["container_version"][processor]
 
     # Append sdk version in case of trainium instances
-    if repo in ["pytorch-training-neuron", "pytorch-training-neuronx"]:
+    if repo in [
+        "pytorch-training-neuron",
+        "pytorch-training-neuronx",
+        "huggingface-vllm-inference-neuronx",
+    ]:
         if not sdk_version:
             sdk_version = _get_latest_versions(version_config["sdk_versions"])
         container_version = sdk_version + "-" + container_version
