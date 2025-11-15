@@ -43,6 +43,10 @@ def _test_graviton_framework_uris(
             region=region,
             container_version=container_version,
         )
+        # Handle special regions
+        domain = expected_uris.get_special_region_domain(region)
+        if domain != ".amazonaws.com":
+            expected = expected.replace(".amazonaws.com", domain)
         assert expected == uri
 
 

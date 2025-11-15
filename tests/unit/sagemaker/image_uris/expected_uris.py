@@ -116,3 +116,8 @@ def sagemaker_distribution_uri(repo, account, tag, processor, region=REGION):
     else:
         tag = f"{tag}-gpu"
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def get_special_region_domain(region):
+    SPECIAL_REGIONS = {"eu-isoe-west-1": ".cloud.adc-e.uk", "eusc-de-east-1": ".amazonaws.eu"}
+    return SPECIAL_REGIONS.get(region, ".amazonaws.com")

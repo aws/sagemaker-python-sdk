@@ -113,6 +113,10 @@ def test_huggingface_uris(load_config):
                 HF_VERSIONS_MAPPING[device][version],
                 region=region,
             )
+            # Handle special regions
+            domain = expected_uris.get_special_region_domain(region)
+            if domain != ".amazonaws.com":
+                expected = expected.replace(".amazonaws.com", domain)
             assert expected == uri
 
 
