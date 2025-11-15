@@ -63,6 +63,8 @@ NETWORK_CONFIG = NetworkConfig(
     encrypt_inter_container_traffic=True,
 )
 ENABLE_CLOUDWATCH_METRICS = True
+ENABLE_AUTOMATIC_DASHBOARD = True
+DASHBOARD_NAME = "DASHBOARD NAME"
 
 DEFAULT_BASELINING_MAX_RUNTIME_IN_SECONDS = 86400
 DEFAULT_EXECUTION_MAX_RUNTIME_IN_SECONDS = 3600
@@ -1049,6 +1051,131 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         env=UPDATED_ENVIRONMENT,
         network_config=UPDATED_NETWORK_CONFIG,
         enable_cloudwatch_metrics=DISABLE_CLOUDWATCH_METRICS,
+        role=UPDATED_ROLE,
+    )
+
+    _wait_for_schedule_changes_to_apply(my_default_monitor)
+
+    schedule_description = my_default_monitor.describe_schedule()
+    _verify_default_monitoring_schedule(
+        sagemaker_session=sagemaker_session,
+        schedule_description=schedule_description,
+        statistics=statistics,
+        constraints=constraints,
+        output_kms_key=updated_output_kms_key,
+        volume_kms_key=updated_volume_kms_key,
+        cron_expression=CronExpressionGenerator.hourly(),
+        instant_count=UPDATED_INSTANCE_COUNT,
+        instant_type=UPDATED_INSTANCE_TYPE,
+        volume_size_in_gb=UPDATED_VOLUME_SIZE_IN_GB,
+        network_config=UPDATED_NETWORK_CONFIG,
+        max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS,
+        publish_cloudwatch_metrics="Disabled",
+        env_key=UPDATED_ENV_KEY_1,
+        env_value=UPDATED_ENV_VALUE_1,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    assert len(predictor.list_monitors()) > 0
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
+def test_default_monitor_create_and_update_schedule_config_with_dashboards(
+    sagemaker_session,
+    predictor,
+    volume_kms_key,
+    output_kms_key,
+    updated_volume_kms_key,
+    updated_output_kms_key,
+):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=volume_kms_key,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "integ-test-monitoring-output-bucket",
+        str(uuid.uuid4()),
+    )
+
+    statistics = Statistics.from_file_path(
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    my_default_monitor.create_monitoring_schedule(
+        endpoint_input=predictor.endpoint_name,
+        output_s3_uri=output_s3_uri,
+        statistics=statistics,
+        constraints=constraints,
+        schedule_cron_expression=CronExpressionGenerator.daily(),
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+        enable_automatic_dashboard=ENABLE_AUTOMATIC_DASHBOARD,
+        dashboard_name=DASHBOARD_NAME,
+    )
+
+    schedule_description = my_default_monitor.describe_schedule()
+    _verify_default_monitoring_schedule(
+        sagemaker_session=sagemaker_session,
+        schedule_description=schedule_description,
+        statistics=statistics,
+        constraints=constraints,
+        output_kms_key=output_kms_key,
+        volume_kms_key=volume_kms_key,
+        network_config=NETWORK_CONFIG,
+    )
+
+    statistics = Statistics.from_file_path(
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    my_default_monitor.update_monitoring_schedule(
+        output_s3_uri=output_s3_uri,
+        statistics=statistics,
+        constraints=constraints,
+        schedule_cron_expression=CronExpressionGenerator.hourly(),
+        instance_count=UPDATED_INSTANCE_COUNT,
+        instance_type=UPDATED_INSTANCE_TYPE,
+        volume_size_in_gb=UPDATED_VOLUME_SIZE_IN_GB,
+        volume_kms_key=updated_volume_kms_key,
+        output_kms_key=updated_output_kms_key,
+        max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS,
+        env=UPDATED_ENVIRONMENT,
+        network_config=UPDATED_NETWORK_CONFIG,
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+        enable_automatic_dashboard=ENABLE_AUTOMATIC_DASHBOARD,
         role=UPDATED_ROLE,
     )
 
