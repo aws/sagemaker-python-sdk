@@ -293,6 +293,11 @@ class FileSystemInput(object):
                 the file system.
                 Reference: https://docs.aws.amazon.com/efs/latest/ug/mounting-fs.html and
                 https://docs.aws.amazon.com/fsx/latest/LustreGuide/mount-fs-auto-mount-onreboot.html
+                Note:
+                For the FSxLustre the directory_path = f"/{MountName}/{FileSystemPath}"
+                from these cli commands: 
+                aws fsx describe-file-systems --file-system-ids <FSx filesystem ID>
+                aws fsx describe-data-repository-associations --association-ids <Data Repository Association ID>
             file_system_access_mode (str): Permissions for read and write.
                 Valid values: 'ro' or 'rw'. Defaults to 'ro'.
         """
