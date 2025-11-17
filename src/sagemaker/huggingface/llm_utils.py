@@ -67,6 +67,14 @@ def get_huggingface_llm_image_uri(
             image_scope="inference",
             inference_tool="neuronx",
         )
+    if backend == "huggingface-vllm-neuronx":
+        return image_uris.retrieve(
+            "huggingface-vllm-neuronx",
+            region=region,
+            version=version,
+            image_scope="inference",
+            inference_tool="neuronx",
+        )
     if backend == "huggingface-tei":
         return image_uris.retrieve(
             "huggingface-tei",
