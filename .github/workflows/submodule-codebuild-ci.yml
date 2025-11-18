@@ -4,8 +4,10 @@ on:
     branches:
       - "master-v3"
     paths:
-      - 'sagemaker_train/**'
-      - 'sagemaker_utils/**'
+      - 'sagemaker-train/**'
+      - 'sageamaker-serve/**'
+      - 'sagemaker-core/**'
+      - 'sagemaker-mlops/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
