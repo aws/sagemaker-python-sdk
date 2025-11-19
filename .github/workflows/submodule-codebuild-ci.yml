@@ -77,14 +77,21 @@ jobs:
           
           SUBMODULES=[]
           
-          if echo "$CHANGES" | grep -q "^sagemaker_train/"; then
-            SUBMODULES='["sagemaker_train"]'
+          if echo "$CHANGES" | grep -q "^sagemaker-train/"; then
+            SUBMODULES='["sagemaker-train"]'
           fi
-          if echo "$CHANGES" | grep -q "^sagemaker_utils/"; then
+          if echo "$CHANGES" | grep -q "^sagemaker-serve/"; then
             if [ "$SUBMODULES" = '[]' ]; then
-              SUBMODULES='["sagemaker_utils"]'
+              SUBMODULES='["sagemaker-serve"]'
             else
-              SUBMODULES='["sagemaker_train","sagemaker_utils"]'
+              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-serve"\]/')
+            fi
+          fi
+          if echo "$CHANGES" | grep -q "^sagemaker-mlops/"; then
+            if [ "$SUBMODULES" = '[]' ]; then
+              SUBMODULES='["sagemaker-mlops"]'
+            else
+              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-mlops"\]/')
             fi
           fi
           echo "Final SUBMODULES: $SUBMODULES"
