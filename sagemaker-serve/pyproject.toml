@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sagemaker-serve"
-version = "0.1.0"
+dynamic = ["version"]
 description = "SageMaker Serve package for model serving and deployment"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -60,6 +60,9 @@ include-package-data = true
 where = ["src"]
 include = ["sagemaker*"]
 namespaces = true
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -42,7 +42,7 @@ For detailed documentation, including the API reference, see `Read the Docs <htt
 To install SageMaker Python SDK, see `Installing SageMaker Python SDK <#installing-the-sagemaker-python-sdk>`_.
 
 ❗🔥 SageMaker V3 Release
------------------
+-------------------------
 
 Version 3.0.0 represents a significant milestone in our product's evolution. This major release introduces a modernized architecture, enhanced performance, and powerful new features while maintaining our commitment to user experience and reliability.
 
@@ -52,7 +52,7 @@ Version 3.0.0 represents a significant milestone in our product's evolution. Thi
 * Please review documenation of interfaces for parameters support (especially ModelBuilder) in our V3 examples folder.
 
 SageMaker V2 Examples
------------------
+---------------------
 
 #. `Using the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html>`__
 #. `Using MXNet <https://sagemaker.readthedocs.io/en/stable/using_mxnet.html>`__
