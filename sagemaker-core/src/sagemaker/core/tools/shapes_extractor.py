@@ -190,9 +190,11 @@ class ShapesExtractor:
                 and snake_to_pascal(attr[: -len("_name")]) in resource_names
             ):
                 if value.startswith("Optional"):
-                    init_data_body += f"{attr}: Optional[Union[str, object]] = Unassigned()\n"
+                    init_data_body += (
+                        f"{attr}: Optional[Union[StrPipeVar, object]] = Unassigned()\n"
+                    )
                 else:
-                    init_data_body += f"{attr}: Union[str, object]\n"
+                    init_data_body += f"{attr}: Union[StrPipeVar, object]\n"
             elif attr == "lambda":
                 init_data_body += f"# {attr}: {value}\n"
             else:

@@ -150,6 +150,7 @@ class ShapesCodeGen:
         init_data = self.shapes_extractor.generate_data_shape_string_body(
             shape, self.resources_plan
         )
+        
         try:
             data_class_members = add_indent(init_data, 4)
         except Exception:
@@ -203,10 +204,15 @@ class ShapesCodeGen:
         :return: The generated import statements as a string.
         """
         imports = "import datetime\n"
+        imports += "import warnings\n"
         imports += "\n"
         imports += "from pydantic import BaseModel, ConfigDict\n"
         imports += "from typing import List, Dict, Optional, Any, Union\n"
-        imports += "from sagemaker.core.utils.utils import Unassigned"
+        imports += "from sagemaker.core.utils.utils import Unassigned\n"
+        imports += "from sagemaker.core.helper.pipeline_variable import StrPipeVar\n"
+        imports += "\n"
+        imports += "# Suppress Pydantic warnings about field names shadowing parent attributes\n"
+        imports += "warnings.filterwarnings('ignore', message='.*shadows an attribute.*')\n"
         imports += "\n"
         return imports
 

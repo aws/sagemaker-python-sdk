@@ -1,0 +1,622 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://json-schema.org/draft-07/schema#",
+  "title": "SageMakerModelCardSchema",
+  "description": "Internal model card schema for SageMakerRepositoryService without model_package_details",
+  "version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "model_overview": {
+      "description": "Overview about the model",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model_description": {
+          "description": "description of model",
+          "type": "string",
+          "maxLength": 1024
+        },
+        "model_creator": {
+          "description": "Creator of model",
+          "type": "string",
+          "maxLength": 1024
+        },
+        "model_artifact": {
+          "description": "Location of the model artifact",
+          "type": "array",
+          "maxContains": 15,
+          "items": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        },
+        "algorithm_type": {
+          "description": "Algorithm used to solve the problem",
+          "type": "string",
+          "maxLength": 1024
+        },
+        "problem_type": {
+          "description": "Problem being solved with the model",
+          "type": "string"
+        },
+        "model_owner": {
+          "description": "Owner of model",
+          "type": "string",
+          "maxLength": 1024
+        }
+      }
+    },
+    "intended_uses": {
+      "description": "Intended usage of model",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "purpose_of_model": {
+          "description": "Why the model was developed?",
+          "type": "string",
+          "maxLength": 2048
+        },
+        "intended_uses": {
+          "description": "intended use cases",
+          "type": "string",
+          "maxLength": 2048
+        },
+        "factors_affecting_model_efficiency": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "risk_rating": {
+          "description": "Risk rating for model card",
+          "$ref": "#/definitions/risk_rating"
+        },
+        "explanations_for_risk_rating": {
+          "type": "string",
+          "maxLength": 2048
+        }
+      }
+    },
+    "business_details": {
+      "description": "Business details of model",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "business_problem": {
+          "description": "What business problem does the model solve?",
+          "type": "string",
+          "maxLength": 2048
+        },
+        "business_stakeholders": {
+          "description": "Business stakeholders",
+          "type": "string",
+          "maxLength": 2048
+        },
+        "line_of_business": {
+          "type": "string",
+          "maxLength": 2048
+        }
+      }
+    },
+    "training_details": {
+      "description": "Overview about the training",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "objective_function": {
+          "description": "the objective function the model will optimize for",
+          "function": {
+            "$ref": "#/definitions/objective_function"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        },
+        "training_observations": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "training_job_details": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "training_arn": {
+              "description": "SageMaker Training job arn",
+              "type": "string",
+              "maxLength": 1024
+            },
+            "training_datasets": {
+              "description": "Location of the model datasets",
+              "type": "array",
+              "maxContains": 15,
+              "items": {
+                "type": "string",
+                "maxLength": 1024
+              }
+            },
+            "training_environment": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "container_image": {
+                  "description": "SageMaker training image uri",
+                  "type": "array",
+                  "maxContains": 15,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 1024
+                  }
+                }
+              }
+            },
+            "training_metrics": {
+              "type": "array",
+              "items": {
+                "maxItems": 50,
+                "$ref": "#/definitions/training_metric"
+              }
+            },
+            "user_provided_training_metrics": {
+              "type": "array",
+              "items": {
+                "maxItems": 50,
+                "$ref": "#/definitions/training_metric"
+              }
+            },
+            "hyper_parameters": {
+              "type": "array",
+              "items": {
+                "maxItems": 100,
+                "$ref": "#/definitions/training_hyper_parameter"
+              }
+            },
+            "user_provided_hyper_parameters": {
+              "type": "array",
+              "items": {
+                "maxItems": 100,
+                "$ref": "#/definitions/training_hyper_parameter"
+              }
+            }
+          }
+        }
+      }
+    },
+    "evaluation_details": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": ".{1,63}"
+          },
+          "evaluation_observation": {
+            "type": "string",
+            "maxLength": 2096
+          },
+          "evaluation_job_arn": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "datasets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 1024
+            },
+            "maxItems": 10
+          },
+          "metadata": {
+            "description": "additional attributes associated with the evaluation results",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 1024
+            }
+          },
+          "metric_groups": {
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "metric_data"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": ".{1,63}"
+                },
+                "metric_data": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/simple_metric"
+                      },
+                      {
+                        "$ref": "#/definitions/linear_graph_metric"
+                      },
+                      {
+                        "$ref": "#/definitions/bar_chart_metric"
+                      },
+                      {
+                        "$ref": "#/definitions/matrix_metric"
+                      }
+                    ]
+
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "additional_information": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "ethical_considerations": {
+          "description": "Any ethical considerations that the author wants to provide",
+          "type": "string",
+          "maxLength": 2048
+        },
+        "caveats_and_recommendations": {
+          "description": "Caveats and recommendations for people who might use this model in their applications.",
+          "type": "string",
+          "maxLength": 2048
+        },
+        "custom_details": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/custom_property"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "source_algorithms": {
+      "type": "array",
+      "minContains": 1,
+      "maxContains": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "algorithm_name"
+        ],
+        "properties": {
+          "algorithm_name": {
+            "description": "The name of an algorithm that was used to create the model package. The algorithm must be either an algorithm resource in your SageMaker account or an algorithm in AWS Marketplace that you are subscribed to.",
+            "type": "string",
+            "maxLength": 170
+          },
+          "model_data_url": {
+            "description": "The Amazon S3 path where the model artifacts, which result from model training, are stored.",
+            "type": "string",
+            "maxLength": 1024
+          }
+        }
+      }
+    },
+    "inference_specification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containers"
+      ],
+      "properties": {
+        "containers": {
+          "description": "Contains inference related information which were used to create model package.",
+          "type": "array",
+          "minContains": 1,
+          "maxContains": 15,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "image"
+            ],
+            "properties": {
+              "model_data_url": {
+                "description": "The Amazon S3 path where the model artifacts, which result from model training, are stored.",
+                "type": "string",
+                "maxLength": 1024
+              },
+              "image": {
+                "description": "Inference environment path. The Amazon EC2 Container Registry (Amazon ECR) path where inference code is stored.",
+                "type": "string",
+                "maxLength": 255
+              },
+              "nearest_model_name": {
+                "description": "The name of a pre-trained machine learning benchmarked by Amazon SageMaker Inference Recommender model that matches your model.",
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "risk_rating": {
+      "description": "Risk rating of model",
+      "type": "string",
+      "enum": [
+        "High",
+        "Medium",
+        "Low",
+        "Unknown"
+      ]
+    },
+    "custom_property": {
+      "description": "Additional property in section",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "objective_function": {
+      "description": "objective function that training job is optimized for",
+      "additionalProperties": false,
+      "properties": {
+        "function": {
+          "type": "string",
+          "enum": [
+            "Maximize",
+            "Minimize"
+          ]
+        },
+        "facet": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "condition": {
+          "type": "string",
+          "maxLength": 63
+        }
+      }
+    },
+    "training_metric": {
+      "description": "training metric data",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": ".{1,255}"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "value": {
+          "type": "number"
+        }
+      }
+    },
+    "training_hyper_parameter": {
+      "description": "training hyper parameter",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": ".{1,255}"
+        },
+        "value": {
+          "type": "string",
+          "pattern": ".{0,255}"
+        }
+      }
+    },
+    "linear_graph_metric": {
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": ".{1,255}"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "linear_graph"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "x_axis_name": {
+          "$ref": "#/definitions/axis_name_string"
+        },
+        "y_axis_name": {
+          "$ref": "#/definitions/axis_name_string"
+        }
+      }
+    },
+    "bar_chart_metric": {
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": ".{1,255}"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "bar_chart"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "x_axis_name": {
+          "$ref": "#/definitions/axis_name_array"
+        },
+        "y_axis_name": {
+          "$ref": "#/definitions/axis_name_string"
+        }
+      }
+    },
+    "matrix_metric": {
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": ".{1,255}"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "matrix"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 1,
+                "maxItems": 20
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          ]
+        },
+        "x_axis_name": {
+          "$ref": "#/definitions/axis_name_array"
+        },
+        "y_axis_name": {
+          "$ref": "#/definitions/axis_name_array"
+        }
+      }
+    },
+    "simple_metric": {
+      "description": "metric data",
+      "type": "object",
+      "required": [
+        "name",
+        "type",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": ".{1,255}"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "number",
+            "string",
+            "boolean"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "maxLength": 63
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "x_axis_name": {
+          "$ref": "#/definitions/axis_name_string"
+        },
+        "y_axis_name": {
+          "$ref": "#/definitions/axis_name_string"
+        }
+      }
+    },
+    "axis_name_array": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 63
+      }
+    },
+    "axis_name_string": {
+      "type": "string",
+      "maxLength": 63
+    }
+  }
+}               
+              

@@ -20,6 +20,20 @@ dependencies = [
     "rich>=13.0.0, <14.0.0",
     "mock>4.0, <5.0",
     "importlib-metadata<7.0,>=1.4.0",
+    "typing_extensions>=4.9.0",
+    "pytz>=2021.1",
+    "requests>=2.20.0,<3.0.0",
+    "attrs>=20.3.0",
+    "packaging>=20.0",
+    "protobuf>=3.12,<5.0",
+    "pandas>=1.0.0",
+    "numpy>=1.9.0",
+    # Dependencies migrated from sagemaker_utils
+    "smdebug_rulesconfig>=1.0.1",
+    "schema>=0.7.5",
+    "omegaconf>=2.1.0",
+    "torch>=1.9.0",
+    "scipy>=1.5.0",
 ]
 requires-python = ">=3.9"
 classifiers = [
@@ -39,9 +53,22 @@ codegen = [
     "pytest>=8.0.0, <9.0.0",
     "pylint>=3.0.0, <4.0.0"
 ]
+test = [
+    "pytest>=8.0.0, <9.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/aws/sagemaker-python-sdk"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sagemaker*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"sagemaker.core" = ["image_uri_config/*.json", "jumpstart/region_config.json"]
 
 [tool.black]
 line-length = 100
@@ -49,3 +76,8 @@ exclude = '\.ipynb$'
 
 [tool.setuptools.dynamic]
 version = { attr = "sagemaker.core._version.__version__"}
+
+[tool.coverage.run]
+omit = [
+    "*/sagemaker/core/tools/resources_codegen.py"
+]

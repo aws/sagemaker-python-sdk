@@ -33,13 +33,14 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "sagemaker-core>=1.0.17,<2.0.0",
-  "sagemaker_utils",
+  "sagemaker-core>=2.0.0,<3.0.0",
 ]
 
 [project.optional-dependencies]
-train = ["sagemaker_train"]
-all = ["sagemaker_train"]
+train = ["sagemaker-train"]
+serve = ["sagemaker-serve"]
+mlops = ["sagemaker-mlops"]
+all = ["sagemaker-train", "sagemaker-serve", "sagemaker-mlops"]
 
 [project.urls]
 Homepage = "https://github.com/aws/sagemaker-python-sdk"

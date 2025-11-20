@@ -25,15 +25,16 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.status import Status
 from rich.style import Style
 from sagemaker.core.shapes import *
+from sagemaker.core.helper.pipeline_variable import StrPipeVar
 from sagemaker.core.utils.code_injection.codec import transform
 from sagemaker.core.utils.code_injection.constants import Color
 from sagemaker.core.utils.utils import SageMakerClient, ResourceIterator, Unassigned, get_textual_rich_logger, snake_to_pascal, pascal_to_snake, is_not_primitive, is_not_str_dict, is_primitive_list, serialize
-from sagemaker.utils.config.config_manager import SageMakerConfig
+from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core.utils.logs import MultiLogStreamHandler
 from sagemaker.core.utils.exceptions import *
 from typing import ClassVar
-from sagemaker.utils.base_serializers import BaseSerializer
-from sagemaker.utils.base_deserializers import BaseDeserializer
+from sagemaker.core.serializers.base import BaseSerializer
+from sagemaker.core.deserializers.base import BaseDeserializer
 
 
 logger = get_textual_rich_logger(__name__)
@@ -144,19 +145,19 @@ class Action(Base):
         lineage_group_arn: The Amazon Resource Name (ARN) of the lineage group.
     
     """
-    action_name: str
-    action_arn: Optional[str] = Unassigned()
+    action_name: StrPipeVar
+    action_arn: Optional[StrPipeVar] = Unassigned()
     source: Optional[ActionSource] = Unassigned()
-    action_type: Optional[str] = Unassigned()
-    description: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
-    properties: Optional[Dict[str, str]] = Unassigned()
+    action_type: Optional[StrPipeVar] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
     metadata_properties: Optional[MetadataProperties] = Unassigned()
-    lineage_group_arn: Optional[str] = Unassigned()
+    lineage_group_arn: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -178,12 +179,12 @@ class Action(Base):
     @Base.add_validate_call
     def create(
         cls,
-        action_name: str,
+        action_name: StrPipeVar,
         source: ActionSource,
-        action_type: str,
-        description: Optional[str] = Unassigned(),
-        status: Optional[str] = Unassigned(),
-        properties: Optional[Dict[str, str]] = Unassigned(),
+        action_type: StrPipeVar,
+        description: Optional[StrPipeVar] = Unassigned(),
+        status: Optional[StrPipeVar] = Unassigned(),
+        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -254,7 +255,7 @@ class Action(Base):
     @Base.add_validate_call
     def get(
         cls,
-        action_name: str,
+        action_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Action"]:
@@ -340,10 +341,10 @@ class Action(Base):
     @Base.add_validate_call
     def update(
         self,
-        description: Optional[str] = Unassigned(),
-        status: Optional[str] = Unassigned(),
-        properties: Optional[Dict[str, str]] = Unassigned(),
-        properties_to_remove: Optional[List[str]] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
+        status: Optional[StrPipeVar] = Unassigned(),
+        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
+        properties_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["Action"]:
         """
         Update a Action resource
@@ -428,12 +429,12 @@ class Action(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        source_uri: Optional[str] = Unassigned(),
-        action_type: Optional[str] = Unassigned(),
+        source_uri: Optional[StrPipeVar] = Unassigned(),
+        action_type: Optional[StrPipeVar] = Unassigned(),
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Action"]:
@@ -511,16 +512,16 @@ class Algorithm(Base):
         certify_for_marketplace: Whether the algorithm is certified to be listed in Amazon Web Services Marketplace.
     
     """
-    algorithm_name: str
-    algorithm_arn: Optional[str] = Unassigned()
-    algorithm_description: Optional[str] = Unassigned()
+    algorithm_name: StrPipeVar
+    algorithm_arn: Optional[StrPipeVar] = Unassigned()
+    algorithm_description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     training_specification: Optional[TrainingSpecification] = Unassigned()
     inference_specification: Optional[InferenceSpecification] = Unassigned()
     validation_specification: Optional[AlgorithmValidationSpecification] = Unassigned()
-    algorithm_status: Optional[str] = Unassigned()
+    algorithm_status: Optional[StrPipeVar] = Unassigned()
     algorithm_status_details: Optional[AlgorithmStatusDetails] = Unassigned()
-    product_id: Optional[str] = Unassigned()
+    product_id: Optional[StrPipeVar] = Unassigned()
     certify_for_marketplace: Optional[bool] = Unassigned()
     
     def get_name(self) -> str:
@@ -569,9 +570,9 @@ class Algorithm(Base):
     @Base.add_validate_call
     def create(
         cls,
-        algorithm_name: str,
+        algorithm_name: StrPipeVar,
         training_specification: TrainingSpecification,
-        algorithm_description: Optional[str] = Unassigned(),
+        algorithm_description: Optional[StrPipeVar] = Unassigned(),
         inference_specification: Optional[InferenceSpecification] = Unassigned(),
         validation_specification: Optional[AlgorithmValidationSpecification] = Unassigned(),
         certify_for_marketplace: Optional[bool] = Unassigned(),
@@ -641,7 +642,7 @@ class Algorithm(Base):
     @Base.add_validate_call
     def get(
         cls,
-        algorithm_name: str,
+        algorithm_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Algorithm"]:
@@ -872,9 +873,9 @@ class Algorithm(Base):
         cls,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Algorithm"]:
@@ -951,19 +952,19 @@ class App(Base):
         built_in_lifecycle_config_arn: The lifecycle configuration that runs before the default lifecycle configuration
     
     """
-    domain_id: str
-    app_type: str
-    app_name: str
-    app_arn: Optional[str] = Unassigned()
-    user_profile_name: Optional[str] = Unassigned()
-    space_name: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
+    domain_id: StrPipeVar
+    app_type: StrPipeVar
+    app_name: StrPipeVar
+    app_arn: Optional[StrPipeVar] = Unassigned()
+    user_profile_name: Optional[StrPipeVar] = Unassigned()
+    space_name: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
     last_health_check_timestamp: Optional[datetime.datetime] = Unassigned()
     last_user_activity_timestamp: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     resource_spec: Optional[ResourceSpec] = Unassigned()
-    built_in_lifecycle_config_arn: Optional[str] = Unassigned()
+    built_in_lifecycle_config_arn: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -985,11 +986,11 @@ class App(Base):
     @Base.add_validate_call
     def create(
         cls,
-        domain_id: str,
-        app_type: str,
-        app_name: str,
-        user_profile_name: Optional[Union[str, object]] = Unassigned(),
-        space_name: Optional[Union[str, object]] = Unassigned(),
+        domain_id: StrPipeVar,
+        app_type: StrPipeVar,
+        app_name: StrPipeVar,
+        user_profile_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
+        space_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         resource_spec: Optional[ResourceSpec] = Unassigned(),
         session: Optional[Session] = None,
@@ -1059,11 +1060,11 @@ class App(Base):
     @Base.add_validate_call
     def get(
         cls,
-        domain_id: str,
-        app_type: str,
-        app_name: str,
-        user_profile_name: Optional[str] = Unassigned(),
-        space_name: Optional[str] = Unassigned(),
+        domain_id: StrPipeVar,
+        app_type: StrPipeVar,
+        app_name: StrPipeVar,
+        user_profile_name: Optional[StrPipeVar] = Unassigned(),
+        space_name: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["App"]:
@@ -1315,11 +1316,11 @@ class App(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_order: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        domain_id_equals: Optional[str] = Unassigned(),
-        user_profile_name_equals: Optional[str] = Unassigned(),
-        space_name_equals: Optional[str] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        domain_id_equals: Optional[StrPipeVar] = Unassigned(),
+        user_profile_name_equals: Optional[StrPipeVar] = Unassigned(),
+        space_name_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["App"]:
@@ -1390,8 +1391,8 @@ class AppImageConfig(Base):
         code_editor_app_image_config: The configuration of the Code Editor app.
     
     """
-    app_image_config_name: str
-    app_image_config_arn: Optional[str] = Unassigned()
+    app_image_config_name: StrPipeVar
+    app_image_config_arn: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     kernel_gateway_image_config: Optional[KernelGatewayImageConfig] = Unassigned()
@@ -1418,7 +1419,7 @@ class AppImageConfig(Base):
     @Base.add_validate_call
     def create(
         cls,
-        app_image_config_name: str,
+        app_image_config_name: StrPipeVar,
         tags: Optional[List[Tag]] = Unassigned(),
         kernel_gateway_image_config: Optional[KernelGatewayImageConfig] = Unassigned(),
         jupyter_lab_app_image_config: Optional[JupyterLabAppImageConfig] = Unassigned(),
@@ -1485,7 +1486,7 @@ class AppImageConfig(Base):
     @Base.add_validate_call
     def get(
         cls,
-        app_image_config_name: str,
+        app_image_config_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["AppImageConfig"]:
@@ -1653,13 +1654,13 @@ class AppImageConfig(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        name_contains: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         modified_time_before: Optional[datetime.datetime] = Unassigned(),
         modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["AppImageConfig"]:
@@ -1738,17 +1739,17 @@ class Artifact(Base):
         lineage_group_arn: The Amazon Resource Name (ARN) of the lineage group.
     
     """
-    artifact_arn: str
-    artifact_name: Optional[str] = Unassigned()
+    artifact_arn: StrPipeVar
+    artifact_name: Optional[StrPipeVar] = Unassigned()
     source: Optional[ArtifactSource] = Unassigned()
-    artifact_type: Optional[str] = Unassigned()
-    properties: Optional[Dict[str, str]] = Unassigned()
+    artifact_type: Optional[StrPipeVar] = Unassigned()
+    properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
     metadata_properties: Optional[MetadataProperties] = Unassigned()
-    lineage_group_arn: Optional[str] = Unassigned()
+    lineage_group_arn: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -1771,9 +1772,9 @@ class Artifact(Base):
     def create(
         cls,
         source: ArtifactSource,
-        artifact_type: str,
-        artifact_name: Optional[str] = Unassigned(),
-        properties: Optional[Dict[str, str]] = Unassigned(),
+        artifact_type: StrPipeVar,
+        artifact_name: Optional[StrPipeVar] = Unassigned(),
+        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -1840,7 +1841,7 @@ class Artifact(Base):
     @Base.add_validate_call
     def get(
         cls,
-        artifact_arn: str,
+        artifact_arn: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Artifact"]:
@@ -1926,9 +1927,9 @@ class Artifact(Base):
     @Base.add_validate_call
     def update(
         self,
-        artifact_name: Optional[str] = Unassigned(),
-        properties: Optional[Dict[str, str]] = Unassigned(),
-        properties_to_remove: Optional[List[str]] = Unassigned(),
+        artifact_name: Optional[StrPipeVar] = Unassigned(),
+        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
+        properties_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["Artifact"]:
         """
         Update a Artifact resource
@@ -2013,12 +2014,12 @@ class Artifact(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        source_uri: Optional[str] = Unassigned(),
-        artifact_type: Optional[str] = Unassigned(),
+        source_uri: Optional[StrPipeVar] = Unassigned(),
+        artifact_type: Optional[StrPipeVar] = Unassigned(),
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Artifact"]:
@@ -2094,13 +2095,13 @@ class Association(Base):
         created_by: 
     
     """
-    source_arn: Optional[str] = Unassigned()
-    destination_arn: Optional[str] = Unassigned()
-    source_type: Optional[str] = Unassigned()
-    destination_type: Optional[str] = Unassigned()
-    association_type: Optional[str] = Unassigned()
-    source_name: Optional[str] = Unassigned()
-    destination_name: Optional[str] = Unassigned()
+    source_arn: Optional[StrPipeVar] = Unassigned()
+    destination_arn: Optional[StrPipeVar] = Unassigned()
+    source_type: Optional[StrPipeVar] = Unassigned()
+    destination_type: Optional[StrPipeVar] = Unassigned()
+    association_type: Optional[StrPipeVar] = Unassigned()
+    source_name: Optional[StrPipeVar] = Unassigned()
+    destination_name: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     
@@ -2159,15 +2160,15 @@ class Association(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        source_arn: Optional[str] = Unassigned(),
-        destination_arn: Optional[str] = Unassigned(),
-        source_type: Optional[str] = Unassigned(),
-        destination_type: Optional[str] = Unassigned(),
-        association_type: Optional[str] = Unassigned(),
+        source_arn: Optional[StrPipeVar] = Unassigned(),
+        destination_arn: Optional[StrPipeVar] = Unassigned(),
+        source_type: Optional[StrPipeVar] = Unassigned(),
+        destination_type: Optional[StrPipeVar] = Unassigned(),
+        association_type: Optional[StrPipeVar] = Unassigned(),
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Association"]:
@@ -2236,9 +2237,9 @@ class Association(Base):
     @Base.add_validate_call
     def add(
         cls,
-        source_arn: str,
-        destination_arn: str,
-        association_type: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        source_arn: StrPipeVar,
+        destination_arn: StrPipeVar,
+        association_type: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -2311,22 +2312,22 @@ class AutoMLJob(Base):
         model_deploy_result: Provides information about endpoint for the model deployment.
     
     """
-    auto_ml_job_name: str
-    auto_ml_job_arn: Optional[str] = Unassigned()
+    auto_ml_job_name: StrPipeVar
+    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
     input_data_config: Optional[List[AutoMLChannel]] = Unassigned()
     output_data_config: Optional[AutoMLOutputDataConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned()
-    problem_type: Optional[str] = Unassigned()
+    problem_type: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_config: Optional[AutoMLJobConfig] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     partial_failure_reasons: Optional[List[AutoMLPartialFailureReason]] = Unassigned()
     best_candidate: Optional[AutoMLCandidate] = Unassigned()
-    auto_ml_job_status: Optional[str] = Unassigned()
-    auto_ml_job_secondary_status: Optional[str] = Unassigned()
+    auto_ml_job_status: Optional[StrPipeVar] = Unassigned()
+    auto_ml_job_secondary_status: Optional[StrPipeVar] = Unassigned()
     generate_candidate_definitions_only: Optional[bool] = Unassigned()
     auto_ml_job_artifacts: Optional[AutoMLJobArtifacts] = Unassigned()
     resolved_attributes: Optional[ResolvedAttributes] = Unassigned()
@@ -2401,11 +2402,11 @@ class AutoMLJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        auto_ml_job_name: str,
+        auto_ml_job_name: StrPipeVar,
         input_data_config: List[AutoMLChannel],
         output_data_config: AutoMLOutputDataConfig,
-        role_arn: str,
-        problem_type: Optional[str] = Unassigned(),
+        role_arn: StrPipeVar,
+        problem_type: Optional[StrPipeVar] = Unassigned(),
         auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned(),
         auto_ml_job_config: Optional[AutoMLJobConfig] = Unassigned(),
         generate_candidate_definitions_only: Optional[bool] = Unassigned(),
@@ -2484,7 +2485,7 @@ class AutoMLJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        auto_ml_job_name: str,
+        auto_ml_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["AutoMLJob"]:
@@ -2663,10 +2664,10 @@ class AutoMLJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["AutoMLJob"]:
@@ -2732,10 +2733,10 @@ class AutoMLJob(Base):
     @Base.add_validate_call
     def get_all_candidates(
         self,
-        status_equals: Optional[str] = Unassigned(),
-        candidate_name_equals: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        candidate_name_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[AutoMLCandidate]:
         """
@@ -2822,22 +2823,22 @@ class AutoMLJobV2(Base):
         auto_ml_compute_config: The compute configuration used for the AutoML job V2.
     
     """
-    auto_ml_job_name: str
-    auto_ml_job_arn: Optional[str] = Unassigned()
+    auto_ml_job_name: StrPipeVar
+    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_input_data_config: Optional[List[AutoMLJobChannel]] = Unassigned()
     output_data_config: Optional[AutoMLOutputDataConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned()
     auto_ml_problem_type_config: Optional[AutoMLProblemTypeConfig] = Unassigned()
-    auto_ml_problem_type_config_name: Optional[str] = Unassigned()
+    auto_ml_problem_type_config_name: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     partial_failure_reasons: Optional[List[AutoMLPartialFailureReason]] = Unassigned()
     best_candidate: Optional[AutoMLCandidate] = Unassigned()
-    auto_ml_job_status: Optional[str] = Unassigned()
-    auto_ml_job_secondary_status: Optional[str] = Unassigned()
+    auto_ml_job_status: Optional[StrPipeVar] = Unassigned()
+    auto_ml_job_secondary_status: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_artifacts: Optional[AutoMLJobArtifacts] = Unassigned()
     resolved_attributes: Optional[AutoMLResolvedAttributes] = Unassigned()
     model_deploy_config: Optional[ModelDeployConfig] = Unassigned()
@@ -2926,11 +2927,11 @@ class AutoMLJobV2(Base):
     @Base.add_validate_call
     def create(
         cls,
-        auto_ml_job_name: str,
+        auto_ml_job_name: StrPipeVar,
         auto_ml_job_input_data_config: List[AutoMLJobChannel],
         output_data_config: AutoMLOutputDataConfig,
         auto_ml_problem_type_config: AutoMLProblemTypeConfig,
-        role_arn: str,
+        role_arn: StrPipeVar,
         tags: Optional[List[Tag]] = Unassigned(),
         security_config: Optional[AutoMLSecurityConfig] = Unassigned(),
         auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned(),
@@ -3012,7 +3013,7 @@ class AutoMLJobV2(Base):
     @Base.add_validate_call
     def get(
         cls,
-        auto_ml_job_name: str,
+        auto_ml_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["AutoMLJobV2"]:
@@ -3169,15 +3170,15 @@ class Cluster(Base):
         node_recovery: The node recovery mode configured for the SageMaker HyperPod cluster.
     
     """
-    cluster_name: str
-    cluster_arn: Optional[str] = Unassigned()
-    cluster_status: Optional[str] = Unassigned()
+    cluster_name: StrPipeVar
+    cluster_arn: Optional[StrPipeVar] = Unassigned()
+    cluster_status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    failure_message: Optional[str] = Unassigned()
+    failure_message: Optional[StrPipeVar] = Unassigned()
     instance_groups: Optional[List[ClusterInstanceGroupDetails]] = Unassigned()
     vpc_config: Optional[VpcConfig] = Unassigned()
     orchestrator: Optional[ClusterOrchestrator] = Unassigned()
-    node_recovery: Optional[str] = Unassigned()
+    node_recovery: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -3224,12 +3225,12 @@ class Cluster(Base):
     @Base.add_validate_call
     def create(
         cls,
-        cluster_name: str,
+        cluster_name: StrPipeVar,
         instance_groups: List[ClusterInstanceGroupSpecification],
         vpc_config: Optional[VpcConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         orchestrator: Optional[ClusterOrchestrator] = Unassigned(),
-        node_recovery: Optional[str] = Unassigned(),
+        node_recovery: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Cluster"]:
@@ -3295,7 +3296,7 @@ class Cluster(Base):
     @Base.add_validate_call
     def get(
         cls,
-        cluster_name: str,
+        cluster_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Cluster"]:
@@ -3383,8 +3384,8 @@ class Cluster(Base):
     def update(
         self,
         instance_groups: List[ClusterInstanceGroupSpecification],
-        node_recovery: Optional[str] = Unassigned(),
-        instance_groups_to_delete: Optional[List[str]] = Unassigned(),
+        node_recovery: Optional[StrPipeVar] = Unassigned(),
+        instance_groups_to_delete: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["Cluster"]:
         """
         Update a Cluster resource
@@ -3582,10 +3583,10 @@ class Cluster(Base):
         cls,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        training_plan_arn: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        training_plan_arn: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Cluster"]:
@@ -3647,7 +3648,7 @@ class Cluster(Base):
     @Base.add_validate_call
     def get_node(
         self,
-        node_id: str,
+        node_id: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[ClusterNodeDetails]:
@@ -3699,9 +3700,9 @@ class Cluster(Base):
         self,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        instance_group_name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        instance_group_name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[ClusterNodeDetails]:
         """
@@ -3807,7 +3808,7 @@ class Cluster(Base):
     @Base.add_validate_call
     def batch_delete_nodes(
         self,
-        node_ids: List[str],
+        node_ids: List[StrPipeVar],
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[BatchDeleteClusterNodesResponse]:
@@ -3874,15 +3875,15 @@ class ClusterSchedulerConfig(Base):
         last_modified_by: 
     
     """
-    cluster_scheduler_config_id: str
-    cluster_scheduler_config_arn: Optional[str] = Unassigned()
-    name: Optional[str] = Unassigned()
+    cluster_scheduler_config_id: StrPipeVar
+    cluster_scheduler_config_arn: Optional[StrPipeVar] = Unassigned()
+    name: Optional[StrPipeVar] = Unassigned()
     cluster_scheduler_config_version: Optional[int] = Unassigned()
-    status: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    cluster_arn: Optional[str] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    cluster_arn: Optional[StrPipeVar] = Unassigned()
     scheduler_config: Optional[SchedulerConfig] = Unassigned()
-    description: Optional[str] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -3908,10 +3909,10 @@ class ClusterSchedulerConfig(Base):
     @Base.add_validate_call
     def create(
         cls,
-        name: str,
-        cluster_arn: str,
+        name: StrPipeVar,
+        cluster_arn: StrPipeVar,
         scheduler_config: SchedulerConfig,
-        description: Optional[str] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -3976,7 +3977,7 @@ class ClusterSchedulerConfig(Base):
     @Base.add_validate_call
     def get(
         cls,
-        cluster_scheduler_config_id: str,
+        cluster_scheduler_config_id: StrPipeVar,
         cluster_scheduler_config_version: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -4068,7 +4069,7 @@ class ClusterSchedulerConfig(Base):
         self,
         target_version: int,
         scheduler_config: Optional[SchedulerConfig] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["ClusterSchedulerConfig"]:
         """
         Update a ClusterSchedulerConfig resource
@@ -4269,11 +4270,11 @@ class ClusterSchedulerConfig(Base):
         cls,
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        cluster_arn: Optional[str] = Unassigned(),
-        status: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        cluster_arn: Optional[StrPipeVar] = Unassigned(),
+        status: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["ClusterSchedulerConfig"]:
@@ -4346,8 +4347,8 @@ class CodeRepository(Base):
         git_config: Configuration details about the repository, including the URL where the repository is located, the default branch, and the Amazon Resource Name (ARN) of the Amazon Web Services Secrets Manager secret that contains the credentials used to access the repository.
     
     """
-    code_repository_name: str
-    code_repository_arn: Optional[str] = Unassigned()
+    code_repository_name: StrPipeVar
+    code_repository_arn: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     git_config: Optional[GitConfig] = Unassigned()
@@ -4372,7 +4373,7 @@ class CodeRepository(Base):
     @Base.add_validate_call
     def create(
         cls,
-        code_repository_name: str,
+        code_repository_name: StrPipeVar,
         git_config: GitConfig,
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -4432,7 +4433,7 @@ class CodeRepository(Base):
     @Base.add_validate_call
     def get(
         cls,
-        code_repository_name: str,
+        code_repository_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["CodeRepository"]:
@@ -4597,9 +4598,9 @@ class CodeRepository(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["CodeRepository"]:
         """
@@ -4685,20 +4686,20 @@ class CompilationJob(Base):
         derived_information: Information that SageMaker Neo automatically derived about the model.
     
     """
-    compilation_job_name: str
-    compilation_job_arn: Optional[str] = Unassigned()
-    compilation_job_status: Optional[str] = Unassigned()
+    compilation_job_name: StrPipeVar
+    compilation_job_arn: Optional[StrPipeVar] = Unassigned()
+    compilation_job_status: Optional[StrPipeVar] = Unassigned()
     compilation_start_time: Optional[datetime.datetime] = Unassigned()
     compilation_end_time: Optional[datetime.datetime] = Unassigned()
     stopping_condition: Optional[StoppingCondition] = Unassigned()
-    inference_image: Optional[str] = Unassigned()
-    model_package_version_arn: Optional[str] = Unassigned()
+    inference_image: Optional[StrPipeVar] = Unassigned()
+    model_package_version_arn: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     model_artifacts: Optional[ModelArtifacts] = Unassigned()
     model_digests: Optional[ModelDigests] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     input_config: Optional[InputConfig] = Unassigned()
     output_config: Optional[OutputConfig] = Unassigned()
     vpc_config: Optional[NeoVpcConfig] = Unassigned()
@@ -4770,11 +4771,11 @@ class CompilationJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        compilation_job_name: str,
-        role_arn: str,
+        compilation_job_name: StrPipeVar,
+        role_arn: StrPipeVar,
         output_config: OutputConfig,
         stopping_condition: StoppingCondition,
-        model_package_version_arn: Optional[str] = Unassigned(),
+        model_package_version_arn: Optional[StrPipeVar] = Unassigned(),
         input_config: Optional[InputConfig] = Unassigned(),
         vpc_config: Optional[NeoVpcConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
@@ -4847,7 +4848,7 @@ class CompilationJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        compilation_job_name: str,
+        compilation_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["CompilationJob"]:
@@ -5060,10 +5061,10 @@ class CompilationJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["CompilationJob"]:
@@ -5148,17 +5149,17 @@ class ComputeQuota(Base):
         last_modified_by: 
     
     """
-    compute_quota_id: str
-    compute_quota_arn: Optional[str] = Unassigned()
-    name: Optional[str] = Unassigned()
-    description: Optional[str] = Unassigned()
+    compute_quota_id: StrPipeVar
+    compute_quota_arn: Optional[StrPipeVar] = Unassigned()
+    name: Optional[StrPipeVar] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
     compute_quota_version: Optional[int] = Unassigned()
-    status: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    cluster_arn: Optional[str] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    cluster_arn: Optional[StrPipeVar] = Unassigned()
     compute_quota_config: Optional[ComputeQuotaConfig] = Unassigned()
     compute_quota_target: Optional[ComputeQuotaTarget] = Unassigned()
-    activation_state: Optional[str] = Unassigned()
+    activation_state: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -5184,12 +5185,12 @@ class ComputeQuota(Base):
     @Base.add_validate_call
     def create(
         cls,
-        name: str,
-        cluster_arn: str,
+        name: StrPipeVar,
+        cluster_arn: StrPipeVar,
         compute_quota_config: ComputeQuotaConfig,
         compute_quota_target: ComputeQuotaTarget,
-        description: Optional[str] = Unassigned(),
-        activation_state: Optional[str] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
+        activation_state: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -5258,7 +5259,7 @@ class ComputeQuota(Base):
     @Base.add_validate_call
     def get(
         cls,
-        compute_quota_id: str,
+        compute_quota_id: StrPipeVar,
         compute_quota_version: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -5351,8 +5352,8 @@ class ComputeQuota(Base):
         target_version: int,
         compute_quota_config: Optional[ComputeQuotaConfig] = Unassigned(),
         compute_quota_target: Optional[ComputeQuotaTarget] = Unassigned(),
-        activation_state: Optional[str] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        activation_state: Optional[StrPipeVar] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["ComputeQuota"]:
         """
         Update a ComputeQuota resource
@@ -5555,11 +5556,11 @@ class ComputeQuota(Base):
         cls,
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        status: Optional[str] = Unassigned(),
-        cluster_arn: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status: Optional[StrPipeVar] = Unassigned(),
+        cluster_arn: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["ComputeQuota"]:
@@ -5638,17 +5639,17 @@ class Context(Base):
         lineage_group_arn: The Amazon Resource Name (ARN) of the lineage group.
     
     """
-    context_name: str
-    context_arn: Optional[str] = Unassigned()
+    context_name: StrPipeVar
+    context_arn: Optional[StrPipeVar] = Unassigned()
     source: Optional[ContextSource] = Unassigned()
-    context_type: Optional[str] = Unassigned()
-    description: Optional[str] = Unassigned()
-    properties: Optional[Dict[str, str]] = Unassigned()
+    context_type: Optional[StrPipeVar] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
+    properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
-    lineage_group_arn: Optional[str] = Unassigned()
+    lineage_group_arn: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -5670,11 +5671,11 @@ class Context(Base):
     @Base.add_validate_call
     def create(
         cls,
-        context_name: str,
+        context_name: StrPipeVar,
         source: ContextSource,
-        context_type: str,
-        description: Optional[str] = Unassigned(),
-        properties: Optional[Dict[str, str]] = Unassigned(),
+        context_type: StrPipeVar,
+        description: Optional[StrPipeVar] = Unassigned(),
+        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -5740,7 +5741,7 @@ class Context(Base):
     @Base.add_validate_call
     def get(
         cls,
-        context_name: str,
+        context_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Context"]:
@@ -5826,9 +5827,9 @@ class Context(Base):
     @Base.add_validate_call
     def update(
         self,
-        description: Optional[str] = Unassigned(),
-        properties: Optional[Dict[str, str]] = Unassigned(),
-        properties_to_remove: Optional[List[str]] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
+        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
+        properties_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["Context"]:
         """
         Update a Context resource
@@ -5912,12 +5913,12 @@ class Context(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        source_uri: Optional[str] = Unassigned(),
-        context_type: Optional[str] = Unassigned(),
+        source_uri: Optional[StrPipeVar] = Unassigned(),
+        context_type: Optional[StrPipeVar] = Unassigned(),
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Context"]:
@@ -5995,8 +5996,8 @@ class DataQualityJobDefinition(Base):
         stopping_condition: 
     
     """
-    job_definition_name: str
-    job_definition_arn: Optional[str] = Unassigned()
+    job_definition_name: StrPipeVar
+    job_definition_arn: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     data_quality_baseline_config: Optional[DataQualityBaselineConfig] = Unassigned()
     data_quality_app_specification: Optional[DataQualityAppSpecification] = Unassigned()
@@ -6004,7 +6005,7 @@ class DataQualityJobDefinition(Base):
     data_quality_job_output_config: Optional[MonitoringOutputConfig] = Unassigned()
     job_resources: Optional[MonitoringResources] = Unassigned()
     network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
     
     def get_name(self) -> str:
@@ -6102,12 +6103,12 @@ class DataQualityJobDefinition(Base):
     @Base.add_validate_call
     def create(
         cls,
-        job_definition_name: str,
+        job_definition_name: StrPipeVar,
         data_quality_app_specification: DataQualityAppSpecification,
         data_quality_job_input: DataQualityJobInput,
         data_quality_job_output_config: MonitoringOutputConfig,
         job_resources: MonitoringResources,
-        role_arn: str,
+        role_arn: StrPipeVar,
         data_quality_baseline_config: Optional[DataQualityBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
@@ -6185,7 +6186,7 @@ class DataQualityJobDefinition(Base):
     @Base.add_validate_call
     def get(
         cls,
-        job_definition_name: str,
+        job_definition_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["DataQualityJobDefinition"]:
@@ -6306,10 +6307,10 @@ class DataQualityJobDefinition(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        endpoint_name: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        endpoint_name: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         session: Optional[Session] = None,
@@ -6389,17 +6390,17 @@ class Device(Base):
         agent_version: Edge Manager agent version.
     
     """
-    device_name: str
-    device_fleet_name: str
-    device_arn: Optional[str] = Unassigned()
-    description: Optional[str] = Unassigned()
-    iot_thing_name: Optional[str] = Unassigned()
+    device_name: StrPipeVar
+    device_fleet_name: StrPipeVar
+    device_arn: Optional[StrPipeVar] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
+    iot_thing_name: Optional[StrPipeVar] = Unassigned()
     registration_time: Optional[datetime.datetime] = Unassigned()
     latest_heartbeat: Optional[datetime.datetime] = Unassigned()
     models: Optional[List[EdgeModel]] = Unassigned()
     max_models: Optional[int] = Unassigned()
-    next_token: Optional[str] = Unassigned()
-    agent_version: Optional[str] = Unassigned()
+    next_token: Optional[StrPipeVar] = Unassigned()
+    agent_version: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -6421,9 +6422,9 @@ class Device(Base):
     @Base.add_validate_call
     def get(
         cls,
-        device_name: str,
-        device_fleet_name: str,
-        next_token: Optional[str] = Unassigned(),
+        device_name: StrPipeVar,
+        device_fleet_name: StrPipeVar,
+        next_token: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Device"]:
@@ -6517,8 +6518,8 @@ class Device(Base):
     def get_all(
         cls,
         latest_heartbeat_after: Optional[datetime.datetime] = Unassigned(),
-        model_name: Optional[str] = Unassigned(),
-        device_fleet_name: Optional[str] = Unassigned(),
+        model_name: Optional[StrPipeVar] = Unassigned(),
+        device_fleet_name: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Device"]:
@@ -6586,14 +6587,14 @@ class DeviceFleet(Base):
         iot_role_alias: The Amazon Resource Name (ARN) alias created in Amazon Web Services Internet of Things (IoT).
     
     """
-    device_fleet_name: str
-    device_fleet_arn: Optional[str] = Unassigned()
+    device_fleet_name: StrPipeVar
+    device_fleet_arn: Optional[StrPipeVar] = Unassigned()
     output_config: Optional[EdgeOutputConfig] = Unassigned()
-    description: Optional[str] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
-    iot_role_alias: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    iot_role_alias: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -6640,10 +6641,10 @@ class DeviceFleet(Base):
     @Base.add_validate_call
     def create(
         cls,
-        device_fleet_name: str,
+        device_fleet_name: StrPipeVar,
         output_config: EdgeOutputConfig,
-        role_arn: Optional[str] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        role_arn: Optional[StrPipeVar] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         enable_iot_role_alias: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
@@ -6711,7 +6712,7 @@ class DeviceFleet(Base):
     @Base.add_validate_call
     def get(
         cls,
-        device_fleet_name: str,
+        device_fleet_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["DeviceFleet"]:
@@ -6799,8 +6800,8 @@ class DeviceFleet(Base):
     def update(
         self,
         output_config: EdgeOutputConfig,
-        role_arn: Optional[str] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        role_arn: Optional[StrPipeVar] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         enable_iot_role_alias: Optional[bool] = Unassigned(),
     ) -> Optional["DeviceFleet"]:
         """
@@ -6889,9 +6890,9 @@ class DeviceFleet(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["DeviceFleet"]:
@@ -6955,7 +6956,7 @@ class DeviceFleet(Base):
     @Base.add_validate_call
     def deregister_devices(
         self,
-        device_names: List[str],
+        device_names: List[StrPipeVar],
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -7165,28 +7166,28 @@ class Domain(Base):
         default_space_settings: The default settings for shared spaces that users create in the domain.
     
     """
-    domain_id: str
-    domain_arn: Optional[str] = Unassigned()
-    domain_name: Optional[str] = Unassigned()
-    home_efs_file_system_id: Optional[str] = Unassigned()
-    single_sign_on_managed_application_instance_id: Optional[str] = Unassigned()
-    single_sign_on_application_arn: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
+    domain_id: StrPipeVar
+    domain_arn: Optional[StrPipeVar] = Unassigned()
+    domain_name: Optional[StrPipeVar] = Unassigned()
+    home_efs_file_system_id: Optional[StrPipeVar] = Unassigned()
+    single_sign_on_managed_application_instance_id: Optional[StrPipeVar] = Unassigned()
+    single_sign_on_application_arn: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    security_group_id_for_domain_boundary: Optional[str] = Unassigned()
-    auth_mode: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    security_group_id_for_domain_boundary: Optional[StrPipeVar] = Unassigned()
+    auth_mode: Optional[StrPipeVar] = Unassigned()
     default_user_settings: Optional[UserSettings] = Unassigned()
     domain_settings: Optional[DomainSettings] = Unassigned()
-    app_network_access_type: Optional[str] = Unassigned()
-    home_efs_file_system_kms_key_id: Optional[str] = Unassigned()
-    subnet_ids: Optional[List[str]] = Unassigned()
-    url: Optional[str] = Unassigned()
-    vpc_id: Optional[str] = Unassigned()
-    kms_key_id: Optional[str] = Unassigned()
-    app_security_group_management: Optional[str] = Unassigned()
-    tag_propagation: Optional[str] = Unassigned()
+    app_network_access_type: Optional[StrPipeVar] = Unassigned()
+    home_efs_file_system_kms_key_id: Optional[StrPipeVar] = Unassigned()
+    subnet_ids: Optional[List[StrPipeVar]] = Unassigned()
+    url: Optional[StrPipeVar] = Unassigned()
+    vpc_id: Optional[StrPipeVar] = Unassigned()
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
+    app_security_group_management: Optional[StrPipeVar] = Unassigned()
+    tag_propagation: Optional[StrPipeVar] = Unassigned()
     default_space_settings: Optional[DefaultSpaceSettings] = Unassigned()
     
     def get_name(self) -> str:
@@ -7346,18 +7347,18 @@ class Domain(Base):
     @Base.add_validate_call
     def create(
         cls,
-        domain_name: str,
-        auth_mode: str,
+        domain_name: StrPipeVar,
+        auth_mode: StrPipeVar,
         default_user_settings: UserSettings,
-        subnet_ids: List[str],
-        vpc_id: str,
+        subnet_ids: List[StrPipeVar],
+        vpc_id: StrPipeVar,
         domain_settings: Optional[DomainSettings] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        app_network_access_type: Optional[str] = Unassigned(),
-        home_efs_file_system_kms_key_id: Optional[str] = Unassigned(),
-        kms_key_id: Optional[str] = Unassigned(),
-        app_security_group_management: Optional[str] = Unassigned(),
-        tag_propagation: Optional[str] = Unassigned(),
+        app_network_access_type: Optional[StrPipeVar] = Unassigned(),
+        home_efs_file_system_kms_key_id: Optional[StrPipeVar] = Unassigned(),
+        kms_key_id: Optional[StrPipeVar] = Unassigned(),
+        app_security_group_management: Optional[StrPipeVar] = Unassigned(),
+        tag_propagation: Optional[StrPipeVar] = Unassigned(),
         default_space_settings: Optional[DefaultSpaceSettings] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -7438,7 +7439,7 @@ class Domain(Base):
     @Base.add_validate_call
     def get(
         cls,
-        domain_id: str,
+        domain_id: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Domain"]:
@@ -7527,11 +7528,11 @@ class Domain(Base):
         self,
         default_user_settings: Optional[UserSettings] = Unassigned(),
         domain_settings_for_update: Optional[DomainSettingsForUpdate] = Unassigned(),
-        app_security_group_management: Optional[str] = Unassigned(),
+        app_security_group_management: Optional[StrPipeVar] = Unassigned(),
         default_space_settings: Optional[DefaultSpaceSettings] = Unassigned(),
-        subnet_ids: Optional[List[str]] = Unassigned(),
-        app_network_access_type: Optional[str] = Unassigned(),
-        tag_propagation: Optional[str] = Unassigned(),
+        subnet_ids: Optional[List[StrPipeVar]] = Unassigned(),
+        app_network_access_type: Optional[StrPipeVar] = Unassigned(),
+        tag_propagation: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["Domain"]:
         """
         Update a Domain resource
@@ -7778,15 +7779,15 @@ class EdgeDeploymentPlan(Base):
         last_modified_time: The time when the edge deployment plan was last updated.
     
     """
-    edge_deployment_plan_name: str
-    edge_deployment_plan_arn: Optional[str] = Unassigned()
+    edge_deployment_plan_name: StrPipeVar
+    edge_deployment_plan_arn: Optional[StrPipeVar] = Unassigned()
     model_configs: Optional[List[EdgeDeploymentModelConfig]] = Unassigned()
-    device_fleet_name: Optional[str] = Unassigned()
+    device_fleet_name: Optional[StrPipeVar] = Unassigned()
     edge_deployment_success: Optional[int] = Unassigned()
     edge_deployment_pending: Optional[int] = Unassigned()
     edge_deployment_failed: Optional[int] = Unassigned()
     stages: Optional[List[DeploymentStageStatusSummary]] = Unassigned()
-    next_token: Optional[str] = Unassigned()
+    next_token: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     
@@ -7810,9 +7811,9 @@ class EdgeDeploymentPlan(Base):
     @Base.add_validate_call
     def create(
         cls,
-        edge_deployment_plan_name: str,
+        edge_deployment_plan_name: StrPipeVar,
         model_configs: List[EdgeDeploymentModelConfig],
-        device_fleet_name: Union[str, object],
+        device_fleet_name: Union[StrPipeVar, object],
         stages: Optional[List[DeploymentStage]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -7877,8 +7878,8 @@ class EdgeDeploymentPlan(Base):
     @Base.add_validate_call
     def get(
         cls,
-        edge_deployment_plan_name: str,
-        next_token: Optional[str] = Unassigned(),
+        edge_deployment_plan_name: StrPipeVar,
+        next_token: Optional[StrPipeVar] = Unassigned(),
         max_results: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -8010,10 +8011,10 @@ class EdgeDeploymentPlan(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        device_fleet_name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        device_fleet_name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["EdgeDeploymentPlan"]:
@@ -8123,7 +8124,7 @@ class EdgeDeploymentPlan(Base):
     @Base.add_validate_call
     def delete_stage(
         self,
-        stage_name: str,
+        stage_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -8168,7 +8169,7 @@ class EdgeDeploymentPlan(Base):
     @Base.add_validate_call
     def start_stage(
         self,
-        stage_name: str,
+        stage_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -8212,7 +8213,7 @@ class EdgeDeploymentPlan(Base):
     @Base.add_validate_call
     def stop_stage(
         self,
-        stage_name: str,
+        stage_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -8256,7 +8257,7 @@ class EdgeDeploymentPlan(Base):
     @Base.add_validate_call
     def get_all_stage_devices(
         self,
-        stage_name: str,
+        stage_name: StrPipeVar,
         exclude_devices_deployed_in_other_stage: Optional[bool] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[DeviceDeploymentSummary]:
@@ -8330,20 +8331,20 @@ class EdgePackagingJob(Base):
         preset_deployment_output: The output of a SageMaker Edge Manager deployable resource.
     
     """
-    edge_packaging_job_name: str
-    edge_packaging_job_arn: Optional[str] = Unassigned()
-    compilation_job_name: Optional[str] = Unassigned()
-    model_name: Optional[str] = Unassigned()
-    model_version: Optional[str] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    edge_packaging_job_name: StrPipeVar
+    edge_packaging_job_arn: Optional[StrPipeVar] = Unassigned()
+    compilation_job_name: Optional[StrPipeVar] = Unassigned()
+    model_name: Optional[StrPipeVar] = Unassigned()
+    model_version: Optional[StrPipeVar] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     output_config: Optional[EdgeOutputConfig] = Unassigned()
-    resource_key: Optional[str] = Unassigned()
-    edge_packaging_job_status: Optional[str] = Unassigned()
-    edge_packaging_job_status_message: Optional[str] = Unassigned()
+    resource_key: Optional[StrPipeVar] = Unassigned()
+    edge_packaging_job_status: Optional[StrPipeVar] = Unassigned()
+    edge_packaging_job_status_message: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    model_artifact: Optional[str] = Unassigned()
-    model_signature: Optional[str] = Unassigned()
+    model_artifact: Optional[StrPipeVar] = Unassigned()
+    model_signature: Optional[StrPipeVar] = Unassigned()
     preset_deployment_output: Optional[EdgePresetDeploymentOutput] = Unassigned()
     
     def get_name(self) -> str:
@@ -8388,13 +8389,13 @@ class EdgePackagingJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        edge_packaging_job_name: str,
-        compilation_job_name: Union[str, object],
-        model_name: Union[str, object],
-        model_version: str,
-        role_arn: str,
+        edge_packaging_job_name: StrPipeVar,
+        compilation_job_name: Union[StrPipeVar, object],
+        model_name: Union[StrPipeVar, object],
+        model_version: StrPipeVar,
+        role_arn: StrPipeVar,
         output_config: EdgeOutputConfig,
-        resource_key: Optional[str] = Unassigned(),
+        resource_key: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -8464,7 +8465,7 @@ class EdgePackagingJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        edge_packaging_job_name: str,
+        edge_packaging_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["EdgePackagingJob"]:
@@ -8642,11 +8643,11 @@ class EdgePackagingJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        model_name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        model_name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["EdgePackagingJob"]:
@@ -8732,13 +8733,13 @@ class Endpoint(Base):
         shadow_production_variants: An array of ProductionVariantSummary objects, one for each model that you want to host at this endpoint in shadow mode with production traffic replicated from the model specified on ProductionVariants.
     
     """
-    endpoint_name: str
-    endpoint_arn: Optional[str] = Unassigned()
-    endpoint_config_name: Optional[str] = Unassigned()
+    endpoint_name: StrPipeVar
+    endpoint_arn: Optional[StrPipeVar] = Unassigned()
+    endpoint_config_name: Optional[StrPipeVar] = Unassigned()
     production_variants: Optional[List[ProductionVariantSummary]] = Unassigned()
     data_capture_config: Optional[DataCaptureConfigSummary] = Unassigned()
-    endpoint_status: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    endpoint_status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_deployment_config: Optional[DeploymentConfig] = Unassigned()
@@ -8801,8 +8802,8 @@ class Endpoint(Base):
     @Base.add_validate_call
     def create(
         cls,
-        endpoint_name: str,
-        endpoint_config_name: Union[str, object],
+        endpoint_name: StrPipeVar,
+        endpoint_config_name: Union[StrPipeVar, object],
         deployment_config: Optional[DeploymentConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -8865,7 +8866,7 @@ class Endpoint(Base):
     @Base.add_validate_call
     def get(
         cls,
-        endpoint_name: str,
+        endpoint_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Endpoint"]:
@@ -9150,14 +9151,14 @@ class Endpoint(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Endpoint"]:
@@ -9269,16 +9270,16 @@ class Endpoint(Base):
     def invoke(
         self,
         body: Any,
-        content_type: Optional[str] = Unassigned(),
-        accept: Optional[str] = Unassigned(),
-        custom_attributes: Optional[str] = Unassigned(),
-        target_model: Optional[str] = Unassigned(),
-        target_variant: Optional[str] = Unassigned(),
-        target_container_hostname: Optional[str] = Unassigned(),
-        inference_id: Optional[str] = Unassigned(),
-        enable_explanations: Optional[str] = Unassigned(),
-        inference_component_name: Optional[str] = Unassigned(),
-        session_id: Optional[str] = Unassigned(),
+        content_type: Optional[StrPipeVar] = Unassigned(),
+        accept: Optional[StrPipeVar] = Unassigned(),
+        custom_attributes: Optional[StrPipeVar] = Unassigned(),
+        target_model: Optional[StrPipeVar] = Unassigned(),
+        target_variant: Optional[StrPipeVar] = Unassigned(),
+        target_container_hostname: Optional[StrPipeVar] = Unassigned(),
+        inference_id: Optional[StrPipeVar] = Unassigned(),
+        enable_explanations: Optional[StrPipeVar] = Unassigned(),
+        inference_component_name: Optional[StrPipeVar] = Unassigned(),
+        session_id: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[InvokeEndpointOutput]:
@@ -9366,11 +9367,11 @@ class Endpoint(Base):
     @Base.add_validate_call
     def invoke_async(
         self,
-        input_location: str,
-        content_type: Optional[str] = Unassigned(),
-        accept: Optional[str] = Unassigned(),
-        custom_attributes: Optional[str] = Unassigned(),
-        inference_id: Optional[str] = Unassigned(),
+        input_location: StrPipeVar,
+        content_type: Optional[StrPipeVar] = Unassigned(),
+        accept: Optional[StrPipeVar] = Unassigned(),
+        custom_attributes: Optional[StrPipeVar] = Unassigned(),
+        inference_id: Optional[StrPipeVar] = Unassigned(),
         request_ttl_seconds: Optional[int] = Unassigned(),
         invocation_timeout_seconds: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
@@ -9437,14 +9438,14 @@ class Endpoint(Base):
     def invoke_with_response_stream(
         self,
         body: Any,
-        content_type: Optional[str] = Unassigned(),
-        accept: Optional[str] = Unassigned(),
-        custom_attributes: Optional[str] = Unassigned(),
-        target_variant: Optional[str] = Unassigned(),
-        target_container_hostname: Optional[str] = Unassigned(),
-        inference_id: Optional[str] = Unassigned(),
-        inference_component_name: Optional[str] = Unassigned(),
-        session_id: Optional[str] = Unassigned(),
+        content_type: Optional[StrPipeVar] = Unassigned(),
+        accept: Optional[StrPipeVar] = Unassigned(),
+        custom_attributes: Optional[StrPipeVar] = Unassigned(),
+        target_variant: Optional[StrPipeVar] = Unassigned(),
+        target_container_hostname: Optional[StrPipeVar] = Unassigned(),
+        inference_id: Optional[StrPipeVar] = Unassigned(),
+        inference_component_name: Optional[StrPipeVar] = Unassigned(),
+        session_id: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[InvokeEndpointWithResponseStreamOutput]:
@@ -9531,16 +9532,16 @@ class EndpointConfig(Base):
         enable_network_isolation: Indicates whether all model containers deployed to the endpoint are isolated. If they are, no inbound or outbound network calls can be made to or from the model containers.
     
     """
-    endpoint_config_name: str
-    endpoint_config_arn: Optional[str] = Unassigned()
+    endpoint_config_name: StrPipeVar
+    endpoint_config_arn: Optional[StrPipeVar] = Unassigned()
     production_variants: Optional[List[ProductionVariant]] = Unassigned()
     data_capture_config: Optional[DataCaptureConfig] = Unassigned()
-    kms_key_id: Optional[str] = Unassigned()
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     async_inference_config: Optional[AsyncInferenceConfig] = Unassigned()
     explainer_config: Optional[ExplainerConfig] = Unassigned()
     shadow_production_variants: Optional[List[ProductionVariant]] = Unassigned()
-    execution_role_arn: Optional[str] = Unassigned()
+    execution_role_arn: Optional[StrPipeVar] = Unassigned()
     vpc_config: Optional[VpcConfig] = Unassigned()
     enable_network_isolation: Optional[bool] = Unassigned()
     
@@ -9616,15 +9617,15 @@ class EndpointConfig(Base):
     @Base.add_validate_call
     def create(
         cls,
-        endpoint_config_name: str,
+        endpoint_config_name: StrPipeVar,
         production_variants: List[ProductionVariant],
         data_capture_config: Optional[DataCaptureConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        kms_key_id: Optional[str] = Unassigned(),
+        kms_key_id: Optional[StrPipeVar] = Unassigned(),
         async_inference_config: Optional[AsyncInferenceConfig] = Unassigned(),
         explainer_config: Optional[ExplainerConfig] = Unassigned(),
         shadow_production_variants: Optional[List[ProductionVariant]] = Unassigned(),
-        execution_role_arn: Optional[str] = Unassigned(),
+        execution_role_arn: Optional[StrPipeVar] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
@@ -9701,7 +9702,7 @@ class EndpointConfig(Base):
     @Base.add_validate_call
     def get(
         cls,
-        endpoint_config_name: str,
+        endpoint_config_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["EndpointConfig"]:
@@ -9819,9 +9820,9 @@ class EndpointConfig(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         session: Optional[Session] = None,
@@ -9896,11 +9897,11 @@ class Experiment(Base):
         last_modified_by: Who last modified the experiment.
     
     """
-    experiment_name: str
-    experiment_arn: Optional[str] = Unassigned()
-    display_name: Optional[str] = Unassigned()
+    experiment_name: StrPipeVar
+    experiment_arn: Optional[StrPipeVar] = Unassigned()
+    display_name: Optional[StrPipeVar] = Unassigned()
     source: Optional[ExperimentSource] = Unassigned()
-    description: Optional[str] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -9926,9 +9927,9 @@ class Experiment(Base):
     @Base.add_validate_call
     def create(
         cls,
-        experiment_name: str,
-        display_name: Optional[str] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        experiment_name: StrPipeVar,
+        display_name: Optional[StrPipeVar] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -9990,7 +9991,7 @@ class Experiment(Base):
     @Base.add_validate_call
     def get(
         cls,
-        experiment_name: str,
+        experiment_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Experiment"]:
@@ -10076,8 +10077,8 @@ class Experiment(Base):
     @Base.add_validate_call
     def update(
         self,
-        display_name: Optional[str] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        display_name: Optional[StrPipeVar] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["Experiment"]:
         """
         Update a Experiment resource
@@ -10159,8 +10160,8 @@ class Experiment(Base):
         cls,
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Experiment"]:
@@ -10240,23 +10241,23 @@ class FeatureGroup(Base):
         online_store_total_size_bytes: The size of the OnlineStore in bytes.
     
     """
-    feature_group_name: str
-    feature_group_arn: Optional[str] = Unassigned()
-    record_identifier_feature_name: Optional[str] = Unassigned()
-    event_time_feature_name: Optional[str] = Unassigned()
+    feature_group_name: StrPipeVar
+    feature_group_arn: Optional[StrPipeVar] = Unassigned()
+    record_identifier_feature_name: Optional[StrPipeVar] = Unassigned()
+    event_time_feature_name: Optional[StrPipeVar] = Unassigned()
     feature_definitions: Optional[List[FeatureDefinition]] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     online_store_config: Optional[OnlineStoreConfig] = Unassigned()
     offline_store_config: Optional[OfflineStoreConfig] = Unassigned()
     throughput_config: Optional[ThroughputConfigDescription] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
-    feature_group_status: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    feature_group_status: Optional[StrPipeVar] = Unassigned()
     offline_store_status: Optional[OfflineStoreStatus] = Unassigned()
     last_update_status: Optional[LastUpdateStatus] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    description: Optional[str] = Unassigned()
-    next_token: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
+    next_token: Optional[StrPipeVar] = Unassigned()
     online_store_total_size_bytes: Optional[int] = Unassigned()
     
     def get_name(self) -> str:
@@ -10313,15 +10314,15 @@ class FeatureGroup(Base):
     @Base.add_validate_call
     def create(
         cls,
-        feature_group_name: str,
-        record_identifier_feature_name: str,
-        event_time_feature_name: str,
+        feature_group_name: StrPipeVar,
+        record_identifier_feature_name: StrPipeVar,
+        event_time_feature_name: StrPipeVar,
         feature_definitions: List[FeatureDefinition],
         online_store_config: Optional[OnlineStoreConfig] = Unassigned(),
         offline_store_config: Optional[OfflineStoreConfig] = Unassigned(),
         throughput_config: Optional[ThroughputConfig] = Unassigned(),
-        role_arn: Optional[str] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        role_arn: Optional[StrPipeVar] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -10396,8 +10397,8 @@ class FeatureGroup(Base):
     @Base.add_validate_call
     def get(
         cls,
-        feature_group_name: str,
-        next_token: Optional[str] = Unassigned(),
+        feature_group_name: StrPipeVar,
+        next_token: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["FeatureGroup"]:
@@ -10683,13 +10684,13 @@ class FeatureGroup(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        name_contains: Optional[str] = Unassigned(),
-        feature_group_status_equals: Optional[str] = Unassigned(),
-        offline_store_status_equals: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        feature_group_status_equals: Optional[StrPipeVar] = Unassigned(),
+        offline_store_status_equals: Optional[StrPipeVar] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["FeatureGroup"]:
@@ -10753,9 +10754,9 @@ class FeatureGroup(Base):
     @Base.add_validate_call
     def get_record(
         self,
-        record_identifier_value_as_string: str,
-        feature_names: Optional[List[str]] = Unassigned(),
-        expiration_time_response: Optional[str] = Unassigned(),
+        record_identifier_value_as_string: StrPipeVar,
+        feature_names: Optional[List[StrPipeVar]] = Unassigned(),
+        expiration_time_response: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[GetRecordResponse]:
@@ -10814,7 +10815,7 @@ class FeatureGroup(Base):
     def put_record(
         self,
         record: List[FeatureValue],
-        target_stores: Optional[List[str]] = Unassigned(),
+        target_stores: Optional[List[StrPipeVar]] = Unassigned(),
         ttl_duration: Optional[TtlDuration] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -10867,10 +10868,10 @@ class FeatureGroup(Base):
     @Base.add_validate_call
     def delete_record(
         self,
-        record_identifier_value_as_string: str,
-        event_time: str,
-        target_stores: Optional[List[str]] = Unassigned(),
-        deletion_mode: Optional[str] = Unassigned(),
+        record_identifier_value_as_string: StrPipeVar,
+        event_time: StrPipeVar,
+        target_stores: Optional[List[StrPipeVar]] = Unassigned(),
+        deletion_mode: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -10925,7 +10926,7 @@ class FeatureGroup(Base):
     def batch_get_record(
         self,
         identifiers: List[BatchGetRecordIdentifier],
-        expiration_time_response: Optional[str] = Unassigned(),
+        expiration_time_response: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[BatchGetRecordResponse]:
@@ -10991,13 +10992,13 @@ class FeatureMetadata(Base):
         parameters: The key-value pairs that you added to describe the feature.
     
     """
-    feature_group_name: str
-    feature_name: str
-    feature_group_arn: Optional[str] = Unassigned()
-    feature_type: Optional[str] = Unassigned()
+    feature_group_name: StrPipeVar
+    feature_name: StrPipeVar
+    feature_group_arn: Optional[StrPipeVar] = Unassigned()
+    feature_type: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    description: Optional[str] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
     parameters: Optional[List[FeatureParameter]] = Unassigned()
     
     def get_name(self) -> str:
@@ -11020,8 +11021,8 @@ class FeatureMetadata(Base):
     @Base.add_validate_call
     def get(
         cls,
-        feature_group_name: str,
-        feature_name: str,
+        feature_group_name: StrPipeVar,
+        feature_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["FeatureMetadata"]:
@@ -11110,9 +11111,9 @@ class FeatureMetadata(Base):
     @Base.add_validate_call
     def update(
         self,
-        description: Optional[str] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         parameter_additions: Optional[List[FeatureParameter]] = Unassigned(),
-        parameter_removals: Optional[List[str]] = Unassigned(),
+        parameter_removals: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["FeatureMetadata"]:
         """
         Update a FeatureMetadata resource
@@ -11177,16 +11178,16 @@ class FlowDefinition(Base):
         failure_reason: The reason your flow definition failed.
     
     """
-    flow_definition_name: str
-    flow_definition_arn: Optional[str] = Unassigned()
-    flow_definition_status: Optional[str] = Unassigned()
+    flow_definition_name: StrPipeVar
+    flow_definition_arn: Optional[StrPipeVar] = Unassigned()
+    flow_definition_status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     human_loop_request_source: Optional[HumanLoopRequestSource] = Unassigned()
     human_loop_activation_config: Optional[HumanLoopActivationConfig] = Unassigned()
     human_loop_config: Optional[HumanLoopConfig] = Unassigned()
     output_config: Optional[FlowDefinitionOutputConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -11230,9 +11231,9 @@ class FlowDefinition(Base):
     @Base.add_validate_call
     def create(
         cls,
-        flow_definition_name: str,
+        flow_definition_name: StrPipeVar,
         output_config: FlowDefinitionOutputConfig,
-        role_arn: str,
+        role_arn: StrPipeVar,
         human_loop_request_source: Optional[HumanLoopRequestSource] = Unassigned(),
         human_loop_activation_config: Optional[HumanLoopActivationConfig] = Unassigned(),
         human_loop_config: Optional[HumanLoopConfig] = Unassigned(),
@@ -11304,7 +11305,7 @@ class FlowDefinition(Base):
     @Base.add_validate_call
     def get(
         cls,
-        flow_definition_name: str,
+        flow_definition_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["FlowDefinition"]:
@@ -11538,7 +11539,7 @@ class FlowDefinition(Base):
         cls,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["FlowDefinition"]:
@@ -11608,14 +11609,14 @@ class Hub(Base):
         failure_reason: The failure reason if importing hub content failed.
     
     """
-    hub_name: str
-    hub_arn: Optional[str] = Unassigned()
-    hub_display_name: Optional[str] = Unassigned()
-    hub_description: Optional[str] = Unassigned()
-    hub_search_keywords: Optional[List[str]] = Unassigned()
+    hub_name: StrPipeVar
+    hub_arn: Optional[StrPipeVar] = Unassigned()
+    hub_display_name: Optional[StrPipeVar] = Unassigned()
+    hub_description: Optional[StrPipeVar] = Unassigned()
+    hub_search_keywords: Optional[List[StrPipeVar]] = Unassigned()
     s3_storage_config: Optional[HubS3StorageConfig] = Unassigned()
-    hub_status: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    hub_status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     
@@ -11655,10 +11656,10 @@ class Hub(Base):
     @Base.add_validate_call
     def create(
         cls,
-        hub_name: str,
-        hub_description: str,
-        hub_display_name: Optional[str] = Unassigned(),
-        hub_search_keywords: Optional[List[str]] = Unassigned(),
+        hub_name: StrPipeVar,
+        hub_description: StrPipeVar,
+        hub_display_name: Optional[StrPipeVar] = Unassigned(),
+        hub_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
         s3_storage_config: Optional[HubS3StorageConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -11726,7 +11727,7 @@ class Hub(Base):
     @Base.add_validate_call
     def get(
         cls,
-        hub_name: str,
+        hub_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Hub"]:
@@ -11813,9 +11814,9 @@ class Hub(Base):
     @Base.add_validate_call
     def update(
         self,
-        hub_description: Optional[str] = Unassigned(),
-        hub_display_name: Optional[str] = Unassigned(),
-        hub_search_keywords: Optional[List[str]] = Unassigned(),
+        hub_description: Optional[StrPipeVar] = Unassigned(),
+        hub_display_name: Optional[StrPipeVar] = Unassigned(),
+        hub_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["Hub"]:
         """
         Update a Hub resource
@@ -12006,13 +12007,13 @@ class Hub(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        name_contains: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Hub"]:
@@ -12100,24 +12101,24 @@ class HubContent(Base):
         last_modified_time: The last modified time of the hub content.
     
     """
-    
-    hub_content_type: str
-    hub_content_name: str
-    hub_content_arn: Optional[str] = Unassigned()
-    hub_content_version: Optional[str] = Unassigned()
-    document_schema_version: Optional[str] = Unassigned()
-    hub_arn: Optional[str] = Unassigned()
-    hub_content_display_name: Optional[str] = Unassigned()
-    hub_content_description: Optional[str] = Unassigned()
-    hub_content_markdown: Optional[str] = Unassigned()
-    hub_content_document: Optional[str] = Unassigned()
-    sage_maker_public_hub_content_arn: Optional[str] = Unassigned()
-    reference_min_version: Optional[str] = Unassigned()
-    support_status: Optional[str] = Unassigned()
-    hub_content_search_keywords: Optional[List[str]] = Unassigned()
+    hub_name: StrPipeVar
+    hub_content_type: StrPipeVar
+    hub_content_name: StrPipeVar
+    hub_content_arn: Optional[StrPipeVar] = Unassigned()
+    hub_content_version: Optional[StrPipeVar] = Unassigned()
+    document_schema_version: Optional[StrPipeVar] = Unassigned()
+    hub_arn: Optional[StrPipeVar] = Unassigned()
+    hub_content_display_name: Optional[StrPipeVar] = Unassigned()
+    hub_content_description: Optional[StrPipeVar] = Unassigned()
+    hub_content_markdown: Optional[StrPipeVar] = Unassigned()
+    hub_content_document: Optional[StrPipeVar] = Unassigned()
+    sage_maker_public_hub_content_arn: Optional[StrPipeVar] = Unassigned()
+    reference_min_version: Optional[StrPipeVar] = Unassigned()
+    support_status: Optional[StrPipeVar] = Unassigned()
+    hub_content_search_keywords: Optional[List[StrPipeVar]] = Unassigned()
     hub_content_dependencies: Optional[List[HubContentDependency]] = Unassigned()
-    hub_content_status: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    hub_content_status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     hub_name: Optional[str] = Unassigned()    
@@ -12141,10 +12142,10 @@ class HubContent(Base):
     @Base.add_validate_call
     def get(
         cls,
-        hub_name: str,
-        hub_content_type: str,
-        hub_content_name: str,
-        hub_content_version: Optional[str] = Unassigned(),
+        hub_name: StrPipeVar,
+        hub_content_type: StrPipeVar,
+        hub_content_name: StrPipeVar,
+        hub_content_version: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HubContent"]:
@@ -12239,13 +12240,13 @@ class HubContent(Base):
     @Base.add_validate_call
     def update(
         self,
-        hub_content_type: str,
-        hub_content_version: str,
-        hub_content_display_name: Optional[str] = Unassigned(),
-        hub_content_description: Optional[str] = Unassigned(),
-        hub_content_markdown: Optional[str] = Unassigned(),
-        hub_content_search_keywords: Optional[List[str]] = Unassigned(),
-        support_status: Optional[str] = Unassigned(),
+        hub_content_type: StrPipeVar,
+        hub_content_version: StrPipeVar,
+        hub_content_display_name: Optional[StrPipeVar] = Unassigned(),
+        hub_content_description: Optional[StrPipeVar] = Unassigned(),
+        hub_content_markdown: Optional[StrPipeVar] = Unassigned(),
+        hub_content_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
+        support_status: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["HubContent"]:
         """
         Update a HubContent resource
@@ -12386,17 +12387,17 @@ class HubContent(Base):
     @Base.add_validate_call
     def load(
         cls,
-        hub_content_name: str,
-        hub_content_type: str,
-        document_schema_version: str,
-        hub_name: str,
-        hub_content_document: str,
-        hub_content_version: Optional[str] = Unassigned(),
-        hub_content_display_name: Optional[str] = Unassigned(),
-        hub_content_description: Optional[str] = Unassigned(),
-        hub_content_markdown: Optional[str] = Unassigned(),
-        support_status: Optional[str] = Unassigned(),
-        hub_content_search_keywords: Optional[List[str]] = Unassigned(),
+        hub_content_name: StrPipeVar,
+        hub_content_type: StrPipeVar,
+        document_schema_version: StrPipeVar,
+        hub_name: StrPipeVar,
+        hub_content_document: StrPipeVar,
+        hub_content_version: Optional[StrPipeVar] = Unassigned(),
+        hub_content_display_name: Optional[StrPipeVar] = Unassigned(),
+        hub_content_description: Optional[StrPipeVar] = Unassigned(),
+        hub_content_markdown: Optional[StrPipeVar] = Unassigned(),
+        support_status: Optional[StrPipeVar] = Unassigned(),
+        hub_content_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -12471,12 +12472,12 @@ class HubContent(Base):
     @Base.add_validate_call
     def get_all_versions(
         self,
-        min_version: Optional[str] = Unassigned(),
-        max_schema_version: Optional[str] = Unassigned(),
+        min_version: Optional[StrPipeVar] = Unassigned(),
+        max_schema_version: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["HubContent"]:
         """
@@ -12553,12 +12554,12 @@ class HubContentReference(Base):
         tags: Any tags associated with the hub content to reference.
     
     """
-    hub_name: Union[str, object]
-    sage_maker_public_hub_content_arn: str
-    hub_arn: str
-    hub_content_arn: str
-    hub_content_name: Optional[Union[str, object]] = Unassigned()
-    min_version: Optional[str] = Unassigned()
+    hub_name: Union[StrPipeVar, object]
+    sage_maker_public_hub_content_arn: StrPipeVar
+    hub_arn: StrPipeVar
+    hub_content_arn: StrPipeVar
+    hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned()
+    min_version: Optional[StrPipeVar] = Unassigned()
     tags: Optional[List[Tag]] = Unassigned()
     
     def get_name(self) -> str:
@@ -12581,10 +12582,10 @@ class HubContentReference(Base):
     @Base.add_validate_call
     def create(
         cls,
-        hub_name: Union[str, object],
-        sage_maker_public_hub_content_arn: str,
-        hub_content_name: Optional[Union[str, object]] = Unassigned(),
-        min_version: Optional[str] = Unassigned(),
+        hub_name: Union[StrPipeVar, object],
+        sage_maker_public_hub_content_arn: StrPipeVar,
+        hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
+        min_version: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -12646,8 +12647,8 @@ class HubContentReference(Base):
     @Base.add_validate_call
     def update(
         self,
-        hub_content_type: str,
-        min_version: Optional[str] = Unassigned(),
+        hub_content_type: StrPipeVar,
+        min_version: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["HubContentReference"]:
         """
         Update a HubContentReference resource
@@ -12696,7 +12697,7 @@ class HubContentReference(Base):
     @Base.add_validate_call
     def delete(
         self,
-        hub_content_type: str,
+        hub_content_type: StrPipeVar,
         ) -> None:
         """
         Delete a HubContentReference resource
@@ -12742,9 +12743,9 @@ class HumanTaskUi(Base):
         human_task_ui_status: The status of the human task user interface (worker task template). Valid values are listed below.
     
     """
-    human_task_ui_name: str
-    human_task_ui_arn: Optional[str] = Unassigned()
-    human_task_ui_status: Optional[str] = Unassigned()
+    human_task_ui_name: StrPipeVar
+    human_task_ui_arn: Optional[StrPipeVar] = Unassigned()
+    human_task_ui_status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     ui_template: Optional[UiTemplateInfo] = Unassigned()
     
@@ -12768,7 +12769,7 @@ class HumanTaskUi(Base):
     @Base.add_validate_call
     def create(
         cls,
-        human_task_ui_name: str,
+        human_task_ui_name: StrPipeVar,
         ui_template: UiTemplate,
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -12830,7 +12831,7 @@ class HumanTaskUi(Base):
     @Base.add_validate_call
     def get(
         cls,
-        human_task_ui_name: str,
+        human_task_ui_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HumanTaskUi"]:
@@ -13060,7 +13061,7 @@ class HumanTaskUi(Base):
         cls,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["HumanTaskUi"]:
@@ -13138,12 +13139,12 @@ class HyperParameterTuningJob(Base):
         consumed_resources: 
     
     """
-    hyper_parameter_tuning_job_name: str
-    hyper_parameter_tuning_job_arn: Optional[str] = Unassigned()
+    hyper_parameter_tuning_job_name: StrPipeVar
+    hyper_parameter_tuning_job_arn: Optional[StrPipeVar] = Unassigned()
     hyper_parameter_tuning_job_config: Optional[HyperParameterTuningJobConfig] = Unassigned()
     training_job_definition: Optional[HyperParameterTrainingJobDefinition] = Unassigned()
     training_job_definitions: Optional[List[HyperParameterTrainingJobDefinition]] = Unassigned()
-    hyper_parameter_tuning_job_status: Optional[str] = Unassigned()
+    hyper_parameter_tuning_job_status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     hyper_parameter_tuning_end_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -13153,7 +13154,7 @@ class HyperParameterTuningJob(Base):
     overall_best_training_job: Optional[HyperParameterTrainingJobSummary] = Unassigned()
     warm_start_config: Optional[HyperParameterTuningJobWarmStartConfig] = Unassigned()
     autotune: Optional[Autotune] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     tuning_job_completion_details: Optional[HyperParameterTuningJobCompletionDetails] = Unassigned()
     consumed_resources: Optional[HyperParameterTuningJobConsumedResources] = Unassigned()
     
@@ -13230,7 +13231,7 @@ class HyperParameterTuningJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        hyper_parameter_tuning_job_name: str,
+        hyper_parameter_tuning_job_name: StrPipeVar,
         hyper_parameter_tuning_job_config: HyperParameterTuningJobConfig,
         training_job_definition: Optional[HyperParameterTrainingJobDefinition] = Unassigned(),
         training_job_definitions: Optional[List[HyperParameterTrainingJobDefinition]] = Unassigned(),
@@ -13304,7 +13305,7 @@ class HyperParameterTuningJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        hyper_parameter_tuning_job_name: str,
+        hyper_parameter_tuning_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HyperParameterTuningJob"]:
@@ -13568,14 +13569,14 @@ class HyperParameterTuningJob(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["HyperParameterTuningJob"]:
@@ -13641,9 +13642,9 @@ class HyperParameterTuningJob(Base):
     @Base.add_validate_call
     def get_all_training_jobs(
         self,
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[HyperParameterTrainingJobSummary]:
         """
@@ -13714,15 +13715,15 @@ class Image(Base):
         role_arn: The ARN of the IAM role that enables Amazon SageMaker AI to perform tasks on your behalf.
     
     """
-    image_name: str
+    image_name: StrPipeVar
     creation_time: Optional[datetime.datetime] = Unassigned()
-    description: Optional[str] = Unassigned()
-    display_name: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    image_arn: Optional[str] = Unassigned()
-    image_status: Optional[str] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
+    display_name: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    image_arn: Optional[StrPipeVar] = Unassigned()
+    image_status: Optional[StrPipeVar] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -13758,10 +13759,10 @@ class Image(Base):
     @Base.add_validate_call
     def create(
         cls,
-        image_name: str,
-        role_arn: str,
-        description: Optional[str] = Unassigned(),
-        display_name: Optional[str] = Unassigned(),
+        image_name: StrPipeVar,
+        role_arn: StrPipeVar,
+        description: Optional[StrPipeVar] = Unassigned(),
+        display_name: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -13826,7 +13827,7 @@ class Image(Base):
     @Base.add_validate_call
     def get(
         cls,
-        image_name: str,
+        image_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Image"]:
@@ -13913,10 +13914,10 @@ class Image(Base):
     @Base.add_validate_call
     def update(
         self,
-        delete_properties: Optional[List[str]] = Unassigned(),
-        description: Optional[str] = Unassigned(),
-        display_name: Optional[str] = Unassigned(),
-        role_arn: Optional[str] = Unassigned(),
+        delete_properties: Optional[List[StrPipeVar]] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
+        display_name: Optional[StrPipeVar] = Unassigned(),
+        role_arn: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["Image"]:
         """
         Update a Image resource
@@ -14119,9 +14120,9 @@ class Image(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Image"]:
@@ -14185,7 +14186,7 @@ class Image(Base):
     @Base.add_validate_call
     def get_all_aliases(
         self,
-        alias: Optional[str] = Unassigned(),
+        alias: Optional[StrPipeVar] = Unassigned(),
         version: Optional[int] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[str]:
@@ -14262,23 +14263,23 @@ class ImageVersion(Base):
         release_notes: The maintainer description of the image version.
     
     """
-    image_name: str
-    base_image: Optional[str] = Unassigned()
-    container_image: Optional[str] = Unassigned()
+    image_name: StrPipeVar
+    base_image: Optional[StrPipeVar] = Unassigned()
+    container_image: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    image_arn: Optional[str] = Unassigned()
-    image_version_arn: Optional[str] = Unassigned()
-    image_version_status: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    image_arn: Optional[StrPipeVar] = Unassigned()
+    image_version_arn: Optional[StrPipeVar] = Unassigned()
+    image_version_status: Optional[StrPipeVar] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     version: Optional[int] = Unassigned()
-    vendor_guidance: Optional[str] = Unassigned()
-    job_type: Optional[str] = Unassigned()
-    ml_framework: Optional[str] = Unassigned()
-    programming_lang: Optional[str] = Unassigned()
-    processor: Optional[str] = Unassigned()
+    vendor_guidance: Optional[StrPipeVar] = Unassigned()
+    job_type: Optional[StrPipeVar] = Unassigned()
+    ml_framework: Optional[StrPipeVar] = Unassigned()
+    programming_lang: Optional[StrPipeVar] = Unassigned()
+    processor: Optional[StrPipeVar] = Unassigned()
     horovod: Optional[bool] = Unassigned()
-    release_notes: Optional[str] = Unassigned()
+    release_notes: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -14300,17 +14301,17 @@ class ImageVersion(Base):
     @Base.add_validate_call
     def create(
         cls,
-        base_image: str,
-        client_token: str,
-        image_name: Union[str, object],
-        aliases: Optional[List[str]] = Unassigned(),
-        vendor_guidance: Optional[str] = Unassigned(),
-        job_type: Optional[str] = Unassigned(),
-        ml_framework: Optional[str] = Unassigned(),
-        programming_lang: Optional[str] = Unassigned(),
-        processor: Optional[str] = Unassigned(),
+        base_image: StrPipeVar,
+        client_token: StrPipeVar,
+        image_name: Union[StrPipeVar, object],
+        aliases: Optional[List[StrPipeVar]] = Unassigned(),
+        vendor_guidance: Optional[StrPipeVar] = Unassigned(),
+        job_type: Optional[StrPipeVar] = Unassigned(),
+        ml_framework: Optional[StrPipeVar] = Unassigned(),
+        programming_lang: Optional[StrPipeVar] = Unassigned(),
+        processor: Optional[StrPipeVar] = Unassigned(),
         horovod: Optional[bool] = Unassigned(),
-        release_notes: Optional[str] = Unassigned(),
+        release_notes: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ImageVersion"]:
@@ -14387,9 +14388,9 @@ class ImageVersion(Base):
     @Base.add_validate_call
     def get(
         cls,
-        image_name: str,
+        image_name: StrPipeVar,
         version: Optional[int] = Unassigned(),
-        alias: Optional[str] = Unassigned(),
+        alias: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ImageVersion"]:
@@ -14441,7 +14442,7 @@ class ImageVersion(Base):
     @Base.add_validate_call
     def refresh(
         self,
-         alias: Optional[str] = Unassigned(),   
+         alias: Optional[StrPipeVar] = Unassigned(),   
         ) -> Optional["ImageVersion"]:
         """
         Refresh a ImageVersion resource
@@ -14481,17 +14482,17 @@ class ImageVersion(Base):
     @Base.add_validate_call
     def update(
         self,
-        alias: Optional[str] = Unassigned(),
+        alias: Optional[StrPipeVar] = Unassigned(),
         version: Optional[int] = Unassigned(),
-        aliases_to_add: Optional[List[str]] = Unassigned(),
-        aliases_to_delete: Optional[List[str]] = Unassigned(),
-        vendor_guidance: Optional[str] = Unassigned(),
-        job_type: Optional[str] = Unassigned(),
-        ml_framework: Optional[str] = Unassigned(),
-        programming_lang: Optional[str] = Unassigned(),
-        processor: Optional[str] = Unassigned(),
+        aliases_to_add: Optional[List[StrPipeVar]] = Unassigned(),
+        aliases_to_delete: Optional[List[StrPipeVar]] = Unassigned(),
+        vendor_guidance: Optional[StrPipeVar] = Unassigned(),
+        job_type: Optional[StrPipeVar] = Unassigned(),
+        ml_framework: Optional[StrPipeVar] = Unassigned(),
+        programming_lang: Optional[StrPipeVar] = Unassigned(),
+        processor: Optional[StrPipeVar] = Unassigned(),
         horovod: Optional[bool] = Unassigned(),
-        release_notes: Optional[str] = Unassigned(),
+        release_notes: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["ImageVersion"]:
         """
         Update a ImageVersion resource
@@ -14550,7 +14551,7 @@ class ImageVersion(Base):
     @Base.add_validate_call
     def delete(
         self,
-        alias: Optional[str] = Unassigned(),
+        alias: Optional[StrPipeVar] = Unassigned(),
         ) -> None:
         """
         Delete a ImageVersion resource
@@ -14717,17 +14718,17 @@ class InferenceComponent(Base):
         last_deployment_config: The deployment and rollback settings that you assigned to the inference component.
     
     """
-    inference_component_name: str
-    inference_component_arn: Optional[str] = Unassigned()
-    endpoint_name: Optional[str] = Unassigned()
-    endpoint_arn: Optional[str] = Unassigned()
-    variant_name: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    inference_component_name: StrPipeVar
+    inference_component_arn: Optional[StrPipeVar] = Unassigned()
+    endpoint_name: Optional[StrPipeVar] = Unassigned()
+    endpoint_arn: Optional[StrPipeVar] = Unassigned()
+    variant_name: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     specification: Optional[InferenceComponentSpecificationSummary] = Unassigned()
     runtime_config: Optional[InferenceComponentRuntimeConfigSummary] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    inference_component_status: Optional[str] = Unassigned()
+    inference_component_status: Optional[StrPipeVar] = Unassigned()
     last_deployment_config: Optional[InferenceComponentDeploymentConfig] = Unassigned()
     
     def get_name(self) -> str:
@@ -14750,10 +14751,10 @@ class InferenceComponent(Base):
     @Base.add_validate_call
     def create(
         cls,
-        inference_component_name: str,
-        endpoint_name: Union[str, object],
+        inference_component_name: StrPipeVar,
+        endpoint_name: Union[StrPipeVar, object],
         specification: InferenceComponentSpecification,
-        variant_name: Optional[str] = Unassigned(),
+        variant_name: Optional[StrPipeVar] = Unassigned(),
         runtime_config: Optional[InferenceComponentRuntimeConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -14820,7 +14821,7 @@ class InferenceComponent(Base):
     @Base.add_validate_call
     def get(
         cls,
-        inference_component_name: str,
+        inference_component_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["InferenceComponent"]:
@@ -15098,16 +15099,16 @@ class InferenceComponent(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        endpoint_name_equals: Optional[str] = Unassigned(),
-        variant_name_equals: Optional[str] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        endpoint_name_equals: Optional[StrPipeVar] = Unassigned(),
+        variant_name_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["InferenceComponent"]:
@@ -15242,22 +15243,22 @@ class InferenceExperiment(Base):
         kms_key:  The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt data on the storage volume attached to the ML compute instance that hosts the endpoint. For more information, see CreateInferenceExperiment. 
     
     """
-    name: str
-    arn: Optional[str] = Unassigned()
-    type: Optional[str] = Unassigned()
+    name: StrPipeVar
+    arn: Optional[StrPipeVar] = Unassigned()
+    type: Optional[StrPipeVar] = Unassigned()
     schedule: Optional[InferenceExperimentSchedule] = Unassigned()
-    status: Optional[str] = Unassigned()
-    status_reason: Optional[str] = Unassigned()
-    description: Optional[str] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    status_reason: Optional[StrPipeVar] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     completion_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     endpoint_metadata: Optional[EndpointMetadata] = Unassigned()
     model_variants: Optional[List[ModelVariantConfigSummary]] = Unassigned()
     data_storage_config: Optional[InferenceExperimentDataStorageConfig] = Unassigned()
     shadow_mode_config: Optional[ShadowModeConfig] = Unassigned()
-    kms_key: Optional[str] = Unassigned()
+    kms_key: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -15301,16 +15302,16 @@ class InferenceExperiment(Base):
     @Base.add_validate_call
     def create(
         cls,
-        name: str,
-        type: str,
-        role_arn: str,
-        endpoint_name: Union[str, object],
+        name: StrPipeVar,
+        type: StrPipeVar,
+        role_arn: StrPipeVar,
+        endpoint_name: Union[StrPipeVar, object],
         model_variants: List[ModelVariantConfig],
         shadow_mode_config: ShadowModeConfig,
         schedule: Optional[InferenceExperimentSchedule] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         data_storage_config: Optional[InferenceExperimentDataStorageConfig] = Unassigned(),
-        kms_key: Optional[str] = Unassigned(),
+        kms_key: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -15387,7 +15388,7 @@ class InferenceExperiment(Base):
     @Base.add_validate_call
     def get(
         cls,
-        name: str,
+        name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["InferenceExperiment"]:
@@ -15475,7 +15476,7 @@ class InferenceExperiment(Base):
     def update(
         self,
         schedule: Optional[InferenceExperimentSchedule] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         model_variants: Optional[List[ModelVariantConfig]] = Unassigned(),
         data_storage_config: Optional[InferenceExperimentDataStorageConfig] = Unassigned(),
         shadow_mode_config: Optional[ShadowModeConfig] = Unassigned(),
@@ -15693,15 +15694,15 @@ class InferenceExperiment(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        name_contains: Optional[str] = Unassigned(),
-        type: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        type: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["InferenceExperiment"]:
@@ -15787,16 +15788,16 @@ class InferenceRecommendationsJob(Base):
         endpoint_performances: The performance results from running an Inference Recommender job on an existing endpoint.
     
     """
-    job_name: str
-    job_description: Optional[str] = Unassigned()
-    job_type: Optional[str] = Unassigned()
-    job_arn: Optional[str] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
+    job_name: StrPipeVar
+    job_description: Optional[StrPipeVar] = Unassigned()
+    job_type: Optional[StrPipeVar] = Unassigned()
+    job_arn: Optional[StrPipeVar] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     completion_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     input_config: Optional[RecommendationJobInputConfig] = Unassigned()
     stopping_conditions: Optional[RecommendationJobStoppingConditions] = Unassigned()
     inference_recommendations: Optional[List[InferenceRecommendation]] = Unassigned()
@@ -15855,11 +15856,11 @@ class InferenceRecommendationsJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        job_name: str,
-        job_type: str,
-        role_arn: str,
+        job_name: StrPipeVar,
+        job_type: StrPipeVar,
+        role_arn: StrPipeVar,
         input_config: RecommendationJobInputConfig,
-        job_description: Optional[str] = Unassigned(),
+        job_description: Optional[StrPipeVar] = Unassigned(),
         stopping_conditions: Optional[RecommendationJobStoppingConditions] = Unassigned(),
         output_config: Optional[RecommendationJobOutputConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
@@ -15932,7 +15933,7 @@ class InferenceRecommendationsJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        job_name: str,
+        job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["InferenceRecommendationsJob"]:
@@ -16171,12 +16172,12 @@ class InferenceRecommendationsJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        model_name_equals: Optional[str] = Unassigned(),
-        model_package_version_arn_equals: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        model_name_equals: Optional[StrPipeVar] = Unassigned(),
+        model_package_version_arn_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["InferenceRecommendationsJob"]:
@@ -16246,7 +16247,7 @@ class InferenceRecommendationsJob(Base):
     @Base.add_validate_call
     def get_all_steps(
         self,
-        step_type: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        step_type: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[InferenceRecommendationsJobStep]:
         """
@@ -16323,19 +16324,19 @@ class LabelingJob(Base):
         labeling_job_output: The location of the output produced by the labeling job.
     
     """
-    labeling_job_name: str
-    labeling_job_status: Optional[str] = Unassigned()
+    labeling_job_name: StrPipeVar
+    labeling_job_status: Optional[StrPipeVar] = Unassigned()
     label_counters: Optional[LabelCounters] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    job_reference_code: Optional[str] = Unassigned()
-    labeling_job_arn: Optional[str] = Unassigned()
-    label_attribute_name: Optional[str] = Unassigned()
+    job_reference_code: Optional[StrPipeVar] = Unassigned()
+    labeling_job_arn: Optional[StrPipeVar] = Unassigned()
+    label_attribute_name: Optional[StrPipeVar] = Unassigned()
     input_config: Optional[LabelingJobInputConfig] = Unassigned()
     output_config: Optional[LabelingJobOutputConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
-    label_category_config_s3_uri: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    label_category_config_s3_uri: Optional[StrPipeVar] = Unassigned()
     stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned()
     labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned()
     human_task_config: Optional[HumanTaskConfig] = Unassigned()
@@ -16429,13 +16430,13 @@ class LabelingJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        labeling_job_name: str,
-        label_attribute_name: str,
+        labeling_job_name: StrPipeVar,
+        label_attribute_name: StrPipeVar,
         input_config: LabelingJobInputConfig,
         output_config: LabelingJobOutputConfig,
-        role_arn: str,
+        role_arn: StrPipeVar,
         human_task_config: HumanTaskConfig,
-        label_category_config_s3_uri: Optional[str] = Unassigned(),
+        label_category_config_s3_uri: Optional[StrPipeVar] = Unassigned(),
         stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned(),
         labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
@@ -16512,7 +16513,7 @@ class LabelingJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        labeling_job_name: str,
+        labeling_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["LabelingJob"]:
@@ -16691,10 +16692,10 @@ class LabelingJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["LabelingJob"]:
@@ -16772,10 +16773,10 @@ class LineageGroup(Base):
         last_modified_by: 
     
     """
-    lineage_group_name: str
-    lineage_group_arn: Optional[str] = Unassigned()
-    display_name: Optional[str] = Unassigned()
-    description: Optional[str] = Unassigned()
+    lineage_group_name: StrPipeVar
+    lineage_group_arn: Optional[StrPipeVar] = Unassigned()
+    display_name: Optional[StrPipeVar] = Unassigned()
+    description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -16801,7 +16802,7 @@ class LineageGroup(Base):
     @Base.add_validate_call
     def get(
         cls,
-        lineage_group_name: str,
+        lineage_group_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["LineageGroup"]:
@@ -16890,8 +16891,8 @@ class LineageGroup(Base):
         cls,
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["LineageGroup"]:
@@ -17016,16 +17017,16 @@ class MlflowTrackingServer(Base):
         last_modified_by: 
     
     """
-    tracking_server_name: str
-    tracking_server_arn: Optional[str] = Unassigned()
-    artifact_store_uri: Optional[str] = Unassigned()
-    tracking_server_size: Optional[str] = Unassigned()
-    mlflow_version: Optional[str] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
-    tracking_server_status: Optional[str] = Unassigned()
-    is_active: Optional[str] = Unassigned()
-    tracking_server_url: Optional[str] = Unassigned()
-    weekly_maintenance_window_start: Optional[str] = Unassigned()
+    tracking_server_name: StrPipeVar
+    tracking_server_arn: Optional[StrPipeVar] = Unassigned()
+    artifact_store_uri: Optional[StrPipeVar] = Unassigned()
+    tracking_server_size: Optional[StrPipeVar] = Unassigned()
+    mlflow_version: Optional[StrPipeVar] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    tracking_server_status: Optional[StrPipeVar] = Unassigned()
+    is_active: Optional[StrPipeVar] = Unassigned()
+    tracking_server_url: Optional[StrPipeVar] = Unassigned()
+    weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned()
     automatic_model_registration: Optional[bool] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
@@ -17066,13 +17067,13 @@ class MlflowTrackingServer(Base):
     @Base.add_validate_call
     def create(
         cls,
-        tracking_server_name: str,
-        artifact_store_uri: str,
-        role_arn: str,
-        tracking_server_size: Optional[str] = Unassigned(),
-        mlflow_version: Optional[str] = Unassigned(),
+        tracking_server_name: StrPipeVar,
+        artifact_store_uri: StrPipeVar,
+        role_arn: StrPipeVar,
+        tracking_server_size: Optional[StrPipeVar] = Unassigned(),
+        mlflow_version: Optional[StrPipeVar] = Unassigned(),
         automatic_model_registration: Optional[bool] = Unassigned(),
-        weekly_maintenance_window_start: Optional[str] = Unassigned(),
+        weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -17142,7 +17143,7 @@ class MlflowTrackingServer(Base):
     @Base.add_validate_call
     def get(
         cls,
-        tracking_server_name: str,
+        tracking_server_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["MlflowTrackingServer"]:
@@ -17229,10 +17230,10 @@ class MlflowTrackingServer(Base):
     @Base.add_validate_call
     def update(
         self,
-        artifact_store_uri: Optional[str] = Unassigned(),
-        tracking_server_size: Optional[str] = Unassigned(),
+        artifact_store_uri: Optional[StrPipeVar] = Unassigned(),
+        tracking_server_size: Optional[StrPipeVar] = Unassigned(),
         automatic_model_registration: Optional[bool] = Unassigned(),
-        weekly_maintenance_window_start: Optional[str] = Unassigned(),
+        weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["MlflowTrackingServer"]:
         """
         Update a MlflowTrackingServer resource
@@ -17503,10 +17504,10 @@ class MlflowTrackingServer(Base):
         cls,
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        tracking_server_status: Optional[str] = Unassigned(),
-        mlflow_version: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        tracking_server_status: Optional[StrPipeVar] = Unassigned(),
+        mlflow_version: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["MlflowTrackingServer"]:
@@ -17582,14 +17583,14 @@ class Model(Base):
         deployment_recommendation: A set of recommended deployment configurations for the model.
     
     """
-    model_name: str
+    model_name: StrPipeVar
     primary_container: Optional[ContainerDefinition] = Unassigned()
     containers: Optional[List[ContainerDefinition]] = Unassigned()
     inference_execution_config: Optional[InferenceExecutionConfig] = Unassigned()
-    execution_role_arn: Optional[str] = Unassigned()
+    execution_role_arn: Optional[StrPipeVar] = Unassigned()
     vpc_config: Optional[VpcConfig] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    model_arn: Optional[str] = Unassigned()
+    model_arn: Optional[StrPipeVar] = Unassigned()
     enable_network_isolation: Optional[bool] = Unassigned()
     deployment_recommendation: Optional[DeploymentRecommendation] = Unassigned()
     
@@ -17656,11 +17657,11 @@ class Model(Base):
     @Base.add_validate_call
     def create(
         cls,
-        model_name: str,
+        model_name: StrPipeVar,
         primary_container: Optional[ContainerDefinition] = Unassigned(),
         containers: Optional[List[ContainerDefinition]] = Unassigned(),
         inference_execution_config: Optional[InferenceExecutionConfig] = Unassigned(),
-        execution_role_arn: Optional[str] = Unassigned(),
+        execution_role_arn: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
@@ -17732,7 +17733,7 @@ class Model(Base):
     @Base.add_validate_call
     def get(
         cls,
-        model_name: str,
+        model_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Model"]:
@@ -17850,9 +17851,9 @@ class Model(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         session: Optional[Session] = None,
@@ -17981,8 +17982,8 @@ class ModelBiasJobDefinition(Base):
         stopping_condition: 
     
     """
-    job_definition_name: str
-    job_definition_arn: Optional[str] = Unassigned()
+    job_definition_name: StrPipeVar
+    job_definition_arn: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     model_bias_baseline_config: Optional[ModelBiasBaselineConfig] = Unassigned()
     model_bias_app_specification: Optional[ModelBiasAppSpecification] = Unassigned()
@@ -17990,7 +17991,7 @@ class ModelBiasJobDefinition(Base):
     model_bias_job_output_config: Optional[MonitoringOutputConfig] = Unassigned()
     job_resources: Optional[MonitoringResources] = Unassigned()
     network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
     
     def get_name(self) -> str:
@@ -18088,12 +18089,12 @@ class ModelBiasJobDefinition(Base):
     @Base.add_validate_call
     def create(
         cls,
-        job_definition_name: str,
+        job_definition_name: StrPipeVar,
         model_bias_app_specification: ModelBiasAppSpecification,
         model_bias_job_input: ModelBiasJobInput,
         model_bias_job_output_config: MonitoringOutputConfig,
         job_resources: MonitoringResources,
-        role_arn: str,
+        role_arn: StrPipeVar,
         model_bias_baseline_config: Optional[ModelBiasBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
@@ -18171,7 +18172,7 @@ class ModelBiasJobDefinition(Base):
     @Base.add_validate_call
     def get(
         cls,
-        job_definition_name: str,
+        job_definition_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ModelBiasJobDefinition"]:
@@ -18292,10 +18293,10 @@ class ModelBiasJobDefinition(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        endpoint_name: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        endpoint_name: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         session: Optional[Session] = None,
@@ -18375,17 +18376,17 @@ class ModelCard(Base):
         model_card_processing_status: The processing status of model card deletion. The ModelCardProcessingStatus updates throughout the different deletion steps.    DeletePending: Model card deletion request received.    DeleteInProgress: Model card deletion is in progress.    ContentDeleted: Deleted model card content.    ExportJobsDeleted: Deleted all export jobs associated with the model card.    DeleteCompleted: Successfully deleted the model card.    DeleteFailed: The model card failed to delete.  
     
     """
-    model_card_name: str
-    model_card_arn: Optional[str] = Unassigned()
+    model_card_name: StrPipeVar
+    model_card_arn: Optional[StrPipeVar] = Unassigned()
     model_card_version: Optional[int] = Unassigned()
-    content: Optional[str] = Unassigned()
-    model_card_status: Optional[str] = Unassigned()
+    content: Optional[StrPipeVar] = Unassigned()
+    model_card_status: Optional[StrPipeVar] = Unassigned()
     security_config: Optional[ModelCardSecurityConfig] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
-    model_card_processing_status: Optional[str] = Unassigned()
+    model_card_processing_status: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -18423,9 +18424,9 @@ class ModelCard(Base):
     @Base.add_validate_call
     def create(
         cls,
-        model_card_name: str,
-        content: str,
-        model_card_status: str,
+        model_card_name: StrPipeVar,
+        content: StrPipeVar,
+        model_card_status: StrPipeVar,
         security_config: Optional[ModelCardSecurityConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -18491,7 +18492,7 @@ class ModelCard(Base):
     @Base.add_validate_call
     def get(
         cls,
-        model_card_name: str,
+        model_card_name: StrPipeVar,
         model_card_version: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -18582,8 +18583,8 @@ class ModelCard(Base):
     @Base.add_validate_call
     def update(
         self,
-        content: Optional[str] = Unassigned(),
-        model_card_status: Optional[str] = Unassigned(),
+        content: Optional[StrPipeVar] = Unassigned(),
+        model_card_status: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["ModelCard"]:
         """
         Update a ModelCard resource
@@ -18718,10 +18719,10 @@ class ModelCard(Base):
         cls,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        model_card_status: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        model_card_status: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["ModelCard"]:
@@ -18785,8 +18786,8 @@ class ModelCard(Base):
         self,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[ModelCardVersionSummary]:
         """
@@ -18861,15 +18862,15 @@ class ModelCardExportJob(Base):
         export_artifacts: The exported model card artifacts.
     
     """
-    model_card_export_job_arn: str
-    model_card_export_job_name: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
-    model_card_name: Optional[str] = Unassigned()
+    model_card_export_job_arn: StrPipeVar
+    model_card_export_job_name: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    model_card_name: Optional[StrPipeVar] = Unassigned()
     model_card_version: Optional[int] = Unassigned()
     output_config: Optional[ModelCardExportOutputConfig] = Unassigned()
     created_at: Optional[datetime.datetime] = Unassigned()
     last_modified_at: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     export_artifacts: Optional[ModelCardExportArtifacts] = Unassigned()
     
     def get_name(self) -> str:
@@ -18913,8 +18914,8 @@ class ModelCardExportJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        model_card_name: Union[str, object],
-        model_card_export_job_name: str,
+        model_card_name: Union[StrPipeVar, object],
+        model_card_export_job_name: StrPipeVar,
         output_config: ModelCardExportOutputConfig,
         model_card_version: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
@@ -18979,7 +18980,7 @@ class ModelCardExportJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        model_card_export_job_arn: str,
+        model_card_export_job_arn: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ModelCardExportJob"]:
@@ -19123,14 +19124,14 @@ class ModelCardExportJob(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        model_card_name: str,
+        model_card_name: StrPipeVar,
         model_card_version: Optional[int] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        model_card_export_job_name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        model_card_export_job_name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["ModelCardExportJob"]:
@@ -19211,8 +19212,8 @@ class ModelExplainabilityJobDefinition(Base):
         stopping_condition: 
     
     """
-    job_definition_name: str
-    job_definition_arn: Optional[str] = Unassigned()
+    job_definition_name: StrPipeVar
+    job_definition_arn: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     model_explainability_baseline_config: Optional[ModelExplainabilityBaselineConfig] = Unassigned()
     model_explainability_app_specification: Optional[ModelExplainabilityAppSpecification] = Unassigned()
@@ -19220,7 +19221,7 @@ class ModelExplainabilityJobDefinition(Base):
     model_explainability_job_output_config: Optional[MonitoringOutputConfig] = Unassigned()
     job_resources: Optional[MonitoringResources] = Unassigned()
     network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
     
     def get_name(self) -> str:
@@ -19313,12 +19314,12 @@ class ModelExplainabilityJobDefinition(Base):
     @Base.add_validate_call
     def create(
         cls,
-        job_definition_name: str,
+        job_definition_name: StrPipeVar,
         model_explainability_app_specification: ModelExplainabilityAppSpecification,
         model_explainability_job_input: ModelExplainabilityJobInput,
         model_explainability_job_output_config: MonitoringOutputConfig,
         job_resources: MonitoringResources,
-        role_arn: str,
+        role_arn: StrPipeVar,
         model_explainability_baseline_config: Optional[ModelExplainabilityBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
@@ -19396,7 +19397,7 @@ class ModelExplainabilityJobDefinition(Base):
     @Base.add_validate_call
     def get(
         cls,
-        job_definition_name: str,
+        job_definition_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ModelExplainabilityJobDefinition"]:
@@ -19517,10 +19518,10 @@ class ModelExplainabilityJobDefinition(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        endpoint_name: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        endpoint_name: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         session: Optional[Session] = None,
@@ -19619,33 +19620,33 @@ class ModelPackage(Base):
         model_life_cycle:  A structure describing the current state of the model in its life cycle. 
     
     """
-    model_package_name: str
-    model_package_group_name: Optional[str] = Unassigned()
+    model_package_name: StrPipeVar
+    model_package_group_name: Optional[StrPipeVar] = Unassigned()
     model_package_version: Optional[int] = Unassigned()
-    model_package_arn: Optional[str] = Unassigned()
-    model_package_description: Optional[str] = Unassigned()
+    model_package_arn: Optional[StrPipeVar] = Unassigned()
+    model_package_description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     inference_specification: Optional[InferenceSpecification] = Unassigned()
     source_algorithm_specification: Optional[SourceAlgorithmSpecification] = Unassigned()
     validation_specification: Optional[ModelPackageValidationSpecification] = Unassigned()
-    model_package_status: Optional[str] = Unassigned()
+    model_package_status: Optional[StrPipeVar] = Unassigned()
     model_package_status_details: Optional[ModelPackageStatusDetails] = Unassigned()
     certify_for_marketplace: Optional[bool] = Unassigned()
-    model_approval_status: Optional[str] = Unassigned()
+    model_approval_status: Optional[StrPipeVar] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     metadata_properties: Optional[MetadataProperties] = Unassigned()
     model_metrics: Optional[ModelMetrics] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
-    approval_description: Optional[str] = Unassigned()
-    domain: Optional[str] = Unassigned()
-    task: Optional[str] = Unassigned()
-    sample_payload_url: Optional[str] = Unassigned()
-    customer_metadata_properties: Optional[Dict[str, str]] = Unassigned()
+    approval_description: Optional[StrPipeVar] = Unassigned()
+    domain: Optional[StrPipeVar] = Unassigned()
+    task: Optional[StrPipeVar] = Unassigned()
+    sample_payload_url: Optional[StrPipeVar] = Unassigned()
+    customer_metadata_properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     drift_check_baselines: Optional[DriftCheckBaselines] = Unassigned()
     additional_inference_specifications: Optional[List[AdditionalInferenceSpecificationDefinition]] = Unassigned()
-    skip_model_validation: Optional[str] = Unassigned()
-    source_uri: Optional[str] = Unassigned()
+    skip_model_validation: Optional[StrPipeVar] = Unassigned()
+    source_uri: Optional[StrPipeVar] = Unassigned()
     security_config: Optional[ModelPackageSecurityConfig] = Unassigned()
     model_card: Optional[ModelPackageModelCard] = Unassigned()
     model_life_cycle: Optional[ModelLifeCycle] = Unassigned()
@@ -19796,26 +19797,26 @@ class ModelPackage(Base):
     @Base.add_validate_call
     def create(
         cls,
-        model_package_name: Optional[str] = Unassigned(),
-        model_package_group_name: Optional[Union[str, object]] = Unassigned(),
-        model_package_description: Optional[str] = Unassigned(),
+        model_package_name: Optional[StrPipeVar] = Unassigned(),
+        model_package_group_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
+        model_package_description: Optional[StrPipeVar] = Unassigned(),
         inference_specification: Optional[InferenceSpecification] = Unassigned(),
         validation_specification: Optional[ModelPackageValidationSpecification] = Unassigned(),
         source_algorithm_specification: Optional[SourceAlgorithmSpecification] = Unassigned(),
         certify_for_marketplace: Optional[bool] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        model_approval_status: Optional[str] = Unassigned(),
+        model_approval_status: Optional[StrPipeVar] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         model_metrics: Optional[ModelMetrics] = Unassigned(),
-        client_token: Optional[str] = Unassigned(),
-        domain: Optional[str] = Unassigned(),
-        task: Optional[str] = Unassigned(),
-        sample_payload_url: Optional[str] = Unassigned(),
-        customer_metadata_properties: Optional[Dict[str, str]] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
+        domain: Optional[StrPipeVar] = Unassigned(),
+        task: Optional[StrPipeVar] = Unassigned(),
+        sample_payload_url: Optional[StrPipeVar] = Unassigned(),
+        customer_metadata_properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         drift_check_baselines: Optional[DriftCheckBaselines] = Unassigned(),
         additional_inference_specifications: Optional[List[AdditionalInferenceSpecificationDefinition]] = Unassigned(),
-        skip_model_validation: Optional[str] = Unassigned(),
-        source_uri: Optional[str] = Unassigned(),
+        skip_model_validation: Optional[StrPipeVar] = Unassigned(),
+        source_uri: Optional[StrPipeVar] = Unassigned(),
         security_config: Optional[ModelPackageSecurityConfig] = Unassigned(),
         model_card: Optional[ModelPackageModelCard] = Unassigned(),
         model_life_cycle: Optional[ModelLifeCycle] = Unassigned(),
@@ -19918,7 +19919,7 @@ class ModelPackage(Base):
     @Base.add_validate_call
     def get(
         cls,
-        model_package_name: str,
+        model_package_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ModelPackage"]:
@@ -20003,16 +20004,16 @@ class ModelPackage(Base):
     @Base.add_validate_call
     def update(
         self,
-        model_approval_status: Optional[str] = Unassigned(),
-        approval_description: Optional[str] = Unassigned(),
-        customer_metadata_properties: Optional[Dict[str, str]] = Unassigned(),
-        customer_metadata_properties_to_remove: Optional[List[str]] = Unassigned(),
+        model_approval_status: Optional[StrPipeVar] = Unassigned(),
+        approval_description: Optional[StrPipeVar] = Unassigned(),
+        customer_metadata_properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
+        customer_metadata_properties_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
         additional_inference_specifications_to_add: Optional[List[AdditionalInferenceSpecificationDefinition]] = Unassigned(),
         inference_specification: Optional[InferenceSpecification] = Unassigned(),
-        source_uri: Optional[str] = Unassigned(),
+        source_uri: Optional[StrPipeVar] = Unassigned(),
         model_card: Optional[ModelPackageModelCard] = Unassigned(),
         model_life_cycle: Optional[ModelLifeCycle] = Unassigned(),
-        client_token: Optional[str] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["ModelPackage"]:
         """
         Update a ModelPackage resource
@@ -20216,12 +20217,12 @@ class ModelPackage(Base):
         cls,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        model_approval_status: Optional[str] = Unassigned(),
-        model_package_group_name: Optional[str] = Unassigned(),
-        model_package_type: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        model_approval_status: Optional[StrPipeVar] = Unassigned(),
+        model_package_group_name: Optional[StrPipeVar] = Unassigned(),
+        model_package_type: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["ModelPackage"]:
@@ -20287,7 +20288,7 @@ class ModelPackage(Base):
     @Base.add_validate_call
     def batch_get(
         self,
-        model_package_arn_list: List[str],
+        model_package_arn_list: List[StrPipeVar],
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[BatchDescribeModelPackageOutput]:
@@ -20345,12 +20346,12 @@ class ModelPackageGroup(Base):
         model_package_group_description: A description of the model group.
     
     """
-    model_package_group_name: str
-    model_package_group_arn: Optional[str] = Unassigned()
-    model_package_group_description: Optional[str] = Unassigned()
+    model_package_group_name: StrPipeVar
+    model_package_group_arn: Optional[StrPipeVar] = Unassigned()
+    model_package_group_description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
-    model_package_group_status: Optional[str] = Unassigned()
+    model_package_group_status: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -20372,8 +20373,8 @@ class ModelPackageGroup(Base):
     @Base.add_validate_call
     def create(
         cls,
-        model_package_group_name: str,
-        model_package_group_description: Optional[str] = Unassigned(),
+        model_package_group_name: StrPipeVar,
+        model_package_group_description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -20433,7 +20434,7 @@ class ModelPackageGroup(Base):
     @Base.add_validate_call
     def get(
         cls,
-        model_package_group_name: str,
+        model_package_group_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ModelPackageGroup"]:
@@ -20664,10 +20665,10 @@ class ModelPackageGroup(Base):
         cls,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        cross_account_filter_option: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        cross_account_filter_option: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["ModelPackageGroup"]:
@@ -20817,7 +20818,7 @@ class ModelPackageGroup(Base):
     @Base.add_validate_call
     def put_policy(
         self,
-        resource_policy: str,
+        resource_policy: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -20877,8 +20878,8 @@ class ModelQualityJobDefinition(Base):
         stopping_condition: 
     
     """
-    job_definition_name: str
-    job_definition_arn: Optional[str] = Unassigned()
+    job_definition_name: StrPipeVar
+    job_definition_arn: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     model_quality_baseline_config: Optional[ModelQualityBaselineConfig] = Unassigned()
     model_quality_app_specification: Optional[ModelQualityAppSpecification] = Unassigned()
@@ -20886,7 +20887,7 @@ class ModelQualityJobDefinition(Base):
     model_quality_job_output_config: Optional[MonitoringOutputConfig] = Unassigned()
     job_resources: Optional[MonitoringResources] = Unassigned()
     network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
     
     def get_name(self) -> str:
@@ -20984,12 +20985,12 @@ class ModelQualityJobDefinition(Base):
     @Base.add_validate_call
     def create(
         cls,
-        job_definition_name: str,
+        job_definition_name: StrPipeVar,
         model_quality_app_specification: ModelQualityAppSpecification,
         model_quality_job_input: ModelQualityJobInput,
         model_quality_job_output_config: MonitoringOutputConfig,
         job_resources: MonitoringResources,
-        role_arn: str,
+        role_arn: StrPipeVar,
         model_quality_baseline_config: Optional[ModelQualityBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
@@ -21067,7 +21068,7 @@ class ModelQualityJobDefinition(Base):
     @Base.add_validate_call
     def get(
         cls,
-        job_definition_name: str,
+        job_definition_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ModelQualityJobDefinition"]:
@@ -21188,10 +21189,10 @@ class ModelQualityJobDefinition(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        endpoint_name: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        endpoint_name: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         session: Optional[Session] = None,
@@ -21267,10 +21268,10 @@ class MonitoringAlert(Base):
         actions: A list of alert actions taken in response to an alert going into InAlert status.
     
     """
-    monitoring_alert_name: str
+    monitoring_alert_name: StrPipeVar
     creation_time: datetime.datetime
     last_modified_time: datetime.datetime
-    alert_status: str
+    alert_status: StrPipeVar
     datapoints_to_alert: int
     evaluation_period: int
     actions: MonitoringAlertActions
@@ -21294,7 +21295,7 @@ class MonitoringAlert(Base):
     @Base.add_validate_call
     def update(
         self,
-        monitoring_schedule_name: str,
+        monitoring_schedule_name: StrPipeVar,
         datapoints_to_alert: int,
         evaluation_period: int,
     ) -> Optional["MonitoringAlert"]:
@@ -21346,7 +21347,7 @@ class MonitoringAlert(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        monitoring_schedule_name: str,
+        monitoring_schedule_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["MonitoringAlert"]:
@@ -21399,14 +21400,14 @@ class MonitoringAlert(Base):
     @Base.add_validate_call
     def list_history(
         self,
-        monitoring_schedule_name: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        next_token: Optional[str] = Unassigned(),
+        monitoring_schedule_name: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        next_token: Optional[StrPipeVar] = Unassigned(),
         max_results: Optional[int] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[MonitoringAlertHistorySummary]:
@@ -21484,16 +21485,16 @@ class MonitoringExecution(Base):
         monitoring_type: The type of the monitoring job.
     
     """
-    monitoring_schedule_name: str
+    monitoring_schedule_name: StrPipeVar
     scheduled_time: datetime.datetime
     creation_time: datetime.datetime
     last_modified_time: datetime.datetime
-    monitoring_execution_status: str
-    processing_job_arn: Optional[str] = Unassigned()
-    endpoint_name: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    monitoring_job_definition_name: Optional[str] = Unassigned()
-    monitoring_type: Optional[str] = Unassigned()
+    monitoring_execution_status: StrPipeVar
+    processing_job_arn: Optional[StrPipeVar] = Unassigned()
+    endpoint_name: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned()
+    monitoring_type: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -21515,19 +21516,19 @@ class MonitoringExecution(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        monitoring_schedule_name: Optional[str] = Unassigned(),
-        endpoint_name: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        monitoring_schedule_name: Optional[StrPipeVar] = Unassigned(),
+        endpoint_name: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         scheduled_time_before: Optional[datetime.datetime] = Unassigned(),
         scheduled_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        monitoring_job_definition_name: Optional[str] = Unassigned(),
-        monitoring_type_equals: Optional[str] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned(),
+        monitoring_type_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["MonitoringExecution"]:
@@ -21617,15 +21618,15 @@ class MonitoringSchedule(Base):
         last_monitoring_execution_summary: Describes metadata on the last execution to run, if there was one.
     
     """
-    monitoring_schedule_name: str
-    monitoring_schedule_arn: Optional[str] = Unassigned()
-    monitoring_schedule_status: Optional[str] = Unassigned()
-    monitoring_type: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    monitoring_schedule_name: StrPipeVar
+    monitoring_schedule_arn: Optional[StrPipeVar] = Unassigned()
+    monitoring_schedule_status: Optional[StrPipeVar] = Unassigned()
+    monitoring_type: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     monitoring_schedule_config: Optional[MonitoringScheduleConfig] = Unassigned()
-    endpoint_name: Optional[str] = Unassigned()
+    endpoint_name: Optional[StrPipeVar] = Unassigned()
     last_monitoring_execution_summary: Optional[MonitoringExecutionSummary] = Unassigned()
     
     def get_name(self) -> str:
@@ -21706,7 +21707,7 @@ class MonitoringSchedule(Base):
     @Base.add_validate_call
     def create(
         cls,
-        monitoring_schedule_name: str,
+        monitoring_schedule_name: StrPipeVar,
         monitoring_schedule_config: MonitoringScheduleConfig,
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -21768,7 +21769,7 @@ class MonitoringSchedule(Base):
     @Base.add_validate_call
     def get(
         cls,
-        monitoring_schedule_name: str,
+        monitoring_schedule_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["MonitoringSchedule"]:
@@ -22062,17 +22063,17 @@ class MonitoringSchedule(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        endpoint_name: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        endpoint_name: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        monitoring_job_definition_name: Optional[str] = Unassigned(),
-        monitoring_type_equals: Optional[str] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned(),
+        monitoring_type_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["MonitoringSchedule"]:
@@ -22170,27 +22171,27 @@ class NotebookInstance(Base):
         instance_metadata_service_configuration: Information on the IMDS configuration of the notebook instance
     
     """
-    notebook_instance_name: str
-    notebook_instance_arn: Optional[str] = Unassigned()
-    notebook_instance_status: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    url: Optional[str] = Unassigned()
-    instance_type: Optional[str] = Unassigned()
-    subnet_id: Optional[str] = Unassigned()
-    security_groups: Optional[List[str]] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
-    kms_key_id: Optional[str] = Unassigned()
-    network_interface_id: Optional[str] = Unassigned()
+    notebook_instance_name: StrPipeVar
+    notebook_instance_arn: Optional[StrPipeVar] = Unassigned()
+    notebook_instance_status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    url: Optional[StrPipeVar] = Unassigned()
+    instance_type: Optional[StrPipeVar] = Unassigned()
+    subnet_id: Optional[StrPipeVar] = Unassigned()
+    security_groups: Optional[List[StrPipeVar]] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
+    network_interface_id: Optional[StrPipeVar] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    notebook_instance_lifecycle_config_name: Optional[str] = Unassigned()
-    direct_internet_access: Optional[str] = Unassigned()
+    notebook_instance_lifecycle_config_name: Optional[StrPipeVar] = Unassigned()
+    direct_internet_access: Optional[StrPipeVar] = Unassigned()
     volume_size_in_gb: Optional[int] = Unassigned()
-    accelerator_types: Optional[List[str]] = Unassigned()
-    default_code_repository: Optional[str] = Unassigned()
-    additional_code_repositories: Optional[List[str]] = Unassigned()
-    root_access: Optional[str] = Unassigned()
-    platform_identifier: Optional[str] = Unassigned()
+    accelerator_types: Optional[List[StrPipeVar]] = Unassigned()
+    default_code_repository: Optional[StrPipeVar] = Unassigned()
+    additional_code_repositories: Optional[List[StrPipeVar]] = Unassigned()
+    root_access: Optional[StrPipeVar] = Unassigned()
+    platform_identifier: Optional[StrPipeVar] = Unassigned()
     instance_metadata_service_configuration: Optional[InstanceMetadataServiceConfiguration] = Unassigned()
     
     def get_name(self) -> str:
@@ -22239,21 +22240,21 @@ class NotebookInstance(Base):
     @Base.add_validate_call
     def create(
         cls,
-        notebook_instance_name: str,
-        instance_type: str,
-        role_arn: str,
-        subnet_id: Optional[str] = Unassigned(),
-        security_group_ids: Optional[List[str]] = Unassigned(),
-        kms_key_id: Optional[str] = Unassigned(),
+        notebook_instance_name: StrPipeVar,
+        instance_type: StrPipeVar,
+        role_arn: StrPipeVar,
+        subnet_id: Optional[StrPipeVar] = Unassigned(),
+        security_group_ids: Optional[List[StrPipeVar]] = Unassigned(),
+        kms_key_id: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        lifecycle_config_name: Optional[str] = Unassigned(),
-        direct_internet_access: Optional[str] = Unassigned(),
+        lifecycle_config_name: Optional[StrPipeVar] = Unassigned(),
+        direct_internet_access: Optional[StrPipeVar] = Unassigned(),
         volume_size_in_gb: Optional[int] = Unassigned(),
-        accelerator_types: Optional[List[str]] = Unassigned(),
-        default_code_repository: Optional[str] = Unassigned(),
-        additional_code_repositories: Optional[List[str]] = Unassigned(),
-        root_access: Optional[str] = Unassigned(),
-        platform_identifier: Optional[str] = Unassigned(),
+        accelerator_types: Optional[List[StrPipeVar]] = Unassigned(),
+        default_code_repository: Optional[StrPipeVar] = Unassigned(),
+        additional_code_repositories: Optional[List[StrPipeVar]] = Unassigned(),
+        root_access: Optional[StrPipeVar] = Unassigned(),
+        platform_identifier: Optional[StrPipeVar] = Unassigned(),
         instance_metadata_service_configuration: Optional[InstanceMetadataServiceConfiguration] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -22339,7 +22340,7 @@ class NotebookInstance(Base):
     @Base.add_validate_call
     def get(
         cls,
-        notebook_instance_name: str,
+        notebook_instance_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["NotebookInstance"]:
@@ -22424,18 +22425,18 @@ class NotebookInstance(Base):
     @Base.add_validate_call
     def update(
         self,
-        instance_type: Optional[str] = Unassigned(),
-        role_arn: Optional[str] = Unassigned(),
-        lifecycle_config_name: Optional[str] = Unassigned(),
+        instance_type: Optional[StrPipeVar] = Unassigned(),
+        role_arn: Optional[StrPipeVar] = Unassigned(),
+        lifecycle_config_name: Optional[StrPipeVar] = Unassigned(),
         disassociate_lifecycle_config: Optional[bool] = Unassigned(),
         volume_size_in_gb: Optional[int] = Unassigned(),
-        default_code_repository: Optional[str] = Unassigned(),
-        additional_code_repositories: Optional[List[str]] = Unassigned(),
-        accelerator_types: Optional[List[str]] = Unassigned(),
+        default_code_repository: Optional[StrPipeVar] = Unassigned(),
+        additional_code_repositories: Optional[List[StrPipeVar]] = Unassigned(),
+        accelerator_types: Optional[List[StrPipeVar]] = Unassigned(),
         disassociate_accelerator_types: Optional[bool] = Unassigned(),
         disassociate_default_code_repository: Optional[bool] = Unassigned(),
         disassociate_additional_code_repositories: Optional[bool] = Unassigned(),
-        root_access: Optional[str] = Unassigned(),
+        root_access: Optional[StrPipeVar] = Unassigned(),
         instance_metadata_service_configuration: Optional[InstanceMetadataServiceConfiguration] = Unassigned(),
     ) -> Optional["NotebookInstance"]:
         """
@@ -22715,17 +22716,17 @@ class NotebookInstance(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        notebook_instance_lifecycle_config_name_contains: Optional[str] = Unassigned(),
-        default_code_repository_contains: Optional[str] = Unassigned(),
-        additional_code_repository_equals: Optional[str] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        notebook_instance_lifecycle_config_name_contains: Optional[StrPipeVar] = Unassigned(),
+        default_code_repository_contains: Optional[StrPipeVar] = Unassigned(),
+        additional_code_repository_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["NotebookInstance"]:
@@ -22807,8 +22808,8 @@ class NotebookInstanceLifecycleConfig(Base):
         creation_time: A timestamp that tells when the lifecycle configuration was created.
     
     """
-    notebook_instance_lifecycle_config_name: str
-    notebook_instance_lifecycle_config_arn: Optional[str] = Unassigned()
+    notebook_instance_lifecycle_config_name: StrPipeVar
+    notebook_instance_lifecycle_config_arn: Optional[StrPipeVar] = Unassigned()
     on_create: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned()
     on_start: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -22834,7 +22835,7 @@ class NotebookInstanceLifecycleConfig(Base):
     @Base.add_validate_call
     def create(
         cls,
-        notebook_instance_lifecycle_config_name: str,
+        notebook_instance_lifecycle_config_name: StrPipeVar,
         on_create: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned(),
         on_start: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned(),
         session: Optional[Session] = None,
@@ -22895,7 +22896,7 @@ class NotebookInstanceLifecycleConfig(Base):
     @Base.add_validate_call
     def get(
         cls,
-        notebook_instance_lifecycle_config_name: str,
+        notebook_instance_lifecycle_config_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["NotebookInstanceLifecycleConfig"]:
@@ -23058,9 +23059,9 @@ class NotebookInstanceLifecycleConfig(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
@@ -23149,21 +23150,21 @@ class OptimizationJob(Base):
         vpc_config: A VPC in Amazon VPC that your optimized model has access to.
     
     """
-    optimization_job_name: str
-    optimization_job_arn: Optional[str] = Unassigned()
-    optimization_job_status: Optional[str] = Unassigned()
+    optimization_job_name: StrPipeVar
+    optimization_job_arn: Optional[StrPipeVar] = Unassigned()
+    optimization_job_status: Optional[StrPipeVar] = Unassigned()
     optimization_start_time: Optional[datetime.datetime] = Unassigned()
     optimization_end_time: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     model_source: Optional[OptimizationJobModelSource] = Unassigned()
-    optimization_environment: Optional[Dict[str, str]] = Unassigned()
-    deployment_instance_type: Optional[str] = Unassigned()
+    optimization_environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
+    deployment_instance_type: Optional[StrPipeVar] = Unassigned()
     optimization_configs: Optional[List[OptimizationConfig]] = Unassigned()
     output_config: Optional[OptimizationJobOutputConfig] = Unassigned()
     optimization_output: Optional[OptimizationOutput] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     stopping_condition: Optional[StoppingCondition] = Unassigned()
     vpc_config: Optional[OptimizationVpcConfig] = Unassigned()
     
@@ -23230,14 +23231,14 @@ class OptimizationJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        optimization_job_name: str,
-        role_arn: str,
+        optimization_job_name: StrPipeVar,
+        role_arn: StrPipeVar,
         model_source: OptimizationJobModelSource,
-        deployment_instance_type: str,
+        deployment_instance_type: StrPipeVar,
         optimization_configs: List[OptimizationConfig],
         output_config: OptimizationJobOutputConfig,
         stopping_condition: StoppingCondition,
-        optimization_environment: Optional[Dict[str, str]] = Unassigned(),
+        optimization_environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         vpc_config: Optional[OptimizationVpcConfig] = Unassigned(),
         session: Optional[Session] = None,
@@ -23313,7 +23314,7 @@ class OptimizationJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        optimization_job_name: str,
+        optimization_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["OptimizationJob"]:
@@ -23526,11 +23527,11 @@ class OptimizationJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        optimization_contains: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        optimization_contains: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["OptimizationJob"]:
@@ -23616,18 +23617,18 @@ class PartnerApp(Base):
         error: This is an error field object that contains the error code and the reason for an operation failure.
     
     """
-    arn: str
-    name: Optional[str] = Unassigned()
-    type: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
+    arn: StrPipeVar
+    name: Optional[StrPipeVar] = Unassigned()
+    type: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    execution_role_arn: Optional[str] = Unassigned()
-    base_url: Optional[str] = Unassigned()
+    execution_role_arn: Optional[StrPipeVar] = Unassigned()
+    base_url: Optional[StrPipeVar] = Unassigned()
     maintenance_config: Optional[PartnerAppMaintenanceConfig] = Unassigned()
-    tier: Optional[str] = Unassigned()
-    version: Optional[str] = Unassigned()
+    tier: Optional[StrPipeVar] = Unassigned()
+    version: Optional[StrPipeVar] = Unassigned()
     application_config: Optional[PartnerAppConfig] = Unassigned()
-    auth_type: Optional[str] = Unassigned()
+    auth_type: Optional[StrPipeVar] = Unassigned()
     enable_iam_session_based_identity: Optional[bool] = Unassigned()
     error: Optional[ErrorInfo] = Unassigned()
     
@@ -23665,15 +23666,15 @@ class PartnerApp(Base):
     @Base.add_validate_call
     def create(
         cls,
-        name: str,
-        type: str,
-        execution_role_arn: str,
-        tier: str,
-        auth_type: str,
+        name: StrPipeVar,
+        type: StrPipeVar,
+        execution_role_arn: StrPipeVar,
+        tier: StrPipeVar,
+        auth_type: StrPipeVar,
         maintenance_config: Optional[PartnerAppMaintenanceConfig] = Unassigned(),
         application_config: Optional[PartnerAppConfig] = Unassigned(),
         enable_iam_session_based_identity: Optional[bool] = Unassigned(),
-        client_token: Optional[str] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -23748,7 +23749,7 @@ class PartnerApp(Base):
     @Base.add_validate_call
     def get(
         cls,
-        arn: str,
+        arn: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PartnerApp"]:
@@ -23836,10 +23837,10 @@ class PartnerApp(Base):
     def update(
         self,
         maintenance_config: Optional[PartnerAppMaintenanceConfig] = Unassigned(),
-        tier: Optional[str] = Unassigned(),
+        tier: Optional[StrPipeVar] = Unassigned(),
         application_config: Optional[PartnerAppConfig] = Unassigned(),
         enable_iam_session_based_identity: Optional[bool] = Unassigned(),
-        client_token: Optional[str] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
     ) -> Optional["PartnerApp"]:
         """
@@ -23893,7 +23894,7 @@ class PartnerApp(Base):
     @Base.add_validate_call
     def delete(
         self,
-        client_token: Optional[str] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
         ) -> None:
         """
         Delete a PartnerApp resource
@@ -24080,10 +24081,10 @@ class PartnerAppPresignedUrl(Base):
         url: The presigned URL that you can use to access the SageMaker Partner AI App.
     
     """
-    arn: str
+    arn: StrPipeVar
     expires_in_seconds: Optional[int] = Unassigned()
     session_expiration_duration_in_seconds: Optional[int] = Unassigned()
-    url: Optional[str] = Unassigned()
+    url: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -24105,7 +24106,7 @@ class PartnerAppPresignedUrl(Base):
     @Base.add_validate_call
     def create(
         cls,
-        arn: str,
+        arn: StrPipeVar,
         expires_in_seconds: Optional[int] = Unassigned(),
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
@@ -24180,13 +24181,13 @@ class Pipeline(Base):
         parallelism_configuration: Lists the parallelism configuration applied to the pipeline.
     
     """
-    pipeline_name: str
-    pipeline_arn: Optional[str] = Unassigned()
-    pipeline_display_name: Optional[str] = Unassigned()
-    pipeline_definition: Optional[str] = Unassigned()
-    pipeline_description: Optional[str] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
-    pipeline_status: Optional[str] = Unassigned()
+    pipeline_name: StrPipeVar
+    pipeline_arn: Optional[StrPipeVar] = Unassigned()
+    pipeline_display_name: Optional[StrPipeVar] = Unassigned()
+    pipeline_definition: Optional[StrPipeVar] = Unassigned()
+    pipeline_description: Optional[StrPipeVar] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    pipeline_status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_run_time: Optional[datetime.datetime] = Unassigned()
@@ -24228,13 +24229,13 @@ class Pipeline(Base):
     @Base.add_validate_call
     def create(
         cls,
-        pipeline_name: str,
-        client_request_token: str,
-        role_arn: str,
-        pipeline_display_name: Optional[str] = Unassigned(),
-        pipeline_definition: Optional[str] = Unassigned(),
+        pipeline_name: StrPipeVar,
+        client_request_token: StrPipeVar,
+        role_arn: StrPipeVar,
+        pipeline_display_name: Optional[StrPipeVar] = Unassigned(),
+        pipeline_definition: Optional[StrPipeVar] = Unassigned(),
         pipeline_definition_s3_location: Optional[PipelineDefinitionS3Location] = Unassigned(),
-        pipeline_description: Optional[str] = Unassigned(),
+        pipeline_description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
         session: Optional[Session] = None,
@@ -24309,7 +24310,7 @@ class Pipeline(Base):
     @Base.add_validate_call
     def get(
         cls,
-        pipeline_name: str,
+        pipeline_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Pipeline"]:
@@ -24396,11 +24397,11 @@ class Pipeline(Base):
     @Base.add_validate_call
     def update(
         self,
-        pipeline_display_name: Optional[str] = Unassigned(),
-        pipeline_definition: Optional[str] = Unassigned(),
+        pipeline_display_name: Optional[StrPipeVar] = Unassigned(),
+        pipeline_definition: Optional[StrPipeVar] = Unassigned(),
         pipeline_definition_s3_location: Optional[PipelineDefinitionS3Location] = Unassigned(),
-        pipeline_description: Optional[str] = Unassigned(),
-        role_arn: Optional[str] = Unassigned(),
+        pipeline_description: Optional[StrPipeVar] = Unassigned(),
+        role_arn: Optional[StrPipeVar] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
     ) -> Optional["Pipeline"]:
         """
@@ -24453,7 +24454,7 @@ class Pipeline(Base):
     @Base.add_validate_call
     def delete(
         self,
-        client_request_token: str,
+        client_request_token: StrPipeVar,
         ) -> None:
         """
         Delete a Pipeline resource
@@ -24597,11 +24598,11 @@ class Pipeline(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        pipeline_name_prefix: Optional[str] = Unassigned(),
+        pipeline_name_prefix: Optional[StrPipeVar] = Unassigned(),
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Pipeline"]:
@@ -24678,13 +24679,13 @@ class PipelineExecution(Base):
         selective_execution_config: The selective execution configuration applied to the pipeline run.
     
     """
-    pipeline_execution_arn: str
-    pipeline_arn: Optional[str] = Unassigned()
-    pipeline_execution_display_name: Optional[str] = Unassigned()
-    pipeline_execution_status: Optional[str] = Unassigned()
-    pipeline_execution_description: Optional[str] = Unassigned()
+    pipeline_execution_arn: StrPipeVar
+    pipeline_arn: Optional[StrPipeVar] = Unassigned()
+    pipeline_execution_display_name: Optional[StrPipeVar] = Unassigned()
+    pipeline_execution_status: Optional[StrPipeVar] = Unassigned()
+    pipeline_execution_description: Optional[StrPipeVar] = Unassigned()
     pipeline_experiment_config: Optional[PipelineExperimentConfig] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
@@ -24712,7 +24713,7 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def get(
         cls,
-        pipeline_execution_arn: str,
+        pipeline_execution_arn: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PipelineExecution"]:
@@ -24798,8 +24799,8 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def update(
         self,
-        pipeline_execution_description: Optional[str] = Unassigned(),
-        pipeline_execution_display_name: Optional[str] = Unassigned(),
+        pipeline_execution_description: Optional[StrPipeVar] = Unassigned(),
+        pipeline_execution_display_name: Optional[StrPipeVar] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
     ) -> Optional["PipelineExecution"]:
         """
@@ -24847,8 +24848,8 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def start(
         self,
-        pipeline_name: str,
-        client_request_token: str,
+        pipeline_name: StrPipeVar,
+        client_request_token: StrPipeVar,
         pipeline_parameters: Optional[List[Parameter]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -24987,11 +24988,11 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        pipeline_name: str,
+        pipeline_name: StrPipeVar,
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["PipelineExecution"]:
@@ -25100,7 +25101,7 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def get_all_steps(
         self,
-        sort_order: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        sort_order: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[PipelineExecutionStep]:
         """
@@ -25206,7 +25207,7 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def retry(
         self,
-        client_request_token: str,
+        client_request_token: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -25254,8 +25255,8 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def send_execution_step_failure(
         self,
-        callback_token: str,
-        client_request_token: Optional[str] = Unassigned(),
+        callback_token: StrPipeVar,
+        client_request_token: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -25304,9 +25305,9 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def send_execution_step_success(
         self,
-        callback_token: str,
+        callback_token: StrPipeVar,
         output_parameters: Optional[List[OutputParameter]] = Unassigned(),
-        client_request_token: Optional[str] = Unassigned(),
+        client_request_token: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -25367,13 +25368,13 @@ class PresignedDomainUrl(Base):
         authorized_url: The presigned URL.
     
     """
-    domain_id: str
-    user_profile_name: Union[str, object]
+    domain_id: StrPipeVar
+    user_profile_name: Union[StrPipeVar, object]
     session_expiration_duration_in_seconds: Optional[int] = Unassigned()
     expires_in_seconds: Optional[int] = Unassigned()
-    space_name: Optional[Union[str, object]] = Unassigned()
-    landing_uri: Optional[str] = Unassigned()
-    authorized_url: Optional[str] = Unassigned()
+    space_name: Optional[Union[StrPipeVar, object]] = Unassigned()
+    landing_uri: Optional[StrPipeVar] = Unassigned()
+    authorized_url: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -25395,12 +25396,12 @@ class PresignedDomainUrl(Base):
     @Base.add_validate_call
     def create(
         cls,
-        domain_id: str,
-        user_profile_name: Union[str, object],
+        domain_id: StrPipeVar,
+        user_profile_name: Union[StrPipeVar, object],
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
         expires_in_seconds: Optional[int] = Unassigned(),
-        space_name: Optional[Union[str, object]] = Unassigned(),
-        landing_uri: Optional[str] = Unassigned(),
+        space_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
+        landing_uri: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedDomainUrl"]:
@@ -25470,10 +25471,10 @@ class PresignedMlflowTrackingServerUrl(Base):
         authorized_url: A presigned URL with an authorization token.
     
     """
-    tracking_server_name: str
+    tracking_server_name: StrPipeVar
     expires_in_seconds: Optional[int] = Unassigned()
     session_expiration_duration_in_seconds: Optional[int] = Unassigned()
-    authorized_url: Optional[str] = Unassigned()
+    authorized_url: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -25495,7 +25496,7 @@ class PresignedMlflowTrackingServerUrl(Base):
     @Base.add_validate_call
     def create(
         cls,
-        tracking_server_name: str,
+        tracking_server_name: StrPipeVar,
         expires_in_seconds: Optional[int] = Unassigned(),
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
@@ -25560,9 +25561,9 @@ class PresignedNotebookInstanceUrl(Base):
         authorized_url: A JSON object that contains the URL string. 
     
     """
-    notebook_instance_name: Union[str, object]
+    notebook_instance_name: Union[StrPipeVar, object]
     session_expiration_duration_in_seconds: Optional[int] = Unassigned()
-    authorized_url: Optional[str] = Unassigned()
+    authorized_url: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -25584,7 +25585,7 @@ class PresignedNotebookInstanceUrl(Base):
     @Base.add_validate_call
     def create(
         cls,
-        notebook_instance_name: Union[str, object],
+        notebook_instance_name: Union[StrPipeVar, object],
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -25663,27 +25664,27 @@ class ProcessingJob(Base):
         training_job_arn: The ARN of a training job associated with this processing job.
     
     """
-    processing_job_name: str
+    processing_job_name: StrPipeVar
     processing_inputs: Optional[List[ProcessingInput]] = Unassigned()
     processing_output_config: Optional[ProcessingOutputConfig] = Unassigned()
     processing_resources: Optional[ProcessingResources] = Unassigned()
     stopping_condition: Optional[ProcessingStoppingCondition] = Unassigned()
     app_specification: Optional[AppSpecification] = Unassigned()
-    environment: Optional[Dict[str, str]] = Unassigned()
+    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     network_config: Optional[NetworkConfig] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     experiment_config: Optional[ExperimentConfig] = Unassigned()
-    processing_job_arn: Optional[str] = Unassigned()
-    processing_job_status: Optional[str] = Unassigned()
-    exit_message: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    processing_job_arn: Optional[StrPipeVar] = Unassigned()
+    processing_job_status: Optional[StrPipeVar] = Unassigned()
+    exit_message: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     processing_end_time: Optional[datetime.datetime] = Unassigned()
     processing_start_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    monitoring_schedule_arn: Optional[str] = Unassigned()
-    auto_ml_job_arn: Optional[str] = Unassigned()
-    training_job_arn: Optional[str] = Unassigned()
+    monitoring_schedule_arn: Optional[StrPipeVar] = Unassigned()
+    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
+    training_job_arn: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -25747,14 +25748,14 @@ class ProcessingJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        processing_job_name: str,
+        processing_job_name: StrPipeVar,
         processing_resources: ProcessingResources,
         app_specification: AppSpecification,
-        role_arn: str,
+        role_arn: StrPipeVar,
         processing_inputs: Optional[List[ProcessingInput]] = Unassigned(),
         processing_output_config: Optional[ProcessingOutputConfig] = Unassigned(),
         stopping_condition: Optional[ProcessingStoppingCondition] = Unassigned(),
-        environment: Optional[Dict[str, str]] = Unassigned(),
+        environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         network_config: Optional[NetworkConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
@@ -25834,7 +25835,7 @@ class ProcessingJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        processing_job_name: str,
+        processing_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ProcessingJob"]:
@@ -26027,10 +26028,10 @@ class ProcessingJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["ProcessingJob"]:
@@ -26111,13 +26112,13 @@ class Project(Base):
         last_modified_by: 
     
     """
-    project_name: str
-    project_arn: Optional[str] = Unassigned()
-    project_id: Optional[str] = Unassigned()
-    project_description: Optional[str] = Unassigned()
+    project_name: StrPipeVar
+    project_arn: Optional[StrPipeVar] = Unassigned()
+    project_id: Optional[StrPipeVar] = Unassigned()
+    project_description: Optional[StrPipeVar] = Unassigned()
     service_catalog_provisioning_details: Optional[ServiceCatalogProvisioningDetails] = Unassigned()
     service_catalog_provisioned_product_details: Optional[ServiceCatalogProvisionedProductDetails] = Unassigned()
-    project_status: Optional[str] = Unassigned()
+    project_status: Optional[StrPipeVar] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -26143,9 +26144,9 @@ class Project(Base):
     @Base.add_validate_call
     def create(
         cls,
-        project_name: str,
+        project_name: StrPipeVar,
         service_catalog_provisioning_details: ServiceCatalogProvisioningDetails,
-        project_description: Optional[str] = Unassigned(),
+        project_description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -26207,7 +26208,7 @@ class Project(Base):
     @Base.add_validate_call
     def get(
         cls,
-        project_name: str,
+        project_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Project"]:
@@ -26291,7 +26292,7 @@ class Project(Base):
     @Base.add_validate_call
     def update(
         self,
-        project_description: Optional[str] = Unassigned(),
+        project_description: Optional[StrPipeVar] = Unassigned(),
         service_catalog_provisioning_update_details: Optional[ServiceCatalogProvisioningUpdateDetails] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
     ) -> Optional["Project"]:
@@ -26433,9 +26434,9 @@ class Project(Base):
         cls,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Project"]:
@@ -26503,9 +26504,9 @@ class ResourceCatalog(Base):
         creation_time:  The time the ResourceCatalog was created. 
     
     """
-    resource_catalog_arn: str
-    resource_catalog_name: str
-    description: str
+    resource_catalog_arn: StrPipeVar
+    resource_catalog_name: StrPipeVar
+    description: StrPipeVar
     creation_time: datetime.datetime
     
     def get_name(self) -> str:
@@ -26528,11 +26529,11 @@ class ResourceCatalog(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        name_contains: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["ResourceCatalog"]:
@@ -26722,19 +26723,19 @@ class Space(Base):
         url: Returns the URL of the space. If the space is created with Amazon Web Services IAM Identity Center (Successor to Amazon Web Services Single Sign-On) authentication, users can navigate to the URL after appending the respective redirect parameter for the application type to be federated through Amazon Web Services IAM Identity Center. The following application types are supported:   Studio Classic: &amp;redirect=JupyterServer    JupyterLab: &amp;redirect=JupyterLab    Code Editor, based on Code-OSS, Visual Studio Code - Open Source: &amp;redirect=CodeEditor   
     
     """
-    domain_id: str
-    space_name: str
-    space_arn: Optional[str] = Unassigned()
-    home_efs_file_system_uid: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
+    domain_id: StrPipeVar
+    space_name: StrPipeVar
+    space_arn: Optional[StrPipeVar] = Unassigned()
+    home_efs_file_system_uid: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     space_settings: Optional[SpaceSettings] = Unassigned()
     ownership_settings: Optional[OwnershipSettings] = Unassigned()
     space_sharing_settings: Optional[SpaceSharingSettings] = Unassigned()
-    space_display_name: Optional[str] = Unassigned()
-    url: Optional[str] = Unassigned()
+    space_display_name: Optional[StrPipeVar] = Unassigned()
+    url: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -26756,13 +26757,13 @@ class Space(Base):
     @Base.add_validate_call
     def create(
         cls,
-        domain_id: str,
-        space_name: str,
+        domain_id: StrPipeVar,
+        space_name: StrPipeVar,
         tags: Optional[List[Tag]] = Unassigned(),
         space_settings: Optional[SpaceSettings] = Unassigned(),
         ownership_settings: Optional[OwnershipSettings] = Unassigned(),
         space_sharing_settings: Optional[SpaceSharingSettings] = Unassigned(),
-        space_display_name: Optional[str] = Unassigned(),
+        space_display_name: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Space"]:
@@ -26830,8 +26831,8 @@ class Space(Base):
     @Base.add_validate_call
     def get(
         cls,
-        domain_id: str,
-        space_name: str,
+        domain_id: StrPipeVar,
+        space_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Space"]:
@@ -26921,7 +26922,7 @@ class Space(Base):
     def update(
         self,
         space_settings: Optional[SpaceSettings] = Unassigned(),
-        space_display_name: Optional[str] = Unassigned(),
+        space_display_name: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["Space"]:
         """
         Update a Space resource
@@ -27118,10 +27119,10 @@ class Space(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_order: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        domain_id_equals: Optional[str] = Unassigned(),
-        space_name_contains: Optional[str] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        domain_id_equals: Optional[StrPipeVar] = Unassigned(),
+        space_name_contains: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Space"]:
@@ -27189,12 +27190,12 @@ class StudioLifecycleConfig(Base):
         studio_lifecycle_config_app_type: The App type that the Lifecycle Configuration is attached to.
     
     """
-    studio_lifecycle_config_name: str
-    studio_lifecycle_config_arn: Optional[str] = Unassigned()
+    studio_lifecycle_config_name: StrPipeVar
+    studio_lifecycle_config_arn: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
-    studio_lifecycle_config_content: Optional[str] = Unassigned()
-    studio_lifecycle_config_app_type: Optional[str] = Unassigned()
+    studio_lifecycle_config_content: Optional[StrPipeVar] = Unassigned()
+    studio_lifecycle_config_app_type: Optional[StrPipeVar] = Unassigned()
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -27216,9 +27217,9 @@ class StudioLifecycleConfig(Base):
     @Base.add_validate_call
     def create(
         cls,
-        studio_lifecycle_config_name: str,
-        studio_lifecycle_config_content: str,
-        studio_lifecycle_config_app_type: str,
+        studio_lifecycle_config_name: StrPipeVar,
+        studio_lifecycle_config_content: StrPipeVar,
+        studio_lifecycle_config_app_type: StrPipeVar,
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -27280,7 +27281,7 @@ class StudioLifecycleConfig(Base):
     @Base.add_validate_call
     def get(
         cls,
-        studio_lifecycle_config_name: str,
+        studio_lifecycle_config_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["StudioLifecycleConfig"]:
@@ -27402,14 +27403,14 @@ class StudioLifecycleConfig(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        name_contains: Optional[str] = Unassigned(),
-        app_type_equals: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        app_type_equals: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         modified_time_before: Optional[datetime.datetime] = Unassigned(),
         modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["StudioLifecycleConfig"]:
@@ -27481,7 +27482,7 @@ class SubscribedWorkteam(Base):
         subscribed_workteam: A Workteam instance that contains information about the work team.
     
     """
-    workteam_arn: str
+    workteam_arn: StrPipeVar
     subscribed_workteam: Optional[SubscribedWorkteam] = Unassigned()
     
     def get_name(self) -> str:
@@ -27504,7 +27505,7 @@ class SubscribedWorkteam(Base):
     @Base.add_validate_call
     def get(
         cls,
-        workteam_arn: str,
+        workteam_arn: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["SubscribedWorkteam"]:
@@ -27589,7 +27590,7 @@ class SubscribedWorkteam(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        name_contains: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["SubscribedWorkteam"]:
@@ -27647,8 +27648,8 @@ class Tag(Base):
         value: The tag value.
     
     """
-    key: str
-    value: str
+    key: StrPipeVar
+    value: StrPipeVar
     
     def get_name(self) -> str:
         attributes = vars(self)
@@ -27670,7 +27671,7 @@ class Tag(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        resource_arn: str,
+        resource_arn: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Tag"]:
@@ -27722,7 +27723,7 @@ class Tag(Base):
     @Base.add_validate_call
     def add_tags(
         cls,
-        resource_arn: str,
+        resource_arn: StrPipeVar,
         tags: List[Tag],    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -27767,8 +27768,8 @@ class Tag(Base):
     @Base.add_validate_call
     def delete_tags(
         cls,
-        resource_arn: str,
-        tag_keys: List[str],    session: Optional[Session] = None,
+        resource_arn: StrPipeVar,
+        tag_keys: List[StrPipeVar],    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -27859,18 +27860,18 @@ class TrainingJob(Base):
         infra_check_config: Contains information about the infrastructure health check configuration for the training job.
     
     """
-    training_job_name: str
-    training_job_arn: Optional[str] = Unassigned()
-    tuning_job_arn: Optional[str] = Unassigned()
-    labeling_job_arn: Optional[str] = Unassigned()
-    auto_ml_job_arn: Optional[str] = Unassigned()
+    training_job_name: StrPipeVar
+    training_job_arn: Optional[StrPipeVar] = Unassigned()
+    tuning_job_arn: Optional[StrPipeVar] = Unassigned()
+    labeling_job_arn: Optional[StrPipeVar] = Unassigned()
+    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
     model_artifacts: Optional[ModelArtifacts] = Unassigned()
-    training_job_status: Optional[str] = Unassigned()
-    secondary_status: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    hyper_parameters: Optional[Dict[str, str]] = Unassigned()
+    training_job_status: Optional[StrPipeVar] = Unassigned()
+    secondary_status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    hyper_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     algorithm_specification: Optional[AlgorithmSpecification] = Unassigned()
-    role_arn: Optional[str] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
     input_data_config: Optional[List[Channel]] = Unassigned()
     output_data_config: Optional[OutputDataConfig] = Unassigned()
     resource_config: Optional[ResourceConfig] = Unassigned()
@@ -27897,8 +27898,8 @@ class TrainingJob(Base):
     profiler_config: Optional[ProfilerConfig] = Unassigned()
     profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = Unassigned()
     profiler_rule_evaluation_statuses: Optional[List[ProfilerRuleEvaluationStatus]] = Unassigned()
-    profiling_status: Optional[str] = Unassigned()
-    environment: Optional[Dict[str, str]] = Unassigned()
+    profiling_status: Optional[StrPipeVar] = Unassigned()
+    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     retry_strategy: Optional[RetryStrategy] = Unassigned()
     remote_debug_config: Optional[RemoteDebugConfig] = Unassigned()
     infra_check_config: Optional[InfraCheckConfig] = Unassigned()
@@ -27989,13 +27990,13 @@ class TrainingJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        training_job_name: str,
+        training_job_name: StrPipeVar,
         algorithm_specification: AlgorithmSpecification,
-        role_arn: str,
+        role_arn: StrPipeVar,
         output_data_config: OutputDataConfig,
         resource_config: ResourceConfig,
         stopping_condition: StoppingCondition,
-        hyper_parameters: Optional[Dict[str, str]] = Unassigned(),
+        hyper_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         input_data_config: Optional[List[Channel]] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
@@ -28009,7 +28010,7 @@ class TrainingJob(Base):
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
         profiler_config: Optional[ProfilerConfig] = Unassigned(),
         profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = Unassigned(),
-        environment: Optional[Dict[str, str]] = Unassigned(),
+        environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         retry_strategy: Optional[RetryStrategy] = Unassigned(),
         remote_debug_config: Optional[RemoteDebugConfig] = Unassigned(),
         infra_check_config: Optional[InfraCheckConfig] = Unassigned(),
@@ -28118,7 +28119,7 @@ class TrainingJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        training_job_name: str,
+        training_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["TrainingJob"]:
@@ -28367,12 +28368,12 @@ class TrainingJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        warm_pool_status_equals: Optional[str] = Unassigned(),
-        training_plan_arn_equals: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        warm_pool_status_equals: Optional[StrPipeVar] = Unassigned(),
+        training_plan_arn_equals: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["TrainingJob"]:
@@ -28461,20 +28462,20 @@ class TrainingPlan(Base):
         reserved_capacity_summaries: The list of Reserved Capacity providing the underlying compute resources of the plan. 
     
     """
-    training_plan_name: str
-    training_plan_arn: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
-    status_message: Optional[str] = Unassigned()
+    training_plan_name: StrPipeVar
+    training_plan_arn: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    status_message: Optional[StrPipeVar] = Unassigned()
     duration_hours: Optional[int] = Unassigned()
     duration_minutes: Optional[int] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
-    upfront_fee: Optional[str] = Unassigned()
-    currency_code: Optional[str] = Unassigned()
+    upfront_fee: Optional[StrPipeVar] = Unassigned()
+    currency_code: Optional[StrPipeVar] = Unassigned()
     total_instance_count: Optional[int] = Unassigned()
     available_instance_count: Optional[int] = Unassigned()
     in_use_instance_count: Optional[int] = Unassigned()
-    target_resources: Optional[List[str]] = Unassigned()
+    target_resources: Optional[List[StrPipeVar]] = Unassigned()
     reserved_capacity_summaries: Optional[List[ReservedCapacitySummary]] = Unassigned()
     
     def get_name(self) -> str:
@@ -28497,8 +28498,8 @@ class TrainingPlan(Base):
     @Base.add_validate_call
     def create(
         cls,
-        training_plan_name: str,
-        training_plan_offering_id: str,
+        training_plan_name: StrPipeVar,
+        training_plan_offering_id: StrPipeVar,
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -28560,7 +28561,7 @@ class TrainingPlan(Base):
     @Base.add_validate_call
     def get(
         cls,
-        training_plan_name: str,
+        training_plan_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["TrainingPlan"]:
@@ -28703,8 +28704,8 @@ class TrainingPlan(Base):
         cls,
         start_time_after: Optional[datetime.datetime] = Unassigned(),
         start_time_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         filters: Optional[List[TrainingPlanFilter]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -28790,16 +28791,16 @@ class TransformJob(Base):
         experiment_config: 
     
     """
-    transform_job_name: str
-    transform_job_arn: Optional[str] = Unassigned()
-    transform_job_status: Optional[str] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    model_name: Optional[str] = Unassigned()
+    transform_job_name: StrPipeVar
+    transform_job_arn: Optional[StrPipeVar] = Unassigned()
+    transform_job_status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    model_name: Optional[StrPipeVar] = Unassigned()
     max_concurrent_transforms: Optional[int] = Unassigned()
     model_client_config: Optional[ModelClientConfig] = Unassigned()
     max_payload_in_mb: Optional[int] = Unassigned()
-    batch_strategy: Optional[str] = Unassigned()
-    environment: Optional[Dict[str, str]] = Unassigned()
+    batch_strategy: Optional[StrPipeVar] = Unassigned()
+    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     transform_input: Optional[TransformInput] = Unassigned()
     transform_output: Optional[TransformOutput] = Unassigned()
     data_capture_config: Optional[BatchDataCaptureConfig] = Unassigned()
@@ -28807,8 +28808,8 @@ class TransformJob(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     transform_start_time: Optional[datetime.datetime] = Unassigned()
     transform_end_time: Optional[datetime.datetime] = Unassigned()
-    labeling_job_arn: Optional[str] = Unassigned()
-    auto_ml_job_arn: Optional[str] = Unassigned()
+    labeling_job_arn: Optional[StrPipeVar] = Unassigned()
+    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
     data_processing: Optional[DataProcessing] = Unassigned()
     experiment_config: Optional[ExperimentConfig] = Unassigned()
     
@@ -28876,16 +28877,16 @@ class TransformJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        transform_job_name: str,
-        model_name: Union[str, object],
+        transform_job_name: StrPipeVar,
+        model_name: Union[StrPipeVar, object],
         transform_input: TransformInput,
         transform_output: TransformOutput,
         transform_resources: TransformResources,
         max_concurrent_transforms: Optional[int] = Unassigned(),
         model_client_config: Optional[ModelClientConfig] = Unassigned(),
         max_payload_in_mb: Optional[int] = Unassigned(),
-        batch_strategy: Optional[str] = Unassigned(),
-        environment: Optional[Dict[str, str]] = Unassigned(),
+        batch_strategy: Optional[StrPipeVar] = Unassigned(),
+        environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         data_capture_config: Optional[BatchDataCaptureConfig] = Unassigned(),
         data_processing: Optional[DataProcessing] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
@@ -28972,7 +28973,7 @@ class TransformJob(Base):
     @Base.add_validate_call
     def get(
         cls,
-        transform_job_name: str,
+        transform_job_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["TransformJob"]:
@@ -29165,10 +29166,10 @@ class TransformJob(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
-        status_equals: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["TransformJob"]:
@@ -29248,10 +29249,10 @@ class Trial(Base):
         metadata_properties: 
     
     """
-    trial_name: str
-    trial_arn: Optional[str] = Unassigned()
-    display_name: Optional[str] = Unassigned()
-    experiment_name: Optional[str] = Unassigned()
+    trial_name: StrPipeVar
+    trial_arn: Optional[StrPipeVar] = Unassigned()
+    display_name: Optional[StrPipeVar] = Unassigned()
+    experiment_name: Optional[StrPipeVar] = Unassigned()
     source: Optional[TrialSource] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
@@ -29279,9 +29280,9 @@ class Trial(Base):
     @Base.add_validate_call
     def create(
         cls,
-        trial_name: str,
-        experiment_name: Union[str, object],
-        display_name: Optional[str] = Unassigned(),
+        trial_name: StrPipeVar,
+        experiment_name: Union[StrPipeVar, object],
+        display_name: Optional[StrPipeVar] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -29347,7 +29348,7 @@ class Trial(Base):
     @Base.add_validate_call
     def get(
         cls,
-        trial_name: str,
+        trial_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Trial"]:
@@ -29433,7 +29434,7 @@ class Trial(Base):
     @Base.add_validate_call
     def update(
         self,
-        display_name: Optional[str] = Unassigned(),
+        display_name: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["Trial"]:
         """
         Update a Trial resource
@@ -29512,12 +29513,12 @@ class Trial(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        experiment_name: Optional[str] = Unassigned(),
-        trial_component_name: Optional[str] = Unassigned(),
+        experiment_name: Optional[StrPipeVar] = Unassigned(),
+        trial_component_name: Optional[StrPipeVar] = Unassigned(),
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Trial"]:
@@ -29602,9 +29603,9 @@ class TrialComponent(Base):
         sources: A list of ARNs and, if applicable, job types for multiple sources of an experiment run.
     
     """
-    trial_component_name: str
-    trial_component_arn: Optional[str] = Unassigned()
-    display_name: Optional[str] = Unassigned()
+    trial_component_name: StrPipeVar
+    trial_component_arn: Optional[StrPipeVar] = Unassigned()
+    display_name: Optional[StrPipeVar] = Unassigned()
     source: Optional[TrialComponentSource] = Unassigned()
     status: Optional[TrialComponentStatus] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
@@ -29613,12 +29614,12 @@ class TrialComponent(Base):
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
-    parameters: Optional[Dict[str, TrialComponentParameterValue]] = Unassigned()
-    input_artifacts: Optional[Dict[str, TrialComponentArtifact]] = Unassigned()
-    output_artifacts: Optional[Dict[str, TrialComponentArtifact]] = Unassigned()
+    parameters: Optional[Dict[StrPipeVar, TrialComponentParameterValue]] = Unassigned()
+    input_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned()
+    output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned()
     metadata_properties: Optional[MetadataProperties] = Unassigned()
     metrics: Optional[List[TrialComponentMetricSummary]] = Unassigned()
-    lineage_group_arn: Optional[str] = Unassigned()
+    lineage_group_arn: Optional[StrPipeVar] = Unassigned()
     sources: Optional[List[TrialComponentSource]] = Unassigned()
     
     def get_name(self) -> str:
@@ -29641,14 +29642,14 @@ class TrialComponent(Base):
     @Base.add_validate_call
     def create(
         cls,
-        trial_component_name: str,
-        display_name: Optional[str] = Unassigned(),
+        trial_component_name: StrPipeVar,
+        display_name: Optional[StrPipeVar] = Unassigned(),
         status: Optional[TrialComponentStatus] = Unassigned(),
         start_time: Optional[datetime.datetime] = Unassigned(),
         end_time: Optional[datetime.datetime] = Unassigned(),
-        parameters: Optional[Dict[str, TrialComponentParameterValue]] = Unassigned(),
-        input_artifacts: Optional[Dict[str, TrialComponentArtifact]] = Unassigned(),
-        output_artifacts: Optional[Dict[str, TrialComponentArtifact]] = Unassigned(),
+        parameters: Optional[Dict[StrPipeVar, TrialComponentParameterValue]] = Unassigned(),
+        input_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
+        output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -29723,7 +29724,7 @@ class TrialComponent(Base):
     @Base.add_validate_call
     def get(
         cls,
-        trial_component_name: str,
+        trial_component_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["TrialComponent"]:
@@ -29809,16 +29810,16 @@ class TrialComponent(Base):
     @Base.add_validate_call
     def update(
         self,
-        display_name: Optional[str] = Unassigned(),
+        display_name: Optional[StrPipeVar] = Unassigned(),
         status: Optional[TrialComponentStatus] = Unassigned(),
         start_time: Optional[datetime.datetime] = Unassigned(),
         end_time: Optional[datetime.datetime] = Unassigned(),
-        parameters: Optional[Dict[str, TrialComponentParameterValue]] = Unassigned(),
-        parameters_to_remove: Optional[List[str]] = Unassigned(),
-        input_artifacts: Optional[Dict[str, TrialComponentArtifact]] = Unassigned(),
-        input_artifacts_to_remove: Optional[List[str]] = Unassigned(),
-        output_artifacts: Optional[Dict[str, TrialComponentArtifact]] = Unassigned(),
-        output_artifacts_to_remove: Optional[List[str]] = Unassigned(),
+        parameters: Optional[Dict[StrPipeVar, TrialComponentParameterValue]] = Unassigned(),
+        parameters_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
+        input_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
+        input_artifacts_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
+        output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
+        output_artifacts_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["TrialComponent"]:
         """
         Update a TrialComponent resource
@@ -29965,13 +29966,13 @@ class TrialComponent(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        experiment_name: Optional[str] = Unassigned(),
-        trial_name: Optional[str] = Unassigned(),
-        source_arn: Optional[str] = Unassigned(),
+        experiment_name: Optional[StrPipeVar] = Unassigned(),
+        trial_name: Optional[StrPipeVar] = Unassigned(),
+        source_arn: Optional[StrPipeVar] = Unassigned(),
         created_after: Optional[datetime.datetime] = Unassigned(),
         created_before: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["TrialComponent"]:
@@ -30036,7 +30037,7 @@ class TrialComponent(Base):
     @Base.add_validate_call
     def associate_trail(
         self,
-        trial_name: str,
+        trial_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -30082,7 +30083,7 @@ class TrialComponent(Base):
     @Base.add_validate_call
     def disassociate_trail(
         self,
-        trial_name: str,
+        trial_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -30233,16 +30234,16 @@ class UserProfile(Base):
         user_settings: A collection of settings.
     
     """
-    domain_id: str
-    user_profile_name: str
-    user_profile_arn: Optional[str] = Unassigned()
-    home_efs_file_system_uid: Optional[str] = Unassigned()
-    status: Optional[str] = Unassigned()
+    domain_id: StrPipeVar
+    user_profile_name: StrPipeVar
+    user_profile_arn: Optional[StrPipeVar] = Unassigned()
+    home_efs_file_system_uid: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[str] = Unassigned()
-    single_sign_on_user_identifier: Optional[str] = Unassigned()
-    single_sign_on_user_value: Optional[str] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    single_sign_on_user_identifier: Optional[StrPipeVar] = Unassigned()
+    single_sign_on_user_value: Optional[StrPipeVar] = Unassigned()
     user_settings: Optional[UserSettings] = Unassigned()
     
     def get_name(self) -> str:
@@ -30341,10 +30342,10 @@ class UserProfile(Base):
     @Base.add_validate_call
     def create(
         cls,
-        domain_id: str,
-        user_profile_name: str,
-        single_sign_on_user_identifier: Optional[str] = Unassigned(),
-        single_sign_on_user_value: Optional[str] = Unassigned(),
+        domain_id: StrPipeVar,
+        user_profile_name: StrPipeVar,
+        single_sign_on_user_identifier: Optional[StrPipeVar] = Unassigned(),
+        single_sign_on_user_value: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         user_settings: Optional[UserSettings] = Unassigned(),
         session: Optional[Session] = None,
@@ -30412,8 +30413,8 @@ class UserProfile(Base):
     @Base.add_validate_call
     def get(
         cls,
-        domain_id: str,
-        user_profile_name: str,
+        domain_id: StrPipeVar,
+        user_profile_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["UserProfile"]:
@@ -30701,10 +30702,10 @@ class UserProfile(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_order: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        domain_id_equals: Optional[str] = Unassigned(),
-        user_profile_name_contains: Optional[str] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        domain_id_equals: Optional[StrPipeVar] = Unassigned(),
+        user_profile_name_contains: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["UserProfile"]:
@@ -30767,7 +30768,7 @@ class Workforce(Base):
         workforce: A single private workforce, which is automatically created when you create your first private work team. You can create one private work force in each Amazon Web Services Region. By default, any workforce-related API operation used in a specific region will apply to the workforce created in that region. To learn how to create a private workforce, see Create a Private Workforce.
     
     """
-    workforce_name: str
+    workforce_name: StrPipeVar
     workforce: Optional[Workforce] = Unassigned()
     
     def get_name(self) -> str:
@@ -30817,7 +30818,7 @@ class Workforce(Base):
     @Base.add_validate_call
     def create(
         cls,
-        workforce_name: str,
+        workforce_name: StrPipeVar,
         cognito_config: Optional[CognitoConfig] = Unassigned(),
         oidc_config: Optional[OidcConfig] = Unassigned(),
         source_ip_config: Optional[SourceIpConfig] = Unassigned(),
@@ -30886,7 +30887,7 @@ class Workforce(Base):
     @Base.add_validate_call
     def get(
         cls,
-        workforce_name: str,
+        workforce_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Workforce"]:
@@ -31167,9 +31168,9 @@ class Workforce(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Workforce"]:
@@ -31230,7 +31231,7 @@ class Workteam(Base):
         workteam: A Workteam instance that contains information about the work team. 
     
     """
-    workteam_name: str
+    workteam_name: StrPipeVar
     workteam: Optional[Workteam] = Unassigned()
     
     def get_name(self) -> str:
@@ -31253,10 +31254,10 @@ class Workteam(Base):
     @Base.add_validate_call
     def create(
         cls,
-        workteam_name: str,
+        workteam_name: StrPipeVar,
         member_definitions: List[MemberDefinition],
-        description: str,
-        workforce_name: Optional[Union[str, object]] = Unassigned(),
+        description: StrPipeVar,
+        workforce_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         notification_configuration: Optional[NotificationConfiguration] = Unassigned(),
         worker_access_configuration: Optional[WorkerAccessConfiguration] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
@@ -31327,7 +31328,7 @@ class Workteam(Base):
     @Base.add_validate_call
     def get(
         cls,
-        workteam_name: str,
+        workteam_name: StrPipeVar,
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["Workteam"]:
@@ -31412,7 +31413,7 @@ class Workteam(Base):
     def update(
         self,
         member_definitions: Optional[List[MemberDefinition]] = Unassigned(),
-        description: Optional[str] = Unassigned(),
+        description: Optional[StrPipeVar] = Unassigned(),
         notification_configuration: Optional[NotificationConfiguration] = Unassigned(),
         worker_access_configuration: Optional[WorkerAccessConfiguration] = Unassigned(),
     ) -> Optional["Workteam"]:
@@ -31501,9 +31502,9 @@ class Workteam(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),
-        name_contains: Optional[str] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["Workteam"]:
@@ -31559,12 +31560,12 @@ class Workteam(Base):
     @Base.add_validate_call
     def get_all_labeling_jobs(
         self,
-        workteam_arn: str,
+        workteam_arn: StrPipeVar,
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        job_reference_code_contains: Optional[str] = Unassigned(),
-        sort_by: Optional[str] = Unassigned(),
-        sort_order: Optional[str] = Unassigned(),    session: Optional[Session] = None,
+        job_reference_code_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),    session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[LabelingJob]:
         """

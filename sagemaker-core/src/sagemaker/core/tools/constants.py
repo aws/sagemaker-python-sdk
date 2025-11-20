@@ -32,7 +32,7 @@ CONFIGURABLE_ATTRIBUTE_SUBSTRINGS = [
 ]
 
 BASIC_JSON_TYPES_TO_PYTHON_TYPES = {
-    "string": "str",
+    "string": "StrPipeVar",
     "integer": "int",
     "boolean": "bool",
     "long": "int",
@@ -49,6 +49,7 @@ BASIC_RETURN_TYPES = {"str", "int", "bool", "float", "datetime.datetime"}
 SHAPE_DAG_FILE_PATH = os.getcwd() + "/src/sagemaker/core/utils/code_injection/shape_dag.py"
 PYTHON_TYPES_TO_BASIC_JSON_TYPES = {
     "str": "string",
+    "StrPipeVar": "string",
     "int": "integer",
     "bool": "boolean",
     "float": "double",
@@ -79,12 +80,15 @@ logger = get_textual_rich_logger(__name__)
 ADDITIONAL_OPERATION_FILE_PATH = (
     os.getcwd() + "/src/sagemaker/core/tools/additional_operations.json"
 )
-SERVICE_JSON_FILE_PATH = os.getcwd() + "/sample/sagemaker/2017-07-24/service-2.json"
-RUNTIME_SERVICE_JSON_FILE_PATH = os.getcwd() + "/sample/sagemaker-runtime/2017-05-13/service-2.json"
-FEATURE_STORE_SERVICE_JSON_FILE_PATH = (
-    os.getcwd() + "/sample/sagemaker-featurestore-runtime/2020-07-01/service-2.json"
-)
-METRICS_SERVICE_JSON_FILE_PATH = os.getcwd() + "/sample/sagemaker-metrics/2022-09-30/service-2.json"
+
+# Get the package root directory (sagemaker-core/)
+# When installed, __file__ points to site-packages, so we need to find the actual source/sample location
+_PACKAGE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+
+SERVICE_JSON_FILE_PATH = os.path.join(_PACKAGE_ROOT, "sample/sagemaker/2017-07-24/service-2.json")
+RUNTIME_SERVICE_JSON_FILE_PATH = os.path.join(_PACKAGE_ROOT, "sample/sagemaker-runtime/2017-05-13/service-2.json")
+FEATURE_STORE_SERVICE_JSON_FILE_PATH = os.path.join(_PACKAGE_ROOT, "sample/sagemaker-featurestore-runtime/2020-07-01/service-2.json")
+METRICS_SERVICE_JSON_FILE_PATH = os.path.join(_PACKAGE_ROOT, "sample/sagemaker-metrics/2022-09-30/service-2.json")
 
 GENERATED_CLASSES_LOCATION = os.getcwd() + "/src/sagemaker/core"
 UTILS_CODEGEN_FILE_NAME = "utils.py"

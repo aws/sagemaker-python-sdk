@@ -189,16 +189,17 @@ class ResourcesCodeGen:
             "from rich.status import Status",
             "from rich.style import Style",
             "from sagemaker.core.shapes import *",
+            "from sagemaker.core.helper.pipeline_variable import StrPipeVar",
             "from sagemaker.core.utils.code_injection.codec import transform",
             "from sagemaker.core.utils.code_injection.constants import Color",
             "from sagemaker.core.utils.utils import SageMakerClient, ResourceIterator, Unassigned, get_textual_rich_logger, "
             "snake_to_pascal, pascal_to_snake, is_not_primitive, is_not_str_dict, is_primitive_list, serialize",
-            "from sagemaker.utils.config.config_manager import SageMakerConfig",
+            "from sagemaker.core.config.config_manager import SageMakerConfig",
             "from sagemaker.core.utils.logs import MultiLogStreamHandler",
             "from sagemaker.core.utils.exceptions import *",
             "from typing import ClassVar",
-            "from sagemaker.utils.base_serializers import BaseSerializer",
-            "from sagemaker.utils.base_deserializers import BaseDeserializer",
+            "from sagemaker.core.serializers.base import BaseSerializer",
+            "from sagemaker.core.deserializers.base import BaseDeserializer",
         ]
 
         formated_imports = "\n".join(imports)
@@ -504,17 +505,17 @@ class ResourcesCodeGen:
             # These resources take in the main identifier in the create and get methods , but is not present in the describe response output
             # Hence for consistent behaviour of functions such as refresh and delete, the identifiers are hardcoded
             if resource_name == "ImageVersion":
-                class_attributes["image_name"] = "str"
-                class_attributes_string = "image_name: str\n" + class_attributes_string
+                class_attributes["image_name"] = "StrPipeVar"
+                class_attributes_string = "image_name: StrPipeVar\n" + class_attributes_string
             if resource_name == "Workteam":
-                class_attributes["workteam_name"] = "str"
-                class_attributes_string = "workteam_name: str\n" + class_attributes_string
+                class_attributes["workteam_name"] = "StrPipeVar"
+                class_attributes_string = "workteam_name: StrPipeVar\n" + class_attributes_string
             if resource_name == "Workforce":
-                class_attributes["workforce_name"] = "str"
-                class_attributes_string = "workforce_name: str\n" + class_attributes_string
+                class_attributes["workforce_name"] = "StrPipeVar"
+                class_attributes_string = "workforce_name: StrPipeVar\n" + class_attributes_string
             if resource_name == "SubscribedWorkteam":
-                class_attributes["workteam_arn"] = "str"
-                class_attributes_string = "workteam_arn: str\n" + class_attributes_string
+                class_attributes["workteam_arn"] = "StrPipeVar"
+                class_attributes_string = "workteam_arn: StrPipeVar\n" + class_attributes_string
 
             if resource_name == "HubContent":
                 class_attributes["hub_name"] = "Optional[str] = Unassigned()"
@@ -524,16 +525,19 @@ class ResourcesCodeGen:
                 )
             if resource_name == "Endpoint":
                 class_attributes["serializer"] = "Optional[BaseSerializer] = None"
-                class_attributes_string = class_attributes_string.replace("serializer: BaseSerializer", "")
+                class_attributes_string = class_attributes_string.replace(
+                    "serializer: BaseSerializer", ""
+                )
                 class_attributes_string = (
-                        class_attributes_string + "serializer: Optional[BaseSerializer] = None\n"
+                    class_attributes_string + "serializer: Optional[BaseSerializer] = None\n"
                 )
                 class_attributes["deserializer"] = "Optional[BaseDeserializer] = None"
-                class_attributes_string = class_attributes_string.replace("deserializer: BaseDeserializer", "")
-                class_attributes_string = (
-                        class_attributes_string + "deserializer: Optional[BaseDeserializer] = None\n"
+                class_attributes_string = class_attributes_string.replace(
+                    "deserializer: BaseDeserializer", ""
                 )
-
+                class_attributes_string = (
+                    class_attributes_string + "deserializer: Optional[BaseDeserializer] = None\n"
+                )
 
             return class_attributes, class_attributes_string, attributes_and_documentation
         elif "get_all" in class_methods:
@@ -603,9 +607,11 @@ class ResourcesCodeGen:
                 and snake_to_pascal(attr[: -len("_name")]) in resource_names
             ):
                 if value.startswith("Optional"):
-                    init_data_body += f"{attr}: Optional[Union[str, object]] = Unassigned()\n"
+                    init_data_body += (
+                        f"{attr}: Optional[Union[StrPipeVar, object]] = Unassigned()\n"
+                    )
                 else:
-                    init_data_body += f"{attr}: Union[str, object]\n"
+                    init_data_body += f"{attr}: Union[StrPipeVar, object]\n"
             elif attr == "lambda":
                 init_data_body += f"# {attr}: {value}\n"
             else:
@@ -669,9 +675,9 @@ class ResourcesCodeGen:
                 and snake_to_pascal(attr[: -len("_name")]) in self.resource_names
             ):
                 if attr_type.startswith("Optional"):
-                    method_args += f"{attr}: Optional[Union[str, object]] = Unassigned(),"
+                    method_args += f"{attr}: Optional[Union[StrPipeVar, object]] = Unassigned(),"
                 else:
-                    method_args += f"{attr}: Union[str, object],"
+                    method_args += f"{attr}: Union[StrPipeVar, object],"
             else:
                 method_args += f"{attr}: {method_parameter_type},"
             if attr != last_key:
@@ -2014,7 +2020,7 @@ class ResourcesCodeGen:
             Dict with attributes that can be configurable
 
         """
-        PYTHON_TYPES = ["str", "datetime.datetime", "bool", "int", "float"]
+        PYTHON_TYPES = ["StrPipeVar", "datetime.datetime", "bool", "int", "float"]
         default_attributes = {}
         for key, value in class_attributes.items():
             if value in PYTHON_TYPES or value.startswith("List"):

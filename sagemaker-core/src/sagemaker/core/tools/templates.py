@@ -40,7 +40,7 @@ def create(
     cls,
 {create_args}
     session: Optional[Session] = None,
-    region: Optional[str] = None,
+    region: Optional[StrPipeVar] = None,
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info("Creating {resource_lower} resource.")
@@ -71,11 +71,11 @@ def create(
     cls,
 {create_args}
     session: Optional[Session] = None,
-    region: Optional[str] = None,
+    region: Optional[StrPipeVar] = None,
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info("Creating {resource_lower} resource.")
-    client =Base.get_sagemaker_client(session=session, region_name=region, service_name='{service_name}')
+    client = Base.get_sagemaker_client(session=session, region_name=region, service_name='{service_name}')
 
     operation_input_args = {{
 {operation_input_args}
@@ -102,7 +102,7 @@ def load(
     cls,
 {import_args}
     session: Optional[Session] = None,
-    region: Optional[str] = None,
+    region: Optional[StrPipeVar] = None,
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info(f"Importing {resource_lower} resource.")
@@ -214,7 +214,7 @@ def get(
     cls,
 {describe_args}
     session: Optional[Session] = None,
-    region: Optional[str] = None,
+    region: Optional[StrPipeVar] = None,
 ) -> Optional["{resource_name}"]:
 {docstring}
     operation_input_args = {{
@@ -504,7 +504,7 @@ def get_all(
     cls,
 {get_all_args}
     session: Optional[Session] = None,
-    region: Optional[str] = None,
+    region: Optional[StrPipeVar] = None,
 ) -> ResourceIterator["{resource}"]:
 {docstring}
     client = Base.get_sagemaker_client(session=session, region_name=region, service_name="{service_name}")
@@ -528,7 +528,7 @@ GET_ALL_METHOD_NO_ARGS_TEMPLATE = '''
 def get_all(
     cls,
     session: Optional[Session] = None,
-    region: Optional[str] = None,
+    region: Optional[StrPipeVar] = None,
 ) -> ResourceIterator["{resource}"]:
     """
     Get all {resource} resources.

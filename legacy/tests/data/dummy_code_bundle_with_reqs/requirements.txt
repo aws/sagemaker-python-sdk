@@ -1,3 +1,0 @@
-# We use aws-xray-sdk as a test dependency as it shouldn't be in base images.
-# It is compatible with python 3.7 to 3.11, maintained regularly and does not depend on sagemaker
-aws-xray-sdk

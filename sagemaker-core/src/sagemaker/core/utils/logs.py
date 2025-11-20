@@ -1,4 +1,3 @@
-import boto3
 import botocore
 
 from boto3.session import Session

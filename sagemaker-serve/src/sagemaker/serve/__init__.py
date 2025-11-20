@@ -14,17 +14,19 @@
 """
 Local SageMaker Serve development package.
 
-This __init__.py file is intentionally minimal to avoid conflicts with the existing
-sagemaker.serve namespace from the V2 PyPI library that we still depend on.
+This __init__.py file imports key modules used by inference scripts to prevent
+Python module resolution conflicts with external serve.py files.
 
-For imports within this local package, use relative imports:
-- from .model import ModelBase, _Model, FrameworkModel, ModelPackage
-- from .model_builder import ModelBuilder
-
-Do NOT import these classes in this __init__.py to avoid namespace conflicts.
+The imports below "prime" the module cache so that sagemaker.serve is recognized
+as a package, preventing conflicts when inference scripts import from submodules.
 """
 
 from __future__ import absolute_import
 
-# Intentionally empty - no imports to avoid conflicts with existing sagemaker.serve
-# Use relative imports within the package instead
+# Strategic imports to prime module cache and prevent serve.py conflicts
+# Match V2's imports to ensure same priming behavior
+from sagemaker.serve.spec.inference_spec import InferenceSpec
+from sagemaker.serve.utils.types import ModelServer
+from sagemaker.serve.model_builder import ModelBuilder
+
+__all__ = ["InferenceSpec", "ModelServer", "ModelBuilder"]

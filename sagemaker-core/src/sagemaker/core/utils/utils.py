@@ -333,7 +333,7 @@ class SageMakerClient(metaclass=SingletonMeta):
         Creates a boto3 client using the provided session, region, and service.
         """
         if session is None:
-            logger.warning("No boto3 session provided. Creating a new session.")
+            logger.debug("No boto3 session provided. Creating a new session.")
             session = Session(region_name=region_name)
 
         if region_name is None:
@@ -341,7 +341,7 @@ class SageMakerClient(metaclass=SingletonMeta):
             region_name = session.region_name
 
         if config is None:
-            logger.warning("No config provided. Using default config.")
+            logger.debug("No config provided. Using default config.")
             config = Config(retries={"max_attempts": 10, "mode": "standard"})
 
         self.config = Config(user_agent_extra=get_user_agent_extra_suffix())
@@ -479,8 +479,13 @@ def serialize(value: Any) -> Any:
     Returns:
         Any: The serialized object
     """
+    from sagemaker.core.helper.pipeline_variable import PipelineVariable
+
     if value is None or isinstance(value, Unassigned):
         return None
+    elif isinstance(value, PipelineVariable):
+        # Return PipelineVariables as-is (Join, ExecutionVariables, etc.)
+        return value
     elif isinstance(value, Dict):
         # if the value is a dict, use _serialize_dict() to serialize it recursively
         return _serialize_dict(value)

@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import os
 
 from mock.mock import Mock
-from sagemaker.config import (ASYNC_INFERENCE_CONFIG,
+from sagemaker.core.config.config_schema import (ASYNC_INFERENCE_CONFIG,
                               ATHENA_DATASET_DEFINITION, AUTO_ML_JOB,
                               AUTO_ML_JOB_CONFIG, AUTO_ML_JOB_V2,
                               CLUSTER_CONFIG, CLUSTER_ROLE_ARN,

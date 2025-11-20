@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sagemaker-train"
+dynamic = ["version"]
+description = "Open source library for training and deploying models on Amazon SageMaker."
+readme = "README.rst"
+requires-python = ">=3.9"
+authors = [
+  { name = "Amazon Web Services" },
+]
+keywords = [
+  "AI",
+  "AWS",
+  "Amazon",
+  "ML",
+  "MXNet",
+  "Tensorflow",
+  "PyTorch",
+  "HuggingFace"
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  #"License :: OSI Approved :: Apache Software License",
+  "Natural Language :: English",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "sagemaker-core>=2.0.0",
+  "graphene>=3,<4",
+  "typing_extensions>=4.9.0",
+  "tblib>=1.7.0",
+  "PyYAML>=6.0,<7.0",
+  "paramiko>=2.11.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/aws/sagemaker-python-sdk"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "mock",
+    "pydantic",
+    "pandas",
+    "scipy",
+    "omegaconf",
+    "graphene"
+]
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["sagemaker*"]
+namespaces = true
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION"}
+
+[tool.pytest.ini_options]
+addopts = ["-vv"]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
+
+[tool.setuptools]
+include-package-data = true

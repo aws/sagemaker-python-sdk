@@ -5,8 +5,7 @@ on:
       - "master-v3"
     paths:
       - 'sagemaker-train/**'
-      - 'sageamaker-serve/**'
-      - 'sagemaker-core/**'
+      - 'sagemaker-serve/**'
       - 'sagemaker-mlops/**'
 
 concurrency:
