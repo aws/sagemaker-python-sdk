@@ -119,24 +119,6 @@ def prepare_for_mms(
 
     capture_dependencies(dependencies=dependencies, work_dir=code_dir)
 
-    import os
-    logger.info("=== DEBUG V2: File structure in %s ===", model_path)
-    for root, dirs, files in os.walk(model_path):
-        level = root.replace(str(model_path), '').count(os.sep)
-        indent = ' ' * 2 * level
-        logger.info('%s%s/', indent, os.path.basename(root))
-        subindent = ' ' * 2 * (level + 1)
-        for file in files:
-            file_path = os.path.join(root, file)
-            file_size = os.path.getsize(file_path)
-            logger.info('%s%s (%d bytes)', subindent, file, file_size)
-            # Log setup.py content if it exists
-            if file == 'setup.py':
-                with open(file_path, 'r') as f:
-                    logger.info('%ssetup.py content:\n%s', subindent, f.read())
-    logger.info("=== END DEBUG V2 ===")
-    input()
-
     secret_key = generate_secret_key()
     with open(str(code_dir.joinpath("serve.pkl")), "rb") as f:
         buffer = f.read()
