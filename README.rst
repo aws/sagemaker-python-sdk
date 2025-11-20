@@ -49,7 +49,7 @@ Version 3.0.0 represents a significant milestone in our product's evolution. Thi
 **Important: Please review these breaking changes before upgrading.**
 
 * Older interfaces such as Estimator, Model, Predictor and all their subclasses will not be supported in V3. 
-* Please review documenation of interfaces for parameters support (especially ModelBuilder) in our V3 examples folder.
+* Please review documentation of interfaces for parameters support (especially ModelBuilder) in our V3 examples folder.
 
 SageMaker V2 Examples
 ---------------------

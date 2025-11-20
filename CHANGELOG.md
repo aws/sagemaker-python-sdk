@@ -2,7 +2,7 @@
 
 ## v3.0.1 (2025-11-19)
 
-* Update project dpendencies to include submodules: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops
+* Update project dependencies to include submodules: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops
 
 ## v3.0.0 (2025-11-19)
 
@@ -14,7 +14,7 @@
 
 * Version 3.0.0 represents a significant milestone in our product's evolution. This major release introduces a modernized architecture, enhanced performance, and powerful new features while maintaining our commitment to user experience and reliability.
 * Older interfaces such as Estimator, Model, Predictor and all their subclasses will not be supported in V3. 
-* Please review documenation of interfaces for parameters support (especially ModelBuilder)
+* Please review documentation of interfaces for parameters support (especially ModelBuilder)
 
 ## v2.254.1 (2025-10-31)
 
