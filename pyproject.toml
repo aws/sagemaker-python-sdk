@@ -34,6 +34,9 @@ classifiers = [
 ]
 dependencies = [
   "sagemaker-core>=2.0.0,<3.0.0",
+  "sagemaker-train<2.0.0",
+  "sagemaker-serve<2.0.0",
+  "sagemaker-mlops<2.0.0",
 ]
 
 [project.optional-dependencies]

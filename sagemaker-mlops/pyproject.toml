@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sagemaker-mlops"
-version = "0.1.0"
+dynamic = ["version"]
 description = "SageMaker MLOps package for workflow orchestration and model building"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -46,6 +46,9 @@ dev = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
