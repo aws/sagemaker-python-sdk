@@ -23,18 +23,7 @@ NOTEBOOK_PREFIX = "AWS-SageMaker-Notebook-Instance"
 NOTEBOOK_METADATA_FILE = "/etc/opt/ml/sagemaker-notebook-instance-version.txt"
 STUDIO_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
 
-def _get_sdk_version():
-    """Read SDK version from VERSION file"""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.normpath(os.path.join(current_dir, '../../../..'))
-    version_file_path = os.path.join(repo_root, 'VERSION')
-    try:
-        with open(version_file_path, 'r') as f:
-            return f.read().strip()
-    except (FileNotFoundError, IOError):
-        return "3.0"  # fallback version
-
-SDK_VERSION = _get_sdk_version()
+SDK_VERSION ="3.0"
 
 
 def process_notebook_metadata_file():
