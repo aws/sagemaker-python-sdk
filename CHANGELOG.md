@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.0.1 (2025-11-21)
+## v3.0.2 (2025-11-21)
 
 * Fixed telemetry for PySDK V3 and SageMaker Core V2 usage
 
