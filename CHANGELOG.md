@@ -1,5 +1,9 @@
 # Changelog
 
+## v3.0.1 (2025-11-21)
+
+* Fixed telemetry for PySDK V3 and SageMaker Core V2 usage
+
 ## v3.0.1 (2025-11-19)
 
 * Update project dependencies to include submodules: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops
