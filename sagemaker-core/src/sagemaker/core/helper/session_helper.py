@@ -236,7 +236,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # Create sagemaker_client with the botocore_config object
         # This config is customized to append SageMaker Python SDK specific user_agent suffix
-        self.sagemaker_client = sagemaker_client or self.boto_session.client("sagemaker")
+        if sagemaker_client is not None:
+            self.sagemaker_client = sagemaker_client
+        else:
+            from sagemaker.core.user_agent import get_user_agent_extra_suffix
+            config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
+            self.sagemaker_client = self.boto_session.client("sagemaker", config=config)
 
         if sagemaker_runtime_client is not None:
             self.sagemaker_runtime_client = sagemaker_runtime_client
@@ -1656,111 +1661,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if wait:
             self.wait_for_inference_component(inference_component_name)
         return inference_component_name
-
-    def transform(
-        self,
-        job_name,
-        model_name,
-        strategy,
-        max_concurrent_transforms,
-        max_payload,
-        input_config,
-        output_config,
-        resource_config,
-        experiment_config,
-        env: Optional[Dict[str, str]] = None,
-        tags=None,
-        data_processing=None,
-        model_client_config=None,
-        batch_data_capture_config: BatchDataCaptureConfig = None,
-    ):
-        """Create an Amazon SageMaker transform job.
-
-        Args:
-            job_name (str): Name of the transform job being created.
-            model_name (str): Name of the SageMaker model being used for the transform job.
-            strategy (str): The strategy used to decide how to batch records in a single request.
-                Possible values are 'MultiRecord' and 'SingleRecord'.
-            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
-                each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP request to the
-                container in MB.
-            env (dict): Environment variables to be set for use during the transform job.
-            input_config (dict): A dictionary describing the input data (and its location) for the
-                job.
-            output_config (dict): A dictionary describing the output location for the job.
-            resource_config (dict): A dictionary describing the resources to complete the job.
-            experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-                The behavior of setting these keys is as follows:
-                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
-                automatically created and the job's Trial Component associated with the Trial.
-                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
-                will be associated with the Trial.
-                * If both `ExperimentName` and `TrialName` are not supplied the trial component
-                will be unassociated.
-                * `TrialComponentDisplayName` is used for display in Studio.
-            tags (Optional[Tags]): List of tags for labeling a transform job.
-            data_processing(dict): A dictionary describing config for combining the input data and
-                transformed data. For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            model_client_config (dict): A dictionary describing the model configuration for the
-                job. Dictionary contains two optional keys,
-                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
-            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
-                specifies the configurations related to the batch data capture for the transform job
-        """
-        tags = _append_project_tags(format_tags(tags))
-        tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, TRANSFORM_JOB, TAGS)
-        )
-        batch_data_capture_config = resolve_class_attribute_from_config(
-            None,
-            batch_data_capture_config,
-            "kms_key_id",
-            TRANSFORM_JOB_KMS_KEY_ID_PATH,
-            sagemaker_session=self,
-        )
-        output_config = resolve_nested_dict_value_from_config(
-            output_config, [KMS_KEY_ID], TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, sagemaker_session=self
-        )
-        resource_config = resolve_nested_dict_value_from_config(
-            resource_config,
-            [VOLUME_KMS_KEY_ID],
-            TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
-            sagemaker_session=self,
-        )
-        env = resolve_value_from_config(
-            direct_input=env,
-            config_path=TRANSFORM_JOB_ENVIRONMENT_PATH,
-            default_value=None,
-            sagemaker_session=self,
-        )
-
-        transform_request = self._get_transform_request(
-            job_name=job_name,
-            model_name=model_name,
-            strategy=strategy,
-            max_concurrent_transforms=max_concurrent_transforms,
-            max_payload=max_payload,
-            env=env,
-            input_config=input_config,
-            output_config=output_config,
-            resource_config=resource_config,
-            experiment_config=experiment_config,
-            tags=tags,
-            data_processing=data_processing,
-            model_client_config=model_client_config,
-            batch_data_capture_config=batch_data_capture_config,
-        )
-
-        def submit(request):
-            logger.info("Creating transform job with name: %s", job_name)
-            logger.debug("Transform request: %s", json.dumps(request, indent=4))
-            self.sagemaker_client.create_transform_job(**request)
-
-        self._intercept_create_request(transform_request, submit, self.transform.__name__)
 
     def _create_model_request(
         self,
