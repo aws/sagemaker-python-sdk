@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.0.1 (2025-11-21)
+
+ * Fixed telemetry for PySDK V3 and SageMaker Core V2 usage
+
+## v2.0 (2025-11-19)
+
+ * Released SageMaker Core 2.0 as part of Python SDK 3.0 release
+
 ## v1.0.26 (2025-03-25)
 
  * Daily Sync with Botocore v1.37.19 on 2025/03/25 (#267)
