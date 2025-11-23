@@ -1,0 +1,36 @@
+name: CI Health
+on:
+  schedule:
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+    
+permissions:
+    id-token: write # This is required for requesting the JWT
+
+jobs:
+  canaries-v3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Canaries V3
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: canaries-v3
+  canaries-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Canaries V2
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: canaries-v2
