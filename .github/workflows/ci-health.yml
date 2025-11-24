@@ -21,6 +21,7 @@ jobs:
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: sagemaker-python-sdk-ci-health-canaries-v3
+          source-version: refs/heads/master
   canaries-v2:
     runs-on: ubuntu-latest
     steps:
@@ -34,3 +35,4 @@ jobs:
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: sagemaker-python-sdk-ci-health-canaries-v2
+          source-version: refs/heads/master-v2
