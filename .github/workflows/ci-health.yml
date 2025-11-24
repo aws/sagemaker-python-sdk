@@ -20,7 +20,7 @@ jobs:
       - name: Run Canaries V3
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: canaries-v3
+          project-name: sagemaker-python-sdk-ci-health-canaries-v3
   canaries-v2:
     runs-on: ubuntu-latest
     steps:
@@ -33,4 +33,4 @@ jobs:
       - name: Run Canaries V2
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: canaries-v2
+          project-name: sagemaker-python-sdk-ci-health-canaries-v2
