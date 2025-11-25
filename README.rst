@@ -10,10 +10,6 @@ SageMaker Python SDK
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Latest Version
 
-.. image:: https://img.shields.io/conda/vn/conda-forge/sagemaker-python-sdk.svg
-   :target: https://anaconda.org/conda-forge/sagemaker-python-sdk
-   :alt: Conda-Forge Version
-
 .. image:: https://img.shields.io/pypi/pyversions/sagemaker.svg
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Supported Python Versions
@@ -49,9 +45,7 @@ Version 3.0.0 represents a significant milestone in our product's evolution. Thi
 **Important: Please review these breaking changes before upgrading.**
 
 * Older interfaces such as Estimator, Model, Predictor and all their subclasses will not be supported in V3. 
-* Please review documentation of interfaces for parameter support in our `V3 examples folder <https://github.com/aws/sagemaker-python-sdk/tree/master/v3-examples>`__.
-
-
+* Please see our `V3 examples folder <https://github.com/aws/sagemaker-python-sdk/tree/master/v3-examples>`__ for example notebooks and usage patterns.
 
 
 Migrating to V3
