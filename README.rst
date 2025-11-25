@@ -158,38 +158,6 @@ This example shows how to deploy a trained model for real-time inference.
 
 **See more examples:** `SageMaker V3 Examples <#sagemaker-v3-examples>`__
 
-**SageMaker Core Experience**
-
-V3 provides an object-oriented interface for interacting with SageMaker resources, with auto-generated config classes and methods based on SageMaker API inputs and outputs. This replaces V2 config classes with SageMaker Core config objects.
-
-*SageMaker Python SDK 2.x:*
-
-.. code:: python
-
-    from sagemaker.model import Model
-    model = Model(
-        image_uri="my-image",
-        model_data="s3://my-bucket/model.tar.gz",
-        role="arn:aws:iam::123456789012:role/SageMakerRole"
-    )
-    predictor = model.deploy(
-        initial_instance_count=1,
-        instance_type="ml.m5.xlarge",
-        endpoint_name="my-endpoint"
-    )
-
-*SageMaker Python SDK 3.x:*
-
-.. code:: python
-
-    model = Model.get(model_name="my-model")
-
-    endpoint = model.deploy(
-        endpoint_name="my-endpoint",
-        instance_type="ml.m5.xlarge",
-        initial_instance_count=1
-    )
-
 SageMaker V3 Examples
 ---------------------
 
