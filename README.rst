@@ -51,32 +51,185 @@ Version 3.0.0 represents a significant milestone in our product's evolution. Thi
 * Older interfaces such as Estimator, Model, Predictor and all their subclasses will not be supported in V3. 
 * Please review documentation of interfaces for parameters support (especially ModelBuilder) in our V3 examples folder.
 
-SageMaker V2 Examples
+
+
+
+Migrating to V3
+----------------
+
+**Upgrading to 3.x**
+
+To upgrade to the latest version of SageMaker Python SDK 3.x:
+
+::
+
+    pip install --upgrade sagemaker
+
+If you prefer to downgrade to the 2.x version:
+
+::
+
+    pip install sagemaker==2.*
+
+**Key Benefits of 3.x**
+
+* **Modular Architecture**: Separate PyPI packages for core, training, and serving capabilities
+
+  * `sagemaker-core <https://pypi.org/project/sagemaker-core/>`__
+  * `sagemaker-train <https://pypi.org/project/sagemaker-train/>`__
+  * `sagemaker-serve <https://pypi.org/project/sagemaker-serve/>`__
+  * `sagemaker-mlops <https://pypi.org/project/sagemaker-mlops/>`__
+
+* **Unified Training & Inference**: Single classes (ModelTrainer, ModelBuilder) replace multiple framework-specific classes
+* **Object-Oriented API**: Structured interface with auto-generated configs aligned with AWS APIs
+* **Simplified Workflows**: Reduced boilerplate and more intuitive interfaces
+
+**Training Experience**
+
+V3 introduces the unified ModelTrainer class to reduce complexity of initial setup and deployment for model training. This replaces the V2 Estimator class and framework-specific classes (PyTorchEstimator, SKLearnEstimator, etc.).
+
+This example shows how to train a model using a custom training container with training data from S3.
+
+*SageMaker Python SDK 2.x:*
+
+.. code:: python
+
+    from sagemaker.estimator import Estimator
+    estimator = Estimator(
+        image_uri="my-training-image",
+        role="arn:aws:iam::123456789012:role/SageMakerRole",
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        output_path="s3://my-bucket/output"
+    )
+    estimator.fit({"training": "s3://my-bucket/train"})
+
+*SageMaker Python SDK 3.x:*
+
+.. code:: python
+
+    from sagemaker.train import ModelTrainer
+    from sagemaker.train.configs import InputData
+
+    trainer = ModelTrainer(
+        training_image="my-training-image",
+        role="arn:aws:iam::123456789012:role/SageMakerRole"
+    )
+
+    train_data = InputData(
+        channel_name="training",
+        data_source="s3://my-bucket/train"
+    )
+
+    trainer.train(input_data_config=[train_data])
+
+**See more examples:** `SageMaker V3 Examples <#sagemaker-v3-examples>`__
+
+**Inference Experience**
+
+V3 introduces the unified ModelBuilder class for model deployment and inference. This replaces the V2 Model class and framework-specific classes (PyTorchModel, TensorFlowModel, SKLearnModel, XGBoostModel, etc.).
+
+This example shows how to deploy a trained model for real-time inference.
+
+*SageMaker Python SDK 2.x:*
+
+.. code:: python
+
+    from sagemaker.model import Model
+    from sagemaker.predictor import Predictor
+    model = Model(
+        image_uri="my-inference-image",
+        model_data="s3://my-bucket/model.tar.gz",
+        role="arn:aws:iam::123456789012:role/SageMakerRole"
+    )
+    predictor = model.deploy(
+        initial_instance_count=1,
+        instance_type="ml.m5.xlarge"
+    )
+    result = predictor.predict(data)
+
+*SageMaker Python SDK 3.x:*
+
+.. code:: python
+
+    from sagemaker.serve import ModelBuilder
+    model_builder = ModelBuilder(
+        model="my-model",
+        model_path="s3://my-bucket/model.tar.gz"
+    )
+    endpoint = model_builder.build()
+    result = endpoint.invoke(...)
+
+**See more examples:** `SageMaker V3 Examples <#sagemaker-v3-examples>`__
+
+**SageMaker Core Experience**
+
+V3 provides an object-oriented interface for interacting with SageMaker resources, with auto-generated config classes and methods based on SageMaker API inputs and outputs. This replaces V2 config classes with SageMaker Core config objects.
+
+*SageMaker Python SDK 2.x:*
+
+.. code:: python
+
+    from sagemaker.model import Model
+    model = Model(
+        image_uri="my-image",
+        model_data="s3://my-bucket/model.tar.gz",
+        role="arn:aws:iam::123456789012:role/SageMakerRole"
+    )
+    predictor = model.deploy(
+        initial_instance_count=1,
+        instance_type="ml.m5.xlarge",
+        endpoint_name="my-endpoint"
+    )
+
+*SageMaker Python SDK 3.x:*
+
+.. code:: python
+
+    model = Model.get(model_name="my-model")
+
+    endpoint = model.deploy(
+        endpoint_name="my-endpoint",
+        instance_type="ml.m5.xlarge",
+        initial_instance_count=1
+    )
+
+SageMaker V3 Examples
 ---------------------
 
-#. `Using the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html>`__
-#. `Using MXNet <https://sagemaker.readthedocs.io/en/stable/using_mxnet.html>`__
-#. `Using TensorFlow <https://sagemaker.readthedocs.io/en/stable/using_tf.html>`__
-#. `Using Chainer <https://sagemaker.readthedocs.io/en/stable/using_chainer.html>`__
-#. `Using PyTorch <https://sagemaker.readthedocs.io/en/stable/using_pytorch.html>`__
-#. `Using Scikit-learn <https://sagemaker.readthedocs.io/en/stable/using_sklearn.html>`__
-#. `Using XGBoost <https://sagemaker.readthedocs.io/en/stable/using_xgboost.html>`__
-#. `SageMaker Reinforcement Learning Estimators <https://sagemaker.readthedocs.io/en/stable/using_rl.html>`__
-#. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
-#. `Amazon SageMaker Built-in Algorithm Estimators <src/sagemaker/amazon/README.rst>`__
-#. `Using SageMaker AlgorithmEstimators <https://sagemaker.readthedocs.io/en/stable/overview.html#using-sagemaker-algorithmestimators>`__
-#. `Consuming SageMaker Model Packages <https://sagemaker.readthedocs.io/en/stable/overview.html#consuming-sagemaker-model-packages>`__
-#. `BYO Docker Containers with SageMaker Estimators <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-docker-containers-with-sagemaker-estimators>`__
-#. `SageMaker Automatic Model Tuning <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-automatic-model-tuning>`__
-#. `SageMaker Batch Transform <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-batch-transform>`__
-#. `Secure Training and Inference with VPC <https://sagemaker.readthedocs.io/en/stable/overview.html#secure-training-and-inference-with-vpc>`__
-#. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
-#. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
-#. `Amazon SageMaker Operators in Apache Airflow <https://sagemaker.readthedocs.io/en/stable/using_workflow.html>`__
-#. `SageMaker Autopilot <src/sagemaker/automl/README.rst>`__
-#. `Model Monitoring <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html>`__
-#. `SageMaker Debugger <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html>`__
-#. `SageMaker Processing <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_processing.html>`__
+**Training Examples**
+
+#. `Custom Distributed Training Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/training-examples/custom-distributed-training-example.ipynb>`__
+#. `Distributed Local Training Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/training-examples/distributed-local-training-example.ipynb>`__
+#. `Hyperparameter Training Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/training-examples/hyperparameter-training-example.ipynb>`__
+#. `JumpStart Training Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/training-examples/jumpstart-training-example.ipynb>`__
+#. `Local Training Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/training-examples/local-training-example.ipynb>`__
+
+**Inference Examples**
+
+#. `HuggingFace Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/inference-examples/huggingface-example.ipynb>`__
+#. `In-Process Mode Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/inference-examples/in-process-mode-example.ipynb>`__
+#. `Inference Spec Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/inference-examples/inference-spec-example.ipynb>`__
+#. `JumpStart E2E Training Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/inference-examples/jumpstart-e2e-training-example.ipynb>`__
+#. `JumpStart Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/inference-examples/jumpstart-example.ipynb>`__
+#. `Local Mode Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/inference-examples/local-mode-example.ipynb>`__
+#. `Optimize Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/inference-examples/optimize-example.ipynb>`__
+#. `Train Inference E2E Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/inference-examples/train-inference-e2e-example.ipynb>`__
+
+**ML Ops Examples**
+
+#. `V3 Hyperparameter Tuning Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/ml-ops-examples/v3-hyperparameter-tuning-example/v3-hyperparameter-tuning-example.ipynb>`__
+#. `V3 Hyperparameter Tuning Pipeline <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/ml-ops-examples/v3-hyperparameter-tuning-example/v3-hyperparameter-tuning-pipeline.ipynb>`__
+#. `V3 Model Registry Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/ml-ops-examples/v3-model-registry-example/v3-model-registry-example.ipynb>`__
+#. `V3 PyTorch Processing Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/ml-ops-examples/v3-processing-job-pytorch/v3-pytorch-processing-example.ipynb>`__
+#. `V3 Pipeline Train Create Registry <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/ml-ops-examples/v3-pipeline-train-create-registry.ipynb>`__
+#. `V3 Processing Job Sklearn <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/ml-ops-examples/v3-processing-job-sklearn.ipynb>`__
+#. `V3 SageMaker Clarify <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/ml-ops-examples/v3-sagemaker-clarify.ipynb>`__
+#. `V3 Transform Job Example <https://github.com/aws/sagemaker-python-sdk/blob/master/v3-examples/ml-ops-examples/v3-transform-job-example.ipynb>`__
+
+**Looking for V2 Examples?** See `SageMaker V2 Examples <#sagemaker-v2-examples>`__ below.
+
+
 
 
 Installing the SageMaker Python SDK
@@ -265,3 +418,31 @@ For more information about the different ``content-type`` and ``Accept`` formats
 ``schema`` that SageMaker SparkML Serving recognizes, please see `SageMaker SparkML Serving Container`_.
 
 .. _SageMaker SparkML Serving Container: https://github.com/aws/sagemaker-sparkml-serving-container
+
+
+SageMaker V2 Examples
+---------------------
+
+#. `Using the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html>`__
+#. `Using MXNet <https://sagemaker.readthedocs.io/en/stable/using_mxnet.html>`__
+#. `Using TensorFlow <https://sagemaker.readthedocs.io/en/stable/using_tf.html>`__
+#. `Using Chainer <https://sagemaker.readthedocs.io/en/stable/using_chainer.html>`__
+#. `Using PyTorch <https://sagemaker.readthedocs.io/en/stable/using_pytorch.html>`__
+#. `Using Scikit-learn <https://sagemaker.readthedocs.io/en/stable/using_sklearn.html>`__
+#. `Using XGBoost <https://sagemaker.readthedocs.io/en/stable/using_xgboost.html>`__
+#. `SageMaker Reinforcement Learning Estimators <https://sagemaker.readthedocs.io/en/stable/using_rl.html>`__
+#. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
+#. `Amazon SageMaker Built-in Algorithm Estimators <src/sagemaker/amazon/README.rst>`__
+#. `Using SageMaker AlgorithmEstimators <https://sagemaker.readthedocs.io/en/stable/overview.html#using-sagemaker-algorithmestimators>`__
+#. `Consuming SageMaker Model Packages <https://sagemaker.readthedocs.io/en/stable/overview.html#consuming-sagemaker-model-packages>`__
+#. `BYO Docker Containers with SageMaker Estimators <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-docker-containers-with-sagemaker-estimators>`__
+#. `SageMaker Automatic Model Tuning <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-automatic-model-tuning>`__
+#. `SageMaker Batch Transform <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-batch-transform>`__
+#. `Secure Training and Inference with VPC <https://sagemaker.readthedocs.io/en/stable/overview.html#secure-training-and-inference-with-vpc>`__
+#. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
+#. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
+#. `Amazon SageMaker Operators in Apache Airflow <https://sagemaker.readthedocs.io/en/stable/using_workflow.html>`__
+#. `SageMaker Autopilot <src/sagemaker/automl/README.rst>`__
+#. `Model Monitoring <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html>`__
+#. `SageMaker Debugger <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html>`__
+#. `SageMaker Processing <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_processing.html>`__
