@@ -230,7 +230,7 @@ def _construct_url(
     """Placeholder docstring"""
 
     base_url = (
-        f"https://dev-exp-t-{region}.s3.{region}.amazonaws.com/telemetry?"
+        f"https://sm-pysdk-t-{region}.s3.{region}.amazonaws.com/telemetry?"
         f"x-accountId={accountId}"
         f"&x-mode={mode}"
         f"&x-status={status}"
