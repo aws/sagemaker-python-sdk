@@ -67,7 +67,7 @@ class TestConstructUrl(unittest.TestCase):
             region="us-west-2"
         )
         
-        self.assertIn("https://dev-exp-t-us-west-2.s3.us-west-2.amazonaws.com/telemetry", url)
+        self.assertIn("https://sm-pysdk-t-us-west-2.s3.us-west-2.amazonaws.com/telemetry", url)
         self.assertIn("x-accountId=123456789012", url)
         self.assertIn("x-mode=3", url)
         self.assertIn("x-status=1", url)
@@ -117,7 +117,7 @@ class TestConstructUrl(unittest.TestCase):
                 region=region
             )
             
-            self.assertIn(f"dev-exp-t-{region}.s3.{region}.amazonaws.com", url)
+            self.assertIn(f"sm-pysdk-t-{region}.s3.{region}.amazonaws.com", url)
 
 
 class TestRequestsHelper(unittest.TestCase):
