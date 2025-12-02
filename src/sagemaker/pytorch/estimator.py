@@ -180,6 +180,28 @@ def _is_eval_recipe(recipe):
     return bool(eval_config)
 
 
+def _is_llmft_recipe(recipe):
+    """Check if the recipe is a llmft recipe.
+
+    A llmft recipe is identified by:
+    1. Having a run section
+    2. The model_type in run is llm_finetuning_aws or verl
+    3. Having a training_config section OR being a verl recipe
+
+    Args:
+        recipe (OmegaConf): The loaded recipe configuration
+
+    Returns:
+        bool: True if the recipe is a llmft recipe, False otherwise
+    """
+    # Check for llmft or verl model
+    run_config = recipe.get("run", {})
+    model_type = run_config.get("model_type", "").lower()
+    has_llmft_model = model_type == "llm_finetuning_aws"
+    has_verl_model = model_type == "verl"
+    return (bool(has_llmft_model) or bool(has_verl_model)) and bool(recipe.get("training_config"))
+
+
 def _recipe_initialize_args(source_dir):
     """Initialize the arguments dictionary for recipe setup.
 
@@ -544,6 +566,7 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         self.is_nova_or_eval_recipe = False
+        self.is_llmft_recipe = False
         if training_recipe is not None:
             if entry_point is not None:
                 logger.warning("Argument entry_point will be ignored with training_recipe.")
@@ -555,8 +578,8 @@ class PyTorch(Framework):
                 training_recipe, recipe_overrides, source_dir, kwargs
             )
 
-            if self.is_nova_or_eval_recipe and image_uri is None:
-                raise ValueError("Must supply image_uri for nova jobs.")
+            if (self.is_nova_or_eval_recipe or self.is_llmft_recipe) and image_uri is None:
+                raise ValueError("Must supply image_uri when running llmft or nova jobs.")
 
             entry_point = args["entry_point"]
             source_dir = args["source_dir"]
@@ -694,6 +717,41 @@ class PyTorch(Framework):
 
         return hyperparameters
 
+    def _create_recipe_copy(self, original_s3_uri):
+        """Create a copy of the recipe with the name recipe.yaml in the same S3 bucket.
+
+        This helps us standardize the arguments for file name in the container
+        when launching the llmft recipes
+
+        Args:
+            original_s3_uri (str): The S3 URI of the original uploaded file
+
+        Returns:
+            str: The S3 URI of the copied recipe file
+        """
+        try:
+            # Parse the original S3 URI
+            parsed_uri = original_s3_uri.replace("s3://", "").split("/")
+            bucket = parsed_uri[0]
+            original_key = "/".join(parsed_uri[1:])
+
+            # Create new key in the same directory
+            directory = "/".join(original_key.split("/")[:-1])
+            new_key = f"{directory}/recipe.yaml"
+
+            s3_client = self.sagemaker_session.boto_session.client("s3")
+
+            # Copy the object with the new name
+            copy_source = {"Bucket": bucket, "Key": original_key}
+
+            s3_client.copy_object(CopySource=copy_source, Bucket=bucket, Key=new_key)
+
+            return f"s3://{bucket}/{new_key}"
+
+        except Exception as e:
+            logger.error(f"Failed to create recipe copy: {str(e)}")
+            raise
+
     def fit(
         self,
         inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
@@ -719,16 +777,21 @@ class PyTorch(Framework):
         """
         # Handle recipe upload and input channel creation if we have a recipe
         if (
-            self.is_nova_or_eval_recipe is not None
-            and self.is_nova_or_eval_recipe
+            (
+                (self.is_nova_or_eval_recipe is not None and self.is_nova_or_eval_recipe)
+                or (self.is_llmft_recipe is not None and self.is_llmft_recipe)
+            )
             and hasattr(self, "training_recipe_file")
             and self.training_recipe_file
         ):
             # Upload the recipe to S3 if it hasn't been uploaded yet
             if not hasattr(self, "recipe_s3_uri") or not self.recipe_s3_uri:
+
                 self.recipe_s3_uri = self._upload_recipe_to_s3(
                     self.sagemaker_session, self.training_recipe_file.name
                 )
+                if self.is_llmft_recipe:
+                    self.recipe_duplicated_s3_uri = self._create_recipe_copy(self.recipe_s3_uri)
 
             # Prepare inputs dictionary
             from sagemaker.inputs import TrainingInput
@@ -740,12 +803,20 @@ class PyTorch(Framework):
 
             # Add the recipe channel
             recipe_channel_name = "recipe"
-            inputs[recipe_channel_name] = TrainingInput(
-                s3_data=os.path.dirname(self.recipe_s3_uri), input_mode="File"
-            )
+            if self.is_nova_or_eval_recipe:
+                inputs[recipe_channel_name] = TrainingInput(
+                    s3_data=os.path.dirname(self.recipe_s3_uri), input_mode="File"
+                )
+            else:
+                inputs[recipe_channel_name] = self.recipe_duplicated_s3_uri
 
             # Update hyperparameters to reference the recipe location in the container
-            recipe_filename = os.path.basename(self.training_recipe_file.name)
+            # For LLMFT recipes, use the standardized filename "recipe.yaml" since _create_recipe_copy()
+            # creates a copy with that name. For other recipes, use the original filename.
+            if self.is_llmft_recipe:
+                recipe_filename = "recipe.yaml"
+            else:
+                recipe_filename = os.path.basename(self.training_recipe_file.name)
 
             self._hyperparameters.update(
                 {
@@ -884,7 +955,6 @@ class PyTorch(Framework):
         """
         recipe_name = os.path.splitext(os.path.basename(training_recipe))[0]
         temp_local_recipe = tempfile.NamedTemporaryFile(prefix=recipe_name, suffix=".yaml").name
-
         try:
             if training_recipe.endswith(".yaml"):
                 _recipe_load_from_yaml(training_recipe, temp_local_recipe)
@@ -1083,7 +1153,6 @@ class PyTorch(Framework):
             suffix=".yaml",
         )
         OmegaConf.save(config=final_recipe, f=self.training_recipe_file.name)
-
         return final_recipe
 
     def _upload_recipe_to_s3(self, session, recipe_file_path):
@@ -1155,8 +1224,16 @@ class PyTorch(Framework):
             recipe = OmegaConf.merge(recipe, recipe_overrides)
 
             self.is_nova_or_eval_recipe = _is_nova_recipe(recipe) or _is_eval_recipe(recipe)
+            self.is_llmft_recipe = _is_llmft_recipe(recipe)
             if self.is_nova_or_eval_recipe:
                 return self._setup_for_nova_recipe(
+                    recipe,
+                    recipe_name,
+                    source_dir,
+                    kwargs,
+                )
+            elif self.is_llmft_recipe:
+                return self._setup_for_llmft_recipe(
                     recipe,
                     recipe_name,
                     source_dir,
@@ -1250,6 +1327,57 @@ class PyTorch(Framework):
             lambda_arn = processor.get("lambda_arn", "")
             if lambda_arn:
                 args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
+
+        # Handle reward lambda configuration
+        run_config = recipe.get("run", {})
+        reward_lambda_arn = run_config.get("reward_lambda_arn", "")
+        if reward_lambda_arn:
+            args["hyperparameters"]["reward_lambda_arn"] = reward_lambda_arn
+
+        # Resolve and save the final recipe
+        self._recipe_resolve_and_save(recipe, recipe_name, args["source_dir"])
+
+        return args
+
+    def _setup_for_llmft_recipe(
+        self,
+        recipe,
+        recipe_name,
+        source_dir,
+        kwargs,
+    ):
+        """Set up configuration specifically for llmft recipes.
+
+        Args:
+            recipe (OmegaConf): Recipe configuration.
+            recipe_name (str): Recipe name.
+            source_dir (str): Path to the source directory.
+            kwargs (dict): Dictionary of keyword arguments.
+
+        Returns:
+            dict: Arguments dictionary for estimator initialization.
+        """
+        # Initialize args
+        args = _recipe_initialize_args(source_dir)
+
+        args["entry_point"] = None
+        args["source_dir"] = None
+        args["distribution"] = {}
+
+        # Handle instance count for standard recipes
+        if "instance_count" in kwargs:
+            if "num_nodes" in recipe.get("trainer", {}):
+                logger.warning(
+                    "Using instance_count argument to estimator to set number "
+                    "of nodes. Ignoring trainer -> num_nodes in recipe."
+                )
+        elif "trainer" in recipe and "num_nodes" in recipe["trainer"]:
+            kwargs["instance_count"] = recipe["trainer"]["num_nodes"]
+        else:
+            raise ValueError(
+                "Must set either instance_count argument for estimator or "
+                "set trainer -> num_nodes in recipe."
+            )
 
         # Resolve and save the final recipe
         self._recipe_resolve_and_save(recipe, recipe_name, args["source_dir"])

@@ -653,6 +653,7 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
         framework="TENSORFLOW",
         framework_version="2.9",
         nearest_model_name="resnet50",
+        model_package_registration_type="Registered",
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -688,6 +689,7 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                     },
                     "ModelApprovalStatus": "Approved",
                     "SkipModelValidation": "None",
+                    "ModelPackageRegistrationType": "Registered",
                     "ModelMetrics": {
                         "Bias": {},
                         "Explainability": {},

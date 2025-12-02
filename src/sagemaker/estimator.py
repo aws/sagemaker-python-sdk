@@ -1817,6 +1817,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         source_uri=None,
         model_life_cycle=None,
         model_card=None,
+        model_package_registration_type=None,
+        base_model=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1868,6 +1870,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
             model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+            model_package_registration_type (str): Model Package Registration
+                Type (default: None).
+            base_model (ContainerBaseModel): ContainerBaseModel object (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1924,6 +1929,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             source_uri=source_uri,
             model_card=model_card,
             model_life_cycle=model_life_cycle,
+            model_package_registration_type=model_package_registration_type,
+            base_model=base_model,
         )
 
     @property
