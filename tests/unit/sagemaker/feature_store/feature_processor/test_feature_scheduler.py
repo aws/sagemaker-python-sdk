@@ -309,7 +309,6 @@ def test_to_pipeline(
         input_mode="File",
         environment={
             "AWS_DEFAULT_REGION": "us-west-2",
-            ],
             "scheduled_time": Parameter(
                 name="scheduled_time", parameter_type=ParameterTypeEnum.STRING
             ),
