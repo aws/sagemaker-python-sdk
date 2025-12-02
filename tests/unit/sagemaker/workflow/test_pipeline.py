@@ -324,7 +324,6 @@ def test_pipeline_execution_result(
         },
         "TrainingJobStatus": "Completed",
         "OutputDataConfig": {"S3OutputPath": s3_output_path},
-        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "abcdefg"},
     }
     execution.result("stepA")
 

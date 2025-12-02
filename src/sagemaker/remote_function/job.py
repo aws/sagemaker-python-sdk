@@ -583,10 +583,7 @@ class _JobSettings:
             {"AWS_DEFAULT_REGION": self.sagemaker_session.boto_region_name}
         )
 
-        # The following will be overridden by the _Job.compile method.
-        # However, it needs to be kept here for feature store SDK.
-        # TODO: update the feature store SDK to set the HMAC key there.
-        self.environment_variables.update({"REMOTE_FUNCTION_SECRET_KEY": secrets.token_hex(32)})
+
 
         if spark_config and image_uri:
             raise ValueError("spark_config and image_uri cannot be specified at the same time!")
@@ -799,19 +796,17 @@ class _JobSettings:
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
-    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, hmac_key: str):
+    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session):
         """Initialize a _Job object.
 
         Args:
             job_name (str): The training job name.
             s3_uri (str): The training job output S3 uri.
             sagemaker_session (Session): SageMaker boto session.
-            hmac_key (str): Remote function secret key.
         """
         self.job_name = job_name
         self.s3_uri = s3_uri
         self.sagemaker_session = sagemaker_session
-        self.hmac_key = hmac_key
         self._last_describe_response = None
 
     @staticmethod
@@ -827,9 +822,8 @@ class _Job:
         """
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        hmac_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
 
-        job = _Job(job_name, s3_uri, sagemaker_session, hmac_key)
+        job = _Job(job_name, s3_uri, sagemaker_session)
         job._last_describe_response = describe_training_job_response
         return job
 
@@ -867,7 +861,6 @@ class _Job:
             job_name,
             s3_base_uri,
             job_settings.sagemaker_session,
-            training_job_request["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
         )
 
     @staticmethod
@@ -892,18 +885,11 @@ class _Job:
 
         jobs_container_entrypoint = JOBS_CONTAINER_ENTRYPOINT[:]
 
-        # generate hmac key for integrity check
-        if step_compilation_context is None:
-            hmac_key = secrets.token_hex(32)
-        else:
-            hmac_key = step_compilation_context.function_step_secret_token
-
         # serialize function and arguments
         if step_compilation_context is None:
             stored_function = StoredFunction(
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
-                hmac_key=hmac_key,
                 s3_kms_key=job_settings.s3_kms_key,
             )
             stored_function.save(func, *func_args, **func_kwargs)
@@ -911,7 +897,6 @@ class _Job:
             stored_function = StoredFunction(
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
-                hmac_key=hmac_key,
                 s3_kms_key=job_settings.s3_kms_key,
                 context=Context(
                     step_name=step_compilation_context.step_name,
@@ -1061,7 +1046,6 @@ class _Job:
         request_dict["EnableManagedSpotTraining"] = job_settings.use_spot_instances
 
         request_dict["Environment"] = job_settings.environment_variables
-        request_dict["Environment"].update({"REMOTE_FUNCTION_SECRET_KEY": hmac_key})
 
         extended_request = _extend_spark_config_to_request(request_dict, job_settings, s3_base_uri)
         extended_request = _extend_mpirun_to_request(extended_request, job_settings)

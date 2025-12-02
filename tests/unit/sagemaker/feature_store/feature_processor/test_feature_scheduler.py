@@ -309,8 +309,6 @@ def test_to_pipeline(
         input_mode="File",
         environment={
             "AWS_DEFAULT_REGION": "us-west-2",
-            "REMOTE_FUNCTION_SECRET_KEY": job_settings.environment_variables[
-                "REMOTE_FUNCTION_SECRET_KEY"
             ],
             "scheduled_time": Parameter(
                 name="scheduled_time", parameter_type=ParameterTypeEnum.STRING

@@ -54,7 +54,7 @@ BUCKET = "my-s3-bucket"
 S3_URI = f"s3://{BUCKET}/keyprefix"
 EXPECTED_JOB_RESULT = [1, 2, 3]
 PATH_TO_SRC_DIR = "path/to/src/dir"
-HMAC_KEY = "some-hmac-key"
+
 ROLE_ARN = "arn:aws:iam::555555555555:role/my_execution_role_arn"
 
 
@@ -69,7 +69,7 @@ def describe_training_job_response(job_status):
             "VolumeSizeInGB": 30,
         },
         "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
-        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        "Environment": {},
     }
 
 
@@ -1027,7 +1027,7 @@ def test_future_get_result_from_completed_job(mock_start, mock_deserialize):
 def test_future_get_result_from_failed_job_remote_error_client_function(
     mock_start, mock_deserialize
 ):
-    mock_job = Mock(job_name=TRAINING_JOB_NAME, s3_uri=S3_URI, hmac_key=HMAC_KEY)
+    mock_job = Mock(job_name=TRAINING_JOB_NAME, s3_uri=S3_URI)
     mock_start.return_value = mock_job
     mock_job.describe.return_value = FAILED_TRAINING_JOB
 
@@ -1043,7 +1043,7 @@ def test_future_get_result_from_failed_job_remote_error_client_function(
     assert future.done()
     mock_job.wait.assert_called_once()
     mock_deserialize.assert_called_with(
-        sagemaker_session=ANY, s3_uri=f"{S3_URI}/exception", hmac_key=HMAC_KEY
+        sagemaker_session=ANY, s3_uri=f"{S3_URI}/exception"
     )
 
 
@@ -1374,7 +1374,6 @@ def test_get_future_completed_job_deserialization_error(mock_session, mock_deser
     mock_deserialize.assert_called_with(
         sagemaker_session=ANY,
         s3_uri="s3://sagemaker-123/image_uri/output/results",
-        hmac_key=HMAC_KEY,
     )
 
 
