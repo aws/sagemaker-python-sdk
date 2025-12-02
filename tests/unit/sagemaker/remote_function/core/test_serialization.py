@@ -32,7 +32,6 @@ from sagemaker.remote_function.errors import ServiceError, SerializationError, D
 from tblib import pickling_support
 
 KMS_KEY = "kms-key"
-HMAC_KEY = "some-hmac-key"
 
 
 mock_s3 = {}
@@ -67,13 +66,13 @@ def test_serialize_deserialize_func():
 
     s3_uri = random_s3_uri()
     serialize_func_to_s3(
-        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
     )
 
     del square
 
     deserialized = deserialize_func_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY
+        sagemaker_session=Mock(), s3_uri=s3_uri
     )
 
     assert deserialized(3) == 9
@@ -89,11 +88,10 @@ def test_serialize_deserialize_lambda():
         sagemaker_session=Mock(),
         s3_uri=s3_uri,
         s3_kms_key=KMS_KEY,
-        hmac_key=HMAC_KEY,
     )
 
     deserialized = deserialize_func_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY
+        sagemaker_session=Mock(), s3_uri=s3_uri
     )
 
     assert deserialized(3) == 9
@@ -126,7 +124,6 @@ def test_serialize_func_referencing_to_run(sagemaker_session, *args, **kwargs):
             sagemaker_session=Mock(),
             s3_uri=s3_uri,
             s3_kms_key=KMS_KEY,
-            hmac_key=HMAC_KEY,
         )
 
 
@@ -153,7 +150,6 @@ def test_serialize_func_referencing_to_pipeline_variables(pipeline_variable):
             sagemaker_session=Mock(),
             s3_uri=s3_uri,
             s3_kms_key=KMS_KEY,
-            hmac_key=HMAC_KEY,
         )
 
 
@@ -177,7 +173,6 @@ def test_serialize_func_serialization_error(mock_cloudpickler):
             sagemaker_session=Mock(),
             s3_uri=s3_uri,
             s3_kms_key=KMS_KEY,
-            hmac_key=HMAC_KEY,
         )
 
 
@@ -193,7 +188,7 @@ def test_deserialize_func_deserialization_error(mock_cloudpickle_loads):
     s3_uri = random_s3_uri()
 
     serialize_func_to_s3(
-        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
     )
 
     del square
@@ -204,7 +199,7 @@ def test_deserialize_func_deserialization_error(mock_cloudpickle_loads):
         + r"RuntimeError\('some failure when loads'\). "
         + r"NOTE: this may be caused by inconsistent sagemaker python sdk versions",
     ):
-        deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY)
+        deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
 
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
@@ -216,14 +211,14 @@ def test_deserialize_func_corrupt_metadata():
     s3_uri = random_s3_uri()
 
     serialize_func_to_s3(
-        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
     )
     mock_s3[f"{s3_uri}/metadata.json"] = b"not json serializable"
 
     del square
 
     with pytest.raises(DeserializationError, match=r"Corrupt metadata file."):
-        deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY)
+        deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
 
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
@@ -234,15 +229,17 @@ def test_deserialize_integrity_check_failed():
 
     s3_uri = random_s3_uri()
     serialize_func_to_s3(
-        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
     )
+    # Tamper with the payload to trigger integrity check failure
+    mock_s3[f"{s3_uri}/payload.pkl"] = b"tampered data"
 
     del square
 
     with pytest.raises(
         DeserializationError, match=r"Integrity check for the serialized function or data failed."
     ):
-        deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key="invalid_key")
+        deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
 
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
@@ -256,14 +253,14 @@ def test_serialize_deserialize_custom_class_data():
 
     s3_uri = random_s3_uri()
     serialize_obj_to_s3(
-        my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+        my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
     )
 
     del my_data
     del MyData
 
     deserialized = deserialize_obj_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY
+        sagemaker_session=Mock(), s3_uri=s3_uri
     )
 
     assert deserialized.x == 10
@@ -277,13 +274,13 @@ def test_serialize_deserialize_data_built_in_types():
 
     s3_uri = random_s3_uri()
     serialize_obj_to_s3(
-        my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+        my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
     )
 
     del my_data
 
     deserialized = deserialize_obj_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY
+        sagemaker_session=Mock(), s3_uri=s3_uri
     )
 
     assert deserialized == {"a": [10]}
@@ -295,11 +292,11 @@ def test_serialize_deserialize_none():
 
     s3_uri = random_s3_uri()
     serialize_obj_to_s3(
-        None, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+        None, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
     )
 
     deserialized = deserialize_obj_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY
+        sagemaker_session=Mock(), s3_uri=s3_uri
     )
 
     assert deserialized is None
@@ -327,7 +324,6 @@ def test_serialize_run(sagemaker_session, *args, **kwargs):
                 sagemaker_session=Mock(),
                 s3_uri=s3_uri,
                 s3_kms_key=KMS_KEY,
-                hmac_key=HMAC_KEY,
             )
 
 
@@ -351,7 +347,6 @@ def test_serialize_pipeline_variables(pipeline_variable):
             sagemaker_session=Mock(),
             s3_uri=s3_uri,
             s3_kms_key=KMS_KEY,
-            hmac_key=HMAC_KEY,
         )
 
 
@@ -377,7 +372,6 @@ def test_serialize_obj_serialization_error(mock_cloudpickler):
             sagemaker_session=Mock(),
             s3_uri=s3_uri,
             s3_kms_key=KMS_KEY,
-            hmac_key=HMAC_KEY,
         )
 
 
@@ -395,7 +389,7 @@ def test_deserialize_obj_deserialization_error(mock_cloudpickle_loads):
     s3_uri = random_s3_uri()
 
     serialize_obj_to_s3(
-        obj=my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+        obj=my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
     )
 
     del my_data
@@ -407,7 +401,7 @@ def test_deserialize_obj_deserialization_error(mock_cloudpickle_loads):
         + r"RuntimeError\('some failure when loads'\). "
         + r"NOTE: this may be caused by inconsistent sagemaker python sdk versions",
     ):
-        deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY)
+        deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
 
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload_error)
@@ -427,7 +421,6 @@ def test_serialize_deserialize_service_error():
             sagemaker_session=Mock(),
             s3_uri=s3_uri,
             s3_kms_key=KMS_KEY,
-            hmac_key=HMAC_KEY,
         )
 
     del my_func
@@ -437,7 +430,7 @@ def test_serialize_deserialize_service_error():
         match=rf"Failed to read serialized bytes from {s3_uri}/metadata.json: "
         + r"RuntimeError\('some failure when read_bytes'\)",
     ):
-        deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY)
+        deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
 
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
@@ -461,11 +454,11 @@ def test_serialize_deserialize_exception_with_traceback():
     except Exception as e:
         pickling_support.install()
         serialize_obj_to_s3(
-            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
         )
 
     with pytest.raises(CustomError, match="Some error") as exc_info:
-        raise deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY)
+        raise deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
     assert type(exc_info.value.__cause__) is TypeError
 
 
@@ -489,12 +482,12 @@ def test_serialize_deserialize_custom_exception_with_traceback():
         func_b()
     except Exception as e:
         serialize_exception_to_s3(
-            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
         )
 
     with pytest.raises(CustomError, match="Some error") as exc_info:
         raise deserialize_exception_from_s3(
-            sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY
+            sagemaker_session=Mock(), s3_uri=s3_uri
         )
     assert type(exc_info.value.__cause__) is TypeError
 
@@ -519,11 +512,11 @@ def test_serialize_deserialize_remote_function_error_with_traceback():
         func_b()
     except Exception as e:
         serialize_exception_to_s3(
-            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY, hmac_key=HMAC_KEY
+            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
         )
 
     with pytest.raises(ServiceError, match="Some error") as exc_info:
         raise deserialize_exception_from_s3(
-            sagemaker_session=Mock(), s3_uri=s3_uri, hmac_key=HMAC_KEY
+            sagemaker_session=Mock(), s3_uri=s3_uri
         )
     assert type(exc_info.value.__cause__) is TypeError

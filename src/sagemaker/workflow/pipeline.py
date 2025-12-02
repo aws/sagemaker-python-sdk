@@ -1084,7 +1084,6 @@ def get_function_step_result(
         return deserialize_obj_from_s3(
             sagemaker_session=sagemaker_session,
             s3_uri=s3_uri,
-            hmac_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
         )
 
     raise RemoteFunctionError(_ERROR_MSG_OF_STEP_INCOMPLETE)
