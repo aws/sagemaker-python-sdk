@@ -382,12 +382,12 @@ def retrieve_caller_name(job_instance):
 
     if isinstance(job_instance, Transformer):
         return "transform"
-
-    # Duck typing for HyperparameterTuner: has 'fit' method and 'best_estimator' method
-    # This avoids importing from sagemaker.train which would violate architecture
-    if hasattr(job_instance, "fit") and hasattr(job_instance, "best_estimator"):
+    
+    # Duck typing for HyperparameterTuner: has 'tune' method and 'model_trainer' attribute
+    # This covers both V2 (fit/best_estimator) and V3 (tune/model_trainer) implementations
+    if (hasattr(job_instance, 'fit') and hasattr(job_instance, 'best_estimator')) or \
+       (hasattr(job_instance, 'tune') and hasattr(job_instance, 'model_trainer')):
         return "tune"
-
     # if isinstance(job_instance, AutoML):
     #     return "auto_ml"
 
