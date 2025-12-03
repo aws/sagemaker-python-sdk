@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.255.0 (2025-12-03)
+
+### Features
+
+* Extracts reward Lambda ARN from Nova recipes
+* Passes it as training job hyperparameter
+* Added LLMFT recipe support with standardized recipe handling
+* Enhanced recipe validation and multi-model type compatibility
+
+
 ## v2.254.1 (2025-10-31)
 
 ### Bug Fixes and Other Changes
