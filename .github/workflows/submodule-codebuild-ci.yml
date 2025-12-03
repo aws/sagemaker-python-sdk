@@ -2,7 +2,7 @@ name: Sagemaker PR Checks
 on:
   pull_request_target:
     branches:
-      - "master"
+      - "master*"
     paths:
       - 'sagemaker-train/**'
       - 'sagemaker-serve/**'
