@@ -13,7 +13,9 @@
 """Integration tests for SFT trainer"""
 from __future__ import absolute_import
 
+import os
 import time
+import pytest
 import boto3
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.sft_trainer import SFTTrainer
@@ -88,7 +90,7 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
     assert hasattr(training_job, 'output_model_package_arn')
 
 
-
+@pytest.mark.skipif(os.environ.get('AWS_DEFAULT_REGION') != 'us-east-1', reason="Nova models only available in us-east-1")
 def test_sft_trainer_nova_workflow(sagemaker_session):
     """Test SFT trainer with Nova model."""
     import os
