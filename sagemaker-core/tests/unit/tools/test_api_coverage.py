@@ -8,8 +8,9 @@ from sagemaker.core.tools.resources_extractor import ResourcesExtractor
 
 class TestAPICoverage:
     @pytest.mark.skipif(
-        not os.path.exists(API_COVERAGE_JSON_FILE_PATH) or not os.path.exists(SERVICE_JSON_FILE_PATH),
-        reason="API coverage file or service JSON files not found - this test requires source files"
+        not os.path.exists(API_COVERAGE_JSON_FILE_PATH)
+        or not os.path.exists(SERVICE_JSON_FILE_PATH),
+        reason="API coverage file or service JSON files not found - this test requires source files",
     )
     def test_api_coverage(self):
         with open(API_COVERAGE_JSON_FILE_PATH, "r") as file:

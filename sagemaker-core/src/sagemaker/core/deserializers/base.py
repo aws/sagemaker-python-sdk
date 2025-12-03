@@ -392,7 +392,7 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
             )
 
 
-#TODO fix the unit test for this deserializer
+# TODO fix the unit test for this deserializer
 class RecordDeserializer(SimpleBaseDeserializer):
     """Deserialize RecordIO Protobuf data from an inference endpoint."""
 
@@ -418,6 +418,7 @@ class RecordDeserializer(SimpleBaseDeserializer):
         try:
             # Lazy import to avoid circular dependency
             from sagemaker.core.serializers.utils import read_records
+
             return read_records(data)
         finally:
             data.close()

@@ -54,6 +54,7 @@ FEATURE_TO_CODE = {
     str(Feature.LOCAL_MODE): 2,
     str(Feature.REMOTE_FUNCTION): 3,
     str(Feature.MODEL_TRAINER): 4,
+    str(Feature.MODEL_CUSTOMIZATION): 8,
 }
 
 STATUS_TO_CODE = {

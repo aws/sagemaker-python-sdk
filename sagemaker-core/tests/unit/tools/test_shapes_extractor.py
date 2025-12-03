@@ -26,26 +26,22 @@ class TestShapesExtractorInit:
     @patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black")
     def test_init_with_default_shapes(self, mock_reformat, mock_load):
         """Test initialization with default shapes."""
-        mock_load.return_value = {
-            "Shape1": {"type": "structure", "members": {}}
-        }
-        
+        mock_load.return_value = {"Shape1": {"type": "structure", "members": {}}}
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor()
-        
+
         assert extractor.combined_shapes is not None
         assert extractor.shape_dag is not None
 
     @patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black")
     def test_init_with_custom_shapes(self, mock_reformat):
         """Test initialization with custom shapes."""
-        custom_shapes = {
-            "CustomShape": {"type": "structure", "members": {}}
-        }
-        
+        custom_shapes = {"CustomShape": {"type": "structure", "members": {}}}
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=custom_shapes)
-        
+
         assert extractor.combined_shapes == custom_shapes
 
 
@@ -56,20 +52,15 @@ class TestGetShapesDag:
     def test_get_shapes_dag_structure(self, mock_reformat):
         """Test DAG generation for structure type."""
         shapes = {
-            "TestStruct": {
-                "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"}
-                }
-            },
-            "String": {"type": "string"}
+            "TestStruct": {"type": "structure", "members": {"Field1": {"shape": "String"}}},
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         dag = extractor.get_shapes_dag()
-        
+
         assert "TestStruct" in dag
         assert dag["TestStruct"]["type"] == "structure"
         assert len(dag["TestStruct"]["members"]) == 1
@@ -78,18 +69,15 @@ class TestGetShapesDag:
     def test_get_shapes_dag_list(self, mock_reformat):
         """Test DAG generation for list type."""
         shapes = {
-            "StringList": {
-                "type": "list",
-                "member": {"shape": "String"}
-            },
-            "String": {"type": "string"}
+            "StringList": {"type": "list", "member": {"shape": "String"}},
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         dag = extractor.get_shapes_dag()
-        
+
         assert "StringList" in dag
         assert dag["StringList"]["type"] == "list"
         assert dag["StringList"]["member_shape"] == "String"
@@ -98,19 +86,15 @@ class TestGetShapesDag:
     def test_get_shapes_dag_map(self, mock_reformat):
         """Test DAG generation for map type."""
         shapes = {
-            "TagMap": {
-                "type": "map",
-                "key": {"shape": "String"},
-                "value": {"shape": "String"}
-            },
-            "String": {"type": "string"}
+            "TagMap": {"type": "map", "key": {"shape": "String"}, "value": {"shape": "String"}},
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         dag = extractor.get_shapes_dag()
-        
+
         assert "TagMap" in dag
         assert dag["TagMap"]["type"] == "map"
         assert dag["TagMap"]["key_shape"] == "String"
@@ -124,61 +108,46 @@ class TestEvaluateListType:
     def test_evaluate_list_type_basic(self, mock_reformat):
         """Test evaluating basic list type."""
         shapes = {
-            "StringList": {
-                "type": "list",
-                "member": {"shape": "String"}
-            },
-            "String": {"type": "string"}
+            "StringList": {"type": "list", "member": {"shape": "String"}},
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor._evaluate_list_type(shapes["StringList"])
-        
+
         assert "List[StrPipeVar]" in result
 
     @patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black")
     def test_evaluate_list_type_nested(self, mock_reformat):
         """Test evaluating nested list type."""
         shapes = {
-            "NestedList": {
-                "type": "list",
-                "member": {"shape": "StringList"}
-            },
-            "StringList": {
-                "type": "list",
-                "member": {"shape": "String"}
-            },
-            "String": {"type": "string"}
+            "NestedList": {"type": "list", "member": {"shape": "StringList"}},
+            "StringList": {"type": "list", "member": {"shape": "String"}},
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor._evaluate_list_type(shapes["NestedList"])
-        
+
         assert "List[List[" in result
 
     @patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black")
     def test_evaluate_list_type_structure(self, mock_reformat):
         """Test evaluating list of structures."""
         shapes = {
-            "StructList": {
-                "type": "list",
-                "member": {"shape": "MyStruct"}
-            },
-            "MyStruct": {
-                "type": "structure",
-                "members": {}
-            }
+            "StructList": {"type": "list", "member": {"shape": "MyStruct"}},
+            "MyStruct": {"type": "structure", "members": {}},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor._evaluate_list_type(shapes["StructList"])
-        
+
         assert "List[MyStruct]" in result
 
 
@@ -189,19 +158,15 @@ class TestEvaluateMapType:
     def test_evaluate_map_type_basic(self, mock_reformat):
         """Test evaluating basic map type."""
         shapes = {
-            "StringMap": {
-                "type": "map",
-                "key": {"shape": "String"},
-                "value": {"shape": "String"}
-            },
-            "String": {"type": "string"}
+            "StringMap": {"type": "map", "key": {"shape": "String"}, "value": {"shape": "String"}},
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor._evaluate_map_type(shapes["StringMap"])
-        
+
         assert "Dict[StrPipeVar, StrPipeVar]" in result
 
     @patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black")
@@ -211,20 +176,17 @@ class TestEvaluateMapType:
             "StructMap": {
                 "type": "map",
                 "key": {"shape": "String"},
-                "value": {"shape": "MyStruct"}
+                "value": {"shape": "MyStruct"},
             },
             "String": {"type": "string"},
-            "MyStruct": {
-                "type": "structure",
-                "members": {}
-            }
+            "MyStruct": {"type": "structure", "members": {}},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor._evaluate_map_type(shapes["StructMap"])
-        
+
         assert "Dict[StrPipeVar, MyStruct]" in result
 
     @patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black")
@@ -234,20 +196,17 @@ class TestEvaluateMapType:
             "ListMap": {
                 "type": "map",
                 "key": {"shape": "String"},
-                "value": {"shape": "StringList"}
+                "value": {"shape": "StringList"},
             },
             "String": {"type": "string"},
-            "StringList": {
-                "type": "list",
-                "member": {"shape": "String"}
-            }
+            "StringList": {"type": "list", "member": {"shape": "String"}},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor._evaluate_map_type(shapes["ListMap"])
-        
+
         assert "Dict[StrPipeVar, List[" in result
 
 
@@ -260,21 +219,18 @@ class TestGenerateShapeMembers:
         shapes = {
             "TestShape": {
                 "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"},
-                    "Field2": {"shape": "Integer"}
-                },
-                "required": ["Field1"]
+                "members": {"Field1": {"shape": "String"}, "Field2": {"shape": "Integer"}},
+                "required": ["Field1"],
             },
             "String": {"type": "string"},
-            "Integer": {"type": "integer"}
+            "Integer": {"type": "integer"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor.generate_shape_members("TestShape")
-        
+
         assert "field1" in result
         assert "field2" in result
         assert "Optional" in result["field2"]
@@ -285,20 +241,17 @@ class TestGenerateShapeMembers:
         shapes = {
             "TestShape": {
                 "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"},
-                    "Field2": {"shape": "String"}
-                },
-                "required": []
+                "members": {"Field1": {"shape": "String"}, "Field2": {"shape": "String"}},
+                "required": [],
             },
-            "String": {"type": "string"}
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor.generate_shape_members("TestShape", required_override=("Field1",))
-        
+
         assert "field1" in result
         assert "Optional" not in result["field1"]
 
@@ -312,19 +265,17 @@ class TestGenerateDataShapeStringBody:
         shapes = {
             "TestShape": {
                 "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"}
-                },
-                "required": ["Field1"]
+                "members": {"Field1": {"shape": "String"}},
+                "required": ["Field1"],
             },
-            "String": {"type": "string"}
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor.generate_data_shape_string_body("TestShape", None)
-        
+
         assert "field1" in result
         assert "StrPipeVar" in result
 
@@ -339,21 +290,18 @@ class TestFetchShapeMembersAndDocStrings:
             "TestShape": {
                 "type": "structure",
                 "members": {
-                    "Field1": {
-                        "shape": "String",
-                        "documentation": "Field 1 documentation"
-                    }
+                    "Field1": {"shape": "String", "documentation": "Field 1 documentation"}
                 },
-                "required": ["Field1"]
+                "required": ["Field1"],
             },
-            "String": {"type": "string"}
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor.fetch_shape_members_and_doc_strings("TestShape")
-        
+
         assert "Field1" in result
         assert result["Field1"] == "Field 1 documentation"
 
@@ -367,20 +315,17 @@ class TestGetRequiredMembers:
         shapes = {
             "TestShape": {
                 "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"},
-                    "Field2": {"shape": "String"}
-                },
-                "required": ["Field1"]
+                "members": {"Field1": {"shape": "String"}, "Field2": {"shape": "String"}},
+                "required": ["Field1"],
             },
-            "String": {"type": "string"}
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor.get_required_members("TestShape")
-        
+
         assert "field1" in result
         assert "field2" not in result
 
@@ -388,18 +333,13 @@ class TestGetRequiredMembers:
     def test_get_required_members_none(self, mock_reformat):
         """Test getting required members when none exist."""
         shapes = {
-            "TestShape": {
-                "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"}
-                }
-            },
-            "String": {"type": "string"}
+            "TestShape": {"type": "structure", "members": {"Field1": {"shape": "String"}}},
+            "String": {"type": "string"},
         }
-        
+
         with patch("builtins.open", create=True):
             extractor = ShapesExtractor(combined_shapes=shapes)
-        
+
         result = extractor.get_required_members("TestShape")
-        
+
         assert len(result) == 0

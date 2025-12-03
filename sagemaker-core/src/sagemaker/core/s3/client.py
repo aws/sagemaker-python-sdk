@@ -75,7 +75,7 @@ class S3Uploader(object):
             kms_key (str): The KMS key to use to encrypt the files.
             sagemaker_session (sagemaker.core.helper.session_helper.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. 
+                AWS services needed.
 
         Returns:
             str: The S3 uri of the uploaded file.

@@ -29,6 +29,7 @@ from sagemaker.core.helper.pipeline_variable import (
     PipelineVariable,
 )
 
+
 class ParameterTypeEnum(Enum, metaclass=DefaultEnumMeta):
     """Parameter type enum."""
 

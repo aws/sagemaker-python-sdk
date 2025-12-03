@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import yaml
 from urllib.request import urlretrieve
@@ -104,15 +104,38 @@ def test_load_base_recipe_types(
         assert "trainer" in load_recipe
 
     if recipe_type == "sagemaker":
-        mock_clone.side_effect = _run_clone_command_silent
-        load_recipe = _load_base_recipe(
-            training_recipe="training/llama/p4_hf_llama3_70b_seq8k_gpu",
-            recipe_overrides=None,
-            training_recipes_cfg=training_recipes_cfg,
-        )
-        assert load_recipe is not None
-        assert "trainer" in load_recipe
-        assert mock_clone.call_args.args[0] == training_recipes_cfg.get("launcher_repo")
+        # Mock the clone to do nothing and mock file operations
+        mock_clone.return_value = None
+        
+        # Create a mock recipe in the expected structure
+        import os
+        import tempfile
+        import shutil
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create the expected directory structure
+            recipes_dir = os.path.join(temp_dir, "recipes_collection", "recipes", "training", "llama")
+            os.makedirs(recipes_dir, exist_ok=True)
+            
+            # Create a mock recipe file
+            recipe_path = os.path.join(recipes_dir, "p4_hf_llama3_70b_seq8k_gpu.yaml")
+            with open(recipe_path, 'w') as f:
+                yaml.dump({"trainer": {"num_nodes": 1}, "model": {"model_type": "llama"}}, f)
+            
+            # Patch the TemporaryDirectory to return our temp dir
+            with patch('tempfile.TemporaryDirectory') as mock_temp:
+                mock_temp_obj = MagicMock()
+                mock_temp_obj.name = temp_dir
+                mock_temp.return_value = mock_temp_obj
+                
+                load_recipe = _load_base_recipe(
+                    training_recipe="training/llama/p4_hf_llama3_70b_seq8k_gpu",
+                    recipe_overrides=None,
+                    training_recipes_cfg=training_recipes_cfg,
+                )
+                assert load_recipe is not None
+                assert "trainer" in load_recipe
+                assert mock_clone.call_args.args[0] == training_recipes_cfg.get("launcher_repo")
 
     if recipe_type == "url":
         url = "https://raw.githubusercontent.com/aws-neuron/neuronx-distributed-training/refs/heads/main/examples/conf/hf_llama3_8B_config.yaml"  # noqa

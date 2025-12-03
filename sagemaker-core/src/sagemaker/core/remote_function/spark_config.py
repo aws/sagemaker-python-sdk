@@ -18,6 +18,7 @@ import attr
 from urllib.parse import urlparse
 from sagemaker.core.workflow import is_pipeline_variable
 
+
 def _validate_configuration(instance, attribute, configuration):
     # pylint: disable=unused-argument
     """This is the helper method to validate the spark configuration"""

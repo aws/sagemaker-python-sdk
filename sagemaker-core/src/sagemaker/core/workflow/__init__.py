@@ -44,6 +44,7 @@ def is_pipeline_parameter_string(var: object) -> bool:
          bool: True if it is, False otherwise.
     """
     from sagemaker.core.workflow.parameters import ParameterString
+
     return isinstance(var, ParameterString)
 
 

@@ -17,6 +17,7 @@ import logging
 
 logger = LOGGER = logging.getLogger("sagemaker")
 
+
 def get_model_package_args(
     content_types=None,
     response_types=None,
@@ -235,6 +236,7 @@ def get_create_model_package_request(
         request_dict["ModelLifeCycle"] = model_life_cycle
     return request_dict
 
+
 def create_model_package_from_containers(
     sagemaker_session,
     containers=None,
@@ -361,9 +363,7 @@ def create_model_package_from_containers(
     )
 
     def submit(request):
-        if model_package_group_name is not None and not model_package_group_name.startswith(
-            "arn:"
-        ):
+        if model_package_group_name is not None and not model_package_group_name.startswith("arn:"):
             is_model_package_group_present = False
             try:
                 model_package_groups_response = sagemaker_session.search(
@@ -382,8 +382,10 @@ def create_model_package_from_containers(
                     is_model_package_group_present = True
             except Exception:  # pylint: disable=W0703
                 model_package_groups = []
-                model_package_groups_response = sagemaker_session.sagemaker_client.list_model_package_groups(
-                    NameContains=request["ModelPackageGroupName"],
+                model_package_groups_response = (
+                    sagemaker_session.sagemaker_client.list_model_package_groups(
+                        NameContains=request["ModelPackageGroupName"],
+                    )
                 )
                 model_package_groups = (
                     model_package_groups
@@ -442,6 +444,7 @@ def create_model_package_from_containers(
     return sagemaker_session._intercept_create_request(
         model_pkg_request, submit, create_model_package_from_containers.__name__
     )
+
 
 def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
     """Create a SageMaker Model Package from the results of training with an Algorithm Package.

@@ -37,8 +37,6 @@ class TestSessionIdentity:
         """Test get_caller_identity_arn from notebook instance metadata"""
         pass
 
-
-
     @pytest.mark.skip(reason="Complex mocking with config file loading - skipping")
     def test_get_caller_identity_arn_studio_user_profile(self, mock_boto_session):
         """Test get_caller_identity_arn from Studio user profile"""

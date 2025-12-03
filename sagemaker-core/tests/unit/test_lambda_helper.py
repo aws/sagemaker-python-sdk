@@ -34,8 +34,12 @@ class TestLambdaInit:
 
     def test_lambda_init_with_function_arn(self):
         """Test initialization with function ARN."""
-        lambda_obj = Lambda(function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function")
-        assert lambda_obj.function_arn == "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        lambda_obj = Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        )
+        assert (
+            lambda_obj.function_arn == "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        )
         assert lambda_obj.function_name is None
 
     def test_lambda_init_with_function_name_and_required_params(self):
@@ -44,7 +48,7 @@ class TestLambdaInit:
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             script="/path/to/script.py",
-            handler="script.handler"
+            handler="script.handler",
         )
         assert lambda_obj.function_name == "my-function"
         assert lambda_obj.execution_role_arn == "arn:aws:iam::123456789012:role/my-role"
@@ -53,16 +57,16 @@ class TestLambdaInit:
 
     def test_lambda_init_missing_function_arn_and_name(self):
         """Test initialization fails without function ARN or name."""
-        with pytest.raises(ValueError, match="Either function_arn or function_name must be provided"):
+        with pytest.raises(
+            ValueError, match="Either function_arn or function_name must be provided"
+        ):
             Lambda()
 
     def test_lambda_init_missing_execution_role(self):
         """Test initialization fails without execution role when creating new function."""
         with pytest.raises(ValueError, match="execution_role_arn must be provided"):
             Lambda(
-                function_name="my-function",
-                script="/path/to/script.py",
-                handler="script.handler"
+                function_name="my-function", script="/path/to/script.py", handler="script.handler"
             )
 
     def test_lambda_init_missing_code(self):
@@ -71,7 +75,7 @@ class TestLambdaInit:
             Lambda(
                 function_name="my-function",
                 execution_role_arn="arn:aws:iam::123456789012:role/my-role",
-                handler="script.handler"
+                handler="script.handler",
             )
 
     def test_lambda_init_both_script_and_zipped_code(self):
@@ -82,7 +86,7 @@ class TestLambdaInit:
                 execution_role_arn="arn:aws:iam::123456789012:role/my-role",
                 script="/path/to/script.py",
                 zipped_code_dir="/path/to/code.zip",
-                handler="script.handler"
+                handler="script.handler",
             )
 
     def test_lambda_init_missing_handler(self):
@@ -91,7 +95,7 @@ class TestLambdaInit:
             Lambda(
                 function_name="my-function",
                 execution_role_arn="arn:aws:iam::123456789012:role/my-role",
-                script="/path/to/script.py"
+                script="/path/to/script.py",
             )
 
     def test_lambda_init_with_optional_params(self):
@@ -106,7 +110,7 @@ class TestLambdaInit:
             runtime="python3.9",
             vpc_config={"SubnetIds": ["subnet-123"]},
             environment={"Variables": {"KEY": "value"}},
-            layers=["arn:aws:lambda:us-west-2:123456789012:layer:my-layer:1"]
+            layers=["arn:aws:lambda:us-west-2:123456789012:layer:my-layer:1"],
         )
         assert lambda_obj.timeout == 300
         assert lambda_obj.memory_size == 512
@@ -126,13 +130,15 @@ class TestLambdaCreate:
         mock_client = Mock()
         mock_get_client.return_value = mock_client
         mock_zip.return_value = b"zipped_code"
-        mock_client.create_function.return_value = {"FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"}
+        mock_client.create_function.return_value = {
+            "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        }
 
         lambda_obj = Lambda(
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             script="/path/to/script.py",
-            handler="script.handler"
+            handler="script.handler",
         )
         result = lambda_obj.create()
 
@@ -146,31 +152,40 @@ class TestLambdaCreate:
     @patch("sagemaker.core.lambda_helper._get_s3_client")
     @patch("sagemaker.core.lambda_helper._upload_to_s3")
     @patch("sagemaker.core.lambda_helper.s3.determine_bucket_and_prefix")
-    def test_create_with_zipped_code(self, mock_determine, mock_upload, mock_get_s3, mock_get_lambda):
+    def test_create_with_zipped_code(
+        self, mock_determine, mock_upload, mock_get_s3, mock_get_lambda
+    ):
         """Test creating Lambda function with zipped code directory."""
         mock_lambda_client = Mock()
         mock_get_lambda.return_value = mock_lambda_client
         mock_determine.return_value = ("my-bucket", "prefix")
         mock_upload.return_value = "prefix/lambda/my-function/code"
-        mock_lambda_client.create_function.return_value = {"FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"}
+        mock_lambda_client.create_function.return_value = {
+            "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        }
 
         lambda_obj = Lambda(
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             zipped_code_dir="/path/to/code.zip",
-            handler="script.handler"
+            handler="script.handler",
         )
         result = lambda_obj.create()
 
         assert result["FunctionArn"] == "arn:aws:lambda:us-west-2:123456789012:function:my-function"
         call_args = mock_lambda_client.create_function.call_args[1]
-        assert call_args["Code"] == {"S3Bucket": "my-bucket", "S3Key": "prefix/lambda/my-function/code"}
+        assert call_args["Code"] == {
+            "S3Bucket": "my-bucket",
+            "S3Key": "prefix/lambda/my-function/code",
+        }
 
     @patch("sagemaker.core.lambda_helper._get_lambda_client")
     def test_create_without_function_name(self, mock_get_client):
         """Test create fails without function name."""
-        lambda_obj = Lambda(function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function")
-        
+        lambda_obj = Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        )
+
         with pytest.raises(ValueError, match="FunctionName must be provided"):
             lambda_obj.create()
 
@@ -183,7 +198,7 @@ class TestLambdaCreate:
         mock_zip.return_value = b"zipped_code"
         error = ClientError(
             {"Error": {"Code": "InvalidParameterValue", "Message": "Invalid parameter"}},
-            "CreateFunction"
+            "CreateFunction",
         )
         mock_client.create_function.side_effect = error
 
@@ -191,7 +206,7 @@ class TestLambdaCreate:
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             script="/path/to/script.py",
-            handler="script.handler"
+            handler="script.handler",
         )
 
         with pytest.raises(ValueError):
@@ -208,13 +223,15 @@ class TestLambdaUpdate:
         mock_client = Mock()
         mock_get_client.return_value = mock_client
         mock_zip.return_value = b"zipped_code"
-        mock_client.update_function_code.return_value = {"FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"}
+        mock_client.update_function_code.return_value = {
+            "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        }
 
         lambda_obj = Lambda(
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             script="/path/to/script.py",
-            handler="script.handler"
+            handler="script.handler",
         )
         result = lambda_obj.update()
 
@@ -228,23 +245,23 @@ class TestLambdaUpdate:
         mock_client = Mock()
         mock_get_client.return_value = mock_client
         mock_zip.return_value = b"zipped_code"
-        
+
         error = ClientError(
             {"Error": {"Code": "ResourceConflictException", "Message": "Resource in use"}},
-            "UpdateFunctionCode"
+            "UpdateFunctionCode",
         )
         mock_client.update_function_code.side_effect = [
             error,
-            {"FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"}
+            {"FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"},
         ]
 
         lambda_obj = Lambda(
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             script="/path/to/script.py",
-            handler="script.handler"
+            handler="script.handler",
         )
-        
+
         with patch("time.sleep"):
             result = lambda_obj.update()
 
@@ -258,10 +275,10 @@ class TestLambdaUpdate:
         mock_client = Mock()
         mock_get_client.return_value = mock_client
         mock_zip.return_value = b"zipped_code"
-        
+
         error = ClientError(
             {"Error": {"Code": "ResourceConflictException", "Message": "Resource in use"}},
-            "UpdateFunctionCode"
+            "UpdateFunctionCode",
         )
         mock_client.update_function_code.side_effect = error
 
@@ -269,9 +286,9 @@ class TestLambdaUpdate:
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             script="/path/to/script.py",
-            handler="script.handler"
+            handler="script.handler",
         )
-        
+
         with patch("time.sleep"):
             with pytest.raises(ValueError):
                 lambda_obj.update()
@@ -283,13 +300,15 @@ class TestLambdaUpsert:
     @patch.object(Lambda, "create")
     def test_upsert_creates_new_function(self, mock_create):
         """Test upsert creates new function when it doesn't exist."""
-        mock_create.return_value = {"FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"}
+        mock_create.return_value = {
+            "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        }
 
         lambda_obj = Lambda(
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             script="/path/to/script.py",
-            handler="script.handler"
+            handler="script.handler",
         )
         result = lambda_obj.upsert()
 
@@ -301,13 +320,15 @@ class TestLambdaUpsert:
     def test_upsert_updates_existing_function(self, mock_update, mock_create):
         """Test upsert updates existing function."""
         mock_create.side_effect = ValueError("ResourceConflictException")
-        mock_update.return_value = {"FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"}
+        mock_update.return_value = {
+            "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        }
 
         lambda_obj = Lambda(
             function_name="my-function",
             execution_role_arn="arn:aws:iam::123456789012:role/my-role",
             script="/path/to/script.py",
-            handler="script.handler"
+            handler="script.handler",
         )
         result = lambda_obj.upsert()
 
@@ -325,13 +346,15 @@ class TestLambdaInvoke:
         mock_get_client.return_value = mock_client
         mock_client.invoke.return_value = {"StatusCode": 200, "Payload": Mock()}
 
-        lambda_obj = Lambda(function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function")
+        lambda_obj = Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        )
         result = lambda_obj.invoke()
 
         assert result["StatusCode"] == 200
         mock_client.invoke.assert_called_once_with(
             FunctionName="arn:aws:lambda:us-west-2:123456789012:function:my-function",
-            InvocationType="RequestResponse"
+            InvocationType="RequestResponse",
         )
 
     @patch("sagemaker.core.lambda_helper._get_lambda_client")
@@ -341,11 +364,13 @@ class TestLambdaInvoke:
         mock_get_client.return_value = mock_client
         error = ClientError(
             {"Error": {"Code": "ResourceNotFoundException", "Message": "Function not found"}},
-            "Invoke"
+            "Invoke",
         )
         mock_client.invoke.side_effect = error
 
-        lambda_obj = Lambda(function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function")
+        lambda_obj = Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        )
 
         with pytest.raises(ValueError):
             lambda_obj.invoke()
@@ -361,7 +386,9 @@ class TestLambdaDelete:
         mock_get_client.return_value = mock_client
         mock_client.delete_function.return_value = {}
 
-        lambda_obj = Lambda(function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function")
+        lambda_obj = Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        )
         result = lambda_obj.delete()
 
         assert result == {}
@@ -376,11 +403,13 @@ class TestLambdaDelete:
         mock_get_client.return_value = mock_client
         error = ClientError(
             {"Error": {"Code": "ResourceNotFoundException", "Message": "Function not found"}},
-            "DeleteFunction"
+            "DeleteFunction",
         )
         mock_client.delete_function.side_effect = error
 
-        lambda_obj = Lambda(function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function")
+        lambda_obj = Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        )
 
         with pytest.raises(ValueError):
             lambda_obj.delete()
@@ -442,20 +471,14 @@ class TestHelperFunctions:
     def test_upload_to_s3(self):
         """Test uploading file to S3."""
         mock_s3_client = Mock()
-        
+
         result = _upload_to_s3(
-            mock_s3_client,
-            "my-function",
-            "/path/to/code.zip",
-            "my-bucket",
-            "prefix"
+            mock_s3_client, "my-function", "/path/to/code.zip", "my-bucket", "prefix"
         )
 
         assert result == "prefix/lambda/my-function/code"
         mock_s3_client.upload_file.assert_called_once_with(
-            "/path/to/code.zip",
-            "my-bucket",
-            "prefix/lambda/my-function/code"
+            "/path/to/code.zip", "my-bucket", "prefix/lambda/my-function/code"
         )
 
     def test_zip_lambda_code(self, tmp_path):
@@ -467,7 +490,7 @@ class TestHelperFunctions:
         result = _zip_lambda_code(str(script_file))
 
         assert isinstance(result, bytes)
-        
+
         # Verify the zip content
         buffer = BytesIO(result)
         with zipfile.ZipFile(buffer, "r") as z:

@@ -25,45 +25,37 @@ class TestRetrieveOptions:
     def test_retrieve_options_missing_model_id(self):
         """Test that ValueError is raised when model_id is missing."""
         with pytest.raises(ValueError, match="Must specify JumpStart"):
-            implementations.retrieve_options(
-                region="us-west-2",
-                model_version="1.0"
-            )
+            implementations.retrieve_options(region="us-west-2", model_version="1.0")
 
     def test_retrieve_options_missing_model_version(self):
         """Test that ValueError is raised when model_version is missing."""
         with pytest.raises(ValueError, match="Must specify JumpStart"):
-            implementations.retrieve_options(
-                region="us-west-2",
-                model_id="test-model"
-            )
+            implementations.retrieve_options(region="us-west-2", model_id="test-model")
 
-    @patch('sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input')
-    @patch('sagemaker.core.serializers.implementations.artifacts._retrieve_serializer_options')
+    @patch("sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input")
+    @patch("sagemaker.core.serializers.implementations.artifacts._retrieve_serializer_options")
     def test_retrieve_options_success(self, mock_retrieve, mock_is_jumpstart):
         """Test successful retrieval of serializer options."""
         mock_is_jumpstart.return_value = True
         mock_serializers = [JSONSerializer()]
         mock_retrieve.return_value = mock_serializers
-        
+
         result = implementations.retrieve_options(
-            region="us-west-2",
-            model_id="test-model",
-            model_version="1.0"
+            region="us-west-2", model_id="test-model", model_version="1.0"
         )
-        
+
         assert result == mock_serializers
         mock_retrieve.assert_called_once()
 
-    @patch('sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input')
-    @patch('sagemaker.core.serializers.implementations.artifacts._retrieve_serializer_options')
+    @patch("sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input")
+    @patch("sagemaker.core.serializers.implementations.artifacts._retrieve_serializer_options")
     def test_retrieve_options_with_all_params(self, mock_retrieve, mock_is_jumpstart):
         """Test retrieve_options with all parameters."""
         mock_is_jumpstart.return_value = True
         mock_serializers = [JSONSerializer()]
         mock_retrieve.return_value = mock_serializers
         mock_session = Mock()
-        
+
         result = implementations.retrieve_options(
             region="us-east-1",
             model_id="test-model",
@@ -72,9 +64,9 @@ class TestRetrieveOptions:
             tolerate_vulnerable_model=True,
             tolerate_deprecated_model=True,
             sagemaker_session=mock_session,
-            config_name="test-config"
+            config_name="test-config",
         )
-        
+
         assert result == mock_serializers
         call_kwargs = mock_retrieve.call_args[1]
         assert call_kwargs["model_id"] == "test-model"
@@ -91,45 +83,37 @@ class TestRetrieveDefault:
     def test_retrieve_default_missing_model_id(self):
         """Test that ValueError is raised when model_id is missing."""
         with pytest.raises(ValueError, match="Must specify JumpStart"):
-            implementations.retrieve_default(
-                region="us-west-2",
-                model_version="1.0"
-            )
+            implementations.retrieve_default(region="us-west-2", model_version="1.0")
 
     def test_retrieve_default_missing_model_version(self):
         """Test that ValueError is raised when model_version is missing."""
         with pytest.raises(ValueError, match="Must specify JumpStart"):
-            implementations.retrieve_default(
-                region="us-west-2",
-                model_id="test-model"
-            )
+            implementations.retrieve_default(region="us-west-2", model_id="test-model")
 
-    @patch('sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input')
-    @patch('sagemaker.core.serializers.implementations.artifacts._retrieve_default_serializer')
+    @patch("sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input")
+    @patch("sagemaker.core.serializers.implementations.artifacts._retrieve_default_serializer")
     def test_retrieve_default_success(self, mock_retrieve, mock_is_jumpstart):
         """Test successful retrieval of default serializer."""
         mock_is_jumpstart.return_value = True
         mock_serializer = JSONSerializer()
         mock_retrieve.return_value = mock_serializer
-        
+
         result = implementations.retrieve_default(
-            region="us-west-2",
-            model_id="test-model",
-            model_version="1.0"
+            region="us-west-2", model_id="test-model", model_version="1.0"
         )
-        
+
         assert result == mock_serializer
         mock_retrieve.assert_called_once()
 
-    @patch('sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input')
-    @patch('sagemaker.core.serializers.implementations.artifacts._retrieve_default_serializer')
+    @patch("sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input")
+    @patch("sagemaker.core.serializers.implementations.artifacts._retrieve_default_serializer")
     def test_retrieve_default_with_all_params(self, mock_retrieve, mock_is_jumpstart):
         """Test retrieve_default with all parameters."""
         mock_is_jumpstart.return_value = True
         mock_serializer = JSONSerializer()
         mock_retrieve.return_value = mock_serializer
         mock_session = Mock()
-        
+
         result = implementations.retrieve_default(
             region="us-east-1",
             model_id="test-model",
@@ -138,9 +122,9 @@ class TestRetrieveDefault:
             tolerate_vulnerable_model=True,
             tolerate_deprecated_model=True,
             sagemaker_session=mock_session,
-            config_name="test-config"
+            config_name="test-config",
         )
-        
+
         assert result == mock_serializer
         call_kwargs = mock_retrieve.call_args[1]
         assert call_kwargs["model_id"] == "test-model"
@@ -154,23 +138,27 @@ class TestBackwardCompatibility:
     def test_base_serializer_import(self):
         """Test that BaseSerializer can be imported."""
         from sagemaker.core.serializers.implementations import BaseSerializer
+
         assert BaseSerializer is not None
 
     def test_csv_serializer_import(self):
         """Test that CSVSerializer can be imported."""
         from sagemaker.core.serializers.implementations import CSVSerializer
+
         assert CSVSerializer is not None
 
     def test_json_serializer_import(self):
         """Test that JSONSerializer can be imported."""
         from sagemaker.core.serializers.implementations import JSONSerializer
+
         assert JSONSerializer is not None
 
     def test_numpy_serializer_import(self):
         """Test that NumpySerializer can be imported."""
         from sagemaker.core.serializers.implementations import NumpySerializer
+
         assert NumpySerializer is not None
 
     def test_record_serializer_deprecated(self):
         """Test that numpy_to_record_serializer is available as deprecated."""
-        assert hasattr(implementations, 'numpy_to_record_serializer')
+        assert hasattr(implementations, "numpy_to_record_serializer")

@@ -28,7 +28,10 @@ from platformdirs import site_config_dir, user_config_dir
 from botocore.utils import merge_dicts
 from six.moves.urllib.parse import urlparse
 from sagemaker.core.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
-from sagemaker.core.config.config_utils import non_repeating_log_factory, get_sagemaker_config_logger
+from sagemaker.core.config.config_utils import (
+    non_repeating_log_factory,
+    get_sagemaker_config_logger,
+)
 
 logger = get_sagemaker_config_logger()
 log_info_function = non_repeating_log_factory(logger, "info")

@@ -22,7 +22,7 @@ warnings.warn(
     "The 'sagemaker.lineage.context' module is deprecated. "
     "Please use 'sagemaker.core.lineage.context' instead.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 from sagemaker.core.lineage.context import *  # noqa: F401, F403

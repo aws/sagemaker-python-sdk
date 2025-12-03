@@ -169,7 +169,7 @@ class TestAnd:
         op1 = Operand("test1", BooleanValues.TRUE)
         op2 = Operand("test2", BooleanValues.UNEVALUATED)
         op2.eval = Mock()
-        
+
         and_op = And(op1, op2)
         with pytest.raises(RuntimeError, match="Operand remains unevaluated"):
             and_op.eval()

@@ -45,7 +45,11 @@ from sagemaker.core.config.config_schema import (
     MONITORING_JOB_ROLE_ARN_PATH,
 )
 from sagemaker.core.exceptions import UnexpectedStatusException
-from sagemaker.core.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
+from sagemaker.core.model_monitor.monitoring_files import (
+    Constraints,
+    ConstraintViolations,
+    Statistics,
+)
 from sagemaker.core.model_monitor.monitoring_alert import (
     MonitoringAlertSummary,
     MonitoringAlertHistorySummary,
@@ -67,7 +71,13 @@ from sagemaker.core.model_monitor.utils import (
 from sagemaker.core.model_monitor.data_quality_monitoring_config import DataQualityMonitoringConfig
 from sagemaker.core.model_monitor.dataset_format import MonitoringDatasetFormat
 from sagemaker.core.network import NetworkConfig
-from sagemaker.core.processing import Processor, ProcessingInput, ProcessingS3Input, ProcessingJob, ProcessingOutput
+from sagemaker.core.processing import (
+    Processor,
+    ProcessingInput,
+    ProcessingS3Input,
+    ProcessingJob,
+    ProcessingOutput,
+)
 from sagemaker.core.shapes import ProcessingS3Output
 from sagemaker.core.helper.session_helper import Session, expand_role
 from sagemaker.core.common_utils import (
@@ -312,7 +322,7 @@ class ModelMonitor(object):
             job_name=self.latest_baselining_job_name,
             inputs=baseline_job_inputs,
             outputs=[normalized_baseline_output],
-            output_kms_key=None
+            output_kms_key=None,
         )
         self.baselining_jobs.append(self.latest_baselining_job)
 
@@ -644,8 +654,7 @@ class ModelMonitor(object):
     def start_monitoring_schedule(self):
         """Starts the monitoring schedule."""
         boto_start_monitoring_schedule(
-            self.sagemaker_session,
-            monitoring_schedule_name=self.monitoring_schedule_name
+            self.sagemaker_session, monitoring_schedule_name=self.monitoring_schedule_name
         )
 
         self._wait_for_schedule_changes_to_apply()
@@ -653,8 +662,7 @@ class ModelMonitor(object):
     def stop_monitoring_schedule(self):
         """Stops the monitoring schedule."""
         boto_stop_monitoring_schedule(
-            self.sagemaker_session,
-            monitoring_schedule_name=self.monitoring_schedule_name
+            self.sagemaker_session, monitoring_schedule_name=self.monitoring_schedule_name
         )
 
         self._wait_for_schedule_changes_to_apply()
@@ -663,8 +671,7 @@ class ModelMonitor(object):
         """Deletes the monitoring schedule (subclass is responsible for deleting job definition)"""
         # DO NOT call super which erases schedule name and makes wait impossible.
         boto_delete_monitoring_schedule(
-            self.sagemaker_session,
-            monitoring_schedule_name=self.monitoring_schedule_name
+            self.sagemaker_session, monitoring_schedule_name=self.monitoring_schedule_name
         )
         if self.job_definition_name is not None:
             # Job definition is locked by schedule so need to wait for the schedule to be deleted
@@ -775,8 +782,7 @@ class ModelMonitor(object):
 
         """
         return boto_describe_monitoring_schedule(
-            self.sagemaker_session,
-            monitoring_schedule_name=self.monitoring_schedule_name
+            self.sagemaker_session, monitoring_schedule_name=self.monitoring_schedule_name
         )
 
     def list_executions(self):
@@ -795,7 +801,7 @@ class ModelMonitor(object):
         """
         monitoring_executions_dict = boto_list_monitoring_executions(
             sagemaker_session=self.sagemaker_session,
-            monitoring_schedule_name=self.monitoring_schedule_name
+            monitoring_schedule_name=self.monitoring_schedule_name,
         )
 
         if len(monitoring_executions_dict["MonitoringExecutionSummaries"]) == 0:
@@ -833,7 +839,7 @@ class ModelMonitor(object):
         """
         monitoring_executions = boto_list_monitoring_executions(
             sagemaker_session=self.sagemaker_session,
-            monitoring_schedule_name=self.monitoring_schedule_name
+            monitoring_schedule_name=self.monitoring_schedule_name,
         )
         if len(monitoring_executions["MonitoringExecutionSummaries"]) == 0:
             raise ValueError("No execution jobs were kicked off.")
@@ -842,7 +848,8 @@ class ModelMonitor(object):
         job_arn = monitoring_executions["MonitoringExecutionSummaries"][0]["ProcessingJobArn"]
         logs_for_processing_job(
             sagemaker_session=self.sagemaker_session,
-            job_name=get_resource_name_from_arn(job_arn), wait=wait
+            job_name=get_resource_name_from_arn(job_arn),
+            wait=wait,
         )
 
     def update_monitoring_alert(
@@ -1014,8 +1021,7 @@ class ModelMonitor(object):
         """
         sagemaker_session = sagemaker_session or Session()
         schedule_desc = boto_describe_monitoring_schedule(
-            sagemaker_session=sagemaker_session,
-            monitoring_schedule_name=monitor_schedule_name
+            sagemaker_session=sagemaker_session, monitoring_schedule_name=monitor_schedule_name
         )
 
         monitoring_job_definition = schedule_desc["MonitoringScheduleConfig"][
@@ -1064,7 +1070,9 @@ class ModelMonitor(object):
                 subnets=subnets,
             )
 
-        tags = list_tags(sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"])
+        tags = list_tags(
+            sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"]
+        )
 
         attached_monitor = cls(
             role=role,
@@ -1421,8 +1429,8 @@ class ModelMonitor(object):
             s3_output=ProcessingS3Output(
                 s3_uri=s3_uri,
                 local_path=str(pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)),
-                s3_upload_mode="EndOfJob"
-            )
+                s3_upload_mode="EndOfJob",
+            ),
         )
 
     def _normalize_processing_output(self, output=None):
@@ -1674,10 +1682,10 @@ class ModelMonitor(object):
                 local_path=destination,
                 s3_data_type="S3Prefix",
                 s3_input_mode="File",
-                s3_data_distribution_type="FullyReplicated"
-            )
+                s3_data_distribution_type="FullyReplicated",
+            ),
         )
-    
+
     # noinspection PyMethodOverriding
     def _update_monitoring_schedule(
         self,
@@ -1978,7 +1986,7 @@ class DefaultModelMonitor(ModelMonitor):
             job_name=self.latest_baselining_job_name,
             inputs=baseline_job_inputs,
             outputs=[normalized_baseline_output],
-            output_kms_key=None
+            output_kms_key=None,
         )
         self.baselining_jobs.append(self.latest_baselining_job)
         return baselining_processor.latest_job
@@ -2417,7 +2425,7 @@ class DefaultModelMonitor(ModelMonitor):
 
         existing_desc = boto_describe_monitoring_schedule(
             sagemaker_session=self.sagemaker_session,
-            monitoring_schedule_name=self.monitoring_schedule_name
+            monitoring_schedule_name=self.monitoring_schedule_name,
         )
 
         if (
@@ -2543,8 +2551,7 @@ class DefaultModelMonitor(ModelMonitor):
         """
         sagemaker_session = sagemaker_session or Session()
         schedule_desc = boto_describe_monitoring_schedule(
-            sagemaker_session=sagemaker_session,
-            monitoring_schedule_name=monitor_schedule_name
+            sagemaker_session=sagemaker_session, monitoring_schedule_name=monitor_schedule_name
         )
 
         job_definition_name = schedule_desc["MonitoringScheduleConfig"].get(
@@ -2561,7 +2568,10 @@ class DefaultModelMonitor(ModelMonitor):
             job_desc = sagemaker_session.sagemaker_client.describe_data_quality_job_definition(
                 JobDefinitionName=job_definition_name
             )
-            tags = list_tags(sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"])
+            tags = list_tags(
+                sagemaker_session=sagemaker_session,
+                resource_arn=schedule_desc["MonitoringScheduleArn"],
+            )
 
             return ModelMonitor._attach(
                 clazz=cls,
@@ -2599,7 +2609,9 @@ class DefaultModelMonitor(ModelMonitor):
                 subnets=subnets,
             )
 
-        tags = list_tags(sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"])
+        tags = list_tags(
+            sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"]
+        )
 
         attached_monitor = cls(
             role=role,
@@ -3103,7 +3115,7 @@ class ModelQualityMonitor(ModelMonitor):
             job_name=self.latest_baselining_job_name,
             inputs=baseline_job_inputs,
             outputs=[normalized_baseline_output],
-            output_kms_key=None
+            output_kms_key=None,
         )
         self.baselining_jobs.append(self.latest_baselining_job)
         return baselining_processor.latest_job
@@ -3445,8 +3457,7 @@ class ModelQualityMonitor(ModelMonitor):
         """
         sagemaker_session = sagemaker_session or Session()
         schedule_desc = boto_describe_monitoring_schedule(
-            sagemaker_session=sagemaker_session,
-            monitoring_schedule_name=monitor_schedule_name
+            sagemaker_session=sagemaker_session, monitoring_schedule_name=monitor_schedule_name
         )
         monitoring_type = schedule_desc["MonitoringScheduleConfig"].get("MonitoringType")
         if monitoring_type != cls.monitoring_type():
@@ -3459,7 +3470,9 @@ class ModelQualityMonitor(ModelMonitor):
         job_desc = sagemaker_session.sagemaker_client.describe_model_quality_job_definition(
             JobDefinitionName=job_definition_name
         )
-        tags = list_tags(sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"])
+        tags = list_tags(
+            sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"]
+        )
         return ModelMonitor._attach(
             clazz=cls,
             sagemaker_session=sagemaker_session,
@@ -3758,9 +3771,9 @@ class BaseliningJob:
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
-                status = self.sagemaker_session.sagemaker_client.describe_processing_job(ProcessingJobName=processing_job_name)[
-                    "ProcessingJobStatus"
-                ]
+                status = self.sagemaker_session.sagemaker_client.describe_processing_job(
+                    ProcessingJobName=processing_job_name
+                )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
                         message="The underlying job is not in 'Completed' state. You may only "
@@ -3797,9 +3810,9 @@ class BaseliningJob:
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
-                status = self.sagemaker_session.sagemaker_client.describe_processing_job(ProcessingJobName=processing_job_name)[
-                    "ProcessingJobStatus"
-                ]
+                status = self.sagemaker_session.sagemaker_client.describe_processing_job(
+                    ProcessingJobName=processing_job_name
+                )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
                         message="The underlying job is not in 'Completed' state. You may only "
@@ -3832,22 +3845,23 @@ class MonitoringExecution(ProcessingJob):
 
         """
         from sagemaker.core.shapes import ProcessingOutputConfig
-        
+
         super(MonitoringExecution, self).__init__(
             processing_job_name=job_name,
             processing_inputs=inputs,
-            processing_output_config=ProcessingOutputConfig(
-                outputs=[output],
-                kms_key_id=output_kms_key
-            ) if output_kms_key else ProcessingOutputConfig(outputs=[output]),
+            processing_output_config=(
+                ProcessingOutputConfig(outputs=[output], kms_key_id=output_kms_key)
+                if output_kms_key
+                else ProcessingOutputConfig(outputs=[output])
+            ),
         )
-        object.__setattr__(self, 'sagemaker_session', sagemaker_session)
+        object.__setattr__(self, "sagemaker_session", sagemaker_session)
 
     @property
     def output(self):
         """Get the first output from processing_output_config."""
         return self.processing_output_config.outputs[0]
-    
+
     @property
     def outputs(self):
         """Get all outputs from processing_output_config."""
@@ -3858,7 +3872,6 @@ class MonitoringExecution(ProcessingJob):
         return self.sagemaker_session.sagemaker_client.describe_processing_job(
             ProcessingJobName=self.processing_job_name
         )
-
 
     @classmethod
     def from_processing_arn(cls, sagemaker_session, processing_job_arn):
@@ -3880,7 +3893,9 @@ class MonitoringExecution(ProcessingJob):
         processing_job_name = processing_job_arn.split(":")[5][
             len("processing-job/") :
         ]  # This is necessary while the API only vends an arn.
-        job_desc = sagemaker_session.sagemaker_client.describe_processing_job(ProcessingJobName=processing_job_name)
+        job_desc = sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=processing_job_name
+        )
 
         output_config = job_desc["ProcessingOutputConfig"]["Outputs"][0]
         return cls(
@@ -3898,7 +3913,7 @@ class MonitoringExecution(ProcessingJob):
                             "S3DataDistributionType"
                         ),
                         s3_compression_type=processing_input["S3Input"].get("S3CompressionType"),
-                    )
+                    ),
                 )
                 for processing_input in job_desc["ProcessingInputs"]
             ],
@@ -3940,9 +3955,9 @@ class MonitoringExecution(ProcessingJob):
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
-                status = self.sagemaker_session.sagemaker_client.describe_processing_job(ProcessingJobName=processing_job_name)[
-                    "ProcessingJobStatus"
-                ]
+                status = self.sagemaker_session.sagemaker_client.describe_processing_job(
+                    ProcessingJobName=processing_job_name
+                )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
                         message="The underlying job is not in 'Completed' state. You may only "
@@ -3984,9 +3999,9 @@ class MonitoringExecution(ProcessingJob):
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
-                status = self.sagemaker_session.sagemaker_client.describe_processing_job(ProcessingJobName=processing_job_name)[
-                    "ProcessingJobStatus"
-                ]
+                status = self.sagemaker_session.sagemaker_client.describe_processing_job(
+                    ProcessingJobName=processing_job_name
+                )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
                         message="The underlying job is not in 'Completed' state. You may only "
@@ -4226,12 +4241,10 @@ class MonitoringOutput(object):
 
         """
         from sagemaker.core.shapes import MonitoringS3Output
-        
+
         self.source = source
         self.s3_output = MonitoringS3Output(
-            s3_uri=destination,
-            local_path=source,
-            s3_upload_mode=s3_upload_mode
+            s3_uri=destination, local_path=source, s3_upload_mode=s3_upload_mode
         )
         self.s3_upload_mode = s3_upload_mode
 

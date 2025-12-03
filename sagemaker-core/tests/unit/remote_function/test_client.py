@@ -48,20 +48,20 @@ class TestRemoteExecutorValidation:
     def test_validate_submit_args_with_valid_args(self):
         def my_function(x, y, z=10):
             return x + y + z
-        
+
         RemoteExecutor._validate_submit_args(my_function, 1, 2, z=3)
 
     def test_validate_submit_args_with_missing_args(self):
         def my_function(x, y):
             return x + y
-        
+
         with pytest.raises(TypeError):
             RemoteExecutor._validate_submit_args(my_function, 1)
 
     def test_validate_submit_args_with_extra_args(self):
         def my_function(x):
             return x
-        
+
         with pytest.raises(TypeError):
             RemoteExecutor._validate_submit_args(my_function, 1, 2)
 
@@ -75,15 +75,15 @@ class TestWorkerFunctions:
         executor._pending_request_queue = deque([None])
         executor._running_jobs = {}
         executor.max_parallel_jobs = 1
-        
+
         mock_condition = Mock()
         mock_condition.__enter__ = Mock(return_value=mock_condition)
         mock_condition.__exit__ = Mock(return_value=False)
         mock_condition.wait_for = Mock(return_value=True)
         executor._state_condition = mock_condition
-        
+
         _submit_worker(executor)
-        
+
         assert len(executor._pending_request_queue) == 0
 
     def test_polling_worker_exits_on_shutdown(self):
@@ -93,5 +93,5 @@ class TestWorkerFunctions:
         executor._pending_request_queue = deque()
         executor._shutdown = True
         executor._state_condition = Mock()
-        
+
         _polling_worker(executor)

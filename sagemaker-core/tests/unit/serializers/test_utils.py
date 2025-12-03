@@ -44,9 +44,9 @@ class TestWriteRecordio:
         """Test writing recordio format."""
         file = BytesIO()
         data = b"test data"
-        
+
         _write_recordio(file, data)
-        
+
         file.seek(0)
         content = file.read()
         assert len(content) > len(data)
@@ -55,9 +55,9 @@ class TestWriteRecordio:
         """Test writing recordio with padding."""
         file = BytesIO()
         data = b"x"  # Single byte requires padding
-        
+
         _write_recordio(file, data)
-        
+
         file.seek(0)
         content = file.read()
         # Should have magic number (4 bytes) + length (4 bytes) + data (1 byte) + padding (3 bytes)
@@ -72,13 +72,13 @@ class TestReadRecordio:
         file = BytesIO()
         data1 = b"first record"
         data2 = b"second record"
-        
+
         _write_recordio(file, data1)
         _write_recordio(file, data2)
-        
+
         file.seek(0)
         records = list(read_recordio(file))
-        
+
         assert len(records) == 2
         assert records[0] == data1
         assert records[1] == data2
@@ -87,19 +87,19 @@ class TestReadRecordio:
         """Test reading from empty file."""
         file = BytesIO()
         records = list(read_recordio(file))
-        
+
         assert len(records) == 0
 
     def test_read_recordio_single_record(self):
         """Test reading single record."""
         file = BytesIO()
         data = b"single record"
-        
+
         _write_recordio(file, data)
-        
+
         file.seek(0)
         records = list(read_recordio(file))
-        
+
         assert len(records) == 1
         assert records[0] == data
 
@@ -135,11 +135,11 @@ class TestRecordioRoundTrip:
         """Test writing and reading back data."""
         file = BytesIO()
         original_data = [b"record1", b"record2", b"record3"]
-        
+
         for data in original_data:
             _write_recordio(file, data)
-        
+
         file.seek(0)
         read_data = list(read_recordio(file))
-        
+
         assert read_data == original_data

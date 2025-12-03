@@ -43,5 +43,6 @@ def __getattr__(name):
     """Lazy import to avoid circular dependencies."""
     if name in __all__:
         from sagemaker.core import common_utils
+
         return getattr(common_utils, name)
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

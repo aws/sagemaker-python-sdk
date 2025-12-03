@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.1.0 (2025-12-03)
+
+### Features
+
+* Fine-tuning SDK: SFT, RLVR, and RLAIF techniques with standardized parameter design
+* AIRegistry Integration: Added CRUD operations for datasets and evaluators
+* Enhanced Training Experience: Implemented MLFlow metrics tracking and deployment workflows
+
 ## v3.0.1 (2025-11-19)
 
 * Update project dependencies to include submodules: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops

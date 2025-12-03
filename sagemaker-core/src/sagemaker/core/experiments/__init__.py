@@ -27,21 +27,27 @@ __all__ = [
     "_TrialComponent",
 ]
 
+
 def __getattr__(name):
     """Lazy import to avoid circular dependencies."""
     if name == "Experiment":
         from sagemaker.core.experiments.experiment import Experiment
+
         return Experiment
     elif name == "Run":
         from sagemaker.core.experiments.run import Run
+
         return Run
     elif name == "_RunContext":
         from sagemaker.core.experiments._run_context import _RunContext
+
         return _RunContext
     elif name == "_Trial":
         from sagemaker.core.experiments.trial import _Trial
+
         return _Trial
     elif name == "_TrialComponent":
         from sagemaker.core.experiments.trial_component import _TrialComponent
+
         return _TrialComponent
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

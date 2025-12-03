@@ -392,8 +392,6 @@ class TestModelPackageHelpers:
         assert inference_spec["SupportedContentTypes"] == ["application/json"]
 
 
-
-
 class TestProductionVariant:
     """Test cases for production_variant function"""
 
