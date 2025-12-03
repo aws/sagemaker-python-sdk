@@ -99,7 +99,7 @@ class TestCustomScorerEvaluatorIntegration:
             dataset=TEST_CONFIG["dataset_s3_uri"],
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
         )
         
@@ -216,7 +216,7 @@ class TestCustomScorerEvaluatorIntegration:
                 evaluator=123,  # Invalid type (not string, enum, or object)
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
-                mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+                # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
                 dataset=TEST_CONFIG["dataset_s3_uri"],
             )
         
@@ -254,7 +254,7 @@ class TestCustomScorerEvaluatorIntegration:
             dataset=TEST_CONFIG["dataset_s3_uri"],
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             evaluate_base_model=False,
         )
         
