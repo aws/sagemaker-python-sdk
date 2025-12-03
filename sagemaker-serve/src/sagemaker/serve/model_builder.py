@@ -943,23 +943,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # ModelTrainer with model customization
         if isinstance(self.model, ModelTrainer) and hasattr(self.model, '_latest_training_job'):
             # Check model_package_config first (new location)
-            if (hasattr(self.model._latest_training_job, 'model_package_config') and self.model._latest_training_job.model_package_config != Unassigned
-                    and getattr(self.model._latest_training_job.model_package_config, 'source_model_package_arn', Unassigned) != Unassigned):
+            if (hasattr(self.model._latest_training_job, 'model_package_config') and self.model._latest_training_job.model_package_config != Unassigned()
+                    and getattr(self.model._latest_training_job.model_package_config, 'source_model_package_arn', Unassigned()) != Unassigned()):
                 return True
             # Fallback to serverless_job_config (legacy location)
-            if (hasattr(self.model._latest_training_job, 'serverless_job_config') and self.model._latest_training_job.serverless_job_config != Unassigned
-                    and hasattr(self.model._latest_training_job, 'output_model_package_arn') and self.model._latest_training_job.output_model_package_arn!= Unassigned):
+            if (hasattr(self.model._latest_training_job, 'serverless_job_config') and self.model._latest_training_job.serverless_job_config != Unassigned()
+                    and hasattr(self.model._latest_training_job, 'output_model_package_arn') and self.model._latest_training_job.output_model_package_arn!= Unassigned()):
                 return True
 
         # BaseTrainer with model customization
         if isinstance(self.model, BaseTrainer) and hasattr(self.model, '_latest_training_job'):
             # Check model_package_config first (new location)
-            if (hasattr(self.model._latest_training_job, 'model_package_config') and self.model._latest_training_job.model_package_config != Unassigned
-                    and getattr(self.model._latest_training_job.model_package_config, 'source_model_package_arn', Unassigned) != Unassigned):
+            if (hasattr(self.model._latest_training_job, 'model_package_config') and self.model._latest_training_job.model_package_config != Unassigned()
+                    and getattr(self.model._latest_training_job.model_package_config, 'source_model_package_arn', Unassigned()) != Unassigned()):
                 return True
             # Fallback to serverless_job_config (legacy location)
-            if (hasattr(self.model._latest_training_job, 'serverless_job_config') and self.model._latest_training_job.serverless_job_config != Unassigned
-                    and hasattr(self.model._latest_training_job, 'output_model_package_arn') and self.model._latest_training_job.output_model_package_arn!= Unassigned):
+            if (hasattr(self.model._latest_training_job, 'serverless_job_config') and self.model._latest_training_job.serverless_job_config != Unassigned()
+                    and hasattr(self.model._latest_training_job, 'output_model_package_arn') and self.model._latest_training_job.output_model_package_arn!= Unassigned()):
                 return True
 
         return False
