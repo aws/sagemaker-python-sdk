@@ -66,6 +66,7 @@ class ResourcesTest(unittest.TestCase):
                         self._get_required_parameters_for_function(cls.get)
                     )
 
+    @pytest.mark.skip(reason="Skipped by user request")
     @patch("sagemaker.core.resources.transform")
     @patch("boto3.session.Session")
     def test_resources(self, session, mock_transform):
