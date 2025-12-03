@@ -20,7 +20,7 @@ from mock import ANY, MagicMock, Mock, patch
 from packaging.version import Version
 import tempfile
 
-from sagemaker import image_uris
+from sagemaker import image_uris, ContainerBaseModel
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch, PyTorchPredictor, PyTorchModel
 from sagemaker.pytorch.estimator import (
@@ -772,7 +772,9 @@ def test_register_pytorch_model_auto_infer_framework(
         py_version=pytorch_inference_py_version,
         sagemaker_session=sagemaker_session,
     )
-
+    base_model = ContainerBaseModel(
+        hub_content_name="test", hub_content_version="1234.1234", recipe_name="testRecipeName"
+    )
     pytorch_model.register(
         content_types,
         response_types,
@@ -781,6 +783,8 @@ def test_register_pytorch_model_auto_infer_framework(
         model_package_group_name=model_package_group_name,
         marketplace_cert=True,
         image_uri=image_uri,
+        model_package_registration_type="Registered",
+        base_model=base_model,
     )
 
     expected_create_model_package_request = {
@@ -791,6 +795,11 @@ def test_register_pytorch_model_auto_infer_framework(
                 "ModelDataUrl": ANY,
                 "Framework": "PYTORCH",
                 "FrameworkVersion": pytorch_inference_version,
+                "BaseModel": {
+                    "HubContentName": "test",
+                    "HubContentVersion": "1234.1234",
+                    "RecipeName": "testRecipeName",
+                },
             },
         ],
         "content_types": content_types,
@@ -798,6 +807,7 @@ def test_register_pytorch_model_auto_infer_framework(
         "inference_instances": inference_instances,
         "transform_instances": transform_instances,
         "model_package_group_name": model_package_group_name,
+        "model_package_registration_type": "Registered",
         "marketplace_cert": True,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
@@ -1159,3 +1169,36 @@ def test_training_recipe_images_uri():
     }
     neuron_image_uri = _get_training_recipe_image_uri(neuron_image_cfg, "us-west-2")
     assert neuron_image_uri == RECIPE_NEURON_IMAGE
+
+
+@pytest.mark.parametrize(
+    "recipe_config,expected,test_description",
+    [
+        (
+            {"run": {"model_type": "llm_finetuning_aws"}, "training_config": {"some": "config"}},
+            True,
+            "standard LLMFT recipe",
+        ),
+        (
+            {
+                "run": {"model_type": "verl"},
+                "training_config": {"some": "config"},
+                "actor_rollout_ref": {"some": "config"},
+            },
+            True,
+            "VERL recipe",
+        ),
+        (
+            {"run": {"model_type": "regular_model"}, "some_config": {"value": "test"}},
+            False,
+            "non-LLMFT recipe",
+        ),
+    ],
+)
+def test_is_llmft_recipe(recipe_config, expected, test_description):
+    """Test LLMFT recipe detection for various configurations."""
+    from sagemaker.pytorch.estimator import _is_llmft_recipe
+    from omegaconf import OmegaConf
+
+    recipe = OmegaConf.create(recipe_config)
+    assert _is_llmft_recipe(recipe) is expected, f"Failed for {test_description}"

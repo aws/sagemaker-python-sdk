@@ -4470,6 +4470,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         source_uri=None,
         model_card=None,
         model_life_cycle=None,
+        model_package_registration_type=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -4510,6 +4511,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
             model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+            model_package_registration_type (str or PipelineVariable): Model Package Registration
+                Type (default: None).
         """
         if containers:
             # Containers are provided. Now we can merge missing entries from config.
@@ -4569,6 +4572,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             source_uri=source_uri,
             model_card=model_card,
             model_life_cycle=model_life_cycle,
+            model_package_registration_type=model_package_registration_type,
         )
 
         def submit(request):
@@ -7627,6 +7631,8 @@ def get_model_package_args(
     source_uri=None,
     model_card=None,
     model_life_cycle=None,
+    model_package_registration_type=None,
+    base_model=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -7669,6 +7675,9 @@ def get_model_package_args(
         model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
         model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+        model_package_registration_type (str): Model Package Registration
+                Type (default: None).
+        base_model (ContainerBaseModel): ContainerBaseModel object (default: None).
 
     Returns:
         dict: A dictionary of method argument names and values.
@@ -7681,8 +7690,14 @@ def get_model_package_args(
         }
         if model_data is not None:
             container["ModelDataUrl"] = model_data
-
+        if base_model is not None:
+            container["BaseModel"] = base_model._to_request_dict()
         containers = [container]
+
+    # Convert base_model in containers to request dict if they have _to_request_dict method
+    for container in containers:
+        if "BaseModel" in container and hasattr(container["BaseModel"], "_to_request_dict"):
+            container["BaseModel"] = container["BaseModel"]._to_request_dict()
 
     model_package_args = {
         "containers": containers,
@@ -7735,6 +7750,8 @@ def get_model_package_args(
             original_req["ModelCardContent"] = original_req["Content"]
             del original_req["Content"]
         model_package_args["model_card"] = original_req
+    if model_package_registration_type is not None:
+        model_package_args["model_package_registration_type"] = model_package_registration_type
     return model_package_args
 
 
@@ -7762,6 +7779,7 @@ def get_create_model_package_request(
     source_uri=None,
     model_card=None,
     model_life_cycle=None,
+    model_package_registration_type=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -7802,6 +7820,8 @@ def get_create_model_package_request(
         model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
         model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+        model_package_registration_type (str): Model Package Registration
+                Type (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -7903,6 +7923,8 @@ def get_create_model_package_request(
         request_dict["ModelCard"] = model_card
     if model_life_cycle is not None:
         request_dict["ModelLifeCycle"] = model_life_cycle
+    if model_package_registration_type is not None:
+        request_dict["ModelPackageRegistrationType"] = model_package_registration_type
     return request_dict
 
 

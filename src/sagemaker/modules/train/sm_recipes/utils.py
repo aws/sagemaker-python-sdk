@@ -46,6 +46,19 @@ def _try_resolve_recipe(recipe: DictConfig, key=None) -> DictConfig:
     return recipe[key]
 
 
+def _resolve_final_recipe(recipe: DictConfig):
+    """Resolve final recipe."""
+    final_recipe = _try_resolve_recipe(recipe)
+    if final_recipe is None:
+        final_recipe = _try_resolve_recipe(recipe, "recipes")
+    if final_recipe is None:
+        final_recipe = _try_resolve_recipe(recipe, "training")
+    if final_recipe is None:
+        raise RuntimeError("Could not resolve provided recipe.")
+
+    return final_recipe
+
+
 def _determine_device_type(instance_type: str) -> str:
     """Determine device type (gpu, cpu, trainium) based on instance type."""
     instance_family = instance_type.split(".")[1]
@@ -269,6 +282,27 @@ def _is_nova_recipe(
     return bool(has_nova_model) or bool(has_distillation)
 
 
+def _is_llmft_recipe(
+    recipe: DictConfig,
+) -> bool:
+    """Check if the recipe is a LLMFT recipe.
+
+    A recipe is considered a LLMFT recipe if it meets the following conditions:
+        1. Having a run section
+        2. The model_type in run is llmft
+        3. Having a training_config section
+
+    Args:
+        recipe (DictConfig): The loaded recipe configuration
+
+    Returns:
+        bool: True if the recipe is a LLMFT recipe, False otherwise
+    """
+    run_config = recipe.get("run", {})
+    has_llmft_model = run_config.get("model_type", "").lower() == "llm_finetuning_aws"
+    return bool(has_llmft_model) and bool(recipe.get("training_config"))
+
+
 def _get_args_from_nova_recipe(
     recipe: DictConfig,
     compute: Compute,
@@ -312,6 +346,12 @@ def _get_args_from_nova_recipe(
         if lambda_arn:
             args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
 
+    # Handle reward lambda configuration
+    run_config = recipe.get("run", {})
+    reward_lambda_arn = run_config.get("reward_lambda_arn", "")
+    if reward_lambda_arn:
+        args["hyperparameters"]["reward_lambda_arn"] = reward_lambda_arn
+
     _register_custom_resolvers()
 
     # Resolve Final Recipe
@@ -322,6 +362,43 @@ def _get_args_from_nova_recipe(
         final_recipe = _try_resolve_recipe(recipe, "training")
     if final_recipe is None:
         raise RuntimeError("Could not resolve provided recipe.")
+
+    # Save Final Recipe to tmp dir
+    recipe_local_dir = tempfile.TemporaryDirectory(prefix="recipe_")
+    final_recipe_path = os.path.join(recipe_local_dir.name, SM_RECIPE_YAML)
+    OmegaConf.save(config=final_recipe, f=final_recipe_path)
+
+    args.update(
+        {
+            "compute": compute,
+            "training_image": None,
+            "source_code": None,
+            "distributed": None,
+        }
+    )
+    return args, recipe_local_dir
+
+
+def _get_args_from_llmft_recipe(
+    recipe: DictConfig,
+    compute: Compute,
+) -> Tuple[Dict[str, Any], tempfile.TemporaryDirectory]:
+
+    if not compute.instance_count and not recipe.get("trainer", {}).get("num_nodes", None):
+        raise ValueError(
+            "Must set ``instance_count`` in compute or ``num_nodes`` in trainer in recipe."
+        )
+    if compute.instance_count and recipe.get("trainer", {}).get("num_nodes", None) is not None:
+        logger.warning(
+            f"Using Compute to set instance_count:\n{compute}."
+            "\nIgnoring trainer -> num_nodes in recipe."
+        )
+    compute.instance_count = compute.instance_count or recipe.get("trainer", {}).get("num_nodes")
+
+    args = dict()
+
+    _register_custom_resolvers()
+    final_recipe = _resolve_final_recipe(recipe)
 
     # Save Final Recipe to tmp dir
     recipe_local_dir = tempfile.TemporaryDirectory(prefix="recipe_")
@@ -382,6 +459,9 @@ def _get_args_from_recipe(
         recipe = training_recipe
     if _is_nova_recipe(recipe):
         args, recipe_local_dir = _get_args_from_nova_recipe(recipe, compute, role=role)
+        return args, recipe_local_dir
+    if _is_llmft_recipe(recipe):
+        args, recipe_local_dir = _get_args_from_llmft_recipe(recipe, compute)
         return args, recipe_local_dir
 
     if "trainer" not in recipe:
