@@ -351,7 +351,7 @@ def _get_args_from_nova_recipe(
     reward_lambda_arn = run_config.get("reward_lambda_arn", "")
     if reward_lambda_arn:
         args["hyperparameters"]["reward_lambda_arn"] = reward_lambda_arn
-        
+
     _register_custom_resolvers()
 
     # Resolve Final Recipe
