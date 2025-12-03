@@ -235,6 +235,10 @@ class ModelCustomizationTest(unittest.TestCase):
         self.mock_session.boto_session = Mock()
         self.mock_session.boto_session.region_name = "us-east-1"
         
+        # Mock config attributes to prevent config resolution errors
+        self.mock_session.config = {}
+        self.mock_session.sagemaker_config = {}
+        
         self.mock_training_job = Mock(spec=TrainingJob)
         self.mock_training_job.serverless_job_config = Mock()
         self.mock_training_job.model_package_config = Mock()
