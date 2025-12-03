@@ -178,10 +178,8 @@ def wait(
             iteration = 0
             while True:
                 iteration += 1
-                time.sleep(1)
-                if iteration == poll:
-                    iteration = 0
-                    training_job.refresh()
+                time.sleep(poll)
+                training_job.refresh()
                 clear_output(wait=False)
 
                 status = training_job.training_job_status
