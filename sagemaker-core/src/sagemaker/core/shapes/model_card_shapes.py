@@ -1,6 +1,12 @@
-from typing import List, Optional, Dict, Union, Literal
+from typing import List, Optional, Dict, Union, Literal, TYPE_CHECKING
 from pydantic import BaseModel, Field
 from enum import Enum
+
+from sagemaker.core import shapes
+from sagemaker.core.shapes import ModelDataSource
+
+if TYPE_CHECKING:
+    from sagemaker.core.shapes.shapes import BaseModel as CoreBaseModel
 
 
 class RiskRating(str, Enum):
@@ -17,8 +23,11 @@ class Function(str, Enum):
 
 class ContainersItem(BaseModel):
     model_data_url: Optional[str] = Field(None, max_length=1024)
-    image: str = Field(max_length=255)
+    image: Optional[str] = Field(None, max_length=255)
     nearest_model_name: Optional[str] = None
+    model_data_source: Optional[shapes.ModelDataSource] = None
+    is_checkpoint: Optional[bool] = None
+    base_model: Optional[shapes.BaseModel] = None
 
 
 class InferenceSpecification(BaseModel):

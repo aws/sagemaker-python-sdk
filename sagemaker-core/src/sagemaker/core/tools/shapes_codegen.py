@@ -150,7 +150,7 @@ class ShapesCodeGen:
         init_data = self.shapes_extractor.generate_data_shape_string_body(
             shape, self.resources_plan
         )
-        
+
         try:
             data_class_members = add_indent(init_data, 4)
         except Exception:

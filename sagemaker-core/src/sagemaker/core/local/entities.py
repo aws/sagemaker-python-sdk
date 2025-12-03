@@ -23,7 +23,11 @@ import time
 import sagemaker.core.local.data
 
 from sagemaker.core.local.image import _SageMakerContainer
-from sagemaker.core.local.utils import copy_directory_structure, move_to_destination, get_docker_host
+from sagemaker.core.local.utils import (
+    copy_directory_structure,
+    move_to_destination,
+    get_docker_host,
+)
 from sagemaker.core.common_utils import DeferredError, get_config_value, format_tags
 
 logger = logging.getLogger(__name__)
@@ -471,12 +475,16 @@ class _LocalTransformJob(object):
             A (data source, batch provider) pair.
         """
         input_path = input_data["DataSource"]["S3DataSource"]["S3Uri"]
-        data_source = sagemaker.core.local.data.get_data_source_instance(input_path, self.local_session)
+        data_source = sagemaker.core.local.data.get_data_source_instance(
+            input_path, self.local_session
+        )
 
         split_type = input_data["SplitType"] if "SplitType" in input_data else None
         splitter = sagemaker.core.local.data.get_splitter_instance(split_type)
 
-        batch_provider = sagemaker.core.local.data.get_batch_strategy_instance(batch_strategy, splitter)
+        batch_provider = sagemaker.core.local.data.get_batch_strategy_instance(
+            batch_strategy, splitter
+        )
         return data_source, batch_provider
 
     def _perform_batch_inference(self, input_data, output_data, **kwargs):
@@ -636,6 +644,7 @@ class _LocalEndpoint(object):
             "EndpointStatus": self.state,
         }
         return response
+
 
 def _wait_for_serving_container(serving_port):
     """Placeholder docstring."""

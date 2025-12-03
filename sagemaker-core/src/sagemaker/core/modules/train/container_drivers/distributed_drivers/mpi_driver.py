@@ -35,7 +35,7 @@ except ImportError:
             "MPI distributed training requires the 'mpi_utils' package. "
             "Please install it to use MPI-based distributed training."
         )
-    
+
     start_sshd_daemon = _mpi_not_available
     bootstrap_master_node = _mpi_not_available
     bootstrap_worker_node = _mpi_not_available

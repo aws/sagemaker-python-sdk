@@ -41,7 +41,10 @@ class TestProfilerConstants:
         assert profiler_constants.DATALOADER_PROFILING_CONFIG_NAME == "DataloaderProfilingConfig"
         assert profiler_constants.PYTHON_PROFILING_CONFIG_NAME == "PythonProfilingConfig"
         assert profiler_constants.HOROVOD_PROFILING_CONFIG_NAME == "HorovodProfilingConfig"
-        assert profiler_constants.SMDATAPARALLEL_PROFILING_CONFIG_NAME == "SMDataParallelProfilingConfig"
+        assert (
+            profiler_constants.SMDATAPARALLEL_PROFILING_CONFIG_NAME
+            == "SMDataParallelProfilingConfig"
+        )
 
     def test_profiling_start_step_defaults(self):
         """Test profiling start step default constants."""

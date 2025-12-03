@@ -123,7 +123,7 @@ class Transformer(object):
                 model associated with the transform job.
             sagemaker_session (sagemaker.core.helper.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. 
+                AWS services needed.
             volume_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting
                 the volume attached to the ML compute instance (default: None).
         """
@@ -328,31 +328,42 @@ class Transformer(object):
             model_client_config,
             batch_data_capture_config,
         )
-        
+
         # Apply config resolution and create transform job
         tags = _append_project_tags(format_tags(transform_args["tags"]))
-        tags = _append_sagemaker_config_tags(self.sagemaker_session, tags, "{}.{}.{}".format(SAGEMAKER, TRANSFORM_JOB, TAGS))
-        
+        tags = _append_sagemaker_config_tags(
+            self.sagemaker_session, tags, "{}.{}.{}".format(SAGEMAKER, TRANSFORM_JOB, TAGS)
+        )
+
         batch_data_capture_config = resolve_class_attribute_from_config(
-            None, transform_args["batch_data_capture_config"], "kms_key_id",
-            TRANSFORM_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+            None,
+            transform_args["batch_data_capture_config"],
+            "kms_key_id",
+            TRANSFORM_JOB_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        
+
         output_config = resolve_nested_dict_value_from_config(
-            transform_args["output_config"], [KMS_KEY_ID], TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, 
-            sagemaker_session=self.sagemaker_session
+            transform_args["output_config"],
+            [KMS_KEY_ID],
+            TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        
+
         resource_config = resolve_nested_dict_value_from_config(
-            transform_args["resource_config"], [VOLUME_KMS_KEY_ID], TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
-            sagemaker_session=self.sagemaker_session
+            transform_args["resource_config"],
+            [VOLUME_KMS_KEY_ID],
+            TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        
+
         env = resolve_value_from_config(
-            direct_input=transform_args["env"], config_path=TRANSFORM_JOB_ENVIRONMENT_PATH,
-            default_value=None, sagemaker_session=self.sagemaker_session
+            direct_input=transform_args["env"],
+            config_path=TRANSFORM_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self.sagemaker_session,
         )
-        
+
         transform_request = self._get_transform_request(
             job_name=transform_args["job_name"],
             model_name=transform_args["model_name"],
@@ -372,7 +383,7 @@ class Transformer(object):
 
         # convert Unassigned() type in sagemaker-core to None
         serialized_request = serialize(transform_request)
-        
+
         if isinstance(self.sagemaker_session, PipelineSession):
             self.sagemaker_session._intercept_create_request(serialized_request, None, "transform")
             return
@@ -383,9 +394,10 @@ class Transformer(object):
             self.sagemaker_session.sagemaker_client.create_transform_job(**request)
 
         self.sagemaker_session._intercept_create_request(serialized_request, submit, "transform")
-        
+
         from sagemaker.core.utils.code_injection.codec import transform as transform_util
-        transformed = transform_util(serialized_request, 'CreateTransformJobRequest')
+
+        transformed = transform_util(serialized_request, "CreateTransformJobRequest")
         self.latest_transform_job = TransformJob(**transformed)
 
         if wait:
@@ -409,7 +421,11 @@ class Transformer(object):
     def _retrieve_image_uri(self):
         """Placeholder docstring"""
         try:
-            model = Model.get(model_name=self.model_name, session=self.sagemaker_session.boto_session, region=self.sagemaker_session.boto_region_name)
+            model = Model.get(
+                model_name=self.model_name,
+                session=self.sagemaker_session.boto_session,
+                region=self.sagemaker_session.boto_region_name,
+            )
             if not model:
                 return None
             model_desc = model.__dict__
@@ -465,7 +481,9 @@ class Transformer(object):
         """
         sagemaker_session = sagemaker_session or Session()
 
-        transform_job = TransformJob.get(transform_job_name=transform_job_name, session=sagemaker_session)
+        transform_job = TransformJob.get(
+            transform_job_name=transform_job_name, session=sagemaker_session
+        )
         if not transform_job:
             raise ValueError(f"Transform job {transform_job_name} not found")
         job_details = transform_job.__dict__
@@ -496,12 +514,18 @@ class Transformer(object):
         if job_details.get("transform_resources"):
             init_params["instance_count"] = job_details["transform_resources"].instance_count
             init_params["instance_type"] = job_details["transform_resources"].instance_type
-            init_params["volume_kms_key"] = getattr(job_details["transform_resources"], "volume_kms_key_id", None)
+            init_params["volume_kms_key"] = getattr(
+                job_details["transform_resources"], "volume_kms_key_id", None
+            )
         init_params["strategy"] = job_details.get("batch_strategy")
         if job_details.get("transform_output"):
-            init_params["assemble_with"] = getattr(job_details["transform_output"], "assemble_with", None)
+            init_params["assemble_with"] = getattr(
+                job_details["transform_output"], "assemble_with", None
+            )
             init_params["output_path"] = job_details["transform_output"].s3_output_path
-            init_params["output_kms_key"] = getattr(job_details["transform_output"], "kms_key_id", None)
+            init_params["output_kms_key"] = getattr(
+                job_details["transform_output"], "kms_key_id", None
+            )
             init_params["accept"] = getattr(job_details["transform_output"], "accept", None)
         init_params["max_concurrent_transforms"] = job_details.get("max_concurrent_transforms")
         init_params["max_payload"] = job_details.get("max_payload_in_mb")
@@ -524,12 +548,8 @@ class Transformer(object):
         batch_data_capture_config,
     ):
         """Get transform job arguments."""
-        config = self._load_config(
-            data, data_type, content_type, compression_type, split_type
-        )
-        data_processing = self._prepare_data_processing(
-            input_filter, output_filter, join_source
-        )
+        config = self._load_config(data, data_type, content_type, compression_type, split_type)
+        data_processing = self._prepare_data_processing(input_filter, output_filter, join_source)
 
         transform_args = config.copy()
         transform_args.update(
@@ -573,16 +593,15 @@ class Transformer(object):
             "resource_config": resource_config,
         }
 
-    def _format_inputs_to_input_config(self, data, data_type, content_type, compression_type, split_type):
+    def _format_inputs_to_input_config(
+        self, data, data_type, content_type, compression_type, split_type
+    ):
         """Format inputs to input config."""
         from sagemaker.core.shapes import TransformDataSource, TransformS3DataSource
-        
+
         config = {
             "data_source": TransformDataSource(
-                s3_data_source=TransformS3DataSource(
-                    s3_data_type=data_type,
-                    s3_uri=data
-                )
+                s3_data_source=TransformS3DataSource(s3_data_type=data_type, s3_uri=data)
             )
         }
 
@@ -603,7 +622,7 @@ class Transformer(object):
 
         if kms_key_id is not None:
             config["kms_key_id"] = kms_key_id
-        
+
         if assemble_with is not None:
             config["assemble_with"] = assemble_with
 
@@ -624,14 +643,12 @@ class Transformer(object):
     def _prepare_data_processing(self, input_filter, output_filter, join_source):
         """Prepare data processing config."""
         from sagemaker.core.shapes import DataProcessing
-        
+
         if input_filter is None and output_filter is None and join_source is None:
             return None
-        
+
         return DataProcessing(
-            input_filter=input_filter,
-            output_filter=output_filter,
-            join_source=join_source
+            input_filter=input_filter, output_filter=output_filter, join_source=join_source
         )
 
     def _get_transform_request(
@@ -653,7 +670,7 @@ class Transformer(object):
     ):
         """Construct a dict for creating an Amazon SageMaker transform job."""
         from sagemaker.core.shapes import TransformInput, TransformOutput, TransformResources
-        
+
         transform_request = {
             "TransformJobName": job_name,
             "ModelName": model_name,
@@ -692,7 +709,6 @@ class Transformer(object):
         return transform_request
 
 
-
 def logs_for_transform_job(sagemaker_session, job_name, wait=False, poll=10):
     """Display logs for a given training job, optionally tailing them until job is complete.
 
@@ -710,7 +726,10 @@ def logs_for_transform_job(sagemaker_session, job_name, wait=False, poll=10):
         ValueError: If the transform job fails.
     """
 
-    description = _wait_until(lambda: TransformJob.get(transform_job_name=job_name, session=sagemaker_session).__dict__, poll)
+    description = _wait_until(
+        lambda: TransformJob.get(transform_job_name=job_name, session=sagemaker_session).__dict__,
+        poll,
+    )
 
     instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
         sagemaker_session.boto_session, description, job="Transform"

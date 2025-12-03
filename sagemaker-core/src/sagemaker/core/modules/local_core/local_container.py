@@ -34,7 +34,12 @@ from sagemaker.core.local.utils import check_for_studio, recursive_copy
 from sagemaker.core.constants import DIR_PARAM_NAME
 from sagemaker.core.modules import logger, Session
 from sagemaker.core.modules.configs import Channel
-from sagemaker.core.common_utils import ECR_URI_PATTERN, create_tar_file, _module_import_error, download_folder
+from sagemaker.core.common_utils import (
+    ECR_URI_PATTERN,
+    create_tar_file,
+    _module_import_error,
+    download_folder,
+)
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.core.shapes import DataSource
 

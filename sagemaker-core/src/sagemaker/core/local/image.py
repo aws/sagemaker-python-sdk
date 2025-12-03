@@ -573,7 +573,9 @@ class _SageMakerContainer(object):
             channel_dir = os.path.join(data_dir, channel_name)
             os.mkdir(channel_dir)
 
-            data_source = sagemaker.core.local.data.get_data_source_instance(uri, self.sagemaker_session)
+            data_source = sagemaker.core.local.data.get_data_source_instance(
+                uri, self.sagemaker_session
+            )
             volumes.append(_Volume(data_source.get_root_dir(), channel=channel_name))
 
         # If there is a training script directory and it is a local directory,
@@ -620,7 +622,9 @@ class _SageMakerContainer(object):
             uri = item["DataUri"]
             input_container_dir = item["S3Input"]["LocalPath"]
 
-            data_source = sagemaker.core.local.data.get_data_source_instance(uri, self.sagemaker_session)
+            data_source = sagemaker.core.local.data.get_data_source_instance(
+                uri, self.sagemaker_session
+            )
             volumes.append(_Volume(data_source.get_root_dir(), input_container_dir))
 
         if processing_output_config and "Outputs" in processing_output_config:
@@ -766,7 +770,9 @@ class _SageMakerContainer(object):
         try:
             import yaml
         except ImportError as e:
-            logger.error(sagemaker.core.common_utils._module_import_error("yaml", "Local mode", "local"))
+            logger.error(
+                sagemaker.core.common_utils._module_import_error("yaml", "Local mode", "local")
+            )
             raise e
 
         yaml_content = yaml.dump(content, default_flow_style=False)

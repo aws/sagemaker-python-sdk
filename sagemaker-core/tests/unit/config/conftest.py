@@ -26,6 +26,7 @@ def valid_vpc_config():
 @pytest.fixture
 def valid_config_with_all_the_scopes(get_data_dir):
     import yaml
+
     config_file_path = os.path.join(get_data_dir, "config.yaml")
     with open(config_file_path, "r") as f:
         config = yaml.safe_load(f)
@@ -99,9 +100,7 @@ def valid_endpointconfig_config():
 @pytest.fixture
 def valid_monitoring_schedule_config(valid_iam_role_arn):
     return {
-        "MonitoringScheduleConfig": {
-            "MonitoringJobDefinition": {"RoleArn": valid_iam_role_arn}
-        }
+        "MonitoringScheduleConfig": {"MonitoringJobDefinition": {"RoleArn": valid_iam_role_arn}}
     }
 
 

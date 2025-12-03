@@ -250,42 +250,48 @@ def non_repeating_log_factory(logger: logging.Logger, method: str, cache_size=10
 
     return new_log_method
 
-def _append_sagemaker_config_tags(sagemaker_session, tags: List['TagsDict'], config_path_to_tags: str):
-        """Appends tags specified in the sagemaker_config to the given list of tags.
 
-        To minimize the chance of duplicate tags being applied, this is intended to be used
-        immediately before calls to sagemaker_client, rather than during initialization of
-        classes like EstimatorBase.
+def _append_sagemaker_config_tags(
+    sagemaker_session, tags: List["TagsDict"], config_path_to_tags: str
+):
+    """Appends tags specified in the sagemaker_config to the given list of tags.
 
-        Args:
-            tags: The list of tags to append to.
-            config_path_to_tags: The path to look up tags in the config.
+    To minimize the chance of duplicate tags being applied, this is intended to be used
+    immediately before calls to sagemaker_client, rather than during initialization of
+    classes like EstimatorBase.
 
-        Returns:
-            A list of tags.
-        """
-        from sagemaker.core.config.config_manager import SageMakerConfig
-        config_tags = SageMakerConfig().get_sagemaker_config_value(sagemaker_session, config_path_to_tags)
+    Args:
+        tags: The list of tags to append to.
+        config_path_to_tags: The path to look up tags in the config.
 
-        if config_tags is None or len(config_tags) == 0:
-            return tags
+    Returns:
+        A list of tags.
+    """
+    from sagemaker.core.config.config_manager import SageMakerConfig
 
-        all_tags = tags or []
-        for config_tag in config_tags:
-            config_tag_key = config_tag[KEY]
-            if not any(tag.get("Key", None) == config_tag_key for tag in all_tags):
-                # This check prevents new tags with duplicate keys from being added
-                # (to prevent API failure and/or overwriting of tags). If there is a conflict,
-                # the user-provided tag should take precedence over the config-provided tag.
-                # Note: this does not check user-provided tags for conflicts with other
-                # user-provided tags.
-                all_tags.append(config_tag)
+    config_tags = SageMakerConfig().get_sagemaker_config_value(
+        sagemaker_session, config_path_to_tags
+    )
 
-        _log_sagemaker_config_merge(
-            source_value=tags,
-            config_value=config_tags,
-            merged_source_and_config_value=all_tags,
-            config_key_path=config_path_to_tags,
-        )
+    if config_tags is None or len(config_tags) == 0:
+        return tags
 
-        return all_tags
+    all_tags = tags or []
+    for config_tag in config_tags:
+        config_tag_key = config_tag[KEY]
+        if not any(tag.get("Key", None) == config_tag_key for tag in all_tags):
+            # This check prevents new tags with duplicate keys from being added
+            # (to prevent API failure and/or overwriting of tags). If there is a conflict,
+            # the user-provided tag should take precedence over the config-provided tag.
+            # Note: this does not check user-provided tags for conflicts with other
+            # user-provided tags.
+            all_tags.append(config_tag)
+
+    _log_sagemaker_config_merge(
+        source_value=tags,
+        config_value=config_tags,
+        merged_source_and_config_value=all_tags,
+        config_key_path=config_path_to_tags,
+    )
+
+    return all_tags

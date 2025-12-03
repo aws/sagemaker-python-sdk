@@ -25,7 +25,7 @@ import uuid
 from sagemaker.core.model_monitor import model_monitoring as mm
 from sagemaker.core.model_monitor.utils import (
     boto_describe_monitoring_schedule,
-    boto_list_monitoring_executions
+    boto_list_monitoring_executions,
 )
 from sagemaker.core import image_uris, s3
 from sagemaker.core.helper.session_helper import Session, expand_role
@@ -178,7 +178,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
         """
         monitoring_executions = boto_list_monitoring_executions(
             sagemaker_session=self.sagemaker_session,
-            monitoring_schedule_name=self.monitoring_schedule_name
+            monitoring_schedule_name=self.monitoring_schedule_name,
         )
         if len(monitoring_executions["MonitoringExecutionSummaries"]) == 0:
             raise ValueError("No execution jobs were kicked off.")
@@ -454,7 +454,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             "{}JobInput".format(self.monitoring_type()): job_input,
             "{}JobOutputConfig".format(self.monitoring_type()): job_output,
             "JobResources": dict(ClusterConfig=cluster_config),
-            "RoleArn": expand_role(self.sagemaker_session,role),
+            "RoleArn": expand_role(self.sagemaker_session, role),
         }
 
         if baseline_config:
@@ -874,8 +874,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         """
         sagemaker_session = sagemaker_session or Session()
         schedule_desc = boto_describe_monitoring_schedule(
-            sagemaker_session,
-            monitoring_schedule_name=monitor_schedule_name
+            sagemaker_session, monitoring_schedule_name=monitor_schedule_name
         )
         monitoring_type = schedule_desc["MonitoringScheduleConfig"].get("MonitoringType")
         if monitoring_type != cls.monitoring_type():
@@ -1321,8 +1320,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         """
         sagemaker_session = sagemaker_session or Session()
         schedule_desc = boto_describe_monitoring_schedule(
-            sagemaker_session=sagemaker_session,
-            monitoring_schedule_name=monitor_schedule_name
+            sagemaker_session=sagemaker_session, monitoring_schedule_name=monitor_schedule_name
         )
         monitoring_type = schedule_desc["MonitoringScheduleConfig"].get("MonitoringType")
         if monitoring_type != cls.monitoring_type():
@@ -1335,7 +1333,9 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         job_desc = sagemaker_session.sagemaker_client.describe_model_explainability_job_definition(
             JobDefinitionName=job_definition_name
         )
-        tags = list_tags(sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"])
+        tags = list_tags(
+            sagemaker_session=sagemaker_session, resource_arn=schedule_desc["MonitoringScheduleArn"]
+        )
         return ClarifyModelMonitor._attach(
             clazz=cls,
             sagemaker_session=sagemaker_session,

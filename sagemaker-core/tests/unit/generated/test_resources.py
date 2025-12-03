@@ -29,7 +29,7 @@ class ResourcesTest(unittest.TestCase):
         "bool": False,
         "datetime": datetime.datetime(2024, 7, 1),
     }
-    
+
     @classmethod
     def setUpClass(cls):
         """Load data once for all tests"""
@@ -55,7 +55,7 @@ class ResourcesTest(unittest.TestCase):
                         self.SHAPE_CLASSES_BY_SHAPE_NAME[shape_name] = shape_cls
             except (ImportError, AttributeError):
                 pass
-        
+
         # Load resources
         for name, cls in inspect.getmembers(
             importlib.import_module("sagemaker.core.resources"), inspect.isclass
@@ -65,7 +65,6 @@ class ResourcesTest(unittest.TestCase):
                     self.MOCK_RESOURCES_RESPONSE_BY_RESOURCE_NAME[name] = (
                         self._get_required_parameters_for_function(cls.get)
                     )
-
 
     @patch("sagemaker.core.resources.transform")
     @patch("boto3.session.Session")
@@ -425,7 +424,7 @@ class ResourcesTest(unittest.TestCase):
                 else:
                     # Extract shape name from annotation
                     shape_name = None
-                    if hasattr(val, 'annotation') and val.annotation != inspect.Parameter.empty:
+                    if hasattr(val, "annotation") and val.annotation != inspect.Parameter.empty:
                         # Check if annotation is a class (not Union, Optional, etc.)
                         if inspect.isclass(val.annotation):
                             shape_name = val.annotation.__name__
@@ -438,7 +437,7 @@ class ResourcesTest(unittest.TestCase):
                                 shape_name = annotation_str.split(".")[-1]
                     else:
                         shape_name = attribute_type.split(".")[-1]
-                    
+
                     generated_shape = self._generate_test_shape(
                         self.SHAPE_CLASSES_BY_SHAPE_NAME.get(shape_name)
                     )
@@ -514,7 +513,7 @@ class ResourcesTest(unittest.TestCase):
         mock_client_class.return_value.get_client.return_value = MagicMock()
         client = Base.get_sagemaker_client()
         assert client is not None
-        
+
         client_with_region = Base.get_sagemaker_client(region_name="us-west-2")
         assert client_with_region is not None
 
@@ -523,19 +522,29 @@ class ResourcesTest(unittest.TestCase):
     def test_get_updated_kwargs_with_configured_attributes(self, mock_globals, mock_config_manager):
         """Test Base.get_updated_kwargs_with_configured_attributes with config values"""
         from sagemaker.core.shapes import Tag
-        mock_config_manager.load_default_configs_for_resource_name.return_value = {"tags": [{"Key": "test", "Value": "value"}]}
-        mock_config_manager.get_resolved_config_value.return_value = {"Key": "test", "Value": "value"}
+
+        mock_config_manager.load_default_configs_for_resource_name.return_value = {
+            "tags": [{"Key": "test", "Value": "value"}]
+        }
+        mock_config_manager.get_resolved_config_value.return_value = {
+            "Key": "test",
+            "Value": "value",
+        }
         mock_globals.return_value = {"Tags": Tag}
-        
+
         kwargs = {"test_param": "value", "tags": None}
-        result = Base.get_updated_kwargs_with_configured_attributes({"tags": {}}, "TestResource", **kwargs)
+        result = Base.get_updated_kwargs_with_configured_attributes(
+            {"tags": {}}, "TestResource", **kwargs
+        )
         assert "test_param" in result
 
     @patch("sagemaker.core.resources.Base.config_manager")
     def test_get_updated_kwargs_exception_handling(self, mock_config_manager):
         """Test exception handling in get_updated_kwargs_with_configured_attributes"""
-        mock_config_manager.load_default_configs_for_resource_name.side_effect = Exception("Test error")
-        
+        mock_config_manager.load_default_configs_for_resource_name.side_effect = Exception(
+            "Test error"
+        )
+
         kwargs = {"test_param": "value"}
         result = Base.get_updated_kwargs_with_configured_attributes({}, "TestResource", **kwargs)
         assert result == kwargs
@@ -543,7 +552,7 @@ class ResourcesTest(unittest.TestCase):
     def test_populate_chained_attributes_with_unassigned(self):
         """Test populate_chained_attributes with Unassigned values"""
         from sagemaker.core.utils.utils import Unassigned
-        
+
         input_args = {"param1": "value1", "param2": Unassigned()}
         result = Base.populate_chained_attributes("TestResource", input_args)
         assert "param1" in result
@@ -560,7 +569,7 @@ class ResourcesTest(unittest.TestCase):
         input_args = {"param1": ["str1", "str2"]}
         result = Base.populate_chained_attributes("TestResource", input_args)
         assert result["param1"] == ["str1", "str2"]
-    
+
     def test_populate_chained_attributes_with_name_field(self):
         """Test populate_chained_attributes with name fields"""
         # Create a mock object with get_name method
@@ -571,18 +580,20 @@ class ResourcesTest(unittest.TestCase):
         # Should call get_name on the object
         assert "model_name" in result
         assert result["model_name"] == "model-123"
-    
+
     def test_populate_chained_attributes_with_object_list(self):
         """Test populate_chained_attributes with list of objects"""
         from sagemaker.core.shapes import Tag
+
         tags = [Tag(key="k1", value="v1"), Tag(key="k2", value="v2")]
         input_args = {"tags": tags}
         result = Base.populate_chained_attributes("TestResource", input_args)
         assert "tags" in result
-    
+
     def test_populate_chained_attributes_with_complex_object(self):
         """Test populate_chained_attributes with complex objects"""
         from sagemaker.core.shapes import Tag
+
         tag = Tag(key="test", value="val")
         input_args = {"metadata": tag}
         result = Base.populate_chained_attributes("TestResource", input_args)
@@ -590,10 +601,11 @@ class ResourcesTest(unittest.TestCase):
 
     def test_add_validate_call_decorator(self):
         """Test add_validate_call decorator"""
+
         @Base.add_validate_call
         def test_func(x: int):
             return x * 2
-        
+
         result = test_func(5)
         assert result == 10
 
@@ -601,7 +613,7 @@ class ResourcesTest(unittest.TestCase):
         """Test Action.get_name method"""
         action = Action(action_name="test-action")
         assert action.get_name() == "test-action"
-    
+
     def test_action_get_name_error_path(self):
         """Test Action.get_name error path when name not found"""
         # Use model_construct to bypass validation
@@ -615,36 +627,38 @@ class ResourcesTest(unittest.TestCase):
         """Test all resources and methods defined in config file"""
         import json
         import os
-        
+
         config_path = os.path.join(os.path.dirname(__file__), "resource_test_config.json")
         if not os.path.exists(config_path):
             pytest.skip("Config file not found")
-        
+
         with open(config_path) as f:
             config = json.load(f)
-        
+
         resources_module = importlib.import_module("sagemaker.core.resources")
         client = MagicMock()
         mock_client_class.return_value.get_client.return_value = client
-        
+
         for resource_config in config.get("resources", []):
             class_name = resource_config["class_name"]
             resource_cls = getattr(resources_module, class_name, None)
-            
+
             if not resource_cls:
                 continue
-            
+
             for method_name in resource_config["methods"]:
                 if not hasattr(resource_cls, method_name):
                     continue
-                
+
                 method = getattr(resource_cls, method_name)
                 if not callable(method):
                     continue
-                
+
                 # Test each method based on its type
                 if method_name == "create":
-                    self._test_create_method(resource_cls, method, client, mock_transform, class_name)
+                    self._test_create_method(
+                        resource_cls, method, client, mock_transform, class_name
+                    )
                 elif method_name == "get":
                     self._test_get_method(resource_cls, method, client, mock_transform, class_name)
                 elif method_name == "get_name":
@@ -656,7 +670,7 @@ class ResourcesTest(unittest.TestCase):
             input_args = self._get_required_parameters_for_function(method)
             create_function_name = f"create_{pascal_to_snake(class_name)}"
             get_function_name = f"describe_{pascal_to_snake(class_name)}"
-            
+
             with patch.object(client, create_function_name, return_value={}):
                 with patch.object(client, get_function_name, return_value={}):
                     mock_transform.return_value = input_args
@@ -669,7 +683,7 @@ class ResourcesTest(unittest.TestCase):
         try:
             input_args = self._get_required_parameters_for_function(method)
             get_function_name = f"describe_{pascal_to_snake(class_name)}"
-            
+
             with patch.object(client, get_function_name, return_value={}):
                 mock_transform.return_value = input_args
                 resource_cls.get(**input_args)
@@ -685,49 +699,52 @@ class ResourcesTest(unittest.TestCase):
             assert result == "test-name" or result is None
         except Exception:
             pass
-    
+
     @patch("sagemaker.core.resources.transform")
     @patch("sagemaker.core.utils.utils.SageMakerClient")
     def test_wait_methods(self, mock_client_class, mock_transform):
         """Test wait methods for resources that support it"""
         from sagemaker.core.resources import Endpoint
-        
+
         client = MagicMock()
         mock_client_class.return_value.get_client.return_value = client
-        
+
         # Mock endpoint in InService status
         client.describe_endpoint.return_value = {
             "EndpointName": "test-endpoint",
-            "EndpointStatus": "InService"
+            "EndpointStatus": "InService",
         }
-        mock_transform.return_value = {"endpoint_name": "test-endpoint", "endpoint_status": "InService"}
-        
+        mock_transform.return_value = {
+            "endpoint_name": "test-endpoint",
+            "endpoint_status": "InService",
+        }
+
         endpoint = Endpoint(endpoint_name="test-endpoint", endpoint_status="InService")
-        
+
         # Test wait - should return immediately if already in target status
         try:
             endpoint.wait(target_status="InService", poll_interval=0.1)
         except Exception:
             pass
-    
+
     @patch("sagemaker.core.resources.transform")
     @patch("sagemaker.core.utils.utils.SageMakerClient")
     def test_stop_methods(self, mock_client_class, mock_transform):
         """Test stop methods for resources that support it"""
         from sagemaker.core.resources import TrainingJob
-        
+
         client = MagicMock()
         mock_client_class.return_value.get_client.return_value = client
-        
+
         client.stop_training_job.return_value = {}
         client.describe_training_job.return_value = {
             "TrainingJobName": "test-job",
-            "TrainingJobStatus": "Stopped"
+            "TrainingJobStatus": "Stopped",
         }
         mock_transform.return_value = {"training_job_name": "test-job"}
-        
+
         job = TrainingJob(training_job_name="test-job")
-        
+
         try:
             job.stop()
         except Exception:

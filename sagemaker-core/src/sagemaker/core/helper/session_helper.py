@@ -102,7 +102,7 @@ _STATUS_CODE_TABLE = {
     "STARTING": "Starting",
     "PENDING": "Pending",
 }
-EP_LOGGER_POLL = 10
+EP_LOGGER_POLL = 30
 DEFAULT_EP_POLL = 30
 
 
@@ -2584,7 +2584,9 @@ def _flush_log_streams(
             color_wrap(idx, event["message"])
             ts, count = positions[stream_names[idx]]
             if event["timestamp"] == ts:
-                positions[stream_names[idx]] = sagemaker.core.logs.Position(timestamp=ts, skip=count + 1)
+                positions[stream_names[idx]] = sagemaker.core.logs.Position(
+                    timestamp=ts, skip=count + 1
+                )
             else:
                 positions[stream_names[idx]] = sagemaker.core.logs.Position(
                     timestamp=event["timestamp"], skip=1
@@ -2800,7 +2802,7 @@ def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, pagina
         if endpoint_status != "Creating":
             stop = True
             if endpoint_status == "InService":
-                LOGGER.info("Created endpoint with name %s", endpoint_name)
+                LOGGER.info("Created endpoint with name %s. Waiting for it to be InService", endpoint_name)
             else:
                 time.sleep(poll)
 

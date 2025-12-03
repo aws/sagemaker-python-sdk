@@ -2,11 +2,12 @@ name: Sagemaker PR Checks
 on:
   pull_request_target:
     branches:
-      - "master-v3"
+      - "master"
     paths:
       - 'sagemaker-train/**'
       - 'sagemaker-serve/**'
       - 'sagemaker-mlops/**'
+      - 'sagemaker-core/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
@@ -91,6 +92,13 @@ jobs:
               SUBMODULES='["sagemaker-mlops"]'
             else
               SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-mlops"\]/')
+            fi
+          fi
+          if echo "$CHANGES" | grep -q "^sagemaker-core/"; then
+            if [ "$SUBMODULES" = '[]' ]; then
+              SUBMODULES='["sagemaker-core"]'
+            else
+              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-core"\]/')
             fi
           fi
           echo "Final SUBMODULES: $SUBMODULES"

@@ -65,9 +65,12 @@ from sagemaker.core.common_utils import (
 )
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
+
 def is_pipeline_variable(var: object) -> bool:
     """Check if the variable is a pipeline variable"""
     return isinstance(var, PipelineVariable)
+
+
 from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix
 
 
@@ -97,6 +100,7 @@ def get_eula_url(document: HubContentDocument, sagemaker_session: Optional[Sessi
     dns_suffix = endpoint_resolver.get_partition_dns_suffix(partition)
 
     return f"https://{bucket}.s3.{region}.{dns_suffix}/{key}"
+
 
 def get_jumpstart_launched_regions_message() -> str:
     """Returns formatted string indicating where JumpStart is launched."""

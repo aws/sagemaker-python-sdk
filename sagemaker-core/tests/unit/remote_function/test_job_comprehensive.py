@@ -58,48 +58,53 @@ class TestJobSettingsValidation:
     def test_spark_config_with_image_uri_raises_error(self, mock_session):
         """Test lines 619-620: spark_config and image_uri validation."""
         from sagemaker.core.remote_function.spark_config import SparkConfig
+
         spark_config = SparkConfig()
         with pytest.raises(ValueError, match="spark_config and image_uri cannot be specified"):
             _JobSettings(
                 sagemaker_session=mock_session,
                 spark_config=spark_config,
                 image_uri="test-image",
-                instance_type="ml.m5.xlarge"
+                instance_type="ml.m5.xlarge",
             )
 
     def test_spark_config_with_conda_env_raises_error(self, mock_session):
         """Test lines 622-623: spark_config and job_conda_env validation."""
         from sagemaker.core.remote_function.spark_config import SparkConfig
+
         spark_config = SparkConfig()
         with pytest.raises(ValueError, match="Remote Spark jobs do not support job_conda_env"):
             _JobSettings(
                 sagemaker_session=mock_session,
                 spark_config=spark_config,
                 job_conda_env="test-env",
-                instance_type="ml.m5.xlarge"
+                instance_type="ml.m5.xlarge",
             )
 
     def test_spark_config_with_auto_capture_raises_error(self, mock_session):
         """Test lines 625-628: spark_config and auto_capture validation."""
         from sagemaker.core.remote_function.spark_config import SparkConfig
+
         spark_config = SparkConfig()
         with pytest.raises(ValueError, match="Remote Spark jobs do not support automatically"):
             _JobSettings(
                 sagemaker_session=mock_session,
                 spark_config=spark_config,
                 dependencies="auto_capture",
-                instance_type="ml.m5.xlarge"
+                instance_type="ml.m5.xlarge",
             )
 
     def test_pre_execution_commands_and_script_raises_error(self, mock_session):
         """Test lines 651-653: pre_execution validation."""
-        with pytest.raises(ValueError, match="Only one of pre_execution_commands or pre_execution_script"):
+        with pytest.raises(
+            ValueError, match="Only one of pre_execution_commands or pre_execution_script"
+        ):
             _JobSettings(
                 sagemaker_session=mock_session,
                 pre_execution_commands=["echo test"],
                 pre_execution_script="/path/to/script.sh",
                 instance_type="ml.m5.xlarge",
-                image_uri="test-image"
+                image_uri="test-image",
             )
 
     def test_instance_type_required(self, mock_session):
@@ -116,13 +121,18 @@ class TestJobSettingsValidation:
     def test_get_default_image_unsupported_python(self, mock_session):
         """Test lines 792-795: unsupported Python version."""
         with patch.object(sys, "version_info", (3, 7, 0)):
-            with pytest.raises(ValueError, match="Default image is supported only for Python versions"):
+            with pytest.raises(
+                ValueError, match="Default image is supported only for Python versions"
+            ):
                 _JobSettings._get_default_image(mock_session)
 
     def test_get_default_spark_image_unsupported_python(self, mock_session):
         """Test lines 815-817: unsupported Python for Spark."""
         with patch.object(sys, "version_info", (3, 8, 0)):
-            with pytest.raises(ValueError, match="SageMaker Spark image for remote job only supports Python version 3.9"):
+            with pytest.raises(
+                ValueError,
+                match="SageMaker Spark image for remote job only supports Python version 3.9",
+            ):
                 _JobSettings._get_default_spark_image(mock_session)
 
 
@@ -134,7 +144,7 @@ class TestJobMethods:
         response = {
             "TrainingJobName": "test-job",
             "OutputDataConfig": {"S3OutputPath": "s3://bucket/output"},
-            "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "test-key"}
+            "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "test-key"},
         }
         job = _Job.from_describe_response(response, mock_session)
         assert job.job_name == "test-job"
@@ -146,7 +156,7 @@ class TestJobMethods:
         """Test lines 865-871: describe with cached completed job."""
         job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         job._last_describe_response = {"TrainingJobStatus": "Completed"}
-        
+
         result = job.describe()
         assert result["TrainingJobStatus"] == "Completed"
         mock_session.sagemaker_client.describe_training_job.assert_not_called()
@@ -155,7 +165,7 @@ class TestJobMethods:
         """Test lines 865-871: describe with cached failed job."""
         job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         job._last_describe_response = {"TrainingJobStatus": "Failed"}
-        
+
         result = job.describe()
         assert result["TrainingJobStatus"] == "Failed"
         mock_session.sagemaker_client.describe_training_job.assert_not_called()
@@ -164,7 +174,7 @@ class TestJobMethods:
         """Test lines 865-871: describe with cached stopped job."""
         job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         job._last_describe_response = {"TrainingJobStatus": "Stopped"}
-        
+
         result = job.describe()
         assert result["TrainingJobStatus"] == "Stopped"
         mock_session.sagemaker_client.describe_training_job.assert_not_called()
@@ -182,13 +192,10 @@ class TestJobMethods:
         """Test lines 889-903: wait method."""
         job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         mock_logs.return_value = {"TrainingJobStatus": "Completed"}
-        
+
         job.wait(timeout=100)
         mock_logs.assert_called_once_with(
-            sagemaker_session=mock_session,
-            job_name="test-job",
-            wait=True,
-            timeout=100
+            sagemaker_session=mock_session, job_name="test-job", wait=True, timeout=100
         )
         assert job._last_describe_response["TrainingJobStatus"] == "Completed"
 
@@ -202,9 +209,9 @@ class TestCheckpointConfig:
         args = (checkpoint,)
         kwargs = {}
         request_dict = {}
-        
+
         _update_job_request_with_checkpoint_config(args, kwargs, request_dict)
-        
+
         assert "CheckpointConfig" in request_dict
         assert request_dict["CheckpointConfig"]["S3Uri"] == "s3://bucket/checkpoint"
         assert request_dict["CheckpointConfig"]["LocalPath"] == "/opt/ml/checkpoints/"
@@ -215,9 +222,9 @@ class TestCheckpointConfig:
         args = ()
         kwargs = {"checkpoint": checkpoint}
         request_dict = {}
-        
+
         _update_job_request_with_checkpoint_config(args, kwargs, request_dict)
-        
+
         assert "CheckpointConfig" in request_dict
         assert request_dict["CheckpointConfig"]["S3Uri"] == "s3://bucket/checkpoint"
 
@@ -228,8 +235,10 @@ class TestCheckpointConfig:
         args = (checkpoint1,)
         kwargs = {"checkpoint": checkpoint2}
         request_dict = {}
-        
-        with pytest.raises(ValueError, match="cannot have more than one argument of type CheckpointLocation"):
+
+        with pytest.raises(
+            ValueError, match="cannot have more than one argument of type CheckpointLocation"
+        ):
             _update_job_request_with_checkpoint_config(args, kwargs, request_dict)
 
     def test_no_checkpoint(self):
@@ -237,9 +246,9 @@ class TestCheckpointConfig:
         args = ("arg1", "arg2")
         kwargs = {"key": "value"}
         request_dict = {}
-        
+
         _update_job_request_with_checkpoint_config(args, kwargs, request_dict)
-        
+
         assert "CheckpointConfig" not in request_dict
 
 
@@ -251,10 +260,10 @@ class TestConvertRunToJson:
         mock_run = Mock()
         mock_run.experiment_name = "test-experiment"
         mock_run.run_name = "test-run"
-        
+
         result = _convert_run_to_json(mock_run)
         data = json.loads(result)
-        
+
         assert data["experiment_name"] == "test-experiment"
         assert data["run_name"] == "test-run"
 
@@ -265,10 +274,7 @@ class TestSparkDependencies:
     def test_upload_spark_config_none(self, mock_session):
         """Test lines 1356: upload None Spark configuration."""
         result = _upload_serialized_spark_configuration(
-            "s3://bucket/base",
-            "kms-key",
-            None,
-            mock_session
+            "s3://bucket/base", "kms-key", None, mock_session
         )
         assert result is None
 
@@ -277,31 +283,32 @@ class TestSparkDependencies:
         """Test lines 1339-1356: upload Spark configuration."""
         config = {"spark.executor.memory": "4g"}
         mock_uploader.upload_string_as_file_body = Mock()
-        
-        _upload_serialized_spark_configuration(
-            "s3://bucket/base",
-            "kms-key",
-            config,
-            mock_session
-        )
-        
+
+        _upload_serialized_spark_configuration("s3://bucket/base", "kms-key", config, mock_session)
+
         mock_uploader.upload_string_as_file_body.assert_called_once()
 
     def test_upload_spark_deps_none(self, mock_session):
         """Test lines 1379-1380: None dependencies."""
-        result = _upload_spark_submit_deps(None, "workspace", "s3://bucket", "kms-key", mock_session)
+        result = _upload_spark_submit_deps(
+            None, "workspace", "s3://bucket", "kms-key", mock_session
+        )
         assert result is None
 
     def test_upload_spark_deps_s3_uri(self, mock_session):
         """Test lines 1388-1389: S3 URI dependency."""
         deps = ["s3://bucket/dep.jar"]
-        result = _upload_spark_submit_deps(deps, "workspace", "s3://bucket", "kms-key", mock_session)
+        result = _upload_spark_submit_deps(
+            deps, "workspace", "s3://bucket", "kms-key", mock_session
+        )
         assert "s3://bucket/dep.jar" in result
 
     def test_upload_spark_deps_s3a_uri(self, mock_session):
         """Test lines 1388-1389: S3A URI dependency."""
         deps = ["s3a://bucket/dep.jar"]
-        result = _upload_spark_submit_deps(deps, "workspace", "s3://bucket", "kms-key", mock_session)
+        result = _upload_spark_submit_deps(
+            deps, "workspace", "s3://bucket", "kms-key", mock_session
+        )
         assert "s3a://bucket/dep.jar" in result
 
     def test_upload_spark_deps_empty_workspace_raises_error(self, mock_session):
@@ -326,7 +333,7 @@ class TestDistributedTraining:
         job_settings = Mock()
         job_settings.use_mpirun = False
         request_dict = {"InputDataConfig": []}
-        
+
         result = _extend_mpirun_to_request(request_dict, job_settings)
         assert result == request_dict
 
@@ -336,7 +343,7 @@ class TestDistributedTraining:
         job_settings.use_mpirun = True
         job_settings.instance_count = 1
         request_dict = {"InputDataConfig": []}
-        
+
         result = _extend_mpirun_to_request(request_dict, job_settings)
         assert result == request_dict
 
@@ -346,20 +353,21 @@ class TestDistributedTraining:
         job_settings.use_mpirun = True
         job_settings.instance_count = 2
         request_dict = {
-            "InputDataConfig": [
-                {"DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/data"}}}
-            ]
+            "InputDataConfig": [{"DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/data"}}}]
         }
-        
+
         result = _extend_mpirun_to_request(request_dict, job_settings)
-        assert result["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3DataDistributionType"] == "FullyReplicated"
+        assert (
+            result["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3DataDistributionType"]
+            == "FullyReplicated"
+        )
 
     def test_extend_torchrun_no_torchrun(self, mock_session):
         """Test lines 1506-1507: torchrun disabled."""
         job_settings = Mock()
         job_settings.use_torchrun = False
         request_dict = {"InputDataConfig": []}
-        
+
         result = _extend_torchrun_to_request(request_dict, job_settings)
         assert result == request_dict
 
@@ -369,7 +377,7 @@ class TestDistributedTraining:
         job_settings.use_torchrun = True
         job_settings.instance_count = 1
         request_dict = {"InputDataConfig": []}
-        
+
         result = _extend_torchrun_to_request(request_dict, job_settings)
         assert result == request_dict
 
@@ -379,13 +387,14 @@ class TestDistributedTraining:
         job_settings.use_torchrun = True
         job_settings.instance_count = 2
         request_dict = {
-            "InputDataConfig": [
-                {"DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/data"}}}
-            ]
+            "InputDataConfig": [{"DataSource": {"S3DataSource": {"S3Uri": "s3://bucket/data"}}}]
         }
-        
+
         result = _extend_torchrun_to_request(request_dict, job_settings)
-        assert result["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3DataDistributionType"] == "FullyReplicated"
+        assert (
+            result["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3DataDistributionType"]
+            == "FullyReplicated"
+        )
 
 
 class TestJobStatus:
@@ -405,11 +414,9 @@ class TestJobStatus:
 
     def test_check_job_status_failed(self):
         """Test lines 1987-2011: failed status."""
-        desc = {
-            "TrainingJobStatus": "Failed",
-            "FailureReason": "Test failure"
-        }
+        desc = {"TrainingJobStatus": "Failed", "FailureReason": "Test failure"}
         from sagemaker.core import exceptions
+
         with pytest.raises(exceptions.UnexpectedStatusException):
             _check_job_status("test-job", desc, "TrainingJobStatus")
 
@@ -417,9 +424,10 @@ class TestJobStatus:
         """Test lines 2002-2007: CapacityError."""
         desc = {
             "TrainingJobStatus": "Failed",
-            "FailureReason": "CapacityError: Insufficient capacity"
+            "FailureReason": "CapacityError: Insufficient capacity",
         }
         from sagemaker.core import exceptions
+
         with pytest.raises(exceptions.CapacityError):
             _check_job_status("test-job", desc, "TrainingJobStatus")
 
@@ -453,9 +461,7 @@ class TestLogsInit:
 
     def test_logs_init_training_job(self, mock_session):
         """Test lines 2098-2105: training job."""
-        description = {
-            "ResourceConfig": {"InstanceCount": 2}
-        }
+        description = {"ResourceConfig": {"InstanceCount": 2}}
         result = _logs_init(mock_session.boto_session, description, "Training")
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = result
         assert instance_count == 2
@@ -464,12 +470,7 @@ class TestLogsInit:
     def test_logs_init_training_job_instance_groups(self, mock_session):
         """Test lines 2098-2103: training job with instance groups."""
         description = {
-            "ResourceConfig": {
-                "InstanceGroups": [
-                    {"InstanceCount": 2},
-                    {"InstanceCount": 3}
-                ]
-            }
+            "ResourceConfig": {"InstanceGroups": [{"InstanceCount": 2}, {"InstanceCount": 3}]}
         }
         result = _logs_init(mock_session.boto_session, description, "Training")
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = result
@@ -477,9 +478,7 @@ class TestLogsInit:
 
     def test_logs_init_transform_job(self, mock_session):
         """Test lines 2106-2107: transform job."""
-        description = {
-            "TransformResources": {"InstanceCount": 1}
-        }
+        description = {"TransformResources": {"InstanceCount": 1}}
         result = _logs_init(mock_session.boto_session, description, "Transform")
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = result
         assert instance_count == 1
@@ -487,9 +486,7 @@ class TestLogsInit:
 
     def test_logs_init_processing_job(self, mock_session):
         """Test lines 2108-2109: processing job."""
-        description = {
-            "ProcessingResources": {"ClusterConfig": {"InstanceCount": 3}}
-        }
+        description = {"ProcessingResources": {"ClusterConfig": {"InstanceCount": 3}}}
         result = _logs_init(mock_session.boto_session, description, "Processing")
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = result
         assert instance_count == 3

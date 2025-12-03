@@ -22,7 +22,7 @@ warnings.warn(
     "The 'sagemaker.lineage.lineage_trial_component' module is deprecated. "
     "Please use 'sagemaker.core.lineage.lineage_trial_component' instead.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 from sagemaker.core.lineage.lineage_trial_component import *  # noqa: F401, F403

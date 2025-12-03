@@ -122,7 +122,9 @@ class TestGetJumpstartLaunchedRegionsMessage:
 
     def test_get_jumpstart_launched_regions_message_multiple_regions(self):
         """Test with multiple regions"""
-        with patch.object(constants, "JUMPSTART_REGION_NAME_SET", {"us-west-2", "us-east-1", "eu-west-1"}):
+        with patch.object(
+            constants, "JUMPSTART_REGION_NAME_SET", {"us-west-2", "us-east-1", "eu-west-1"}
+        ):
             result = utils.get_jumpstart_launched_regions_message()
             assert "us-west-2" in result or "us-east-1" in result or "eu-west-1" in result
 
@@ -290,18 +292,14 @@ class TestAddSingleJumpstartTag:
 
     def test_add_single_jumpstart_tag_to_none(self):
         """Test adding tag to None"""
-        result = utils.add_single_jumpstart_tag(
-            "test-value", enums.JumpStartTag.MODEL_ID, None
-        )
+        result = utils.add_single_jumpstart_tag("test-value", enums.JumpStartTag.MODEL_ID, None)
         assert len(result) == 1
         assert result[0]["Key"] == enums.JumpStartTag.MODEL_ID.value
         assert result[0]["Value"] == "test-value"
 
     def test_add_single_jumpstart_tag_to_empty_list(self):
         """Test adding tag to empty list"""
-        result = utils.add_single_jumpstart_tag(
-            "test-value", enums.JumpStartTag.MODEL_ID, []
-        )
+        result = utils.add_single_jumpstart_tag("test-value", enums.JumpStartTag.MODEL_ID, [])
         assert len(result) == 1
         assert result[0]["Key"] == enums.JumpStartTag.MODEL_ID.value
 
@@ -392,9 +390,6 @@ class TestHasInstanceRateStat:
         assert utils.has_instance_rate_stat([]) is False
 
 
-
-
-
 class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
     """Test cases for remove_env_var_from_estimator_kwargs_if_accept_eula_present function"""
 
@@ -452,7 +447,9 @@ class TestGetJumpstartLaunchedRegionsMessageTwoRegions:
 class TestGetJumpstartGatedContentBucket:
     """Test cases for get_jumpstart_gated_content_bucket function"""
 
-    @patch.object(constants, "ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE", "TEST_OVERRIDE")
+    @patch.object(
+        constants, "ENV_VARIABLE_JUMPSTART_GATED_CONTENT_BUCKET_OVERRIDE", "TEST_OVERRIDE"
+    )
     @patch("os.environ", {"TEST_OVERRIDE": "override-bucket"})
     def test_get_jumpstart_gated_content_bucket_with_override(self):
         """Test with environment variable override"""
@@ -463,9 +460,11 @@ class TestGetJumpstartGatedContentBucket:
 
     def test_get_jumpstart_gated_content_bucket_no_bucket(self):
         """Test when region has no gated content bucket"""
-        with patch.object(constants, "JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT", {
-            "us-west-2": Mock(gated_content_bucket=None)
-        }):
+        with patch.object(
+            constants,
+            "JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT",
+            {"us-west-2": Mock(gated_content_bucket=None)},
+        ):
             with pytest.raises(ValueError, match="No private content bucket"):
                 utils.get_jumpstart_gated_content_bucket("us-west-2")
 
@@ -549,9 +548,14 @@ class TestIsJumpstartModelUriEdgeCases:
     def test_is_jumpstart_model_uri_jumpstart_bucket(self, mock_parse):
         """Test with JumpStart bucket"""
         mock_parse.return_value = ("jumpstart-cache-prod-us-west-2", "key")
-        with patch.object(constants, "JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET", 
-                         {"jumpstart-cache-prod-us-west-2"}):
-            result = utils.is_jumpstart_model_uri("s3://jumpstart-cache-prod-us-west-2/model.tar.gz")
+        with patch.object(
+            constants,
+            "JUMPSTART_GATED_AND_PUBLIC_BUCKET_NAME_SET",
+            {"jumpstart-cache-prod-us-west-2"},
+        ):
+            result = utils.is_jumpstart_model_uri(
+                "s3://jumpstart-cache-prod-us-west-2/model.tar.gz"
+            )
             assert result is True
 
 
@@ -572,10 +576,7 @@ class TestAddSingleJumpstartTagWithUri:
     def test_add_single_jumpstart_tag_skip_when_model_tags_exist(self, mock_is_uri):
         """Test skipping tag when model ID tag exists"""
         mock_is_uri.return_value = True
-        existing_tags = [{
-            "Key": enums.JumpStartTag.MODEL_ID.value,
-            "Value": "test-model"
-        }]
+        existing_tags = [{"Key": enums.JumpStartTag.MODEL_ID.value, "Value": "test-model"}]
         result = utils.add_single_jumpstart_tag(
             "s3://bucket/key", enums.JumpStartTag.INFERENCE_MODEL_URI, existing_tags, is_uri=True
         )
@@ -601,26 +602,29 @@ class TestAddJumpstartModelInfoTags:
     def test_add_jumpstart_model_info_tags_proprietary_model(self):
         """Test with proprietary model type"""
         result = utils.add_jumpstart_model_info_tags(
-            [], "test-model", "1.0.0", 
-            model_type=enums.JumpStartModelType.PROPRIETARY
+            [], "test-model", "1.0.0", model_type=enums.JumpStartModelType.PROPRIETARY
         )
         assert any(tag["Key"] == enums.JumpStartTag.MODEL_TYPE.value for tag in result)
 
     def test_add_jumpstart_model_info_tags_with_inference_config(self):
         """Test with inference config name"""
         result = utils.add_jumpstart_model_info_tags(
-            [], "test-model", "1.0.0",
+            [],
+            "test-model",
+            "1.0.0",
             config_name="test-config",
-            scope=enums.JumpStartScriptScope.INFERENCE
+            scope=enums.JumpStartScriptScope.INFERENCE,
         )
         assert any(tag["Key"] == enums.JumpStartTag.INFERENCE_CONFIG_NAME.value for tag in result)
 
     def test_add_jumpstart_model_info_tags_with_training_config(self):
         """Test with training config name"""
         result = utils.add_jumpstart_model_info_tags(
-            [], "test-model", "1.0.0",
+            [],
+            "test-model",
+            "1.0.0",
             config_name="test-config",
-            scope=enums.JumpStartScriptScope.TRAINING
+            scope=enums.JumpStartScriptScope.TRAINING,
         )
         assert any(tag["Key"] == enums.JumpStartTag.TRAINING_CONFIG_NAME.value for tag in result)
 
@@ -648,7 +652,6 @@ class TestAddBedrockStoreTags:
         assert result[0]["Value"] == "bedrock-compatible"
 
 
-
 class TestAddJumpstartUriTags:
     """Test cases for add_jumpstart_uri_tags function"""
 
@@ -659,10 +662,7 @@ class TestAddJumpstartUriTags:
         mock_is_pipeline.return_value = False
         mock_is_js_uri.return_value = True
         model_uri_dict = {"S3DataSource": {"S3Uri": "s3://bucket/model.tar.gz"}}
-        result = utils.add_jumpstart_uri_tags(
-            tags=None,
-            inference_model_uri=model_uri_dict
-        )
+        result = utils.add_jumpstart_uri_tags(tags=None, inference_model_uri=model_uri_dict)
         assert result is not None
         assert len(result) == 1
 
@@ -671,10 +671,7 @@ class TestAddJumpstartUriTags:
         """Test warning when URI is pipeline variable"""
         mock_is_pipeline.return_value = True
         with patch("logging.warning") as mock_warning:
-            result = utils.add_jumpstart_uri_tags(
-                tags=None,
-                inference_model_uri="pipeline_var"
-            )
+            result = utils.add_jumpstart_uri_tags(tags=None, inference_model_uri="pipeline_var")
             mock_warning.assert_called()
 
     @patch("sagemaker.core.jumpstart.utils.is_pipeline_variable")
@@ -688,7 +685,7 @@ class TestAddJumpstartUriTags:
             inference_model_uri="s3://bucket/inference.tar.gz",
             inference_script_uri="s3://bucket/inference_script.tar.gz",
             training_model_uri="s3://bucket/training.tar.gz",
-            training_script_uri="s3://bucket/training_script.tar.gz"
+            training_script_uri="s3://bucket/training_script.tar.gz",
         )
         assert len(result) == 4
 
@@ -706,7 +703,7 @@ class TestUpdateInferenceTagsWithJumpstartTrainingTags:
         """Test updating inference tags from training tags"""
         training_tags = [
             {"Key": enums.JumpStartTag.MODEL_ID.value, "Value": "test-model"},
-            {"Key": enums.JumpStartTag.MODEL_VERSION.value, "Value": "1.0.0"}
+            {"Key": enums.JumpStartTag.MODEL_VERSION.value, "Value": "1.0.0"},
         ]
         result = utils.update_inference_tags_with_jumpstart_training_tags(None, training_tags)
         assert len(result) == 2
@@ -716,7 +713,9 @@ class TestUpdateInferenceTagsWithJumpstartTrainingTags:
         """Test skipping tags that already exist in inference tags"""
         inference_tags = [{"Key": enums.JumpStartTag.MODEL_ID.value, "Value": "existing"}]
         training_tags = [{"Key": enums.JumpStartTag.MODEL_ID.value, "Value": "training"}]
-        result = utils.update_inference_tags_with_jumpstart_training_tags(inference_tags, training_tags)
+        result = utils.update_inference_tags_with_jumpstart_training_tags(
+            inference_tags, training_tags
+        )
         assert len(result) == 1
         assert result[0]["Value"] == "existing"
 
@@ -763,7 +762,7 @@ class TestEmitLogsBasedOnModelSpecs:
         model_specs.usage_info_message = None
         model_specs.inference_vulnerable = False
         model_specs.training_vulnerable = False
-        
+
         utils.emit_logs_based_on_model_specs(model_specs, "us-west-2", Mock())
         mock_logger.warning.assert_called()
 
@@ -781,7 +780,7 @@ class TestEmitLogsBasedOnModelSpecs:
         model_specs.usage_info_message = None
         model_specs.inference_vulnerable = True
         model_specs.training_vulnerable = False
-        
+
         utils.emit_logs_based_on_model_specs(model_specs, "us-west-2", Mock())
         mock_logger.warning.assert_called()
 
@@ -799,7 +798,7 @@ class TestEmitLogsBasedOnModelSpecs:
         model_specs.usage_info_message = "Usage info"
         model_specs.inference_vulnerable = False
         model_specs.training_vulnerable = False
-        
+
         utils.emit_logs_based_on_model_specs(model_specs, "us-west-2", Mock())
         assert mock_logger.info.called
 
@@ -811,20 +810,14 @@ class TestVerifyModelRegionAndReturnSpecs:
         """Test with None scope raises ValueError"""
         with pytest.raises(ValueError, match="Must specify `model_scope`"):
             utils.verify_model_region_and_return_specs(
-                model_id="test-model",
-                version="1.0.0",
-                scope=None,
-                region="us-west-2"
+                model_id="test-model", version="1.0.0", scope=None, region="us-west-2"
             )
 
     def test_verify_model_region_unsupported_scope_raises(self):
         """Test with unsupported scope raises NotImplementedError"""
         with pytest.raises(NotImplementedError):
             utils.verify_model_region_and_return_specs(
-                model_id="test-model",
-                version="1.0.0",
-                scope="unsupported",
-                region="us-west-2"
+                model_id="test-model", version="1.0.0", scope="unsupported", region="us-west-2"
             )
 
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -833,13 +826,13 @@ class TestVerifyModelRegionAndReturnSpecs:
         model_specs = Mock(spec=JumpStartModelSpecs)
         model_specs.training_supported = False
         mock_get_specs.return_value = model_specs
-        
+
         with pytest.raises(ValueError, match="does not support training"):
             utils.verify_model_region_and_return_specs(
                 model_id="test-model",
                 version="1.0.0",
                 scope=constants.JumpStartScriptScope.TRAINING.value,
-                region="us-west-2"
+                region="us-west-2",
             )
 
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -849,14 +842,14 @@ class TestVerifyModelRegionAndReturnSpecs:
         model_specs.deprecated = True
         model_specs.deprecated_message = "Deprecated"
         mock_get_specs.return_value = model_specs
-        
+
         with pytest.raises(Exception):
             utils.verify_model_region_and_return_specs(
                 model_id="test-model",
                 version="1.0.0",
                 scope=constants.JumpStartScriptScope.INFERENCE.value,
                 region="us-west-2",
-                tolerate_deprecated_model=False
+                tolerate_deprecated_model=False,
             )
 
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -867,14 +860,14 @@ class TestVerifyModelRegionAndReturnSpecs:
         model_specs.inference_vulnerable = True
         model_specs.inference_vulnerabilities = ["CVE-2023-1234"]
         mock_get_specs.return_value = model_specs
-        
+
         with pytest.raises(Exception):
             utils.verify_model_region_and_return_specs(
                 model_id="test-model",
                 version="1.0.0",
                 scope=constants.JumpStartScriptScope.INFERENCE.value,
                 region="us-west-2",
-                tolerate_vulnerable_model=False
+                tolerate_vulnerable_model=False,
             )
 
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -886,14 +879,14 @@ class TestVerifyModelRegionAndReturnSpecs:
         model_specs.training_vulnerable = True
         model_specs.training_vulnerabilities = ["CVE-2023-5678"]
         mock_get_specs.return_value = model_specs
-        
+
         with pytest.raises(Exception):
             utils.verify_model_region_and_return_specs(
                 model_id="test-model",
                 version="1.0.0",
                 scope=constants.JumpStartScriptScope.TRAINING.value,
                 region="us-west-2",
-                tolerate_vulnerable_model=False
+                tolerate_vulnerable_model=False,
             )
 
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -904,13 +897,13 @@ class TestVerifyModelRegionAndReturnSpecs:
         model_specs.inference_vulnerable = False
         model_specs.set_config = Mock()
         mock_get_specs.return_value = model_specs
-        
+
         utils.verify_model_region_and_return_specs(
             model_id="test-model",
             version="1.0.0",
             scope=constants.JumpStartScriptScope.INFERENCE.value,
             region="us-west-2",
-            config_name="test-config"
+            config_name="test-config",
         )
         model_specs.set_config.assert_called_once()
 
@@ -926,14 +919,14 @@ class TestResolveModelSagemakerConfigField:
         mock_load_config.return_value = {"SchemaVersion": "1.0"}
         mock_session = Mock()
         mock_session.sagemaker_config = {"SchemaVersion": "1.0"}
-        result = utils.resolve_model_sagemaker_config_field(
-            "role", "user-role", mock_session
-        )
+        result = utils.resolve_model_sagemaker_config_field("role", "user-role", mock_session)
         assert result == "user-role"
 
     @patch("sagemaker.core.jumpstart.utils.load_sagemaker_config")
     @patch("sagemaker.core.common_utils.resolve_value_from_config")
-    def test_resolve_model_sagemaker_config_field_enable_network_isolation(self, mock_resolve, mock_load_config):
+    def test_resolve_model_sagemaker_config_field_enable_network_isolation(
+        self, mock_resolve, mock_load_config
+    ):
         """Test resolving enable_network_isolation field"""
         mock_resolve.return_value = None
         mock_load_config.return_value = {"SchemaVersion": "1.0"}
@@ -946,7 +939,9 @@ class TestResolveModelSagemakerConfigField:
 
     @patch("sagemaker.core.jumpstart.utils.load_sagemaker_config")
     @patch("sagemaker.core.common_utils.resolve_value_from_config")
-    def test_resolve_model_sagemaker_config_field_enable_network_isolation_none(self, mock_resolve, mock_load_config):
+    def test_resolve_model_sagemaker_config_field_enable_network_isolation_none(
+        self, mock_resolve, mock_load_config
+    ):
         """Test enable_network_isolation returns field_val when config is None"""
         mock_resolve.return_value = None
         mock_load_config.return_value = {"SchemaVersion": "1.0"}
@@ -961,9 +956,7 @@ class TestResolveModelSagemakerConfigField:
         """Test resolving other fields returns as is"""
         mock_session = Mock()
         mock_session.sagemaker_config = {"SchemaVersion": "1.0"}
-        result = utils.resolve_model_sagemaker_config_field(
-            "other_field", "value", mock_session
-        )
+        result = utils.resolve_model_sagemaker_config_field("other_field", "value", mock_session)
         assert result == "value"
 
 
@@ -978,14 +971,14 @@ class TestResolveEstimatorSagemakerConfigField:
         mock_load_config.return_value = {"SchemaVersion": "1.0"}
         mock_session = Mock()
         mock_session.sagemaker_config = {"SchemaVersion": "1.0"}
-        result = utils.resolve_estimator_sagemaker_config_field(
-            "role", "user-role", mock_session
-        )
+        result = utils.resolve_estimator_sagemaker_config_field("role", "user-role", mock_session)
         assert result == "user-role"
 
     @patch("sagemaker.core.jumpstart.utils.load_sagemaker_config")
     @patch("sagemaker.core.common_utils.resolve_value_from_config")
-    def test_resolve_estimator_sagemaker_config_field_enable_network_isolation(self, mock_resolve, mock_load_config):
+    def test_resolve_estimator_sagemaker_config_field_enable_network_isolation(
+        self, mock_resolve, mock_load_config
+    ):
         """Test resolving enable_network_isolation field"""
         mock_resolve.return_value = None
         mock_load_config.return_value = {"SchemaVersion": "1.0"}
@@ -998,7 +991,9 @@ class TestResolveEstimatorSagemakerConfigField:
 
     @patch("sagemaker.core.jumpstart.utils.load_sagemaker_config")
     @patch("sagemaker.core.common_utils.resolve_value_from_config")
-    def test_resolve_estimator_sagemaker_config_field_encrypt_inter_container(self, mock_resolve, mock_load_config):
+    def test_resolve_estimator_sagemaker_config_field_encrypt_inter_container(
+        self, mock_resolve, mock_load_config
+    ):
         """Test resolving encrypt_inter_container_traffic field"""
         mock_resolve.return_value = None
         mock_load_config.return_value = {"SchemaVersion": "1.0"}
@@ -1017,7 +1012,6 @@ class TestResolveEstimatorSagemakerConfigField:
             "other_field", "value", mock_session
         )
         assert result == "value"
-
 
 
 class TestValidateModelIdAndGetType:
@@ -1043,8 +1037,7 @@ class TestValidateModelIdAndGetType:
         """Test with hub_arn"""
         mock_validate_hub.return_value = [enums.JumpStartModelType.OPEN_WEIGHTS]
         result = utils.validate_model_id_and_get_type(
-            "test-model",
-            hub_arn="arn:aws:sagemaker:us-west-2:123456789012:hub/test"
+            "test-model", hub_arn="arn:aws:sagemaker:us-west-2:123456789012:hub/test"
         )
         assert result == enums.JumpStartModelType.OPEN_WEIGHTS
 
@@ -1053,8 +1046,7 @@ class TestValidateModelIdAndGetType:
         """Test with hub_arn returning empty list"""
         mock_validate_hub.return_value = []
         result = utils.validate_model_id_and_get_type(
-            "test-model",
-            hub_arn="arn:aws:sagemaker:us-west-2:123456789012:hub/test"
+            "test-model", hub_arn="arn:aws:sagemaker:us-west-2:123456789012:hub/test"
         )
         assert result is None
 
@@ -1064,13 +1056,14 @@ class TestValidateModelIdAndGetType:
         mock_header = Mock()
         mock_header.model_id = "test-model"
         mock_manifest.return_value = [mock_header]
-        
+
         result = utils.validate_model_id_and_get_type("test-model")
         assert result == enums.JumpStartModelType.OPEN_WEIGHTS
 
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     def test_validate_model_id_proprietary(self, mock_manifest):
         """Test with proprietary model"""
+
         def manifest_side_effect(region, s3_client, model_type):
             if model_type == enums.JumpStartModelType.OPEN_WEIGHTS:
                 return []
@@ -1078,7 +1071,7 @@ class TestValidateModelIdAndGetType:
                 mock_header = Mock()
                 mock_header.model_id = "test-model"
                 return [mock_header]
-        
+
         mock_manifest.side_effect = manifest_side_effect
         result = utils.validate_model_id_and_get_type("test-model")
         assert result == enums.JumpStartModelType.PROPRIETARY
@@ -1086,6 +1079,7 @@ class TestValidateModelIdAndGetType:
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     def test_validate_model_id_proprietary_training_raises(self, mock_manifest):
         """Test proprietary model with training scope raises"""
+
         def manifest_side_effect(region, s3_client, model_type):
             if model_type == enums.JumpStartModelType.OPEN_WEIGHTS:
                 return []
@@ -1093,12 +1087,11 @@ class TestValidateModelIdAndGetType:
                 mock_header = Mock()
                 mock_header.model_id = "test-model"
                 return [mock_header]
-        
+
         mock_manifest.side_effect = manifest_side_effect
         with pytest.raises(ValueError, match="Unsupported script for Proprietary models"):
             utils.validate_model_id_and_get_type(
-                "test-model",
-                script=enums.JumpStartScriptScope.TRAINING
+                "test-model", script=enums.JumpStartScriptScope.TRAINING
             )
 
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
@@ -1118,10 +1111,9 @@ class TestValidateHubServiceModelIdAndGetType:
         mock_specs = Mock()
         mock_specs.model_types = ["OPEN_WEIGHTS", "PROPRIETARY"]
         mock_get_specs.return_value = mock_specs
-        
+
         result = utils._validate_hub_service_model_id_and_get_type(
-            "test-model",
-            "arn:aws:sagemaker:us-west-2:123456789012:hub/test"
+            "test-model", "arn:aws:sagemaker:us-west-2:123456789012:hub/test"
         )
         assert len(result) == 2
 
@@ -1131,10 +1123,9 @@ class TestValidateHubServiceModelIdAndGetType:
         mock_specs = Mock()
         mock_specs.model_types = None
         mock_get_specs.return_value = mock_specs
-        
+
         result = utils._validate_hub_service_model_id_and_get_type(
-            "test-model",
-            "arn:aws:sagemaker:us-west-2:123456789012:hub/test"
+            "test-model", "arn:aws:sagemaker:us-west-2:123456789012:hub/test"
         )
         assert result == []
 
@@ -1144,13 +1135,12 @@ class TestValidateHubServiceModelIdAndGetType:
         mock_specs = Mock()
         mock_specs.model_types = ["INVALID_TYPE"]
         mock_get_specs.return_value = mock_specs
-        
+
         # The function tries to catch ValueError but KeyError is raised
         # This is a bug in the implementation - it should catch KeyError
         with pytest.raises(KeyError):
             utils._validate_hub_service_model_id_and_get_type(
-                "test-model",
-                "arn:aws:sagemaker:us-west-2:123456789012:hub/test"
+                "test-model", "arn:aws:sagemaker:us-west-2:123456789012:hub/test"
             )
 
 
@@ -1160,31 +1150,22 @@ class TestExtractValueFromListOfTags:
     def test_extract_value_multiple_different_values(self):
         """Test with multiple tags having different values"""
         # The function uses get_tag_value which raises KeyError for duplicate keys
-        tags = [
-            {"Key": "tag1", "Value": "value1"},
-            {"Key": "tag1", "Value": "value2"}
-        ]
+        tags = [{"Key": "tag1", "Value": "value1"}, {"Key": "tag1", "Value": "value2"}]
         # get_tag_value will raise KeyError for duplicate keys, which is caught
-        result = utils._extract_value_from_list_of_tags(
-            ["tag1"], tags, "test-resource", "arn:test"
-        )
+        result = utils._extract_value_from_list_of_tags(["tag1"], tags, "test-resource", "arn:test")
         # When KeyError is raised, the function continues and returns None
         assert result is None
 
     def test_extract_value_no_match(self):
         """Test with no matching tags"""
         tags = [{"Key": "other", "Value": "value"}]
-        result = utils._extract_value_from_list_of_tags(
-            ["tag1"], tags, "test-resource", "arn:test"
-        )
+        result = utils._extract_value_from_list_of_tags(["tag1"], tags, "test-resource", "arn:test")
         assert result is None
 
     def test_extract_value_single_match(self):
         """Test with single matching tag"""
         tags = [{"Key": "tag1", "Value": "value1"}]
-        result = utils._extract_value_from_list_of_tags(
-            ["tag1"], tags, "test-resource", "arn:test"
-        )
+        result = utils._extract_value_from_list_of_tags(["tag1"], tags, "test-resource", "arn:test")
         assert result == "value1"
 
 
@@ -1197,10 +1178,11 @@ class TestGetJumpstartModelInfoFromResourceArn:
         mock_extract.side_effect = ["model-id", "1.0.0", "inf-config", "train-config"]
         mock_session = Mock()
         mock_session.list_tags.return_value = []
-        
-        model_id, version, inf_config, train_config = utils.get_jumpstart_model_info_from_resource_arn(
-            "arn:aws:sagemaker:us-west-2:123456789012:model/test",
-            mock_session
+
+        model_id, version, inf_config, train_config = (
+            utils.get_jumpstart_model_info_from_resource_arn(
+                "arn:aws:sagemaker:us-west-2:123456789012:model/test", mock_session
+            )
         )
         assert model_id == "model-id"
         assert version == "1.0.0"
@@ -1240,8 +1222,7 @@ class TestGetRegionFallback:
         with patch.object(constants, "JUMPSTART_REGION_NAME_SET", {"us-west-2", "us-east-1"}):
             with pytest.raises(ValueError, match="Unable to resolve a region"):
                 utils.get_region_fallback(
-                    s3_bucket_name="jumpstart-us-east-1-bucket",
-                    sagemaker_session=mock_session
+                    s3_bucket_name="jumpstart-us-east-1-bucket", sagemaker_session=mock_session
                 )
 
     def test_get_region_fallback_no_region_returns_default(self):
@@ -1262,10 +1243,9 @@ class TestGetConfigNames:
         mock_specs = Mock()
         mock_specs.inference_configs = mock_configs
         mock_verify.return_value = mock_specs
-        
+
         result = utils.get_config_names(
-            "us-west-2", "test-model", "1.0.0",
-            scope=enums.JumpStartScriptScope.INFERENCE
+            "us-west-2", "test-model", "1.0.0", scope=enums.JumpStartScriptScope.INFERENCE
         )
         assert len(result) == 2
         assert "config1" in result
@@ -1278,10 +1258,9 @@ class TestGetConfigNames:
         mock_specs = Mock()
         mock_specs.training_configs = mock_configs
         mock_verify.return_value = mock_specs
-        
+
         result = utils.get_config_names(
-            "us-west-2", "test-model", "1.0.0",
-            scope=enums.JumpStartScriptScope.TRAINING
+            "us-west-2", "test-model", "1.0.0", scope=enums.JumpStartScriptScope.TRAINING
         )
         assert len(result) == 1
 
@@ -1290,10 +1269,7 @@ class TestGetConfigNames:
         """Test with unsupported scope raises ValueError"""
         mock_verify.return_value = Mock()
         with pytest.raises(ValueError, match="Unknown script scope"):
-            utils.get_config_names(
-                "us-west-2", "test-model", "1.0.0",
-                scope="unsupported"
-            )
+            utils.get_config_names("us-west-2", "test-model", "1.0.0", scope="unsupported")
 
     @patch("sagemaker.core.jumpstart.utils.verify_model_region_and_return_specs")
     def test_get_config_names_no_configs(self, mock_verify):
@@ -1301,10 +1277,9 @@ class TestGetConfigNames:
         mock_specs = Mock()
         mock_specs.inference_configs = None
         mock_verify.return_value = mock_specs
-        
+
         result = utils.get_config_names(
-            "us-west-2", "test-model", "1.0.0",
-            scope=enums.JumpStartScriptScope.INFERENCE
+            "us-west-2", "test-model", "1.0.0", scope=enums.JumpStartScriptScope.INFERENCE
         )
         assert result == []
 
@@ -1322,10 +1297,9 @@ class TestGetBenchmarkStats:
         mock_specs = Mock()
         mock_specs.inference_configs = mock_configs
         mock_verify.return_value = mock_specs
-        
+
         result = utils.get_benchmark_stats(
-            "us-west-2", "test-model", "1.0.0",
-            config_names=["config1"]
+            "us-west-2", "test-model", "1.0.0", config_names=["config1"]
         )
         assert "config1" in result
 
@@ -1337,12 +1311,9 @@ class TestGetBenchmarkStats:
         mock_specs = Mock()
         mock_specs.inference_configs = mock_configs
         mock_verify.return_value = mock_specs
-        
+
         with pytest.raises(ValueError, match="Unknown config name"):
-            utils.get_benchmark_stats(
-                "us-west-2", "test-model", "1.0.0",
-                config_names=["unknown"]
-            )
+            utils.get_benchmark_stats("us-west-2", "test-model", "1.0.0", config_names=["unknown"])
 
 
 class TestGetJumpstartConfigs:
@@ -1362,14 +1333,16 @@ class TestGetJumpstartConfigs:
         mock_specs = Mock()
         mock_specs.inference_configs = mock_configs
         mock_verify.return_value = mock_specs
-        
+
         # Simulate the transformation: test_config -> TestConfig -> test_config
         mock_snake.return_value = "TestConfig"
         mock_camel.return_value = "test_config"
         result = utils.get_jumpstart_configs(
-            "us-west-2", "test-model", "1.0.0",
+            "us-west-2",
+            "test-model",
+            "1.0.0",
             hub_arn="arn:aws:sagemaker:us-west-2:123456789012:hub/test",
-            config_names=["test_config"]
+            config_names=["test_config"],
         )
         assert "test_config" in result
 
@@ -1379,10 +1352,8 @@ class TestGetJumpstartConfigs:
         mock_specs = Mock()
         mock_specs.inference_configs = None
         mock_verify.return_value = mock_specs
-        
-        result = utils.get_jumpstart_configs(
-            "us-west-2", "test-model", "1.0.0"
-        )
+
+        result = utils.get_jumpstart_configs("us-west-2", "test-model", "1.0.0")
         assert result == {}
 
 
@@ -1395,9 +1366,7 @@ class TestGetJumpstartUserAgentExtraSuffix:
         """Test with telemetry disabled"""
         mock_getenv.return_value = "true"
         mock_get_suffix.return_value = "base-suffix"
-        result = utils.get_jumpstart_user_agent_extra_suffix(
-            "model-id", "1.0.0", None, False
-        )
+        result = utils.get_jumpstart_user_agent_extra_suffix("model-id", "1.0.0", None, False)
         # When telemetry is disabled, the function returns the base suffix
         # But the actual implementation still returns the full string
         assert isinstance(result, str) and len(result) > 0
@@ -1408,9 +1377,7 @@ class TestGetJumpstartUserAgentExtraSuffix:
         """Test with hub content but no model info"""
         mock_getenv.return_value = None
         mock_get_suffix.return_value = "base"
-        result = utils.get_jumpstart_user_agent_extra_suffix(
-            None, None, None, True
-        )
+        result = utils.get_jumpstart_user_agent_extra_suffix(None, None, None, True)
         assert "md/js_is_hub_content#True" in result
 
     @patch("sagemaker.core.utils.user_agent.get_user_agent_extra_suffix")
@@ -1423,7 +1390,6 @@ class TestGetJumpstartUserAgentExtraSuffix:
             "model-id", "1.0.0", "config-name", False
         )
         assert "md/js_config#config-name" in result
-
 
 
 class TestGetTopRankedConfigName:
@@ -1439,10 +1405,9 @@ class TestGetTopRankedConfigName:
         mock_specs = Mock()
         mock_specs.inference_configs = mock_configs
         mock_verify.return_value = mock_specs
-        
+
         result = utils.get_top_ranked_config_name(
-            "us-west-2", "test-model", "1.0.0",
-            scope=enums.JumpStartScriptScope.INFERENCE
+            "us-west-2", "test-model", "1.0.0", scope=enums.JumpStartScriptScope.INFERENCE
         )
         assert result == "top-config"
 
@@ -1456,10 +1421,9 @@ class TestGetTopRankedConfigName:
         mock_specs = Mock()
         mock_specs.training_configs = mock_configs
         mock_verify.return_value = mock_specs
-        
+
         result = utils.get_top_ranked_config_name(
-            "us-west-2", "test-model", "1.0.0",
-            scope=enums.JumpStartScriptScope.TRAINING
+            "us-west-2", "test-model", "1.0.0", scope=enums.JumpStartScriptScope.TRAINING
         )
         assert result == "train-config"
 
@@ -1469,10 +1433,9 @@ class TestGetTopRankedConfigName:
         mock_specs = Mock()
         mock_specs.inference_configs = None
         mock_verify.return_value = mock_specs
-        
+
         result = utils.get_top_ranked_config_name(
-            "us-west-2", "test-model", "1.0.0",
-            scope=enums.JumpStartScriptScope.INFERENCE
+            "us-west-2", "test-model", "1.0.0", scope=enums.JumpStartScriptScope.INFERENCE
         )
         assert result is None
 
@@ -1482,8 +1445,7 @@ class TestGetTopRankedConfigName:
         mock_verify.return_value = Mock()
         with pytest.raises(ValueError, match="Unsupported script scope"):
             utils.get_top_ranked_config_name(
-                "us-west-2", "test-model", "1.0.0",
-                scope="unsupported"
+                "us-west-2", "test-model", "1.0.0", scope="unsupported"
             )
 
 
@@ -1502,7 +1464,7 @@ class TestGetDefaultJumpstartSessionWithUserAgentSuffix:
         mock_botocore_session.return_value = Mock()
         mock_boto_session.return_value = Mock()
         mock_boto_client.return_value = Mock()
-        
+
         result = utils.get_default_jumpstart_session_with_user_agent_suffix(
             "model-id", "1.0.0", "config-name", False
         )
@@ -1522,7 +1484,7 @@ class TestAddInstanceRateStatsToBenchmarkMetrics:
         """Test successfully adding instance rate stats"""
         mock_get_rate.return_value = {"name": "Instance Rate", "value": 1.5, "unit": "$/hour"}
         metrics = {"t2.medium": []}
-        
+
         err, result = utils.add_instance_rate_stats_to_benchmark_metrics("us-west-2", metrics)
         assert err is None
         assert len(result["ml.t2.medium"]) == 1
@@ -1531,11 +1493,12 @@ class TestAddInstanceRateStatsToBenchmarkMetrics:
     def test_add_instance_rate_stats_client_error(self, mock_get_rate):
         """Test handling ClientError"""
         from botocore.exceptions import ClientError
+
         mock_get_rate.side_effect = ClientError(
             {"Error": {"Code": "TestError", "Message": "Test"}}, "test"
         )
         metrics = {"t2.medium": []}
-        
+
         result = utils.add_instance_rate_stats_to_benchmark_metrics("us-west-2", metrics)
         # Function returns tuple (err, metrics) or just metrics depending on implementation
         assert result is not None
@@ -1545,7 +1508,7 @@ class TestAddInstanceRateStatsToBenchmarkMetrics:
         """Test handling general exception"""
         mock_get_rate.side_effect = Exception("Test error")
         metrics = {"t2.medium": []}
-        
+
         err, result = utils.add_instance_rate_stats_to_benchmark_metrics("us-west-2", metrics)
         assert result is not None
 
@@ -1554,7 +1517,7 @@ class TestAddInstanceRateStatsToBenchmarkMetrics:
         mock_stat = Mock()
         mock_stat.name = "Instance Rate"
         metrics = {"ml.t2.medium": [mock_stat]}
-        
+
         err, result = utils.add_instance_rate_stats_to_benchmark_metrics("us-west-2", metrics)
         assert len(result["ml.t2.medium"]) == 1
 
@@ -1608,16 +1571,16 @@ class TestGetMetricsFromDeploymentConfigs:
         mock_stat.unit = "ms"
         mock_stat.value = 100
         mock_stat.concurrency = "1"
-        
+
         mock_args = Mock()
         mock_args.default_instance_type = "ml.t2.medium"
         mock_args.instance_type = "ml.t2.medium"
-        
+
         mock_config = Mock(spec=DeploymentConfigMetadata)
         mock_config.deployment_args = mock_args
         mock_config.benchmark_metrics = {"ml.t2.medium": [mock_stat]}
         mock_config.deployment_config_name = "config1"
-        
+
         result = utils.get_metrics_from_deployment_configs([mock_config])
         assert "Instance Type" in result
         assert "Config Name" in result
@@ -1652,11 +1615,11 @@ class TestNormalizeBenchmarkMetrics:
         mock_rate = Mock()
         mock_rate.name = "Instance Rate"
         mock_rate.concurrency = None
-        
+
         mock_metric = Mock()
         mock_metric.name = "Latency"
         mock_metric.concurrency = "1"
-        
+
         rate, users = utils._normalize_benchmark_metrics([mock_rate, mock_metric])
         assert rate == mock_rate
         assert "1" in users
@@ -1666,15 +1629,15 @@ class TestNormalizeBenchmarkMetrics:
         mock_metric1 = Mock()
         mock_metric1.name = "Latency"
         mock_metric1.concurrency = "1"
-        
+
         mock_metric2 = Mock()
         mock_metric2.name = "Throughput"
         mock_metric2.concurrency = "1"
-        
+
         mock_metric3 = Mock()
         mock_metric3.name = "Latency"
         mock_metric3.concurrency = "10"
-        
+
         rate, users = utils._normalize_benchmark_metrics([mock_metric1, mock_metric2, mock_metric3])
         assert "1" in users
         assert "10" in users
@@ -1698,16 +1661,13 @@ class TestDeploymentConfigResponseData:
         """Test with valid deployment configs"""
         mock_args = Mock()
         mock_args.instance_type = "ml.t2.medium"
-        
+
         mock_config = Mock(spec=DeploymentConfigMetadata)
         mock_config.deployment_args = mock_args
         mock_config.to_json.return_value = {
-            "BenchmarkMetrics": {
-                "ml.t2.medium": [],
-                "ml.t2.large": []
-            }
+            "BenchmarkMetrics": {"ml.t2.medium": [], "ml.t2.large": []}
         }
-        
+
         result = utils.deployment_config_response_data([mock_config])
         assert len(result) == 1
         assert "BenchmarkMetrics" in result[0]
@@ -1746,10 +1706,10 @@ class TestAddModelAccessConfigsToModelDataSources:
         mock_access_config = Mock()
         mock_access_config.accept_eula = True
         mock_access_config.model_dump.return_value = {"accept_eula": True}
-        
+
         sources = [{"HostingEulaKey": "eula.txt", "S3DataSource": {"S3Uri": "s3://bucket/key"}}]
         configs = {"model-id": mock_access_config}
-        
+
         result = utils._add_model_access_configs_to_model_data_sources(
             sources, configs, "model-id", "us-west-2"
         )
@@ -1800,11 +1760,13 @@ class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
         kwargs = {
             "environment": {
                 constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY: "s3://bucket/key",
-                "OTHER": "value"
+                "OTHER": "value",
             }
         }
         utils.remove_env_var_from_estimator_kwargs_if_accept_eula_present(kwargs, True)
-        assert constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY not in kwargs["environment"]
+        assert (
+            constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY not in kwargs["environment"]
+        )
         assert "OTHER" in kwargs["environment"]
 
     def test_remove_env_var_accept_eula_false(self):
@@ -1815,7 +1777,9 @@ class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
             }
         }
         utils.remove_env_var_from_estimator_kwargs_if_accept_eula_present(kwargs, False)
-        assert constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY not in kwargs["environment"]
+        assert (
+            constants.SAGEMAKER_GATED_MODEL_S3_URI_TRAINING_ENV_VAR_KEY not in kwargs["environment"]
+        )
 
 
 class TestGetModelAccessConfigFunction:

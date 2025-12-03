@@ -88,6 +88,7 @@ class ModelApprovalStatusEnum(str, Enum):
     REJECTED = "Rejected"
     PENDING_MANUAL_APPROVAL = "PendingManualApproval"
 
+
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image, max_length=63):
     """Create a training job name based on the image name and a timestamp.
@@ -1136,6 +1137,7 @@ def resolve_value_from_config(
         else None
     )
     from sagemaker.core.config.config_utils import _log_sagemaker_config_single_substitution
+
     _log_sagemaker_config_single_substitution(direct_input, config_value, config_path)
 
     if direct_input is not None:
@@ -1179,6 +1181,7 @@ def get_sagemaker_config_value(sagemaker_session, key, sagemaker_config: dict = 
     # Copy the value so any modifications to the output will not modify the source config
     return copy.deepcopy(config_value)
 
+
 def get_resource_name_from_arn(arn):
     """Extract the resource name from an ARN string.
 
@@ -1189,6 +1192,7 @@ def get_resource_name_from_arn(arn):
         str: The resource name.
     """
     return arn.split(":", 5)[5].split("/", 1)[1]
+
 
 def list_tags(sagemaker_session, resource_arn, max_results=50):
     """List the tags given an Amazon Resource Name.
@@ -1222,6 +1226,7 @@ def list_tags(sagemaker_session, resource_arn, max_results=50):
     except ClientError as error:
         logger.error("Error retrieving tags. resource_arn: %s", resource_arn)
         raise error
+
 
 def resolve_class_attribute_from_config(
     clazz: Optional[type],
@@ -1290,6 +1295,7 @@ def resolve_class_attribute_from_config(
             setattr(instance, attribute, default_value)
 
     from sagemaker.core.config.config_utils import _log_sagemaker_config_single_substitution
+
     _log_sagemaker_config_single_substitution(current_value, config_value, config_path)
 
     return instance
@@ -1344,6 +1350,7 @@ def resolve_nested_dict_value_from_config(
             dictionary = set_nested_value(dictionary, nested_keys, default_value)
 
     from sagemaker.core.config.config_utils import _log_sagemaker_config_single_substitution
+
     _log_sagemaker_config_single_substitution(current_nested_value, config_value, config_path)
 
     return dictionary
@@ -1410,6 +1417,7 @@ def update_list_of_dicts_with_values_from_config(
         input_list[i] = dict_from_config
 
     from sagemaker.core.config.config_utils import _log_sagemaker_config_merge
+
     _log_sagemaker_config_merge(
         source_value=inputs_copy,
         config_value=unmodified_inputs_from_config,
@@ -1477,6 +1485,7 @@ def update_nested_dictionary_with_values_from_config(
         return source_dict
 
     from sagemaker.core.config.config_utils import _log_sagemaker_config_merge
+
     _log_sagemaker_config_merge(
         source_value=source_dict,
         config_value=original_config_dict_value,
@@ -2023,6 +2032,7 @@ def walk_and_apply_json(
 
     return _walk_and_apply_json(json_obj, new={})
 
+
 def _wait_until(callable_fn, poll=5):
     """Placeholder docstring"""
     elapsed_time = 0
@@ -2047,6 +2057,7 @@ def _wait_until(callable_fn, poll=5):
                 continue
             raise err
     return result
+
 
 def _flush_log_streams(
     stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap
@@ -2098,7 +2109,9 @@ def _flush_log_streams(
             color_wrap(idx, event["message"])
             ts, count = positions[stream_names[idx]]
             if event["timestamp"] == ts:
-                positions[stream_names[idx]] = sagemaker.core.logs.Position(timestamp=ts, skip=count + 1)
+                positions[stream_names[idx]] = sagemaker.core.logs.Position(
+                    timestamp=ts, skip=count + 1
+                )
             else:
                 positions[stream_names[idx]] = sagemaker.core.logs.Position(
                     timestamp=event["timestamp"], skip=1
@@ -2108,6 +2121,7 @@ def _flush_log_streams(
         print(".", end="")
         sys.stdout.flush()
 
+
 class LogState(object):
     """Placeholder docstring"""
 
@@ -2116,6 +2130,7 @@ class LogState(object):
     TAILING = 3
     JOB_COMPLETE = 4
     COMPLETE = 5
+
 
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
@@ -2128,11 +2143,13 @@ _STATUS_CODE_TABLE = {
     "PENDING": "Pending",
 }
 
+
 def _get_initial_job_state(description, status_key, wait):
     """Placeholder docstring"""
     status = description[status_key]
     job_already_completed = status in ("Completed", "Failed", "Stopped")
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
+
 
 def _logs_init(boto_session, description, job):
     """Placeholder docstring"""
@@ -2164,6 +2181,7 @@ def _logs_init(boto_session, description, job):
     color_wrap = sagemaker.core.logs.ColorWrap()
 
     return instance_count, stream_names, positions, client, log_group, dot, color_wrap
+
 
 def _check_job_status(job, desc, status_key_name):
     """Check to see if the job completed successfully.
@@ -2218,6 +2236,7 @@ def _check_job_status(job, desc, status_key_name):
             actual_status=status,
         )
 
+
 def _create_resource(create_fn):
     """Call create function and accepts/pass when resource already exists.
 
@@ -2259,4 +2278,4 @@ def _is_s3_uri(s3_uri: Optional[str]) -> bool:
     if s3_uri is None:
         return False
 
-    return re.match("^s3://([^/]+)/?(.*)$", s3_uri) is not None    
+    return re.match("^s3://([^/]+)/?(.*)$", s3_uri) is not None

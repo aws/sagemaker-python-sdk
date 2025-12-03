@@ -52,9 +52,7 @@ def test_sagemaker_output_location():
 
 def test_neo_allowed_frameworks():
     """Test NEO_ALLOWED_FRAMEWORKS constant."""
-    expected_frameworks = {
-        "mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"
-    }
+    expected_frameworks = {"mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"}
     assert constants.NEO_ALLOWED_FRAMEWORKS == expected_frameworks
     assert isinstance(constants.NEO_ALLOWED_FRAMEWORKS, set)
 

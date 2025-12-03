@@ -276,7 +276,7 @@ class RecordIOSplitter(Splitter):
     """Split using Amazon Recordio.
 
     Not useful for string content.
-    
+
     Note: This class depends on the deprecated sagemaker.core.amazon module
     and is no longer functional.
     """
@@ -292,7 +292,7 @@ class RecordIOSplitter(Splitter):
 
         Returns: generator for the individual records that were split from
         the file
-        
+
         Raises:
             NotImplementedError: This functionality has been removed due to
                 deprecation of sagemaker.core.amazon module

@@ -168,7 +168,9 @@ def _handle_pre_exec_scripts(script_file_dir: str):
 
     path_to_pre_exec_script = os.path.join(script_file_dir, PRE_EXECUTION_SCRIPT_NAME)
     if os.path.isfile(path_to_pre_exec_script):
-        RuntimeEnvironmentManager().run_pre_exec_script(pre_exec_script_path=path_to_pre_exec_script)
+        RuntimeEnvironmentManager().run_pre_exec_script(
+            pre_exec_script_path=path_to_pre_exec_script
+        )
 
 
 def _install_dependencies(

@@ -33,6 +33,7 @@ def is_pipeline_variable(var: object) -> bool:
     """
     return isinstance(var, PipelineVariable)
 
+
 if TYPE_CHECKING:
     from sagemaker.mlops.workflow.steps import Step
 

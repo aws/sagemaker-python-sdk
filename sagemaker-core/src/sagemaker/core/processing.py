@@ -382,7 +382,7 @@ class Processor(object):
             )
 
         # Replace invalid characters with hyphens to comply with AWS naming constraints
-        base_name = re.sub(r'[^a-zA-Z0-9-]', '-', base_name)
+        base_name = re.sub(r"[^a-zA-Z0-9-]", "-", base_name)
         return name_from_base(base_name)
 
     def _normalize_inputs(self, inputs=None, kms_key=None):
@@ -522,26 +522,31 @@ class Processor(object):
     def _start_new(self, inputs, outputs, experiment_config):
         """Starts a new processing job and returns ProcessingJob instance."""
         from sagemaker.core.workflow.pipeline_context import PipelineSession
-        
+
         process_args = self._get_process_args(inputs, outputs, experiment_config)
 
         logger.debug("Job Name: %s", process_args["job_name"])
         logger.debug("Inputs: %s", process_args["inputs"])
         logger.debug("Outputs: %s", process_args["output_config"]["Outputs"])
-        
+
         tags = _append_project_tags(format_tags(process_args["tags"]))
-        tags = _append_sagemaker_config_tags(self.sagemaker_session, tags, "{}.{}.{}".format(SAGEMAKER, PROCESSING_JOB, TAGS))
-        
+        tags = _append_sagemaker_config_tags(
+            self.sagemaker_session, tags, "{}.{}.{}".format(SAGEMAKER, PROCESSING_JOB, TAGS)
+        )
+
         network_config = resolve_nested_dict_value_from_config(
             process_args["network_config"],
             ["EnableInterContainerTrafficEncryption"],
             PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
             sagemaker_session=self.sagemaker_session,
         )
-        
+
         union_key_paths_for_dataset_definition = [
             ["DatasetDefinition", "S3Input"],
-            ["DatasetDefinition.AthenaDatasetDefinition", "DatasetDefinition.RedshiftDatasetDefinition"],
+            [
+                "DatasetDefinition.AthenaDatasetDefinition",
+                "DatasetDefinition.RedshiftDatasetDefinition",
+            ],
         ]
         update_list_of_dicts_with_values_from_config(
             process_args["inputs"],
@@ -549,19 +554,27 @@ class Processor(object):
             union_key_paths=union_key_paths_for_dataset_definition,
             sagemaker_session=self.sagemaker_session,
         )
-        
+
         role_arn = resolve_value_from_config(
-            process_args["role_arn"], PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+            process_args["role_arn"],
+            PROCESSING_JOB_ROLE_ARN_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        
+
         inferred_network_config = update_nested_dictionary_with_values_from_config(
-            network_config, PROCESSING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self.sagemaker_session
+            network_config,
+            PROCESSING_JOB_NETWORK_CONFIG_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
         inferred_output_config = update_nested_dictionary_with_values_from_config(
-            process_args["output_config"], PROCESSING_OUTPUT_CONFIG_PATH, sagemaker_session=self.sagemaker_session
+            process_args["output_config"],
+            PROCESSING_OUTPUT_CONFIG_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
         inferred_resources_config = update_nested_dictionary_with_values_from_config(
-            process_args["resources"], PROCESSING_JOB_PROCESSING_RESOURCES_PATH, sagemaker_session=self.sagemaker_session
+            process_args["resources"],
+            PROCESSING_JOB_PROCESSING_RESOURCES_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
         environment = resolve_value_from_config(
             direct_input=process_args["environment"],
@@ -569,7 +582,7 @@ class Processor(object):
             default_value=None,
             sagemaker_session=self.sagemaker_session,
         )
-        
+
         process_request = _get_process_request(
             inputs=process_args["inputs"],
             output_config=inferred_output_config,
@@ -583,10 +596,10 @@ class Processor(object):
             tags=tags,
             experiment_config=experiment_config,
         )
-        
+
         # convert Unassigned() type in sagemaker-core to None
         serialized_request = serialize(process_request)
-        
+
         if isinstance(self.sagemaker_session, PipelineSession):
             self.sagemaker_session._intercept_create_request(serialized_request, None, "process")
             return
@@ -602,15 +615,18 @@ class Processor(object):
                     "sagemaker-python-sdk-troubleshooting.html"
                     "#sagemaker-python-sdk-troubleshooting-create-processing-job"
                 )
-                logger.error("Please check the troubleshooting guide for common errors: %s", troubleshooting)
+                logger.error(
+                    "Please check the troubleshooting guide for common errors: %s", troubleshooting
+                )
                 raise e
 
         self.sagemaker_session._intercept_create_request(serialized_request, submit, "process")
-        
+
         from sagemaker.core.utils.code_injection.codec import transform
-        transformed = transform(serialized_request, 'CreateProcessingJobRequest')
+
+        transformed = transform(serialized_request, "CreateProcessingJobRequest")
         return ProcessingJob(**transformed)
-        
+
     def _get_process_args(self, inputs, outputs, experiment_config):
         """Gets a dict of arguments for a new Amazon SageMaker processing job."""
         process_request_args = {}
@@ -630,9 +646,13 @@ class Processor(object):
             }
         }
         if self.volume_kms_key is not None:
-            process_request_args["resources"]["ClusterConfig"]["VolumeKmsKeyId"] = self.volume_kms_key
+            process_request_args["resources"]["ClusterConfig"][
+                "VolumeKmsKeyId"
+            ] = self.volume_kms_key
         if self.max_runtime_in_seconds is not None:
-            process_request_args["stopping_condition"] = {"MaxRuntimeInSeconds": self.max_runtime_in_seconds}
+            process_request_args["stopping_condition"] = {
+                "MaxRuntimeInSeconds": self.max_runtime_in_seconds
+            }
         else:
             process_request_args["stopping_condition"] = None
         process_request_args["app_specification"] = {"ImageUri": self.image_uri}
@@ -721,7 +741,11 @@ class ScriptProcessor(Processor):
         self._CODE_CONTAINER_BASE_PATH = "/opt/ml/processing/input/"
         self._CODE_CONTAINER_INPUT_NAME = "code"
 
-        if not command and image_uri and ("sklearn" in str(image_uri) or "scikit-learn" in str(image_uri)):
+        if (
+            not command
+            and image_uri
+            and ("sklearn" in str(image_uri) or "scikit-learn" in str(image_uri))
+        ):
             command = ["python3"]
 
         self.command = command
@@ -808,8 +832,9 @@ class ScriptProcessor(Processor):
             outputs=normalized_outputs,
             experiment_config=experiment_config,
         )
-        
+
         from sagemaker.core.workflow.pipeline_context import PipelineSession
+
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
@@ -966,8 +991,8 @@ class ScriptProcessor(Processor):
                     )
                 ),
                 s3_data_type="S3Prefix",
-                s3_input_mode="File"
-            )
+                s3_input_mode="File",
+            ),
         )
         return (inputs or []) + [code_file_input]
 
@@ -1097,21 +1122,21 @@ class FrameworkProcessor(ScriptProcessor):
         """Package and upload code to S3."""
         import tarfile
         import tempfile
-        
+
         # If source_dir is not provided, use the directory containing entry_point
         if source_dir is None:
             if os.path.isabs(entry_point):
                 source_dir = os.path.dirname(entry_point)
             else:
                 source_dir = os.path.dirname(os.path.abspath(entry_point))
-        
+
         # Resolve source_dir to absolute path
         if not os.path.isabs(source_dir):
             source_dir = os.path.abspath(source_dir)
-        
+
         if not os.path.exists(source_dir):
             raise ValueError(f"source_dir does not exist: {source_dir}")
-        
+
         # Create tar.gz with source_dir contents
         with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
             with tarfile.open(tmp.name, "w:gz") as tar:
@@ -1119,7 +1144,7 @@ class FrameworkProcessor(ScriptProcessor):
                 for item in os.listdir(source_dir):
                     item_path = os.path.join(source_dir, item)
                     tar.add(item_path, arcname=item)
-            
+
             # Upload to S3
             s3_uri = s3.s3_path_join(
                 "s3://",
@@ -1129,15 +1154,15 @@ class FrameworkProcessor(ScriptProcessor):
                 "source",
                 "sourcedir.tar.gz",
             )
-            
+
             # Upload the tar file directly to S3
             s3.S3Uploader.upload_string_as_file_body(
-                body=open(tmp.name, 'rb').read(),
+                body=open(tmp.name, "rb").read(),
                 desired_s3_uri=s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
-            
+
             os.unlink(tmp.name)
             return s3_uri
 
@@ -1232,7 +1257,7 @@ class FrameworkProcessor(ScriptProcessor):
             job_name=job_name,
             kms_key=kms_key,
         )
-        
+
         inputs = self._patch_inputs_with_payload(inputs, s3_payload)
 
         entrypoint_s3_uri = s3_payload.replace("sourcedir.tar.gz", "runproc.sh")
@@ -1245,7 +1270,6 @@ class FrameworkProcessor(ScriptProcessor):
 
         return s3_runproc_sh, inputs, job_name
 
-
     def _patch_inputs_with_payload(self, inputs, s3_payload) -> List[ProcessingInput]:
         """Add payload sourcedir.tar.gz to processing input."""
         if inputs is None:
@@ -1253,10 +1277,10 @@ class FrameworkProcessor(ScriptProcessor):
 
         # make a shallow copy of user inputs
         patched_inputs = copy(inputs)
-        
+
         # Extract the directory path from the s3_payload (remove the filename)
-        s3_code_dir = s3_payload.rsplit('/', 1)[0] + '/'
-        
+        s3_code_dir = s3_payload.rsplit("/", 1)[0] + "/"
+
         patched_inputs.append(
             ProcessingInput(
                 input_name="code",
@@ -1359,40 +1383,43 @@ class FeatureStoreOutput(ApiObject):
 
 def _processing_input_to_request_dict(processing_input):
     """Convert ProcessingInput to request dictionary format."""
-    app_managed = getattr(processing_input, 'app_managed', False)
+    app_managed = getattr(processing_input, "app_managed", False)
     request_dict = {
         "InputName": processing_input.input_name,
         "AppManaged": app_managed if app_managed is not None else False,
     }
-    
+
     if processing_input.s3_input:
         request_dict["S3Input"] = {
             "S3Uri": processing_input.s3_input.s3_uri,
             "LocalPath": processing_input.s3_input.local_path,
-            "S3DataType": processing_input.s3_input.s3_data_type or 'S3Prefix',
-            "S3InputMode": processing_input.s3_input.s3_input_mode or 'File',
-            "S3DataDistributionType": processing_input.s3_input.s3_data_distribution_type or 'FullyReplicated',
-            "S3CompressionType": processing_input.s3_input.s3_compression_type or 'None',
+            "S3DataType": processing_input.s3_input.s3_data_type or "S3Prefix",
+            "S3InputMode": processing_input.s3_input.s3_input_mode or "File",
+            "S3DataDistributionType": processing_input.s3_input.s3_data_distribution_type
+            or "FullyReplicated",
+            "S3CompressionType": processing_input.s3_input.s3_compression_type or "None",
         }
-    
+
     return request_dict
+
 
 def _processing_output_to_request_dict(processing_output):
     """Convert ProcessingOutput to request dictionary format."""
-    app_managed = getattr(processing_output, 'app_managed', False)
+    app_managed = getattr(processing_output, "app_managed", False)
     request_dict = {
         "OutputName": processing_output.output_name,
         "AppManaged": app_managed if app_managed is not None else False,
     }
-    
+
     if processing_output.s3_output:
         request_dict["S3Output"] = {
             "S3Uri": processing_output.s3_output.s3_uri,
             "LocalPath": processing_output.s3_output.local_path,
             "S3UploadMode": processing_output.s3_output.s3_upload_mode,
         }
-    
+
     return request_dict
+
 
 def _get_process_request(
     inputs,
@@ -1479,6 +1506,7 @@ def _get_process_request(
 
     return process_request
 
+
 def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """Display logs for a given processing job, optionally tailing them until the is complete.
 
@@ -1493,7 +1521,14 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
         ValueError: If the processing job fails.
     """
 
-    description = _wait_until(lambda: ProcessingJob.get(processing_job_name=job_name, session=sagemaker_session.boto_session).refresh().__dict__, poll)
+    description = _wait_until(
+        lambda: ProcessingJob.get(
+            processing_job_name=job_name, session=sagemaker_session.boto_session
+        )
+        .refresh()
+        .__dict__,
+        poll,
+    )
 
     instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
         sagemaker_session.boto_session, description, job="Processing"
@@ -1541,7 +1576,13 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
         if state == LogState.JOB_COMPLETE:
             state = LogState.COMPLETE
         elif time.time() - last_describe_job_call >= 30:
-            description = ProcessingJob.get(processing_job_name=job_name, session=sagemaker_session.boto_session).refresh().__dict__
+            description = (
+                ProcessingJob.get(
+                    processing_job_name=job_name, session=sagemaker_session.boto_session
+                )
+                .refresh()
+                .__dict__
+            )
             last_describe_job_call = time.time()
 
             status = description["ProcessingJobStatus"]

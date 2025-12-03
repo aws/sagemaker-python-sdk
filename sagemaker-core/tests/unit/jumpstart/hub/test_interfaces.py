@@ -43,18 +43,18 @@ class TestCreateHubResponse:
     def test_create_hub_response_init(self):
         """Test CreateHubResponse initialization."""
         json_obj = {"HubArn": "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub"}
-        
+
         response = CreateHubResponse(json_obj)
-        
+
         assert response.hub_arn == "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub"
 
     def test_create_hub_response_to_json(self):
         """Test CreateHubResponse to_json method."""
         json_obj = {"HubArn": "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub"}
         response = CreateHubResponse(json_obj)
-        
+
         result = response.to_json()
-        
+
         assert "hub_arn" in result
         assert result["hub_arn"] == "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub"
 
@@ -67,11 +67,11 @@ class TestHubContentDependency:
         json_obj = {
             "DependencyCopyPath": "s3://bucket/copy/path",
             "DependencyOriginPath": "s3://bucket/origin/path",
-            "DependencyType": "MODEL"
+            "DependencyType": "MODEL",
         }
-        
+
         dependency = HubContentDependency(json_obj)
-        
+
         assert dependency.dependency_copy_path == "s3://bucket/copy/path"
         assert dependency.dependency_origin_path == "s3://bucket/origin/path"
         assert dependency.dependency_type == "MODEL"
@@ -79,9 +79,9 @@ class TestHubContentDependency:
     def test_hub_content_dependency_empty(self):
         """Test HubContentDependency with empty values."""
         json_obj = {}
-        
+
         dependency = HubContentDependency(json_obj)
-        
+
         assert dependency.dependency_copy_path == ""
         assert dependency.dependency_origin_path == ""
         assert dependency.dependency_type == ""
@@ -100,20 +100,22 @@ class TestDescribeHubContentResponse:
             "HubContentDescription": "Test model",
             "HubContentDisplayName": "My Model",
             "HubContentType": "Model",
-            "HubContentDocument": json.dumps({
-                "Url": "https://example.com",
-                "MinSdkVersion": "2.0.0",
-                "TrainingSupported": True,
-                "HostingEcrUri": "123.dkr.ecr.us-west-2.amazonaws.com/model:latest"
-            }),
+            "HubContentDocument": json.dumps(
+                {
+                    "Url": "https://example.com",
+                    "MinSdkVersion": "2.0.0",
+                    "TrainingSupported": True,
+                    "HostingEcrUri": "123.dkr.ecr.us-west-2.amazonaws.com/model:latest",
+                }
+            ),
             "HubContentName": "my-model",
             "HubContentStatus": "Available",
             "HubContentVersion": "1.0",
-            "HubName": "my-hub"
+            "HubName": "my-hub",
         }
-        
+
         response = DescribeHubContentResponse(json_obj)
-        
+
         assert response.hub_content_name == "my-model"
         assert response.hub_content_type == "Model"
         assert isinstance(response.hub_content_document, HubModelDocument)
@@ -126,18 +128,17 @@ class TestDescribeHubContentResponse:
             "HubArn": "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub",
             "HubContentArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/my-hub/Notebook/my-notebook/1",
             "HubContentType": "Notebook",
-            "HubContentDocument": json.dumps({
-                "NotebookLocation": "s3://bucket/notebook.ipynb",
-                "Dependencies": []
-            }),
+            "HubContentDocument": json.dumps(
+                {"NotebookLocation": "s3://bucket/notebook.ipynb", "Dependencies": []}
+            ),
             "HubContentName": "my-notebook",
             "HubContentStatus": "Available",
             "HubContentVersion": "1.0",
-            "HubName": "my-hub"
+            "HubName": "my-hub",
         }
-        
+
         response = DescribeHubContentResponse(json_obj)
-        
+
         assert response.hub_content_name == "my-notebook"
         assert response.hub_content_type == "Notebook"
         assert isinstance(response.hub_content_document, HubNotebookDocument)
@@ -154,9 +155,9 @@ class TestDescribeHubContentResponse:
             "HubContentName": "test",
             "HubContentStatus": "Available",
             "HubContentVersion": "1.0",
-            "HubName": "my-hub"
+            "HubName": "my-hub",
         }
-        
+
         with pytest.raises(ValueError, match="not a valid HubContentType"):
             DescribeHubContentResponse(json_obj)
 
@@ -168,18 +169,17 @@ class TestDescribeHubContentResponse:
             "HubArn": "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub",
             "HubContentArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/my-hub/Model/my-model/1",
             "HubContentType": "Model",
-            "HubContentDocument": json.dumps({
-                "Url": "https://example.com",
-                "TrainingSupported": False
-            }),
+            "HubContentDocument": json.dumps(
+                {"Url": "https://example.com", "TrainingSupported": False}
+            ),
             "HubContentName": "my-model",
             "HubContentStatus": "Available",
             "HubContentVersion": "1.0",
-            "HubName": "my-hub"
+            "HubName": "my-hub",
         }
-        
+
         response = DescribeHubContentResponse(json_obj)
-        
+
         assert response.get_hub_region() == "us-west-2"
 
 
@@ -189,29 +189,29 @@ class TestHubS3StorageConfig:
     def test_hub_s3_storage_config_init(self):
         """Test HubS3StorageConfig initialization."""
         json_obj = {"S3OutputPath": "s3://bucket/output"}
-        
+
         config = HubS3StorageConfig(json_obj)
-        
+
         assert config.s3_output_path == "s3://bucket/output"
 
     def test_hub_s3_storage_config_empty(self):
         """Test HubS3StorageConfig with empty values."""
         json_obj = {}
-        
+
         config = HubS3StorageConfig(json_obj)
-        
+
         assert config.s3_output_path == ""
 
 
 class TestDescribeHubResponse:
     """Test DescribeHubResponse class."""
 
-    @patch('sagemaker.core.jumpstart.hub.interfaces.datetime')
+    @patch("sagemaker.core.jumpstart.hub.interfaces.datetime")
     def test_describe_hub_response_init(self, mock_datetime):
         """Test DescribeHubResponse initialization."""
         mock_dt = Mock()
         mock_datetime.datetime.return_value = mock_dt
-        
+
         json_obj = {
             "CreationTime": 2023,
             "FailureReason": "",
@@ -222,21 +222,21 @@ class TestDescribeHubResponse:
             "HubSearchKeywords": ["ml", "test"],
             "HubStatus": "InService",
             "LastModifiedTime": 2023,
-            "S3StorageConfig": {"S3OutputPath": "s3://bucket/output"}
+            "S3StorageConfig": {"S3OutputPath": "s3://bucket/output"},
         }
-        
+
         response = DescribeHubResponse(json_obj)
-        
+
         assert response.hub_name == "my-hub"
         assert response.hub_status == "InService"
         assert isinstance(response.s3_storage_config, HubS3StorageConfig)
 
-    @patch('sagemaker.core.jumpstart.hub.interfaces.datetime')
+    @patch("sagemaker.core.jumpstart.hub.interfaces.datetime")
     def test_describe_hub_response_get_hub_region(self, mock_datetime):
         """Test get_hub_region method."""
         mock_dt = Mock()
         mock_datetime.datetime.return_value = mock_dt
-        
+
         json_obj = {
             "CreationTime": 2023,
             "FailureReason": "",
@@ -247,11 +247,11 @@ class TestDescribeHubResponse:
             "HubSearchKeywords": [],
             "HubStatus": "InService",
             "LastModifiedTime": 2023,
-            "S3StorageConfig": {"S3OutputPath": "s3://bucket/output"}
+            "S3StorageConfig": {"S3OutputPath": "s3://bucket/output"},
         }
-        
+
         response = DescribeHubResponse(json_obj)
-        
+
         assert response.get_hub_region() == "us-east-1"
 
 
@@ -262,11 +262,11 @@ class TestImportHubResponse:
         """Test ImportHubResponse initialization."""
         json_obj = {
             "HubArn": "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub",
-            "HubContentArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/my-hub/Model/my-model/1"
+            "HubContentArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/my-hub/Model/my-model/1",
         }
-        
+
         response = ImportHubResponse(json_obj)
-        
+
         assert response.hub_arn == "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub"
         assert "hub-content" in response.hub_content_arn
 
@@ -274,12 +274,12 @@ class TestImportHubResponse:
 class TestHubSummary:
     """Test HubSummary class."""
 
-    @patch('sagemaker.core.jumpstart.hub.interfaces.datetime')
+    @patch("sagemaker.core.jumpstart.hub.interfaces.datetime")
     def test_hub_summary_init(self, mock_datetime):
         """Test HubSummary initialization."""
         mock_dt = Mock()
         mock_datetime.datetime.return_value = mock_dt
-        
+
         json_obj = {
             "CreationTime": 2023,
             "HubArn": "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub",
@@ -288,11 +288,11 @@ class TestHubSummary:
             "HubName": "my-hub",
             "HubSearchKeywords": ["ml"],
             "HubStatus": "InService",
-            "LastModifiedTime": 2023
+            "LastModifiedTime": 2023,
         }
-        
+
         summary = HubSummary(json_obj)
-        
+
         assert summary.hub_name == "my-hub"
         assert summary.hub_status == "InService"
 
@@ -300,12 +300,12 @@ class TestHubSummary:
 class TestListHubsResponse:
     """Test ListHubsResponse class."""
 
-    @patch('sagemaker.core.jumpstart.hub.interfaces.datetime')
+    @patch("sagemaker.core.jumpstart.hub.interfaces.datetime")
     def test_list_hubs_response_init(self, mock_datetime):
         """Test ListHubsResponse initialization."""
         mock_dt = Mock()
         mock_datetime.datetime.return_value = mock_dt
-        
+
         json_obj = {
             "HubSummaries": [
                 {
@@ -316,7 +316,7 @@ class TestListHubsResponse:
                     "HubName": "hub1",
                     "HubSearchKeywords": [],
                     "HubStatus": "InService",
-                    "LastModifiedTime": 2023
+                    "LastModifiedTime": 2023,
                 },
                 {
                     "CreationTime": 2023,
@@ -326,14 +326,14 @@ class TestListHubsResponse:
                     "HubName": "hub2",
                     "HubSearchKeywords": [],
                     "HubStatus": "InService",
-                    "LastModifiedTime": 2023
-                }
+                    "LastModifiedTime": 2023,
+                },
             ],
-            "NextToken": "next-token"
+            "NextToken": "next-token",
         }
-        
+
         response = ListHubsResponse(json_obj)
-        
+
         assert len(response.hub_summaries) == 2
         assert all(isinstance(s, HubSummary) for s in response.hub_summaries)
         assert response.next_token == "next-token"
@@ -345,9 +345,9 @@ class TestEcrUri:
     def test_ecr_uri_parse(self):
         """Test parsing ECR URI."""
         uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-repo:latest"
-        
+
         ecr_uri = EcrUri(uri)
-        
+
         assert ecr_uri.account == "123456789012"
         assert ecr_uri.region_name == "us-west-2"
         assert ecr_uri.repository == "my-repo"
@@ -356,9 +356,9 @@ class TestEcrUri:
     def test_ecr_uri_parse_nested_repo(self):
         """Test parsing ECR URI with nested repository."""
         uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/org/team/my-repo:v1.0"
-        
+
         ecr_uri = EcrUri(uri)
-        
+
         assert ecr_uri.account == "123456789012"
         assert ecr_uri.region_name == "us-west-2"
         assert ecr_uri.repository == "org/team/my-repo"
@@ -373,11 +373,11 @@ class TestNotebookLocationUris:
         json_obj = {
             "demo_notebook": "s3://bucket/demo.ipynb",
             "model_fit": "s3://bucket/fit.ipynb",
-            "model_deploy": "s3://bucket/deploy.ipynb"
+            "model_deploy": "s3://bucket/deploy.ipynb",
         }
-        
+
         uris = NotebookLocationUris(json_obj)
-        
+
         assert uris.demo_notebook == "s3://bucket/demo.ipynb"
         assert uris.model_fit == "s3://bucket/fit.ipynb"
         assert uris.model_deploy == "s3://bucket/deploy.ipynb"
@@ -385,9 +385,9 @@ class TestNotebookLocationUris:
     def test_notebook_location_uris_partial(self):
         """Test NotebookLocationUris with partial data."""
         json_obj = {"demo_notebook": "s3://bucket/demo.ipynb"}
-        
+
         uris = NotebookLocationUris(json_obj)
-        
+
         assert uris.demo_notebook == "s3://bucket/demo.ipynb"
         assert uris.model_fit is None
         assert uris.model_deploy is None
@@ -405,11 +405,11 @@ class TestHubModelDocument:
             "HostingEcrUri": "123.dkr.ecr.us-west-2.amazonaws.com/model:latest",
             "HostingArtifactUri": "s3://bucket/model.tar.gz",
             "DefaultInferenceInstanceType": "ml.m5.xlarge",
-            "SupportedInferenceInstanceTypes": ["ml.m5.xlarge", "ml.m5.2xlarge"]
+            "SupportedInferenceInstanceTypes": ["ml.m5.xlarge", "ml.m5.2xlarge"],
         }
-        
+
         doc = HubModelDocument(json_obj, region="us-west-2")
-        
+
         assert doc.url == "https://example.com"
         assert doc.min_sdk_version == "2.0.0"
         assert doc.training_supported is False
@@ -427,35 +427,29 @@ class TestHubModelDocument:
             "SupportedTrainingInstanceTypes": ["ml.p3.2xlarge"],
             "Hyperparameters": [
                 {"Name": "learning_rate", "Type": "float", "Default": "0.001", "Scope": "algorithm"}
-            ]
+            ],
         }
-        
+
         doc = HubModelDocument(json_obj, region="us-west-2")
-        
+
         assert doc.training_supported is True
         assert doc.training_ecr_uri == "123.dkr.ecr.us-west-2.amazonaws.com/training:latest"
         assert len(doc.hyperparameters) == 1
 
     def test_hub_model_document_get_schema_version(self):
         """Test get_schema_version method."""
-        json_obj = {
-            "Url": "https://example.com",
-            "TrainingSupported": False
-        }
-        
+        json_obj = {"Url": "https://example.com", "TrainingSupported": False}
+
         doc = HubModelDocument(json_obj, region="us-west-2")
-        
+
         assert doc.get_schema_version() == "2.3.0"
 
     def test_hub_model_document_get_region(self):
         """Test get_region method."""
-        json_obj = {
-            "Url": "https://example.com",
-            "TrainingSupported": False
-        }
-        
+        json_obj = {"Url": "https://example.com", "TrainingSupported": False}
+
         doc = HubModelDocument(json_obj, region="us-east-1")
-        
+
         assert doc.get_region() == "us-east-1"
 
     def test_hub_model_document_to_json(self):
@@ -464,12 +458,12 @@ class TestHubModelDocument:
             "Url": "https://example.com",
             "MinSdkVersion": "2.0.0",
             "TrainingSupported": False,
-            "HostingEcrUri": "123.dkr.ecr.us-west-2.amazonaws.com/model:latest"
+            "HostingEcrUri": "123.dkr.ecr.us-west-2.amazonaws.com/model:latest",
         }
-        
+
         doc = HubModelDocument(json_obj, region="us-west-2")
         result = doc.to_json()
-        
+
         assert "url" in result
         assert "min_sdk_version" in result
         assert "training_supported" in result
@@ -486,37 +480,31 @@ class TestHubNotebookDocument:
                 {
                     "DependencyCopyPath": "s3://bucket/copy",
                     "DependencyOriginPath": "s3://bucket/origin",
-                    "DependencyType": "NOTEBOOK"
+                    "DependencyType": "NOTEBOOK",
                 }
-            ]
+            ],
         }
-        
+
         doc = HubNotebookDocument(json_obj, region="us-west-2")
-        
+
         assert doc.notebook_location == "s3://bucket/notebook.ipynb"
         assert len(doc.dependencies) == 1
         assert isinstance(doc.dependencies[0], HubContentDependency)
 
     def test_hub_notebook_document_get_schema_version(self):
         """Test get_schema_version method."""
-        json_obj = {
-            "NotebookLocation": "s3://bucket/notebook.ipynb",
-            "Dependencies": []
-        }
-        
+        json_obj = {"NotebookLocation": "s3://bucket/notebook.ipynb", "Dependencies": []}
+
         doc = HubNotebookDocument(json_obj, region="us-west-2")
-        
+
         assert doc.get_schema_version() == "1.0.0"
 
     def test_hub_notebook_document_get_region(self):
         """Test get_region method."""
-        json_obj = {
-            "NotebookLocation": "s3://bucket/notebook.ipynb",
-            "Dependencies": []
-        }
-        
+        json_obj = {"NotebookLocation": "s3://bucket/notebook.ipynb", "Dependencies": []}
+
         doc = HubNotebookDocument(json_obj, region="ap-south-1")
-        
+
         assert doc.get_region() == "ap-south-1"
 
 
@@ -535,11 +523,11 @@ class TestHubContentInfo:
             "HubContentVersion": "1.0",
             "HubContentDescription": "Test model",
             "HubContentDisplayName": "My Model",
-            "HubContentSearchKeywords": ["ml", "test"]
+            "HubContentSearchKeywords": ["ml", "test"],
         }
-        
+
         info = HubContentInfo(json_obj)
-        
+
         assert info.hub_content_name == "my-model"
         assert info.hub_content_type == HubContentType.MODEL
         assert info.hub_content_status == "Available"
@@ -553,11 +541,11 @@ class TestHubContentInfo:
             "HubContentName": "my-model",
             "HubContentStatus": "Available",
             "HubContentType": "Model",
-            "HubContentVersion": "1.0"
+            "HubContentVersion": "1.0",
         }
-        
+
         info = HubContentInfo(json_obj)
-        
+
         assert info.get_hub_region() == "eu-west-1"
 
 
@@ -575,7 +563,7 @@ class TestListHubContentsResponse:
                     "HubContentName": "model1",
                     "HubContentStatus": "Available",
                     "HubContentType": "Model",
-                    "HubContentVersion": "1.0"
+                    "HubContentVersion": "1.0",
                 },
                 {
                     "CreationTime": "2023-01-01T00:00:00Z",
@@ -584,26 +572,23 @@ class TestListHubContentsResponse:
                     "HubContentName": "notebook1",
                     "HubContentStatus": "Available",
                     "HubContentType": "Notebook",
-                    "HubContentVersion": "1.0"
-                }
+                    "HubContentVersion": "1.0",
+                },
             ],
-            "NextToken": "next-token"
+            "NextToken": "next-token",
         }
-        
+
         response = ListHubContentsResponse(json_obj)
-        
+
         assert len(response.hub_content_summaries) == 2
         assert all(isinstance(s, HubContentInfo) for s in response.hub_content_summaries)
         assert response.next_token == "next-token"
 
     def test_list_hub_contents_response_empty(self):
         """Test ListHubContentsResponse with empty list."""
-        json_obj = {
-            "HubContentSummaries": [],
-            "NextToken": ""
-        }
-        
+        json_obj = {"HubContentSummaries": [], "NextToken": ""}
+
         response = ListHubContentsResponse(json_obj)
-        
+
         assert len(response.hub_content_summaries) == 0
         assert response.next_token == ""

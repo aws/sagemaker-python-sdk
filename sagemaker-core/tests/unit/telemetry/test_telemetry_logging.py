@@ -246,6 +246,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_get_accountId_success(self):
         """Test to verify the _get_accountId function with success status"""
         from sagemaker.core.helper.session_helper import Session
+
         boto_mock = MagicMock(name="boto_session")
         boto_mock.client("sts").get_caller_identity.return_value = {"Account": "testAccountId"}
         session = Session(boto_session=boto_mock)
@@ -256,6 +257,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_get_accountId_exception(self):
         """Test to verify the _get_accountId function with exception"""
         from sagemaker.core.helper.session_helper import Session
+
         sts_client_mock = MagicMock()
         sts_client_mock.side_effect = Exception("Error creating STS client")
         boto_mock = MagicMock(name="boto_session")
@@ -290,6 +292,7 @@ class TestTelemetryLogging(unittest.TestCase):
     @patch.object(boto3.Session, "region_name", "us-west-2")
     def test_get_default_sagemaker_session(self):
         from sagemaker.core.helper.session_helper import Session
+
         sagemaker_session = _get_default_sagemaker_session()
 
         assert isinstance(sagemaker_session, Session) is True

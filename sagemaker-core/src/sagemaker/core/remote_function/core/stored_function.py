@@ -20,7 +20,10 @@ from typing import Any
 
 from sagemaker.core.s3 import s3_path_join
 from sagemaker.core.remote_function import logging_config
-from sagemaker.core.remote_function.core.pipeline_variables import Context, resolve_pipeline_variables
+from sagemaker.core.remote_function.core.pipeline_variables import (
+    Context,
+    resolve_pipeline_variables,
+)
 
 import sagemaker.core.remote_function.core.serialization as serialization
 from sagemaker.core.helper.session_helper import Session
