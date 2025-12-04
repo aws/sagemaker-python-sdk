@@ -69,8 +69,7 @@ class TestConstants:
 class TestEndpointInput:
     def test_init_minimal(self):
         endpoint_input = EndpointInput(
-            endpoint_name="test-endpoint",
-            destination="/opt/ml/processing/input"
+            endpoint_name="test-endpoint", destination="/opt/ml/processing/input"
         )
         assert endpoint_input.endpoint_name == "test-endpoint"
         assert endpoint_input.local_path == "/opt/ml/processing/input"
@@ -89,7 +88,7 @@ class TestEndpointInput:
             inference_attribute="prediction",
             probability_attribute="probability",
             probability_threshold_attribute=0.5,
-            exclude_features_attribute="feature1,feature2"
+            exclude_features_attribute="feature1,feature2",
         )
         assert endpoint_input.s3_input_mode == "Pipe"
         assert endpoint_input.start_time_offset == "-PT1H"
@@ -97,8 +96,7 @@ class TestEndpointInput:
 
     def test_to_request_dict_minimal(self):
         endpoint_input = EndpointInput(
-            endpoint_name="test-endpoint",
-            destination="/opt/ml/processing/input"
+            endpoint_name="test-endpoint", destination="/opt/ml/processing/input"
         )
         request_dict = endpoint_input._to_request_dict()
         assert "EndpointInput" in request_dict
@@ -108,7 +106,7 @@ class TestEndpointInput:
         endpoint_input = EndpointInput(
             endpoint_name="test-endpoint",
             destination="/opt/ml/processing/input",
-            start_time_offset=None
+            start_time_offset=None,
         )
         request_dict = endpoint_input._to_request_dict()
         assert "StartTimeOffset" not in request_dict["EndpointInput"]
@@ -117,8 +115,7 @@ class TestEndpointInput:
 class TestMonitoringOutput:
     def test_init_minimal(self):
         output = MonitoringOutput(
-            source="/opt/ml/processing/output",
-            destination="s3://bucket/output"
+            source="/opt/ml/processing/output", destination="s3://bucket/output"
         )
         assert output.source == "/opt/ml/processing/output"
         assert output.s3_output.s3_uri == "s3://bucket/output"
@@ -128,14 +125,13 @@ class TestMonitoringOutput:
         output = MonitoringOutput(
             source="/opt/ml/processing/output",
             destination="s3://bucket/output",
-            s3_upload_mode="EndOfJob"
+            s3_upload_mode="EndOfJob",
         )
         assert output.s3_upload_mode == "EndOfJob"
 
     def test_to_request_dict_minimal(self):
         output = MonitoringOutput(
-            source="/opt/ml/processing/output",
-            destination="s3://bucket/output"
+            source="/opt/ml/processing/output", destination="s3://bucket/output"
         )
         request_dict = output._to_request_dict()
         assert "S3Output" in request_dict
@@ -153,12 +149,9 @@ class TestBaseliningJob:
         output = Mock()
         output.s3_output = Mock()
         output.s3_output.s3_uri = "s3://bucket/output"
-        
+
         job = BaseliningJob(
-            sagemaker_session=mock_session,
-            job_name="test-job",
-            inputs=[],
-            outputs=[output]
+            sagemaker_session=mock_session, job_name="test-job", inputs=[], outputs=[output]
         )
         assert job.job_name == "test-job"
         assert job.output_kms_key is None
@@ -166,14 +159,11 @@ class TestBaseliningJob:
     def test_describe(self, mock_session):
         mock_session.sagemaker_client.describe_processing_job.return_value = {
             "ProcessingJobName": "test-job",
-            "ProcessingJobStatus": "Completed"
+            "ProcessingJobStatus": "Completed",
         }
-        
+
         job = BaseliningJob(
-            sagemaker_session=mock_session,
-            job_name="test-job",
-            inputs=[],
-            outputs=[]
+            sagemaker_session=mock_session, job_name="test-job", inputs=[], outputs=[]
         )
         result = job.describe()
         assert result["ProcessingJobName"] == "test-job"
@@ -182,15 +172,14 @@ class TestBaseliningJob:
         output = Mock()
         output.s3_output = Mock()
         output.s3_output.s3_uri = "s3://bucket/output"
-        
+
         job = BaseliningJob(
-            sagemaker_session=mock_session,
-            job_name="test-job",
-            inputs=[],
-            outputs=[output]
+            sagemaker_session=mock_session, job_name="test-job", inputs=[], outputs=[output]
         )
-        
-        with patch("sagemaker.core.model_monitor.model_monitoring.Statistics.from_s3_uri") as mock_stats:
+
+        with patch(
+            "sagemaker.core.model_monitor.model_monitoring.Statistics.from_s3_uri"
+        ) as mock_stats:
             mock_stats.return_value = Mock()
             stats = job.baseline_statistics()
             assert stats is not None
@@ -199,25 +188,23 @@ class TestBaseliningJob:
         output = Mock()
         output.s3_output = Mock()
         output.s3_output.s3_uri = "s3://bucket/output"
-        
+
         job = BaseliningJob(
-            sagemaker_session=mock_session,
-            job_name="test-job",
-            inputs=[],
-            outputs=[output]
+            sagemaker_session=mock_session, job_name="test-job", inputs=[], outputs=[output]
         )
-        
+
         mock_session.sagemaker_client.describe_processing_job.return_value = {
             "ProcessingJobStatus": "InProgress"
         }
-        
-        with patch("sagemaker.core.model_monitor.model_monitoring.Statistics.from_s3_uri") as mock_stats:
+
+        with patch(
+            "sagemaker.core.model_monitor.model_monitoring.Statistics.from_s3_uri"
+        ) as mock_stats:
             error = ClientError(
-                {"Error": {"Code": "NoSuchKey", "Message": "Not found"}},
-                "GetObject"
+                {"Error": {"Code": "NoSuchKey", "Message": "Not found"}}, "GetObject"
             )
             mock_stats.side_effect = error
-            
+
             with pytest.raises(Exception):
                 job.baseline_statistics()
 
@@ -225,7 +212,7 @@ class TestBaseliningJob:
 class TestMonitoringExecution:
     def test_from_processing_arn(self, mock_session):
         processing_job_arn = "arn:aws:sagemaker:us-west-2:123456789012:processing-job/test-job"
-        
+
         mock_session.sagemaker_client.describe_processing_job.return_value = {
             "ProcessingJobName": "test-job",
             "ProcessingInputs": [],
@@ -236,16 +223,15 @@ class TestMonitoringExecution:
                         "S3Output": {
                             "S3Uri": "s3://bucket/output",
                             "LocalPath": "/opt/ml/processing/output",
-                            "S3UploadMode": "EndOfJob"
-                        }
+                            "S3UploadMode": "EndOfJob",
+                        },
                     }
                 ]
-            }
+            },
         }
-        
+
         execution = MonitoringExecution.from_processing_arn(
-            sagemaker_session=mock_session,
-            processing_job_arn=processing_job_arn
+            sagemaker_session=mock_session, processing_job_arn=processing_job_arn
         )
         assert execution.processing_job_name == "test-job"
 
@@ -255,18 +241,17 @@ class TestMonitoringExecution:
             s3_output=ProcessingS3Output(
                 s3_uri="s3://bucket/output",
                 local_path="/opt/ml/processing/output",
-                s3_upload_mode="EndOfJob"
-            )
+                s3_upload_mode="EndOfJob",
+            ),
         )
-        
+
         execution = MonitoringExecution(
-            sagemaker_session=mock_session,
-            job_name="test-execution",
-            inputs=[],
-            output=output
+            sagemaker_session=mock_session, job_name="test-execution", inputs=[], output=output
         )
-        
-        with patch("sagemaker.core.model_monitor.model_monitoring.Statistics.from_s3_uri") as mock_stats:
+
+        with patch(
+            "sagemaker.core.model_monitor.model_monitoring.Statistics.from_s3_uri"
+        ) as mock_stats:
             mock_stats.return_value = Mock()
             stats = execution.statistics()
             assert stats is not None
@@ -274,160 +259,237 @@ class TestMonitoringExecution:
 
 class TestModelMonitor:
     def test_init_without_role_raises_error(self, mock_session):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", return_value=None):
+        with patch(
+            "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+            return_value=None,
+        ):
             with pytest.raises(ValueError, match="An AWS IAM role is required"):
-                ModelMonitor(
-                    role=None,
-                    image_uri="test-image",
-                    sagemaker_session=mock_session
-                )
+                ModelMonitor(role=None, image_uri="test-image", sagemaker_session=mock_session)
 
     def test_init_with_network_config(self, mock_session, test_role):
         network_config = NetworkConfig(
-            enable_network_isolation=True,
-            security_group_ids=["sg-123"],
-            subnets=["subnet-123"]
+            enable_network_isolation=True, security_group_ids=["sg-123"], subnets=["subnet-123"]
         )
-        
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=network_config):
+
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=network_config,
+            ),
+        ):
             monitor = ModelMonitor(
                 role=test_role,
                 image_uri="test-image",
                 sagemaker_session=mock_session,
-                network_config=network_config
+                network_config=network_config,
             )
             assert monitor.network_config is not None
 
     def test_generate_baselining_job_name_with_custom_name(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None):
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+        ):
             monitor = ModelMonitor(
-                role=test_role,
-                image_uri="test-image",
-                sagemaker_session=mock_session
+                role=test_role, image_uri="test-image", sagemaker_session=mock_session
             )
             job_name = monitor._generate_baselining_job_name(job_name="custom-job")
             assert job_name == "custom-job"
 
     def test_start_monitoring_schedule(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None):
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+        ):
             monitor = ModelMonitor(
-                role=test_role,
-                image_uri="test-image",
-                sagemaker_session=mock_session
+                role=test_role, image_uri="test-image", sagemaker_session=mock_session
             )
             monitor.monitoring_schedule_name = "test-schedule"
-            
-            with patch("sagemaker.core.model_monitor.model_monitoring.boto_start_monitoring_schedule") as mock_start, \
-                 patch.object(monitor, "_wait_for_schedule_changes_to_apply"):
+
+            with (
+                patch(
+                    "sagemaker.core.model_monitor.model_monitoring.boto_start_monitoring_schedule"
+                ) as mock_start,
+                patch.object(monitor, "_wait_for_schedule_changes_to_apply"),
+            ):
                 monitor.start_monitoring_schedule()
                 mock_start.assert_called_once()
 
     def test_delete_monitoring_schedule(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None):
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+        ):
             monitor = ModelMonitor(
-                role=test_role,
-                image_uri="test-image",
-                sagemaker_session=mock_session
+                role=test_role, image_uri="test-image", sagemaker_session=mock_session
             )
             monitor.monitoring_schedule_name = "test-schedule"
             monitor.job_definition_name = "test-job-def"
-            
-            with patch("sagemaker.core.model_monitor.model_monitoring.boto_delete_monitoring_schedule") as mock_delete, \
-                 patch.object(monitor, "_wait_for_schedule_changes_to_apply"):
+
+            with (
+                patch(
+                    "sagemaker.core.model_monitor.model_monitoring.boto_delete_monitoring_schedule"
+                ) as mock_delete,
+                patch.object(monitor, "_wait_for_schedule_changes_to_apply"),
+            ):
                 monitor.delete_monitoring_schedule()
                 mock_delete.assert_called_once()
                 assert monitor.monitoring_schedule_name is None
 
     def test_list_executions(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None):
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+        ):
             monitor = ModelMonitor(
-                role=test_role,
-                image_uri="test-image",
-                sagemaker_session=mock_session
+                role=test_role, image_uri="test-image", sagemaker_session=mock_session
             )
             monitor.monitoring_schedule_name = "test-schedule"
-            
-            with patch("sagemaker.core.model_monitor.model_monitoring.boto_list_monitoring_executions") as mock_list:
+
+            with patch(
+                "sagemaker.core.model_monitor.model_monitoring.boto_list_monitoring_executions"
+            ) as mock_list:
                 mock_list.return_value = {
                     "MonitoringExecutionSummaries": [
-                        {"ProcessingJobArn": "arn:aws:sagemaker:us-west-2:123456789012:processing-job/test-job"}
+                        {
+                            "ProcessingJobArn": "arn:aws:sagemaker:us-west-2:123456789012:processing-job/test-job"
+                        }
                     ]
                 }
-                
-                with patch("sagemaker.core.model_monitor.model_monitoring.MonitoringExecution.from_processing_arn") as mock_from_arn:
+
+                with patch(
+                    "sagemaker.core.model_monitor.model_monitoring.MonitoringExecution.from_processing_arn"
+                ) as mock_from_arn:
                     mock_from_arn.return_value = Mock()
                     executions = monitor.list_executions()
                     assert len(executions) == 1
 
     def test_update_monitoring_alert_no_schedule(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None):
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+        ):
             monitor = ModelMonitor(
-                role=test_role,
-                image_uri="test-image",
-                sagemaker_session=mock_session
+                role=test_role, image_uri="test-image", sagemaker_session=mock_session
             )
-            
+
             with pytest.raises(ValueError, match="Nothing to update"):
                 monitor.update_monitoring_alert(
-                    monitoring_alert_name="test-alert",
-                    data_points_to_alert=3,
-                    evaluation_period=5
+                    monitoring_alert_name="test-alert", data_points_to_alert=3, evaluation_period=5
                 )
 
 
 class TestDefaultModelMonitor:
     def test_init_minimal(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None), \
-             patch("sagemaker.core.model_monitor.model_monitoring.DefaultModelMonitor._get_default_image_uri", return_value="test-image"):
-            monitor = DefaultModelMonitor(
-                role=test_role,
-                sagemaker_session=mock_session
-            )
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.DefaultModelMonitor._get_default_image_uri",
+                return_value="test-image",
+            ),
+        ):
+            monitor = DefaultModelMonitor(role=test_role, sagemaker_session=mock_session)
             assert monitor.role == test_role
 
     def test_monitoring_type(self):
         assert DefaultModelMonitor.monitoring_type() == "DataQuality"
 
     def test_create_monitoring_schedule_already_exists(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None), \
-             patch("sagemaker.core.model_monitor.model_monitoring.DefaultModelMonitor._get_default_image_uri", return_value="test-image"):
-            monitor = DefaultModelMonitor(
-                role=test_role,
-                sagemaker_session=mock_session
-            )
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.DefaultModelMonitor._get_default_image_uri",
+                return_value="test-image",
+            ),
+        ):
+            monitor = DefaultModelMonitor(role=test_role, sagemaker_session=mock_session)
             monitor.job_definition_name = "existing-job-def"
-            
+
             with pytest.raises(ValueError, match="already used to create"):
-                monitor.create_monitoring_schedule(
-                    endpoint_input="test-endpoint"
-                )
+                monitor.create_monitoring_schedule(endpoint_input="test-endpoint")
 
     def test_delete_monitoring_schedule_with_job_definition(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None), \
-             patch("sagemaker.core.model_monitor.model_monitoring.DefaultModelMonitor._get_default_image_uri", return_value="test-image"), \
-             patch("sagemaker.core.model_monitor.model_monitoring.boto_delete_monitoring_schedule") as mock_delete:
-            
-            monitor = DefaultModelMonitor(
-                role=test_role,
-                sagemaker_session=mock_session
-            )
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.DefaultModelMonitor._get_default_image_uri",
+                return_value="test-image",
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.boto_delete_monitoring_schedule"
+            ) as mock_delete,
+        ):
+
+            monitor = DefaultModelMonitor(role=test_role, sagemaker_session=mock_session)
             monitor.monitoring_schedule_name = "test-schedule"
             monitor.job_definition_name = "test-job-def"
-            
-            mock_session.sagemaker_client.exceptions.ResourceNotFound = type('ResourceNotFound', (Exception,), {})
-            
-            with patch.object(monitor, "_wait_for_schedule_changes_to_apply", side_effect=mock_session.sagemaker_client.exceptions.ResourceNotFound()):
+
+            mock_session.sagemaker_client.exceptions.ResourceNotFound = type(
+                "ResourceNotFound", (Exception,), {}
+            )
+
+            with patch.object(
+                monitor,
+                "_wait_for_schedule_changes_to_apply",
+                side_effect=mock_session.sagemaker_client.exceptions.ResourceNotFound(),
+            ):
                 monitor.delete_monitoring_schedule()
-            
+
             mock_delete.assert_called_once()
             assert monitor.job_definition_name is None
 
@@ -436,34 +498,54 @@ class TestModelQualityMonitor:
     def test_monitoring_type(self):
         assert ModelQualityMonitor.monitoring_type() == "ModelQuality"
 
-    def test_create_monitoring_schedule_without_ground_truth_raises_error(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None), \
-             patch("sagemaker.core.model_monitor.model_monitoring.ModelQualityMonitor._get_default_image_uri", return_value="test-image"):
-            monitor = ModelQualityMonitor(
-                role=test_role,
-                sagemaker_session=mock_session
-            )
-            
+    def test_create_monitoring_schedule_without_ground_truth_raises_error(
+        self, mock_session, test_role
+    ):
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.ModelQualityMonitor._get_default_image_uri",
+                return_value="test-image",
+            ),
+        ):
+            monitor = ModelQualityMonitor(role=test_role, sagemaker_session=mock_session)
+
             with pytest.raises(ValueError, match="ground_truth_input can not be None"):
                 monitor.create_monitoring_schedule(
                     endpoint_input="test-endpoint",
                     ground_truth_input=None,
-                    problem_type="BinaryClassification"
+                    problem_type="BinaryClassification",
                 )
 
-    def test_create_monitoring_schedule_without_problem_type_raises_error(self, mock_session, test_role):
-        with patch("sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config", side_effect=lambda x, *args, **kwargs: x), \
-             patch("sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config", return_value=None), \
-             patch("sagemaker.core.model_monitor.model_monitoring.ModelQualityMonitor._get_default_image_uri", return_value="test-image"):
-            monitor = ModelQualityMonitor(
-                role=test_role,
-                sagemaker_session=mock_session
-            )
-            
+    def test_create_monitoring_schedule_without_problem_type_raises_error(
+        self, mock_session, test_role
+    ):
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.ModelQualityMonitor._get_default_image_uri",
+                return_value="test-image",
+            ),
+        ):
+            monitor = ModelQualityMonitor(role=test_role, sagemaker_session=mock_session)
+
             with pytest.raises(ValueError, match="problem_type can not be None"):
                 monitor.create_monitoring_schedule(
                     endpoint_input="test-endpoint",
                     ground_truth_input="s3://bucket/ground_truth",
-                    problem_type=None
+                    problem_type=None,
                 )

@@ -234,3 +234,15 @@ def _run_clone_command_silent(repo_url, dest_dir):
             logger.error(f"Failed to clone repository: {repo_url}")
             logger.error(f"Error output:\n{e}")
             raise
+
+def _get_studio_tags(model_id: str, hub_name: str):
+    return [
+        {
+            "key": "sagemaker-studio:jumpstart-model-id",
+            "value": model_id
+        },
+        {
+            "key": "sagemaker-studio:jumpstart-hub-name",
+            "value": hub_name
+        }
+    ]

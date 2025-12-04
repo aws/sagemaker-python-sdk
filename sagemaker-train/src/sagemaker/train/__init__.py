@@ -31,4 +31,29 @@ def __getattr__(name):
     elif name == "logger":
         from sagemaker.core.utils.utils import logger
         return logger
+    # Evaluate module exports
+    elif name == "BaseEvaluator":
+        from sagemaker.train.evaluate import BaseEvaluator
+        return BaseEvaluator
+    elif name == "BenchMarkEvaluator":
+        from sagemaker.train.evaluate import BenchMarkEvaluator
+        return BenchMarkEvaluator
+    elif name == "CustomScorerEvaluator":
+        from sagemaker.train.evaluate import CustomScorerEvaluator
+        return CustomScorerEvaluator
+    elif name == "LLMAsJudgeEvaluator":
+        from sagemaker.train.evaluate import LLMAsJudgeEvaluator
+        return LLMAsJudgeEvaluator
+    elif name == "EvaluationPipelineExecution":
+        from sagemaker.train.evaluate import EvaluationPipelineExecution
+        return EvaluationPipelineExecution
+    elif name == "get_benchmarks":
+        from sagemaker.train.evaluate import get_benchmarks
+        return get_benchmarks
+    elif name == "get_benchmark_properties":
+        from sagemaker.train.evaluate import get_benchmark_properties
+        return get_benchmark_properties
+    elif name == "get_builtin_metrics":
+        from sagemaker.train.evaluate import get_builtin_metrics
+        return get_builtin_metrics
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

@@ -297,7 +297,9 @@ class ConditionOr(Condition):
 
 
 def primitive_or_expr(
-    value: Union[ExecutionVariable, PipelineVariable, PrimitiveType, Parameter, Properties, StepOutput]
+    value: Union[
+        ExecutionVariable, PipelineVariable, PrimitiveType, Parameter, Properties, StepOutput
+    ],
 ) -> Union[Dict[str, str], PrimitiveType]:
     """Provide the expression of the value or return value if it is a primitive.
 

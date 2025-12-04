@@ -86,9 +86,15 @@ ADDITIONAL_OPERATION_FILE_PATH = (
 _PACKAGE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 
 SERVICE_JSON_FILE_PATH = os.path.join(_PACKAGE_ROOT, "sample/sagemaker/2017-07-24/service-2.json")
-RUNTIME_SERVICE_JSON_FILE_PATH = os.path.join(_PACKAGE_ROOT, "sample/sagemaker-runtime/2017-05-13/service-2.json")
-FEATURE_STORE_SERVICE_JSON_FILE_PATH = os.path.join(_PACKAGE_ROOT, "sample/sagemaker-featurestore-runtime/2020-07-01/service-2.json")
-METRICS_SERVICE_JSON_FILE_PATH = os.path.join(_PACKAGE_ROOT, "sample/sagemaker-metrics/2022-09-30/service-2.json")
+RUNTIME_SERVICE_JSON_FILE_PATH = os.path.join(
+    _PACKAGE_ROOT, "sample/sagemaker-runtime/2017-05-13/service-2.json"
+)
+FEATURE_STORE_SERVICE_JSON_FILE_PATH = os.path.join(
+    _PACKAGE_ROOT, "sample/sagemaker-featurestore-runtime/2020-07-01/service-2.json"
+)
+METRICS_SERVICE_JSON_FILE_PATH = os.path.join(
+    _PACKAGE_ROOT, "sample/sagemaker-metrics/2022-09-30/service-2.json"
+)
 
 GENERATED_CLASSES_LOCATION = os.getcwd() + "/src/sagemaker/core"
 UTILS_CODEGEN_FILE_NAME = "utils.py"

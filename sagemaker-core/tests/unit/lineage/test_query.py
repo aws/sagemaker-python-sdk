@@ -74,7 +74,7 @@ class TestEdge:
             destination_arn="arn:aws:sagemaker:us-west-2:123456789:artifact/dest",
             association_type="ContributedTo",
         )
-        
+
         assert edge.source_arn == "arn:aws:sagemaker:us-west-2:123456789:artifact/source"
         assert edge.destination_arn == "arn:aws:sagemaker:us-west-2:123456789:artifact/dest"
         assert edge.association_type == "ContributedTo"
@@ -84,7 +84,7 @@ class TestEdge:
         edge1 = Edge("source1", "dest1", "type1")
         edge2 = Edge("source1", "dest1", "type1")
         edge3 = Edge("source2", "dest1", "type1")
-        
+
         assert edge1 == edge2
         assert edge1 != edge3
 
@@ -92,9 +92,9 @@ class TestEdge:
         """Test edge hashing"""
         edge1 = Edge("source1", "dest1", "type1")
         edge2 = Edge("source1", "dest1", "type1")
-        
+
         assert hash(edge1) == hash(edge2)
-        
+
         edge_set = {edge1, edge2}
         assert len(edge_set) == 1
 
@@ -102,7 +102,7 @@ class TestEdge:
         """Test edge string representation"""
         edge = Edge("source", "dest", "type")
         str_repr = str(edge)
-        
+
         assert "source_arn" in str_repr
         assert "destination_arn" in str_repr
         assert "association_type" in str_repr
@@ -120,7 +120,7 @@ class TestVertex:
             lineage_source="Model",
             sagemaker_session=mock_session,
         )
-        
+
         assert vertex.arn == "arn:aws:sagemaker:us-west-2:123456789:artifact/test"
         assert vertex.lineage_entity == "Artifact"
         assert vertex.lineage_source == "Model"
@@ -131,7 +131,7 @@ class TestVertex:
         vertex1 = Vertex("arn1", "Artifact", "Model", mock_session)
         vertex2 = Vertex("arn1", "Artifact", "Model", mock_session)
         vertex3 = Vertex("arn2", "Artifact", "Model", mock_session)
-        
+
         assert vertex1 == vertex2
         assert vertex1 != vertex3
 
@@ -140,9 +140,9 @@ class TestVertex:
         mock_session = Mock()
         vertex1 = Vertex("arn1", "Artifact", "Model", mock_session)
         vertex2 = Vertex("arn1", "Artifact", "Model", mock_session)
-        
+
         assert hash(vertex1) == hash(vertex2)
-        
+
         vertex_set = {vertex1, vertex2}
         assert len(vertex_set) == 1
 
@@ -152,14 +152,14 @@ class TestVertex:
         mock_session = Mock()
         mock_context = Mock()
         mock_endpoint_context_class.load.return_value = mock_context
-        
+
         vertex = Vertex(
             "arn:aws:sagemaker:us-west-2:123456789:context/test-context",
             "Context",
             "Endpoint",
             mock_session,
         )
-        
+
         result = vertex.to_lineage_object()
         # Should call EndpointContext.load for Endpoint source
         assert result is not None
@@ -170,14 +170,14 @@ class TestVertex:
         mock_session = Mock()
         mock_action = Mock()
         mock_action_class.load.return_value = mock_action
-        
+
         vertex = Vertex(
             "arn:aws:sagemaker:us-west-2:123456789:action/test-action",
             "Action",
             "TrainingJob",
             mock_session,
         )
-        
+
         result = vertex.to_lineage_object()
         assert result == mock_action
 
@@ -185,7 +185,7 @@ class TestVertex:
         """Test converting invalid vertex"""
         mock_session = Mock()
         vertex = Vertex("arn", "InvalidType", "Source", mock_session)
-        
+
         with pytest.raises(ValueError, match="cannot be converted"):
             vertex.to_lineage_object()
 
@@ -196,7 +196,7 @@ class TestLineageQueryResult:
     def test_empty_result(self):
         """Test empty query result"""
         result = LineageQueryResult()
-        
+
         assert result.edges == []
         assert result.vertices == []
         assert result.startarn == []
@@ -207,9 +207,9 @@ class TestLineageQueryResult:
         edges = [Edge("source", "dest", "type")]
         vertices = [Vertex("arn", "Artifact", "Model", mock_session)]
         startarn = ["arn:start"]
-        
+
         result = LineageQueryResult(edges, vertices, startarn)
-        
+
         assert len(result.edges) == 1
         assert len(result.vertices) == 1
         assert len(result.startarn) == 1
@@ -221,7 +221,7 @@ class TestLineageQueryResult:
             Edge("source2", "dest2", "type2"),
         ]
         result = LineageQueryResult(edges=edges)
-        
+
         tuples = result._covert_edges_to_tuples()
         assert len(tuples) == 2
         assert tuples[0] == ("source1", "dest1", "type1")
@@ -234,7 +234,7 @@ class TestLineageQueryResult:
             Vertex("arn2", "Context", "Endpoint", mock_session),
         ]
         result = LineageQueryResult(vertices=vertices, startarn=["arn1"])
-        
+
         tuples = result._covert_vertices_to_tuples()
         assert len(tuples) == 2
         assert tuples[0][0] == "arn1"
@@ -246,10 +246,10 @@ class TestLineageQueryResult:
         mock_session = Mock()
         edges = [Edge("source", "dest", "type")]
         vertices = [Vertex("arn", "Artifact", "Model", mock_session)]
-        
+
         result = LineageQueryResult(edges, vertices)
         elements = result._get_visualization_elements()
-        
+
         assert "nodes" in elements
         assert "edges" in elements
         assert len(elements["nodes"]) == 1
@@ -263,27 +263,23 @@ class TestLineageFilter:
         """Test empty filter"""
         filter_obj = LineageFilter()
         request_dict = filter_obj._to_request_dict()
-        
+
         assert request_dict == {}
 
     def test_filter_with_entities(self):
         """Test filter with entities"""
-        filter_obj = LineageFilter(
-            entities=[LineageEntityEnum.ARTIFACT, LineageEntityEnum.ACTION]
-        )
+        filter_obj = LineageFilter(entities=[LineageEntityEnum.ARTIFACT, LineageEntityEnum.ACTION])
         request_dict = filter_obj._to_request_dict()
-        
+
         assert "LineageTypes" in request_dict
         assert len(request_dict["LineageTypes"]) == 2
         assert "Artifact" in request_dict["LineageTypes"]
 
     def test_filter_with_sources(self):
         """Test filter with sources"""
-        filter_obj = LineageFilter(
-            sources=[LineageSourceEnum.MODEL, LineageSourceEnum.DATASET]
-        )
+        filter_obj = LineageFilter(sources=[LineageSourceEnum.MODEL, LineageSourceEnum.DATASET])
         request_dict = filter_obj._to_request_dict()
-        
+
         assert "Types" in request_dict
         assert len(request_dict["Types"]) == 2
 
@@ -291,23 +287,21 @@ class TestLineageFilter:
         """Test filter with date ranges"""
         created_before = datetime(2023, 1, 1)
         created_after = datetime(2022, 1, 1)
-        
+
         filter_obj = LineageFilter(
             created_before=created_before,
             created_after=created_after,
         )
         request_dict = filter_obj._to_request_dict()
-        
+
         assert "CreatedBefore" in request_dict
         assert "CreatedAfter" in request_dict
 
     def test_filter_with_properties(self):
         """Test filter with properties"""
-        filter_obj = LineageFilter(
-            properties={"key1": "value1", "key2": "value2"}
-        )
+        filter_obj = LineageFilter(properties={"key1": "value1", "key2": "value2"})
         request_dict = filter_obj._to_request_dict()
-        
+
         assert "Properties" in request_dict
         assert request_dict["Properties"]["key1"] == "value1"
 
@@ -315,7 +309,7 @@ class TestLineageFilter:
         """Test filter with string entities"""
         filter_obj = LineageFilter(entities=["Artifact", "Action"])
         request_dict = filter_obj._to_request_dict()
-        
+
         assert "LineageTypes" in request_dict
         assert "Artifact" in request_dict["LineageTypes"]
 
@@ -327,20 +321,20 @@ class TestLineageQuery:
         """Test query creation"""
         mock_session = Mock()
         query = LineageQuery(mock_session)
-        
+
         assert query._session == mock_session
 
     def test_get_edge(self):
         """Test converting API edge to Edge object"""
         mock_session = Mock()
         query = LineageQuery(mock_session)
-        
+
         api_edge = {
             "SourceArn": "source_arn",
             "DestinationArn": "dest_arn",
             "AssociationType": "ContributedTo",
         }
-        
+
         edge = query._get_edge(api_edge)
         assert edge.source_arn == "source_arn"
         assert edge.destination_arn == "dest_arn"
@@ -350,12 +344,12 @@ class TestLineageQuery:
         """Test converting API edge without association type"""
         mock_session = Mock()
         query = LineageQuery(mock_session)
-        
+
         api_edge = {
             "SourceArn": "source_arn",
             "DestinationArn": "dest_arn",
         }
-        
+
         edge = query._get_edge(api_edge)
         assert edge.association_type is None
 
@@ -363,13 +357,13 @@ class TestLineageQuery:
         """Test converting API vertex to Vertex object"""
         mock_session = Mock()
         query = LineageQuery(mock_session)
-        
+
         api_vertex = {
             "Arn": "test_arn",
             "Type": "Model",
             "LineageType": "Artifact",
         }
-        
+
         vertex = query._get_vertex(api_vertex)
         assert vertex.arn == "test_arn"
         assert vertex.lineage_source == "Model"
@@ -379,7 +373,7 @@ class TestLineageQuery:
         """Test converting full API response"""
         mock_session = Mock()
         query = LineageQuery(mock_session)
-        
+
         api_response = {
             "Edges": [
                 {
@@ -396,10 +390,10 @@ class TestLineageQuery:
                 }
             ],
         }
-        
+
         result = LineageQueryResult()
         converted = query._convert_api_response(api_response, result)
-        
+
         assert len(converted.edges) == 1
         assert len(converted.vertices) == 1
 
@@ -407,7 +401,7 @@ class TestLineageQuery:
         """Test that duplicate edges and vertices are removed"""
         mock_session = Mock()
         query = LineageQuery(mock_session)
-        
+
         api_response = {
             "Edges": [
                 {"SourceArn": "s1", "DestinationArn": "d1", "AssociationType": "type1"},
@@ -418,10 +412,10 @@ class TestLineageQuery:
                 {"Arn": "arn1", "Type": "Model", "LineageType": "Artifact"},
             ],
         }
-        
+
         result = LineageQueryResult()
         converted = query._convert_api_response(api_response, result)
-        
+
         assert len(converted.edges) == 1
         assert len(converted.vertices) == 1
 
@@ -432,13 +426,13 @@ class TestLineageQuery:
             "Edges": [],
             "Vertices": [],
         }
-        
+
         query = LineageQuery(mock_session)
         result = query.query(
             start_arns=["arn:start"],
             direction=LineageQueryDirectionEnum.BOTH,
         )
-        
+
         assert isinstance(result, LineageQueryResult)
         mock_session.sagemaker_client.query_lineage.assert_called_once()
 
@@ -449,15 +443,15 @@ class TestLineageQuery:
             "Edges": [],
             "Vertices": [],
         }
-        
+
         query = LineageQuery(mock_session)
         filter_obj = LineageFilter(entities=[LineageEntityEnum.ARTIFACT])
-        
+
         result = query.query(
             start_arns=["arn:start"],
             query_filter=filter_obj,
         )
-        
+
         call_args = mock_session.sagemaker_client.query_lineage.call_args
         assert "Filters" in call_args[1]
 
@@ -465,7 +459,7 @@ class TestLineageQuery:
         """Test collapsing cross-account artifacts"""
         mock_session = Mock()
         query = LineageQuery(mock_session)
-        
+
         # Create test data with cross-account artifacts
         edges = [
             Edge(
@@ -475,13 +469,23 @@ class TestLineageQuery:
             )
         ]
         vertices = [
-            Vertex("arn:aws:sagemaker:us-west-2:111:artifact/test-artifact", "Artifact", "Model", mock_session),
-            Vertex("arn:aws:sagemaker:us-west-2:222:artifact/test-artifact", "Artifact", "Model", mock_session),
+            Vertex(
+                "arn:aws:sagemaker:us-west-2:111:artifact/test-artifact",
+                "Artifact",
+                "Model",
+                mock_session,
+            ),
+            Vertex(
+                "arn:aws:sagemaker:us-west-2:222:artifact/test-artifact",
+                "Artifact",
+                "Model",
+                mock_session,
+            ),
         ]
-        
+
         query_response = LineageQueryResult(edges=edges, vertices=vertices)
         result = query._collapse_cross_account_artifacts(query_response)
-        
+
         # Should collapse duplicate artifacts
         assert len(result.vertices) < len(vertices)
 
@@ -497,7 +501,7 @@ class TestPyvisVisualizer:
         mock_iframe = Mock()
         mock_bs = Mock()
         mock_import.return_value = (mock_network, mock_options, mock_iframe, mock_bs)
-        
+
         graph_styles = {
             "Artifact": {
                 "name": "Artifact",
@@ -505,7 +509,7 @@ class TestPyvisVisualizer:
                 "isShape": "False",
             }
         }
-        
+
         visualizer = PyvisVisualizer(graph_styles)
         assert visualizer.graph_styles == graph_styles
 
@@ -517,10 +521,10 @@ class TestPyvisVisualizer:
         mock_iframe = Mock()
         mock_bs = Mock()
         mock_import.return_value = (mock_network, mock_options, mock_iframe, mock_bs)
-        
+
         graph_styles = {}
         custom_options = {"physics": {"enabled": True}}
-        
+
         visualizer = PyvisVisualizer(graph_styles, custom_options)
         assert "physics" in visualizer._pyvis_options
 
@@ -532,7 +536,7 @@ class TestPyvisVisualizer:
         mock_iframe = Mock()
         mock_bs = Mock()
         mock_import.return_value = (mock_network, mock_options, mock_iframe, mock_bs)
-        
+
         graph_styles = {
             "Artifact": {
                 "name": "Artifact",
@@ -540,7 +544,7 @@ class TestPyvisVisualizer:
                 "isShape": "False",
             }
         }
-        
+
         visualizer = PyvisVisualizer(graph_styles)
         color = visualizer._node_color("Artifact")
         assert color == "#146eb4"

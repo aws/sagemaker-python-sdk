@@ -40,7 +40,7 @@ class TestLocalProcessingJob:
         """Test processing job creation"""
         mock_container = Mock()
         job = _LocalProcessingJob(mock_container)
-        
+
         assert job.container == mock_container
         assert job.state == "Created"
         assert job.start_time is None
@@ -49,7 +49,7 @@ class TestLocalProcessingJob:
         """Test starting a basic processing job"""
         mock_container = Mock()
         job = _LocalProcessingJob(mock_container)
-        
+
         processing_inputs = [
             {
                 "InputName": "input-1",
@@ -63,7 +63,7 @@ class TestLocalProcessingJob:
                 "DataUri": "s3://bucket/input",
             }
         ]
-        
+
         processing_output_config = {
             "Outputs": [
                 {
@@ -76,12 +76,12 @@ class TestLocalProcessingJob:
                 }
             ]
         }
-        
+
         environment = {"ENV_VAR": "value"}
         job_name = "test-processing-job"
-        
+
         job.start(processing_inputs, processing_output_config, environment, job_name)
-        
+
         assert job.state == job._COMPLETED
         assert job.processing_job_name == job_name
         mock_container.process.assert_called_once()
@@ -90,14 +90,14 @@ class TestLocalProcessingJob:
         """Test that DatasetDefinition raises error"""
         mock_container = Mock()
         job = _LocalProcessingJob(mock_container)
-        
+
         processing_inputs = [
             {
                 "InputName": "input-1",
                 "DatasetDefinition": {"DatasetName": "test"},
             }
         ]
-        
+
         with pytest.raises(RuntimeError, match="DatasetDefinition is not currently supported"):
             job.start(processing_inputs, {}, {}, "job-name")
 
@@ -105,7 +105,7 @@ class TestLocalProcessingJob:
         """Test that invalid S3InputMode raises error"""
         mock_container = Mock()
         job = _LocalProcessingJob(mock_container)
-        
+
         processing_inputs = [
             {
                 "InputName": "input-1",
@@ -116,7 +116,7 @@ class TestLocalProcessingJob:
                 "DataUri": "s3://bucket/input",
             }
         ]
-        
+
         with pytest.raises(RuntimeError, match="S3InputMode.*not currently supported"):
             job.start(processing_inputs, {}, {}, "job-name")
 
@@ -128,7 +128,7 @@ class TestLocalProcessingJob:
         mock_container.container_arguments = ["script.sh"]
         mock_container.instance_count = 1
         mock_container.instance_type = "local"
-        
+
         job = _LocalProcessingJob(mock_container)
         job.processing_job_name = "test-job"
         job.environment = {"KEY": "value"}
@@ -137,9 +137,9 @@ class TestLocalProcessingJob:
         job.state = job._COMPLETED
         job.start_time = datetime.datetime.now()
         job.end_time = datetime.datetime.now()
-        
+
         description = job.describe()
-        
+
         assert description["ProcessingJobName"] == "test-job"
         assert description["ProcessingJobStatus"] == job._COMPLETED
         assert "AppSpecification" in description
@@ -153,7 +153,7 @@ class TestLocalTrainingJob:
         """Test training job creation"""
         mock_container = Mock()
         job = _LocalTrainingJob(mock_container)
-        
+
         assert job.container == mock_container
         assert job.state == "created"
         assert job.model_artifacts is None
@@ -162,9 +162,9 @@ class TestLocalTrainingJob:
         """Test starting a training job"""
         mock_container = Mock()
         mock_container.train.return_value = "s3://bucket/model.tar.gz"
-        
+
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -177,14 +177,14 @@ class TestLocalTrainingJob:
                 "DataUri": "s3://bucket/training",
             }
         ]
-        
+
         output_data_config = {"S3OutputPath": "s3://bucket/output"}
         hyperparameters = {"epochs": "10"}
         environment = {"ENV": "value"}
         job_name = "test-training-job"
-        
+
         job.start(input_data_config, output_data_config, hyperparameters, environment, job_name)
-        
+
         assert job.state == job._COMPLETED
         assert job.training_job_name == job_name
         assert job.model_artifacts == "s3://bucket/model.tar.gz"
@@ -193,9 +193,9 @@ class TestLocalTrainingJob:
         """Test training job with FileDataSource"""
         mock_container = Mock()
         mock_container.train.return_value = "file:///path/model.tar.gz"
-        
+
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -208,18 +208,18 @@ class TestLocalTrainingJob:
                 "DataUri": "file:///data/training",
             }
         ]
-        
+
         output_data_config = {"S3OutputPath": "file:///output"}
-        
+
         job.start(input_data_config, output_data_config, {}, {}, "job-name")
-        
+
         assert job.state == job._COMPLETED
 
     def test_training_job_invalid_data_distribution(self):
         """Test that invalid data distribution raises error"""
         mock_container = Mock()
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -232,7 +232,7 @@ class TestLocalTrainingJob:
                 "DataUri": "s3://bucket/training",
             }
         ]
-        
+
         with pytest.raises(RuntimeError, match="Invalid DataDistribution"):
             job.start(input_data_config, {}, {}, {}, "job-name")
 
@@ -241,7 +241,7 @@ class TestLocalTrainingJob:
         mock_container = Mock()
         mock_container.instance_count = 1
         mock_container.container_entrypoint = ["/bin/bash"]
-        
+
         job = _LocalTrainingJob(mock_container)
         job.training_job_name = "test-job"
         job.state = job._COMPLETED
@@ -250,9 +250,9 @@ class TestLocalTrainingJob:
         job.model_artifacts = "s3://bucket/model.tar.gz"
         job.output_data_config = {"S3OutputPath": "s3://bucket/output"}
         job.environment = {}
-        
+
         description = job.describe()
-        
+
         assert description["TrainingJobName"] == "test-job"
         assert description["TrainingJobStatus"] == job._COMPLETED
         assert description["ModelArtifacts"]["S3ModelArtifacts"] == "s3://bucket/model.tar.gz"
@@ -274,9 +274,9 @@ class TestLocalTransformJob:
             }
         }
         mock_session.sagemaker_client = mock_client
-        
+
         job = _LocalTransformJob("test-job", "test-model", mock_session)
-        
+
         assert job.name == "test-job"
         assert job.model_name == "test-model"
         assert job.state == job._CREATING
@@ -297,12 +297,12 @@ class TestLocalTransformJob:
         }
         mock_session.sagemaker_client = mock_client
         mock_session.config = {}
-        
+
         mock_container = Mock()
         mock_container_class.return_value = mock_container
-        
+
         job = _LocalTransformJob("test-job", "test-model", mock_session)
-        
+
         input_data = {
             "DataSource": {
                 "S3DataSource": {
@@ -312,19 +312,19 @@ class TestLocalTransformJob:
             "ContentType": "text/csv",
             "SplitType": "Line",
         }
-        
+
         output_data = {
             "S3OutputPath": "s3://bucket/output",
             "Accept": "text/csv",
         }
-        
+
         transform_resources = {
             "InstanceType": "local",
             "InstanceCount": 1,
         }
-        
+
         job.start(input_data, output_data, transform_resources)
-        
+
         assert job.state == job._COMPLETED
         mock_container.serve.assert_called_once()
 
@@ -341,15 +341,15 @@ class TestLocalTransformJob:
             }
         }
         mock_session.sagemaker_client = mock_client
-        
+
         job = _LocalTransformJob("test-job", "test-model", mock_session)
         job.state = job._COMPLETED
         job.start_time = datetime.datetime.now()
         job.end_time = datetime.datetime.now()
         job.batch_strategy = "MultiRecord"
-        
+
         description = job.describe()
-        
+
         assert description["TransformJobName"] == "test-job"
         assert description["TransformJobStatus"] == job._COMPLETED
         assert description["ModelName"] == "test-model"
@@ -365,9 +365,9 @@ class TestLocalModel:
             "ModelDataUrl": "s3://bucket/model.tar.gz",
             "Environment": {"KEY": "value"},
         }
-        
+
         model = _LocalModel("test-model", primary_container)
-        
+
         assert model.model_name == "test-model"
         assert model.primary_container == primary_container
         assert model.creation_time is not None
@@ -378,10 +378,10 @@ class TestLocalModel:
             "Image": "test-image:latest",
             "ModelDataUrl": "s3://bucket/model.tar.gz",
         }
-        
+
         model = _LocalModel("test-model", primary_container)
         description = model.describe()
-        
+
         assert description["ModelName"] == "test-model"
         assert description["PrimaryContainer"] == primary_container
         assert "CreationTime" in description
@@ -400,9 +400,9 @@ class TestLocalEndpointConfig:
                 "InstanceType": "local",
             }
         ]
-        
+
         config = _LocalEndpointConfig("test-config", production_variants)
-        
+
         assert config.name == "test-config"
         assert config.production_variants == production_variants
         assert config.creation_time is not None
@@ -411,9 +411,9 @@ class TestLocalEndpointConfig:
         """Test endpoint config with tags"""
         production_variants = []
         tags = [{"Key": "Environment", "Value": "test"}]
-        
+
         config = _LocalEndpointConfig("test-config", production_variants, tags)
-        
+
         assert len(config.tags) == 1
 
     def test_endpoint_config_describe(self):
@@ -424,10 +424,10 @@ class TestLocalEndpointConfig:
                 "ModelName": "test-model",
             }
         ]
-        
+
         config = _LocalEndpointConfig("test-config", production_variants)
         description = config.describe()
-        
+
         assert description["EndpointConfigName"] == "test-config"
         assert description["ProductionVariants"] == production_variants
 
@@ -440,7 +440,7 @@ class TestLocalEndpoint:
         """Test endpoint creation"""
         mock_session = Mock()
         mock_client = Mock()
-        
+
         # Mock endpoint config
         mock_client.describe_endpoint_config.return_value = {
             "EndpointConfigName": "test-config",
@@ -453,7 +453,7 @@ class TestLocalEndpoint:
                 }
             ],
         }
-        
+
         # Mock model
         mock_client.describe_model.return_value = {
             "PrimaryContainer": {
@@ -462,11 +462,11 @@ class TestLocalEndpoint:
                 "Environment": {},
             }
         }
-        
+
         mock_session.sagemaker_client = mock_client
-        
+
         endpoint = _LocalEndpoint("test-endpoint", "test-config", None, mock_session)
-        
+
         assert endpoint.name == "test-endpoint"
         assert endpoint.state == endpoint._CREATING
 
@@ -477,7 +477,7 @@ class TestLocalEndpoint:
         """Test serving an endpoint"""
         mock_session = Mock()
         mock_client = Mock()
-        
+
         mock_client.describe_endpoint_config.return_value = {
             "EndpointConfigName": "test-config",
             "ProductionVariants": [
@@ -489,7 +489,7 @@ class TestLocalEndpoint:
                 }
             ],
         }
-        
+
         mock_client.describe_model.return_value = {
             "PrimaryContainer": {
                 "Image": "test-image:latest",
@@ -497,16 +497,16 @@ class TestLocalEndpoint:
                 "Environment": {},
             }
         }
-        
+
         mock_session.sagemaker_client = mock_client
         mock_session.config = {}
-        
+
         mock_container = Mock()
         mock_container_class.return_value = mock_container
-        
+
         endpoint = _LocalEndpoint("test-endpoint", "test-config", None, mock_session)
         endpoint.serve()
-        
+
         assert endpoint.state == endpoint._IN_SERVICE
         mock_container.serve.assert_called_once()
 
@@ -515,7 +515,7 @@ class TestLocalEndpoint:
         """Test stopping an endpoint"""
         mock_session = Mock()
         mock_client = Mock()
-        
+
         mock_client.describe_endpoint_config.return_value = {
             "ProductionVariants": [
                 {
@@ -525,7 +525,7 @@ class TestLocalEndpoint:
                 }
             ],
         }
-        
+
         mock_client.describe_model.return_value = {
             "PrimaryContainer": {
                 "Image": "test-image:latest",
@@ -533,14 +533,14 @@ class TestLocalEndpoint:
                 "Environment": {},
             }
         }
-        
+
         mock_session.sagemaker_client = mock_client
-        
+
         endpoint = _LocalEndpoint("test-endpoint", "test-config", None, mock_session)
         endpoint.container = Mock()
-        
+
         endpoint.stop()
-        
+
         endpoint.container.stop_serving.assert_called_once()
 
     @patch("sagemaker.core.local.local_session.LocalSession")
@@ -548,7 +548,7 @@ class TestLocalEndpoint:
         """Test describing an endpoint"""
         mock_session = Mock()
         mock_client = Mock()
-        
+
         mock_client.describe_endpoint_config.return_value = {
             "EndpointConfigName": "test-config",
             "ProductionVariants": [
@@ -557,7 +557,7 @@ class TestLocalEndpoint:
                 }
             ],
         }
-        
+
         mock_client.describe_model.return_value = {
             "PrimaryContainer": {
                 "Image": "test-image:latest",
@@ -565,15 +565,15 @@ class TestLocalEndpoint:
                 "Environment": {},
             }
         }
-        
+
         mock_session.sagemaker_client = mock_client
-        
+
         endpoint = _LocalEndpoint("test-endpoint", "test-config", None, mock_session)
         endpoint.state = endpoint._IN_SERVICE
         endpoint.create_time = datetime.datetime.now()
-        
+
         description = endpoint.describe()
-        
+
         assert description["EndpointName"] == "test-endpoint"
         assert description["EndpointStatus"] == endpoint._IN_SERVICE
 
@@ -588,9 +588,9 @@ class TestWaitForServingContainer:
         """Test successful wait"""
         mock_get_host.return_value = "localhost"
         mock_perform_request.return_value = (Mock(), 200)
-        
+
         _wait_for_serving_container(8080)
-        
+
         mock_perform_request.assert_called()
 
     @patch("sagemaker.core.local.entities._perform_request")
@@ -600,7 +600,7 @@ class TestWaitForServingContainer:
         """Test timeout"""
         mock_get_host.return_value = "localhost"
         mock_perform_request.return_value = (None, 500)
-        
+
         with pytest.raises(RuntimeError, match="Giving up"):
             _wait_for_serving_container(8080)
 
@@ -616,9 +616,9 @@ class TestPerformRequest:
         mock_response.status = 200
         mock_pool.request.return_value = mock_response
         mock_pool_manager_class.return_value = mock_pool
-        
+
         response, code = _perform_request("http://localhost:8080/ping")
-        
+
         assert code == 200
         assert response == mock_response
 
@@ -626,10 +626,12 @@ class TestPerformRequest:
     def test_perform_request_error(self, mock_pool_manager_class):
         """Test request error"""
         mock_pool = Mock()
-        mock_pool.request.side_effect = urllib3.exceptions.RequestError(mock_pool, "http://localhost:8080/ping", "Connection error")
+        mock_pool.request.side_effect = urllib3.exceptions.RequestError(
+            mock_pool, "http://localhost:8080/ping", "Connection error"
+        )
         mock_pool_manager_class.return_value = mock_pool
-        
+
         response, code = _perform_request("http://localhost:8080/ping")
-        
+
         assert code == -1
         assert response is None

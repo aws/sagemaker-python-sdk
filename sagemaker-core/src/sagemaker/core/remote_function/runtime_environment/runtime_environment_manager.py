@@ -409,6 +409,7 @@ class RuntimeEnvironmentManager:
         """Returns the current sagemaker python sdk version where program is running"""
         try:
             from importlib import metadata
+
             return metadata.version("sagemaker")
         except Exception:
             return "3.0.0.dev0"  # Development version fallback

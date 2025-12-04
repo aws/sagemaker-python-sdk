@@ -24,6 +24,7 @@ from sagemaker.core.utils.code_injection.constants import (
 )
 from io import BytesIO
 
+
 def pascal_to_snake(pascal_str):
     """
     Converts a PascalCase string to snake_case.

@@ -62,7 +62,7 @@ def boto_session(sagemaker_client):
 def sagemaker_session(boto_session, sagemaker_client):
     """Mock SageMaker session."""
     from sagemaker.core.helper.session_helper import Session
-    
+
     # Create a mock session with all necessary attributes
     session = Mock(spec=Session)
     session.boto_session = boto_session
@@ -77,7 +77,7 @@ def sagemaker_session(boto_session, sagemaker_client):
     session._default_bucket = _DEFAULT_BUCKET
     session.s3_client = sagemaker_client
     session.s3_resource = boto_session.resource.return_value
-    
+
     return session
 
 

@@ -22,7 +22,7 @@ warnings.warn(
     "The 'sagemaker.lineage.artifact' module is deprecated. "
     "Please use 'sagemaker.core.lineage.artifact' instead.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 from sagemaker.core.lineage.artifact import *  # noqa: F401, F403

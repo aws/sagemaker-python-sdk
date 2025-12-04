@@ -86,6 +86,7 @@ def test_move_to_destination_s3_with_prefix():
     sms.upload_data.assert_called_with("/tmp/data", "bucket", "path/job/foo_prefix")
     assert uri == "s3://bucket/path/job/foo_prefix"
 
+
 def test_move_to_destination_illegal_destination():
     with pytest.raises(ValueError):
         move_to_destination("/tmp/data", "ftp://ftp/in/2018", "job", None)

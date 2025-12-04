@@ -24,7 +24,12 @@ from sagemaker.core.processing import (
     _get_process_request,
     logs_for_processing_job,
 )
-from sagemaker.core.shapes import ProcessingInput, ProcessingOutput, ProcessingS3Input, ProcessingS3Output
+from sagemaker.core.shapes import (
+    ProcessingInput,
+    ProcessingOutput,
+    ProcessingS3Input,
+    ProcessingS3Output,
+)
 from sagemaker.core.network import NetworkConfig
 
 
@@ -45,15 +50,15 @@ class TestProcessorNormalizeArgs:
     def test_normalize_args_with_pipeline_variable_code(self, mock_session):
         from sagemaker.core.workflow.pipeline_context import PipelineSession
         from sagemaker.core.workflow import is_pipeline_variable
-        
+
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         code_var = Mock()
         with patch("sagemaker.core.processing.is_pipeline_variable", return_value=True):
             with pytest.raises(ValueError, match="code argument has to be a valid S3 URI"):
@@ -63,26 +68,26 @@ class TestProcessorNormalizeArgs:
 class TestProcessorNormalizeInputs:
     def test_normalize_inputs_with_dataset_definition(self, mock_session):
         from sagemaker.core.shapes import DatasetDefinition, AthenaDatasetDefinition
-        
+
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         athena_def = AthenaDatasetDefinition(
             catalog="catalog",
             database="database",
             query_string="SELECT * FROM table",
             output_s3_uri="s3://bucket/output",
-            output_format="PARQUET"
+            output_format="PARQUET",
         )
         dataset_def = DatasetDefinition(athena_dataset_definition=athena_def)
         inputs = [ProcessingInput(input_name="data", dataset_definition=dataset_def)]
-        
+
         result = processor._normalize_inputs(inputs)
         assert len(result) == 1
         assert result[0].dataset_definition == dataset_def
@@ -93,20 +98,20 @@ class TestProcessorNormalizeInputs:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         # Create a mock that will pass pydantic validation
         with patch("sagemaker.core.processing.is_pipeline_variable", return_value=True):
             s3_input = ProcessingS3Input(
                 s3_uri="s3://bucket/input",
                 local_path="/opt/ml/processing/input",
                 s3_data_type="S3Prefix",
-                s3_input_mode="File"
+                s3_input_mode="File",
             )
             inputs = [ProcessingInput(input_name="input-1", s3_input=s3_input)]
-            
+
             result = processor._normalize_inputs(inputs)
             assert len(result) == 1
 
@@ -116,18 +121,18 @@ class TestProcessorNormalizeInputs:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         s3_input = ProcessingS3Input(
             s3_uri="/local/path",
             local_path="/opt/ml/processing/input",
             s3_data_type="S3Prefix",
-            s3_input_mode="File"
+            s3_input_mode="File",
         )
         inputs = [ProcessingInput(input_name="input-1", s3_input=s3_input)]
-        
+
         with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
             mock_config.pipeline_name = "test-pipeline"
             mock_config.step_name = "test-step"
@@ -141,10 +146,10 @@ class TestProcessorNormalizeInputs:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         with pytest.raises(TypeError, match="must be provided as ProcessingInput objects"):
             processor._normalize_inputs(["invalid"])
 
@@ -156,14 +161,18 @@ class TestProcessorNormalizeOutputs:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         with patch("sagemaker.core.processing.is_pipeline_variable", return_value=True):
-            s3_output = ProcessingS3Output(s3_uri="s3://bucket/output", local_path="/opt/ml/processing/output", s3_upload_mode="EndOfJob")
+            s3_output = ProcessingS3Output(
+                s3_uri="s3://bucket/output",
+                local_path="/opt/ml/processing/output",
+                s3_upload_mode="EndOfJob",
+            )
             outputs = [ProcessingOutput(output_name="output-1", s3_output=s3_output)]
-            
+
             result = processor._normalize_outputs(outputs)
             assert len(result) == 1
 
@@ -173,13 +182,17 @@ class TestProcessorNormalizeOutputs:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
-        s3_output = ProcessingS3Output(s3_uri="/local/output", local_path="/opt/ml/processing/output", s3_upload_mode="EndOfJob")
+
+        s3_output = ProcessingS3Output(
+            s3_uri="/local/output",
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
         outputs = [ProcessingOutput(output_name="output-1", s3_output=s3_output)]
-        
+
         with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
             mock_config.pipeline_name = "test-pipeline"
             mock_config.step_name = "test-step"
@@ -188,19 +201,23 @@ class TestProcessorNormalizeOutputs:
 
     def test_normalize_outputs_with_empty_bucket_prefix(self, mock_session):
         mock_session.default_bucket_prefix = None
-        
+
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
-        s3_output = ProcessingS3Output(s3_uri="/local/output", local_path="/opt/ml/processing/output", s3_upload_mode="EndOfJob")
+
+        s3_output = ProcessingS3Output(
+            s3_uri="/local/output",
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
         outputs = [ProcessingOutput(output_name="output-1", s3_output=s3_output)]
-        
+
         with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
             mock_config.pipeline_name = "test-pipeline"
             mock_config.step_name = "test-step"
@@ -213,10 +230,10 @@ class TestProcessorNormalizeOutputs:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         with pytest.raises(TypeError, match="must be provided as ProcessingOutput objects"):
             processor._normalize_outputs(["invalid"])
 
@@ -224,7 +241,7 @@ class TestProcessorNormalizeOutputs:
 class TestProcessorStartNew:
     def test_start_new_with_pipeline_session(self, mock_session):
         from sagemaker.core.workflow.pipeline_context import PipelineSession
-        
+
         pipeline_session = PipelineSession()
         pipeline_session.sagemaker_client = Mock()
         pipeline_session.default_bucket = Mock(return_value="test-bucket")
@@ -232,27 +249,31 @@ class TestProcessorStartNew:
         pipeline_session.expand_role = Mock(side_effect=lambda x: x)
         pipeline_session.sagemaker_config = {}
         pipeline_session._intercept_create_request = Mock()
-        
+
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=pipeline_session
+            sagemaker_session=pipeline_session,
         )
-        
-        with patch.object(processor, "_get_process_args", return_value={
-            "job_name": "test-job",
-            "inputs": [],
-            "output_config": {"Outputs": []},
-            "resources": {"ClusterConfig": {}},
-            "stopping_condition": None,
-            "app_specification": {},
-            "environment": None,
-            "network_config": None,
-            "role_arn": "arn:aws:iam::123456789012:role/SageMakerRole",
-            "tags": []
-        }):
+
+        with patch.object(
+            processor,
+            "_get_process_args",
+            return_value={
+                "job_name": "test-job",
+                "inputs": [],
+                "output_config": {"Outputs": []},
+                "resources": {"ClusterConfig": {}},
+                "stopping_condition": None,
+                "app_specification": {},
+                "environment": None,
+                "network_config": None,
+                "role_arn": "arn:aws:iam::123456789012:role/SageMakerRole",
+                "tags": [],
+            },
+        ):
             result = processor._start_new([], [], None)
             assert result is None
 
@@ -265,10 +286,10 @@ class TestProcessorGetProcessArgs:
             instance_count=1,
             instance_type="ml.m5.xlarge",
             max_runtime_in_seconds=3600,
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         args = processor._get_process_args([], [], None)
         assert args["stopping_condition"]["MaxRuntimeInSeconds"] == 3600
 
@@ -278,10 +299,10 @@ class TestProcessorGetProcessArgs:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         args = processor._get_process_args([], [], None)
         assert args["stopping_condition"] is None
 
@@ -291,11 +312,11 @@ class TestProcessorGetProcessArgs:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
         processor.arguments = ["--arg1", "value1"]
-        
+
         args = processor._get_process_args([], [], None)
         assert args["app_specification"]["ContainerArguments"] == ["--arg1", "value1"]
 
@@ -306,26 +327,26 @@ class TestProcessorGetProcessArgs:
             instance_count=1,
             instance_type="ml.m5.xlarge",
             entrypoint=["python", "script.py"],
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         args = processor._get_process_args([], [], None)
         assert args["app_specification"]["ContainerEntrypoint"] == ["python", "script.py"]
 
     def test_get_process_args_with_network_config(self, mock_session):
         network_config = NetworkConfig(enable_network_isolation=True)
-        
+
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
             network_config=network_config,
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         args = processor._get_process_args([], [], None)
         assert args["network_config"] is not None
 
@@ -337,7 +358,7 @@ class TestScriptProcessor:
             image_uri="sklearn:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         assert processor.command == ["python3"]
 
@@ -348,9 +369,9 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         result = processor._get_user_code_name("s3://bucket/path/script.py")
         assert result == "script.py"
 
@@ -361,9 +382,9 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         result = processor._handle_user_code_url("s3://bucket/script.py")
         assert result == "s3://bucket/script.py"
 
@@ -374,14 +395,14 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py') as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
             f.write("print('test')")
             temp_file = f.name
-        
+
         try:
             with patch("sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/script.py"):
                 result = processor._handle_user_code_url(temp_file)
@@ -396,9 +417,9 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with pytest.raises(ValueError, match="wasn't found"):
             processor._handle_user_code_url("/nonexistent/file.py")
 
@@ -409,9 +430,9 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             with pytest.raises(ValueError, match="must be a file"):
                 processor._handle_user_code_url(tmpdir)
@@ -423,9 +444,9 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with pytest.raises(ValueError, match="url scheme .* is not recognized"):
             processor._handle_user_code_url("http://example.com/script.py")
 
@@ -436,14 +457,14 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py') as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
             f.write("print('test')")
             temp_file = f.name
-        
+
         try:
             with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
                 mock_config.pipeline_name = "test-pipeline"
@@ -461,12 +482,12 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         inputs = []
         result = processor._convert_code_and_add_to_inputs(inputs, "s3://bucket/code.py")
-        
+
         assert len(result) == 1
         assert result[0].input_name == "code"
 
@@ -477,9 +498,9 @@ class TestScriptProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         processor._set_entrypoint(["python3"], "script.py")
         assert processor.entrypoint[-1].endswith("script.py")
 
@@ -491,7 +512,7 @@ class TestFrameworkProcessor:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         assert processor.command == ["python"]
 
@@ -502,7 +523,7 @@ class TestFrameworkProcessor:
             instance_count=1,
             instance_type="ml.m5.xlarge",
             code_location="s3://bucket/code/",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         assert processor.code_location == "s3://bucket/code"
 
@@ -512,12 +533,12 @@ class TestFrameworkProcessor:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         inputs = []
         result = processor._patch_inputs_with_payload(inputs, "s3://bucket/code/sourcedir.tar.gz")
-        
+
         assert len(result) == 1
         assert result[0].input_name == "code"
 
@@ -527,9 +548,9 @@ class TestFrameworkProcessor:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         processor._set_entrypoint(["python"], "runproc.sh")
         assert processor.entrypoint[0] == "/bin/bash"
 
@@ -540,9 +561,9 @@ class TestFrameworkProcessor:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         script = processor._generate_framework_script("train.py")
         assert "#!/bin/bash" in script
         assert "train.py" in script
@@ -554,13 +575,18 @@ class TestFrameworkProcessor:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
             mock_config.pipeline_name = "test-pipeline"
-            with patch("sagemaker.core.s3.S3Uploader.upload_string_as_file_body", return_value="s3://bucket/runproc.sh"):
-                result = processor._create_and_upload_runproc("train.py", None, "s3://bucket/runproc.sh")
+            with patch(
+                "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                return_value="s3://bucket/runproc.sh",
+            ):
+                result = processor._create_and_upload_runproc(
+                    "train.py", None, "s3://bucket/runproc.sh"
+                )
                 assert result == "s3://bucket/runproc.sh"
 
     def test_create_and_upload_runproc_without_pipeline(self, mock_session):
@@ -569,12 +595,17 @@ class TestFrameworkProcessor:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with patch("sagemaker.core.workflow.utilities._pipeline_config", None):
-            with patch("sagemaker.core.s3.S3Uploader.upload_string_as_file_body", return_value="s3://bucket/runproc.sh"):
-                result = processor._create_and_upload_runproc("train.py", None, "s3://bucket/runproc.sh")
+            with patch(
+                "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                return_value="s3://bucket/runproc.sh",
+            ):
+                result = processor._create_and_upload_runproc(
+                    "train.py", None, "s3://bucket/runproc.sh"
+                )
                 assert result == "s3://bucket/runproc.sh"
 
 
@@ -584,12 +615,12 @@ class TestHelperFunctions:
             s3_uri="s3://bucket/input",
             local_path="/opt/ml/processing/input",
             s3_data_type="S3Prefix",
-            s3_input_mode="File"
+            s3_input_mode="File",
         )
         processing_input = ProcessingInput(input_name="data", s3_input=s3_input)
-        
+
         result = _processing_input_to_request_dict(processing_input)
-        
+
         assert result["InputName"] == "data"
         assert result["S3Input"]["S3Uri"] == "s3://bucket/input"
 
@@ -597,12 +628,12 @@ class TestHelperFunctions:
         s3_output = ProcessingS3Output(
             s3_uri="s3://bucket/output",
             local_path="/opt/ml/processing/output",
-            s3_upload_mode="EndOfJob"
+            s3_upload_mode="EndOfJob",
         )
         processing_output = ProcessingOutput(output_name="results", s3_output=s3_output)
-        
+
         result = _processing_output_to_request_dict(processing_output)
-        
+
         assert result["OutputName"] == "results"
         assert result["S3Output"]["S3Uri"] == "s3://bucket/output"
 
@@ -617,9 +648,9 @@ class TestHelperFunctions:
             environment=None,
             network_config=None,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            tags=None
+            tags=None,
         )
-        
+
         assert result["ProcessingJobName"] == "test-job"
         assert result["RoleArn"] == "arn:aws:iam::123456789012:role/SageMakerRole"
 
@@ -635,9 +666,9 @@ class TestHelperFunctions:
             network_config={"EnableNetworkIsolation": True},
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
             tags=[{"Key": "Project", "Value": "ML"}],
-            experiment_config={"ExperimentName": "test-exp"}
+            experiment_config={"ExperimentName": "test-exp"},
         )
-        
+
         assert result["ProcessingInputs"] == [{"InputName": "data"}]
         assert result["Environment"] == {"KEY": "VALUE"}
         assert result["ExperimentConfig"] == {"ExperimentName": "test-exp"}
@@ -647,16 +678,16 @@ class TestLogsForProcessingJob:
     def test_logs_for_processing_job(self, mock_session):
         with patch("sagemaker.core.processing._wait_until") as mock_wait:
             mock_wait.return_value = {"ProcessingJobStatus": "Completed"}
-            
+
             with patch("sagemaker.core.processing._logs_init") as mock_logs_init:
                 mock_logs_init.return_value = (1, [], {}, Mock(), "log-group", False, lambda x: x)
-                
+
                 with patch("sagemaker.core.processing._flush_log_streams"):
                     with patch("sagemaker.core.processing._get_initial_job_state") as mock_state:
                         from sagemaker.core.common_utils import LogState
+
                         mock_state.return_value = LogState.COMPLETE
                         logs_for_processing_job(mock_session, "test-job", wait=False, poll=1)
-
 
 
 class TestProcessorStartNewWithSubmit:
@@ -666,27 +697,34 @@ class TestProcessorStartNewWithSubmit:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
+
         mock_session._intercept_create_request = Mock()
-        
-        with patch.object(processor, "_get_process_args", return_value={
-            "job_name": "test-job",
-            "inputs": [],
-            "output_config": {"Outputs": []},
-            "resources": {"ClusterConfig": {}},
-            "stopping_condition": None,
-            "app_specification": {"ImageUri": "test-image"},
-            "environment": None,
-            "network_config": None,
-            "role_arn": "arn:aws:iam::123456789012:role/SageMakerRole",
-            "tags": []
-        }):
+
+        with patch.object(
+            processor,
+            "_get_process_args",
+            return_value={
+                "job_name": "test-job",
+                "inputs": [],
+                "output_config": {"Outputs": []},
+                "resources": {"ClusterConfig": {}},
+                "stopping_condition": None,
+                "app_specification": {"ImageUri": "test-image"},
+                "environment": None,
+                "network_config": None,
+                "role_arn": "arn:aws:iam::123456789012:role/SageMakerRole",
+                "tags": [],
+            },
+        ):
             with patch("sagemaker.core.processing.serialize", return_value={}):
                 with patch("sagemaker.core.processing.ProcessingJob") as mock_job:
-                    with patch("sagemaker.core.utils.code_injection.codec.transform", return_value={"processing_job_name": "test-job"}):
+                    with patch(
+                        "sagemaker.core.utils.code_injection.codec.transform",
+                        return_value={"processing_job_name": "test-job"},
+                    ):
                         result = processor._start_new([], [], None)
                         assert result is not None
 
@@ -696,30 +734,36 @@ class TestProcessorStartNewWithSubmit:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
         processor._current_job_name = "test-job"
-        
-        mock_session.sagemaker_client.create_processing_job = Mock(side_effect=Exception("API Error"))
-        
+
+        mock_session.sagemaker_client.create_processing_job = Mock(
+            side_effect=Exception("API Error")
+        )
+
         def intercept_func(request, submit_func, operation):
             if submit_func:
                 submit_func(request)
-        
+
         mock_session._intercept_create_request = intercept_func
-        
-        with patch.object(processor, "_get_process_args", return_value={
-            "job_name": "test-job",
-            "inputs": [],
-            "output_config": {"Outputs": []},
-            "resources": {"ClusterConfig": {}},
-            "stopping_condition": None,
-            "app_specification": {"ImageUri": "test-image"},
-            "environment": None,
-            "network_config": None,
-            "role_arn": "arn:aws:iam::123456789012:role/SageMakerRole",
-            "tags": []
-        }):
+
+        with patch.object(
+            processor,
+            "_get_process_args",
+            return_value={
+                "job_name": "test-job",
+                "inputs": [],
+                "output_config": {"Outputs": []},
+                "resources": {"ClusterConfig": {}},
+                "stopping_condition": None,
+                "app_specification": {"ImageUri": "test-image"},
+                "environment": None,
+                "network_config": None,
+                "role_arn": "arn:aws:iam::123456789012:role/SageMakerRole",
+                "tags": [],
+            },
+        ):
             with patch("sagemaker.core.processing.serialize", return_value={}):
                 with pytest.raises(Exception, match="API Error"):
                     processor._start_new([], [], None)
@@ -733,20 +777,22 @@ class TestScriptProcessorRun:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         mock_job = Mock()
         mock_job.wait = Mock()
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py') as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
             f.write("print('test')")
             temp_file = f.name
-        
+
         try:
             with patch.object(processor, "_start_new", return_value=mock_job):
                 with patch("os.path.isfile", return_value=True):
-                    with patch("sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"):
+                    with patch(
+                        "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
+                    ):
                         processor.run(code=temp_file, wait=True, logs=False)
                         mock_job.wait.assert_called_once()
         finally:
@@ -760,19 +806,21 @@ class TestScriptProcessorRun:
             command=["python3"],
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         mock_job = Mock()
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py') as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
             f.write("print('test')")
             temp_file = f.name
-        
+
         try:
             with patch.object(processor, "_start_new", return_value=mock_job):
                 with patch("os.path.isfile", return_value=True):
-                    with patch("sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"):
+                    with patch(
+                        "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
+                    ):
                         processor.run(code=temp_file, wait=False)
                         assert len(processor.jobs) == 1
         finally:
@@ -787,21 +835,21 @@ class TestFrameworkProcessorPackageCode:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create entry point file
             entry_point = os.path.join(tmpdir, "train.py")
-            with open(entry_point, 'w') as f:
+            with open(entry_point, "w") as f:
                 f.write("print('training')")
-            
+
             result = processor._package_code(
                 entry_point=entry_point,
                 source_dir=tmpdir,
                 requirements=None,
                 job_name="test-job",
-                kms_key=None
+                kms_key=None,
             )
             # Check that result is an S3 URI
             assert result.startswith("s3://")
@@ -813,20 +861,20 @@ class TestFrameworkProcessorPackageCode:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             entry_point = os.path.join(tmpdir, "train.py")
-            with open(entry_point, 'w') as f:
+            with open(entry_point, "w") as f:
                 f.write("print('training')")
-            
+
             result = processor._package_code(
                 entry_point=entry_point,
                 source_dir=None,
                 requirements=None,
                 job_name="test-job",
-                kms_key=None
+                kms_key=None,
             )
             # Check that result is an S3 URI
             assert result.startswith("s3://")
@@ -838,16 +886,16 @@ class TestFrameworkProcessorPackageCode:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with pytest.raises(ValueError, match="source_dir does not exist"):
             processor._package_code(
                 entry_point="train.py",
                 source_dir="/nonexistent/dir",
                 requirements=None,
                 job_name="test-job",
-                kms_key=None
+                kms_key=None,
             )
 
 
@@ -858,12 +906,12 @@ class TestFrameworkProcessorRun:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         mock_job = Mock()
         mock_job.wait = Mock()
-        
+
         with patch.object(processor, "_start_new", return_value=mock_job):
             processor.run(code="s3://bucket/train.py", wait=False)
             assert processor.latest_job == mock_job
@@ -874,19 +922,24 @@ class TestFrameworkProcessorRun:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         mock_job = Mock()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             entry_point = os.path.join(tmpdir, "train.py")
-            with open(entry_point, 'w') as f:
+            with open(entry_point, "w") as f:
                 f.write("print('training')")
-            
+
             with patch.object(processor, "_start_new", return_value=mock_job):
-                with patch.object(processor, "_package_code", return_value="s3://bucket/code.tar.gz"):
-                    with patch("sagemaker.core.s3.S3Uploader.upload_string_as_file_body", return_value="s3://bucket/runproc.sh"):
+                with patch.object(
+                    processor, "_package_code", return_value="s3://bucket/code.tar.gz"
+                ):
+                    with patch(
+                        "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                        return_value="s3://bucket/runproc.sh",
+                    ):
                         processor.run(code=entry_point, wait=False)
                         assert processor.latest_job == mock_job
 
@@ -898,18 +951,18 @@ class TestFrameworkProcessorPackAndUpload:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         result_uri, result_inputs, result_job_name = processor._pack_and_upload_code(
             code="s3://bucket/train.py",
             source_dir=None,
             requirements=None,
             job_name=None,
             inputs=None,
-            kms_key=None
+            kms_key=None,
         )
-        
+
         assert result_uri == "s3://bucket/train.py"
 
     def test_pack_and_upload_code_with_local_file(self, mock_session):
@@ -918,25 +971,30 @@ class TestFrameworkProcessorPackAndUpload:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             entry_point = os.path.join(tmpdir, "train.py")
-            with open(entry_point, 'w') as f:
+            with open(entry_point, "w") as f:
                 f.write("print('training')")
-            
-            with patch.object(processor, "_package_code", return_value="s3://bucket/code/sourcedir.tar.gz"):
-                with patch("sagemaker.core.s3.S3Uploader.upload_string_as_file_body", return_value="s3://bucket/runproc.sh"):
+
+            with patch.object(
+                processor, "_package_code", return_value="s3://bucket/code/sourcedir.tar.gz"
+            ):
+                with patch(
+                    "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                    return_value="s3://bucket/runproc.sh",
+                ):
                     result_uri, result_inputs, result_job_name = processor._pack_and_upload_code(
                         code=entry_point,
                         source_dir=None,
                         requirements=None,
                         job_name=None,
                         inputs=None,
-                        kms_key=None
+                        kms_key=None,
                     )
-                    
+
                     assert result_uri == "s3://bucket/runproc.sh"
                     assert len(result_inputs) == 1
 
@@ -947,24 +1005,26 @@ class TestProcessingInputOutputHelpers:
             s3_uri="s3://bucket/input",
             local_path="/opt/ml/processing/input",
             s3_data_type="S3Prefix",
-            s3_input_mode="File"
+            s3_input_mode="File",
         )
         processing_input = ProcessingInput(input_name="data", s3_input=s3_input, app_managed=True)
-        
+
         result = _processing_input_to_request_dict(processing_input)
-        
+
         assert result["AppManaged"] is True
 
     def test_processing_output_with_app_managed(self):
         s3_output = ProcessingS3Output(
             s3_uri="s3://bucket/output",
             local_path="/opt/ml/processing/output",
-            s3_upload_mode="EndOfJob"
+            s3_upload_mode="EndOfJob",
         )
-        processing_output = ProcessingOutput(output_name="results", s3_output=s3_output, app_managed=True)
-        
+        processing_output = ProcessingOutput(
+            output_name="results", s3_output=s3_output, app_managed=True
+        )
+
         result = _processing_output_to_request_dict(processing_output)
-        
+
         assert result["AppManaged"] is True
 
 
@@ -974,15 +1034,16 @@ class TestLogsForProcessingJobWait:
         # This is a simplified test that verifies the function can be called
         with patch("sagemaker.core.processing._wait_until") as mock_wait:
             mock_wait.return_value = {"ProcessingJobStatus": "Completed"}
-            
+
             with patch("sagemaker.core.processing._logs_init") as mock_logs_init:
                 mock_logs_init.return_value = (1, [], {}, Mock(), "log-group", False, lambda x: x)
-                
+
                 with patch("sagemaker.core.processing._flush_log_streams"):
                     with patch("sagemaker.core.processing._get_initial_job_state") as mock_state:
                         from sagemaker.core.common_utils import LogState
+
                         mock_state.return_value = LogState.COMPLETE
-                        
+
                         with patch("sagemaker.core.processing._check_job_status"):
                             # This should complete without errors
                             logs_for_processing_job(mock_session, "test-job", wait=True, poll=1)
@@ -996,11 +1057,11 @@ class TestProcessorGenerateJobName:
             instance_count=1,
             instance_type="ml.m5.xlarge",
             base_job_name="my_job@name#test",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         result = processor._generate_current_job_name()
-        
+
         # Should replace invalid characters with hyphens
         assert "@" not in result
         assert "#" not in result
@@ -1010,22 +1071,21 @@ class TestProcessorGenerateJobName:
 class TestProcessorWithPipelineVariable:
     def test_get_process_args_with_pipeline_variable_role(self, mock_session):
         from sagemaker.core.workflow import is_pipeline_variable
-        
+
         role_var = Mock()
-        
+
         with patch("sagemaker.core.processing.is_pipeline_variable", return_value=True):
             processor = Processor(
                 role=role_var,
                 image_uri="test-image:latest",
                 instance_count=1,
                 instance_type="ml.m5.xlarge",
-                sagemaker_session=mock_session
+                sagemaker_session=mock_session,
             )
             processor._current_job_name = "test-job"
-            
+
             args = processor._get_process_args([], [], None)
             assert args["role_arn"] == role_var
-
 
 
 # Additional tests from test_processing_extended.py
@@ -1039,9 +1099,9 @@ class TestProcessorBasics:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         assert processor.role == "arn:aws:iam::123456789012:role/SageMakerRole"
         assert processor.image_uri == "test-image:latest"
         assert processor.instance_count == 1
@@ -1051,11 +1111,9 @@ class TestProcessorBasics:
     def test_init_with_all_params(self, mock_session):
         """Test initialization with all parameters"""
         network_config = NetworkConfig(
-            enable_network_isolation=True,
-            security_group_ids=["sg-123"],
-            subnets=["subnet-123"]
+            enable_network_isolation=True, security_group_ids=["sg-123"], subnets=["subnet-123"]
         )
-        
+
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
@@ -1070,9 +1128,9 @@ class TestProcessorBasics:
             sagemaker_session=mock_session,
             env={"KEY": "VALUE"},
             tags=[("Project", "ML")],
-            network_config=network_config
+            network_config=network_config,
         )
-        
+
         assert processor.instance_count == 2
         assert processor.volume_size_in_gb == 50
         assert processor.entrypoint == ["python", "script.py"]
@@ -1086,7 +1144,7 @@ class TestProcessorBasics:
                 image_uri="test-image:latest",
                 instance_count=1,
                 instance_type="ml.m5.xlarge",
-                sagemaker_session=mock_session
+                sagemaker_session=mock_session,
             )
 
     def test_init_with_local_instance_type(self):
@@ -1095,10 +1153,11 @@ class TestProcessorBasics:
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
             instance_count=1,
-            instance_type="local"
+            instance_type="local",
         )
-        
+
         from sagemaker.core.local.local_session import LocalSession
+
         assert isinstance(processor.sagemaker_session, LocalSession)
 
     def test_run_with_minimal_params(self, mock_session):
@@ -1108,15 +1167,15 @@ class TestProcessorBasics:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         mock_job = Mock()
         mock_job.wait = Mock()
-        
+
         with patch.object(processor, "_start_new", return_value=mock_job):
             processor.run(wait=False, logs=False)
-        
+
         assert processor.latest_job == mock_job
 
     def test_run_with_logs_but_no_wait_raises_error(self, mock_session):
@@ -1126,9 +1185,9 @@ class TestProcessorBasics:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with pytest.raises(ValueError, match="Logs can only be shown if wait is set to True"):
             processor.run(wait=False, logs=True)
 
@@ -1139,9 +1198,9 @@ class TestProcessorBasics:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         inputs = [
             ProcessingInput(
                 input_name="input-1",
@@ -1149,28 +1208,28 @@ class TestProcessorBasics:
                     s3_uri="s3://bucket/input",
                     local_path="/opt/ml/processing/input",
                     s3_data_type="S3Prefix",
-                    s3_input_mode="File"
-                )
+                    s3_input_mode="File",
+                ),
             )
         ]
-        
+
         outputs = [
             ProcessingOutput(
                 output_name="output-1",
                 s3_output=ProcessingS3Output(
                     s3_uri="s3://bucket/output",
                     local_path="/opt/ml/processing/output",
-                    s3_upload_mode="EndOfJob"
-                )
+                    s3_upload_mode="EndOfJob",
+                ),
             )
         ]
-        
+
         mock_job = Mock()
         mock_job.wait = Mock()
-        
+
         with patch.object(processor, "_start_new", return_value=mock_job):
             processor.run(inputs=inputs, outputs=outputs, wait=False, logs=False)
-        
+
         assert processor.latest_job == mock_job
 
     def test_run_with_arguments(self, mock_session):
@@ -1180,17 +1239,17 @@ class TestProcessorBasics:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         arguments = ["--arg1", "value1", "--arg2", "value2"]
-        
+
         mock_job = Mock()
         mock_job.wait = Mock()
-        
+
         with patch.object(processor, "_start_new", return_value=mock_job):
             processor.run(arguments=arguments, wait=False, logs=False)
-        
+
         assert processor.arguments == arguments
 
     def test_run_with_experiment_config(self, mock_session):
@@ -1200,17 +1259,14 @@ class TestProcessorBasics:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
-        experiment_config = {
-            "ExperimentName": "my-experiment",
-            "TrialName": "my-trial"
-        }
-        
+
+        experiment_config = {"ExperimentName": "my-experiment", "TrialName": "my-trial"}
+
         mock_job = Mock()
         mock_job.wait = Mock()
-        
+
         with patch.object(processor, "_start_new", return_value=mock_job):
             processor.run(experiment_config=experiment_config, wait=False, logs=False)
 
@@ -1225,15 +1281,15 @@ class TestProcessorJobTracking:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         mock_job = Mock()
         mock_job.wait = Mock()
-        
+
         with patch.object(processor, "_start_new", return_value=mock_job):
             processor.run(wait=False, logs=False)
-        
+
         assert len(processor.jobs) == 1
         assert processor.jobs[0] == mock_job
 
@@ -1244,17 +1300,17 @@ class TestProcessorJobTracking:
             image_uri="test-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         mock_job1 = Mock()
         mock_job1.wait = Mock()
         mock_job2 = Mock()
         mock_job2.wait = Mock()
-        
+
         with patch.object(processor, "_start_new", side_effect=[mock_job1, mock_job2]):
             processor.run(wait=False, logs=False)
             processor.run(wait=False, logs=False)
-        
+
         assert processor.latest_job == mock_job2
         assert len(processor.jobs) == 2

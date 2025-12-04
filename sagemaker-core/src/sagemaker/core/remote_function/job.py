@@ -75,6 +75,7 @@ from sagemaker.core.remote_function.custom_file_filter import (
     copy_workdir,
     resolve_custom_file_filter_from_config_file,
 )
+
 # Lazy import to avoid circular dependency - DelayedReturn is in MLOps which depends on Core
 # from sagemaker.mlops.workflow.function_step import DelayedReturn
 from sagemaker.core.workflow.step_outputs import get_step
@@ -764,7 +765,9 @@ class _JobSettings:
         self.vpc_config = vpc_utils.sanitize(vpc_config)
 
         tags = format_tags(tags)
-        self.tags = _append_sagemaker_config_tags(self.sagemaker_session, tags, REMOTE_FUNCTION_TAGS)
+        self.tags = _append_sagemaker_config_tags(
+            self.sagemaker_session, tags, REMOTE_FUNCTION_TAGS
+        )
 
         self.disable_output_compression = disable_output_compression
         self.use_torchrun = use_torchrun
@@ -922,7 +925,10 @@ class _Job:
         from sagemaker.core.workflow.properties import Properties
         from sagemaker.core.workflow.parameters import Parameter
         from sagemaker.core.workflow.functions import Join
-        from sagemaker.core.workflow.execution_variables import ExecutionVariables, ExecutionVariable
+        from sagemaker.core.workflow.execution_variables import (
+            ExecutionVariables,
+            ExecutionVariable,
+        )
         from sagemaker.core.workflow.utilities import load_step_compilation_context
 
         step_compilation_context = load_step_compilation_context()
@@ -1057,6 +1063,7 @@ class _Job:
                 # Lazy import to avoid circular dependency
                 try:
                     from sagemaker.mlops.workflow.function_step import DelayedReturn
+
                     if isinstance(arg, DelayedReturn):
                         # The uri is a Properties object
                         uri = get_step(arg)._properties.OutputDataConfig.S3OutputPath
@@ -1805,11 +1812,13 @@ class _RunInfo:
     experiment_name: str
     run_name: str
 
+
 def _get_initial_job_state(description, status_key, wait):
     """Placeholder docstring"""
     status = description[status_key]
     job_already_completed = status in ("Completed", "Failed", "Stopped")
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
+
 
 def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
     sagemaker_session, job_name, wait=False, poll=10, log_type="All", timeout=None
@@ -2014,6 +2023,7 @@ def _check_job_status(job, desc, status_key_name):
             actual_status=status,
         )
 
+
 def _flush_log_streams(
     stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap
 ):
@@ -2074,6 +2084,7 @@ def _flush_log_streams(
         print(".", end="")
         sys.stdout.flush()
 
+
 def _rule_statuses_changed(current_statuses, last_statuses):
     """Checks the rule evaluation statuses for SageMaker Debugger and Profiler rules."""
     if not last_statuses:
@@ -2087,11 +2098,13 @@ def _rule_statuses_changed(current_statuses, last_statuses):
 
     return False
 
+
 def _get_initial_job_state(description, status_key, wait):
     """Placeholder docstring"""
     status = description[status_key]
     job_already_completed = status in ("Completed", "Failed", "Stopped")
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
+
 
 def _logs_init(boto_session, description, job):
     """Placeholder docstring"""
@@ -2121,6 +2134,7 @@ def _logs_init(boto_session, description, job):
     dot = False
 
     from sagemaker.core.logs import ColorWrap
+
     color_wrap = ColorWrap()
 
     return instance_count, stream_names, positions, client, log_group, dot, color_wrap

@@ -111,7 +111,9 @@ class ImageRetriever:
         for name, val in args.items():
             if name in CONFIGURABLE_ATTRIBUTES and not val:
                 default_value = SageMakerConfig.resolve_value_from_config(
-                    config_path=_simple_path(SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name))
+                    config_path=_simple_path(
+                        SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name)
+                    )
                 )
                 if default_value is not None:
                     locals()[name] = default_value
@@ -498,7 +500,9 @@ class ImageRetriever:
         for name, val in args.items():
             if name in CONFIGURABLE_ATTRIBUTES and not val:
                 default_value = SageMakerConfig.resolve_value_from_config(
-                    config_path=_simple_path(SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name))
+                    config_path=_simple_path(
+                        SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name)
+                    )
                 )
                 if default_value is not None:
                     locals()[name] = default_value

@@ -1,4 +1,3 @@
-
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
@@ -30,12 +29,14 @@ from sagemaker.core.workflow.properties import (
     PropertiesList,
 )
 
+
 # Lazy import to avoid circular dependency
 # DelayedReturn is in MLOps package which depends on Core
 def _get_delayed_return_class():
     """Lazy import of DelayedReturn to avoid circular dependency."""
     try:
         from sagemaker.mlops.workflow.function_step import DelayedReturn
+
         return DelayedReturn
     except ImportError:
         # If MLOps is not installed, return None

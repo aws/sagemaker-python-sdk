@@ -37,7 +37,7 @@ def to_pascal_case(snake_case):
     Returns:
         str: String converted to PascalCase.
     """
-    return ''.join(word.capitalize() for word in snake_case.split('_'))
+    return "".join(word.capitalize() for word in snake_case.split("_"))
 
 
 def to_snake_case(name):

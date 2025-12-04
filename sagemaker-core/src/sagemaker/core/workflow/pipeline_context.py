@@ -369,16 +369,17 @@ def retrieve_caller_name(job_instance):
 
     from sagemaker.core.processing import Processor
     from sagemaker.core.transformer import Transformer
+
     # from sagemaker.utils.automl.automl import AutoML
 
     if isinstance(job_instance, Processor):
         return "run"
-    
+
     # Duck typing for ModelTrainer: has 'train' method and 'training_image' attribute
     # This avoids importing from sagemaker.train which would violate architecture
-    if hasattr(job_instance, 'train') and hasattr(job_instance, 'training_image'):
+    if hasattr(job_instance, "train") and hasattr(job_instance, "training_image"):
         return "train"
-    
+
     if isinstance(job_instance, Transformer):
         return "transform"
     

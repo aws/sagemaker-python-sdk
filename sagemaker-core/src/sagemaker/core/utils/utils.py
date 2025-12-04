@@ -347,7 +347,19 @@ class SageMakerClient(metaclass=SingletonMeta):
         self.config = Config(user_agent_extra=get_user_agent_extra_suffix())
         self.session = session
         self.region_name = region_name
-        self.sagemaker_client = session.client("sagemaker", region_name, config=self.config)
+        # Read region from environment variable, default to us-west-2
+        import os
+        env_region = os.environ.get('SAGEMAKER_REGION', region_name)
+        env_stage = os.environ.get('SAGEMAKER_STAGE', 'prod')  # default to gamma
+        logger.info(f"Runs on sagemaker {env_stage}, region:{env_region}")
+
+
+        self.sagemaker_client = session.client(
+            "sagemaker",
+            region_name=env_region,
+            config=self.config,
+        )
+        
         self.sagemaker_runtime_client = session.client(
             "sagemaker-runtime", region_name, config=self.config
         )
@@ -481,7 +493,7 @@ def serialize(value: Any) -> Any:
     """
     from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
-    if value is None or isinstance(value, Unassigned):
+    if value is None or isinstance(value, type(Unassigned())):
         return None
     elif isinstance(value, PipelineVariable):
         # Return PipelineVariables as-is (Join, ExecutionVariables, etc.)

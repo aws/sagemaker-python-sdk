@@ -57,13 +57,16 @@ class TestModelMonitorUtils:
             instance_type="ml.m5.xlarge",
             volume_size_in_gb=30,
             image_uri="test-image:latest",
-            role_arn="arn:aws:iam::123:role/test"
+            role_arn="arn:aws:iam::123:role/test",
         )
-        
+
         assert mock_session.sagemaker_client.create_monitoring_schedule.called
         call_args = mock_session.sagemaker_client.create_monitoring_schedule.call_args[1]
         assert call_args["MonitoringScheduleName"] == "test-schedule"
-        assert call_args["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"] == "cron(0 * * * ? *)"
+        assert (
+            call_args["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+            == "cron(0 * * * ? *)"
+        )
 
     def test_boto_create_monitoring_schedule_with_baseline(self, mock_session):
         """Test boto_create_monitoring_schedule with baseline config"""
@@ -79,12 +82,14 @@ class TestModelMonitorUtils:
             instance_type="ml.m5.xlarge",
             volume_size_in_gb=30,
             image_uri="test-image:latest",
-            role_arn="arn:aws:iam::123:role/test"
+            role_arn="arn:aws:iam::123:role/test",
         )
-        
+
         call_args = mock_session.sagemaker_client.create_monitoring_schedule.call_args[1]
         assert "BaselineConfig" in call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"]
-        baseline = call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["BaselineConfig"]
+        baseline = call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "BaselineConfig"
+        ]
         assert baseline["StatisticsResource"]["S3Uri"] == "s3://bucket/statistics.json"
         assert baseline["ConstraintsResource"]["S3Uri"] == "s3://bucket/constraints.json"
 
@@ -103,11 +108,13 @@ class TestModelMonitorUtils:
             volume_size_in_gb=30,
             volume_kms_key="volume-key",
             image_uri="test-image:latest",
-            role_arn="arn:aws:iam::123:role/test"
+            role_arn="arn:aws:iam::123:role/test",
         )
-        
+
         call_args = mock_session.sagemaker_client.create_monitoring_schedule.call_args[1]
-        resources = call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["MonitoringResources"]
+        resources = call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "MonitoringResources"
+        ]
         assert resources["ClusterConfig"]["VolumeKmsKeyId"] == "volume-key"
 
     def test_boto_create_monitoring_schedule_with_custom_scripts(self, mock_session):
@@ -126,11 +133,13 @@ class TestModelMonitorUtils:
             image_uri="test-image:latest",
             role_arn="arn:aws:iam::123:role/test",
             record_preprocessor_source_uri="s3://bucket/preprocess.py",
-            post_analytics_processor_source_uri="s3://bucket/postprocess.py"
+            post_analytics_processor_source_uri="s3://bucket/postprocess.py",
         )
-        
+
         call_args = mock_session.sagemaker_client.create_monitoring_schedule.call_args[1]
-        app_spec = call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["MonitoringAppSpecification"]
+        app_spec = call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "MonitoringAppSpecification"
+        ]
         assert app_spec["RecordPreprocessorSourceUri"] == "s3://bucket/preprocess.py"
         assert app_spec["PostAnalyticsProcessorSourceUri"] == "s3://bucket/postprocess.py"
 
@@ -150,11 +159,13 @@ class TestModelMonitorUtils:
             image_uri="test-image:latest",
             role_arn="arn:aws:iam::123:role/test",
             entrypoint=["/bin/bash", "run.sh"],
-            arguments=["--arg1", "value1"]
+            arguments=["--arg1", "value1"],
         )
-        
+
         call_args = mock_session.sagemaker_client.create_monitoring_schedule.call_args[1]
-        app_spec = call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["MonitoringAppSpecification"]
+        app_spec = call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "MonitoringAppSpecification"
+        ]
         assert app_spec["ContainerEntrypoint"] == ["/bin/bash", "run.sh"]
         assert app_spec["ContainerArguments"] == ["--arg1", "value1"]
 
@@ -162,12 +173,9 @@ class TestModelMonitorUtils:
         """Test boto_create_monitoring_schedule with network configuration"""
         network_config = {
             "EnableNetworkIsolation": True,
-            "VpcConfig": {
-                "SecurityGroupIds": ["sg-123"],
-                "Subnets": ["subnet-123"]
-            }
+            "VpcConfig": {"SecurityGroupIds": ["sg-123"], "Subnets": ["subnet-123"]},
         }
-        
+
         boto_create_monitoring_schedule(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
@@ -181,16 +189,16 @@ class TestModelMonitorUtils:
             volume_size_in_gb=30,
             image_uri="test-image:latest",
             role_arn="arn:aws:iam::123:role/test",
-            network_config=network_config
+            network_config=network_config,
         )
-        
+
         call_args = mock_session.sagemaker_client.create_monitoring_schedule.call_args[1]
         assert "NetworkConfig" in call_args["MonitoringScheduleConfig"]["MonitoringJobDefinition"]
 
     def test_boto_create_monitoring_schedule_with_tags(self, mock_session):
         """Test boto_create_monitoring_schedule with tags"""
         tags = [{"Key": "Environment", "Value": "Test"}]
-        
+
         boto_create_monitoring_schedule(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
@@ -204,9 +212,9 @@ class TestModelMonitorUtils:
             volume_size_in_gb=30,
             image_uri="test-image:latest",
             role_arn="arn:aws:iam::123:role/test",
-            tags=tags
+            tags=tags,
         )
-        
+
         call_args = mock_session.sagemaker_client.create_monitoring_schedule.call_args[1]
         assert "Tags" in call_args
 
@@ -226,9 +234,9 @@ class TestModelMonitorUtils:
             image_uri="test-image:latest",
             role_arn="arn:aws:iam::123:role/test",
             data_analysis_start_time="-PT1H",
-            data_analysis_end_time="-PT0H"
+            data_analysis_end_time="-PT0H",
         )
-        
+
         call_args = mock_session.sagemaker_client.create_monitoring_schedule.call_args[1]
         schedule_config = call_args["MonitoringScheduleConfig"]["ScheduleConfig"]
         assert schedule_config["ScheduleExpression"] == "NOW"
@@ -246,20 +254,19 @@ class TestModelMonitorUtils:
                         "ClusterConfig": {
                             "InstanceCount": 1,
                             "InstanceType": "ml.m5.xlarge",
-                            "VolumeSizeInGB": 30
+                            "VolumeSizeInGB": 30,
                         }
                     },
                     "MonitoringAppSpecification": {"ImageUri": "test-image:latest"},
-                    "RoleArn": "arn:aws:iam::123:role/test"
-                }
+                    "RoleArn": "arn:aws:iam::123:role/test",
+                },
             }
         }
-        
+
         boto_update_monitoring_schedule(
-            sagemaker_session=mock_session,
-            monitoring_schedule_name="test-schedule"
+            sagemaker_session=mock_session, monitoring_schedule_name="test-schedule"
         )
-        
+
         assert mock_session.sagemaker_client.update_monitoring_schedule.called
 
     def test_boto_update_monitoring_schedule_with_new_schedule(self, mock_session):
@@ -273,23 +280,26 @@ class TestModelMonitorUtils:
                         "ClusterConfig": {
                             "InstanceCount": 1,
                             "InstanceType": "ml.m5.xlarge",
-                            "VolumeSizeInGB": 30
+                            "VolumeSizeInGB": 30,
                         }
                     },
                     "MonitoringAppSpecification": {"ImageUri": "test-image:latest"},
-                    "RoleArn": "arn:aws:iam::123:role/test"
-                }
+                    "RoleArn": "arn:aws:iam::123:role/test",
+                },
             }
         }
-        
+
         boto_update_monitoring_schedule(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
-            schedule_expression="cron(0 0 * * ? *)"
+            schedule_expression="cron(0 0 * * ? *)",
         )
-        
+
         call_args = mock_session.sagemaker_client.update_monitoring_schedule.call_args[1]
-        assert call_args["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"] == "cron(0 0 * * ? *)"
+        assert (
+            call_args["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+            == "cron(0 0 * * ? *)"
+        )
 
     def test_boto_update_monitoring_schedule_one_time_missing_times(self, mock_session):
         """Test boto_update_monitoring_schedule raises error for one-time schedule without times"""
@@ -302,29 +312,31 @@ class TestModelMonitorUtils:
                         "ClusterConfig": {
                             "InstanceCount": 1,
                             "InstanceType": "ml.m5.xlarge",
-                            "VolumeSizeInGB": 30
+                            "VolumeSizeInGB": 30,
                         }
                     },
                     "MonitoringAppSpecification": {"ImageUri": "test-image:latest"},
-                    "RoleArn": "arn:aws:iam::123:role/test"
-                }
+                    "RoleArn": "arn:aws:iam::123:role/test",
+                },
             }
         }
-        
-        with pytest.raises(ValueError, match="Both data_analysis_start_time and data_analysis_end_time are required"):
+
+        with pytest.raises(
+            ValueError,
+            match="Both data_analysis_start_time and data_analysis_end_time are required",
+        ):
             boto_update_monitoring_schedule(
                 sagemaker_session=mock_session,
                 monitoring_schedule_name="test-schedule",
-                schedule_expression="NOW"
+                schedule_expression="NOW",
             )
 
     def test_boto_start_monitoring_schedule(self, mock_session):
         """Test boto_start_monitoring_schedule"""
         boto_start_monitoring_schedule(
-            sagemaker_session=mock_session,
-            monitoring_schedule_name="test-schedule"
+            sagemaker_session=mock_session, monitoring_schedule_name="test-schedule"
         )
-        
+
         mock_session.sagemaker_client.start_monitoring_schedule.assert_called_once_with(
             MonitoringScheduleName="test-schedule"
         )
@@ -332,10 +344,9 @@ class TestModelMonitorUtils:
     def test_boto_stop_monitoring_schedule(self, mock_session):
         """Test boto_stop_monitoring_schedule"""
         boto_stop_monitoring_schedule(
-            sagemaker_session=mock_session,
-            monitoring_schedule_name="test-schedule"
+            sagemaker_session=mock_session, monitoring_schedule_name="test-schedule"
         )
-        
+
         mock_session.sagemaker_client.stop_monitoring_schedule.assert_called_once_with(
             MonitoringScheduleName="test-schedule"
         )
@@ -343,10 +354,9 @@ class TestModelMonitorUtils:
     def test_boto_delete_monitoring_schedule(self, mock_session):
         """Test boto_delete_monitoring_schedule"""
         boto_delete_monitoring_schedule(
-            sagemaker_session=mock_session,
-            monitoring_schedule_name="test-schedule"
+            sagemaker_session=mock_session, monitoring_schedule_name="test-schedule"
         )
-        
+
         mock_session.sagemaker_client.delete_monitoring_schedule.assert_called_once_with(
             MonitoringScheduleName="test-schedule"
         )
@@ -356,12 +366,11 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.describe_monitoring_schedule.return_value = {
             "MonitoringScheduleName": "test-schedule"
         }
-        
+
         result = boto_describe_monitoring_schedule(
-            sagemaker_session=mock_session,
-            monitoring_schedule_name="test-schedule"
+            sagemaker_session=mock_session, monitoring_schedule_name="test-schedule"
         )
-        
+
         assert result["MonitoringScheduleName"] == "test-schedule"
 
     def test_boto_list_monitoring_executions(self, mock_session):
@@ -369,12 +378,11 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.list_monitoring_executions.return_value = {
             "MonitoringExecutionSummaries": []
         }
-        
+
         result = boto_list_monitoring_executions(
-            sagemaker_session=mock_session,
-            monitoring_schedule_name="test-schedule"
+            sagemaker_session=mock_session, monitoring_schedule_name="test-schedule"
         )
-        
+
         assert "MonitoringExecutionSummaries" in result
         mock_session.sagemaker_client.list_monitoring_executions.assert_called_once()
 
@@ -383,15 +391,15 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.list_monitoring_executions.return_value = {
             "MonitoringExecutionSummaries": []
         }
-        
+
         result = boto_list_monitoring_executions(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
             sort_by="CreationTime",
             sort_order="Ascending",
-            max_results=50
+            max_results=50,
         )
-        
+
         call_args = mock_session.sagemaker_client.list_monitoring_executions.call_args[1]
         assert call_args["SortBy"] == "CreationTime"
         assert call_args["SortOrder"] == "Ascending"
@@ -402,11 +410,9 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.list_monitoring_schedules.return_value = {
             "MonitoringScheduleSummaries": []
         }
-        
-        result = boto_list_monitoring_schedules(
-            sagemaker_session=mock_session
-        )
-        
+
+        result = boto_list_monitoring_schedules(sagemaker_session=mock_session)
+
         assert "MonitoringScheduleSummaries" in result
 
     def test_boto_list_monitoring_schedules_with_endpoint(self, mock_session):
@@ -414,12 +420,11 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.list_monitoring_schedules.return_value = {
             "MonitoringScheduleSummaries": []
         }
-        
+
         result = boto_list_monitoring_schedules(
-            sagemaker_session=mock_session,
-            endpoint_name="test-endpoint"
+            sagemaker_session=mock_session, endpoint_name="test-endpoint"
         )
-        
+
         call_args = mock_session.sagemaker_client.list_monitoring_schedules.call_args[1]
         assert call_args["EndpointName"] == "test-endpoint"
 
@@ -428,15 +433,15 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.update_monitoring_alert.return_value = {
             "MonitoringScheduleArn": "arn:aws:sagemaker:us-west-2:123:monitoring-schedule/test"
         }
-        
+
         result = boto_update_monitoring_alert(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
             monitoring_alert_name="test-alert",
             data_points_to_alert=3,
-            evaluation_period=5
+            evaluation_period=5,
         )
-        
+
         assert "MonitoringScheduleArn" in result
         mock_session.sagemaker_client.update_monitoring_alert.assert_called_once()
 
@@ -445,28 +450,27 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.list_monitoring_alerts.return_value = {
             "MonitoringAlertSummaries": []
         }
-        
+
         result = boto_list_monitoring_alerts(
-            sagemaker_session=mock_session,
-            monitoring_schedule_name="test-schedule"
+            sagemaker_session=mock_session, monitoring_schedule_name="test-schedule"
         )
-        
+
         assert "MonitoringAlertSummaries" in result
 
     def test_boto_list_monitoring_alerts_with_pagination(self, mock_session):
         """Test boto_list_monitoring_alerts with pagination"""
         mock_session.sagemaker_client.list_monitoring_alerts.return_value = {
             "MonitoringAlertSummaries": [],
-            "NextToken": "token123"
+            "NextToken": "token123",
         }
-        
+
         result = boto_list_monitoring_alerts(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
             next_token="prev_token",
-            max_results=20
+            max_results=20,
         )
-        
+
         call_args = mock_session.sagemaker_client.list_monitoring_alerts.call_args[1]
         assert call_args["NextToken"] == "prev_token"
         assert call_args["MaxResults"] == 20
@@ -476,12 +480,11 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.list_monitoring_alert_history.return_value = {
             "MonitoringAlertHistory": []
         }
-        
+
         result = boto_list_monitoring_alert_history(
-            sagemaker_session=mock_session,
-            monitoring_schedule_name="test-schedule"
+            sagemaker_session=mock_session, monitoring_schedule_name="test-schedule"
         )
-        
+
         assert "MonitoringAlertHistory" in result
 
     def test_boto_list_monitoring_alert_history_with_filters(self, mock_session):
@@ -489,16 +492,16 @@ class TestModelMonitorUtils:
         mock_session.sagemaker_client.list_monitoring_alert_history.return_value = {
             "MonitoringAlertHistory": []
         }
-        
+
         result = boto_list_monitoring_alert_history(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
             monitoring_alert_name="test-alert",
             creation_time_before="2024-01-01T00:00:00Z",
             creation_time_after="2023-01-01T00:00:00Z",
-            status_equals="InAlert"
+            status_equals="InAlert",
         )
-        
+
         call_args = mock_session.sagemaker_client.list_monitoring_alert_history.call_args[1]
         assert call_args["MonitoringAlertName"] == "test-alert"
         assert call_args["CreationTimeBefore"] == "2024-01-01T00:00:00Z"

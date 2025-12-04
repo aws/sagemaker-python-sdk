@@ -36,7 +36,7 @@ class TestGetImageTag:
             processor="cpu",
             py_version="py3",
             tag_prefix="1.5-1",
-            version="1.5-1"
+            version="1.5-1",
         )
         assert tag == "1.5-1-arm64"
 
@@ -52,7 +52,7 @@ class TestGetImageTag:
             processor="cpu",
             py_version="py3",
             tag_prefix="1.0-1",
-            version="1.0-1"
+            version="1.0-1",
         )
         assert tag == "1.0-1-arm64-cpu-py3"
 
@@ -68,7 +68,7 @@ class TestGetImageTag:
             processor="inf",
             py_version="py39",
             tag_prefix="1.13.1",
-            version="1.13.1"
+            version="1.13.1",
         )
         assert "neuronx" in tag
         assert "py39" in tag
@@ -85,7 +85,7 @@ class TestGetImageTag:
             processor="gpu",
             py_version="py38",
             tag_prefix="2.12",
-            version="2.12"
+            version="2.12",
         )
         assert not tag.endswith("-gpu")
 
@@ -101,7 +101,7 @@ class TestGetImageTag:
             processor="cpu",
             py_version="py38",
             tag_prefix="2.12",
-            version="2.12"
+            version="2.12",
         )
         assert "-cpu" in tag
 
@@ -117,7 +117,7 @@ class TestGetImageTag:
             processor="gpu",
             py_version="py37",
             tag_prefix="2.3",
-            version="2.3"
+            version="2.3",
         )
         # Should auto-select container version for p4d
         assert tag is not None
@@ -131,46 +131,34 @@ class TestConfigForFrameworkAndScope:
         """Test with accelerator type (EIA)"""
         mock_config.return_value = {
             "scope": ["training", "inference", "eia"],
-            "eia": {"versions": {}}
+            "eia": {"versions": {}},
         }
-        
+
         result = image_uris._config_for_framework_and_scope(
-            "tensorflow",
-            "training",
-            accelerator_type="ml.eia2.medium"
+            "tensorflow", "training", accelerator_type="ml.eia2.medium"
         )
-        
+
         assert result == mock_config.return_value
 
     @patch("sagemaker.core.image_uris.config_for_framework")
     def test_single_scope_available(self, mock_config):
         """Test when only one scope is available"""
-        mock_config.return_value = {
-            "scope": ["training"],
-            "training": {"versions": {}}
-        }
-        
+        mock_config.return_value = {"scope": ["training"], "training": {"versions": {}}}
+
         result = image_uris._config_for_framework_and_scope(
-            "xgboost",
-            "inference"  # Different from available
+            "xgboost", "inference"  # Different from available
         )
-        
+
         # Should default to the only available scope
         assert result == mock_config.return_value
 
     @patch("sagemaker.core.image_uris.config_for_framework")
     def test_training_inference_same_images(self, mock_config):
         """Test when training and inference use same images"""
-        mock_config.return_value = {
-            "scope": ["training", "inference"],
-            "versions": {}
-        }
-        
-        result = image_uris._config_for_framework_and_scope(
-            "sklearn",
-            None
-        )
-        
+        mock_config.return_value = {"scope": ["training", "inference"], "versions": {}}
+
+        result = image_uris._config_for_framework_and_scope("sklearn", None)
+
         # Should return the config directly
         assert "versions" in result
 
@@ -181,47 +169,27 @@ class TestValidateInstanceDeprecation:
     def test_p2_with_pytorch_1_13(self):
         """Test P2 instance with PyTorch 1.13 (should raise)"""
         with pytest.raises(ValueError, match="P2 instances have been deprecated"):
-            image_uris._validate_instance_deprecation(
-                "pytorch",
-                "ml.p2.xlarge",
-                "1.13"
-            )
+            image_uris._validate_instance_deprecation("pytorch", "ml.p2.xlarge", "1.13")
 
     def test_p2_with_pytorch_1_12(self):
         """Test P2 instance with PyTorch 1.12 (should pass)"""
         # Should not raise
-        image_uris._validate_instance_deprecation(
-            "pytorch",
-            "ml.p2.xlarge",
-            "1.12"
-        )
+        image_uris._validate_instance_deprecation("pytorch", "ml.p2.xlarge", "1.12")
 
     def test_p2_with_tensorflow_2_12(self):
         """Test P2 instance with TensorFlow 2.12 (should raise)"""
         with pytest.raises(ValueError, match="P2 instances have been deprecated"):
-            image_uris._validate_instance_deprecation(
-                "tensorflow",
-                "ml.p2.xlarge",
-                "2.12"
-            )
+            image_uris._validate_instance_deprecation("tensorflow", "ml.p2.xlarge", "2.12")
 
     def test_p2_with_tensorflow_2_11(self):
         """Test P2 instance with TensorFlow 2.11 (should pass)"""
         # Should not raise
-        image_uris._validate_instance_deprecation(
-            "tensorflow",
-            "ml.p2.xlarge",
-            "2.11"
-        )
+        image_uris._validate_instance_deprecation("tensorflow", "ml.p2.xlarge", "2.11")
 
     def test_p3_instance(self):
         """Test P3 instance (should pass)"""
         # Should not raise
-        image_uris._validate_instance_deprecation(
-            "pytorch",
-            "ml.p3.2xlarge",
-            "1.13"
-        )
+        image_uris._validate_instance_deprecation("pytorch", "ml.p3.2xlarge", "1.13")
 
 
 class TestValidateForSupportedFrameworksAndInstanceType:
@@ -231,33 +199,27 @@ class TestValidateForSupportedFrameworksAndInstanceType:
         """Test Trainium instance with unsupported framework"""
         with pytest.raises(ValueError, match="framework"):
             image_uris._validate_for_suppported_frameworks_and_instance_type(
-                "tensorflow",
-                "ml.trn1.2xlarge"
+                "tensorflow", "ml.trn1.2xlarge"
             )
 
     def test_trainium_with_pytorch(self):
         """Test Trainium instance with PyTorch (should pass)"""
         # Should not raise
         image_uris._validate_for_suppported_frameworks_and_instance_type(
-            "pytorch",
-            "ml.trn1.2xlarge"
+            "pytorch", "ml.trn1.2xlarge"
         )
 
     def test_graviton_with_unsupported_framework(self):
         """Test Graviton instance with unsupported framework"""
         with pytest.raises(ValueError, match="framework"):
             image_uris._validate_for_suppported_frameworks_and_instance_type(
-                "mxnet",
-                "ml.c7g.xlarge"
+                "mxnet", "ml.c7g.xlarge"
             )
 
     def test_graviton_with_xgboost(self):
         """Test Graviton instance with XGBoost (should pass)"""
         # Should not raise
-        image_uris._validate_for_suppported_frameworks_and_instance_type(
-            "xgboost",
-            "ml.c7g.xlarge"
-        )
+        image_uris._validate_for_suppported_frameworks_and_instance_type("xgboost", "ml.c7g.xlarge")
 
 
 class TestGetFinalImageScope:
@@ -265,38 +227,22 @@ class TestGetFinalImageScope:
 
     def test_graviton_instance_with_xgboost(self):
         """Test Graviton instance with XGBoost"""
-        result = image_uris._get_final_image_scope(
-            "xgboost",
-            "ml.c7g.xlarge",
-            "inference"
-        )
+        result = image_uris._get_final_image_scope("xgboost", "ml.c7g.xlarge", "inference")
         assert result == "inference_graviton"
 
     def test_graviton_instance_with_sklearn(self):
         """Test Graviton instance with SKLearn"""
-        result = image_uris._get_final_image_scope(
-            "sklearn",
-            "ml.c7g.xlarge",
-            "training"
-        )
+        result = image_uris._get_final_image_scope("sklearn", "ml.c7g.xlarge", "training")
         assert result == "inference_graviton"
 
     def test_non_graviton_instance(self):
         """Test non-Graviton instance"""
-        result = image_uris._get_final_image_scope(
-            "xgboost",
-            "ml.m5.xlarge",
-            "training"
-        )
+        result = image_uris._get_final_image_scope("xgboost", "ml.m5.xlarge", "training")
         assert result == "training"
 
     def test_xgboost_with_none_scope(self):
         """Test XGBoost with None scope (should default to training)"""
-        result = image_uris._get_final_image_scope(
-            "xgboost",
-            "ml.m5.xlarge",
-            None
-        )
+        result = image_uris._get_final_image_scope("xgboost", "ml.m5.xlarge", None)
         assert result == "training"
 
 
@@ -372,18 +318,13 @@ class TestValidateVersionAndSetIfNeeded:
     def test_with_single_version(self, mock_get_latest):
         """Test when only one version is available"""
         config = {"versions": {"1.0": {}}}
-        result = image_uris._validate_version_and_set_if_needed(
-            None, config, "xgboost", "training"
-        )
+        result = image_uris._validate_version_and_set_if_needed(None, config, "xgboost", "training")
         assert result == "1.0"
 
     @patch("sagemaker.core.image_uris._get_latest_version")
     def test_with_version_alias(self, mock_get_latest):
         """Test with version alias"""
-        config = {
-            "versions": {"1.0": {}, "2.0": {}},
-            "version_aliases": {"latest": "2.0"}
-        }
+        config = {"versions": {"1.0": {}, "2.0": {}}, "version_aliases": {"latest": "2.0"}}
         result = image_uris._validate_version_and_set_if_needed(
             "latest", config, "pytorch", "training"
         )
@@ -393,9 +334,7 @@ class TestValidateVersionAndSetIfNeeded:
         """Test with invalid version"""
         config = {"versions": {"1.0": {}, "1.5": {}}}
         with pytest.raises(ValueError, match="Unsupported"):
-            image_uris._validate_version_and_set_if_needed(
-                "2.0", config, "xgboost", "training"
-            )
+            image_uris._validate_version_and_set_if_needed("2.0", config, "xgboost", "training")
 
 
 class TestVersionForConfig:
@@ -419,10 +358,7 @@ class TestRegistryFromRegion:
 
     def test_valid_region(self):
         """Test with valid region"""
-        registry_dict = {
-            "us-west-2": "123456789012",
-            "us-east-1": "987654321098"
-        }
+        registry_dict = {"us-west-2": "123456789012", "us-east-1": "987654321098"}
         result = image_uris._registry_from_region("us-west-2", registry_dict)
         assert result == "123456789012"
 
@@ -566,7 +502,9 @@ class TestValidateFramework:
     def test_valid_framework(self):
         """Test with valid framework"""
         # Should not raise
-        image_uris._validate_framework("pytorch", ["pytorch", "tensorflow"], "framework", "Trainium")
+        image_uris._validate_framework(
+            "pytorch", ["pytorch", "tensorflow"], "framework", "Trainium"
+        )
 
     def test_invalid_framework(self):
         """Test with invalid framework"""
@@ -602,16 +540,16 @@ class TestGetBasePythonImageUri:
         """Test with default Python version"""
         mock_endpoint = {"hostname": "ecr.us-west-2.amazonaws.com"}
         mock_resolver.return_value.construct_endpoint.return_value = mock_endpoint
-        
+
         mock_config.return_value = {
             "versions": {
                 "1.0": {
                     "repository": "sagemaker-base-python",
-                    "registries": {"us-west-2": "123456789012"}
+                    "registries": {"us-west-2": "123456789012"},
                 }
             }
         }
-        
+
         result = image_uris.get_base_python_image_uri("us-west-2")
         assert "sagemaker-base-python-310" in result
         assert "1.0" in result
@@ -622,16 +560,16 @@ class TestGetBasePythonImageUri:
         """Test with custom Python version"""
         mock_endpoint = {"hostname": "ecr.us-west-2.amazonaws.com"}
         mock_resolver.return_value.construct_endpoint.return_value = mock_endpoint
-        
+
         mock_config.return_value = {
             "versions": {
                 "1.0": {
                     "repository": "sagemaker-base-python",
-                    "registries": {"us-west-2": "123456789012"}
+                    "registries": {"us-west-2": "123456789012"},
                 }
             }
         }
-        
+
         result = image_uris.get_base_python_image_uri("us-west-2", py_version="38")
         assert "sagemaker-base-python-38" in result
 
@@ -641,11 +579,7 @@ class TestFetchLatestVersionFromConfig:
 
     def test_with_version_aliases_in_scope(self):
         """Test with version aliases in image scope"""
-        config = {
-            "training": {
-                "version_aliases": {"latest": "2.0"}
-            }
-        }
+        config = {"training": {"version_aliases": {"latest": "2.0"}}}
         result = image_uris._fetch_latest_version_from_config(config, "training")
         assert result == "2.0"
 
@@ -675,10 +609,6 @@ class TestFetchLatestVersionFromConfig:
 
     def test_with_processing_versions(self):
         """Test with processing versions"""
-        config = {
-            "processing": {
-                "versions": {"1.0": {}, "2.0": {}}
-            }
-        }
+        config = {"processing": {"versions": {"1.0": {}, "2.0": {}}}}
         result = image_uris._fetch_latest_version_from_config(config)
         assert result in ["1.0", "2.0"]

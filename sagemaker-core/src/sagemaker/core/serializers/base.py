@@ -470,7 +470,7 @@ class TorchTensorSerializer(SimpleBaseSerializer):
         raise ValueError("Object of type %s is not a torch.Tensor" % type(data))
 
 
-#TODO fix the unit test for this serializer
+# TODO fix the unit test for this serializer
 class RecordSerializer(SimpleBaseSerializer):
     """Serialize a NumPy array for an inference request."""
 
@@ -503,6 +503,7 @@ class RecordSerializer(SimpleBaseSerializer):
         buffer = io.BytesIO()
         # Lazy import to avoid circular dependency
         from sagemaker.core.serializers.utils import write_numpy_to_dense_tensor
+
         write_numpy_to_dense_tensor(buffer, data)
         buffer.seek(0)
 
