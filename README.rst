@@ -443,11 +443,11 @@ Four new trainer classes for fine-tuning foundation models:
 
 **Key Features**
 
-✨ LoRA & full fine-tuning  
-📊 MLflow integration with real-time metrics  
-🚀 Deploy to SageMaker or Bedrock  
-📈 Built-in evaluation (11 benchmarks)  
-☁️ Serverless training  
+* ✨ LoRA & full fine-tuning  
+* 📊 MLflow integration with real-time metrics  
+* 🚀 Deploy to SageMaker or Bedrock  
+* 📈 Built-in evaluation (11 benchmarks)  
+* ☁️ Serverless training  
 
 **Get Started**
 
@@ -455,4 +455,4 @@ Four new trainer classes for fine-tuning foundation models:
 
     pip install sagemaker>=3.1.0
 
-📓 [Example notebooks](https://github.com/aws/sagemaker-python-sdk/tree/master/v3-examples/model-customization-examples)
+`📓 Example notebooks <https://github.com/aws/sagemaker-python-sdk/tree/master/v3-examples/model-customization-examples>`__
