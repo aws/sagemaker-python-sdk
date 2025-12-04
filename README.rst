@@ -410,3 +410,49 @@ SageMaker V2 Examples
 #. `Model Monitoring <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html>`__
 #. `SageMaker Debugger <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html>`__
 #. `SageMaker Processing <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_processing.html>`__
+
+🚀 Model Fine-Tuning Support Now Available in V3
+-------------------------------------------------
+
+We're excited to announce model fine-tuning capabilities in SageMaker Python SDK V3!
+
+**What's New**
+
+Four new trainer classes for fine-tuning foundation models:
+
+* SFTTrainer - Supervised fine-tuning
+* DPOTrainer - Direct preference optimization  
+* RLAIFTrainer - RL from AI feedback
+* RLVRTrainer - RL from verifiable rewards
+
+**Quick Example**
+
+.. code:: python
+
+    from sagemaker.train import SFTTrainer
+    from sagemaker.train.common import TrainingType
+
+    trainer = SFTTrainer(
+        model="meta-llama/Llama-2-7b-hf",
+        training_type=TrainingType.LORA,
+        model_package_group_name="my-models",
+        training_dataset="s3://bucket/train.jsonl"
+    )
+
+    training_job = trainer.train()
+
+**Key Features**
+
+✨ LoRA & full fine-tuning  
+📊 MLflow integration with real-time metrics  
+🚀 Deploy to SageMaker or Bedrock  
+📈 Built-in evaluation (11 benchmarks)  
+☁️ Serverless training  
+
+**Get Started**
+
+.. code:: python
+
+    pip install sagemaker>=3.1.0
+
+📓 [Example notebooks](https://github.com/aws/sagemaker-python-sdk/tree/master/v3-examples/model-customization-examples)
