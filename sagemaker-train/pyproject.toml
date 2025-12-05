@@ -57,7 +57,8 @@ test = [
     "pandas",
     "scipy",
     "omegaconf",
-    "graphene"
+    "graphene",
+    "IPython",
 ]
 
 [tool.setuptools.packages.find]

@@ -427,7 +427,7 @@ class TestModelBuilderServersAllModelServers(unittest.TestCase):
         }
         
         for model_server, method_name in server_method_map.items():
-            with self.subTest(model_server=model_server):
+            with self.subTest():
                 self.mock_builder.model_server = model_server
                 
                 # Mock the specific build method
