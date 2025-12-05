@@ -347,11 +347,9 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
 
         # Select recipe based on training type
         recipe = None
-        if isinstance(training_type, TrainingType) and training_type == TrainingType.LORA:
-            # For LORA, find first recipe with Peft key
+        if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
             recipe = next((r for r in recipes_with_template if r.get("Peft")), None)
-        elif isinstance(training_type, TrainingType) and training_type == TrainingType.FULL:
-            # For FULL, find first recipe without Peft key
+        elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
             recipe = next((r for r in recipes_with_template if not r.get("Peft")), None)
 
         if recipe and recipe.get("SmtjOverrideParamsS3Uri"):
