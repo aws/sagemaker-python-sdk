@@ -343,29 +343,15 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
         
         if not recipes_with_template:
-            raise ValueError(f"No recipes found with SmtjRecipeTemplateS3Uri for technique: {customization_technique}")
+            raise ValueError(f"No recipes found with Smtj for technique: {customization_technique}")
 
-        # If multiple recipes, filter by training_type (peft key)
-        if len(recipes_with_template) > 1:
+        # Select recipe based on training type
+        recipe = None
+        if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+            recipe = next((r for r in recipes_with_template if r.get("Peft")), None)
+        elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
+            recipe = next((r for r in recipes_with_template if not r.get("Peft")), None)
 
-            if isinstance(training_type, TrainingType) and training_type == TrainingType.LORA:
-                # Filter recipes that have peft key for LORA
-                lora_recipes = [r for r in recipes_with_template if r.get("Peft")]
-                if lora_recipes:
-                    recipes_with_template = lora_recipes
-                elif len(recipes_with_template) > 1:
-                    raise ValueError(f"Multiple recipes found for LORA training but none have peft key")
-            elif isinstance(training_type, TrainingType) and training_type == TrainingType.FULL:
-                # For FULL training, if multiple recipes exist, throw error
-                if len(recipes_with_template) > 1:
-                    raise ValueError(f"Multiple recipes found for FULL training - cannot determine which to use")
-        
-        # If still multiple recipes after filtering, throw error
-        if len(recipes_with_template) > 1:
-            raise ValueError(f"Multiple recipes found after filtering - cannot determine which to use")
-        
-        recipe = recipes_with_template[0]
-        
         if recipe and recipe.get("SmtjOverrideParamsS3Uri"):
             s3_uri = recipe["SmtjOverrideParamsS3Uri"]
             s3 = boto3.client("s3")

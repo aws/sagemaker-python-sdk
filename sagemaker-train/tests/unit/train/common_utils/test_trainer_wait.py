@@ -99,45 +99,6 @@ class TestSetupMLflowIntegration:
             assert metrics_util is None
             assert mlflow_run_name is None
 
-
-class TestIsJupyterEnvironment:
-    """Test cases for _is_jupyter_environment function."""
-
-    @patch('IPython.get_ipython')
-    def test_jupyter_environment_true(self, mock_get_ipython):
-        """Test detection of Jupyter environment."""
-        mock_ipython = MagicMock()
-        mock_ipython.config = {'IPKernelApp': {}}
-        mock_get_ipython.return_value = mock_ipython
-
-        result = _is_jupyter_environment()
-        assert result is True
-
-    @patch('IPython.get_ipython')
-    def test_jupyter_environment_false_no_ipkernel(self, mock_get_ipython):
-        """Test non-Jupyter environment without IPKernelApp."""
-        mock_ipython = MagicMock()
-        mock_ipython.config = {}
-        mock_get_ipython.return_value = mock_ipython
-
-        result = _is_jupyter_environment()
-        assert result is False
-
-    @patch('IPython.get_ipython')
-    def test_jupyter_environment_false_no_ipython(self, mock_get_ipython):
-        """Test non-Jupyter environment without IPython."""
-        mock_get_ipython.return_value = None
-
-        result = _is_jupyter_environment()
-        assert result is False
-
-    def test_jupyter_environment_import_error(self):
-        """Test ImportError when IPython is not available."""
-        with patch('builtins.__import__', side_effect=ImportError):
-            result = _is_jupyter_environment()
-            assert result is False
-
-
 class TestIsUnassignedAttribute:
     """Test cases for _is_unassigned_attribute function."""
 
