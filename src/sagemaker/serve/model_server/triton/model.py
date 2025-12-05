@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 import os
 import logging
-import ssl
 from pathlib import Path
 import platform
 
@@ -12,10 +11,6 @@ import cloudpickle
 from sagemaker.serve.validations.check_integrity import perform_integrity_check
 
 logger = logging.getLogger(__name__)
-
-# Otherwise it will complain SSL: CERTIFICATE_VERIFY_FAILED
-# When trying to download models from torchvision
-ssl._create_default_https_context = ssl._create_unverified_context
 
 TRITON_MODEL_DIR = os.getenv("TRITON_MODEL_DIR")
 
