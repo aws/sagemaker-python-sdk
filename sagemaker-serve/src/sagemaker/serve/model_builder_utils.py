@@ -992,6 +992,12 @@ class _ModelBuilderUtils:
                     sample_outputs,
                 ) = remote_hf_schema_helper.get_resolved_hf_schema_for_task(model_task)
                 
+                # Unwrap list outputs for binary tasks (text-to-image, audio, etc.)
+                # Remote schema retriever returns [{'data': b'...', 'content_type': '...'}]
+                # but SchemaBuilder expects {'data': b'...', 'content_type': '...'}
+                if isinstance(sample_outputs, list) and len(sample_outputs) > 0:
+                    sample_outputs = sample_outputs[0]
+                
             self.schema_builder = SchemaBuilder(sample_inputs, sample_outputs)
             
         except ValueError as e:

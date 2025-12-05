@@ -687,7 +687,20 @@ class _ModelBuilderServers(object):
                             hf_model_id, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                         )
             elif isinstance(self.model, str):  # Only set HF_MODEL_ID if model is a string
+                # Get model metadata for task detection (same pattern as _build_for_triton)
+                hf_model_md = self.get_huggingface_model_metadata(
+                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+                )
+                model_task = hf_model_md.get("pipeline_tag")
+                if model_task:
+                    self.env_vars.update({"HF_TASK": model_task})
+                
                 self.env_vars.update({"HF_MODEL_ID": self.model})
+                
+                # Add HuggingFace token if available (same as other methods)
+                if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
+                    self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+                
                 # Get HF config for string model IDs
                 if hasattr(self.env_vars, "HF_API_TOKEN"):
                     self.hf_model_config = _get_model_config_properties_from_hf(

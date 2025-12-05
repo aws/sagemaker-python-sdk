@@ -104,7 +104,7 @@ def build_and_deploy():
 
     core_endpoint = model_builder.deploy(
         endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}",
-        initial_instance_count=1
+        initial_instance_count=1,
     )
     logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
     
