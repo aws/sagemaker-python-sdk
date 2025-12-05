@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 import os
 import logging
-import ssl
 from pathlib import Path
 import platform
 
