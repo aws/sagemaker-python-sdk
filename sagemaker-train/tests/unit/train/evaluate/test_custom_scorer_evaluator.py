@@ -1016,3 +1016,116 @@ def test_custom_scorer_evaluator_get_custom_scorer_template_additions_custom_arn
     assert additions['postprocessing'] == 'True'
     # Verify aggregation is set from configured params
     assert additions['aggregation'] == 'median'
+
+
+@patch('sagemaker.train.common_utils.recipe_utils._is_nova_model')
+@patch('sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn')
+@patch('sagemaker.train.common_utils.recipe_utils._extract_eval_override_options')
+@patch('sagemaker.train.common_utils.recipe_utils._get_evaluation_override_params')
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_custom_scorer_evaluator_lambda_type_for_nova_models(
+    mock_artifact, mock_resolve, mock_get_params, mock_extract_options, mock_resolve_mlflow, mock_is_nova
+):
+    """Test that lambda_type is added for Nova models."""
+    mock_resolve_mlflow.return_value = DEFAULT_MLFLOW_ARN
+    mock_info = Mock()
+    mock_info.base_model_name = "nova-textgeneration-micro"
+    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-micro/1.0.0"
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+    
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+    
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    mock_session.sagemaker_config = None
+    
+    # Mock recipe utils
+    mock_get_params.return_value = {'temperature': 0.7}
+    mock_extract_options.return_value = {'temperature': {'value': 0.7}}
+    
+    # Mock is_nova_model to return True
+    mock_is_nova.return_value = True
+    
+    evaluator = CustomScorerEvaluator(
+        evaluator=_BuiltInMetric.PRIME_MATH,
+        dataset=DEFAULT_DATASET,
+        model="nova-textgeneration-micro",
+        s3_output_path=DEFAULT_S3_OUTPUT,
+        mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+        model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+        sagemaker_session=mock_session,
+    )
+    
+    evaluator_config = {'evaluator_arn': None, 'preset_reward_function': 'prime_math'}
+    additions = evaluator._get_custom_scorer_template_additions(evaluator_config)
+    
+    # Verify lambda_type is present for Nova models
+    assert 'lambda_type' in additions
+    assert additions['lambda_type'] == 'rft'
+    # Verify 'metric' key is used instead of 'evaluation_metric' for Nova
+    assert 'metric' in additions
+    assert additions['metric'] == 'all'
+    assert 'evaluation_metric' not in additions
+
+
+@patch('sagemaker.train.common_utils.recipe_utils._is_nova_model')
+@patch('sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn')
+@patch('sagemaker.train.common_utils.recipe_utils._extract_eval_override_options')
+@patch('sagemaker.train.common_utils.recipe_utils._get_evaluation_override_params')
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_custom_scorer_evaluator_no_lambda_type_for_non_nova_models(
+    mock_artifact, mock_resolve, mock_get_params, mock_extract_options, mock_resolve_mlflow, mock_is_nova
+):
+    """Test that lambda_type is NOT added for non-Nova models."""
+    mock_resolve_mlflow.return_value = DEFAULT_MLFLOW_ARN
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+    
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+    
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    mock_session.sagemaker_config = None
+    
+    # Mock recipe utils
+    mock_get_params.return_value = {'temperature': 0.7}
+    mock_extract_options.return_value = {'temperature': {'value': 0.7}}
+    
+    # Mock is_nova_model to return False
+    mock_is_nova.return_value = False
+    
+    evaluator = CustomScorerEvaluator(
+        evaluator=_BuiltInMetric.PRIME_MATH,
+        dataset=DEFAULT_DATASET,
+        model=DEFAULT_MODEL,
+        s3_output_path=DEFAULT_S3_OUTPUT,
+        mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+        model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+        sagemaker_session=mock_session,
+    )
+    
+    evaluator_config = {'evaluator_arn': None, 'preset_reward_function': 'prime_math'}
+    additions = evaluator._get_custom_scorer_template_additions(evaluator_config)
+    
+    # Verify lambda_type is NOT present for non-Nova models
+    assert 'lambda_type' not in additions
+    # Verify 'evaluation_metric' key is used instead of 'metric' for non-Nova
+    assert 'evaluation_metric' in additions
+    assert additions['evaluation_metric'] == 'all'
+    assert 'metric' not in additions

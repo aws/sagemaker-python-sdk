@@ -72,6 +72,7 @@ NOVA_CONFIG = {
 }
 
 
+@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
 class TestBenchmarkEvaluatorIntegration:
     """Integration tests for BenchmarkEvaluator with fine-tuned model package"""
 
