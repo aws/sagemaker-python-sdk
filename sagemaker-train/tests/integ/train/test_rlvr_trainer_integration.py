@@ -32,7 +32,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
         model_package_group_name="sdk-test-finetuned-models",
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
@@ -70,7 +70,7 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
         model_package_group_name="sdk-test-finetuned-models",
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
         accept_eula=True

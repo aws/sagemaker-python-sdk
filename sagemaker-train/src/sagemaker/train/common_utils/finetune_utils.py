@@ -352,13 +352,18 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
             recipe = next((r for r in recipes_with_template if not r.get("Peft")), None)
 
-        if recipe and recipe.get("SmtjOverrideParamsS3Uri"):
+        if not recipe:
+            raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
+
+        elif recipe and recipe.get("SmtjOverrideParamsS3Uri"):
             s3_uri = recipe["SmtjOverrideParamsS3Uri"]
             s3 = boto3.client("s3")
             bucket, key = s3_uri.replace("s3://", "").split("/", 1)
             obj = s3.get_object(Bucket=bucket, Key=key)
             options_dict = json.loads(obj["Body"].read())
             return FineTuningOptions(options_dict), model_arn, is_gated_model
+        else:
+            return FineTuningOptions({}), model_arn, is_gated_model
             
     except Exception as e:
         logger.error("Exception getting fine-tuning options: %s", e)
@@ -598,6 +603,9 @@ def _create_output_config(sagemaker_session,s3_output_path=None, kms_key_id=None
     # Use default S3 output path if none provided
     if s3_output_path is None:
         s3_output_path = _get_default_s3_output_path(sagemaker_session)
+    
+    # Validate S3 path exists
+    _validate_s3_path_exists(s3_output_path, sagemaker_session)
 
     return OutputDataConfig(
         s3_output_path=s3_output_path,
@@ -682,3 +690,43 @@ def _validate_eula_for_gated_model(model, accept_eula, is_gated_model):
         )
     
     return accept_eula
+
+
+def _validate_s3_path_exists(s3_path: str, sagemaker_session):
+    """Validate if S3 path exists and is accessible."""
+    if not s3_path.startswith("s3://"):
+        raise ValueError(f"Invalid S3 path format: {s3_path}")
+    
+    # Parse S3 URI
+    s3_parts = s3_path.replace("s3://", "").split("/", 1)
+    bucket_name = s3_parts[0]
+    prefix = s3_parts[1] if len(s3_parts) > 1 else ""
+    
+    s3_client = sagemaker_session.boto_session.client('s3')
+    
+    try:
+        # Check if bucket exists and is accessible
+        s3_client.head_bucket(Bucket=bucket_name)
+        
+        # If prefix is provided, check if it exists
+        if prefix:
+            response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix, MaxKeys=1)
+            if 'Contents' not in response:
+                raise ValueError(f"S3 prefix '{prefix}' does not exist in bucket '{bucket_name}'")
+                
+    except Exception as e:
+        if "NoSuchBucket" in str(e):
+            raise ValueError(f"S3 bucket '{bucket_name}' does not exist or is not accessible")
+        raise ValueError(f"Failed to validate S3 path '{s3_path}': {str(e)}")
+
+
+def _validate_hyperparameter_values(hyperparameters: dict):
+    """Validate hyperparameter values for allowed characters."""
+    import re
+    allowed_chars = r"^[a-zA-Z0-9/_.:,\-\s'\"\[\]]*$"
+    for key, value in hyperparameters.items():
+        if isinstance(value, str) and not re.match(allowed_chars, value):
+            raise ValueError(
+                f"Hyperparameter '{key}' value '{value}' contains invalid characters. "
+                f"Only a-z, A-Z, 0-9, /, _, ., :, \\, -, space, ', \", [, ] and , are allowed."
+            )
