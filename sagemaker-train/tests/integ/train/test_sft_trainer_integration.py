@@ -30,7 +30,7 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session):
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group_name="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
@@ -66,8 +66,8 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group_name="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/",
-        validation_dataset="s3://mc-flows-sdk-testing/input_data/sft/",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
+        validation_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
         accept_eula=True
     )
     
