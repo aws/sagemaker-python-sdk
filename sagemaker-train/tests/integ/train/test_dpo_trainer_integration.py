@@ -19,8 +19,10 @@ import boto3
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.dpo_trainer import DPOTrainer
 from sagemaker.train.common import TrainingType
+import pytest
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete DPO training workflow with LORA."""
     # Create DPOTrainer instance with comprehensive configuration
@@ -61,6 +63,7 @@ def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_dpo_trainer_with_validation_dataset(sagemaker_session):
     """Test DPO trainer with both training and validation datasets."""
     

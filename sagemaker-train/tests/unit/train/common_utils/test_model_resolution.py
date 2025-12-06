@@ -73,7 +73,7 @@ class TestModelResolver:
     def test_resolver_with_beta_endpoint(self):
         """Test ModelResolver detects beta endpoint."""
         resolver = _ModelResolver()
-        assert resolver._beta_endpoint == 'https://beta.endpoint'
+        assert resolver._endpoint == 'https://beta.endpoint'
 
 
 class TestResolveModelInfo:
@@ -307,33 +307,34 @@ class TestResolveModelPackageObject:
 class TestResolveModelPackageArn:
     """Tests for _resolve_model_package_arn method."""
     
+    @patch('sagemaker.core.resources.ModelPackage')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
-    def test_resolve_arn_success(self, mock_validate, mock_get_session):
-        """Test successful ARN resolution."""
+    def test_resolve_arn_success(self, mock_validate, mock_get_session, mock_model_package_class):
+        """Test successful ARN resolution using ModelPackage.get()."""
         arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
         
-        # Mock session and client
+        # Mock session
         mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.sagemaker_client = mock_client
+        mock_session.boto_session.region_name = 'us-west-2'
         mock_get_session.return_value = mock_session
         
-        # Mock describe_model_package response
-        mock_client.describe_model_package.return_value = {
-            'InferenceSpecification': {
-                'Containers': [
-                    {
-                        'BaseModel': {
-                            'HubContentName': 'base-model',
-                            'HubContentVersion': '1.0',
-                            'HubContentArn': 'arn:aws:sagemaker:us-west-2:aws:hub-content/base'
-                        }
-                    }
-                ]
-            },
-            'ModelPackageGroupName': 'my-model'
-        }
+        # Mock ModelPackage.get() return value
+        mock_package = MagicMock()
+        mock_package.model_package_arn = arn
+        
+        # Mock inference specification with hub_content_arn
+        mock_container = MagicMock()
+        mock_base_model = MagicMock()
+        mock_base_model.hub_content_name = 'base-model'
+        mock_base_model.hub_content_version = '1.0'
+        mock_base_model.hub_content_arn = 'arn:aws:sagemaker:us-west-2:aws:hub-content/base'
+        mock_container.base_model = mock_base_model
+        
+        mock_package.inference_specification = MagicMock()
+        mock_package.inference_specification.containers = [mock_container]
+        
+        mock_model_package_class.get.return_value = mock_package
         
         resolver = _ModelResolver()
         result = resolver._resolve_model_package_arn(arn)
@@ -342,73 +343,96 @@ class TestResolveModelPackageArn:
         assert result.hub_content_name == "base-model"
         assert result.source_model_package_arn == arn
         assert result.model_type == _ModelType.FINE_TUNED
+        mock_model_package_class.get.assert_called_once_with(
+            model_package_name=arn,
+            session=mock_session.boto_session,
+            region='us-west-2'
+        )
     
+    @patch('sagemaker.core.resources.ModelPackage')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
-    def test_resolve_arn_construct_hub_content_arn(self, mock_validate, mock_get_session):
+    def test_resolve_arn_construct_hub_content_arn(self, mock_validate, mock_get_session, mock_model_package_class):
         """Test ARN resolution when HubContentArn needs to be constructed."""
         arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
         
+        # Mock session
         mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.sagemaker_client = mock_client
+        mock_session.boto_session.region_name = 'us-west-2'
         mock_get_session.return_value = mock_session
         
-        # Mock response without HubContentArn
-        mock_client.describe_model_package.return_value = {
-            'InferenceSpecification': {
-                'Containers': [
-                    {
-                        'BaseModel': {
-                            'HubContentName': 'base-model',
-                            'HubContentVersion': '1.0'
-                        }
-                    }
-                ]
-            }
-        }
+        # Mock ModelPackage without hub_content_arn (needs to be constructed)
+        mock_package = MagicMock()
+        mock_package.model_package_arn = arn
+        
+        mock_container = MagicMock()
+        mock_base_model = MagicMock()
+        mock_base_model.hub_content_name = 'base-model'
+        mock_base_model.hub_content_version = '1.0'
+        mock_base_model.hub_content_arn = None  # Not provided, needs construction
+        mock_container.base_model = mock_base_model
+        
+        mock_package.inference_specification = MagicMock()
+        mock_package.inference_specification.containers = [mock_container]
+        
+        mock_model_package_class.get.return_value = mock_package
         
         resolver = _ModelResolver()
         result = resolver._resolve_model_package_arn(arn)
         
-        # Should construct ARN from region and hub content name
+        # Should construct ARN from region and hub content name/version
         expected_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/base-model/1.0"
         assert result.base_model_arn == expected_arn
+        assert result.base_model_name == "base-model"
+        assert result.hub_content_name == "base-model"
     
+    @patch('sagemaker.core.resources.ModelPackage')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
-    def test_resolve_arn_no_inference_spec(self, mock_validate, mock_get_session):
+    def test_resolve_arn_no_inference_spec(self, mock_validate, mock_get_session, mock_model_package_class):
         """Test error when InferenceSpecification is missing."""
         arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
         
+        # Mock session
         mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.sagemaker_client = mock_client
+        mock_session.boto_session.region_name = 'us-west-2'
         mock_get_session.return_value = mock_session
         
-        mock_client.describe_model_package.return_value = {}
+        # Mock ModelPackage without inference_specification
+        mock_package = MagicMock()
+        mock_package.model_package_arn = arn
+        mock_package.inference_specification = None
+        
+        mock_model_package_class.get.return_value = mock_package
         
         resolver = _ModelResolver()
         
         with pytest.raises(ValueError, match="NotSupported.*does not have an inference_specification"):
             resolver._resolve_model_package_arn(arn)
     
+    @patch('sagemaker.core.resources.ModelPackage')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
-    def test_resolve_arn_no_base_model(self, mock_validate, mock_get_session):
+    def test_resolve_arn_no_base_model(self, mock_validate, mock_get_session, mock_model_package_class):
         """Test error when BaseModel is missing."""
         arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
         
+        # Mock session
         mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.sagemaker_client = mock_client
+        mock_session.boto_session.region_name = 'us-west-2'
         mock_get_session.return_value = mock_session
         
-        mock_client.describe_model_package.return_value = {
-            'InferenceSpecification': {
-                'Containers': [{}]
-            }
-        }
+        # Mock ModelPackage with container but no base_model
+        mock_package = MagicMock()
+        mock_package.model_package_arn = arn
+        
+        mock_container = MagicMock()
+        mock_container.base_model = None
+        
+        mock_package.inference_specification = MagicMock()
+        mock_package.inference_specification.containers = [mock_container]
+        
+        mock_model_package_class.get.return_value = mock_package
         
         resolver = _ModelResolver()
         
@@ -465,7 +489,7 @@ class TestGetSession:
         assert result == mock_session
         mock_session_class.assert_called_once()
     
-    @patch.dict(os.environ, {'SAGEMAKER_ENDPOINT': 'https://beta.endpoint', 'AWS_REGION': 'us-east-1'})
+    @patch.dict(os.environ, {'SAGEMAKER_ENDPOINT': 'https://beta.endpoint'})
     @patch('boto3.client')
     @patch('sagemaker.core.helper.session_helper.Session')
     def test_get_session_with_beta_endpoint(self, mock_session_class, mock_boto_client):
@@ -481,8 +505,7 @@ class TestGetSession:
         
         mock_boto_client.assert_called_once_with(
             'sagemaker',
-            endpoint_url='https://beta.endpoint',
-            region_name='us-east-1'
+            endpoint_url='https://beta.endpoint'
         )
         mock_session_class.assert_called_once_with(sagemaker_client=mock_sm_client)
 
