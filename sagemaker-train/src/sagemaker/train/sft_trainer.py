@@ -17,7 +17,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_serverless_config,
     _create_mlflow_config,
     _create_model_package_config,
-    _validate_eula_for_gated_model
+    _validate_eula_for_gated_model,
+    _validate_hyperparameter_values
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
@@ -139,8 +140,37 @@ class SFTTrainer(BaseTrainer):
                                                                      sagemaker_session=self.sagemaker_session
                                                                      ))
         
+        # Process hyperparameters
+        self._process_hyperparameters()
+        
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
+
+    def _process_hyperparameters(self):
+        """Remove hyperparameter keys that are handled by constructor inputs."""
+        if self.hyperparameters:
+            # Remove keys that are handled by constructor inputs
+            if hasattr(self.hyperparameters, 'data_path'):
+                delattr(self.hyperparameters, 'data_path')
+                self.hyperparameters._specs.pop('data_path', None)
+            if hasattr(self.hyperparameters, 'output_path'):
+                delattr(self.hyperparameters, 'output_path')
+                self.hyperparameters._specs.pop('output_path', None)
+            if hasattr(self.hyperparameters, 'data_s3_path'):
+                delattr(self.hyperparameters, 'data_s3_path')
+                self.hyperparameters._specs.pop('data_s3_path', None)
+            if hasattr(self.hyperparameters, 'output_s3_path'):
+                delattr(self.hyperparameters, 'output_s3_path')
+                self.hyperparameters._specs.pop('output_s3_path', None)
+            if hasattr(self.hyperparameters, 'training_data_name'):
+                delattr(self.hyperparameters, 'training_data_name')
+                self.hyperparameters._specs.pop('training_data_name', None)
+            if hasattr(self.hyperparameters, 'validation_data_name'):
+                delattr(self.hyperparameters, 'validation_data_name')
+                self.hyperparameters._specs.pop('validation_data_name', None)
+            if hasattr(self.hyperparameters, 'validation_data_path'):
+                delattr(self.hyperparameters, 'validation_data_path')
+                self.hyperparameters._specs.pop('validation_data_path', None)
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="SFTTrainer.train")
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True):
@@ -197,6 +227,9 @@ class SFTTrainer(BaseTrainer):
         )
 
         final_hyperparameters = self.hyperparameters.to_dict()
+        
+        # Validate hyperparameter values
+        _validate_hyperparameter_values(final_hyperparameters)
 
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group_name,

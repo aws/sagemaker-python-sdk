@@ -25,7 +25,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _convert_input_data_to_channels,
     _create_mlflow_config,
     _validate_eula_for_gated_model,
-    _validate_model_region_availability
+    _validate_model_region_availability,
+    _validate_s3_path_exists
 )
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.ai_registry.dataset import DataSet
@@ -435,13 +436,15 @@ class TestFinetuneUtils:
             assert config.mlflow_resource_arn == "mlflow-arn"
             assert config.mlflow_experiment_name == "test-exp"
 
-    def test__create_output_config(self):
+    @patch('sagemaker.train.common_utils.finetune_utils._validate_s3_path_exists')
+    def test__create_output_config(self, mock_validate_s3):
         mock_session = Mock()
         
         config = _create_output_config(mock_session, "s3://bucket/output", "kms-key")
         
         assert config.s3_output_path == "s3://bucket/output"
         assert config.kms_key_id == "kms-key"
+        mock_validate_s3.assert_called_once_with("s3://bucket/output", mock_session)
 
     def test__convert_input_data_to_channels(self):
 
@@ -500,3 +503,50 @@ class TestFinetuneUtils:
         """Test open weights model validation fails for invalid region"""
         with pytest.raises(ValueError, match="Region 'us-west-1' does not support model customization"):
             _validate_model_region_availability("meta-textgeneration-llama-3-2-1b", "us-west-1")
+
+    def test__validate_s3_path_exists_invalid_format(self):
+        """Test S3 path validation fails for invalid format"""
+        mock_session = Mock()
+        
+        with pytest.raises(ValueError, match="Invalid S3 path format"):
+            _validate_s3_path_exists("invalid-path", mock_session)
+
+    @patch('boto3.client')
+    def test__validate_s3_path_exists_bucket_only_success(self, mock_boto_client):
+        """Test S3 path validation succeeds for bucket-only path"""
+        mock_session = Mock()
+        mock_s3_client = Mock()
+        mock_session.boto_session.client.return_value = mock_s3_client
+        
+        _validate_s3_path_exists("s3://test-bucket", mock_session)
+        
+        mock_s3_client.head_bucket.assert_called_once_with(Bucket="test-bucket")
+
+    @patch('boto3.client')
+    def test__validate_s3_path_exists_with_prefix_exists(self, mock_boto_client):
+        """Test S3 path validation succeeds when prefix exists"""
+        mock_session = Mock()
+        mock_s3_client = Mock()
+        mock_session.boto_session.client.return_value = mock_s3_client
+        mock_s3_client.list_objects_v2.return_value = {"Contents": [{"Key": "prefix/file.txt"}]}
+        
+        _validate_s3_path_exists("s3://test-bucket/prefix/", mock_session)
+        
+        mock_s3_client.head_bucket.assert_called_once_with(Bucket="test-bucket")
+        mock_s3_client.list_objects_v2.assert_called_once_with(Bucket="test-bucket", Prefix="prefix/", MaxKeys=1)
+
+    @patch('boto3.client')
+    def test__validate_s3_path_exists_with_prefix_not_exists(self, mock_boto_client):
+        """Test S3 path validation raises error when prefix doesn't exist"""
+        mock_session = Mock()
+        mock_s3_client = Mock()
+        mock_session.boto_session.client.return_value = mock_s3_client
+        mock_s3_client.list_objects_v2.return_value = {}  # No contents
+        
+        with pytest.raises(ValueError, match="Failed to validate S3 path 's3://test-bucket/prefix': S3 prefix 'prefix' does not exist in bucket 'test-bucket'"):
+            _validate_s3_path_exists("s3://test-bucket/prefix", mock_session)
+        
+        mock_s3_client.head_bucket.assert_called_once_with(Bucket="test-bucket")
+        mock_s3_client.list_objects_v2.assert_called_once_with(Bucket="test-bucket", Prefix="prefix", MaxKeys=1)
+
+
