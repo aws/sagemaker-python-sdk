@@ -9,7 +9,7 @@ description = "An python package for sagemaker core functionalities"
 authors = [
   {name = "AWS", email = "sagemaker-interests@amazon.com"}
 ]
-readme = "README.rst"
+readme = "README.rst" 
 dependencies = [
   # Add your dependencies here (Include lower and upper bounds as applicable)
     "boto3>=1.42.2,<2.0.0",

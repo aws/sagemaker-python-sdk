@@ -107,12 +107,13 @@ def build_and_deploy():
     )
     
     # Build and deploy your model. Returns SageMaker Core Model and Endpoint objects
-    core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}")
+    core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}", region=AWS_REGION)
     logger.info(f"Model Successfully Created: {core_model.model_name}")
 
     core_endpoint = model_builder.deploy(
         endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}",
-        initial_instance_count=1
+        initial_instance_count=1,
+        region=AWS_REGION
     )
     logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
     
