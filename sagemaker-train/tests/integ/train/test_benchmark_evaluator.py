@@ -84,11 +84,11 @@ class TestBenchmarkEvaluatorIntegration:
         # Verify it's an enum
         assert hasattr(Benchmark, "__members__")
         
-        # Verify GEN_QA is available
-        assert hasattr(Benchmark, "GEN_QA")
+        # Verify MMLU is available
+        assert hasattr(Benchmark, "MMLU")
         
-        # Get properties for GEN_QA benchmark
-        properties = get_benchmark_properties(benchmark=Benchmark.GEN_QA)
+        # Get properties for MMLU benchmark
+        properties = get_benchmark_properties(benchmark=Benchmark.MMLU)
         
         # Verify properties structure
         assert isinstance(properties, dict)
@@ -97,14 +97,14 @@ class TestBenchmarkEvaluatorIntegration:
         assert "metrics" in properties
         assert "strategy" in properties
         
-        logger.info(f"GEN_QA properties: {properties}")
+        logger.info(f"MMLU properties: {properties}")
 
     def test_benchmark_evaluation_full_flow(self):
         """
         Test complete benchmark evaluation flow with fine-tuned model package.
         
         This test mirrors the flow from benchmark_demo.ipynb and covers:
-        1. Creating BenchMarkEvaluator with GEN_QA benchmark
+        1. Creating BenchMarkEvaluator with MMLU benchmark
         2. Accessing hyperparameters
         3. Starting evaluation
         4. Monitoring execution
@@ -119,25 +119,23 @@ class TestBenchmarkEvaluatorIntegration:
         Benchmark = get_benchmarks()
         
         # Step 1: Create BenchmarkEvaluator
-        logger.info("Creating BenchmarkEvaluator with GEN_QA benchmark")
+        logger.info("Creating BenchmarkEvaluator with MMLU benchmark")
         
         # Create evaluator (matching notebook configuration)
         evaluator = BenchMarkEvaluator(
-            benchmark=Benchmark.GEN_QA,
+            benchmark=Benchmark.MMLU,
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
             # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
-            dataset=TEST_CONFIG["dataset_s3_uri"],
             model_package_group=TEST_CONFIG["model_package_group_arn"],
             base_eval_name="integ-test-gen-qa-eval",
         )
         
         # Verify evaluator was created
         assert evaluator is not None
-        assert evaluator.benchmark == Benchmark.GEN_QA
+        assert evaluator.benchmark == Benchmark.MMLU
         assert evaluator.model == TEST_CONFIG["model_package_arn"]
-        assert evaluator.dataset == TEST_CONFIG["dataset_s3_uri"]
-        
+
         logger.info(f"Created evaluator: {evaluator.base_eval_name}")
         
         # Step 2: Access hyperparameters
@@ -247,17 +245,15 @@ class TestBenchmarkEvaluatorIntegration:
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
                 # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
-                dataset="s3://bucket/dataset.jsonl",
             )
         
         # Test invalid MLflow ARN format
         with pytest.raises(ValueError, match="Invalid MLFlow resource ARN"):
             BenchMarkEvaluator(
-                benchmark=Benchmark.GEN_QA,
+                benchmark=Benchmark.MMLU,
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
                 mlflow_resource_arn="invalid-arn",
-                dataset="s3://bucket/dataset.jsonl",
             )
         
         logger.info("Validation tests passed")
@@ -272,20 +268,18 @@ class TestBenchmarkEvaluatorIntegration:
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
             # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
-            dataset="s3://bucket/dataset.jsonl",
-            subtasks=["abstract_algebra", "anatomy"],
+            subtasks="abstract_algebra",
             model_package_group="arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test",
         )
-        assert evaluator.subtasks == ["abstract_algebra", "anatomy"]
+        assert evaluator.subtasks == "abstract_algebra"
         
         # Test invalid subtask for benchmark without subtask support
-        with pytest.raises(ValueError, match="Subtask is not supported"):
+        with pytest.raises(ValueError, match="Invalid subtask 'invalid' for benchmark 'mmlu'"):
             BenchMarkEvaluator(
-                benchmark=Benchmark.GEN_QA,
+                benchmark=Benchmark.MMLU,
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
                 # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
-                dataset="s3://bucket/dataset.jsonl",
                 subtasks=["invalid"],
                 model_package_group="arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test",
             )
@@ -310,18 +304,17 @@ class TestBenchmarkEvaluatorIntegration:
         
         # Create evaluator with JumpStart model ID (no model package)
         evaluator = BenchMarkEvaluator(
-            benchmark=Benchmark.GEN_QA,
+            benchmark=Benchmark.MMLU,
             model=BASE_MODEL_ONLY_CONFIG["base_model_id"],
             s3_output_path=BASE_MODEL_ONLY_CONFIG["s3_output_path"],
             # mlflow_resource_arn=BASE_MODEL_ONLY_CONFIG["mlflow_tracking_server_arn"],
-            dataset=BASE_MODEL_ONLY_CONFIG["dataset_s3_uri"],
             base_eval_name="integ-test-base-model-only",
             # Note: model_package_group not needed for JumpStart models
         )
         
         # Verify evaluator was created
         assert evaluator is not None
-        assert evaluator.benchmark == Benchmark.GEN_QA
+        assert evaluator.benchmark == Benchmark.MMLU
         assert evaluator.model == BASE_MODEL_ONLY_CONFIG["base_model_id"]
         
         logger.info(f"Created evaluator: {evaluator.base_eval_name}")
@@ -364,11 +357,10 @@ class TestBenchmarkEvaluatorIntegration:
         
         # Create evaluator with Nova model package
         evaluator = BenchMarkEvaluator(
-            benchmark=Benchmark.GEN_QA,
+            benchmark=Benchmark.MMLU,
             model=NOVA_CONFIG["model_package_arn"],
             s3_output_path=NOVA_CONFIG["s3_output_path"],
             mlflow_resource_arn=NOVA_CONFIG["mlflow_tracking_server_arn"],
-            dataset=NOVA_CONFIG["dataset_s3_uri"],
             model_package_group=NOVA_CONFIG["model_package_group_arn"],
             base_eval_name="integ-test-nova-eval",
             region=NOVA_CONFIG["region"],
@@ -376,7 +368,7 @@ class TestBenchmarkEvaluatorIntegration:
         
         # Verify evaluator was created
         assert evaluator is not None
-        assert evaluator.benchmark == Benchmark.GEN_QA
+        assert evaluator.benchmark == Benchmark.MMLU
         assert evaluator.model == NOVA_CONFIG["model_package_arn"]
         assert evaluator.region == NOVA_CONFIG["region"]
         
