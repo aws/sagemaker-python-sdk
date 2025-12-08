@@ -43,7 +43,7 @@ DEFAULT_CONTAINER_ARGUMENTS = [
 HUB_NAME = "SageMakerPublicHub"
 
 # Allowed reward model IDs for RLAIF trainer
-ALLOWED_REWARD_MODEL_IDS = [
+_ALLOWED_REWARD_MODEL_IDS = [
     "openai.gpt-oss-120b-1:0",
     "openai.gpt-oss-20b-1:0", 
     "qwen.qwen3-32b-v1:0",

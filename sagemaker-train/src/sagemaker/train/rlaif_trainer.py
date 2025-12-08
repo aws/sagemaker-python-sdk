@@ -26,7 +26,7 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train.constants import HUB_NAME, ALLOWED_REWARD_MODEL_IDS
+from sagemaker.train.constants import HUB_NAME, _ALLOWED_REWARD_MODEL_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -170,10 +170,10 @@ class RLAIFTrainer(BaseTrainer):
         if not reward_model_id:
             return None
 
-        if reward_model_id not in ALLOWED_REWARD_MODEL_IDS:
+        if reward_model_id not in _ALLOWED_REWARD_MODEL_IDS:
             raise ValueError(
                 f"Invalid reward_model_id '{reward_model_id}'. "
-                f"Available models are: {ALLOWED_REWARD_MODEL_IDS}"
+                f"Available models are: {_ALLOWED_REWARD_MODEL_IDS}"
             )
         return reward_model_id
         
