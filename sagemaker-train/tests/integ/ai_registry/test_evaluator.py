@@ -19,6 +19,7 @@ from sagemaker.ai_registry.evaluator import Evaluator, EvaluatorMethod
 from sagemaker.ai_registry.air_constants import HubContentStatus, REWARD_FUNCTION, REWARD_PROMPT
 
 
+@pytest.mark.serial
 class TestEvaluatorIntegration:
     """Integration tests for Evaluator operations."""
 
