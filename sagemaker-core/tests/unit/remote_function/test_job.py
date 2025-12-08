@@ -875,7 +875,7 @@ class TestJobStart:
         mock_get_name.return_value = "test-job"
         mock_compile.return_value = {
             "TrainingJobName": "test-job",
-            "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "test-key"},
+            "Environment": {},
         }
 
         job_settings = Mock()

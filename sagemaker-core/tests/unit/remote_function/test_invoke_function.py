@@ -224,7 +224,6 @@ class TestMain:
     @patch("sagemaker.core.remote_function.invoke_function._get_sagemaker_session")
     @patch("sagemaker.core.remote_function.invoke_function._load_pipeline_context")
     @patch("sagemaker.core.remote_function.invoke_function._parse_args")
-    @patch.dict("os.environ", {"REMOTE_FUNCTION_SECRET_KEY": "test-key"})
     def test_main_success(self, mock_parse, mock_load_context, mock_get_session, mock_execute):
         """Test main function successful execution."""
         mock_args = MagicMock()
@@ -252,7 +251,6 @@ class TestMain:
     @patch("sagemaker.core.remote_function.invoke_function._get_sagemaker_session")
     @patch("sagemaker.core.remote_function.invoke_function._load_pipeline_context")
     @patch("sagemaker.core.remote_function.invoke_function._parse_args")
-    @patch.dict("os.environ", {"REMOTE_FUNCTION_SECRET_KEY": "test-key"})
     def test_main_handles_exception(
         self, mock_parse, mock_load_context, mock_get_session, mock_execute, mock_handle_error
     ):
