@@ -21,7 +21,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_serverless_config,
     _create_mlflow_config,
     _create_model_package_config,
-    _validate_eula_for_gated_model
+    _validate_eula_for_gated_model,
+    _validate_hyperparameter_values
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
@@ -163,7 +164,8 @@ class RLAIFTrainer(BaseTrainer):
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
         
         # Process reward_prompt parameter
-        self._process_reward_prompt()
+        self._process_hyperparameters()
+        
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLAIFTrainer.train")
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True):
@@ -223,6 +225,8 @@ class RLAIFTrainer(BaseTrainer):
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
+        _validate_hyperparameter_values(final_hyperparameters)
+
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group_name,
             model=self.model,
@@ -258,40 +262,107 @@ class RLAIFTrainer(BaseTrainer):
         self.latest_training_job = training_job
         return training_job
 
-    def _process_reward_prompt(self):
-        """Process reward_prompt parameter for builtin vs custom prompts."""
-        if not self.reward_prompt:
+    def _process_hyperparameters(self):
+        """Update hyperparameters based on constructor inputs and process reward_prompt."""
+        if not self.hyperparameters or not hasattr(self.hyperparameters, '_specs') or not self.hyperparameters._specs:
             return
+        
+        # Remove keys that are handled by constructor inputs
+        if hasattr(self.hyperparameters, 'output_path'):
+            delattr(self.hyperparameters, 'output_path')
+            self.hyperparameters._specs.pop('output_path', None)
+        if hasattr(self.hyperparameters, 'data_path'):
+            delattr(self.hyperparameters, 'data_path')
+            self.hyperparameters._specs.pop('data_path', None)
+        if hasattr(self.hyperparameters, 'validation_data_path'):
+            delattr(self.hyperparameters, 'validation_data_path')
+            self.hyperparameters._specs.pop('validation_data_path', None)
+        
+        # Update judge_model_id if reward_model_id is provided
+        if hasattr(self, 'reward_model_id') and self.reward_model_id:
+            judge_model_value = f"bedrock/{self.reward_model_id}"
+            self.hyperparameters.judge_model_id = judge_model_value
+        
+        # Process reward_prompt parameter
+        if hasattr(self, 'reward_prompt') and self.reward_prompt:
+            if isinstance(self.reward_prompt, str):
+                if self.reward_prompt.startswith("Builtin"):
+                    # Handle builtin reward prompts
+                    self._update_judge_prompt_template_direct(self.reward_prompt)
+                else:
+                    # Handle evaluator ARN or hub content name
+                    self._process_non_builtin_reward_prompt()
+            else:
+                # Handle evaluator object
+                if hasattr(self.hyperparameters, 'judge_prompt_template'):
+                    delattr(self.hyperparameters, 'judge_prompt_template')
+                    self.hyperparameters._specs.pop('judge_prompt_template', None)
 
-        # Handle Evaluator object
-        if not isinstance(self.reward_prompt, str):
-            evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
-            self._evaluator_arn = evaluator_arn
-            self._reward_prompt_processed = {"custom_prompt_arn": evaluator_arn}
-            return
+                evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
+                self._evaluator_arn = evaluator_arn
 
-        # Handle string inputs
-        if self.reward_prompt.startswith("Builtin"):
-            # Map to preset_prompt in hyperparameters
-            self._reward_prompt_processed = {"preset_prompt": self.reward_prompt}
-        elif self.reward_prompt.startswith("arn:aws:sagemaker:"):
+    def _process_non_builtin_reward_prompt(self):
+        """Process non-builtin reward prompt (ARN or hub content name)."""
+        # Remove judge_prompt_template for non-builtin prompts
+        if hasattr(self.hyperparameters, 'judge_prompt_template'):
+            delattr(self.hyperparameters, 'judge_prompt_template')
+            self.hyperparameters._specs.pop('judge_prompt_template', None)
+            
+        if self.reward_prompt.startswith("arn:aws:sagemaker:"):
             # Validate and assign ARN
             evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
             self._evaluator_arn = evaluator_arn
-            self._reward_prompt_processed = {"custom_prompt_arn": evaluator_arn}
         else:
             try:
-                session = self.sagemaker_session or _get_beta_session()
+                session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
                 hub_content = _get_hub_content_metadata(
-                    hub_name=HUB_NAME,  # or appropriate hub name
+                    hub_name=HUB_NAME,
                     hub_content_type="JsonDoc",
                     hub_content_name=self.reward_prompt,
                     session=session.boto_session,
-                    region=session.boto_session.region_name or "us-west-2"
+                    region=session.boto_session.region_name
                 )
-                # Store ARN for evaluator_arn in ServerlessJobConfig
+                # Store ARN for evaluator_arn
                 self._evaluator_arn = hub_content.hub_content_arn
-                self._reward_prompt_processed = {"custom_prompt_arn": hub_content.hub_content_arn}
             except Exception as e:
                 raise ValueError(f"Custom prompt '{self.reward_prompt}' not found in HubContent: {e}")
+        
+
+
+    def _update_judge_prompt_template_direct(self, reward_prompt):
+        """Update judge_prompt_template based on Builtin reward function."""
+        # Get available templates from hyperparameters specs
+        judge_prompt_spec = self.hyperparameters._specs.get('judge_prompt_template', {})
+        available_templates = judge_prompt_spec.get('enum', [])
+        
+        if not available_templates:
+            # If no enum found, use the current value as the only available option
+            current_value = getattr(self.hyperparameters, 'judge_prompt_template', None)
+            if current_value:
+                available_templates = [current_value]
+            else:
+                return
+        
+        # Extract template name after "Builtin." and convert to lowercase
+        template_name = reward_prompt.split(".", 1)[1].lower()
+        
+        # Find matching template by extracting filename without extension
+        matching_template = None
+        for template in available_templates:
+            template_filename = template.split("/")[-1].replace(".jinja", "").lower()
+            if template_filename == template_name:
+                matching_template = template
+                break
+        
+        if matching_template:
+            self.hyperparameters.judge_prompt_template = matching_template
+        else:
+            available_options = [f"Builtin.{t.split('/')[-1].replace('.jinja', '')}" for t in available_templates]
+            raise ValueError(
+                f"Selected reward function option '{reward_prompt}' is not available. "
+                f"Choose one from the available options: {available_options}. "
+                f"Example: reward_prompt='Builtin.summarize'"
+            )
 

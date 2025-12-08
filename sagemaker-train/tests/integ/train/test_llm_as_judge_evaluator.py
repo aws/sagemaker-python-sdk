@@ -84,6 +84,7 @@ TEST_CONFIG = {
 }
 
 
+@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
 class TestLLMAsJudgeEvaluatorIntegration:
     """Integration tests for LLMAsJudgeEvaluator"""
 

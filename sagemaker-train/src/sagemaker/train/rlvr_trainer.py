@@ -19,7 +19,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_serverless_config,
     _create_mlflow_config,
     _create_model_package_config,
-    _validate_eula_for_gated_model
+    _validate_eula_for_gated_model,
+    _validate_hyperparameter_values
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
@@ -148,8 +149,31 @@ class RLVRTrainer(BaseTrainer):
                                                                      sagemaker_session=self.sagemaker_session
                                                                     ))
         
+        # Remove constructor-handled hyperparameters
+        self._process_hyperparameters()
+        
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
+
+    def _process_hyperparameters(self):
+        """Remove hyperparameter keys that are handled by constructor inputs."""
+        if self.hyperparameters:
+            # Remove keys that are handled by constructor inputs
+            if hasattr(self.hyperparameters, 'data_s3_path'):
+                delattr(self.hyperparameters, 'data_s3_path')
+                self.hyperparameters._specs.pop('data_s3_path', None)
+            if hasattr(self.hyperparameters, 'reward_lambda_arn'):
+                delattr(self.hyperparameters, 'reward_lambda_arn')
+                self.hyperparameters._specs.pop('reward_lambda_arn', None)
+            if hasattr(self.hyperparameters, 'data_path'):
+                delattr(self.hyperparameters, 'data_path')
+                self.hyperparameters._specs.pop('data_path', None)
+            if hasattr(self.hyperparameters, 'validation_data_path'):
+                delattr(self.hyperparameters, 'validation_data_path')
+                self.hyperparameters._specs.pop('validation_data_path', None)
+            if hasattr(self.hyperparameters, 'output_path'):
+                delattr(self.hyperparameters, 'output_path')
+                self.hyperparameters._specs.pop('output_path', None)
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLVRTrainer.train")
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None,
@@ -210,6 +234,9 @@ class RLVRTrainer(BaseTrainer):
         )
 
         final_hyperparameters = self.hyperparameters.to_dict()
+        
+        # Validate hyperparameter values
+        _validate_hyperparameter_values(final_hyperparameters)
 
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group_name,
