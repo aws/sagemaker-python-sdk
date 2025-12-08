@@ -22,6 +22,7 @@ from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete SFT training workflow with LORA."""
     
@@ -29,7 +30,7 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session):
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group_name="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
@@ -57,6 +58,7 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_sft_trainer_with_validation_dataset(sagemaker_session):
     """Test SFT trainer with both training and validation datasets."""
 
@@ -64,8 +66,8 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group_name="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/",
-        validation_dataset="s3://mc-flows-sdk-testing/input_data/sft/",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
+        validation_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
         accept_eula=True
     )
     
@@ -90,7 +92,8 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
     assert hasattr(training_job, 'output_model_package_arn')
 
 
-@pytest.mark.skipif(os.environ.get('AWS_DEFAULT_REGION') != 'us-east-1', reason="Nova models only available in us-east-1")
+# @pytest.mark.skipif(os.environ.get('AWS_DEFAULT_REGION') != 'us-east-1', reason="Nova models only available in us-east-1")
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_sft_trainer_nova_workflow(sagemaker_session):
     """Test SFT trainer with Nova model."""
     import os

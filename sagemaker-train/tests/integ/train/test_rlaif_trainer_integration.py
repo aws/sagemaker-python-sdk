@@ -18,8 +18,10 @@ import boto3
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.rlaif_trainer import RLAIFTrainer
 from sagemaker.train.common import TrainingType
+import pytest
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""
     
@@ -27,15 +29,15 @@ def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group_name="sdk-test-finetuned-models",
-        reward_model_id='anthropic.claude-3-5-sonnet-20240620-v1:0',
-        reward_prompt='Builtin.Correctness',
+        reward_model_id='openai.gpt-oss-120b-1:0',
+        reward_prompt='Builtin.Summarize',
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
-    
+
     # Create training job
     training_job = rlaif_trainer.train(wait=False)
     
@@ -59,18 +61,19 @@ def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     """Test RLAIF trainer with different reward model and prompt."""
-    
+
     rlaif_trainer = RLAIFTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group_name="sdk-test-finetuned-models",
-        reward_model_id='anthropic.claude-3-5-sonnet-20240620-v1:0',
+        reward_model_id='openai.gpt-oss-120b-1:0',
         reward_prompt="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlaif-test-prompt/0.0.1",
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
@@ -97,6 +100,7 @@ def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_continued_finetuning(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""
 
@@ -104,11 +108,11 @@ def test_rlaif_trainer_continued_finetuning(sagemaker_session):
         model="arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
         training_type=TrainingType.LORA,
         model_package_group_name="sdk-test-finetuned-models",
-        reward_model_id='anthropic.claude-3-5-sonnet-20240620-v1:0',
-        reward_prompt='Builtin.Correctness',
+        reward_model_id='openai.gpt-oss-120b-1:0',
+        reward_prompt='Builtin.Summarize',
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )

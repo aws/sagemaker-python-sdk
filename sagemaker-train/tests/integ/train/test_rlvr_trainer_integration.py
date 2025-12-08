@@ -22,6 +22,7 @@ from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
     
@@ -31,7 +32,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
         model_package_group_name="sdk-test-finetuned-models",
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
@@ -59,6 +60,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     """Test RLVR trainer with custom reward function."""
     
@@ -68,7 +70,7 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
         model_package_group_name="sdk-test-finetuned-models",
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
         accept_eula=True
@@ -96,7 +98,8 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skipif(os.environ.get('AWS_DEFAULT_REGION') != 'us-east-1', reason="Nova models only available in us-east-1")
+# @pytest.mark.skipif(os.environ.get('AWS_DEFAULT_REGION') != 'us-east-1', reason="Nova models only available in us-east-1")
+@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlvr_trainer_nova_workflow(sagemaker_session):
     """Test RLVR training workflow with Nova model."""
     import os

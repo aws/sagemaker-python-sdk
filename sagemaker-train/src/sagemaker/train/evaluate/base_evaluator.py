@@ -546,6 +546,8 @@ class BaseEvaluator(BaseModel):
                 properties['HubContentArn'] = source_uri
             else:
                 properties['SourceUri'] = source_uri
+
+            _logger.info(f"source_uri: {source_uri}, region: {region}, properties: {properties}")
             
             # Create artifact using Artifact.create()
             artifact = Artifact.create(

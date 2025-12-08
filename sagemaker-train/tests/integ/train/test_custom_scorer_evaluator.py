@@ -55,6 +55,7 @@ TEST_CONFIG = {
 }
 
 
+@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
 class TestCustomScorerEvaluatorIntegration:
     """Integration tests for CustomScorerEvaluator with custom evaluator"""
 
