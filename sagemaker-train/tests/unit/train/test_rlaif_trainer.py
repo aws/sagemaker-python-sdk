@@ -503,3 +503,32 @@ class TestRLAIFTrainer:
             
             with pytest.raises(ValueError, match="Custom prompt 'invalid-prompt' not found in HubContent"):
                 trainer._process_non_builtin_reward_prompt()
+
+    def test_validate_reward_model_id_valid_models(self):
+        """Test _validate_reward_model_id with valid model IDs."""
+        trainer = RLAIFTrainer.__new__(RLAIFTrainer)
+        
+        valid_models = [
+            "openai.gpt-oss-120b-1:0",
+            "openai.gpt-oss-20b-1:0", 
+            "qwen.qwen3-32b-v1:0",
+            "qwen.qwen3-coder-30b-a3b-v1:0"
+        ]
+        
+        for model_id in valid_models:
+            result = trainer._validate_reward_model_id(model_id)
+            assert result == model_id
+
+    def test_validate_reward_model_id_invalid_model(self):
+        """Test _validate_reward_model_id raises error for invalid model ID."""
+        trainer = RLAIFTrainer.__new__(RLAIFTrainer)
+        
+        with pytest.raises(ValueError, match="Invalid reward_model_id 'invalid-model-id'"):
+            trainer._validate_reward_model_id("invalid-model-id")
+
+    def test_validate_reward_model_id_none_model(self):
+        """Test _validate_reward_model_id handles None model ID."""
+        trainer = RLAIFTrainer.__new__(RLAIFTrainer)
+        
+        result = trainer._validate_reward_model_id(None)
+        assert result is None
