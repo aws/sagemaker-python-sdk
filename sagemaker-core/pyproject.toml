@@ -37,6 +37,7 @@ dependencies = [
     # Remote function dependencies
     "cloudpickle>=2.0.0",
     "paramiko>=2.11.0",
+    "tblib>=1.7.0",
 ]
 requires-python = ">=3.9"
 classifiers = [
