@@ -19,7 +19,7 @@ import shutil
 from unittest.mock import patch, MagicMock
 import pytest
 
-from sagemaker.train.remote_function.custom_file_filter import (
+from sagemaker.core.remote_function.custom_file_filter import (
     CustomFileFilter,
     resolve_custom_file_filter_from_config_file,
     copy_workdir,
@@ -69,14 +69,14 @@ class TestResolveCustomFileFilterFromConfigFile:
         result = resolve_custom_file_filter_from_config_file(direct_input=custom_filter)
         assert result is custom_filter
 
-    @patch("sagemaker.train.remote_function.custom_file_filter.resolve_value_from_config")
+    @patch("sagemaker.core.remote_function.custom_file_filter.resolve_value_from_config")
     def test_returns_none_when_no_config(self, mock_resolve):
         """Test returns None when no config is found."""
         mock_resolve.return_value = None
         result = resolve_custom_file_filter_from_config_file()
         assert result is None
 
-    @patch("sagemaker.train.remote_function.custom_file_filter.resolve_value_from_config")
+    @patch("sagemaker.core.remote_function.custom_file_filter.resolve_value_from_config")
     def test_creates_filter_from_config(self, mock_resolve):
         """Test creates CustomFileFilter from config."""
         patterns = ["*.pyc", "*.log"]
@@ -85,7 +85,7 @@ class TestResolveCustomFileFilterFromConfigFile:
         assert isinstance(result, CustomFileFilter)
         assert result.ignore_name_patterns == patterns
 
-    @patch("sagemaker.train.remote_function.custom_file_filter.resolve_value_from_config")
+    @patch("sagemaker.core.remote_function.custom_file_filter.resolve_value_from_config")
     def test_passes_sagemaker_session_to_resolve(self, mock_resolve):
         """Test passes sagemaker_session to resolve_value_from_config."""
         mock_session = MagicMock()

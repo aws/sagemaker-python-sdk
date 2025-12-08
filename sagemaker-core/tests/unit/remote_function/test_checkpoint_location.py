@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import pytest
-from sagemaker.train.remote_function.checkpoint_location import (
+from sagemaker.core.remote_function.checkpoint_location import (
     CheckpointLocation,
     _validate_s3_uri_for_checkpoint,
     _JOB_CHECKPOINT_LOCATION,

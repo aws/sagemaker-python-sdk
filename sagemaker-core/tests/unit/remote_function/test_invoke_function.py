@@ -17,7 +17,7 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock, call
 
-from sagemaker.train.remote_function.invoke_function import (
+from sagemaker.core.remote_function.invoke_function import (
     _parse_args,
     _get_sagemaker_session,
     _load_run_object,
@@ -26,7 +26,7 @@ from sagemaker.train.remote_function.invoke_function import (
     main,
     SUCCESS_EXIT_CODE,
 )
-from sagemaker.train.remote_function.job import KEY_EXPERIMENT_NAME, KEY_RUN_NAME
+from sagemaker.core.remote_function.job import KEY_EXPERIMENT_NAME, KEY_RUN_NAME
 
 
 class TestParseArgs:
@@ -95,8 +95,8 @@ class TestParseArgs:
 class TestGetSagemakerSession:
     """Test _get_sagemaker_session function."""
 
-    @patch("sagemaker.train.remote_function.invoke_function.boto3.session.Session")
-    @patch("sagemaker.train.remote_function.invoke_function.Session")
+    @patch("sagemaker.core.remote_function.invoke_function.boto3.session.Session")
+    @patch("sagemaker.core.remote_function.invoke_function.Session")
     def test_creates_session_with_region(self, mock_session_class, mock_boto_session):
         """Test creates SageMaker session with correct region."""
         mock_boto = MagicMock()
@@ -180,7 +180,6 @@ class TestExecuteRemoteFunction:
             s3_base_uri="s3://bucket/path",
             s3_kms_key="key-123",
             run_in_context=None,
-            hmac_key="hmac-key",
             context=mock_context,
         )
         
@@ -188,12 +187,11 @@ class TestExecuteRemoteFunction:
             sagemaker_session=mock_session,
             s3_base_uri="s3://bucket/path",
             s3_kms_key="key-123",
-            hmac_key="hmac-key",
             context=mock_context,
         )
         mock_stored_func.load_and_invoke.assert_called_once()
 
-    @patch("sagemaker.train.remote_function.invoke_function._load_run_object")
+    @patch("sagemaker.core.remote_function.invoke_function._load_run_object")
     @patch("sagemaker.core.remote_function.core.stored_function.StoredFunction")
     def test_executes_with_run_context(self, mock_stored_function_class, mock_load_run):
         """Test executes stored function with run context."""
@@ -210,7 +208,6 @@ class TestExecuteRemoteFunction:
             s3_base_uri="s3://bucket/path",
             s3_kms_key=None,
             run_in_context=run_json,
-            hmac_key="hmac-key",
             context=mock_context,
         )
         
@@ -223,10 +220,10 @@ class TestExecuteRemoteFunction:
 class TestMain:
     """Test main function."""
 
-    @patch("sagemaker.train.remote_function.invoke_function._execute_remote_function")
-    @patch("sagemaker.train.remote_function.invoke_function._get_sagemaker_session")
-    @patch("sagemaker.train.remote_function.invoke_function._load_pipeline_context")
-    @patch("sagemaker.train.remote_function.invoke_function._parse_args")
+    @patch("sagemaker.core.remote_function.invoke_function._execute_remote_function")
+    @patch("sagemaker.core.remote_function.invoke_function._get_sagemaker_session")
+    @patch("sagemaker.core.remote_function.invoke_function._load_pipeline_context")
+    @patch("sagemaker.core.remote_function.invoke_function._parse_args")
     @patch.dict("os.environ", {"REMOTE_FUNCTION_SECRET_KEY": "test-key"})
     def test_main_success(self, mock_parse, mock_load_context, mock_get_session, mock_execute):
         """Test main function successful execution."""
@@ -250,11 +247,11 @@ class TestMain:
         assert exc_info.value.code == SUCCESS_EXIT_CODE
         mock_execute.assert_called_once()
 
-    @patch("sagemaker.train.remote_function.invoke_function.handle_error")
-    @patch("sagemaker.train.remote_function.invoke_function._execute_remote_function")
-    @patch("sagemaker.train.remote_function.invoke_function._get_sagemaker_session")
-    @patch("sagemaker.train.remote_function.invoke_function._load_pipeline_context")
-    @patch("sagemaker.train.remote_function.invoke_function._parse_args")
+    @patch("sagemaker.core.remote_function.invoke_function.handle_error")
+    @patch("sagemaker.core.remote_function.invoke_function._execute_remote_function")
+    @patch("sagemaker.core.remote_function.invoke_function._get_sagemaker_session")
+    @patch("sagemaker.core.remote_function.invoke_function._load_pipeline_context")
+    @patch("sagemaker.core.remote_function.invoke_function._parse_args")
     @patch.dict("os.environ", {"REMOTE_FUNCTION_SECRET_KEY": "test-key"})
     def test_main_handles_exception(
         self, mock_parse, mock_load_context, mock_get_session, mock_execute, mock_handle_error

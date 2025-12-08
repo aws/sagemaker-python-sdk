@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import logging
 import time
 from unittest.mock import patch
-from sagemaker.train.remote_function.logging_config import _UTCFormatter, get_logger
+from sagemaker.core.remote_function.logging_config import _UTCFormatter, get_logger
 
 
 class TestUTCFormatter:
