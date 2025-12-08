@@ -26,7 +26,7 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train.constants import HUB_NAME
+from sagemaker.train.constants import HUB_NAME, ALLOWED_REWARD_MODEL_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,6 @@ class RLAIFTrainer(BaseTrainer):
             ARN, or ModelPackageGroup object. Required when model is not a ModelPackage.
         reward_model_id (str):
             Bedrock model identifier for generating LLM feedback.
-            Evaluator models available: https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation-judge.html
             Required for RLAIF training to provide reward signals.
         reward_prompt (Union[str, Evaluator]):
             The reward prompt or evaluator for AI feedback generation.
@@ -141,7 +140,7 @@ class RLAIFTrainer(BaseTrainer):
         self.training_type = training_type
         self.model_package_group_name = _validate_and_resolve_model_package_group(model,
                                                                                  model_package_group_name)
-        self.reward_model_id = reward_model_id
+        self.reward_model_id = self._validate_reward_model_id(reward_model_id)
         self.reward_prompt = reward_prompt
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
@@ -165,6 +164,18 @@ class RLAIFTrainer(BaseTrainer):
         
         # Process reward_prompt parameter
         self._process_hyperparameters()
+
+    def _validate_reward_model_id(self, reward_model_id):
+        """Validate reward_model_id is one of the allowed values."""
+        if not reward_model_id:
+            return None
+
+        if reward_model_id not in ALLOWED_REWARD_MODEL_IDS:
+            raise ValueError(
+                f"Invalid reward_model_id '{reward_model_id}'. "
+                f"Available models are: {ALLOWED_REWARD_MODEL_IDS}"
+            )
+        return reward_model_id
         
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLAIFTrainer.train")
