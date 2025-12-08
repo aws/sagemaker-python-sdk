@@ -323,12 +323,10 @@ class BenchMarkEvaluator(BaseEvaluator):
     """
     
     benchmark: _Benchmark
+    dataset: Union[str, Any]  # Required field, must come before optional fields
     subtasks: Optional[Union[str, List[str]]] = None
-    _hyperparameters: Optional[Any] = None
-    
-    # Template-required fields
-    dataset: Union[str, Any]
     evaluate_base_model: bool = True
+    _hyperparameters: Optional[Any] = None
     
     @validator('dataset', pre=True)
     def _resolve_dataset(cls, v):
