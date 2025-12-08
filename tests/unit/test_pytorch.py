@@ -898,7 +898,25 @@ def test_training_recipe_for_cpu(sagemaker_session):
         ("hf_mixtral_8x7b_seq8k_gpu_p5x16_pretrain", "mixtral"),
     ],
 )
-def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_load")
+@patch("sagemaker.pytorch.estimator._get_training_recipe_gpu_script")
+def test_training_recipe_for_gpu(mock_gpu_script, mock_recipe_load, sagemaker_session, recipe, model):
+    from omegaconf import OmegaConf
+    
+    # Mock the GPU script function to return the expected entry point
+    mock_gpu_script.return_value = f"{model}_pretrain.py"
+    
+    # Mock the recipe structure that would be loaded
+    mock_recipe = OmegaConf.create({
+        "trainer": {
+            "num_nodes": 1,
+        },
+        "model": {
+            "model_type": model,
+        },
+    })
+    mock_recipe_load.return_value = (recipe, mock_recipe)
+    
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
