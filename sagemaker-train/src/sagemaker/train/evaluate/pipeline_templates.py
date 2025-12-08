@@ -129,7 +129,7 @@ DETERMINISTIC_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -144,7 +144,7 @@ DETERMINISTIC_TEMPLATE = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
                 "VpcConfig": {
                     "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                     "Subnets": {{ vpc_subnets | tojson }}
@@ -191,7 +191,7 @@ DETERMINISTIC_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -206,7 +206,7 @@ DETERMINISTIC_TEMPLATE = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
                 "VpcConfig": {
                     "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                     "Subnets": {{ vpc_subnets | tojson }}
@@ -358,7 +358,7 @@ LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -373,7 +373,7 @@ LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
             "VpcConfig": {
                 "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                 "Subnets": {{ vpc_subnets | tojson }}
@@ -500,7 +500,7 @@ DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -515,7 +515,7 @@ DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
             "VpcConfig": {
                 "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                 "Subnets": {{ vpc_subnets | tojson }}
@@ -650,7 +650,7 @@ CUSTOM_SCORER_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -665,7 +665,7 @@ CUSTOM_SCORER_TEMPLATE = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
             "VpcConfig": {
                 "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                 "Subnets": {{ vpc_subnets | tojson }}
@@ -713,7 +713,7 @@ CUSTOM_SCORER_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -728,7 +728,7 @@ CUSTOM_SCORER_TEMPLATE = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
             "VpcConfig": {
                 "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                 "Subnets": {{ vpc_subnets | tojson }}
@@ -892,7 +892,7 @@ CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -907,7 +907,7 @@ CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
             "VpcConfig": {
                 "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                 "Subnets": {{ vpc_subnets | tojson }}
@@ -1032,7 +1032,7 @@ LLMAJ_TEMPLATE = """{
                 "ModelPackageConfig": {
                     "ModelPackageGroupArn": "{{ model_package_group_arn }}",
                     "SourceModelPackageArn": "{{ source_model_package_arn }}"
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -1047,7 +1047,7 @@ LLMAJ_TEMPLATE = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
             "VpcConfig": {
                 "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                 "Subnets": {{ vpc_subnets | tojson }}
@@ -1086,7 +1086,7 @@ LLMAJ_TEMPLATE = """{
                 "ModelPackageConfig": {
                     "ModelPackageGroupArn": "{{ model_package_group_arn }}",
                     "SourceModelPackageArn": "{{ source_model_package_arn }}"
-                },
+                }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
@@ -1101,7 +1101,7 @@ LLMAJ_TEMPLATE = """{
                             }
                         }{% endif %}
                     }
-                ]{% if vpc_config %},
+                ]{% endif %}{% if vpc_config %},
             "VpcConfig": {
                 "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
                 "Subnets": {{ vpc_subnets | tojson }}
