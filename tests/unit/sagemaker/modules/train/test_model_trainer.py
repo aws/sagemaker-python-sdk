@@ -931,16 +931,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
     )
 
 
-@patch("sagemaker.modules.train.model_trainer._load_base_recipe")
-def test_model_trainer_gpu_recipe_full_init(mock_load_recipe, modules_session):
-    from omegaconf import OmegaConf
-    
-    # Mock the recipe loading to return a valid GPU recipe structure
-    mock_load_recipe.return_value = OmegaConf.create({
-        "trainer": {"num_nodes": 2},
-        "model": {"model_type": "llama_v3"},
-    })
-    
+def test_model_trainer_gpu_recipe_full_init(modules_session):
     training_recipe = "training/llama/p4_hf_llama3_70b_seq8k_gpu"
     recipe_overrides = {"run": {"results_dir": "/opt/ml/model"}}
     compute = Compute(instance_type="ml.p4d.24xlarge", instance_count="2")

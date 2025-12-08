@@ -109,36 +109,15 @@ def test_load_base_recipe_types(
         assert "trainer" in load_recipe
 
     if recipe_type == "sagemaker":
-        # Mock the file check to simulate recipe exists
-        with patch("os.path.isfile", return_value=True), \
-             patch("shutil.copy") as mock_copy:
-            # Create a temporary recipe file for the copy operation
-            import tempfile
-            import os
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-                yaml.dump({"trainer": {"num_nodes": 1}}, f)
-                temp_path = f.name
-            
-            def copy_side_effect(src, dst):
-                # Read from temp file and write to destination
-                with open(temp_path, 'r') as src_file:
-                    content = src_file.read()
-                with open(dst, 'w') as dst_file:
-                    dst_file.write(content)
-            
-            mock_copy.side_effect = copy_side_effect
-            
-            load_recipe = _load_base_recipe(
-                training_recipe="training/llama/p4_hf_llama3_70b_seq8k_gpu",
-                recipe_overrides=None,
-                training_recipes_cfg=training_recipes_cfg,
-            )
-            assert load_recipe is not None
-            assert "trainer" in load_recipe
-            assert mock_clone.call_args.args[0] == training_recipes_cfg.get("launcher_repo")
-            
-            # Clean up
-            os.unlink(temp_path)
+        mock_clone.side_effect = _run_clone_command_silent
+        load_recipe = _load_base_recipe(
+            training_recipe="training/llama/p4_hf_llama3_70b_seq8k_gpu",
+            recipe_overrides=None,
+            training_recipes_cfg=training_recipes_cfg,
+        )
+        assert load_recipe is not None
+        assert "trainer" in load_recipe
+        assert mock_clone.call_args.args[0] == training_recipes_cfg.get("launcher_repo")
 
     if recipe_type == "url":
         url = "https://raw.githubusercontent.com/aws-neuron/neuronx-distributed-training/refs/heads/main/examples/conf/hf_llama3_8B_config.yaml"  # noqa
