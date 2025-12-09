@@ -300,12 +300,18 @@ class BenchMarkEvaluator(BaseEvaluator):
     """
     
     benchmark: _Benchmark
+    dataset: Union[str, Any]  # Required field, must come before optional fields
     subtasks: Optional[Union[str, List[str]]] = None
+    evaluate_base_model: bool = True
     _hyperparameters: Optional[Any] = None
     
-    # Template-required fields
-    evaluate_base_model: bool = False
-
+    @validator('dataset', pre=True)
+    def _resolve_dataset(cls, v):
+        """Resolve dataset to string (S3 URI or ARN) and validate format.
+        
+        Uses BaseEvaluator's common validation logic to avoid code duplication.
+        """
+        return BaseEvaluator._validate_and_resolve_dataset(v)
     
     @validator('benchmark')
     def _validate_benchmark_model_compatibility(cls, v, values):
@@ -354,13 +360,7 @@ class BenchMarkEvaluator(BaseEvaluator):
                             f"Subtask list cannot be empty for benchmark '{benchmark.value}'. "
                             f"Provide at least one subtask or use 'ALL'."
                         )
-                    if len(v) > 1 :
-                        raise ValueError(
-                            f"Currently only one subtask is supported for benchmark '{benchmark.value}'. "
-                            f"Provide only one subtask or use 'ALL'."
-                        )
 
-                    # TODO : Should support list of subtasks.
                     # Validate each subtask in the list
                     for subtask in v:
                         if not isinstance(subtask, str):
@@ -503,7 +503,7 @@ class BenchMarkEvaluator(BaseEvaluator):
         # Use provided subtask or fall back to constructor subtasks
         eval_subtask = subtask if subtask is not None else self.subtasks
 
-        if eval_subtask is None or eval_subtask.upper() == "ALL":
+        if eval_subtask is None or (isinstance(eval_subtask, str) and eval_subtask.upper() == "ALL"):
             #TODO : Check All Vs None subtask for evaluation
             return None
 
@@ -522,11 +522,13 @@ class BenchMarkEvaluator(BaseEvaluator):
                         f"Subtask list cannot be empty for benchmark '{self.benchmark.value}'. "
                         f"Provide at least one subtask or use 'ALL'."
                     )
-                if len(eval_subtask) > 1:
-                    raise ValueError(
-                        f"Currently only one subtask is supported for benchmark '{self.benchmark.value}'. "
-                        f"Provide only one subtask or use 'ALL'."
-                    )
+                # Validate each subtask in the list
+                for st in eval_subtask:
+                    if config.get("subtasks") and st not in config["subtasks"]:
+                        raise ValueError(
+                            f"Invalid subtask '{st}' for benchmark '{self.benchmark.value}'. "
+                            f"Available subtasks: {', '.join(config['subtasks'])}"
+                        )
 
         
         return eval_subtask
@@ -562,6 +564,9 @@ class BenchMarkEvaluator(BaseEvaluator):
         
         if isinstance(eval_subtask, str):
             benchmark_context['subtask'] = eval_subtask
+        elif isinstance(eval_subtask, list):
+            # Convert list to comma-separated string
+            benchmark_context['subtask'] = ','.join(eval_subtask)
 
         # Add all configured hyperparameters
         for key in configured_params.keys():

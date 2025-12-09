@@ -17,7 +17,7 @@ import json
 import os
 import pytest
 import sys
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch, MagicMock, call, mock_open
 from io import BytesIO
 
 from sagemaker.core.remote_function.job import (
@@ -629,8 +629,9 @@ class TestPrepareAndUploadRuntimeScripts:
     @patch("sagemaker.core.remote_function.job.S3Uploader")
     @patch("sagemaker.core.remote_function.job._tmpdir")
     @patch("sagemaker.core.remote_function.job.shutil")
+    @patch("builtins.open", new_callable=mock_open)
     def test_without_spark_or_distributed(
-        self, mock_shutil, mock_tmpdir, mock_uploader, mock_session
+        self, mock_file, mock_shutil, mock_tmpdir, mock_uploader, mock_session
     ):
         """Test without Spark or distributed training."""
         mock_tmpdir.return_value.__enter__ = Mock(return_value="/tmp/test")
@@ -646,7 +647,8 @@ class TestPrepareAndUploadRuntimeScripts:
     @patch("sagemaker.core.remote_function.job.S3Uploader")
     @patch("sagemaker.core.remote_function.job._tmpdir")
     @patch("sagemaker.core.remote_function.job.shutil")
-    def test_with_spark(self, mock_shutil, mock_tmpdir, mock_uploader, mock_session):
+    @patch("builtins.open", new_callable=mock_open)
+    def test_with_spark(self, mock_file, mock_shutil, mock_tmpdir, mock_uploader, mock_session):
         """Test with Spark config."""
         mock_tmpdir.return_value.__enter__ = Mock(return_value="/tmp/test")
         mock_tmpdir.return_value.__exit__ = Mock(return_value=False)
@@ -662,7 +664,8 @@ class TestPrepareAndUploadRuntimeScripts:
     @patch("sagemaker.core.remote_function.job.S3Uploader")
     @patch("sagemaker.core.remote_function.job._tmpdir")
     @patch("sagemaker.core.remote_function.job.shutil")
-    def test_with_torchrun(self, mock_shutil, mock_tmpdir, mock_uploader, mock_session):
+    @patch("builtins.open", new_callable=mock_open)
+    def test_with_torchrun(self, mock_file, mock_shutil, mock_tmpdir, mock_uploader, mock_session):
         """Test with torchrun."""
         mock_tmpdir.return_value.__enter__ = Mock(return_value="/tmp/test")
         mock_tmpdir.return_value.__exit__ = Mock(return_value=False)
@@ -677,7 +680,8 @@ class TestPrepareAndUploadRuntimeScripts:
     @patch("sagemaker.core.remote_function.job.S3Uploader")
     @patch("sagemaker.core.remote_function.job._tmpdir")
     @patch("sagemaker.core.remote_function.job.shutil")
-    def test_with_mpirun(self, mock_shutil, mock_tmpdir, mock_uploader, mock_session):
+    @patch("builtins.open", new_callable=mock_open)
+    def test_with_mpirun(self, mock_file, mock_shutil, mock_tmpdir, mock_uploader, mock_session):
         """Test with mpirun."""
         mock_tmpdir.return_value.__enter__ = Mock(return_value="/tmp/test")
         mock_tmpdir.return_value.__exit__ = Mock(return_value=False)

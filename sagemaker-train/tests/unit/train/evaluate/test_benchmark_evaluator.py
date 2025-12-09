@@ -406,7 +406,7 @@ def test_benchmark_evaluator_resolve_subtask_for_evaluation(mock_artifact, mock_
     
     evaluator = BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
-        subtasks="ALL",
+        subtasks="abstract_algebra",  # Use a specific subtask instead of "ALL"
         model=DEFAULT_MODEL,
         dataset=DEFAULT_DATASET,
         s3_output_path=DEFAULT_S3_OUTPUT,
@@ -415,11 +415,13 @@ def test_benchmark_evaluator_resolve_subtask_for_evaluation(mock_artifact, mock_
         sagemaker_session=mock_session,
     )
     
+    # When None is passed, should return the evaluator's subtasks value
     result = evaluator._resolve_subtask_for_evaluation(None)
-    assert result == "ALL"
-    
-    result = evaluator._resolve_subtask_for_evaluation("abstract_algebra")
     assert result == "abstract_algebra"
+    
+    # When a specific subtask is passed, should return that subtask
+    result = evaluator._resolve_subtask_for_evaluation("anatomy")
+    assert result == "anatomy"
 
 
 @patch('sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn')
