@@ -144,6 +144,31 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 )
         
         return v
+
+    @validator('evaluator_model')
+    def _validate_evaluator_model(cls, v, values):
+        """Validate evaluator_model is allowed and check region compatibility."""
+        from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
+        
+        if v not in _ALLOWED_EVALUATOR_MODELS:
+            raise ValueError(
+                f"Invalid evaluator_model '{v}'. "
+                f"Allowed models are: {list(_ALLOWED_EVALUATOR_MODELS.keys())}"
+            )
+        
+        # Get current region from session
+        session = values.get('sagemaker_session')
+        if session and hasattr(session, 'boto_region_name'):
+            current_region = session.boto_region_name
+            allowed_regions = _ALLOWED_EVALUATOR_MODELS[v]
+            
+            if current_region not in allowed_regions:
+                raise ValueError(
+                    f"Evaluator model '{v}' is not available in region '{current_region}'. "
+                    f"Available regions for this model: {allowed_regions}"
+                )
+            
+        return v
     
     def _process_builtin_metrics(self, metrics: Optional[List[str]]) -> List[str]:
         """Process builtin metrics by removing 'Builtin.' prefix if present.
