@@ -41,7 +41,7 @@ from sagemaker.amazon.object2vec import Object2Vec, Object2VecModel  # noqa: F40
 from sagemaker.amazon.ipinsights import (  # noqa: F401
     IPInsights,
     IPInsightsModel,
-    IPInsightsPredictor,
+    IPInsightsPredictor, 
 )
 
 from sagemaker.algorithm import AlgorithmEstimator  # noqa: F401
