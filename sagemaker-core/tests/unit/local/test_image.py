@@ -613,6 +613,7 @@ class TestSageMakerContainerAdvanced:
                                                     "test-job",
                                                 )
 
+    @pytest.mark.skip(reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests")
     def test_train_with_multiple_channels(self, mock_session):
         """Test train method with multiple input channels"""
         with patch(
@@ -701,6 +702,7 @@ class TestSageMakerContainerAdvanced:
                                                                         == "/tmp/model.tar.gz"
                                                                     )
 
+    @pytest.mark.skip(reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests")
     def test_serve_with_environment_variables(self, mock_session):
         """Test serve method with environment variables"""
         with patch(
@@ -859,6 +861,7 @@ class TestSageMakerContainerAdvanced:
 
             assert mock_write.call_count == 3  # hyperparameters, resourceconfig, inputdataconfig
 
+    @pytest.mark.skip(reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests")
     def test_prepare_training_volumes_with_local_code(self, mock_session):
         """Test _prepare_training_volumes with local code directory"""
         with patch(

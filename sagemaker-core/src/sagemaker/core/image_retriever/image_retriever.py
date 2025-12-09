@@ -406,8 +406,8 @@ class ImageRetriever:
 
         return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
 
-    @override_pipeline_parameter_var
     @staticmethod
+    @override_pipeline_parameter_var
     def retrieve(
         framework: str,
         region: str,
