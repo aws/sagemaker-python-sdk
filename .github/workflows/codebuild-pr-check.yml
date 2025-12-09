@@ -1,4 +1,4 @@
-name: PR Checks
+name: PR Checks V2
 on:
     pull_request_target:
         branches:
