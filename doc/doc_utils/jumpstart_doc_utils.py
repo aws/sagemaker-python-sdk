@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 from urllib import request
+from urllib.parse import quote
 import json
 from packaging.version import Version
 from enum import Enum
@@ -170,11 +171,11 @@ def get_proprietary_sdk_manifest():
 
 
 def get_jumpstart_sdk_spec(s3_key: str):
-    return get_public_s3_json_object(f"{JUMPSTART_BUCKET_BASE_URL}/{s3_key}")
+    return get_public_s3_json_object(f"{JUMPSTART_BUCKET_BASE_URL}/{quote(s3_key)}")
 
 
 def get_proprietary_sdk_spec(s3_key: str):
-    return get_public_s3_json_object(f"{PROPRIETARY_DOC_BUCKET}/{s3_key}")
+    return get_public_s3_json_object(f"{PROPRIETARY_DOC_BUCKET}/{quote(s3_key)}")
 
 
 def get_model_task(id):
