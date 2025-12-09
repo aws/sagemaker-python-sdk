@@ -63,7 +63,7 @@ from sagemaker.session import get_execution_role  # noqa: F401
 from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput  # noqa: F401
 from sagemaker.automl.candidate_estimator import CandidateEstimator, CandidateStep  # noqa: F401
 from sagemaker.automl.automlv2 import (  # noqa: F401
-    AutoMLV2,
+    AutoMLV2, 
     AutoMLJobV2,
     LocalAutoMLDataChannel,
     AutoMLDataChannel,
