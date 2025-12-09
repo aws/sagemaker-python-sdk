@@ -964,7 +964,25 @@ def test_training_recipe_for_gpu(mock_gpu_script, mock_recipe_load, sagemaker_se
     assert pytorch.distribution.items() == expected_distribution.items()
 
 
-def test_training_recipe_with_override(sagemaker_session):
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_load")
+@patch("sagemaker.pytorch.estimator._get_training_recipe_gpu_script")
+def test_training_recipe_with_override(mock_gpu_script, mock_recipe_load, sagemaker_session):
+    from omegaconf import OmegaConf
+    
+    # Mock the GPU script function to return the expected entry point
+    mock_gpu_script.return_value = "mistral_pretrain.py"
+    
+    # Mock the recipe structure that would be loaded
+    mock_recipe = OmegaConf.create({
+        "trainer": {
+            "num_nodes": 1,
+        },
+        "model": {
+            "model_type": "mistral",
+        },
+    })
+    mock_recipe_load.return_value = ("hf_llama3_8b_seq8k_gpu_p5x16_pretrain", mock_recipe)
+    
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
@@ -1001,7 +1019,25 @@ def test_training_recipe_with_override(sagemaker_session):
     assert pytorch.image_uri == IMAGE_URI
 
 
-def test_training_recipe_gpu_custom_source_dir(sagemaker_session):
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_load")
+@patch("sagemaker.pytorch.estimator._get_training_recipe_gpu_script")
+def test_training_recipe_gpu_custom_source_dir(mock_gpu_script, mock_recipe_load, sagemaker_session):
+    from omegaconf import OmegaConf
+    
+    # Mock the GPU script function to return the expected entry point
+    mock_gpu_script.return_value = "mistral_pretrain.py"
+    
+    # Mock the recipe structure that would be loaded
+    mock_recipe = OmegaConf.create({
+        "trainer": {
+            "num_nodes": 1,
+        },
+        "model": {
+            "model_type": "mistral",
+        },
+    })
+    mock_recipe_load.return_value = ("hf_llama3_8b_seq8k_gpu_p5x16_pretrain", mock_recipe)
+    
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
