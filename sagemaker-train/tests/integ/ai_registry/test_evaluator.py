@@ -58,7 +58,7 @@ class TestEvaluatorIntegration:
             name=unique_name,
             type=REWARD_FUNCTION,
             source=lambda_arn,
-            wait=False
+            wait=False 
         )
         cleanup_list.append(evaluator)
         assert evaluator.name == unique_name
