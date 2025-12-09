@@ -40,6 +40,7 @@ from sagemaker import (
     Model,
     ModelMetrics,
     MetricsSource,
+    ContainerBaseModel,
 )
 from sagemaker import FileSource, utils
 from sagemaker.inputs import CreateModelInput
@@ -605,6 +606,10 @@ def test_model_registration_with_drift_check_baselines(
     nearest_model_name = "resnet50"
     data_input_configuration = '{"input_1":[1,224,224,3]}'
     skip_model_validation = "All"
+    model_package_registration_type = "Registered"
+    base_model = ContainerBaseModel(
+        hub_content_name="test", hub_content_version="1234.1234", recipe_name="testRecipeName"
+    )
 
     # If image_uri is not provided, the instance_type should not be a pipeline variable
     # since instance_type is used to retrieve image_uri in compile time (PySDK)
@@ -639,6 +644,8 @@ def test_model_registration_with_drift_check_baselines(
         nearest_model_name=nearest_model_name,
         data_input_configuration=data_input_configuration,
         skip_model_validation=skip_model_validation,
+        model_package_registration_type=model_package_registration_type,
+        base_model=base_model,
     )
 
     pipeline = Pipeline(
@@ -684,7 +691,6 @@ def test_model_registration_with_drift_check_baselines(
             response = sagemaker_session_for_pipeline.sagemaker_client.describe_model_package(
                 ModelPackageName=execution_steps[0]["Metadata"]["RegisterModel"]["Arn"]
             )
-
             assert (
                 response["ModelMetrics"]["Explainability"]["Report"]["ContentType"]
                 == "application/json"

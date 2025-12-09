@@ -208,7 +208,7 @@ def _get_deployment_flavor(flavor_metadata: Optional[Dict[str, Any]]) -> str:
 
 
 def _get_python_version_from_parsed_mlflow_model_file(
-    parsed_metadata: Dict[str, Any]
+    parsed_metadata: Dict[str, Any],
 ) -> Optional[str]:
     """Checks the python version of a given parsed MLflow model file.
 

@@ -422,7 +422,7 @@ def get_base_deployment_configs(
 
 
 def append_instance_stat_metrics(
-    metrics: Dict[str, List[JumpStartBenchmarkStat]]
+    metrics: Dict[str, List[JumpStartBenchmarkStat]],
 ) -> Dict[str, List[JumpStartBenchmarkStat]]:
     if metrics is not None:
         for key in metrics:

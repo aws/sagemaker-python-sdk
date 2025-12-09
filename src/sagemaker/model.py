@@ -52,6 +52,7 @@ from sagemaker.model_card import (
 from sagemaker.model_card.helpers import _hash_content_str
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
 from sagemaker.session import Session
+from sagemaker.container_base_model import ContainerBaseModel
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.explainer import ExplainerConfig
@@ -477,6 +478,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
         model_life_cycle: Optional[ModelLifeCycle] = None,
         accept_eula: Optional[bool] = None,
         model_type: Optional[JumpStartModelType] = None,
+        model_package_registration_type: Optional[Union[str, PipelineVariable]] = None,
+        base_model: Optional[ContainerBaseModel] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -531,6 +534,9 @@ class Model(ModelBase, InferenceRecommenderMixin):
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
             model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+            model_package_registration_type (str or PipelineVariable): Model Package Registration
+                Type (default: None).
+            base_model (ContainerBaseModel): ContainerBaseModel object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance or pipeline step arguments
@@ -578,6 +584,9 @@ class Model(ModelBase, InferenceRecommenderMixin):
             if self.model_data is not None:
                 container_def["ModelDataUrl"] = self.model_data
 
+        if base_model is not None and hasattr(base_model, "_to_request_dict"):
+            container_def["BaseModel"] = base_model._to_request_dict()
+
         model_pkg_args = sagemaker.get_model_package_args(
             self.content_types,
             self.response_types,
@@ -601,6 +610,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
             source_uri=source_uri,
             model_card=model_card,
             model_life_cycle=model_life_cycle,
+            model_package_registration_type=model_package_registration_type,
+            base_model=base_model,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -2150,6 +2161,7 @@ class FrameworkModel(Model):
             You can find additional parameters for initializing this class at
             :class:`~sagemaker.model.Model`.
         """
+
         super(FrameworkModel, self).__init__(
             image_uri,
             model_data,
