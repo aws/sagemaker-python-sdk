@@ -257,15 +257,16 @@ class InputData(BaseConfig):
     Parameters:
         channel_name (StrPipeVar):
             The name of the input data source channel.
-        data_source (Union[str, S3DataSource, FileSystemDataSource, DatasetSource]):
+        data_source (Union[StrPipeVar, S3DataSource, FileSystemDataSource, DatasetSource]):
             The data source for the channel. Can be an S3 URI string, local file path string,
-            S3DataSource object, or FileSystemDataSource object.
+            S3DataSource object, FileSystemDataSource object, DatasetSource object, or a
+            pipeline variable (Properties) from a previous step.
         content_type (StrPipeVar):
             The MIME type of the data.
     """
 
     channel_name: StrPipeVar = None
-    data_source: Union[str, FileSystemDataSource, S3DataSource, DatasetSource] = None
+    data_source: Union[StrPipeVar, FileSystemDataSource, S3DataSource, DatasetSource] = None
     content_type: StrPipeVar = None
 
 

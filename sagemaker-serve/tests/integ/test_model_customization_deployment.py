@@ -577,6 +577,7 @@ class TestBedrockNovaDeployment:
             session=session,
             region="us-east-1")
 
+    @pytest.mark.skip(reason="Bedrock Nova deployment test skipped per team decision")
     def test_bedrock_model_builder_creation(self, training_job):
         """Test BedrockModelBuilder creation with Nova model."""
         bedrock_builder = BedrockModelBuilder(model=training_job)
@@ -584,6 +585,7 @@ class TestBedrockNovaDeployment:
         assert bedrock_builder.model == training_job
         assert bedrock_builder.s3_model_artifacts is not None
 
+    @pytest.mark.skip(reason="Bedrock Nova deployment test skipped per team decision")
     @pytest.mark.slow
     def test_nova_model_deployment(self, training_job):
         """Test Nova model deployment to Bedrock."""

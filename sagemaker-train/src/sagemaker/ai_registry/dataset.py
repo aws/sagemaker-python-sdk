@@ -180,7 +180,6 @@ class DataSet(AIRHubEntity):
                 raise ValueError(f"File size {file_size_mb:.2f} MB exceeds maximum allowed size of {max_size_mb:.0f} MB")
 
     @classmethod
-    @classmethod
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="DataSet.get")
     def get(cls, name: str, sagemaker_session=None) -> "DataSet":
         """Get dataset by name."""

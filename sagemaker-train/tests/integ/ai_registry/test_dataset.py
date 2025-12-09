@@ -21,6 +21,7 @@ from sagemaker.ai_registry.dataset_utils import CustomizationTechnique
 from sagemaker.ai_registry.air_constants import HubContentStatus
 
 
+@pytest.mark.serial
 class TestDataSetIntegration:
     """Integration tests for DataSet operations."""
 
