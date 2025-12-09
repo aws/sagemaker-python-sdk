@@ -1,8 +1,8 @@
-name: PR Checks V2
+name: PR Checks
 on:
     pull_request_target:
         branches:
-            - "master-v2"
+            - "master*"
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
