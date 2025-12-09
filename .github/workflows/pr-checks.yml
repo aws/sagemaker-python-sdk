@@ -3,11 +3,6 @@ on:
   pull_request_target:
     branches:
       - "master*"
-    paths:
-      - 'sagemaker-train/**'
-      - 'sagemaker-serve/**'
-      - 'sagemaker-mlops/**'
-      - 'sagemaker-core/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
@@ -50,6 +45,7 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     needs: [wait-for-approval]
+    if: github.event.pull_request.base.ref != 'master-v2'
     outputs:
       submodules: ${{ steps.check-changes.outputs.submodules }}
     steps:
@@ -126,6 +122,23 @@ jobs:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-codestyle-doc-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
 
+  codestyle-doc-tests-v2:
+    runs-on: ubuntu-latest
+    needs: [wait-for-approval]
+    if: github.event.pull_request.base.ref == 'master-v2'
+    steps: 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Codestyle & Doc Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ github.event.repository.name }}-ci-codestyle-doc-tests
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+
   unit-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
@@ -148,6 +161,31 @@ jobs:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-unit-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
 
+  unit-tests-v2:
+    runs-on: ubuntu-latest
+    needs: [wait-for-approval]
+    if: github.event.pull_request.base.ref == 'master-v2'
+    strategy:
+        fail-fast: false
+        matrix:
+          python-version: ["py39","py310","py311","py312"]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Unit Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ github.event.repository.name }}-ci-unit-tests
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+          env-vars-for-codebuild: |
+            PY_VERSION
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+
   integ-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
@@ -168,4 +206,21 @@ jobs:
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-integ-tests
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+
+  integ-tests-v2:
+    runs-on: ubuntu-latest
+    needs: [wait-for-approval]
+    if: github.event.pull_request.base.ref == 'master-v2'
+    steps: 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Integ Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ github.event.repository.name }}-ci-integ-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
