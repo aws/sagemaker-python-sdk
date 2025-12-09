@@ -15,10 +15,12 @@
 import time
 
 import pytest
+from botocore.exceptions import ClientError
 from sagemaker.ai_registry.evaluator import Evaluator, EvaluatorMethod
 from sagemaker.ai_registry.air_constants import HubContentStatus, REWARD_FUNCTION, REWARD_PROMPT
 
 
+@pytest.mark.serial
 class TestEvaluatorIntegration:
     """Integration tests for Evaluator operations."""
 
@@ -56,7 +58,7 @@ class TestEvaluatorIntegration:
             name=unique_name,
             type=REWARD_FUNCTION,
             source=lambda_arn,
-            wait=False
+            wait=False 
         )
         cleanup_list.append(evaluator)
         assert evaluator.name == unique_name
@@ -81,40 +83,65 @@ class TestEvaluatorIntegration:
 
     def test_get_evaluator(self, unique_name, sample_prompt_file, cleanup_list):
         """Test retrieving evaluator by name."""
-        created = Evaluator.create(name=unique_name, type=REWARD_PROMPT, source=sample_prompt_file, wait=False)
-        cleanup_list.append(created)
-        retrieved = Evaluator.get(unique_name)
-        assert retrieved.name == created.name
-        assert retrieved.arn == created.arn
-        assert retrieved.type == created.type
+        try:
+            created = Evaluator.create(name=unique_name, type=REWARD_PROMPT, source=sample_prompt_file, wait=False)
+            cleanup_list.append(created)
+            retrieved = Evaluator.get(unique_name)
+            assert retrieved.name == created.name
+            assert retrieved.arn == created.arn
+            assert retrieved.type == created.type
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ThrottlingException':
+                pytest.skip("Skipping due to API throttling")
+            raise
 
     def test_get_all_evaluators(self):
         """Test listing all evaluators."""
-        evaluators = list(Evaluator.get_all(max_results=5))
-        assert isinstance(evaluators, list)
+        try:
+            evaluators = list(Evaluator.get_all(max_results=5))
+            assert isinstance(evaluators, list)
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ThrottlingException':
+                pytest.skip("Skipping due to API throttling")
+            raise
 
     def test_get_all_evaluators_filtered_by_type(self):
         """Test listing evaluators filtered by type."""
-        evaluators = list(Evaluator.get_all(type=REWARD_PROMPT, max_results=3))
-        assert isinstance(evaluators, list)
-        for evaluator in evaluators:
-            assert evaluator.type == REWARD_PROMPT
+        try:
+            evaluators = list(Evaluator.get_all(type=REWARD_PROMPT, max_results=3))
+            assert isinstance(evaluators, list)
+            for evaluator in evaluators:
+                assert evaluator.type == REWARD_PROMPT
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ThrottlingException':
+                pytest.skip("Skipping due to API throttling")
+            raise
 
     def test_evaluator_refresh(self, unique_name, sample_prompt_file, cleanup_list):
         """Test refreshing evaluator status."""
-        evaluator = Evaluator.create(name=unique_name, type=REWARD_PROMPT, source=sample_prompt_file, wait=False)
-        cleanup_list.append(evaluator)
-        time.sleep(3)
-        evaluator.refresh()
-        assert evaluator.status in [HubContentStatus.IMPORTING.value, HubContentStatus.AVAILABLE.value]
+        try:
+            evaluator = Evaluator.create(name=unique_name, type=REWARD_PROMPT, source=sample_prompt_file, wait=False)
+            cleanup_list.append(evaluator)
+            time.sleep(3)
+            evaluator.refresh()
+            assert evaluator.status in [HubContentStatus.IMPORTING.value, HubContentStatus.AVAILABLE.value]
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ThrottlingException':
+                pytest.skip("Skipping due to API throttling")
+            raise
 
     def test_evaluator_get_versions(self, unique_name, sample_prompt_file, cleanup_list):
         """Test getting evaluator versions."""
-        evaluator = Evaluator.create(name=unique_name, type=REWARD_PROMPT, source=sample_prompt_file, wait=False)
-        cleanup_list.append(evaluator)
-        versions = evaluator.get_versions()
-        assert len(versions) >= 1
-        assert all(isinstance(v, Evaluator) for v in versions)
+        try:
+            evaluator = Evaluator.create(name=unique_name, type=REWARD_PROMPT, source=sample_prompt_file, wait=False)
+            cleanup_list.append(evaluator)
+            versions = evaluator.get_versions()
+            assert len(versions) >= 1
+            assert all(isinstance(v, Evaluator) for v in versions)
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ThrottlingException':
+                pytest.skip("Skipping due to API throttling")
+            raise
 
     def test_evaluator_wait(self, unique_name, sample_prompt_file, cleanup_list):
         """Test waiting for evaluator to be available."""

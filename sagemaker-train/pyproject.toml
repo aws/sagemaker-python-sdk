@@ -57,7 +57,8 @@ test = [
     "pandas",
     "scipy",
     "omegaconf",
-    "graphene"
+    "graphene",
+    "IPython"
 ]
 
 [tool.setuptools.packages.find]
@@ -71,6 +72,9 @@ version = { file = "VERSION"}
 [tool.pytest.ini_options]
 addopts = ["-vv"]
 testpaths = ["tests"]
+markers = [
+    "serial: marks tests that must run serially (not in parallel)",
+]
 
 [tool.black]
 line-length = 100
