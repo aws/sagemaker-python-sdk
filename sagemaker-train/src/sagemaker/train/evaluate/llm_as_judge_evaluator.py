@@ -13,6 +13,7 @@ from pydantic import validator
 from .base_evaluator import BaseEvaluator
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
 
 _logger = logging.getLogger(__name__)
 
@@ -148,7 +149,6 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
     @validator('evaluator_model')
     def _validate_evaluator_model(cls, v, values):
         """Validate evaluator_model is allowed and check region compatibility."""
-        from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
         
         if v not in _ALLOWED_EVALUATOR_MODELS:
             raise ValueError(
