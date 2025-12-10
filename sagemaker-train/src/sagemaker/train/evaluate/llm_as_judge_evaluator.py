@@ -23,7 +23,14 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
     
     This evaluator uses foundation models to evaluate LLM responses
     based on various quality and responsible AI metrics.
-    
+
+    This feature is powered by Amazon Bedrock Evaluations. Your use of this feature is subject to pricing of
+    Amazon Bedrock Evaluations, the Service Terms applicable to Amazon Bedrock, and the terms that apply to your
+    usage of third-party models. Amazon Bedrock Evaluations may securely transmit data across AWS Regions within your
+    geography for processing. For more information, access Amazon Bedrock Evaluations documentation.
+
+    Documentation: https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation-judge.html
+
     Attributes:
         evaluator_model (str): AWS Bedrock foundation model identifier to use as the judge.
             Required. For supported models, see:

@@ -86,9 +86,9 @@ class DPOTrainer(BaseTrainer):
         mlflow_run_name (Optional[str]):
             The MLflow run name for this training job.
         training_dataset (Optional[Union[str, DataSet]]):
-            The training dataset with preference pairs. Can be an S3 URI, dataset ARN, or DataSet object.
+            The training dataset with preference pairs. Can be a dataset ARN, or DataSet object.
         validation_dataset (Optional[Union[str, DataSet]]):
-            The validation dataset. Can be an S3 URI, dataset ARN, or DataSet object.
+            The validation dataset. Can be a dataset ARN, or DataSet object.
         s3_output_path (Optional[str]):
             The S3 path for training job outputs.
             If not specified, defaults to s3://sagemaker-<region>-<account>/output.

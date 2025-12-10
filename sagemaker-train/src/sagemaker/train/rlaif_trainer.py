@@ -100,9 +100,9 @@ class RLAIFTrainer(BaseTrainer):
         mlflow_run_name (Optional[str]):
             The MLflow run name for this training job.
         training_dataset (Optional[Union[str, DataSet]]):
-            The training dataset. Can be an S3 URI, dataset ARN, or DataSet object.
+            The training dataset. Can be a dataset ARN, or DataSet object.
         validation_dataset (Optional[Union[str, DataSet]]):
-            The validation dataset. Can be an S3 URI, dataset ARN, or DataSet object.
+            The validation dataset. Can be a dataset ARN, or DataSet object.
         s3_output_path (Optional[str]):
             The S3 path for training job outputs.
             If not specified, defaults to s3://sagemaker-<region>-<account>/output.
@@ -173,8 +173,20 @@ class RLAIFTrainer(BaseTrainer):
         if reward_model_id not in _ALLOWED_REWARD_MODEL_IDS:
             raise ValueError(
                 f"Invalid reward_model_id '{reward_model_id}'. "
-                f"Available models are: {_ALLOWED_REWARD_MODEL_IDS}"
+                f"Available models are: {list(_ALLOWED_REWARD_MODEL_IDS.keys())}"
             )
+        
+        # Check region compatibility
+        session = self.sagemaker_session if hasattr(self, 'sagemaker_session') and self.sagemaker_session else TrainDefaults.get_sagemaker_session()
+        current_region = session.boto_region_name
+        allowed_regions = _ALLOWED_REWARD_MODEL_IDS[reward_model_id]
+        
+        if current_region not in allowed_regions:
+            raise ValueError(
+                f"Reward model '{reward_model_id}' is not available in region '{current_region}'. "
+                f"Available regions for this model: {allowed_regions}"
+            )
+        
         return reward_model_id
         
 
