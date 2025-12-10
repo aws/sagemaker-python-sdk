@@ -1,8 +1,8 @@
-name: Sagemaker PR Checks
+name: Sagemaker PR Checks (Master)
 on:
   pull_request_target:
     branches:
-      - "master*"
+      - "master"
     paths:
       - 'sagemaker-train/**'
       - 'sagemaker-serve/**'
@@ -56,19 +56,18 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_PAT }}  # or use appropriate token
-          ref: ${{ github.event.pull_request.base.ref }}  # Target branch (master-v3)
+          token: ${{ secrets.GH_PAT }}
+          ref: ${{ github.event.pull_request.base.ref }}
       - name: Detect Changes
         id: check-changes
         run: |
-          set -e  # Exit on error
+          set -e
           
-          # Debug information
           echo "Target Branch: ${{ github.event.pull_request.base.ref }}"
           echo "Current Target SHA: $(git rev-parse HEAD)"
           echo "PR Number: ${{ github.event.pull_request.number }}"
           echo "PR Latest SHA: ${{ github.event.pull_request.head.sha }}"
-          # Fetch PR without creating a branch
+          
           git fetch origin pull/${{ github.event.pull_request.number }}/head
           CHANGES=$(git diff --name-only HEAD FETCH_HEAD)
           
