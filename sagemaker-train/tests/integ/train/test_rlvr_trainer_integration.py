@@ -29,7 +29,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group_name="sdk-test-finetuned-models",
+        model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
         training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
@@ -67,7 +67,7 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group_name="sdk-test-finetuned-models",
+        model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
         training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
@@ -108,7 +108,7 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session):
     # For fine-tuning 
     rlvr_trainer = RLVRTrainer(
         model="nova-textgeneration-lite-v2",
-        model_package_group_name="sdk-test-finetuned-models",
+        model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-nova-rlvr-finetuned-models-exp",
         mlflow_run_name="test-nova-rlvr-finetuned-models-run",
         training_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/rlvr-nova/grpo-64-sample.jsonl",

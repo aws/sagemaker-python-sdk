@@ -537,16 +537,16 @@ class TestFinetuneUtils:
 
     @patch('boto3.client')
     def test__validate_s3_path_exists_with_prefix_not_exists(self, mock_boto_client):
-        """Test S3 path validation raises error when prefix doesn't exist"""
+        """Test S3 path validation creates prefix when it doesn't exist"""
         mock_session = Mock()
         mock_s3_client = Mock()
         mock_session.boto_session.client.return_value = mock_s3_client
         mock_s3_client.list_objects_v2.return_value = {}  # No contents
         
-        with pytest.raises(ValueError, match="Failed to validate S3 path 's3://test-bucket/prefix': S3 prefix 'prefix' does not exist in bucket 'test-bucket'"):
-            _validate_s3_path_exists("s3://test-bucket/prefix", mock_session)
+        _validate_s3_path_exists("s3://test-bucket/prefix", mock_session)
         
         mock_s3_client.head_bucket.assert_called_once_with(Bucket="test-bucket")
         mock_s3_client.list_objects_v2.assert_called_once_with(Bucket="test-bucket", Prefix="prefix", MaxKeys=1)
+        mock_s3_client.put_object.assert_called_once_with(Bucket="test-bucket", Key="prefix/", Body=b'')
 
 
