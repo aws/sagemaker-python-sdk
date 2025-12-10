@@ -52,7 +52,7 @@ def _setup():
     hub = Hub(
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session()
     )
-    
+
     # Check if hub already exists before creating
     try:
         hub.describe()
@@ -161,16 +161,19 @@ def _cleanup_old_hubs(sagemaker_session):
     try:
         response = sagemaker_session.list_hubs()
         test_hubs = [
-            hub for hub in response.get("HubSummaries", [])
+            hub
+            for hub in response.get("HubSummaries", [])
             if hub["HubName"].startswith(HUB_NAME_PREFIX)
         ]
-        
+
         # Sort by creation time and delete oldest hubs
         test_hubs.sort(key=lambda x: x.get("CreationTime", ""))
-        
+
         # Delete oldest hubs (keep only the most recent 10)
-        hubs_to_delete = test_hubs[:-10] if len(test_hubs) > 10 else test_hubs[:max(0, len(test_hubs) - 40)]
-        
+        hubs_to_delete = (
+            test_hubs[:-10] if len(test_hubs) > 10 else test_hubs[: max(0, len(test_hubs) - 40)]
+        )
+
         for hub in hubs_to_delete:
             try:
                 print(f"Deleting old hub: {hub['HubName']}")
