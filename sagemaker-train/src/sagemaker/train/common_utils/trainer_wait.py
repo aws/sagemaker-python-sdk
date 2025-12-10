@@ -157,7 +157,7 @@ def _calculate_transition_duration(trans) -> Tuple[str, str]:
 def wait(
         training_job: TrainingJob,
         poll: int = 5,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = 3000
 ) -> None:
     """Wait for training job to complete with progress tracking.
 
@@ -192,8 +192,10 @@ def wait(
                 iteration = 0
                 while True:
                     iteration += 1
-                    time.sleep(poll)
-                    training_job.refresh()
+                    time.sleep(1)
+                    if iteration == poll:
+                        training_job.refresh()
+                        iteration = 0
                     clear_output(wait=True)
 
                     status = training_job.training_job_status
@@ -302,7 +304,7 @@ def wait(
                         raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
 
                     if timeout and elapsed >= timeout:
-                        raise TimeoutExceededError(resouce_type="TrainingJob", status=status)
+                        raise TimeoutExceededError(resource_type="TrainingJob", status=status)
 
         else:
             print(f"\nTrainingJob Name: {training_job.training_job_name}")
@@ -363,7 +365,7 @@ def wait(
                     raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
 
                 if timeout and elapsed >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrainingJob", status=status)
+                    raise TimeoutExceededError(resource_type="TrainingJob", status=status)
 
 
     except (FailedStatusError, TimeoutExceededError):
