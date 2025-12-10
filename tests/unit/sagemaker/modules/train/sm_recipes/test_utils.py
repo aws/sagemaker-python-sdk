@@ -33,7 +33,6 @@ from sagemaker.modules.train.sm_recipes.utils import (
     _get_args_from_nova_recipe,
     _get_args_from_llmft_recipe,
 )
-from sagemaker.modules.utils import _run_clone_command_silent
 from sagemaker.modules.configs import Compute
 
 
