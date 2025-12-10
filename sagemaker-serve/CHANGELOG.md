@@ -1,0 +1,19 @@
+# Changelog
+
+## v1.1.1 (2025-12-10)
+
+### Features
+
+* Bug fixes in Model Builder
+
+## v1.1.0 (2025-12-03)
+
+### Features
+
+* Fine-tuning support in ModelBuilder and adding Bedrock ModelBuilder
+
+## v1.0.1 (2025-11-19)
+
+* Update project dependencies to include submodules: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops
+
+
