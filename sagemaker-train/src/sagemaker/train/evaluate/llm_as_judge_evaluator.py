@@ -13,6 +13,7 @@ from pydantic import validator
 from .base_evaluator import BaseEvaluator
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
 
 _logger = logging.getLogger(__name__)
 
@@ -143,6 +144,30 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                     f"The current model '{base_model_name}' is a Nova model."
                 )
         
+        return v
+
+    @validator('evaluator_model')
+    def _validate_evaluator_model(cls, v, values):
+        """Validate evaluator_model is allowed and check region compatibility."""
+        
+        if v not in _ALLOWED_EVALUATOR_MODELS:
+            raise ValueError(
+                f"Invalid evaluator_model '{v}'. "
+                f"Allowed models are: {list(_ALLOWED_EVALUATOR_MODELS.keys())}"
+            )
+        
+        # Get current region from session
+        session = values.get('sagemaker_session')
+        if session and hasattr(session, 'boto_region_name'):
+            current_region = session.boto_region_name
+            allowed_regions = _ALLOWED_EVALUATOR_MODELS[v]
+            
+            if current_region not in allowed_regions:
+                raise ValueError(
+                    f"Evaluator model '{v}' is not available in region '{current_region}'. "
+                    f"Available regions for this model: {allowed_regions}"
+                )
+            
         return v
     
     def _process_builtin_metrics(self, metrics: Optional[List[str]]) -> List[str]:
