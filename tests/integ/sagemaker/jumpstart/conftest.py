@@ -64,7 +64,7 @@ def _setup():
             print(f"Created new hub: {test_hub_name}")
         except Exception as e:
             if "ResourceLimitExceeded" in str(e):
-                print(f"Hub limit reached. Cleaning up old hubs...")
+                print("Hub limit reached. Cleaning up old hubs...")
                 _cleanup_old_hubs(get_sm_session())
                 # Retry creating the hub
                 hub.create(description=test_hub_description)
