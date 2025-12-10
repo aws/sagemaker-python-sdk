@@ -28,7 +28,7 @@ def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     rlaif_trainer = RLAIFTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group_name="sdk-test-finetuned-models",
+        model_package_group="sdk-test-finetuned-models",
         reward_model_id='openai.gpt-oss-120b-1:0',
         reward_prompt='Builtin.Summarize',
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
@@ -68,7 +68,7 @@ def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     rlaif_trainer = RLAIFTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group_name="sdk-test-finetuned-models",
+        model_package_group="sdk-test-finetuned-models",
         reward_model_id='openai.gpt-oss-120b-1:0',
         reward_prompt="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlaif-test-prompt/0.0.1",
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
@@ -107,7 +107,7 @@ def test_rlaif_trainer_continued_finetuning(sagemaker_session):
     rlaif_trainer = RLAIFTrainer(
         model="arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
         training_type=TrainingType.LORA,
-        model_package_group_name="sdk-test-finetuned-models",
+        model_package_group="sdk-test-finetuned-models",
         reward_model_id='openai.gpt-oss-120b-1:0',
         reward_prompt='Builtin.Summarize',
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",

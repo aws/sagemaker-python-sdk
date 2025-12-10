@@ -44,7 +44,7 @@ class RLAIFTrainer(BaseTrainer):
         trainer = RLAIFTrainer(
             model="meta-llama/Llama-2-7b-hf",
             training_type=TrainingType.LORA,
-            model_package_group_name="my-model-group",
+            model_package_group="my-model-group",
             reward_model_id="reward-model-id",
             reward_prompt="Rate the helpfulness of this response on a scale of 1-10",
             training_dataset="s3://bucket/rlaif_data.jsonl"
@@ -55,7 +55,7 @@ class RLAIFTrainer(BaseTrainer):
         # Complete workflow: create -> wait -> get model package ARN
         trainer = RLAIFTrainer(
             model="meta-llama/Llama-2-7b-hf",
-            model_package_group_name="my-rlaif-models",
+            model_package_group="my-rlaif-models",
             reward_model_id="reward-model-id",
             reward_prompt="Rate the helpfulness of this response on a scale of 1-10"
         )
@@ -82,7 +82,7 @@ class RLAIFTrainer(BaseTrainer):
         training_type (Union[TrainingType, str]):
             The fine-tuning approach. Valid values are TrainingType.LORA (default),
             TrainingType.FULL.
-        model_package_group_name (Optional[Union[str, ModelPackageGroup]]):
+        model_package_group (Optional[Union[str, ModelPackageGroup]]):
             The model package group for storing the fine-tuned model. Can be a group name,
             ARN, or ModelPackageGroup object. Required when model is not a ModelPackage.
         reward_model_id (str):
@@ -116,7 +116,7 @@ class RLAIFTrainer(BaseTrainer):
         self,
         model: Union[str, ModelPackage],
         training_type: Union[TrainingType, str] = TrainingType.LORA,
-        model_package_group_name: Optional[Union[str, ModelPackageGroup]] = None,
+        model_package_group: Optional[Union[str, ModelPackageGroup]] = None,
         reward_model_id: str = None,
         reward_prompt: Union[str, Evaluator] = None,
         mlflow_resource_arn: Optional[Union[str, MlflowTrackingServer]] = None,
@@ -138,8 +138,8 @@ class RLAIFTrainer(BaseTrainer):
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
 
         self.training_type = training_type
-        self.model_package_group_name = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group_name)
+        self.model_package_group = _validate_and_resolve_model_package_group(model,
+                                                                                 model_package_group)
         self.reward_model_id = self._validate_reward_model_id(reward_model_id)
         self.reward_prompt = reward_prompt
         self.mlflow_resource_arn = mlflow_resource_arn
@@ -251,7 +251,7 @@ class RLAIFTrainer(BaseTrainer):
         _validate_hyperparameter_values(final_hyperparameters)
 
         model_package_config = _create_model_package_config(
-            model_package_group_name=self.model_package_group_name,
+            model_package_group_name=self.model_package_group,
             model=self.model,
             sagemaker_session=sagemaker_session
         )
