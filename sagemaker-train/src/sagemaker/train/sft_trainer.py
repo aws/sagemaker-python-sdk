@@ -1,3 +1,4 @@
+from logging import exception
 from typing import Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
@@ -261,7 +262,11 @@ class SFTTrainer(BaseTrainer):
 
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
-            _wait(training_job)
+            from sagemaker.core.utils.exceptions import TimeoutExceededError
+            try :
+                _wait(training_job)
+            except TimeoutExceededError as e:
+                logger.error("Error: %s", e)
 
         self.latest_training_job = training_job
         return training_job
