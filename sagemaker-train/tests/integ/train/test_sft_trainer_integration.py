@@ -29,7 +29,7 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     sft_trainer = SFTTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group_name="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+        model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
         training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
@@ -65,7 +65,7 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
     sft_trainer = SFTTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group_name="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+        model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
         training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
         validation_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
         accept_eula=True
@@ -103,7 +103,7 @@ def test_sft_trainer_nova_workflow(sagemaker_session):
     sft_trainer_nova = SFTTrainer(
         model="nova-textgeneration-lite-v2",
         training_type=TrainingType.LORA, 
-        model_package_group_name="sdk-test-finetuned-models",
+        model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-nova-finetuned-models-exp",
         mlflow_run_name="test-nova-finetuned-models-run",
         training_dataset="arn:aws:sagemaker:us-east-1:729646638167:hub-content/sdktest/DataSet/sft-nova-test-dataset/0.0.1",

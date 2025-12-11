@@ -198,10 +198,19 @@ def _create_mlflow_app(sagemaker_session) -> Optional[MlflowApp]:
             if new_app.status in ["Created", "Updated"]:
                 return new_app
             elif new_app.status in ["Failed", "Stopped"]:
-                raise RuntimeError(f"MLflow app creation failed with status: {new_app.status}")
+                # Get detailed error from MLflow app
+                error_msg = f"MLflow app creation failed with status: {new_app.status}"
+                if hasattr(new_app, 'failure_reason') and new_app.failure_reason:
+                    error_msg += f". Reason: {new_app.failure_reason}"
+                raise RuntimeError(error_msg)
             time.sleep(poll_interval)
         
-        raise RuntimeError(f"MLflow app creation timed out after {max_wait_time} seconds")
+        # Timeout case - get current status and any error details
+        new_app.refresh()
+        error_msg = f"MLflow app creation failed. Current status: {new_app.status}"
+        if hasattr(new_app, 'failure_reason') and new_app.failure_reason:
+            error_msg += f". Reason: {new_app.failure_reason}"
+        raise RuntimeError(error_msg)
             
     except Exception as e:
         logger.error("Failed to create MLflow app: %s", e)
@@ -693,7 +702,7 @@ def _validate_eula_for_gated_model(model, accept_eula, is_gated_model):
 
 
 def _validate_s3_path_exists(s3_path: str, sagemaker_session):
-    """Validate if S3 path exists and is accessible."""
+    """Validate S3 path and create bucket/prefix if they don't exist."""
     if not s3_path.startswith("s3://"):
         raise ValueError(f"Invalid S3 path format: {s3_path}")
     
@@ -705,19 +714,34 @@ def _validate_s3_path_exists(s3_path: str, sagemaker_session):
     s3_client = sagemaker_session.boto_session.client('s3')
     
     try:
-        # Check if bucket exists and is accessible
-        s3_client.head_bucket(Bucket=bucket_name)
+        # Check if bucket exists, create if it doesn't
+        try:
+            s3_client.head_bucket(Bucket=bucket_name)
+        except Exception as e:
+            if "NoSuchBucket" in str(e) or "Not Found" in str(e):
+                # Create bucket
+                region = sagemaker_session.boto_region_name
+                if region == 'us-east-1':
+                    s3_client.create_bucket(Bucket=bucket_name)
+                else:
+                    s3_client.create_bucket(
+                        Bucket=bucket_name,
+                        CreateBucketConfiguration={'LocationConstraint': region}
+                    )
+            else:
+                raise
         
-        # If prefix is provided, check if it exists
+        # If prefix is provided, check if it exists, create if it doesn't
         if prefix:
             response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix, MaxKeys=1)
             if 'Contents' not in response:
-                raise ValueError(f"S3 prefix '{prefix}' does not exist in bucket '{bucket_name}'")
+                # Create the prefix by putting an empty object
+                if not prefix.endswith('/'):
+                    prefix += '/'
+                s3_client.put_object(Bucket=bucket_name, Key=prefix, Body=b'')
                 
     except Exception as e:
-        if "NoSuchBucket" in str(e):
-            raise ValueError(f"S3 bucket '{bucket_name}' does not exist or is not accessible")
-        raise ValueError(f"Failed to validate S3 path '{s3_path}': {str(e)}")
+        raise ValueError(f"Failed to validate/create S3 path '{s3_path}': {str(e)}")
 
 
 def _validate_hyperparameter_values(hyperparameters: dict):

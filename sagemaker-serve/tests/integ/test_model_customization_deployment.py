@@ -255,7 +255,7 @@ class TestTrainerIntegration:
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_dataset="s3://dummy/data.jsonl",
             accept_eula=True,
-            model_package_group_name="test-group"
+            model_package_group="test-group"
         )
         trainer._latest_training_job = training_job
 
@@ -282,7 +282,7 @@ class TestTrainerIntegration:
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_dataset="s3://dummy/data.jsonl",
                 accept_eula=True,
-                model_package_group_name="test-group"
+                model_package_group="test-group"
             )
         trainer._latest_training_job = training_job
 
