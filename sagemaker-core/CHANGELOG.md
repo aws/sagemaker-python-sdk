@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.1 (2025-12-10)
+
+### Bug fixes
+
+ * Fixed Unit and integ tests
+
 ## v2.0.1 (2025-11-21)
 
  * Fixed telemetry for PySDK V3 and SageMaker Core V2 usage
