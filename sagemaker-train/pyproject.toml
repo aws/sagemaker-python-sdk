@@ -42,6 +42,7 @@ dependencies = [
     "jinja2>=3.0,<4.0",
     "sagemaker-mlflow>=0.0.1,<1.0.0",
     "mlflow>=3.0.0,<4.0.0",
+    "nest_asyncio>=1.5.0",
 ]
 
 [project.urls]
