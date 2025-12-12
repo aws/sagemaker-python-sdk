@@ -10,9 +10,24 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains the Integ Tests for SageMaker PySDK Training."""
+"""The file provides helper function for getting Batch boto client."""
 from __future__ import absolute_import
 
-import os
+from typing import Optional
+import boto3
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+
+def get_batch_boto_client(
+    region: Optional[str] = None,
+    endpoint: Optional[str] = None,
+) -> boto3.session.Session.client:
+    """Helper function for getting Batch boto3 client.
+
+    Args:
+        region: Region specified
+        endpoint: Batch API endpoint.
+
+    Returns: Batch boto3 client.
+
+    """
+    return boto3.client("batch", region_name=region, endpoint_url=endpoint)

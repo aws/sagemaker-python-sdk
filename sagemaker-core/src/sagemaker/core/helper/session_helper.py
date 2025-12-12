@@ -1865,6 +1865,30 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if "/" in role:
             return role
         return self.boto_session.resource("iam").Role(role).arn
+    
+    
+    def logs_for_job(self, job_name, wait=False, poll=10, log_type="All", timeout=None):
+        """Display logs for a given training job, optionally tailing them until job is complete.
+
+        If the output is a tty or a Jupyter cell, it will be color-coded
+        based on which instance the log entry is from.
+
+        Args:
+            job_name (str): Name of the training job to display the logs for.
+            wait (bool): Whether to keep looking for new log entries until the job completes
+                (default: False).
+            poll (int): The interval in seconds between polling for new log entries and job
+                completion (default: 5).
+            log_type ([str]): A list of strings specifying which logs to print. Acceptable
+                strings are "All", "None", "Training", or "Rules". To maintain backwards
+                compatibility, boolean values are also accepted and converted to strings.
+            timeout (int): Timeout in seconds to wait until the job is completed. ``None`` by
+                default.
+        Raises:
+            exceptions.CapacityError: If the training job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If waiting and the training job fails.
+        """
+        _logs_for_job(self, job_name, wait, poll, log_type, timeout)
 
 
 def _expand_container_def(c_def):
