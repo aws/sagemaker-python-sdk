@@ -134,7 +134,7 @@ from sagemaker.serve.validations.check_integrity import (
     generate_secret_key,
     compute_hash,
 )
-from sagemaker.core.remote_function.core.serialization import _MetaData
+from sagemaker.train.remote_function.core.serialization import _MetaData
 from sagemaker.serve.model_server.triton.config_template import CONFIG_TEMPLATE
 
 SPECULATIVE_DRAFT_MODEL = "/opt/ml/additional-model-data-sources"

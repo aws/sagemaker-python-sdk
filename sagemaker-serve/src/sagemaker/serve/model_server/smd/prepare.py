@@ -15,7 +15,7 @@ from sagemaker.serve.validations.check_integrity import (
     generate_secret_key,
     compute_hash,
 )
-from sagemaker.core.remote_function.core.serialization import _MetaData
+from sagemaker.train.remote_function.core.serialization import _MetaData
 from sagemaker.serve.spec.inference_base import CustomOrchestrator, AsyncCustomOrchestrator
 
 

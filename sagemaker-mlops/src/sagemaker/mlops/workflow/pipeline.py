@@ -28,10 +28,10 @@ from sagemaker.core import s3
 from sagemaker.core.local.local_session import LocalSession
 from sagemaker.core._studio import _append_project_tags
 from sagemaker.core.config.config_schema import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
-from sagemaker.core.remote_function.core.serialization import deserialize_obj_from_s3
-from sagemaker.core.remote_function.core.stored_function import RESULTS_FOLDER
-from sagemaker.core.remote_function.errors import RemoteFunctionError
-from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
+from sagemaker.train.remote_function.core.serialization import deserialize_obj_from_s3
+from sagemaker.train.remote_function.core.stored_function import RESULTS_FOLDER
+from sagemaker.train.remote_function.errors import RemoteFunctionError
+from sagemaker.train.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.core.s3 import s3_path_join
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.common_utils import resolve_value_from_config, retry_with_backoff, format_tags, Tags

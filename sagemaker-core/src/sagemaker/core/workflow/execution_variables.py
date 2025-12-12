@@ -56,7 +56,7 @@ class ExecutionVariable(PipelineVariable):
     def _pickleable(self):
         """The pickleable object that can be passed to a remote function invocation."""
 
-        from sagemaker.core.remote_function.core.pipeline_variables import _ExecutionVariable
+        from sagemaker.train.remote_function.core.pipeline_variables import _ExecutionVariable
 
         return _ExecutionVariable(name=self.name)
 

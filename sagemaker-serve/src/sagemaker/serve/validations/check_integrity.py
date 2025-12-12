@@ -7,7 +7,7 @@ import hashlib
 import os
 from pathlib import Path
 
-from sagemaker.core.remote_function.core.serialization import _MetaData
+from sagemaker.train.remote_function.core.serialization import _MetaData
 
 
 def generate_secret_key(nbytes: int = 32) -> str:

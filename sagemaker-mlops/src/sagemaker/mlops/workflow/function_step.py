@@ -44,8 +44,8 @@ from sagemaker.core.s3 import s3_path_join
 from sagemaker.core.common_utils import unique_name_from_base_uuid4, format_tags, Tags
 
 if TYPE_CHECKING:
-    from sagemaker.core.remote_function.spark_config import SparkConfig
-    from sagemaker.core.remote_function.job import _JobSettings
+    from sagemaker.train.remote_function.spark_config import SparkConfig
+    from sagemaker.train.remote_function.job import _JobSettings
 
 logger = logging.getLogger(__name__)
 
@@ -83,11 +83,11 @@ class _FunctionStep(ConfigurableRetryStep):
             func_kwargs (dict): keyword arguments of the python function.
             **kwargs: Additional arguments to be passed to the `step` decorator.
         """
-        from sagemaker.core.remote_function.core.pipeline_variables import (
+        from sagemaker.train.remote_function.core.pipeline_variables import (
             convert_pipeline_variables_to_pickleable,
         )
-        from sagemaker.core.remote_function.core.serialization import CloudpickleSerializer
-        from sagemaker.core.remote_function.core.stored_function import _SerializedData
+        from sagemaker.train.remote_function.core.serialization import CloudpickleSerializer
+        from sagemaker.train.remote_function.core.stored_function import _SerializedData
 
         super(_FunctionStep, self).__init__(
             name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
@@ -151,7 +151,7 @@ class _FunctionStep(ConfigurableRetryStep):
     def _job_settings(self) -> "_JobSettings":
         """Returns the job settings for the step."""
 
-        from sagemaker.core.remote_function.job import _JobSettings
+        from sagemaker.train.remote_function.job import _JobSettings
 
         context = load_step_compilation_context()
 
@@ -193,7 +193,7 @@ class _FunctionStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """Generates the arguments dictionary that is used to call `create_training_job`."""
-        from sagemaker.core.remote_function.job import _Job
+        from sagemaker.train.remote_function.job import _Job
 
         step_compilation_context = load_step_compilation_context()
 
@@ -274,7 +274,7 @@ class DelayedReturn(StepOutput):
 
     def _to_json_get(self) -> JsonGet:
         """Expression structure for workflow service calls using JsonGet resolution."""
-        from sagemaker.core.remote_function.core.stored_function import (
+        from sagemaker.train.remote_function.core.stored_function import (
             JSON_SERIALIZED_RESULT_KEY,
             JSON_RESULTS_FILE,
         )
@@ -547,7 +547,7 @@ def step(
             raise ValueError("Auto Capture of dependencies is not supported for pipeline steps.")
 
         # avoid circular import
-        from sagemaker.core.remote_function.client import RemoteExecutor
+        from sagemaker.train.remote_function.client import RemoteExecutor
 
         @wraps(func)
         def wrapper(*args, **kwargs):

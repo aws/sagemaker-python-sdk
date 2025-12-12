@@ -167,7 +167,7 @@ class TestLoadPipelineContext:
 class TestExecuteRemoteFunction:
     """Test _execute_remote_function function."""
 
-    @patch("sagemaker.core.remote_function.core.stored_function.StoredFunction")
+    @patch("sagemaker.train.remote_function.core.stored_function.StoredFunction")
     def test_executes_without_run_context(self, mock_stored_function_class):
         """Test executes stored function without run context."""
         mock_stored_func = MagicMock()
@@ -194,7 +194,7 @@ class TestExecuteRemoteFunction:
         mock_stored_func.load_and_invoke.assert_called_once()
 
     @patch("sagemaker.train.remote_function.invoke_function._load_run_object")
-    @patch("sagemaker.core.remote_function.core.stored_function.StoredFunction")
+    @patch("sagemaker.train.remote_function.core.stored_function.StoredFunction")
     def test_executes_with_run_context(self, mock_stored_function_class, mock_load_run):
         """Test executes stored function with run context."""
         mock_stored_func = MagicMock()

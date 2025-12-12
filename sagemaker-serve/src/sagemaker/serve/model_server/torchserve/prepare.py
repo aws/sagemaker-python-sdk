@@ -17,7 +17,7 @@ from sagemaker.serve.validations.check_integrity import (
     compute_hash,
 )
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
-from sagemaker.core.remote_function.core.serialization import _MetaData
+from sagemaker.train.remote_function.core.serialization import _MetaData
 
 
 def prepare_for_torchserve(
