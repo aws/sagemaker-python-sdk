@@ -96,7 +96,7 @@ class Parameter(PipelineVariable, Entity):
     def _pickleable(self):
         """The pickleable object that can be passed to a remote function invocation."""
 
-        from sagemaker.core.remote_function.core.pipeline_variables import (
+        from sagemaker.train.remote_function.core.pipeline_variables import (
             _ParameterString,
             _ParameterInteger,
             _ParameterBoolean,
