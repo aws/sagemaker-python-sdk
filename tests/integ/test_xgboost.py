@@ -137,7 +137,10 @@ def test_xgboost_serverless_inference(
             model_data=model_data,
             role=ROLE,
             entry_point=os.path.join(DATA_DIR, "xgboost_abalone", "abalone.py"),
-            framework_version="1.5-1",
+            # XGBoost changed its default model format:
+            # - Old XGBoost (< 2.0): Default save format was binary
+            # - New XGBoost (>= 2.0): Default save format is JSON/UBJSON
+            framework_version="3.0-5",
         )
 
         xgboost.deploy(
