@@ -744,18 +744,18 @@ class ModelTrainer(BaseModel):
                 self.sagemaker_session._intercept_create_request(training_request, None, "train")
                 return
         
-        training_job = TrainingJob.create(
-            session=self.sagemaker_session.boto_session,
-            **training_request
-        )
-        self._latest_training_job = training_job
-
-        if wait:
-            training_job.wait(logs=logs)
-        if logs and not wait:
-            logger.warning(
-                "Not displaing the training container logs as 'wait' is set to False."
+            training_job = TrainingJob.create(
+                session=self.sagemaker_session.boto_session,
+                **training_request
             )
+            self._latest_training_job = training_job
+
+            if wait:
+                training_job.wait(logs=logs)
+            if logs and not wait:
+                logger.warning(
+                    "Not displaing the training container logs as 'wait' is set to False."
+                )
 
         else:
             local_container = _LocalContainer(
