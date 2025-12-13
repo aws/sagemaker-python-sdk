@@ -52,7 +52,25 @@ def _setup():
     hub = Hub(
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session()
     )
-    hub.create(description=test_hub_description)
+
+    # Check if hub already exists before creating
+    try:
+        hub.describe()
+        print(f"Hub {test_hub_name} already exists, reusing it.")
+    except Exception:
+        # Hub doesn't exist, create it
+        try:
+            hub.create(description=test_hub_description)
+            print(f"Created new hub: {test_hub_name}")
+        except Exception as e:
+            if "ResourceLimitExceeded" in str(e):
+                print("Hub limit reached. Cleaning up old hubs...")
+                _cleanup_old_hubs(get_sm_session())
+                # Retry creating the hub
+                hub.create(description=test_hub_description)
+                print(f"Created new hub after cleanup: {test_hub_name}")
+            else:
+                raise
 
 
 def _teardown():
@@ -136,6 +154,34 @@ def _teardown():
 
     # delete private hubs
     _delete_hubs(sagemaker_session, test_hub_name)
+
+
+def _cleanup_old_hubs(sagemaker_session):
+    """Clean up old test hubs to free up resources."""
+    try:
+        response = sagemaker_session.list_hubs()
+        test_hubs = [
+            hub
+            for hub in response.get("HubSummaries", [])
+            if hub["HubName"].startswith(HUB_NAME_PREFIX)
+        ]
+
+        # Sort by creation time and delete oldest hubs
+        test_hubs.sort(key=lambda x: x.get("CreationTime", ""))
+
+        # Delete oldest hubs (keep only the most recent 10)
+        hubs_to_delete = (
+            test_hubs[:-10] if len(test_hubs) > 10 else test_hubs[: max(0, len(test_hubs) - 40)]
+        )
+
+        for hub in hubs_to_delete:
+            try:
+                print(f"Deleting old hub: {hub['HubName']}")
+                _delete_hubs(sagemaker_session, hub["HubName"])
+            except Exception as e:
+                print(f"Failed to delete hub {hub['HubName']}: {e}")
+    except Exception as e:
+        print(f"Failed to cleanup old hubs: {e}")
 
 
 def _delete_hubs(sagemaker_session, hub_name):
