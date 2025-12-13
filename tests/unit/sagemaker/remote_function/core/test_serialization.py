@@ -427,9 +427,7 @@ def test_serialize_deserialize_exception_with_traceback():
         func_b()
     except Exception as e:
         pickling_support.install()
-        serialize_obj_to_s3(
-            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-        )
+        serialize_obj_to_s3(e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
     with pytest.raises(CustomError, match="Some error") as exc_info:
         raise deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)

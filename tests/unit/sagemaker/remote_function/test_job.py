@@ -598,6 +598,7 @@ def test_start(
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
             dict(
@@ -606,6 +607,7 @@ def test_start(
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
         ],
@@ -709,6 +711,7 @@ def test_start_with_checkpoint_location(
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
             dict(
@@ -717,6 +720,7 @@ def test_start_with_checkpoint_location(
                     "S3DataSource": {
                         "S3Uri": mock_user_workspace_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
         ],
@@ -870,6 +874,7 @@ def test_start_with_complete_job_settings(
                     "S3DataSource": {
                         "S3Uri": mock_bootstrap_script_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
             dict(
@@ -878,6 +883,7 @@ def test_start_with_complete_job_settings(
                     "S3DataSource": {
                         "S3Uri": mock_user_workspace_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
         ],
@@ -1042,6 +1048,7 @@ def test_get_train_args_under_pipeline_context(
                     "S3DataSource": {
                         "S3Uri": mock_bootstrap_scripts_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
             dict(
@@ -1050,6 +1057,7 @@ def test_get_train_args_under_pipeline_context(
                     "S3DataSource": {
                         "S3Uri": mock_user_dependencies_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
             dict(
@@ -1058,6 +1066,7 @@ def test_get_train_args_under_pipeline_context(
                     "S3DataSource": {
                         "S3Uri": mock_user_workspace_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
         ],
@@ -1862,6 +1871,7 @@ def test_start_with_torchrun_single_node(
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
             dict(
@@ -1870,6 +1880,7 @@ def test_start_with_torchrun_single_node(
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
         ],
@@ -2374,6 +2385,7 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
             dict(
@@ -2382,6 +2394,7 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
         ],
@@ -2501,6 +2514,7 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
             dict(
@@ -2509,6 +2523,7 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
                         "S3DataType": "S3Prefix",
+                    }
                 },
             ),
         ],

@@ -285,7 +285,9 @@ def deserialize_obj_from_s3(sagemaker_session: Session, s3_uri: str) -> Any:
     return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
 
 
-def serialize_exception_to_s3(exc: Exception, sagemaker_session: Session, s3_uri: str, s3_kms_key: str = None):
+def serialize_exception_to_s3(
+    exc: Exception, sagemaker_session: Session, s3_uri: str, s3_kms_key: str = None
+):
     """Serializes exception with traceback and uploads it to S3.
 
     Args:
