@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from typing import Callable, Optional, Dict, List, Union
 
 import sagemaker
-from sagemaker import ModelMetrics, Model
+from sagemaker import ModelMetrics, Model, ContainerBaseModel
 from sagemaker import local
 from sagemaker import session
 from sagemaker.config import (
@@ -369,6 +369,8 @@ class PipelineModel(object):
         skip_model_validation: Optional[Union[str, PipelineVariable]] = None,
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
+        model_package_registration_type: Optional[Union[str, PipelineVariable]] = None,
+        base_model: Optional[ContainerBaseModel] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -422,6 +424,9 @@ class PipelineModel(object):
                 (default: None).
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
+            model_package_registration_type (str or PipelineVariable): Model Package Registration
+                Type (default: None).
+            base_model (ContainerBaseModel): ContainerBaseModel object (default: None).
 
         Returns:
             If ``sagemaker_session`` is a ``PipelineSession`` instance, returns pipeline step
@@ -449,6 +454,8 @@ class PipelineModel(object):
                 }
                 for model in self.models
             ]
+        if base_model is not None and hasattr(base_model, "_to_request_dict"):
+            container_def["BaseModel"] = base_model._to_request_dict()
 
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
@@ -471,6 +478,7 @@ class PipelineModel(object):
             skip_model_validation=skip_model_validation,
             source_uri=source_uri,
             model_card=model_card,
+            model_package_registration_type=model_package_registration_type,
         )
 
         model_package = self.sagemaker_session.create_model_package_from_containers(

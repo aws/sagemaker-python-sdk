@@ -4990,6 +4990,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     response_types = ["application/json"]
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
+    model_package_registration_type = "Registered"
     model_metrics = {
         "Bias": {
             "ContentType": "content-type",
@@ -5045,6 +5046,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
         task=task,
         validation_specification=validation_specification,
         skip_model_validation=skip_model_validation,
+        model_package_registration_type=model_package_registration_type,
     )
     expected_kms_key_id = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
         "ValidationSpecification"
@@ -5083,6 +5085,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
             "Task": task,
             "ValidationSpecification": validation_specification,
             "SkipModelValidation": skip_model_validation,
+            "ModelPackageRegistrationType": "Registered",
         }
     )
     expected_args["ValidationSpecification"]["ValidationRole"] = expected_role_arn
@@ -5113,6 +5116,8 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
     approval_status = ("Approved",)
     skip_model_validation = "All"
     source_uri = "dummy-source-uri"
+    model_package_registration_type = "Registered"
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
     sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
@@ -5134,6 +5139,7 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
         approval_status=approval_status,
         skip_model_validation=skip_model_validation,
         source_uri=source_uri,
+        model_package_registration_type=model_package_registration_type,
     )
     expected_create_mp_args = {
         "ModelPackageGroupName": model_package_group_name,
@@ -5147,6 +5153,7 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
         "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
         "SkipModelValidation": skip_model_validation,
+        "ModelPackageRegistrationType": "Registered",
     }
 
     sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(

@@ -29,9 +29,10 @@ from sagemaker.modules.train.sm_recipes.utils import (
     _configure_trainium_args,
     _get_trainining_recipe_gpu_model_name_and_script,
     _is_nova_recipe,
+    _is_llmft_recipe,
     _get_args_from_nova_recipe,
+    _get_args_from_llmft_recipe,
 )
-from sagemaker.modules.utils import _run_clone_command_silent
 from sagemaker.modules.configs import Compute
 
 
@@ -107,15 +108,36 @@ def test_load_base_recipe_types(
         assert "trainer" in load_recipe
 
     if recipe_type == "sagemaker":
-        mock_clone.side_effect = _run_clone_command_silent
-        load_recipe = _load_base_recipe(
-            training_recipe="training/llama/p4_hf_llama3_70b_seq8k_gpu",
-            recipe_overrides=None,
-            training_recipes_cfg=training_recipes_cfg,
-        )
-        assert load_recipe is not None
-        assert "trainer" in load_recipe
-        assert mock_clone.call_args.args[0] == training_recipes_cfg.get("launcher_repo")
+        # Mock the file check to simulate recipe exists
+        with patch("os.path.isfile", return_value=True), patch("shutil.copy") as mock_copy:
+            # Create a temporary recipe file for the copy operation
+            import tempfile
+            import os
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+                yaml.dump({"trainer": {"num_nodes": 1}}, f)
+                temp_path = f.name
+
+            def copy_side_effect(src, dst):
+                # Read from temp file and write to destination
+                with open(temp_path, "r") as src_file:
+                    content = src_file.read()
+                with open(dst, "w") as dst_file:
+                    dst_file.write(content)
+
+            mock_copy.side_effect = copy_side_effect
+
+            load_recipe = _load_base_recipe(
+                training_recipe="training/llama/p4_hf_llama3_70b_seq8k_gpu",
+                recipe_overrides=None,
+                training_recipes_cfg=training_recipes_cfg,
+            )
+            assert load_recipe is not None
+            assert "trainer" in load_recipe
+            assert mock_clone.call_args.args[0] == training_recipes_cfg.get("launcher_repo")
+
+            # Clean up
+            os.unlink(temp_path)
 
     if recipe_type == "url":
         url = "https://raw.githubusercontent.com/aws-neuron/neuronx-distributed-training/refs/heads/main/examples/conf/hf_llama3_8B_config.yaml"  # noqa
@@ -473,6 +495,194 @@ def test_get_args_from_nova_recipe_with_distillation_errors(test_case):
     ],
 )
 def test_get_args_from_nova_recipe_with_evaluation(test_case):
+    recipe = OmegaConf.create(test_case["recipe"])
+    args, _ = _get_args_from_nova_recipe(
+        recipe=recipe, compute=test_case["compute"], role=test_case["role"]
+    )
+    assert args == test_case["expected_args"]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+                "trainer": {"num_nodes": "12"},
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "is_llmft": True,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "is_llmft": True,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+            },
+            "is_llmft": False,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "xyz",
+                },
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "is_llmft": False,
+        },
+    ],
+    ids=[
+        "llmft_model",
+        "llmft_model_subtype",
+        "llmft_missing_training_config",
+        "non_llmft_model",
+    ],
+)
+def test_is_llmft_recipe(test_case):
+    recipe = OmegaConf.create(test_case["recipe"])
+    is_llmft = _is_llmft_recipe(recipe)
+    assert is_llmft == test_case["is_llmft"]
+
+
+@patch("sagemaker.modules.train.sm_recipes.utils._get_args_from_llmft_recipe")
+def test_get_args_from_recipe_with_llmft_and_role(mock_get_args_from_llmft_recipe):
+    # Set up mock return value
+    mock_args = {}
+    mock_dir = MagicMock()
+    mock_get_args_from_llmft_recipe.return_value = (mock_args, mock_dir)
+
+    recipe = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "llm_finetuning_aws",
+        },
+        "trainer": {"num_nodes": "12"},
+        "training_config": {"model_save_name": "xyz"},
+    }
+    compute = Compute(instance_type="ml.g5.xlarge")
+    role = "arn:aws:iam::123456789012:role/SageMakerRole"
+
+    # Mock the LLMFT recipe detection to return True
+    with patch("sagemaker.modules.train.sm_recipes.utils._is_llmft_recipe", return_value=True):
+        _get_args_from_recipe(
+            training_recipe=recipe,
+            compute=compute,
+            region_name="us-west-2",
+            recipe_overrides=None,
+            requirements=None,
+            role=role,
+        )
+
+        # Verify _get_args_from_llmft_recipe was called
+        mock_get_args_from_llmft_recipe.assert_called_once_with(recipe, compute)
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+                "trainer": {"num_nodes": "12"},
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+            "expected_args": {
+                "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+                "training_image": None,
+                "source_code": None,
+                "distributed": None,
+            },
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+            "expected_args": {
+                "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+                "training_image": None,
+                "source_code": None,
+                "distributed": None,
+            },
+        },
+    ],
+)
+def test_get_args_from_llmft_recipe(test_case):
+    recipe = OmegaConf.create(test_case["recipe"])
+    args, _ = _get_args_from_llmft_recipe(recipe=recipe, compute=test_case["compute"])
+    assert args == test_case["expected_args"]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "recipe": {
+                "run": {
+                    "model_type": "amazon.nova",
+                    "model_name_or_path": "dummy-test",
+                    "reward_lambda_arn": "arn:aws:lambda:us-east-1:123456789012:function:MyRewardLambdaFunction",
+                },
+            },
+            "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+            "role": "arn:aws:iam::123456789012:role/SageMakerRole",
+            "expected_args": {
+                "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+                "hyperparameters": {
+                    "base_model": "dummy-test",
+                    "reward_lambda_arn": "arn:aws:lambda:us-east-1:123456789012:function:MyRewardLambdaFunction",
+                },
+                "training_image": None,
+                "source_code": None,
+                "distributed": None,
+            },
+        },
+        {
+            "recipe": {
+                "run": {
+                    "model_type": "amazon.nova",
+                    "model_name_or_path": "dummy-test",
+                    # No reward_lambda_arn - should not be in hyperparameters
+                },
+            },
+            "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+            "role": "arn:aws:iam::123456789012:role/SageMakerRole",
+            "expected_args": {
+                "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+                "hyperparameters": {
+                    "base_model": "dummy-test",
+                },
+                "training_image": None,
+                "source_code": None,
+                "distributed": None,
+            },
+        },
+    ],
+)
+def test_get_args_from_nova_recipe_with_reward_lambda(test_case):
     recipe = OmegaConf.create(test_case["recipe"])
     args, _ = _get_args_from_nova_recipe(
         recipe=recipe, compute=test_case["compute"], role=test_case["role"]

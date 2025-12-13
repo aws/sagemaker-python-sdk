@@ -331,6 +331,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
         source_uri=None,
         model_card=None,
         model_life_cycle=None,
+        model_package_registration_type=None,
+        base_model=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -387,6 +389,9 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 quantitative information about a model (default: None).
             model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
             **kwargs: additional arguments to `create_model`.
+            model_package_registration_type (str): Model Package Registration
+                Type (default: None).
+            base_model (ContainerBaseModel): ContainerBaseModel object (default: None).
         """
         super(_RegisterModelStep, self).__init__(
             name, StepTypeEnum.REGISTER_MODEL, display_name, description, depends_on, retry_policies
@@ -425,7 +430,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.source_uri = source_uri
         self.model_card = model_card
         self.model_life_cycle = model_life_cycle
-
+        self.model_package_registration_type = model_package_registration_type
+        self.base_model = base_model
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeModelPackageOutput"
         )
@@ -502,6 +508,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 source_uri=self.source_uri,
                 model_card=self.model_card,
                 model_life_cycle=self.model_life_cycle,
+                model_package_registration_type=self.model_package_registration_type,
+                base_model=self.base_model,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)

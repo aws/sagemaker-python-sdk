@@ -931,7 +931,18 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
     )
 
 
-def test_model_trainer_gpu_recipe_full_init(modules_session):
+@patch("sagemaker.modules.train.model_trainer._load_base_recipe")
+def test_model_trainer_gpu_recipe_full_init(mock_load_recipe, modules_session):
+    from omegaconf import OmegaConf
+
+    # Mock the recipe loading to return a valid GPU recipe structure
+    mock_load_recipe.return_value = OmegaConf.create(
+        {
+            "trainer": {"num_nodes": 2},
+            "model": {"model_type": "llama_v3"},
+        }
+    )
+
     training_recipe = "training/llama/p4_hf_llama3_70b_seq8k_gpu"
     recipe_overrides = {"run": {"results_dir": "/opt/ml/model"}}
     compute = Compute(instance_type="ml.p4d.24xlarge", instance_count="2")
@@ -1473,6 +1484,96 @@ def test_nova_recipe_with_distillation(modules_session):
             "role_arn": DEFAULT_ROLE,
             "kms_key": "alias/my-kms-key",
         }
+
+        # Clean up the temporary file
+        os.unlink(recipe.name)
+
+
+@patch("sagemaker.modules.train.model_trainer._get_unique_name")
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+def test_llmft_recipe(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        if os.path.isfile(path):
+            file_name = os.path.basename(path)
+            return f"s3://{bucket}/{key_prefix}/{file_name}"
+        else:
+            return f"s3://{bucket}/{key_prefix}"
+
+    unique_name = "base-job-0123456789"
+    base_name = "base-job"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_unique_name.return_value = unique_name
+
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "llm_finetuning_aws",
+        },
+        "trainer": {"num_nodes": "12"},
+        "training_config": {"model_save_name": "xyz"},
+    }
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            base_job_name=base_name,
+        )
+
+        assert trainer._is_llmft_recipe
+
+        trainer.train()
+        mock_training_job.create.assert_called_once()
+
+        default_base_path = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{base_name}"
+        assert mock_training_job.create.call_args.kwargs["input_data_config"] == [
+            Channel(
+                channel_name="recipe",
+                data_source=DataSource(
+                    s3_data_source=S3DataSource(
+                        s3_data_type="S3Prefix",
+                        s3_uri=f"{default_base_path}/{unique_name}/input/recipe/recipe.yaml",
+                        s3_data_distribution_type="FullyReplicated",
+                    )
+                ),
+                input_mode="File",
+            )
+        ]
+
+
+def test_llmft_recipe_missing_training_image_error(modules_session):
+    """Test that LLMFT recipe throws an error when training_image is not provided."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "llm_finetuning_aws",
+        },
+        "trainer": {"num_nodes": "12"},
+        "training_config": {"model_save_name": "xyz"},
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        # Test that ValueError is raised when training_image is not provided for LLMFT recipe
+        with pytest.raises(
+            ValueError, match="training_image must be provided when using recipe for Nova or LLMFT"
+        ):
+            ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                # Note: training_image is intentionally not provided
+                base_job_name="base-job",
+            )
 
         # Clean up the temporary file
         os.unlink(recipe.name)

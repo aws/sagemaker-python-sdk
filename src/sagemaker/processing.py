@@ -1927,7 +1927,7 @@ class FrameworkProcessor(ScriptProcessor):
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
-                pip install -r requirements.txt
+                python -m pip install -r requirements.txt
             fi
 
             {entry_point_command} {entry_point} "$@"

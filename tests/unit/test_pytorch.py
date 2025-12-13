@@ -20,7 +20,7 @@ from mock import ANY, MagicMock, Mock, patch
 from packaging.version import Version
 import tempfile
 
-from sagemaker import image_uris
+from sagemaker import image_uris, ContainerBaseModel
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch, PyTorchPredictor, PyTorchModel
 from sagemaker.pytorch.estimator import (
@@ -772,7 +772,9 @@ def test_register_pytorch_model_auto_infer_framework(
         py_version=pytorch_inference_py_version,
         sagemaker_session=sagemaker_session,
     )
-
+    base_model = ContainerBaseModel(
+        hub_content_name="test", hub_content_version="1234.1234", recipe_name="testRecipeName"
+    )
     pytorch_model.register(
         content_types,
         response_types,
@@ -781,6 +783,8 @@ def test_register_pytorch_model_auto_infer_framework(
         model_package_group_name=model_package_group_name,
         marketplace_cert=True,
         image_uri=image_uri,
+        model_package_registration_type="Registered",
+        base_model=base_model,
     )
 
     expected_create_model_package_request = {
@@ -791,6 +795,11 @@ def test_register_pytorch_model_auto_infer_framework(
                 "ModelDataUrl": ANY,
                 "Framework": "PYTORCH",
                 "FrameworkVersion": pytorch_inference_version,
+                "BaseModel": {
+                    "HubContentName": "test",
+                    "HubContentVersion": "1234.1234",
+                    "RecipeName": "testRecipeName",
+                },
             },
         ],
         "content_types": content_types,
@@ -798,6 +807,7 @@ def test_register_pytorch_model_auto_infer_framework(
         "inference_instances": inference_instances,
         "transform_instances": transform_instances,
         "model_package_group_name": model_package_group_name,
+        "model_package_registration_type": "Registered",
         "marketplace_cert": True,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
@@ -888,7 +898,29 @@ def test_training_recipe_for_cpu(sagemaker_session):
         ("hf_mixtral_8x7b_seq8k_gpu_p5x16_pretrain", "mixtral"),
     ],
 )
-def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_load")
+@patch("sagemaker.pytorch.estimator._get_training_recipe_gpu_script")
+def test_training_recipe_for_gpu(
+    mock_gpu_script, mock_recipe_load, sagemaker_session, recipe, model
+):
+    from omegaconf import OmegaConf
+
+    # Mock the GPU script function to return the expected entry point
+    mock_gpu_script.return_value = f"{model}_pretrain.py"
+
+    # Mock the recipe structure that would be loaded
+    mock_recipe = OmegaConf.create(
+        {
+            "trainer": {
+                "num_nodes": 1,
+            },
+            "model": {
+                "model_type": model,
+            },
+        }
+    )
+    mock_recipe_load.return_value = (recipe, mock_recipe)
+
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
@@ -936,7 +968,27 @@ def test_training_recipe_for_gpu(sagemaker_session, recipe, model):
     assert pytorch.distribution.items() == expected_distribution.items()
 
 
-def test_training_recipe_with_override(sagemaker_session):
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_load")
+@patch("sagemaker.pytorch.estimator._get_training_recipe_gpu_script")
+def test_training_recipe_with_override(mock_gpu_script, mock_recipe_load, sagemaker_session):
+    from omegaconf import OmegaConf
+
+    # Mock the GPU script function to return the expected entry point
+    mock_gpu_script.return_value = "mistral_pretrain.py"
+
+    # Mock the recipe structure that would be loaded
+    mock_recipe = OmegaConf.create(
+        {
+            "trainer": {
+                "num_nodes": 1,
+            },
+            "model": {
+                "model_type": "mistral",
+            },
+        }
+    )
+    mock_recipe_load.return_value = ("hf_llama3_8b_seq8k_gpu_p5x16_pretrain", mock_recipe)
+
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
@@ -973,7 +1025,29 @@ def test_training_recipe_with_override(sagemaker_session):
     assert pytorch.image_uri == IMAGE_URI
 
 
-def test_training_recipe_gpu_custom_source_dir(sagemaker_session):
+@patch("sagemaker.pytorch.estimator.PyTorch._recipe_load")
+@patch("sagemaker.pytorch.estimator._get_training_recipe_gpu_script")
+def test_training_recipe_gpu_custom_source_dir(
+    mock_gpu_script, mock_recipe_load, sagemaker_session
+):
+    from omegaconf import OmegaConf
+
+    # Mock the GPU script function to return the expected entry point
+    mock_gpu_script.return_value = "mistral_pretrain.py"
+
+    # Mock the recipe structure that would be loaded
+    mock_recipe = OmegaConf.create(
+        {
+            "trainer": {
+                "num_nodes": 1,
+            },
+            "model": {
+                "model_type": "mistral",
+            },
+        }
+    )
+    mock_recipe_load.return_value = ("hf_llama3_8b_seq8k_gpu_p5x16_pretrain", mock_recipe)
+
     container_log_level = '"logging.INFO"'
 
     recipe_overrides = {
@@ -1159,3 +1233,36 @@ def test_training_recipe_images_uri():
     }
     neuron_image_uri = _get_training_recipe_image_uri(neuron_image_cfg, "us-west-2")
     assert neuron_image_uri == RECIPE_NEURON_IMAGE
+
+
+@pytest.mark.parametrize(
+    "recipe_config,expected,test_description",
+    [
+        (
+            {"run": {"model_type": "llm_finetuning_aws"}, "training_config": {"some": "config"}},
+            True,
+            "standard LLMFT recipe",
+        ),
+        (
+            {
+                "run": {"model_type": "verl"},
+                "training_config": {"some": "config"},
+                "actor_rollout_ref": {"some": "config"},
+            },
+            True,
+            "VERL recipe",
+        ),
+        (
+            {"run": {"model_type": "regular_model"}, "some_config": {"value": "test"}},
+            False,
+            "non-LLMFT recipe",
+        ),
+    ],
+)
+def test_is_llmft_recipe(recipe_config, expected, test_description):
+    """Test LLMFT recipe detection for various configurations."""
+    from sagemaker.pytorch.estimator import _is_llmft_recipe
+    from omegaconf import OmegaConf
+
+    recipe = OmegaConf.create(recipe_config)
+    assert _is_llmft_recipe(recipe) is expected, f"Failed for {test_description}"
