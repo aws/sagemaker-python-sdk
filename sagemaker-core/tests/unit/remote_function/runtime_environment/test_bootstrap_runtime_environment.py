@@ -10,20 +10,23 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Tests for bootstrap_runtime_environment module."""
+from __future__ import absolute_import
 
-import pytest
-from unittest.mock import Mock, patch, mock_open, MagicMock
 import json
-import sys
+import os
+import pytest
+import subprocess
+from unittest.mock import patch, MagicMock, mock_open, call
 
 from sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment import (
+    _parse_args,
     _bootstrap_runtime_env_for_remote_function,
     _bootstrap_runtime_env_for_pipeline_step,
     _handle_pre_exec_scripts,
     _install_dependencies,
     _unpack_user_workspace,
     _write_failure_reason_file,
-    _parse_args,
     log_key_value,
     log_env_variables,
     mask_sensitive_info,
@@ -35,6 +38,11 @@ from sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_enviro
     main,
     SUCCESS_EXIT_CODE,
     DEFAULT_FAILURE_CODE,
+    FAILURE_REASON_PATH,
+    REMOTE_FUNCTION_WORKSPACE,
+    BASE_CHANNEL_PATH,
+    JOB_REMOTE_FUNCTION_WORKSPACE,
+    SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME,
     SENSITIVE_KEYWORDS,
     HIDDEN_VALUE,
 )
@@ -43,506 +51,629 @@ from sagemaker.core.remote_function.runtime_environment.runtime_environment_mana
 )
 
 
-class TestBootstrapRuntimeEnvironment:
-    """Test cases for bootstrap runtime environment functions"""
+class TestParseArgs:
+    """Test _parse_args function."""
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._unpack_user_workspace"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._handle_pre_exec_scripts"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._install_dependencies"
-    )
-    def test_bootstrap_runtime_env_for_remote_function(
-        self, mock_install, mock_handle, mock_unpack
-    ):
-        """Test _bootstrap_runtime_env_for_remote_function"""
-        mock_unpack.return_value = "/workspace"
-        dependency_settings = _DependencySettings(dependency_file="requirements.txt")
+    def test_parse_required_args(self):
+        """Test parsing required arguments."""
+        args = [
+            "--client_python_version", "3.8",
+        ]
+        parsed = _parse_args(args)
+        assert parsed.client_python_version == "3.8"
 
-        _bootstrap_runtime_env_for_remote_function(
-            client_python_version="3.8", conda_env="myenv", dependency_settings=dependency_settings
-        )
+    def test_parse_all_args(self):
+        """Test parsing all arguments."""
+        args = [
+            "--job_conda_env", "my-env",
+            "--client_python_version", "3.9",
+            "--client_sagemaker_pysdk_version", "2.100.0",
+            "--pipeline_execution_id", "exec-123",
+            "--dependency_settings", '{"dependency_file": "requirements.txt"}',
+            "--func_step_s3_dir", "s3://bucket/func",
+            "--distribution", "torchrun",
+            "--user_nproc_per_node", "4",
+        ]
+        parsed = _parse_args(args)
+        assert parsed.job_conda_env == "my-env"
+        assert parsed.client_python_version == "3.9"
+        assert parsed.client_sagemaker_pysdk_version == "2.100.0"
+        assert parsed.pipeline_execution_id == "exec-123"
+        assert parsed.dependency_settings == '{"dependency_file": "requirements.txt"}'
+        assert parsed.func_step_s3_dir == "s3://bucket/func"
+        assert parsed.distribution == "torchrun"
+        assert parsed.user_nproc_per_node == "4"
 
-        mock_unpack.assert_called_once()
-        mock_handle.assert_called_once_with("/workspace")
-        mock_install.assert_called_once()
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._unpack_user_workspace"
-    )
-    def test_bootstrap_runtime_env_for_remote_function_no_workspace(self, mock_unpack):
-        """Test _bootstrap_runtime_env_for_remote_function with no workspace"""
-        mock_unpack.return_value = None
-
-        _bootstrap_runtime_env_for_remote_function(client_python_version="3.8")
-
-        mock_unpack.assert_called_once()
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._unpack_user_workspace"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.exists"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.mkdir"
-    )
-    def test_bootstrap_runtime_env_for_pipeline_step(self, mock_mkdir, mock_exists, mock_unpack):
-        """Test _bootstrap_runtime_env_for_pipeline_step"""
-        mock_unpack.return_value = None
-        mock_exists.return_value = False
-
-        _bootstrap_runtime_env_for_pipeline_step(
-            client_python_version="3.8", func_step_workspace="workspace"
-        )
-
-        mock_mkdir.assert_called_once()
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.isfile"
-    )
-    def test_handle_pre_exec_scripts_exists(self, mock_isfile, mock_manager_class):
-        """Test _handle_pre_exec_scripts when script exists"""
-        mock_isfile.return_value = True
-        mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
-
-        _handle_pre_exec_scripts("/workspace")
-
-        mock_manager.run_pre_exec_script.assert_called_once()
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.isfile"
-    )
-    def test_handle_pre_exec_scripts_not_exists(self, mock_isfile, mock_manager_class):
-        """Test _handle_pre_exec_scripts when script doesn't exist"""
-        mock_isfile.return_value = False
-        mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
-
-        _handle_pre_exec_scripts("/workspace")
-
-        mock_manager.run_pre_exec_script.assert_not_called()
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.join"
-    )
-    def test_install_dependencies_with_file(self, mock_join, mock_manager_class):
-        """Test _install_dependencies with dependency file"""
-        mock_join.return_value = "/workspace/requirements.txt"
-        mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
-
-        dependency_settings = _DependencySettings(dependency_file="requirements.txt")
-
-        _install_dependencies(
-            dependency_file_dir="/workspace",
-            conda_env="myenv",
-            client_python_version="3.8",
-            channel_name="channel",
-            dependency_settings=dependency_settings,
-        )
-
-        mock_manager.bootstrap.assert_called_once()
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager"
-    )
-    def test_install_dependencies_no_file(self, mock_manager_class):
-        """Test _install_dependencies with no dependency file"""
-        mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
-
-        dependency_settings = _DependencySettings(dependency_file=None)
-
-        _install_dependencies(
-            dependency_file_dir="/workspace",
-            conda_env=None,
-            client_python_version="3.8",
-            channel_name="channel",
-            dependency_settings=dependency_settings,
-        )
-
-        mock_manager.bootstrap.assert_not_called()
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.exists"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.isfile"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.shutil.unpack_archive"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.pathlib.Path"
-    )
-    def test_unpack_user_workspace_success(self, mock_path, mock_unpack, mock_isfile, mock_exists):
-        """Test _unpack_user_workspace successfully unpacks workspace"""
-        mock_exists.return_value = True
-        mock_isfile.return_value = True
-        mock_path.return_value.absolute.return_value = "/workspace"
-
-        result = _unpack_user_workspace()
-
-        assert result is not None
-        mock_unpack.assert_called_once()
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.exists"
-    )
-    def test_unpack_user_workspace_no_directory(self, mock_exists):
-        """Test _unpack_user_workspace when directory doesn't exist"""
-        mock_exists.return_value = False
-
-        result = _unpack_user_workspace()
-
-        assert result is None
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.exists"
-    )
-    @patch("builtins.open", new_callable=mock_open)
-    def test_write_failure_reason_file(self, mock_file, mock_exists):
-        """Test _write_failure_reason_file"""
-        mock_exists.return_value = False
-
-        _write_failure_reason_file("Test error message")
-
-        mock_file.assert_called_once()
-        mock_file().write.assert_called_once_with("RuntimeEnvironmentError: Test error message")
-
-    def test_parse_args(self):
-        """Test _parse_args"""
-        args = _parse_args(
-            [
-                "--job_conda_env",
-                "myenv",
-                "--client_python_version",
-                "3.8",
-                "--dependency_settings",
-                '{"dependency_file": "requirements.txt"}',
-            ]
-        )
-
-        assert args.job_conda_env == "myenv"
-        assert args.client_python_version == "3.8"
-        assert args.dependency_settings == '{"dependency_file": "requirements.txt"}'
+    def test_parse_default_values(self):
+        """Test default values for optional arguments."""
+        args = [
+            "--client_python_version", "3.8",
+        ]
+        parsed = _parse_args(args)
+        assert parsed.job_conda_env is None
+        assert parsed.client_sagemaker_pysdk_version is None
+        assert parsed.pipeline_execution_id is None
+        assert parsed.dependency_settings is None
+        assert parsed.func_step_s3_dir is None
+        assert parsed.distribution is None
+        assert parsed.user_nproc_per_node is None
 
 
-class TestLoggingFunctions:
-    """Test cases for logging functions"""
+class TestLogKeyValue:
+    """Test log_key_value function."""
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.logger"
-    )
-    def test_log_key_value_normal(self, mock_logger):
-        """Test log_key_value with normal key"""
-        log_key_value("MY_KEY", "my_value")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.logger")
+    def test_logs_regular_value(self, mock_logger):
+        """Test logs regular key-value pair."""
+        log_key_value("my_name", "my_value")
+        mock_logger.info.assert_called_once_with("%s=%s", "my_name", "my_value")
 
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.logger")
+    def test_masks_sensitive_key(self, mock_logger):
+        """Test masks sensitive keywords."""
+        for keyword in ["PASSWORD", "SECRET", "TOKEN", "KEY", "PRIVATE", "CREDENTIALS"]:
+            mock_logger.reset_mock()
+            log_key_value(f"my_{keyword}", "sensitive_value")
+            mock_logger.info.assert_called_once_with("%s=%s", f"my_{keyword}", HIDDEN_VALUE)
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.logger")
+    def test_logs_dict_value(self, mock_logger):
+        """Test logs dictionary value."""
+        value = {"field1": "value1", "field2": "value2"}
+        log_key_value("my_config", value)
+        mock_logger.info.assert_called_once_with("%s=%s", "my_config", json.dumps(value))
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.logger")
+    def test_logs_json_string_value(self, mock_logger):
+        """Test logs JSON string value."""
+        value = '{"key1": "value1"}'
+        log_key_value("my_key", value)
         mock_logger.info.assert_called_once()
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.logger"
-    )
-    def test_log_key_value_sensitive(self, mock_logger):
-        """Test log_key_value with sensitive key"""
-        log_key_value("MY_PASSWORD", "secret123")
 
-        mock_logger.info.assert_called_once()
-        call_args = mock_logger.info.call_args[0]
-        assert HIDDEN_VALUE in str(call_args)
+class TestLogEnvVariables:
+    """Test log_env_variables function."""
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.logger"
-    )
-    def test_log_key_value_dict(self, mock_logger):
-        """Test log_key_value with dictionary value"""
-        log_key_value("MY_CONFIG", {"key": "value"})
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.log_key_value")
+    @patch.dict("os.environ", {"ENV_VAR1": "value1", "ENV_VAR2": "value2"})
+    def test_logs_env_and_dict_variables(self, mock_log_kv):
+        """Test logs both environment and dictionary variables."""
+        env_dict = {"DICT_VAR1": "dict_value1", "DICT_VAR2": "dict_value2"}
+        log_env_variables(env_dict)
+        
+        # Should be called for env vars and dict vars
+        assert mock_log_kv.call_count >= 4
 
-        mock_logger.info.assert_called_once()
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.logger"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.environ",
-        {"ENV_VAR": "value"},
-    )
-    def test_log_env_variables(self, mock_logger):
-        """Test log_env_variables"""
-        log_env_variables({"CUSTOM_VAR": "custom_value"})
+class TestMaskSensitiveInfo:
+    """Test mask_sensitive_info function."""
 
-        assert mock_logger.info.call_count >= 2
-
-    def test_mask_sensitive_info(self):
-        """Test mask_sensitive_info"""
-        data = {"username": "user", "password": "secret", "nested": {"api_key": "key123"}}
-
+    def test_masks_sensitive_keys_in_dict(self):
+        """Test masks sensitive keys in dictionary."""
+        data = {
+            "username": "user",
+            "password": "secret123",
+            "api_key": "key123",
+        }
         result = mask_sensitive_info(data)
-
-        assert result["password"] == HIDDEN_VALUE
-        assert result["nested"]["api_key"] == HIDDEN_VALUE
         assert result["username"] == "user"
+        assert result["password"] == HIDDEN_VALUE
+        assert result["api_key"] == HIDDEN_VALUE
+
+    def test_masks_nested_dict(self):
+        """Test masks sensitive keys in nested dictionary."""
+        data = {
+            "config": {
+                "username": "user",
+                "secret": "secret123",
+            }
+        }
+        result = mask_sensitive_info(data)
+        assert result["config"]["username"] == "user"
+        assert result["config"]["secret"] == HIDDEN_VALUE
+
+    def test_returns_non_dict_unchanged(self):
+        """Test returns non-dictionary unchanged."""
+        data = "string_value"
+        result = mask_sensitive_info(data)
+        assert result == "string_value"
 
 
-class TestResourceFunctions:
-    """Test cases for resource detection functions"""
+class TestNumCpus:
+    """Test num_cpus function."""
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.multiprocessing.cpu_count"
-    )
-    def test_num_cpus(self, mock_cpu_count):
-        """Test num_cpus"""
-        mock_cpu_count.return_value = 4
+    @patch("multiprocessing.cpu_count")
+    def test_returns_cpu_count(self, mock_cpu_count):
+        """Test returns CPU count."""
+        mock_cpu_count.return_value = 8
+        assert num_cpus() == 8
 
-        result = num_cpus()
 
-        assert result == 4
+class TestNumGpus:
+    """Test num_gpus function."""
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.subprocess.check_output"
-    )
-    def test_num_gpus_with_gpus(self, mock_check_output):
-        """Test num_gpus when GPUs are present"""
+    @patch("subprocess.check_output")
+    def test_returns_gpu_count(self, mock_check_output):
+        """Test returns GPU count."""
         mock_check_output.return_value = b"GPU 0: Tesla V100\nGPU 1: Tesla V100\n"
+        assert num_gpus() == 2
 
-        result = num_gpus()
+    @patch("subprocess.check_output")
+    def test_returns_zero_on_error(self, mock_check_output):
+        """Test returns zero when nvidia-smi fails."""
+        mock_check_output.side_effect = subprocess.CalledProcessError(1, "nvidia-smi")
+        assert num_gpus() == 0
 
-        assert result == 2
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.subprocess.check_output"
-    )
-    def test_num_gpus_no_gpus(self, mock_check_output):
-        """Test num_gpus when no GPUs are present"""
+    @patch("subprocess.check_output")
+    def test_returns_zero_on_os_error(self, mock_check_output):
+        """Test returns zero when nvidia-smi not found."""
         mock_check_output.side_effect = OSError()
+        assert num_gpus() == 0
 
-        result = num_gpus()
 
-        assert result == 0
+class TestNumNeurons:
+    """Test num_neurons function."""
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.subprocess.check_output"
-    )
-    def test_num_neurons_with_neurons(self, mock_check_output):
-        """Test num_neurons when neurons are present"""
-        mock_check_output.return_value = b'[{"nc_count": 2}, {"nc_count": 2}]'
+    @patch("subprocess.check_output")
+    def test_returns_neuron_count(self, mock_check_output):
+        """Test returns neuron core count."""
+        mock_output = json.dumps([{"nc_count": 2}, {"nc_count": 4}])
+        mock_check_output.return_value = mock_output.encode("utf-8")
+        assert num_neurons() == 6
 
-        result = num_neurons()
-
-        assert result == 4
-
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.subprocess.check_output"
-    )
-    def test_num_neurons_no_neurons(self, mock_check_output):
-        """Test num_neurons when no neurons are present"""
+    @patch("subprocess.check_output")
+    def test_returns_zero_on_os_error(self, mock_check_output):
+        """Test returns zero when neuron-ls not found."""
         mock_check_output.side_effect = OSError()
+        assert num_neurons() == 0
 
-        result = num_neurons()
+    @patch("subprocess.check_output")
+    def test_returns_zero_on_called_process_error(self, mock_check_output):
+        """Test returns zero when neuron-ls fails."""
+        error = subprocess.CalledProcessError(1, "neuron-ls")
+        error.output = b"error=No neuron devices found"
+        mock_check_output.side_effect = error
+        assert num_neurons() == 0
 
-        assert result == 0
 
+class TestSafeSerialize:
+    """Test safe_serialize function."""
 
-class TestSerializationFunctions:
-    """Test cases for serialization functions"""
+    def test_returns_string_as_is(self):
+        """Test returns string without quotes."""
+        assert safe_serialize("test_string") == "test_string"
 
-    def test_safe_serialize_string(self):
-        """Test safe_serialize with string"""
-        result = safe_serialize("test_string")
+    def test_serializes_dict(self):
+        """Test serializes dictionary."""
+        data = {"key": "value"}
+        assert safe_serialize(data) == '{"key": "value"}'
 
-        assert result == "test_string"
+    def test_serializes_list(self):
+        """Test serializes list."""
+        data = [1, 2, 3]
+        assert safe_serialize(data) == "[1, 2, 3]"
 
-    def test_safe_serialize_dict(self):
-        """Test safe_serialize with dictionary"""
-        result = safe_serialize({"key": "value"})
-
-        assert result == '{"key": "value"}'
-
-    def test_safe_serialize_list(self):
-        """Test safe_serialize with list"""
-        result = safe_serialize([1, 2, 3])
-
-        assert result == "[1, 2, 3]"
-
-    def test_safe_serialize_non_serializable(self):
-        """Test safe_serialize with non-serializable object"""
-
-        class CustomObject:
+    def test_returns_str_for_non_serializable(self):
+        """Test returns str() for non-serializable objects."""
+        class CustomObj:
             def __str__(self):
                 return "custom_object"
-
-        result = safe_serialize(CustomObject())
-
-        assert "custom_object" in result
+        
+        obj = CustomObj()
+        assert safe_serialize(obj) == "custom_object"
 
 
 class TestSetEnv:
-    """Test cases for set_env function"""
+    """Test set_env function."""
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.environ",
-        {"TRAINING_JOB_NAME": "test-job"},
-    )
-    def test_set_env_basic(self, mock_neurons, mock_gpus, mock_cpus, mock_file):
-        """Test set_env with basic configuration"""
-        mock_cpus.return_value = 4
-        mock_gpus.return_value = 0
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.log_env_variables")
+    @patch.dict("os.environ", {"TRAINING_JOB_NAME": "test-job"})
+    def test_sets_basic_env_vars(self, mock_log_env, mock_neurons, mock_gpus, mock_cpus, mock_file):
+        """Test sets basic environment variables."""
+        mock_cpus.return_value = 8
+        mock_gpus.return_value = 2
         mock_neurons.return_value = 0
-
+        
         resource_config = {
             "current_host": "algo-1",
-            "current_instance_type": "ml.m5.xlarge",
+            "current_instance_type": "ml.p3.2xlarge",
+            "hosts": ["algo-1", "algo-2"],
+            "network_interface_name": "eth0",
+        }
+        
+        set_env(resource_config)
+        
+        mock_file.assert_called_once()
+        mock_log_env.assert_called_once()
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.log_env_variables")
+    @patch.dict("os.environ", {"TRAINING_JOB_NAME": "test-job"})
+    def test_sets_torchrun_distribution_vars(self, mock_log_env, mock_neurons, mock_gpus, mock_cpus, mock_file):
+        """Test sets torchrun distribution environment variables."""
+        mock_cpus.return_value = 8
+        mock_gpus.return_value = 2
+        mock_neurons.return_value = 0
+        
+        resource_config = {
+            "current_host": "algo-1",
+            "current_instance_type": "ml.p4d.24xlarge",
             "hosts": ["algo-1"],
             "network_interface_name": "eth0",
         }
-
-        set_env(resource_config)
-
-        mock_file.assert_called_once()
-
-    @patch("builtins.open", new_callable=mock_open)
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.environ",
-        {"TRAINING_JOB_NAME": "test-job"},
-    )
-    def test_set_env_with_torchrun(self, mock_neurons, mock_gpus, mock_cpus, mock_file):
-        """Test set_env with torchrun distribution"""
-        mock_cpus.return_value = 4
-        mock_gpus.return_value = 2
-        mock_neurons.return_value = 0
-
-        resource_config = {
-            "current_host": "algo-1",
-            "current_instance_type": "ml.p3.2xlarge",
-            "hosts": ["algo-1", "algo-2"],
-            "network_interface_name": "eth0",
-        }
-
+        
         set_env(resource_config, distribution="torchrun")
-
+        
+        # Verify file was written
         mock_file.assert_called_once()
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.environ",
-        {"TRAINING_JOB_NAME": "test-job"},
-    )
-    def test_set_env_with_mpirun(self, mock_neurons, mock_gpus, mock_cpus, mock_file):
-        """Test set_env with mpirun distribution"""
-        mock_cpus.return_value = 4
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.log_env_variables")
+    @patch.dict("os.environ", {"TRAINING_JOB_NAME": "test-job"})
+    def test_sets_mpirun_distribution_vars(self, mock_log_env, mock_neurons, mock_gpus, mock_cpus, mock_file):
+        """Test sets mpirun distribution environment variables."""
+        mock_cpus.return_value = 8
         mock_gpus.return_value = 2
         mock_neurons.return_value = 0
-
+        
         resource_config = {
             "current_host": "algo-1",
             "current_instance_type": "ml.p3.2xlarge",
             "hosts": ["algo-1", "algo-2"],
             "network_interface_name": "eth0",
         }
-
+        
         set_env(resource_config, distribution="mpirun")
-
+        
         mock_file.assert_called_once()
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.log_env_variables")
+    @patch.dict("os.environ", {"TRAINING_JOB_NAME": "test-job"})
+    def test_uses_user_nproc_per_node(self, mock_log_env, mock_neurons, mock_gpus, mock_cpus, mock_file):
+        """Test uses user-specified nproc_per_node."""
+        mock_cpus.return_value = 8
+        mock_gpus.return_value = 2
+        mock_neurons.return_value = 0
+        
+        resource_config = {
+            "current_host": "algo-1",
+            "current_instance_type": "ml.p3.2xlarge",
+            "hosts": ["algo-1"],
+            "network_interface_name": "eth0",
+        }
+        
+        set_env(resource_config, user_nproc_per_node="4")
+        
+        mock_file.assert_called_once()
+
+
+class TestWriteFailureReasonFile:
+    """Test _write_failure_reason_file function."""
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.path.exists")
+    def test_writes_failure_file(self, mock_exists, mock_file):
+        """Test writes failure reason file."""
+        mock_exists.return_value = False
+        
+        _write_failure_reason_file("Test error message")
+        
+        mock_file.assert_called_once_with(FAILURE_REASON_PATH, "w")
+        mock_file().write.assert_called_once_with("RuntimeEnvironmentError: Test error message")
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.path.exists")
+    def test_does_not_write_if_exists(self, mock_exists, mock_file):
+        """Test does not write if failure file already exists."""
+        mock_exists.return_value = True
+        
+        _write_failure_reason_file("Test error message")
+        
+        mock_file.assert_not_called()
+
+
+class TestUnpackUserWorkspace:
+    """Test _unpack_user_workspace function."""
+
+    @patch("os.path.exists")
+    def test_returns_none_if_dir_not_exists(self, mock_exists):
+        """Test returns None if workspace directory doesn't exist."""
+        mock_exists.return_value = False
+        
+        result = _unpack_user_workspace()
+        
+        assert result is None
+
+    @patch("os.path.isfile")
+    @patch("os.path.exists")
+    def test_returns_none_if_archive_not_exists(self, mock_exists, mock_isfile):
+        """Test returns None if workspace archive doesn't exist."""
+        mock_exists.return_value = True
+        mock_isfile.return_value = False
+        
+        result = _unpack_user_workspace()
+        
+        assert result is None
+
+    @patch("shutil.unpack_archive")
+    @patch("os.path.isfile")
+    @patch("os.path.exists")
+    @patch("os.getcwd")
+    def test_unpacks_workspace_successfully(self, mock_getcwd, mock_exists, mock_isfile, mock_unpack):
+        """Test unpacks workspace successfully."""
+        mock_getcwd.return_value = "/tmp/workspace"
+        mock_exists.return_value = True
+        mock_isfile.return_value = True
+        
+        result = _unpack_user_workspace()
+        
+        mock_unpack.assert_called_once()
+        assert result is not None
+
+
+class TestHandlePreExecScripts:
+    """Test _handle_pre_exec_scripts function."""
+
+    @patch("os.path.isfile")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager")
+    def test_runs_pre_exec_script(self, mock_manager_class, mock_isfile):
+        """Test runs pre-execution script."""
+        mock_isfile.return_value = True
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+        
+        _handle_pre_exec_scripts("/tmp/scripts")
+        
+        mock_manager.run_pre_exec_script.assert_called_once()
+
+
+class TestInstallDependencies:
+    """Test _install_dependencies function."""
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager")
+    def test_installs_with_dependency_settings(self, mock_manager_class):
+        """Test installs dependencies with dependency settings."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+        
+        dep_settings = _DependencySettings(dependency_file="requirements.txt")
+        
+        _install_dependencies(
+            "/tmp/deps",
+            "my-env",
+            "3.8",
+            "channel",
+            dep_settings
+        )
+        
+        mock_manager.bootstrap.assert_called_once()
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager")
+    def test_skips_if_no_dependency_file(self, mock_manager_class):
+        """Test skips installation if no dependency file."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+        
+        dep_settings = _DependencySettings(dependency_file=None)
+        
+        _install_dependencies(
+            "/tmp/deps",
+            "my-env",
+            "3.8",
+            "channel",
+            dep_settings
+        )
+        
+        mock_manager.bootstrap.assert_not_called()
+
+    @patch("os.listdir")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager")
+    def test_finds_dependency_file_legacy(self, mock_manager_class, mock_listdir):
+        """Test finds dependency file in legacy mode."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+        mock_listdir.return_value = ["requirements.txt", "script.py"]
+        
+        _install_dependencies(
+            "/tmp/deps",
+            "my-env",
+            "3.8",
+            "channel",
+            None
+        )
+        
+        mock_manager.bootstrap.assert_called_once()
+
+
+class TestBootstrapRuntimeEnvForRemoteFunction:
+    """Test _bootstrap_runtime_env_for_remote_function function."""
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._install_dependencies")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._handle_pre_exec_scripts")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._unpack_user_workspace")
+    def test_bootstraps_successfully(self, mock_unpack, mock_handle_scripts, mock_install):
+        """Test bootstraps runtime environment successfully."""
+        mock_unpack.return_value = "/tmp/workspace"
+        
+        _bootstrap_runtime_env_for_remote_function("3.8", "my-env", None)
+        
+        mock_unpack.assert_called_once()
+        mock_handle_scripts.assert_called_once()
+        mock_install.assert_called_once()
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._unpack_user_workspace")
+    def test_returns_early_if_no_workspace(self, mock_unpack):
+        """Test returns early if no workspace to unpack."""
+        mock_unpack.return_value = None
+        
+        _bootstrap_runtime_env_for_remote_function("3.8", "my-env", None)
+        
+        mock_unpack.assert_called_once()
+
+
+class TestBootstrapRuntimeEnvForPipelineStep:
+    """Test _bootstrap_runtime_env_for_pipeline_step function."""
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._install_dependencies")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._handle_pre_exec_scripts")
+    @patch("shutil.copy")
+    @patch("os.listdir")
+    @patch("os.path.exists")
+    @patch("os.mkdir")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._unpack_user_workspace")
+    def test_bootstraps_with_workspace(self, mock_unpack, mock_mkdir, mock_exists, mock_listdir, mock_copy, mock_handle_scripts, mock_install):
+        """Test bootstraps pipeline step with workspace."""
+        mock_unpack.return_value = "/tmp/workspace"
+        mock_exists.return_value = True
+        mock_listdir.return_value = ["requirements.txt"]
+        
+        _bootstrap_runtime_env_for_pipeline_step("3.8", "func_step", "my-env", None)
+        
+        mock_unpack.assert_called_once()
+        mock_handle_scripts.assert_called_once()
+        mock_install.assert_called_once()
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._install_dependencies")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._handle_pre_exec_scripts")
+    @patch("os.path.exists")
+    @patch("os.mkdir")
+    @patch("os.getcwd")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._unpack_user_workspace")
+    def test_creates_workspace_if_none(self, mock_unpack, mock_getcwd, mock_mkdir, mock_exists, mock_handle_scripts, mock_install):
+        """Test creates workspace directory if none exists."""
+        mock_unpack.return_value = None
+        mock_getcwd.return_value = "/tmp"
+        mock_exists.return_value = False
+        
+        _bootstrap_runtime_env_for_pipeline_step("3.8", "func_step", "my-env", None)
+        
+        mock_mkdir.assert_called_once()
 
 
 class TestMain:
-    """Test cases for main function"""
+    """Test main function."""
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._parse_args"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._bootstrap_runtime_env_for_remote_function"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.getpass.getuser"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.os.path.exists"
-    )
-    def test_main_success(
-        self, mock_exists, mock_getuser, mock_manager_class, mock_bootstrap, mock_parse
-    ):
-        """Test main function successful execution"""
-        mock_args = Mock()
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.set_env")
+    @patch("builtins.open", new_callable=mock_open, read_data='{"current_host": "algo-1", "current_instance_type": "ml.m5.xlarge", "hosts": ["algo-1"], "network_interface_name": "eth0"}')
+    @patch("os.path.exists")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._bootstrap_runtime_env_for_remote_function")
+    @patch("getpass.getuser")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._parse_args")
+    def test_main_success(self, mock_parse_args, mock_getuser, mock_bootstrap, mock_manager_class, mock_exists, mock_file, mock_set_env):
+        """Test main function successful execution."""
+        mock_getuser.return_value = "root"
+        mock_exists.return_value = True
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+        
+        # Mock parsed args
+        mock_args = MagicMock()
         mock_args.client_python_version = "3.8"
-        mock_args.client_sagemaker_pysdk_version = "2.0.0"
+        mock_args.client_sagemaker_pysdk_version = None
         mock_args.job_conda_env = None
         mock_args.pipeline_execution_id = None
         mock_args.dependency_settings = None
         mock_args.func_step_s3_dir = None
         mock_args.distribution = None
         mock_args.user_nproc_per_node = None
-        mock_parse.return_value = mock_args
-
-        mock_getuser.return_value = "root"
-        mock_exists.return_value = False
-
-        mock_manager = Mock()
-        mock_manager_class.return_value = mock_manager
-
+        mock_parse_args.return_value = mock_args
+        
+        args = [
+            "--client_python_version", "3.8",
+        ]
+        
         with pytest.raises(SystemExit) as exc_info:
-            main([])
-
+            main(args)
+        
         assert exc_info.value.code == SUCCESS_EXIT_CODE
+        mock_bootstrap.assert_called_once()
 
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._parse_args"
-    )
-    @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._write_failure_reason_file"
-    )
-    def test_main_failure(self, mock_write_failure, mock_parse):
-        """Test main function with failure"""
-        mock_parse.side_effect = Exception("Test error")
-
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._write_failure_reason_file")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager")
+    @patch("getpass.getuser")
+    def test_main_handles_exception(self, mock_getuser, mock_manager_class, mock_write_failure):
+        """Test main function handles exceptions."""
+        mock_getuser.return_value = "root"
+        mock_manager = MagicMock()
+        mock_manager._validate_python_version.side_effect = Exception("Test error")
+        mock_manager_class.return_value = mock_manager
+        
+        args = [
+            "--client_python_version", "3.8",
+        ]
+        
         with pytest.raises(SystemExit) as exc_info:
-            main([])
-
+            main(args)
+        
         assert exc_info.value.code == DEFAULT_FAILURE_CODE
         mock_write_failure.assert_called_once()
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.set_env")
+    @patch("builtins.open", new_callable=mock_open, read_data='{"current_host": "algo-1", "current_instance_type": "ml.m5.xlarge", "hosts": ["algo-1"], "network_interface_name": "eth0"}')
+    @patch("os.path.exists")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._bootstrap_runtime_env_for_pipeline_step")
+    @patch("getpass.getuser")
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._parse_args")
+    def test_main_pipeline_execution(self, mock_parse_args, mock_getuser, mock_bootstrap, mock_manager_class, mock_exists, mock_file, mock_set_env):
+        """Test main function for pipeline execution."""
+        mock_getuser.return_value = "root"
+        mock_exists.return_value = True
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+        
+        # Mock parsed args
+        mock_args = MagicMock()
+        mock_args.client_python_version = "3.8"
+        mock_args.client_sagemaker_pysdk_version = None
+        mock_args.job_conda_env = None
+        mock_args.pipeline_execution_id = "exec-123"
+        mock_args.dependency_settings = None
+        mock_args.func_step_s3_dir = "s3://bucket/func"
+        mock_args.distribution = None
+        mock_args.user_nproc_per_node = None
+        mock_parse_args.return_value = mock_args
+        
+        args = [
+            "--client_python_version", "3.8",
+            "--pipeline_execution_id", "exec-123",
+            "--func_step_s3_dir", "s3://bucket/func",
+        ]
+        
+        with pytest.raises(SystemExit) as exc_info:
+            main(args)
+        
+        assert exc_info.value.code == SUCCESS_EXIT_CODE
+        mock_bootstrap.assert_called_once()
+
+    @patch("sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager")
+    @patch("getpass.getuser")
+    def test_main_non_root_user(self, mock_getuser, mock_manager_class):
+        """Test main function with non-root user."""
+        mock_getuser.return_value = "ubuntu"
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+        
+        args = [
+            "--client_python_version", "3.8",
+        ]
+        
+        with pytest.raises(SystemExit):
+            main(args)
+        
+        mock_manager.change_dir_permission.assert_called_once()

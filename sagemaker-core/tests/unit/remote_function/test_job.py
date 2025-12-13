@@ -143,26 +143,23 @@ class TestJob:
 
     def test_init(self, mock_session):
         """Test _Job initialization."""
-        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
+        job = _Job("test-job", "s3://bucket/output", mock_session)
         assert job.job_name == "test-job"
         assert job.s3_uri == "s3://bucket/output"
-        assert job.hmac_key == "test-key"
 
     def test_from_describe_response(self, mock_session):
         """Test creating _Job from describe response."""
         response = {
             "TrainingJobName": "test-job",
             "OutputDataConfig": {"S3OutputPath": "s3://bucket/output"},
-            "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "test-key"},
         }
         job = _Job.from_describe_response(response, mock_session)
         assert job.job_name == "test-job"
         assert job.s3_uri == "s3://bucket/output"
-        assert job.hmac_key == "test-key"
 
     def test_describe_returns_cached_response(self, mock_session):
         """Test that describe returns cached response for completed jobs."""
-        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
+        job = _Job("test-job", "s3://bucket/output", mock_session)
         job._last_describe_response = {"TrainingJobStatus": "Completed"}
 
         result = job.describe()
@@ -171,7 +168,7 @@ class TestJob:
 
     def test_describe_calls_api_for_in_progress_jobs(self, mock_session):
         """Test that describe calls API for in-progress jobs."""
-        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
+        job = _Job("test-job", "s3://bucket/output", mock_session)
         mock_session.sagemaker_client.describe_training_job.return_value = {
             "TrainingJobStatus": "InProgress"
         }
@@ -182,7 +179,7 @@ class TestJob:
 
     def test_stop(self, mock_session):
         """Test stopping a job."""
-        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
+        job = _Job("test-job", "s3://bucket/output", mock_session)
         job.stop()
         mock_session.sagemaker_client.stop_training_job.assert_called_once_with(
             TrainingJobName="test-job"
@@ -191,7 +188,7 @@ class TestJob:
     @patch("sagemaker.core.remote_function.job._logs_for_job")
     def test_wait(self, mock_logs, mock_session):
         """Test waiting for job completion."""
-        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
+        job = _Job("test-job", "s3://bucket/output", mock_session)
         mock_logs.return_value = {"TrainingJobStatus": "Completed"}
 
         job.wait(timeout=100)
@@ -882,7 +879,7 @@ class TestJobStart:
         mock_get_name.return_value = "test-job"
         mock_compile.return_value = {
             "TrainingJobName": "test-job",
-            "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "test-key"},
+            "Environment": {},
         }
 
         job_settings = Mock()
