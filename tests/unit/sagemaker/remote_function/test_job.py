@@ -703,7 +703,8 @@ def test_start_with_checkpoint_location(
         RetryStrategy={"MaximumRetryAttempts": 1},
         CheckpointConfig={
             "LocalPath": "/opt/ml/checkpoints/",
-            "S3Uri": "s3://my-bucket/my-checkpoints/"},
+            "S3Uri": "s3://my-bucket/my-checkpoints/",
+        },
         InputDataConfig=[
             dict(
                 ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
@@ -809,7 +810,7 @@ def test_start_with_complete_job_settings(
     mock_runtime_manager,
     mock_bootstrap_script_upload,
     mock_user_workspace_upload,
-    ):
+):
 
     job_settings = _JobSettings(
         dependencies="path/to/dependencies/req.txt",
@@ -887,7 +888,9 @@ def test_start_with_complete_job_settings(
                 },
             ),
         ],
-        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}", "KmsKeyId": KMS_KEY_ARN,
+        OutputDataConfig={
+            "S3OutputPath": f"{S3_URI}/{job.job_name}",
+            "KmsKeyId": KMS_KEY_ARN,
         },
         AlgorithmSpecification=dict(
             TrainingImage=IMAGE,
@@ -929,11 +932,7 @@ def test_start_with_complete_job_settings(
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-
-@patch(
-    "sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts",
-    return_value="some_s3_uri",
-)
+@patch("sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts", return_value="some_s3_uri")
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -994,14 +993,14 @@ def test_get_train_args_under_pipeline_context(
         func_kwargs={
             "c": 3,
             "d": ParameterInteger(name="d", default_value=4),
-            "e": DelayedReturn(function_step, reference_path=("__getitem__", 1))},
+            "e": DelayedReturn(function_step, reference_path=("__getitem__", 1)),
+        },
         serialized_data=mocked_serialized_data,
     )
 
     mock_stored_function_ctr.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=s3_base_uri,
-
         s3_kms_key=KMS_KEY_ARN,
         context=Context(
             step_name=MOCKED_PIPELINE_CONFIG.step_name,
@@ -1080,7 +1079,8 @@ def test_get_train_args_under_pipeline_context(
                     "results",
                 ],
             ),
-            "KmsKeyId": KMS_KEY_ARN},
+            "KmsKeyId": KMS_KEY_ARN,
+        },
         AlgorithmSpecification=dict(
             TrainingImage=IMAGE,
             TrainingInputMode="File",
@@ -1133,8 +1133,7 @@ def test_get_train_args_under_pipeline_context(
         EnableInterContainerTrafficEncryption=False,
         VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
         EnableManagedSpotTraining=False,
-        Environment={
-            "AWS_DEFAULT_REGION": "us-west-2"},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
@@ -1162,7 +1161,7 @@ def test_start_with_spark(
     mock_dependency_upload,
     mock_spark_dependency_upload,
     mock_get_default_spark_image,
-    ):
+):
     spark_config = SparkConfig()
     job_settings = _JobSettings(
         spark_config=spark_config,
@@ -1206,7 +1205,8 @@ def test_start_with_spark(
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
                         "S3DataType": "S3Prefix",
-                        "S3DataDistributionType": "FullyReplicated"}
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
                 },
             ),
             dict(
@@ -1215,7 +1215,8 @@ def test_start_with_spark(
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
                         "S3DataType": "S3Prefix",
-                        "S3DataDistributionType": "FullyReplicated"}
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
                 },
             ),
             dict(
@@ -1224,7 +1225,8 @@ def test_start_with_spark(
                     "S3DataSource": {
                         "S3Uri": "config_file_s3_uri",
                         "S3DataType": "S3Prefix",
-                        "S3DataDistributionType": "FullyReplicated"}
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
                 },
             ),
         ],
@@ -1782,7 +1784,8 @@ def test_extend_spark_config_to_request(
                 "/opt/ml/input/data/sagemaker_remote_function_bootstrap/spark_app.py",
             ],
             "TrainingImage": "image_uri",
-            "TrainingInputMode": "File"},
+            "TrainingInputMode": "File",
+        },
         InputDataConfig=[
             {
                 "ChannelName": "conf",
@@ -1790,8 +1793,10 @@ def test_extend_spark_config_to_request(
                     "S3DataSource": {
                         "S3DataType": "S3Prefix",
                         "S3Uri": "config_file_s3_uri",
-                        "S3DataDistributionType": "FullyReplicated"}
-                }}
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
+                },
+            }
         ],
     )
 
@@ -1810,7 +1815,7 @@ def test_start_with_torchrun_single_node(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    ):
+):
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -1998,7 +2003,8 @@ def test_start_with_torchrun_multi_node(
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
                         "S3DataType": "S3Prefix",
-                        "S3DataDistributionType": "FullyReplicated"}
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
                 },
             ),
             dict(
@@ -2007,7 +2013,8 @@ def test_start_with_torchrun_multi_node(
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
                         "S3DataType": "S3Prefix",
-                        "S3DataDistributionType": "FullyReplicated"}
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
                 },
             ),
         ],
@@ -2323,7 +2330,7 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    ):
+):
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -2452,7 +2459,7 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    ):
+):
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
