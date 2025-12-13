@@ -19,7 +19,6 @@ import re
 import shutil
 import sys
 import json
-import secrets
 
 from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from urllib.parse import urlparse

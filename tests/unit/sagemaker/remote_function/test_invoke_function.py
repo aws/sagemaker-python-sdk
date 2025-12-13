@@ -12,8 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
-
 import pytest
 from mock import patch, Mock, ANY
 from sagemaker.remote_function import invoke_function

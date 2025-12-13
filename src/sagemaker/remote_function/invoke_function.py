@@ -17,7 +17,6 @@ from __future__ import absolute_import
 import argparse
 import sys
 import json
-import os
 from typing import TYPE_CHECKING
 
 import boto3
