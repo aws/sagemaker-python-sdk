@@ -583,8 +583,6 @@ class _JobSettings:
             {"AWS_DEFAULT_REGION": self.sagemaker_session.boto_region_name}
         )
 
-
-
         if spark_config and image_uri:
             raise ValueError("spark_config and image_uri cannot be specified at the same time!")
 

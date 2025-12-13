@@ -249,11 +249,9 @@ export SM_FI_EFA_USE_DEVICE_RDMA=''
 DESCRIBE_TRAINING_JOB_RESPONSE = {
     "TrainingJobArn": TRAINING_JOB_ARN,
     "TrainingJobStatus": "{}",
-    "ResourceConfig": {
-        "InstanceCount": 1,
-        "InstanceType": "ml.c4.xlarge",
-        "VolumeSizeInGB": 30},
-    "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"}}
+    "ResourceConfig": {"InstanceCount": 1, "InstanceType": "ml.c4.xlarge", "VolumeSizeInGB": 30},
+    "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
+}
 
 TEST_JOB_NAME = "my-job-name"
 TEST_PIPELINE_NAME = "my-pipeline"
@@ -295,16 +293,20 @@ def describe_training_job_response(job_status, disable_output_compression=False)
         "ResourceConfig": {
             "InstanceCount": 1,
             "InstanceType": "ml.c4.xlarge",
-            "VolumeSizeInGB": 30}}
+            "VolumeSizeInGB": 30,
+        },
+    }
 
     if disable_output_compression:
         output_config = {
             "S3OutputPath": "s3://sagemaker-123/image_uri/output",
-            "CompressionType": "NONE"}
+            "CompressionType": "NONE",
+        }
     else:
         output_config = {
             "S3OutputPath": "s3://sagemaker-123/image_uri/output",
-            "CompressionType": "NONE"}
+            "CompressionType": "NONE",
+        }
 
     job_response["OutputDataConfig"] = output_config
 
@@ -361,8 +363,7 @@ def test_sagemaker_config_job_settings(get_execution_role, session):
     assert job_settings.image_uri == "image_uri"
     assert job_settings.s3_root_uri == f"s3://{BUCKET}"
     assert job_settings.role == DEFAULT_ROLE_ARN
-    assert job_settings.environment_variables == {
-        "AWS_DEFAULT_REGION": "us-west-2"}
+    assert job_settings.environment_variables == {"AWS_DEFAULT_REGION": "us-west-2"}
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
 
@@ -383,8 +384,7 @@ def test_sagemaker_config_job_settings_with_spark_config(
     assert job_settings.image_uri == "some_image_uri"
     assert job_settings.s3_root_uri == f"s3://{BUCKET}"
     assert job_settings.role == DEFAULT_ROLE_ARN
-    assert job_settings.environment_variables == {
-        "AWS_DEFAULT_REGION": "us-west-2"}
+    assert job_settings.environment_variables == {"AWS_DEFAULT_REGION": "us-west-2"}
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
     assert job_settings.spark_config == spark_config
@@ -424,9 +424,7 @@ def test_sagemaker_config_job_settings_with_not_supported_param_by_spark():
 
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
-def test_sagemaker_config_job_settings_with_configuration_file(
-    get_execution_role, session
-):
+def test_sagemaker_config_job_settings_with_configuration_file(get_execution_role, session):
     config_tags = [
         {"Key": "someTagKey", "Value": "someTagValue"},
         {"Key": "someTagKey2", "Value": "someTagValue2"},
@@ -445,7 +443,8 @@ def test_sagemaker_config_job_settings_with_configuration_file(
     assert job_settings.pre_execution_commands == ["command_1", "command_2"]
     assert job_settings.environment_variables == {
         "AWS_DEFAULT_REGION": "us-west-2",
-        "EnvVarKey": "EnvVarValue"}
+        "EnvVarKey": "EnvVarValue",
+    }
     assert job_settings.job_conda_env == "my_conda_env"
     assert job_settings.include_local_workdir is True
     assert job_settings.custom_file_filter.ignore_name_patterns == ["data", "test"]
@@ -598,7 +597,7 @@ def test_start(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
             dict(
@@ -606,7 +605,7 @@ def test_start(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
         ],
@@ -660,7 +659,7 @@ def test_start_with_checkpoint_location(
     mock_runtime_manager,
     mock_script_upload,
     mock_user_workspace_upload,
-    ):
+):
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -709,7 +708,7 @@ def test_start_with_checkpoint_location(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
             dict(
@@ -717,7 +716,7 @@ def test_start_with_checkpoint_location(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_user_workspace_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
         ],
@@ -870,7 +869,7 @@ def test_start_with_complete_job_settings(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_bootstrap_script_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
             dict(
@@ -878,11 +877,12 @@ def test_start_with_complete_job_settings(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_user_workspace_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
         ],
-        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}", "KmsKeyId": KMS_KEY_ARN},
+        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}", "KmsKeyId": KMS_KEY_ARN,
+        },
         AlgorithmSpecification=dict(
             TrainingImage=IMAGE,
             TrainingInputMode="File",
@@ -1041,7 +1041,7 @@ def test_get_train_args_under_pipeline_context(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_bootstrap_scripts_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
             dict(
@@ -1049,7 +1049,7 @@ def test_get_train_args_under_pipeline_context(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_user_dependencies_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
             dict(
@@ -1057,7 +1057,7 @@ def test_get_train_args_under_pipeline_context(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_user_workspace_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
         ],
@@ -1861,7 +1861,7 @@ def test_start_with_torchrun_single_node(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
             dict(
@@ -1869,7 +1869,7 @@ def test_start_with_torchrun_single_node(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
         ],
@@ -2373,7 +2373,7 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
             dict(
@@ -2381,7 +2381,7 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
         ],
@@ -2500,7 +2500,7 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_script_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
             dict(
@@ -2508,7 +2508,7 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
                 DataSource={
                     "S3DataSource": {
                         "S3Uri": mock_dependency_upload.return_value,
-                        "S3DataType": "S3Prefix"}
+                        "S3DataType": "S3Prefix",
                 },
             ),
         ],

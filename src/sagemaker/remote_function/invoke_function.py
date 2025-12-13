@@ -97,9 +97,7 @@ def _load_pipeline_context(args) -> Context:
     )
 
 
-def _execute_remote_function(
-    sagemaker_session, s3_base_uri, s3_kms_key, run_in_context, context
-):
+def _execute_remote_function(sagemaker_session, s3_base_uri, s3_kms_key, run_in_context, context):
     """Execute stored remote function"""
     from sagemaker.remote_function.core.stored_function import StoredFunction
 

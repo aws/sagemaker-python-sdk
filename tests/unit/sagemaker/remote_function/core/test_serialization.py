@@ -65,15 +65,11 @@ def test_serialize_deserialize_func():
         return x * x
 
     s3_uri = random_s3_uri()
-    serialize_func_to_s3(
-        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-    )
+    serialize_func_to_s3(func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
     del square
 
-    deserialized = deserialize_func_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri
-    )
+    deserialized = deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
     assert deserialized(3) == 9
 
@@ -90,9 +86,7 @@ def test_serialize_deserialize_lambda():
         s3_kms_key=KMS_KEY,
     )
 
-    deserialized = deserialize_func_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri
-    )
+    deserialized = deserialize_func_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
     assert deserialized(3) == 9
 
@@ -187,9 +181,7 @@ def test_deserialize_func_deserialization_error(mock_cloudpickle_loads):
 
     s3_uri = random_s3_uri()
 
-    serialize_func_to_s3(
-        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-    )
+    serialize_func_to_s3(func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
     del square
 
@@ -210,9 +202,7 @@ def test_deserialize_func_corrupt_metadata():
 
     s3_uri = random_s3_uri()
 
-    serialize_func_to_s3(
-        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-    )
+    serialize_func_to_s3(func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
     mock_s3[f"{s3_uri}/metadata.json"] = b"not json serializable"
 
     del square
@@ -228,9 +218,7 @@ def test_deserialize_integrity_check_failed():
         return x * x
 
     s3_uri = random_s3_uri()
-    serialize_func_to_s3(
-        func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-    )
+    serialize_func_to_s3(func=square, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
     # Tamper with the payload to trigger integrity check failure
     mock_s3[f"{s3_uri}/payload.pkl"] = b"tampered data"
 
@@ -252,16 +240,12 @@ def test_serialize_deserialize_custom_class_data():
     my_data = MyData(10)
 
     s3_uri = random_s3_uri()
-    serialize_obj_to_s3(
-        my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-    )
+    serialize_obj_to_s3(my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
     del my_data
     del MyData
 
-    deserialized = deserialize_obj_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri
-    )
+    deserialized = deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
     assert deserialized.x == 10
 
@@ -273,15 +257,11 @@ def test_serialize_deserialize_data_built_in_types():
     my_data = {"a": [10]}
 
     s3_uri = random_s3_uri()
-    serialize_obj_to_s3(
-        my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-    )
+    serialize_obj_to_s3(my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
     del my_data
 
-    deserialized = deserialize_obj_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri
-    )
+    deserialized = deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
     assert deserialized == {"a": [10]}
 
@@ -291,13 +271,9 @@ def test_serialize_deserialize_data_built_in_types():
 def test_serialize_deserialize_none():
 
     s3_uri = random_s3_uri()
-    serialize_obj_to_s3(
-        None, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-    )
+    serialize_obj_to_s3(None, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
-    deserialized = deserialize_obj_from_s3(
-        sagemaker_session=Mock(), s3_uri=s3_uri
-    )
+    deserialized = deserialize_obj_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
 
     assert deserialized is None
 
@@ -388,9 +364,7 @@ def test_deserialize_obj_deserialization_error(mock_cloudpickle_loads):
     my_data = MyData(10)
     s3_uri = random_s3_uri()
 
-    serialize_obj_to_s3(
-        obj=my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-    )
+    serialize_obj_to_s3(obj=my_data, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
     del my_data
     del MyData
@@ -481,14 +455,10 @@ def test_serialize_deserialize_custom_exception_with_traceback():
     try:
         func_b()
     except Exception as e:
-        serialize_exception_to_s3(
-            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-        )
+        serialize_exception_to_s3(e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
     with pytest.raises(CustomError, match="Some error") as exc_info:
-        raise deserialize_exception_from_s3(
-            sagemaker_session=Mock(), s3_uri=s3_uri
-        )
+        raise deserialize_exception_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
     assert type(exc_info.value.__cause__) is TypeError
 
 
@@ -511,12 +481,8 @@ def test_serialize_deserialize_remote_function_error_with_traceback():
     try:
         func_b()
     except Exception as e:
-        serialize_exception_to_s3(
-            e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY
-        )
+        serialize_exception_to_s3(e, sagemaker_session=Mock(), s3_uri=s3_uri, s3_kms_key=KMS_KEY)
 
     with pytest.raises(ServiceError, match="Some error") as exc_info:
-        raise deserialize_exception_from_s3(
-            sagemaker_session=Mock(), s3_uri=s3_uri
-        )
+        raise deserialize_exception_from_s3(sagemaker_session=Mock(), s3_uri=s3_uri)
     assert type(exc_info.value.__cause__) is TypeError

@@ -22,7 +22,6 @@ TEST_S3_BASE_URI = "s3://my-bucket/"
 TEST_S3_KMS_KEY = "my-kms-key"
 
 
-
 class _InvalidErrorNumberException(Exception):
     def __init__(self, *args, **kwargs):  # real signature unknown
         self.errno = "invalid"

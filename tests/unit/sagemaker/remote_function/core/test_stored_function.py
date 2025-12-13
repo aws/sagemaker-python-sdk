@@ -100,9 +100,9 @@ def test_save_and_load(s3_source_dir_download, s3_source_dir_upload, args, kwarg
     stored_function.save(quadratic, *args, **kwargs)
     stored_function.load_and_invoke()
 
-    assert deserialize_obj_from_s3(
-        session, s3_uri=f"{s3_base_uri}/results"
-    ) == quadratic(*args, **kwargs)
+    assert deserialize_obj_from_s3(session, s3_uri=f"{s3_base_uri}/results") == quadratic(
+        *args, **kwargs
+    )
 
 
 @patch(
@@ -178,7 +178,7 @@ def test_save_s3_paths_verification(
         sagemaker_session=session,
         s3_uri=(upload_path + FUNCTION_FOLDER),
         s3_kms_key=KMS_KEY,
-        )
+    )
     serialize_obj.assert_called_once_with(
         obj=((3,), {}),
         sagemaker_session=session,
@@ -237,7 +237,7 @@ def test_load_and_invoke_s3_paths_verification(
     deserialize_obj.assert_called_once_with(
         sagemaker_session=session,
         s3_uri=(download_path + ARGUMENT_FOLDER),
-        )
+    )
 
     result = deserialize_func.return_value(
         *deserialize_obj.return_value[0], **deserialize_obj.return_value[1]
@@ -346,9 +346,9 @@ def test_save_and_load_with_pipeline_variable(monkeypatch):
     stored_function.load_and_invoke()
 
     func2_result_path = f"{s3_base_uri}/execution-id/func_2/results"
-    assert deserialize_obj_from_s3(
-        session, s3_uri=func2_result_path
-    ) == quadratic(3.0, a=1.0, b=2.0, c=3.0)
+    assert deserialize_obj_from_s3(session, s3_uri=func2_result_path) == quadratic(
+        3.0, a=1.0, b=2.0, c=3.0
+    )
 
 
 @patch("sagemaker.remote_function.core.serialization._upload_payload_and_metadata_to_s3")
