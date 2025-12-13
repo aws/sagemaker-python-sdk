@@ -1,3 +1,4 @@
+from logging import exception
 from typing import Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
@@ -41,7 +42,7 @@ class SFTTrainer(BaseTrainer):
         trainer = SFTTrainer(
             model="meta-llama/Llama-2-7b-hf",
             training_type=TrainingType.LORA,
-            model_package_group_name="my-model-group",
+            model_package_group="my-model-group",
             training_dataset="s3://bucket/train.jsonl",
             validation_dataset="s3://bucket/val.jsonl"
         )
@@ -51,7 +52,7 @@ class SFTTrainer(BaseTrainer):
         # Complete workflow:
         trainer = SFTTrainer(
             model="meta-llama/Llama-2-7b-hf",
-            model_package_group_name="my-fine-tuned-models"
+            model_package_group="my-fine-tuned-models"
         )
         
         # Create training job (non-blocking)
@@ -76,7 +77,7 @@ class SFTTrainer(BaseTrainer):
         training_type (Union[TrainingType, str]):
             The fine-tuning approach. Valid values are TrainingType.LORA (default),
             TrainingType.FULL.
-        model_package_group_name (Optional[Union[str, ModelPackageGroup]]):
+        model_package_group (Optional[Union[str, ModelPackageGroup]]):
             The model package group for storing the fine-tuned model. Can be a group name,
             ARN, or ModelPackageGroup object. Required when model is not a ModelPackage.
         mlflow_resource_arn (Optional[str]):
@@ -87,9 +88,9 @@ class SFTTrainer(BaseTrainer):
         mlflow_run_name (Optional[str]):
             The MLflow run name for this training job.
         training_dataset (Optional[Union[str, DataSet]]):
-            The training dataset. Can be an S3 URI, dataset ARN, or DataSet object.
+            The training dataset. Can be dataset ARN, or DataSet object.
         validation_dataset (Optional[Union[str, DataSet]]):
-            The validation dataset. Can be an S3 URI, dataset ARN, or DataSet object.
+            The validation dataset. Can be dataset ARN, or DataSet object.
         s3_output_path (Optional[str]):
             The S3 path for training job outputs.
             If not specified, defaults to s3://sagemaker-<region>-<account>/output.
@@ -103,7 +104,7 @@ class SFTTrainer(BaseTrainer):
         self,
         model: Union[str, ModelPackage],
         training_type: Union[TrainingType, str] = TrainingType.LORA,
-        model_package_group_name: Optional[Union[str, ModelPackageGroup]] = None,
+        model_package_group: Optional[Union[str, ModelPackageGroup]] = None,
         mlflow_resource_arn: Optional[str] = None,
         mlflow_experiment_name: Optional[str] = None,
         mlflow_run_name: Optional[str] = None,
@@ -121,8 +122,8 @@ class SFTTrainer(BaseTrainer):
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
         self.training_type = training_type
 
-        self.model_package_group_name = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group_name)
+        self.model_package_group = _validate_and_resolve_model_package_group(model,
+                                                                                 model_package_group)
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
         self.mlflow_run_name = mlflow_run_name
@@ -232,7 +233,7 @@ class SFTTrainer(BaseTrainer):
         _validate_hyperparameter_values(final_hyperparameters)
 
         model_package_config = _create_model_package_config(
-            model_package_group_name=self.model_package_group_name,
+            model_package_group_name=self.model_package_group,
             model=self.model,
             sagemaker_session=sagemaker_session
         )
@@ -261,7 +262,11 @@ class SFTTrainer(BaseTrainer):
 
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
-            _wait(training_job)
+            from sagemaker.core.utils.exceptions import TimeoutExceededError
+            try :
+                _wait(training_job)
+            except TimeoutExceededError as e:
+                logger.error("Error: %s", e)
 
         self.latest_training_job = training_job
         return training_job

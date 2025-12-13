@@ -20,7 +20,7 @@ class TestDPOTrainer:
         mock_hyperparams = Mock()
         mock_hyperparams.to_dict.return_value = {}
         mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
-        trainer = DPOTrainer(model="test-model", model_package_group_name="test-group")
+        trainer = DPOTrainer(model="test-model", model_package_group="test-group")
         assert trainer.training_type == TrainingType.LORA
         assert trainer.model == "test-model"
 
@@ -31,7 +31,7 @@ class TestDPOTrainer:
         mock_hyperparams = Mock()
         mock_hyperparams.to_dict.return_value = {}
         mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
-        trainer = DPOTrainer(model="test-model", training_type=TrainingType.FULL, model_package_group_name="test-group")
+        trainer = DPOTrainer(model="test-model", training_type=TrainingType.FULL, model_package_group="test-group")
         assert trainer.training_type == TrainingType.FULL
 
     @patch('sagemaker.train.dpo_trainer._resolve_model_and_name')
@@ -74,7 +74,7 @@ class TestDPOTrainer:
         mock_training_job.wait = Mock()
         mock_training_job_create.return_value = mock_training_job
         
-        trainer = DPOTrainer(model="test-model", training_type=TrainingType.LORA, model_package_group_name="test-group", training_dataset="s3://bucket/train")
+        trainer = DPOTrainer(model="test-model", training_type=TrainingType.LORA, model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=False)
         
         assert mock_training_job_create.called
@@ -86,7 +86,7 @@ class TestDPOTrainer:
         mock_hyperparams = Mock()
         mock_hyperparams.to_dict.return_value = {}
         mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
-        trainer = DPOTrainer(model="test-model", training_type="CUSTOM", model_package_group_name="test-group")
+        trainer = DPOTrainer(model="test-model", training_type="CUSTOM", model_package_group="test-group")
         assert trainer.training_type == "CUSTOM"
 
     @patch('sagemaker.train.dpo_trainer._resolve_model_and_name')
@@ -115,7 +115,7 @@ class TestDPOTrainer:
         mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
         trainer = DPOTrainer(
             model="test-model",
-            model_package_group_name="test-group",
+            model_package_group="test-group",
             training_dataset="s3://bucket/train",
             validation_dataset="s3://bucket/val"
         )
@@ -131,7 +131,7 @@ class TestDPOTrainer:
         mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
         trainer = DPOTrainer(
             model="test-model",
-            model_package_group_name="test-group",
+            model_package_group="test-group",
             mlflow_resource_arn="arn:aws:mlflow:us-east-1:123456789012:tracking-server/test",
             mlflow_experiment_name="test-experiment",
             mlflow_run_name="test-run"
@@ -180,7 +180,7 @@ class TestDPOTrainer:
         mock_training_job.wait = Mock()
         mock_training_job_create.return_value = mock_training_job
         
-        trainer = DPOTrainer(model="test-model", training_type=TrainingType.FULL, model_package_group_name="test-group", training_dataset="s3://bucket/train")
+        trainer = DPOTrainer(model="test-model", training_type=TrainingType.FULL, model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=False)
         
         assert mock_training_job_create.called
@@ -192,7 +192,7 @@ class TestDPOTrainer:
         mock_hyperparams = Mock()
         mock_hyperparams.to_dict.return_value = {}
         mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
-        trainer = DPOTrainer(model="test-model", model_package_group_name="test-group")
+        trainer = DPOTrainer(model="test-model", model_package_group="test-group")
         
         with pytest.raises(Exception):
             trainer.train(wait=False)
@@ -209,9 +209,9 @@ class TestDPOTrainer:
         
         trainer = DPOTrainer(
             model="test-model",
-            model_package_group_name="test-group"
+            model_package_group="test-group"
         )
-        assert trainer.model_package_group_name == "test-group"
+        assert trainer.model_package_group == "test-group"
 
     @patch('sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group')
     @patch('sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn')
@@ -222,7 +222,7 @@ class TestDPOTrainer:
         mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
         trainer = DPOTrainer(
             model="test-model",
-            model_package_group_name="test-group",
+            model_package_group="test-group",
             s3_output_path="s3://bucket/output"
         )
         assert trainer.s3_output_path == "s3://bucket/output"
@@ -263,7 +263,7 @@ class TestDPOTrainer:
         mock_training_job.wait = Mock()
         mock_training_job_create.return_value = mock_training_job
         
-        trainer = DPOTrainer(model="test-model", model_package_group_name="test-group", training_dataset="s3://bucket/train")
+        trainer = DPOTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=False)
         
         mock_training_job_create.assert_called_once()
@@ -284,10 +284,10 @@ class TestDPOTrainer:
         
         # Should raise error when accept_eula=False for gated model
         with pytest.raises(ValueError, match="gated model and requires EULA acceptance"):
-            DPOTrainer(model="gated-model", model_package_group_name="test-group", accept_eula=False)
+            DPOTrainer(model="gated-model", model_package_group="test-group", accept_eula=False)
         
         # Should work when accept_eula=True for gated model
-        trainer = DPOTrainer(model="gated-model", model_package_group_name="test-group", accept_eula=True)
+        trainer = DPOTrainer(model="gated-model", model_package_group="test-group", accept_eula=True)
         assert trainer.accept_eula == True
 
     def test_process_hyperparameters_removes_constructor_handled_keys(self):
