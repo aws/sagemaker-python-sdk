@@ -932,7 +932,10 @@ def test_start_with_complete_job_settings(
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-@patch("sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts",
+    return_value="some_s3_uri",
+)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -1941,7 +1944,7 @@ def test_start_with_torchrun_multi_node(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    ):
+):
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
