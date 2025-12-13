@@ -30,7 +30,18 @@ from sagemaker.core.telemetry.telemetry_logging import (
     PYTHON_VERSION,
 )
 from sagemaker.core.user_agent import SDK_VERSION, process_studio_metadata_file
-from sagemaker.serve.utils.exceptions import ModelBuilderException, LocalModelOutOfMemoryException
+
+# Try to import sagemaker-serve exceptions, skip tests if not available
+try:
+    from sagemaker.serve.utils.exceptions import ModelBuilderException, LocalModelOutOfMemoryException
+    SAGEMAKER_SERVE_AVAILABLE = True
+except ImportError:
+    SAGEMAKER_SERVE_AVAILABLE = False
+    # Create mock exceptions for type hints
+    class ModelBuilderException(Exception):
+        pass
+    class LocalModelOutOfMemoryException(Exception):
+        pass
 
 MOCK_SESSION = Mock()
 MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
@@ -147,6 +158,10 @@ class TestTelemetryLogging(unittest.TestCase):
             1, [1, 2], MOCK_SESSION, None, None, expected_extra_str
         )
 
+    @pytest.mark.skipif(
+        not SAGEMAKER_SERVE_AVAILABLE,
+        reason="Requires sagemaker-serve package"
+    )
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
     def test_telemetry_emitter_decorator_handle_exception_success(

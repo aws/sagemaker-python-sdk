@@ -35,10 +35,8 @@ class _Benchmark(str, Enum):
     MATH = "math"
     STRONG_REJECT = "strong_reject"
     IFEVAL = "ifeval"
-    GEN_QA = "gen_qa"
     MMMU = "mmmu"
     LLM_JUDGE = "llm_judge"
-    INFERENCE_ONLY = "inference_only"
 
 
 # Internal benchmark configuration mapping - using plain dictionaries
@@ -138,14 +136,6 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
         "subtask_available": False,
         "subtasks": None
     },
-    _Benchmark.GEN_QA: {
-        "modality": "Multi-Modal (image)",
-        "description": "Custom Dataset Evaluation – Lets you supply your own dataset for benchmarking, comparing model outputs to reference answers with metrics such as ROUGE and BLEU. gen_qa supports image inference for models which have multimodal support.",
-        "metrics": ["all"],
-        "strategy": "gen_qa",
-        "subtask_available": False,
-        "subtasks": None
-    },
     _Benchmark.MMMU: {
         "modality": "Multi-Modal",
         "description": "Massive Multidiscipline Multimodal Understanding (MMMU) – College-level benchmark comprising multiple-choice and open-ended questions from 30 disciplines.",
@@ -168,14 +158,6 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
         "description": "LLM-as-a-Judge - Uses a user-selected judge model to judge a set of customer-provided inference responses.",
         "metrics": ["all"],
         "strategy": "judge",
-        "subtask_available": False,
-        "subtasks": None
-    },
-    _Benchmark.INFERENCE_ONLY: {
-        "modality": "Text",
-        "description": "Lets you supply your own dataset to generate inference responses which can be used with the llm_judge task. No metrics are computed for this task.",
-        "metrics": ["N/A"],
-        "strategy": "--",
         "subtask_available": False,
         "subtasks": None
     },
@@ -278,10 +260,6 @@ class BenchMarkEvaluator(BaseEvaluator):
             Optional. If not provided, the system will attempt to resolve it using the default
             MLflow app experience (checks domain match, account default, or creates a new app).
             Format: arn:aws:sagemaker:region:account:mlflow-tracking-server/name
-        dataset (Union[str, Any]): Evaluation dataset. Required. Accepts:
-            - S3 URI (str): e.g., 's3://bucket/path/dataset.jsonl'
-            - Dataset ARN (str): e.g., 'arn:aws:sagemaker:...:hub-content/AIRegistry/DataSet/...'
-            - DataSet object: sagemaker.ai_registry.dataset.DataSet instance (ARN inferred automatically)
         evaluate_base_model (bool): Whether to evaluate the base model in addition to the custom
             model. Set to False to skip base model evaluation and only evaluate the custom model.
             Defaults to True (evaluates both models).
@@ -309,7 +287,6 @@ class BenchMarkEvaluator(BaseEvaluator):
                 benchmark=Benchmark.MMLU,
                 subtasks=["abstract_algebra", "anatomy", "astronomy"],
                 model="llama3-2-1b-instruct",
-                dataset="s3://bucket/eval-data.jsonl",
                 s3_output_path="s3://bucket/outputs/",
                 mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
             )
@@ -323,12 +300,10 @@ class BenchMarkEvaluator(BaseEvaluator):
     """
     
     benchmark: _Benchmark
+    dataset: Union[str, Any]  # Required field, must come before optional fields
     subtasks: Optional[Union[str, List[str]]] = None
-    _hyperparameters: Optional[Any] = None
-    
-    # Template-required fields
-    dataset: Union[str, Any]
     evaluate_base_model: bool = True
+    _hyperparameters: Optional[Any] = None
     
     @validator('dataset', pre=True)
     def _resolve_dataset(cls, v):
@@ -385,7 +360,7 @@ class BenchMarkEvaluator(BaseEvaluator):
                             f"Subtask list cannot be empty for benchmark '{benchmark.value}'. "
                             f"Provide at least one subtask or use 'ALL'."
                         )
-                    
+
                     # Validate each subtask in the list
                     for subtask in v:
                         if not isinstance(subtask, str):
@@ -393,7 +368,7 @@ class BenchMarkEvaluator(BaseEvaluator):
                                 f"All subtasks in the list must be strings. "
                                 f"Found {type(subtask).__name__}: {subtask}"
                             )
-                        
+
                         # Validate against available subtasks if defined
                         if config.get("subtasks") and subtask not in config["subtasks"]:
                             raise ValueError(
@@ -527,23 +502,34 @@ class BenchMarkEvaluator(BaseEvaluator):
         """
         # Use provided subtask or fall back to constructor subtasks
         eval_subtask = subtask if subtask is not None else self.subtasks
-        
+
+        if eval_subtask is None or (isinstance(eval_subtask, str) and eval_subtask.upper() == "ALL"):
+            #TODO : Check All Vs None subtask for evaluation
+            return None
+
         # Validate the subtask
         config = _BENCHMARK_CONFIG.get(self.benchmark)
         if config and config.get("subtask_available"):
-            if isinstance(eval_subtask, list):
-                for st in eval_subtask:
-                    if config.get("subtasks") and st not in config["subtasks"] and st.upper() != "ALL":
-                        raise ValueError(
-                            f"Invalid subtask '{st}' for benchmark '{self.benchmark.value}'. "
-                            f"Available subtasks: {', '.join(config['subtasks'])}"
-                        )
-            elif isinstance(eval_subtask, str):
+            if isinstance(eval_subtask, str):
                 if eval_subtask.upper() != "ALL" and config.get("subtasks") and eval_subtask not in config["subtasks"]:
                     raise ValueError(
                         f"Invalid subtask '{eval_subtask}' for benchmark '{self.benchmark.value}'. "
                         f"Available subtasks: {', '.join(config['subtasks'])}"
                     )
+            elif isinstance(eval_subtask, list):
+                if len(eval_subtask) == 0:
+                    raise ValueError(
+                        f"Subtask list cannot be empty for benchmark '{self.benchmark.value}'. "
+                        f"Provide at least one subtask or use 'ALL'."
+                    )
+                # Validate each subtask in the list
+                for st in eval_subtask:
+                    if config.get("subtasks") and st not in config["subtasks"]:
+                        raise ValueError(
+                            f"Invalid subtask '{st}' for benchmark '{self.benchmark.value}'. "
+                            f"Available subtasks: {', '.join(config['subtasks'])}"
+                        )
+
         
         return eval_subtask
     
@@ -573,10 +559,15 @@ class BenchMarkEvaluator(BaseEvaluator):
             'task': self.benchmark.value,
             'strategy': config["strategy"],
             metric_key: config["metrics"][0] if config.get("metrics") else 'accuracy',
-            'subtask': eval_subtask if isinstance(eval_subtask, str) else ','.join(eval_subtask) if eval_subtask else '',
             'evaluate_base_model': self.evaluate_base_model,
         }
         
+        if isinstance(eval_subtask, str):
+            benchmark_context['subtask'] = eval_subtask
+        elif isinstance(eval_subtask, list):
+            # Convert list to comma-separated string
+            benchmark_context['subtask'] = ','.join(eval_subtask)
+
         # Add all configured hyperparameters
         for key in configured_params.keys():
             benchmark_context[key] = configured_params[key]
@@ -604,7 +595,6 @@ class BenchMarkEvaluator(BaseEvaluator):
                     benchmark=Benchmark.MMLU,
                     subtasks="ALL",
                     model="llama3-2-1b-instruct",
-                    dataset="s3://bucket/data.jsonl",
                     s3_output_path="s3://bucket/outputs/"
                 )
                 
@@ -645,9 +635,7 @@ class BenchMarkEvaluator(BaseEvaluator):
             model_package_group_arn=model_package_group_arn,
             resolved_model_artifact_arn=artifacts['resolved_model_artifact_arn']
         )
-        
-        # Add dataset URI
-        template_context['dataset_uri'] = self.dataset
+
         
         # Add benchmark-specific template additions
         benchmark_additions = self._get_benchmark_template_additions(eval_subtask, config)
