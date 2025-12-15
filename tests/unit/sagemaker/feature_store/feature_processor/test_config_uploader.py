@@ -68,7 +68,6 @@ def remote_decorator_config(sagemaker_session):
         pre_execution_commands="some_commands",
         pre_execution_script="some_path",
         python_sdk_whl_s3_uri=SAGEMAKER_WHL_FILE_S3_PATH,
-        environment_variables={"REMOTE_FUNCTION_SECRET_KEY": "some_secret_key"},
         custom_file_filter=None,
     )
 
@@ -91,7 +90,6 @@ def remote_decorator_config_with_filter(sagemaker_session):
         pre_execution_commands="some_commands",
         pre_execution_script="some_path",
         python_sdk_whl_s3_uri=SAGEMAKER_WHL_FILE_S3_PATH,
-        environment_variables={"REMOTE_FUNCTION_SECRET_KEY": "some_secret_key"},
         custom_file_filter=custom_file_filter,
     )
 
@@ -103,7 +101,6 @@ def test_prepare_and_upload_callable(mock_stored_function, config_uploader, wrap
     assert mock_stored_function.called_once_with(
         s3_base_uri="s3_base_uri",
         s3_kms_key=config_uploader.remote_decorator_config.s3_kms_key,
-        hmac_key="some_secret_key",
         sagemaker_session=sagemaker_session,
     )
 

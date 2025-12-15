@@ -17,7 +17,6 @@ from __future__ import absolute_import
 import argparse
 import sys
 import json
-import os
 from typing import TYPE_CHECKING
 
 import boto3
@@ -97,9 +96,7 @@ def _load_pipeline_context(args) -> Context:
     )
 
 
-def _execute_remote_function(
-    sagemaker_session, s3_base_uri, s3_kms_key, run_in_context, hmac_key, context
-):
+def _execute_remote_function(sagemaker_session, s3_base_uri, s3_kms_key, run_in_context, context):
     """Execute stored remote function"""
     from sagemaker.remote_function.core.stored_function import StoredFunction
 
@@ -107,7 +104,6 @@ def _execute_remote_function(
         sagemaker_session=sagemaker_session,
         s3_base_uri=s3_base_uri,
         s3_kms_key=s3_kms_key,
-        hmac_key=hmac_key,
         context=context,
     )
 
@@ -138,15 +134,12 @@ def main(sys_args=None):
         run_in_context = args.run_in_context
         pipeline_context = _load_pipeline_context(args)
 
-        hmac_key = os.getenv("REMOTE_FUNCTION_SECRET_KEY")
-
         sagemaker_session = _get_sagemaker_session(region)
         _execute_remote_function(
             sagemaker_session=sagemaker_session,
             s3_base_uri=s3_base_uri,
             s3_kms_key=s3_kms_key,
             run_in_context=run_in_context,
-            hmac_key=hmac_key,
             context=pipeline_context,
         )
 
@@ -162,7 +155,6 @@ def main(sys_args=None):
             sagemaker_session=sagemaker_session,
             s3_base_uri=s3_uri,
             s3_kms_key=s3_kms_key,
-            hmac_key=hmac_key,
         )
     finally:
         sys.exit(exit_code)
