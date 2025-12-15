@@ -167,7 +167,7 @@ def _get_or_create_pipeline(
     role_arn: str,
     session: Optional[Session] = None,
     region: Optional[str] = None,
-    tags: Optional[List[TagsDict]] = [],
+    create_tags: Optional[List[TagsDict]] = [],
 ) -> Pipeline:
     """Get existing pipeline or create/update it.
     
@@ -181,7 +181,7 @@ def _get_or_create_pipeline(
         role_arn: IAM role ARN for pipeline execution
         session: Boto3 session (optional)
         region: AWS region (optional)
-        tags (Optional[List[TagsDict]]): List of tags to include in pipeline
+        create_tags (Optional[List[TagsDict]]): List of tags to include in pipeline
         
     Returns:
         Pipeline instance (existing updated or newly created)
@@ -207,7 +207,7 @@ def _get_or_create_pipeline(
             
             # Get tags using Tag.get_all
             tags_list = Tag.get_all(resource_arn=pipeline_arn, session=session, region=region)
-            tags.extend({tag.key: tag.value for tag in tags_list})
+            tags = {tag.key: tag.value for tag in tags_list}
             
             # Validate tag
             if tags.get(_TAG_SAGEMAKER_MODEL_EVALUATION) == "true":
@@ -230,19 +230,19 @@ def _get_or_create_pipeline(
         
         # No matching pipeline found, create new one
         logger.info(f"No existing pipeline found with prefix {pipeline_name_prefix}, creating new one")
-        return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region)
+        return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region, create_tags)
         
     except ClientError as e:
         error_code = e.response['Error']['Code']
         if "ResourceNotFound" in error_code:
-            return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region)
+            return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region, create_tags)
         else:
             raise
             
     except Exception as e:
         # If search fails for other reasons, try to create
         logger.info(f"Error searching for pipeline ({str(e)}), attempting to create new pipeline")
-        return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region)
+        return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region, create_tags)
 
 
 def _start_pipeline_execution(
@@ -555,7 +555,7 @@ class EvaluationPipelineExecution(BaseModel):
                 role_arn=role_arn,
                 session=session,
                 region=region,
-                tags=tags,
+                create_tags=tags,
             )
             
             # Start pipeline execution via boto3
