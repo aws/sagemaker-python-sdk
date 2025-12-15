@@ -68,7 +68,7 @@ def _create_evaluation_pipeline(
     resolved_pipeline_definition = template.render(pipeline_name=pipeline_name)
     
     # Create tags for the pipeline
-    tags = tags.extend([
+    tags.extend([
         {"key": _TAG_SAGEMAKER_MODEL_EVALUATION, "value": "true"}
     ])
     
@@ -207,7 +207,7 @@ def _get_or_create_pipeline(
             
             # Get tags using Tag.get_all
             tags_list = Tag.get_all(resource_arn=pipeline_arn, session=session, region=region)
-            tags = tags.extend({tag.key: tag.value for tag in tags_list})
+            tags.extend({tag.key: tag.value for tag in tags_list})
             
             # Validate tag
             if tags.get(_TAG_SAGEMAKER_MODEL_EVALUATION) == "true":
