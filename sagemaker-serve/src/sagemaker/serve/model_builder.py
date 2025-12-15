@@ -489,6 +489,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.container_config = "host"
         self.inference_recommender_job_results = None
         self.container_log_level = logging.INFO
+        
+        if not hasattr(self, 'framework') or self.framework is None:
+            self.framework = None
+        if not hasattr(self, 'framework_version') or self.framework_version is None:
+            self.framework_version = None
 
     def _fetch_default_instance_type_for_custom_model(self) -> str:
         hosting_configs = self._fetch_hosting_configs_for_custom_model()
