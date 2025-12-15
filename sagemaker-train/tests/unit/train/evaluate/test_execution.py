@@ -299,7 +299,37 @@ class TestGetOrCreatePipeline:
             DEFAULT_ROLE,
             DEFAULT_PIPELINE_DEFINITION,
             mock_session,
-            DEFAULT_REGION
+            DEFAULT_REGION,
+            []
+        )
+        assert result == mock_pipeline
+
+    @patch("sagemaker.train.evaluate.execution._create_evaluation_pipeline")
+    @patch("sagemaker.train.evaluate.execution.Pipeline")
+    def test_create_pipeline_when_not_found_with_jumpstart_tags(self, mock_pipeline_class, mock_create, mock_session):
+        """Test creating pipeline when it doesn't exist."""
+        error_response = {"Error": {"Code": "ResourceNotFound"}}
+        mock_pipeline_class.get.side_effect = ClientError(error_response, "DescribePipeline")
+        mock_pipeline = MagicMock()
+        mock_create.return_value = mock_pipeline
+        create_tags = [{"key": "sagemaker-sdk:jumpstart-model-id", "value": "dummy-js-model-id"}]
+        
+        result = _get_or_create_pipeline(
+            eval_type=EvalType.BENCHMARK,
+            pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
+            role_arn=DEFAULT_ROLE,
+            session=mock_session,
+            region=DEFAULT_REGION,
+            create_tags=create_tags
+        )
+        
+        mock_create.assert_called_once_with(
+            EvalType.BENCHMARK,
+            DEFAULT_ROLE,
+            DEFAULT_PIPELINE_DEFINITION,
+            mock_session,
+            DEFAULT_REGION,
+            create_tags
         )
         assert result == mock_pipeline
 
