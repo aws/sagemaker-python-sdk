@@ -20,6 +20,8 @@ from pydantic import ValidationError
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.core.resources import ModelPackageGroup, Artifact
 from sagemaker.core.shapes import ArtifactSource, ArtifactSourceType
+from sagemaker.core.utils.utils import Unassigned
+from sagemaker.train.base_trainer import BaseTrainer
 
 from sagemaker.train.evaluate.base_evaluator import BaseEvaluator
 
@@ -1291,3 +1293,86 @@ class TestEdgeCases:
         assert evaluator.networking == vpc_config
         assert evaluator.kms_key_id == "arn:aws:kms:us-west-2:123456789012:key/12345"
         assert evaluator.region == DEFAULT_REGION
+
+
+class TestBaseTrainerHandling:
+    """Tests for BaseTrainer model handling."""
+    
+    @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
+    def test_base_trainer_with_valid_training_job(self, mock_resolve, mock_session, mock_model_info_with_package):
+        """Test BaseTrainer with valid completed training job."""
+        mock_resolve.return_value = mock_model_info_with_package
+        
+        # Create mock BaseTrainer with completed training job
+        mock_trainer = MagicMock(spec=BaseTrainer)
+        mock_training_job = MagicMock()
+        mock_training_job.output_model_package_arn = DEFAULT_MODEL_PACKAGE_ARN
+        mock_trainer._latest_training_job = mock_training_job
+        
+        evaluator = BaseEvaluator(
+            model=mock_trainer,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            sagemaker_session=mock_session,
+        )
+        
+        # Verify model resolution was called with the training job's model package ARN
+        mock_resolve.assert_called_once_with(
+            base_model=DEFAULT_MODEL_PACKAGE_ARN,
+            sagemaker_session=mock_session
+        )
+        assert evaluator.model == mock_trainer
+    
+    @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
+    def test_base_trainer_with_unassigned_arn(self, mock_resolve, mock_session):
+        """Test BaseTrainer with Unassigned output_model_package_arn raises error."""
+        # Create mock BaseTrainer with Unassigned ARN
+        mock_trainer = MagicMock(spec=BaseTrainer)
+        mock_training_job = MagicMock()
+        mock_training_job.output_model_package_arn = Unassigned()
+        mock_trainer._latest_training_job = mock_training_job
+        
+        with pytest.raises(ValidationError, match="BaseTrainer must have completed training job"):
+            BaseEvaluator(
+                model=mock_trainer,
+                s3_output_path=DEFAULT_S3_OUTPUT,
+                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+                sagemaker_session=mock_session,
+            )
+    
+    @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
+    def test_base_trainer_without_training_job(self, mock_resolve, mock_session):
+        """Test BaseTrainer without _latest_training_job falls through to normal processing."""
+        # Create mock BaseTrainer without _latest_training_job attribute
+        mock_trainer = MagicMock()
+        mock_trainer.__class__.__name__ = 'BaseTrainer'
+        # Don't set _latest_training_job attribute at all
+        
+        # This should fail during model resolution, not in BaseTrainer handling
+        with pytest.raises(ValidationError, match="Failed to resolve model"):
+            BaseEvaluator(
+                model=mock_trainer,
+                s3_output_path=DEFAULT_S3_OUTPUT,
+                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+                sagemaker_session=mock_session,
+            )
+    
+    def test_base_trainer_without_output_model_package_arn_attribute(self, mock_session):
+        """Test BaseTrainer with training job but missing output_model_package_arn attribute."""
+        
+        # Create a custom class that doesn't have output_model_package_arn
+        class MockTrainingJobWithoutArn:
+            pass
+        
+        # Create mock BaseTrainer with _latest_training_job but no output_model_package_arn
+        mock_trainer = MagicMock()
+        mock_trainer.__class__.__name__ = 'BaseTrainer'
+        mock_trainer._latest_training_job = MockTrainingJobWithoutArn()
+        
+        with pytest.raises(ValidationError, match="BaseTrainer must have completed training job"):
+            BaseEvaluator(
+                model=mock_trainer,
+                s3_output_path=DEFAULT_S3_OUTPUT,
+                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+                sagemaker_session=mock_session,
+            )
