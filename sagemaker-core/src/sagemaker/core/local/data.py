@@ -116,10 +116,34 @@ class DataSource(with_metaclass(ABCMeta, object)):
 class LocalFileDataSource(DataSource):
     """Represents a data source within the local filesystem."""
 
+    # Blocklist of sensitive directories that should not be accessible
+    RESTRICTED_PATHS = [
+        os.path.abspath(os.path.expanduser("~/.aws")),
+        os.path.abspath(os.path.expanduser("~/.ssh")),
+        os.path.abspath(os.path.expanduser("~/.kube")),
+        os.path.abspath(os.path.expanduser("~/.docker")),
+        os.path.abspath(os.path.expanduser("~/.config")),
+        os.path.abspath(os.path.expanduser("~/.credentials")),
+        "/etc",
+        "/root",
+        "/home",
+        "/var/lib",
+        "/opt/ml/metadata",
+    ]
+
     def __init__(self, root_path):
         super(LocalFileDataSource, self).__init__()
 
         self.root_path = os.path.abspath(root_path)
+        
+        # Validate that the path is not in restricted locations
+        for restricted_path in self.RESTRICTED_PATHS:
+            if self.root_path.startswith(restricted_path):
+                raise ValueError(
+                    f"Local Mode does not support mounting from restricted system paths. "
+                    f"Got: {root_path}"
+                )
+        
         if not os.path.exists(self.root_path):
             raise RuntimeError("Invalid data source: %s does not exist." % self.root_path)
 
