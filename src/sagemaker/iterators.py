@@ -185,7 +185,6 @@ class LineIterator(BaseIterator):
                 # print and move on to next response byte
                 print("Unknown event type:" + chunk)
                 continue
-            
 
             # Check buffer size before writing to prevent unbounded memory consumption
             chunk_size = len(chunk["PayloadPart"]["Bytes"])
@@ -195,7 +194,6 @@ class LineIterator(BaseIterator):
                     f"Line buffer exceeded maximum size of {self.MAX_BUFFER_SIZE} bytes. "
                     f"No newline found in stream."
                 )
-            
-            
+
             self.buffer.seek(0, io.SEEK_END)
             self.buffer.write(chunk["PayloadPart"]["Bytes"])
