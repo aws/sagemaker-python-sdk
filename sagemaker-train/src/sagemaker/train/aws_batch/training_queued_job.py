@@ -271,7 +271,7 @@ def _construct_model_trainer_from_training_job_name(training_job_name: str) -> M
     # Step 3: Create ModelTrainer
     model_trainer = ModelTrainer(**init_params)
 
-    # Step 4: Set _latest_training_job (key insight!)
+    # Step 4: Set _latest_training_job
     model_trainer._latest_training_job = training_job
 
     return model_trainer
