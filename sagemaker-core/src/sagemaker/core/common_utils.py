@@ -74,6 +74,7 @@ DEFAULT_SLEEP_TIME_SECONDS = 10
 WAITING_DOT_NUMBER = 10
 MAX_ITEMS = 100
 PAGE_SIZE = 10
+SENSITIVE_SYSTEM_ROOTS = ["/", "/etc", "/var"]
 
 logger = logging.getLogger(__name__)
 
@@ -612,6 +613,9 @@ def _create_or_update_code_dir(
 ):
     """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
+    resolved_code_dir = _get_resolved_path(code_dir)
+    if resolved_code_dir in SENSITIVE_SYSTEM_ROOTS:
+        raise ValueError(f"Invalid code_dir path: {code_dir} resolves to sensitive system root {resolved_code_dir}")
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
