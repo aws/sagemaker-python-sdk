@@ -303,7 +303,7 @@ class BenchMarkEvaluator(BaseEvaluator):
     subtasks: Optional[Union[str, List[str]]] = None
     evaluate_base_model: bool = True
     _hyperparameters: Optional[Any] = None
-    
+
     
     @validator('benchmark')
     def _validate_benchmark_model_compatibility(cls, v, values):
