@@ -13,6 +13,8 @@ from typing import Union, Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 import re
+from sagemaker.train.base_trainer import BaseTrainer
+from sagemaker.core.utils.utils import Unassigned
 
 
 class _ModelType(Enum):
@@ -65,14 +67,14 @@ class _ModelResolver:
     
     def resolve_model_info(
         self, 
-        base_model: Union[str, 'ModelPackage'],
+        base_model: Union[str, BaseTrainer, 'ModelPackage'],
         hub_name: Optional[str] = None
     ) -> _ModelInfo:
         """
         Resolve model information from various input types.
         
         Args:
-            base_model: Either a JumpStart model ID (str) or ModelPackage object/ARN
+            base_model: Either a JumpStart model ID (str) or ModelPackage object/ARN or BaseTrainer object with a completed job
             hub_name: Optional hub name for JumpStart models (defaults to SageMakerPublicHub)
         
         Returns:
@@ -88,6 +90,17 @@ class _ModelResolver:
                 return self._resolve_model_package_arn(base_model)
             else:
                 return self._resolve_jumpstart_model(base_model, hub_name or self.DEFAULT_HUB_NAME)
+        # Handle BaseTrainer type
+        elif isinstance(base_model, BaseTrainer):
+            if hasattr(base_model, '_latest_training_job') and hasattr(base_model._latest_training_job,
+                                                              'output_model_package_arn'):
+                arn = base_model._latest_training_job.output_model_package_arn
+                if not isinstance(arn, Unassigned):
+                    return self._resolve_model_package_arn(arn)
+                else:
+                    raise ValueError("BaseTrainer must have completed training job to be used for evaluation")
+            else:
+                raise ValueError("BaseTrainer must have completed training job to be used for evaluation")
         else:
             # Not a string, so assume it's a ModelPackage object
             # Check if it has the expected attributes of a ModelPackage
