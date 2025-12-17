@@ -137,7 +137,11 @@ def get_child_process_ids(pid):
     Returns:
         (List[int]): Child process ids
     """
-    cmd = f"pgrep -P {pid}".split()
+    if not str(pid).isdigit():
+        raise ValueError("Invalid PID")
+    
+    cmd = ["pgrep", "-P", str(pid)]
+    
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, err = process.communicate()
     if err:

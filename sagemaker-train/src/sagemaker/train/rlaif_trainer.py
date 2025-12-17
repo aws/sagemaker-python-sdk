@@ -286,7 +286,7 @@ class RLAIFTrainer(BaseTrainer):
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 
-        self.latest_training_job = training_job
+        self._latest_training_job = training_job
         return training_job
 
     def _process_hyperparameters(self):
