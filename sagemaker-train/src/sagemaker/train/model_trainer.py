@@ -64,6 +64,7 @@ from sagemaker.train.configs import (
     RemoteDebugConfig,
     SessionChainingConfig,
     InputData,
+    MetricDefinition,
 )
 
 from sagemaker.train.distributed import Torchrun, DistributedConfig
@@ -244,6 +245,7 @@ class ModelTrainer(BaseModel):
     _infra_check_config: Optional[InfraCheckConfig] = PrivateAttr(default=None)
     _session_chaining_config: Optional[SessionChainingConfig] = PrivateAttr(default=None)
     _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
+    _metric_definitions: Optional[List[MetricDefinition]] = PrivateAttr(default=None)
 
     # Private Attributes for Recipes
     _temp_recipe_train_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
@@ -654,6 +656,7 @@ class ModelTrainer(BaseModel):
             training_image_config=self.training_image_config,
             container_entrypoint=container_entrypoint,
             container_arguments=container_arguments,
+            metric_definitions=self._metric_definitions,
         )
 
         resource_config = self.compute._to_resource_config()
@@ -1495,4 +1498,30 @@ class ModelTrainer(BaseModel):
                 The checkpoint configuration for the training job.
         """
         self.checkpoint_config = checkpoint_config or configs.CheckpointConfig()
+        return self
+
+    def with_metric_definitions(
+        self,
+        metric_definitions: List[MetricDefinition]
+    ) -> "ModelTrainer":  # noqa: D412
+        """Set the metric definitions for the training job.
+        Example:
+        .. code:: python
+            from sagemaker.modules.train import ModelTrainer
+            from sagemaker.modules.configs import MetricDefinition
+            metric_definitions = [
+                MetricDefinition(
+                    name="loss",
+                    regex="Loss: (.*?)",
+                )
+            ]
+            model_trainer = ModelTrainer(
+                ...
+            ).with_metric_definitions(metric_definitions)
+        Args:
+            metric_definitions (List[MetricDefinition]):
+                The metric definitions for the training job.
+        """
+        self._metric_definitions = metric_definitions
+
         return self

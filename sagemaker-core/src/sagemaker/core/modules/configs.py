@@ -45,6 +45,7 @@ from sagemaker.core.shapes import (
     InstanceGroup,
     TensorBoardOutputConfig,
     CheckpointConfig,
+    MetricDefinition,
 )
 
 
@@ -70,6 +71,7 @@ __all__ = [
     "Compute",
     "Networking",
     "InputData",
+    "MetricDefinition",
 ]
 
 from sagemaker.core.modules.utils import convert_unassigned_to_none
