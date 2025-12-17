@@ -268,7 +268,7 @@ class SFTTrainer(BaseTrainer):
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 
-        self.latest_training_job = training_job
+        self._latest_training_job = training_job
         return training_job
 
 
