@@ -47,7 +47,7 @@ from sagemaker.core.shapes import (
     CheckpointConfig,
     MetricDefinition,
 )
-
+from typing import List
 
 __all__ = [
     "SourceCode",
