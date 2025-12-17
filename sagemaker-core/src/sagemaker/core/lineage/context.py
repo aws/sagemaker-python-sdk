@@ -136,7 +136,7 @@ class Context(_base_types.Record):
         Examples:
             .. code-block:: python
 
-                from sagemaker.lineage import context
+                from sagemaker.core.lineage import context
 
                 my_context = context.Context.create(
                     context_name='MyContext',

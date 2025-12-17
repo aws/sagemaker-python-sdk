@@ -38,7 +38,7 @@ class Action(_base_types.Record):
     Examples:
         .. code-block:: python
 
-            from sagemaker.lineage import action
+            from sagemaker.core.lineage import action
 
             my_action = action.Action.create(
                 action_name='MyAction',

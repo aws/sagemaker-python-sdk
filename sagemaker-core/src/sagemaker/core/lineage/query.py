@@ -194,9 +194,9 @@ class Vertex:
             A ``Vertex`` object to its corresponding ``Artifact``,``Action``, ``Context``
             or ``TrialComponent`` object.
         """
-        from sagemaker.lineage.context import Context, EndpointContext
-        from sagemaker.lineage.action import Action
-        from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
+        from sagemaker.core.lineage.context import Context, EndpointContext
+        from sagemaker.core.lineage.action import Action
+        from sagemaker.core.lineage.lineage_trial_component import LineageTrialComponent
 
         if self.lineage_entity == LineageEntityEnum.CONTEXT.value:
             resource_name = get_resource_name_from_arn(self.arn)
@@ -221,8 +221,8 @@ class Vertex:
 
     def _artifact_to_lineage_object(self):
         """Convert the ``Vertex`` object to its corresponding ``Artifact``."""
-        from sagemaker.lineage.artifact import Artifact, ModelArtifact, ImageArtifact
-        from sagemaker.lineage.artifact import DatasetArtifact
+        from sagemaker.core.lineage.artifact import Artifact, ModelArtifact, ImageArtifact
+        from sagemaker.core.lineage.artifact import DatasetArtifact
 
         if self.lineage_source == LineageSourceEnum.MODEL.value:
             return ModelArtifact.load(artifact_arn=self.arn, sagemaker_session=self._session)

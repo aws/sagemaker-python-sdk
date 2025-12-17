@@ -146,7 +146,7 @@ class TestVertex:
         vertex_set = {vertex1, vertex2}
         assert len(vertex_set) == 1
 
-    @patch("sagemaker.lineage.context.EndpointContext")
+    @patch("sagemaker.core.lineage.context.EndpointContext")
     def test_to_lineage_object_context(self, mock_endpoint_context_class):
         """Test converting vertex to Context"""
         mock_session = Mock()
@@ -164,7 +164,7 @@ class TestVertex:
         # Should call EndpointContext.load for Endpoint source
         assert result is not None
 
-    @patch("sagemaker.lineage.action.Action")
+    @patch("sagemaker.core.lineage.action.Action")
     def test_to_lineage_object_action(self, mock_action_class):
         """Test converting vertex to Action"""
         mock_session = Mock()

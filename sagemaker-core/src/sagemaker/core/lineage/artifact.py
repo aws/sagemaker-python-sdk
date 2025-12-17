@@ -42,7 +42,7 @@ class Artifact(_base_types.Record):
     Examples:
         .. code-block:: python
 
-            from sagemaker.lineage import artifact
+            from sagemaker.core.lineage import artifact
 
             my_artifact = artifact.Artifact.create(
                 artifact_name='MyArtifact',
