@@ -99,12 +99,23 @@ class SourceCode(BaseConfig):
         command (Optional[str]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        ignore_patterns: (Optional[List[str]]) :
+            The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
+            default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
     """
 
     source_dir: Optional[str] = None
     requirements: Optional[str] = None
     entry_script: Optional[str] = None
     command: Optional[str] = None
+    ignore_patterns: Optional[List[str]] = [
+        ".env",
+        ".git",
+        "__pycache__",
+        ".DS_Store",
+        ".cache",
+        ".ipynb_checkpoints",
+    ]
 
 
 class Compute(shapes.ResourceConfig):
