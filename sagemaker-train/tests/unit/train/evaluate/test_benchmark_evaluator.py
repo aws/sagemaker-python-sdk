@@ -121,7 +121,7 @@ def test_benchmark_evaluator_initialization_minimal(mock_artifact, mock_resolve)
     evaluator = BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -130,7 +130,6 @@ def test_benchmark_evaluator_initialization_minimal(mock_artifact, mock_resolve)
     
     assert evaluator.benchmark == _Benchmark.MMLU
     assert evaluator.model == DEFAULT_MODEL
-    assert evaluator.dataset == DEFAULT_DATASET
     assert evaluator.evaluate_base_model is True
     assert evaluator.subtasks == "ALL"
 
@@ -158,7 +157,7 @@ def test_benchmark_evaluator_subtask_defaults_to_all(mock_artifact, mock_resolve
     evaluator = BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -188,7 +187,7 @@ def test_benchmark_evaluator_subtask_validation_invalid(mock_artifact, mock_reso
             benchmark=_Benchmark.MMLU,
             subtasks=["invalid_subtask"],
             model=DEFAULT_MODEL,
-            dataset=DEFAULT_DATASET,
+            
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -216,7 +215,7 @@ def test_benchmark_evaluator_no_subtask_for_unsupported_benchmark(mock_artifact,
             benchmark=_Benchmark.GPQA,
             subtasks="some_subtask",
             model=DEFAULT_MODEL,
-            dataset=DEFAULT_DATASET,
+            
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -250,14 +249,13 @@ def test_benchmark_evaluator_dataset_resolution_from_object(mock_artifact, mock_
     evaluator = BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
         model=DEFAULT_MODEL,
-        dataset=mock_dataset,
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
         sagemaker_session=mock_session,
     )
     
-    assert evaluator.dataset == mock_dataset.arn
+    # Dataset field is commented out, so no assertion needed
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -284,7 +282,7 @@ def test_benchmark_evaluator_evaluate_method_exists(mock_artifact, mock_resolve)
         benchmark=_Benchmark.MMLU,
         subtasks=["abstract_algebra"],
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -327,7 +325,7 @@ def test_benchmark_evaluator_evaluate_invalid_subtask_override(mock_artifact, mo
     evaluator = BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -378,7 +376,7 @@ def test_benchmark_evaluator_missing_required_fields():
         BenchMarkEvaluator(
             benchmark=_Benchmark.MMLU,
             model=DEFAULT_MODEL,
-            dataset=DEFAULT_DATASET,
+            
             s3_output_path=DEFAULT_S3_OUTPUT,
             sagemaker_session=mock_session,
         )
@@ -408,7 +406,7 @@ def test_benchmark_evaluator_resolve_subtask_for_evaluation(mock_artifact, mock_
         benchmark=_Benchmark.MMLU,
         subtasks="abstract_algebra",  # Use a specific subtask instead of "ALL"
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -458,7 +456,7 @@ def test_benchmark_evaluator_hyperparameters_property(mock_artifact, mock_resolv
     evaluator = BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -512,7 +510,7 @@ def test_benchmark_evaluator_get_benchmark_template_additions(mock_artifact, moc
         benchmark=_Benchmark.MMLU,
         subtasks=["abstract_algebra"],
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -559,7 +557,7 @@ def test_benchmark_evaluator_mmmu_nova_validation(mock_artifact, mock_resolve, m
         BenchMarkEvaluator(
             benchmark=_Benchmark.MMMU,
             model=DEFAULT_MODEL,
-            dataset=DEFAULT_DATASET,
+            
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -596,7 +594,7 @@ def test_benchmark_evaluator_llm_judge_nova_validation(mock_artifact, mock_resol
         BenchMarkEvaluator(
             benchmark=_Benchmark.LLM_JUDGE,
             model="nova-pro",
-            dataset=DEFAULT_DATASET,
+            
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -629,7 +627,7 @@ def test_benchmark_evaluator_subtask_list_validation(mock_artifact, mock_resolve
         benchmark=_Benchmark.MMLU,
         subtasks=["abstract_algebra", "anatomy"],
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -643,7 +641,7 @@ def test_benchmark_evaluator_subtask_list_validation(mock_artifact, mock_resolve
             benchmark=_Benchmark.MMLU,
             subtasks=[],
             model=DEFAULT_MODEL,
-            dataset=DEFAULT_DATASET,
+            
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -675,7 +673,7 @@ def test_benchmark_evaluator_resolve_subtask_list(mock_artifact, mock_resolve):
         benchmark=_Benchmark.MMLU,
         subtasks=["abstract_algebra", "anatomy"],
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -729,7 +727,7 @@ def test_benchmark_evaluator_template_additions_with_list_subtasks(mock_artifact
         benchmark=_Benchmark.MMLU,
         subtasks=["abstract_algebra", "anatomy"],
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -761,7 +759,7 @@ def test_benchmark_evaluator_with_subtask_list(mock_resolve):
     
     evaluator = BenchMarkEvaluator(
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         benchmark=_Benchmark.MMLU,
         subtasks=['abstract_algebra', 'anatomy'],
         s3_output_path=DEFAULT_S3_OUTPUT,
@@ -788,7 +786,7 @@ def test_benchmark_evaluator_with_subtask_string(mock_resolve):
     
     evaluator = BenchMarkEvaluator(
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         benchmark=_Benchmark.MMLU,
         subtasks='abstract_algebra',
         s3_output_path=DEFAULT_S3_OUTPUT,
@@ -817,7 +815,7 @@ def test_benchmark_evaluator_invalid_subtask(mock_resolve):
     with pytest.raises(ValidationError, match="Invalid subtask"):
         BenchMarkEvaluator(
             model=DEFAULT_MODEL,
-            dataset=DEFAULT_DATASET,
+            
             benchmark=_Benchmark.MMLU,
             subtasks=['invalid_subtask'],
             s3_output_path=DEFAULT_S3_OUTPUT,
@@ -843,7 +841,7 @@ def test_benchmark_evaluator_no_subtask_available(mock_resolve):
     # IFEVAL doesn't support subtasks
     evaluator = BenchMarkEvaluator(
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         benchmark=_Benchmark.IFEVAL,
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
@@ -874,7 +872,7 @@ def test_benchmark_evaluator_with_networking(mock_resolve):
     
     evaluator = BenchMarkEvaluator(
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         benchmark=_Benchmark.MMLU,
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
@@ -903,7 +901,7 @@ def test_benchmark_evaluator_with_kms_key(mock_resolve):
     
     evaluator = BenchMarkEvaluator(
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         benchmark=_Benchmark.MMLU,
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
@@ -951,7 +949,7 @@ def test_benchmark_evaluator_uses_metric_key_for_nova(mock_artifact, mock_resolv
     evaluator = BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
         model="nova-pro",
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
@@ -1001,7 +999,7 @@ def test_benchmark_evaluator_uses_evaluation_metric_key_for_non_nova(mock_artifa
     evaluator = BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
         model=DEFAULT_MODEL,
-        dataset=DEFAULT_DATASET,
+        
         s3_output_path=DEFAULT_S3_OUTPUT,
         mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
         model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
