@@ -52,8 +52,8 @@ from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_b
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from sagemaker.train.model_trainer import ModelTrainer
-from sagemaker.core.training.configs import InputData
-from sagemaker.core.training.utils import _is_valid_s3_uri
+from sagemaker.train.configs import InputData
+from sagemaker.train.utils import _is_valid_s3_uri
 
 HYPERPARAMETER_TUNING_JOB_NAME = "HyperParameterTuningJobName"
 PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"

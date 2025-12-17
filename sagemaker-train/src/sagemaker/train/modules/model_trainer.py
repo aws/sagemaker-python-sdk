@@ -23,8 +23,8 @@ import yaml
 
 from graphene.utils.str_converters import to_camel_case, to_snake_case
 
-from sagemaker.core.training.configs import Compute, Networking, InputData, SourceCode
-from sagemaker.core.training.constants import DEFAULT_INSTANCE_TYPE, DEFAULT_CONTAINER_ENTRYPOINT, \
+from sagemaker.train.configs import Compute, Networking, InputData, SourceCode
+from sagemaker.train.constants import DEFAULT_INSTANCE_TYPE, DEFAULT_CONTAINER_ENTRYPOINT, \
     DEFAULT_CONTAINER_ARGUMENTS, SM_DRIVERS, SM_CODE_CONTAINER_PATH, TRAIN_SCRIPT, DISTRIBUTED_JSON, SOURCE_CODE_JSON, \
     SM_CODE, SM_DRIVERS_LOCAL_PATH
 from sagemaker.train.distributed import DistributedConfig, Torchrun

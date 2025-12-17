@@ -19,8 +19,8 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
 
 from sagemaker.core.modules.utils import safe_serialize
-from sagemaker.core.training.configs import BaseConfig
-from sagemaker.core.training.constants import SM_DRIVERS_LOCAL_PATH
+from sagemaker.train.configs import BaseConfig
+from sagemaker.train.constants import SM_DRIVERS_LOCAL_PATH
 
 
 class SMP(BaseConfig):
