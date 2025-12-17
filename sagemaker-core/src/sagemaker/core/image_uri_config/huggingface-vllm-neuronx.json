@@ -1,41 +1,36 @@
 {
-    "training": {
+    "inference": {
         "processors": [
-            "trn"
+            "inf2"
         ],
         "version_aliases": {
-            "1.11": "1.11.0"
+            "0.4": "0.4.1"
         },
         "versions": {
-            "1.11.0": {
+            "0.4.1": {
                 "py_versions": [
-                    "py38"
+                    "py310"
                 ],
-                "repository": "pytorch-training-neuron",
                 "registries": {
                     "ap-northeast-1": "763104351884",
                     "ap-south-1": "763104351884",
-                    "ap-south-2": "772153158452",
                     "ap-southeast-1": "763104351884",
                     "ap-southeast-2": "763104351884",
-                    "ap-southeast-4": "457447274322",
                     "eu-central-1": "763104351884",
-                    "eu-central-2": "380420809688",
-                    "eu-south-2": "503227376785",
                     "eu-west-1": "763104351884",
                     "eu-west-3": "763104351884",
-                    "il-central-1": "780543022126",
                     "sa-east-1": "763104351884",
                     "us-east-1": "763104351884",
                     "us-east-2": "763104351884",
-                    "us-west-2": "763104351884",
-                    "ca-west-1": "204538143572"
+                    "us-west-2": "763104351884"
                 },
+                "tag_prefix": "0.10.2",
+                "repository": "huggingface-vllm-inference-neuronx",
                 "container_version": {
-                    "trn": "ubuntu20.04"
+                    "inf2": "ubuntu22.04"
                 },
                 "sdk_versions": [
-                    "sdk2.4.0"
+                    "sdk2.26.0"
                 ]
             }
         }

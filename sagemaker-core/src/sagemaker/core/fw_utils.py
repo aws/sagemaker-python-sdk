@@ -25,13 +25,14 @@ from typing import Dict, List, Optional, Union
 
 from packaging import version
 
-import sagemaker.core.common_utils as sagemaker_utils
-from sagemaker.core.deprecations import deprecation_warn_base, renamed_kwargs
+from sagemaker.core import image_uris
+import sagemaker.core.common_utils as utils
+from sagemaker.core.deprecations import deprecation_warn_base, renamed_kwargs, renamed_warning
 from sagemaker.core.instance_group import InstanceGroup
-from sagemaker.core.s3 import s3_path_join
+from sagemaker.core.s3.utils import s3_path_join
 from sagemaker.core.session_settings import SessionSettings
 from sagemaker.core.workflow import is_pipeline_variable
-from sagemaker.core.helper.pipeline_variable import PipelineVariable
+from sagemaker.core.workflow.entities import PipelineVariable
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +156,9 @@ TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = [
     "2.3.1",
     "2.4.1",
     "2.5.1",
+    "2.6.0",
+    "2.7.1",
+    "2.8.0",
 ]
 
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
@@ -455,7 +459,7 @@ def tar_and_upload_dir(
 
     try:
         source_files = _list_files_to_compress(script, directory) + dependencies
-        tar_file = sagemaker_utils.create_tar_file(
+        tar_file = utils.create_tar_file(
             source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME)
         )
 
@@ -516,7 +520,7 @@ def framework_name_from_image(image_uri):
             - str: The image tag
             - str: If the TensorFlow image is script mode
     """
-    sagemaker_pattern = re.compile(sagemaker_utils.ECR_URI_PATTERN)
+    sagemaker_pattern = re.compile(utils.ECR_URI_PATTERN)
     sagemaker_match = sagemaker_pattern.match(image_uri)
     if sagemaker_match is None:
         return None, None, None, None
@@ -595,7 +599,7 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     """
     name_from_image = f"/model_code/{int(time.time())}"
     if not is_pipeline_variable(image):
-        name_from_image = sagemaker_utils.name_from_image(image)
+        name_from_image = utils.name_from_image(image)
     return s3_path_join(code_location_key_prefix, model_name or name_from_image)
 
 
@@ -961,7 +965,7 @@ def validate_distribution_for_instance_type(instance_type, distribution):
     """
     err_msg = ""
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             keys = list(distribution.keys())
             if len(keys) == 0:
@@ -1062,7 +1066,7 @@ def validate_torch_distributed_distribution(
             )
 
     # Check entry point type
-    if not entry_point.endswith(".py"):
+    if entry_point is not None and not entry_point.endswith(".py"):
         err_msg += (
             "Unsupported entry point type for the distribution torch_distributed.\n"
             "Only python programs (*.py) are supported."
@@ -1082,7 +1086,7 @@ def _is_gpu_instance(instance_type):
         bool: Whether or not the instance_type supports GPU
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match:
             if match[1].startswith("p") or match[1].startswith("g"):
                 return True
@@ -1101,7 +1105,7 @@ def _is_trainium_instance(instance_type):
         bool: Whether or not the instance_type is a Trainium instance
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             return True
     return False
@@ -1148,7 +1152,7 @@ def _instance_type_supports_profiler(instance_type):
         bool: Whether or not the region supports Amazon SageMaker Debugger profiling feature.
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             return True
     return False
@@ -1174,3 +1178,42 @@ def validate_version_or_image_args(framework_version, py_version, image_uri):
             "framework_version or py_version was None, yet image_uri was also None. "
             "Either specify both framework_version and py_version, or specify image_uri."
         )
+
+
+def create_image_uri(
+    region,
+    framework,
+    instance_type,
+    framework_version,
+    py_version=None,
+    account=None,  # pylint: disable=W0613
+    accelerator_type=None,
+    optimized_families=None,  # pylint: disable=W0613
+):
+    """Deprecated method. Please use sagemaker.image_uris.retrieve().
+
+    Args:
+        region (str): AWS region where the image is uploaded.
+        framework (str): framework used by the image.
+        instance_type (str): SageMaker instance type. Used to determine device
+            type (cpu/gpu/family-specific optimized).
+        framework_version (str): The version of the framework.
+        py_version (str): Optional. Python version Ex: `py38, py39, py310, py311`.
+            If not specified, image uri will not include a python component.
+        account (str): AWS account that contains the image. (default:
+            '520713654638')
+        accelerator_type (str): SageMaker Elastic Inference accelerator type.
+        optimized_families (str): Deprecated. A no-op argument.
+
+    Returns:
+        the image uri
+    """
+    renamed_warning("The method create_image_uri")
+    return image_uris.retrieve(
+        framework=framework,
+        region=region,
+        version=framework_version,
+        py_version=py_version,
+        instance_type=instance_type,
+        accelerator_type=accelerator_type,
+    )
