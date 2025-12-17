@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "VERL format for reinforcement learning training",
+  "properties": {
+    "prompt": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "The prompt/query as a string (legacy format)"
+        },
+        {
+          "type": "array",
+          "description": "Array of conversation messages",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          }
+        }
+      ]
+    },
+    "id": {
+      "type": "string",
+      "description": "Optional unique identifier"
+    },
+    "attributes": {
+      "oneOf": [
+        {"type": "object"},
+        {"type": "string"}
+      ],
+      "description": "Optional metadata attributes"
+    },
+    "difficulty": {
+      "type": "string",
+      "description": "Optional difficulty level"
+    },
+    "data_source": {
+      "type": "string",
+      "description": "Optional source of the data"
+    },
+    "ability": {
+      "type": "string",
+      "description": "Optional ability category"
+    },
+    "reward_model": {
+      "type": "object",
+      "description": "Optional reward model configuration"
+    },
+    "extra_info": {
+      "type": "object",
+      "description": "Optional additional information"
+    }
+  },
+  "required": ["prompt"],
+  "additionalProperties": true
+}
