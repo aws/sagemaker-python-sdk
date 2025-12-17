@@ -322,10 +322,19 @@ def _get_args_from_recipe(
         args["source_code"].requirements = os.path.basename(requirements)
 
     # Update args with compute and hyperparameters
+    hyperparameters = {"config-path": ".", "config-name": "recipe.yaml"}
+    
+    # Handle eval custom lambda configuration
+    if recipe.get("evaluation", {}):
+        processor = recipe.get("processor", {})
+        lambda_arn = processor.get("lambda_arn", "")
+        if lambda_arn:
+            hyperparameters["lambda_arn"] = lambda_arn
+    
     args.update(
         {
             "compute": compute,
-            "hyperparameters": {"config-path": ".", "config-name": "recipe.yaml"},
+            "hyperparameters": hyperparameters,
         }
     )
 
