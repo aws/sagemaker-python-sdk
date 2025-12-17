@@ -13,6 +13,6 @@
 """This is a simple scrip of spark which invokes the pickled remote function"""
 from __future__ import absolute_import
 
-from sagemaker.core.remote_function import invoke_function
+from sagemaker.train.remote_function import invoke_function
 
 invoke_function.main()

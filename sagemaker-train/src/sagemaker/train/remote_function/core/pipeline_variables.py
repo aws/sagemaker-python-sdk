@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any, Union, Dict, List, Tuple
 
 from sagemaker.core.s3 import s3_path_join
-from sagemaker.core.remote_function.core.serialization import deserialize_obj_from_s3
+from sagemaker.train.remote_function.core.serialization import deserialize_obj_from_s3
 from sagemaker.core.workflow.step_outputs import get_step
 
 

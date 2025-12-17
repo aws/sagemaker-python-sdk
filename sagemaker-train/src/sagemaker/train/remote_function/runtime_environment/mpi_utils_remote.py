@@ -28,7 +28,7 @@ if __package__ is None or __package__ == "":
         get_logger,
     )
 else:
-    from sagemaker.core.remote_function.runtime_environment.runtime_environment_manager import (
+    from sagemaker.train.remote_function.runtime_environment.runtime_environment_manager import (
         get_logger,
     )
 

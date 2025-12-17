@@ -21,16 +21,16 @@ import os
 from typing import TYPE_CHECKING
 
 import boto3
-from sagemaker.core.remote_function.job import (
+from sagemaker.train.remote_function.job import (
     KEY_EXPERIMENT_NAME,
     KEY_RUN_NAME,
 )
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3 import s3_path_join
-from sagemaker.core.remote_function.errors import handle_error
-from sagemaker.core.remote_function import logging_config
-from sagemaker.core.remote_function.core.pipeline_variables import Context
+from sagemaker.train.remote_function.errors import handle_error
+from sagemaker.train.remote_function import logging_config
+from sagemaker.train.remote_function.core.pipeline_variables import Context
 
 if TYPE_CHECKING:
     from sagemaker.core.experiments.run import Run
@@ -101,7 +101,7 @@ def _execute_remote_function(
     sagemaker_session, s3_base_uri, s3_kms_key, run_in_context, context
 ):
     """Execute stored remote function"""
-    from sagemaker.core.remote_function.core.stored_function import StoredFunction
+    from sagemaker.train.remote_function.core.stored_function import StoredFunction
 
     stored_function = StoredFunction(
         sagemaker_session=sagemaker_session,

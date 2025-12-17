@@ -13,7 +13,7 @@
 """SageMaker remote function data serializer/deserializer."""
 from __future__ import absolute_import
 
-from sagemaker.core.remote_function.errors import SerializationError
+from sagemaker.train.remote_function.errors import SerializationError
 
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.workflow.parameters import (

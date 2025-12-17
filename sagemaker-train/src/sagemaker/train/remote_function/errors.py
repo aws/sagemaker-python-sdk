@@ -17,7 +17,7 @@ import os
 
 from tblib import pickling_support
 from sagemaker.core.s3 import s3_path_join
-import sagemaker.core.remote_function.core.serialization as serialization
+import sagemaker.train.remote_function.core.serialization as serialization
 
 
 DEFAULT_FAILURE_CODE = 1

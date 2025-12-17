@@ -137,7 +137,7 @@ class Properties(StepOutput, metaclass=PropertiesMeta):
     def _pickleable(self):
         """The pickleable object that can be passed to a remote function invocation."""
 
-        from sagemaker.core.remote_function.core.pipeline_variables import _Properties
+        from sagemaker.train.remote_function.core.pipeline_variables import _Properties
 
         prefix = f"Steps.{self.step_name}"
         full_path = prefix if self.path is None else f"{prefix}.{self.path}"

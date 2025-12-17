@@ -27,7 +27,7 @@ from typing import Any, Callable, Union
 import cloudpickle
 from tblib import pickling_support
 
-from sagemaker.core.remote_function.errors import (
+from sagemaker.train.remote_function.errors import (
     ServiceError,
     SerializationError,
     DeserializationError,

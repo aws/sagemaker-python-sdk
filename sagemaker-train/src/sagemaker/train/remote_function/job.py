@@ -49,7 +49,7 @@ from sagemaker.core.experiments._run_context import _RunContext
 from sagemaker.core.experiments.run import Run
 from sagemaker.core.image_uris import get_base_python_image_uri
 from sagemaker.core import image_uris
-from sagemaker.core.remote_function.checkpoint_location import CheckpointLocation
+from sagemaker.train.remote_function.checkpoint_location import CheckpointLocation
 from sagemaker.core.helper.session_helper import get_execution_role, expand_role, Session
 from sagemaker.core.common_utils import (
     name_from_base,
@@ -60,16 +60,16 @@ from sagemaker.core.common_utils import (
 )
 from sagemaker.core.s3 import s3_path_join, S3Uploader
 
-from sagemaker.core.remote_function.core.stored_function import StoredFunction, _SerializedData
-from sagemaker.core.remote_function.core.pipeline_variables import Context
+from sagemaker.train.remote_function.core.stored_function import StoredFunction, _SerializedData
+from sagemaker.train.remote_function.core.pipeline_variables import Context
 
-from sagemaker.core.remote_function.runtime_environment.runtime_environment_manager import (
+from sagemaker.train.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentManager,
     _DependencySettings,
 )
-from sagemaker.core.remote_function import logging_config
-from sagemaker.core.remote_function.spark_config import SparkConfig
-from sagemaker.core.remote_function.custom_file_filter import (
+from sagemaker.train.remote_function import logging_config
+from sagemaker.train.remote_function.spark_config import SparkConfig
+from sagemaker.train.remote_function.custom_file_filter import (
     CustomFileFilter,
     copy_workdir,
     resolve_custom_file_filter_from_config_file,

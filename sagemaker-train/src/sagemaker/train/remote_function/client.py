@@ -26,24 +26,24 @@ from botocore.exceptions import ClientError
 from sagemaker.core.exceptions import UnexpectedStatusException
 from sagemaker.core.experiments._run_context import _RunContext
 
-import sagemaker.core.remote_function.core.serialization as serialization
-from sagemaker.core.remote_function.errors import (
+import sagemaker.train.remote_function.core.serialization as serialization
+from sagemaker.train.remote_function.errors import (
     RemoteFunctionError,
     ServiceError,
     DeserializationError,
 )
-from sagemaker.core.remote_function.core.stored_function import RESULTS_FOLDER, EXCEPTION_FOLDER
-from sagemaker.core.remote_function.runtime_environment.runtime_environment_manager import (
+from sagemaker.train.remote_function.core.stored_function import RESULTS_FOLDER, EXCEPTION_FOLDER
+from sagemaker.train.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
 )
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3 import s3_path_join
-from sagemaker.core.remote_function.job import _JobSettings, _Job, _RunInfo
-from sagemaker.core.remote_function import logging_config
+from sagemaker.train.remote_function.job import _JobSettings, _Job, _RunInfo
+from sagemaker.train.remote_function import logging_config
 from sagemaker.core.common_utils import name_from_base, base_from_name
-from sagemaker.core.remote_function.spark_config import SparkConfig
-from sagemaker.core.remote_function.custom_file_filter import CustomFileFilter
+from sagemaker.train.remote_function.spark_config import SparkConfig
+from sagemaker.train.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 
