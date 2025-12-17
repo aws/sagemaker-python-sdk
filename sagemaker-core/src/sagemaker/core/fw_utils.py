@@ -25,7 +25,6 @@ from typing import Dict, List, Optional, Union
 
 from packaging import version
 
-from sagemaker.core import image_uris
 import sagemaker.core.common_utils as utils
 from sagemaker.core.deprecations import deprecation_warn_base, renamed_kwargs, renamed_warning
 from sagemaker.core.instance_group import InstanceGroup
@@ -1208,6 +1207,8 @@ def create_image_uri(
     Returns:
         the image uri
     """
+    from sagemaker.core import image_uris
+    
     renamed_warning("The method create_image_uri")
     return image_uris.retrieve(
         framework=framework,
