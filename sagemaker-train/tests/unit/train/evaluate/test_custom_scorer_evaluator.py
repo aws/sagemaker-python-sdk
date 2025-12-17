@@ -85,7 +85,7 @@ def test_custom_scorer_evaluator_initialization_minimal(mock_artifact, mock_reso
     assert evaluator.evaluator == _BuiltInMetric.PRIME_MATH
     assert evaluator.dataset == DEFAULT_DATASET
     assert evaluator.model == DEFAULT_MODEL
-    assert evaluator.evaluate_base_model is True
+    assert evaluator.evaluate_base_model is False
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -952,7 +952,7 @@ def test_custom_scorer_evaluator_get_custom_scorer_template_additions_builtin(
     assert additions['task'] == 'gen_qa'
     assert additions['strategy'] == 'gen_qa'
     assert additions['evaluation_metric'] == 'all'
-    assert additions['evaluate_base_model'] is True
+    assert additions['evaluate_base_model'] is False
     assert additions['evaluator_arn'] is None
     assert additions['preset_reward_function'] == 'prime_math'
     assert 'temperature' in additions
