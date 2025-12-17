@@ -57,6 +57,7 @@ class StepTypeEnum(Enum):
     QUALITY_CHECK = "QualityCheck"
     CLARIFY_CHECK = "ClarifyCheck"
     EMR = "EMR"
+    EMR_SERVERLESS = "EMRServerless"
     FAIL = "Fail"
     AUTOML = "AutoML"
 
