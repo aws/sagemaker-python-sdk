@@ -666,9 +666,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         try:
-            s3.meta.client.head_bucket(
-                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
-            )
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name,
+                    Prefix=self.default_bucket_prefix,
+                    ExpectedBucketOwner=expected_bucket_owner_id,
+                )
+            else:
+                s3.meta.client.head_bucket(
+                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+                )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
@@ -699,7 +706,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
         """
         try:
-            s3.meta.client.head_bucket(Bucket=bucket_name)
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name, Prefix=self.default_bucket_prefix
+                )
+            else:
+                s3.meta.client.head_bucket(Bucket=bucket_name)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
