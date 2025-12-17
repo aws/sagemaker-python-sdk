@@ -124,14 +124,22 @@ def safe_deserialize(data: Any) -> Any:
 
     This function handles the following cases:
     1. If `data` is not a string, it returns the input as-is.
-    2. If `data` is a JSON-encoded string, it attempts to deserialize it using `json.loads()`.
-    3. If `data` is a string but cannot be decoded as JSON, it returns the original string.
+    2. If `data` is a string and matches common boolean values ("true" or "false"),
+    it returns the corresponding boolean value (True or False).
+    3. If `data` is a JSON-encoded string, it attempts to deserialize it using `json.loads()`.
+    4. If `data` is a string but cannot be decoded as JSON, it returns the original string.
 
     Returns:
         Any: The deserialized data, or the original input if it cannot be JSON-decoded.
     """
     if not isinstance(data, str):
         return data
+
+    lower_data = data.lower()
+    if lower_data in ["true"]:
+        return True
+    if lower_data in ["false"]:
+        return False
 
     try:
         return json.loads(data)
