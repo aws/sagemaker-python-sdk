@@ -44,6 +44,7 @@ class MockEntity(Entity):
 class TestWorkflowUtilities:
     """Test cases for workflow utility functions"""
 
+    @pytest.mark.skip(reason="Requires sagemaker-mlops module which is not installed in sagemaker-core tests")
     def test_list_to_request_with_entities(self):
         """Test list_to_request with Entity objects"""
         entities = [MockEntity(), MockEntity()]
@@ -53,6 +54,7 @@ class TestWorkflowUtilities:
         assert len(result) == 2
         assert all(item["Type"] == "MockEntity" for item in result)
 
+    @pytest.mark.skip(reason="Requires sagemaker-mlops module which is not installed in sagemaker-core tests")
     def test_list_to_request_with_step_collection(self):
         """Test list_to_request with StepCollection"""
         from sagemaker.mlops.workflow.step_collections import StepCollection
@@ -64,6 +66,7 @@ class TestWorkflowUtilities:
 
         assert len(result) == 2
 
+    @pytest.mark.skip(reason="Requires sagemaker-mlops module which is not installed in sagemaker-core tests")
     def test_list_to_request_mixed(self):
         """Test list_to_request with mixed entities and collections"""
         from sagemaker.mlops.workflow.step_collections import StepCollection

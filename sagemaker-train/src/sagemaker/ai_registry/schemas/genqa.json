@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "GenQA format for evaluation",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Required query to the model"
+    },
+    "response": {
+      "type": "string",
+      "description": "Optional target response (required for evaluation, optional for inference-only)"
+    },
+    "system": {
+      "type": "string",
+      "description": "Optional system prompt for the model"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional metadata for labeling purposes"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string"
+          }
+        },
+        "required": ["data"]
+      }
+    }
+  },
+  "required": ["query"],
+  "additionalProperties": true
+}

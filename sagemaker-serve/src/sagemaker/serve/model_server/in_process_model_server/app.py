@@ -39,7 +39,6 @@ class InProcessServer:
     ):
         self._thread = None
         self._loop = None
-        self._stop_event = asyncio.Event()
         self._shutdown_event = threading.Event()
         self._router = APIRouter()
         self._task = task

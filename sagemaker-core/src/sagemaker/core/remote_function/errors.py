@@ -70,7 +70,7 @@ def _write_failure_reason_file(failure_msg):
             f.write(failure_msg)
 
 
-def handle_error(error, sagemaker_session, s3_base_uri, s3_kms_key, hmac_key) -> int:
+def handle_error(error, sagemaker_session, s3_base_uri, s3_kms_key) -> int:
     """Handle all exceptions raised during remote function execution.
 
     Args:
@@ -79,7 +79,6 @@ def handle_error(error, sagemaker_session, s3_base_uri, s3_kms_key, hmac_key) ->
              AWS service calls are delegated to.
         s3_base_uri (str): S3 root uri to which resulting serialized exception will be uploaded.
         s3_kms_key (str): KMS key used to encrypt artifacts uploaded to S3.
-        hmac_key (str): Key used to calculate hmac hash of the serialized exception.
     Returns :
         exit_code (int): Exit code to terminate current job.
     """
@@ -97,7 +96,6 @@ def handle_error(error, sagemaker_session, s3_base_uri, s3_kms_key, hmac_key) ->
         exc=error,
         sagemaker_session=sagemaker_session,
         s3_uri=s3_path_join(s3_base_uri, "exception"),
-        hmac_key=hmac_key,
         s3_kms_key=s3_kms_key,
     )
 
