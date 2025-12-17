@@ -490,9 +490,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.inference_recommender_job_results = None
         self.container_log_level = logging.INFO
         
-        if not hasattr(self, 'framework') or self.framework is None:
+        if not hasattr(self, 'framework'):
             self.framework = None
-        if not hasattr(self, 'framework_version') or self.framework_version is None:
+        if not hasattr(self, 'framework_version'):
             self.framework_version = None
 
     def _fetch_default_instance_type_for_custom_model(self) -> str:
