@@ -373,28 +373,45 @@ class ModelTrainer(BaseModel):
                         "If 'requirements' or 'entry_script' is provided in 'source_code', "
                         + "'source_dir' must also be provided.",
                     )
-                if not _is_valid_path(source_dir, path_type="Directory"):
+                if not (
+                    _is_valid_path(source_dir, path_type="Directory")
+                    or _is_valid_s3_uri(source_dir, path_type="Directory")
+                    or (
+                        _is_valid_path(source_dir, path_type="File")
+                        and source_dir.endswith(".tar.gz")
+                    )
+                    or (
+                        _is_valid_s3_uri(source_dir, path_type="File")
+                        and source_dir.endswith(".tar.gz")
+                    )
+                ):
                     raise ValueError(
-                        f"Invalid 'source_dir' path: {source_dir}. " + "Must be a valid directory.",
+                        f"Invalid 'source_dir' path: {source_dir}. "
+                        "Must be a valid local directory, "
+                        "s3 uri or path to tar.gz file stored locally or in s3."
                     )
                 if requirements:
-                    if not _is_valid_path(
-                            f"{source_dir}/{requirements}",
-                            path_type="File",
-                    ):
-                        raise ValueError(
-                            f"Invalid 'requirements': {requirements}. "
-                            + "Must be a valid file within the 'source_dir'.",
-                        )
+                    if not source_dir.endswith(".tar.gz"):
+                        if not _is_valid_path(
+                            f"{source_dir}/{requirements}", path_type="File"
+                        ) and not _is_valid_s3_uri(
+                            f"{source_dir}/{requirements}", path_type="File"
+                        ):
+                            raise ValueError(
+                                f"Invalid 'requirements': {requirements}. "
+                                "Must be a valid file within the 'source_dir'.",
+                            )
                 if entry_script:
-                    if not _is_valid_path(
-                            f"{source_dir}/{entry_script}",
-                            path_type="File",
-                    ):
-                        raise ValueError(
-                            f"Invalid 'entry_script': {entry_script}. "
-                            + "Must be a valid file within the 'source_dir'.",
-                        )
+                    if not source_dir.endswith(".tar.gz"):
+                        if not _is_valid_path(
+                            f"{source_dir}/{entry_script}", path_type="File"
+                        ) and not _is_valid_s3_uri(
+                            f"{source_dir}/{entry_script}", path_type="File"
+                        ):
+                            raise ValueError(
+                                f"Invalid 'entry_script': {entry_script}. "
+                                "Must be a valid file within the 'source_dir'.",
+                            )
 
     def model_post_init(self, __context: Any):
         """Post init method to perform custom validation and set default values."""
