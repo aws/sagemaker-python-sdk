@@ -126,7 +126,7 @@ from sagemaker.core.common_utils import (
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core import model_uris
 from sagemaker.serve.utils.local_hardware import _get_available_gpus
-from sagemaker.core.base_serializers import JSONSerializer
+from sagemaker.core.serializers import JSONSerializer
 from sagemaker.core.deserializers import JSONDeserializer
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.builder.requirements_manager import RequirementsManager
