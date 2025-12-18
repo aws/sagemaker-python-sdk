@@ -2354,7 +2354,7 @@ class TestCreateOrUpdateCodeDir(TestCase):
 
         with patch("sagemaker.utils._get_resolved_path") as mock_get_resolved:
             mock_get_resolved.return_value = "/tmp/model/code"
-            
+
             _create_or_update_code_dir(
                 model_dir="/tmp/model",
                 inference_script="inference.py",
@@ -2388,7 +2388,7 @@ class TestCreateOrUpdateCodeDir(TestCase):
                 source_directory="/tmp/my_code",
                 dependencies=[],
                 sagemaker_session=None,
-                tmp="/tmp"
+                tmp="/tmp",
             )
 
             mock_validate_src.assert_called_once_with("/tmp/my_code")
