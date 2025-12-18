@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Literal, Optional
 # Third-party imports
 from botocore.exceptions import ClientError
 from pydantic import BaseModel, Field
+from sagemaker.core.common_utils import TagsDict
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.resources import Pipeline, PipelineExecution, Tag
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
@@ -38,6 +39,7 @@ def _create_evaluation_pipeline(
     pipeline_definition: str,
     session: Optional[Any] = None,
     region: Optional[str] = None,
+    tags: Optional[List[TagsDict]] = [],
 ) -> Any:
     """Helper method to create a SageMaker pipeline for evaluation.
     
@@ -49,6 +51,7 @@ def _create_evaluation_pipeline(
         pipeline_definition (str): JSON pipeline definition (Jinja2 template).
         session (Optional[Any]): SageMaker session object.
         region (Optional[str]): AWS region.
+        tags (Optional[List[TagsDict]]): List of tags to include in pipeline
         
     Returns:
         Any: Created Pipeline instance (ready for execution).
@@ -65,9 +68,9 @@ def _create_evaluation_pipeline(
     resolved_pipeline_definition = template.render(pipeline_name=pipeline_name)
     
     # Create tags for the pipeline
-    tags = [
+    tags.extend([
         {"key": _TAG_SAGEMAKER_MODEL_EVALUATION, "value": "true"}
-    ]
+    ])
     
     pipeline = Pipeline.create(
         pipeline_name=pipeline_name,
@@ -163,7 +166,8 @@ def _get_or_create_pipeline(
     pipeline_definition: str,
     role_arn: str,
     session: Optional[Session] = None,
-    region: Optional[str] = None
+    region: Optional[str] = None,
+    create_tags: Optional[List[TagsDict]] = [],
 ) -> Pipeline:
     """Get existing pipeline or create/update it.
     
@@ -177,6 +181,7 @@ def _get_or_create_pipeline(
         role_arn: IAM role ARN for pipeline execution
         session: Boto3 session (optional)
         region: AWS region (optional)
+        create_tags (Optional[List[TagsDict]]): List of tags to include in pipeline
         
     Returns:
         Pipeline instance (existing updated or newly created)
@@ -225,19 +230,19 @@ def _get_or_create_pipeline(
         
         # No matching pipeline found, create new one
         logger.info(f"No existing pipeline found with prefix {pipeline_name_prefix}, creating new one")
-        return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region)
+        return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region, create_tags)
         
     except ClientError as e:
         error_code = e.response['Error']['Code']
         if "ResourceNotFound" in error_code:
-            return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region)
+            return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region, create_tags)
         else:
             raise
             
     except Exception as e:
         # If search fails for other reasons, try to create
         logger.info(f"Error searching for pipeline ({str(e)}), attempting to create new pipeline")
-        return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region)
+        return _create_evaluation_pipeline(eval_type, role_arn, pipeline_definition, session, region, create_tags)
 
 
 def _start_pipeline_execution(
@@ -505,7 +510,8 @@ class EvaluationPipelineExecution(BaseModel):
         role_arn: str,
         s3_output_path: Optional[str] = None,
         session: Optional[Session] = None,
-        region: Optional[str] = None
+        region: Optional[str] = None,
+        tags: Optional[List[TagsDict]] = [],
     ) -> 'EvaluationPipelineExecution':
         """Create sagemaker pipeline execution. Optionally creates pipeline.
         
@@ -517,6 +523,7 @@ class EvaluationPipelineExecution(BaseModel):
             s3_output_path (Optional[str]): S3 location where evaluation results are stored.
             session (Optional[Session]): Boto3 session for API calls.
             region (Optional[str]): AWS region for the pipeline.
+            tags (Optional[List[TagsDict]]): List of tags to include in pipeline
             
         Returns:
             EvaluationPipelineExecution: Started pipeline execution instance.
@@ -547,7 +554,8 @@ class EvaluationPipelineExecution(BaseModel):
                 pipeline_definition=pipeline_definition,
                 role_arn=role_arn,
                 session=session,
-                region=region
+                region=region,
+                create_tags=tags,
             )
             
             # Start pipeline execution via boto3
