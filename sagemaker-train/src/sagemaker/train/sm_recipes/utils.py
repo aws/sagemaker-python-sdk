@@ -24,7 +24,7 @@ from typing import Dict, Any, Optional, Tuple
 import omegaconf
 from omegaconf import OmegaConf, dictconfig
 
-# from sagemaker.utils.image_uris import retrieve
+from sagemaker.image_uris import retrieve
 
 from sagemaker.train import logger
 from sagemaker.train.utils import _run_clone_command_silent
@@ -129,7 +129,7 @@ def _get_trainining_recipe_gpu_model_name_and_script(model_type: str):
     """Get the model base name and script for the training recipe."""
 
     model_type_to_script = {
-        "llama_v3": ("llama", "llama_pretrain.py"),
+        "llama": ("llama", "llama_pretrain.py"),
         "mistral": ("mistral", "mistral_pretrain.py"),
         "mixtral": ("mixtral", "mixtral_pretrain.py"),
         "deepseek": ("deepseek", "deepseek_pretrain.py"),
@@ -176,14 +176,13 @@ def _configure_gpu_args(
     if isinstance(gpu_image_cfg, str):
         training_image = gpu_image_cfg
     else:
-        # training_image = retrieve(
-        #     gpu_image_cfg.get("framework"),
-        #     region=region_name,
-        #     version=gpu_image_cfg.get("version"),
-        #     image_scope="training",
-        #     **gpu_image_cfg.get("additional_args"),
-        # )
-        training_image = "dummy_image"  # Placeholder for actual image retrieval
+        training_image = retrieve(
+            gpu_image_cfg.get("framework"),
+            region=region_name,
+            version=gpu_image_cfg.get("version"),
+            image_scope="training",
+            **gpu_image_cfg.get("additional_args"),
+        )
 
     # Setting dummy parameters for now
     torch_distributed = Torchrun(smp=SMP(random_seed="123456"))
@@ -214,14 +213,13 @@ def _configure_trainium_args(
     if isinstance(neuron_image_cfg, str):
         training_image = neuron_image_cfg
     else:
-        # training_image = retrieve(
-        #     neuron_image_cfg.get("framework"),
-        #     region=region_name,
-        #     version=neuron_image_cfg.get("version"),
-        #     image_scope="training",
-        #     **neuron_image_cfg.get("additional_args"),
-        # )
-        training_image = "dummy_image"  # Placeholder for actual image retrieval
+        training_image = retrieve(
+            neuron_image_cfg.get("framework"),
+            region=region_name,
+            version=neuron_image_cfg.get("version"),
+            image_scope="training",
+            **neuron_image_cfg.get("additional_args"),
+        )
 
     args.update(
         {

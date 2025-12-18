@@ -1,4 +1,3 @@
-
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
@@ -24,12 +23,24 @@ from sagemaker.core.workflow.parameters import (
     ParameterBoolean,
 )
 from sagemaker.core.workflow.execution_variables import ExecutionVariable
-from sagemaker.mlops.workflow.function_step import DelayedReturn
 from sagemaker.core.workflow.properties import (
     Properties,
     PropertiesMap,
     PropertiesList,
 )
+
+
+# Lazy import to avoid circular dependency
+# DelayedReturn is in MLOps package which depends on Core
+def _get_delayed_return_class():
+    """Lazy import of DelayedReturn to avoid circular dependency."""
+    try:
+        from sagemaker.mlops.workflow.function_step import DelayedReturn
+
+        return DelayedReturn
+    except ImportError:
+        # If MLOps is not installed, return None
+        return None
 
 
 def _pipeline_variable_reducer(pipeline_variable):
@@ -42,6 +53,7 @@ def _pipeline_variable_reducer(pipeline_variable):
     )
 
 
+# Build dispatch table with lazy loading for DelayedReturn
 dispatch_table = {
     ParameterInteger: _pipeline_variable_reducer,
     ParameterFloat: _pipeline_variable_reducer,
@@ -52,5 +64,9 @@ dispatch_table = {
     Properties: _pipeline_variable_reducer,
     PropertiesMap: _pipeline_variable_reducer,
     PropertiesList: _pipeline_variable_reducer,
-    DelayedReturn: _pipeline_variable_reducer,
 }
+
+# Add DelayedReturn to dispatch table if MLOps is available
+_delayed_return_class = _get_delayed_return_class()
+if _delayed_return_class is not None:
+    dispatch_table[_delayed_return_class] = _pipeline_variable_reducer

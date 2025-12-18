@@ -338,11 +338,35 @@ class RuntimeEnvironmentManager:
 
     def _export_conda_env_from_prefix(self, prefix, local_path):
         """Export the conda env to a conda yml file"""
+        # Validate inputs to prevent command injection
+        validated_prefix = self._validate_path(prefix)
+        validated_path = self._validate_path(local_path)
 
-        cmd = [self._get_conda_exe(), "env", "export", "-p", prefix, "--no-builds", ">", local_path]
-        logger.info("Exporting conda environment: %s", cmd)
-        _run_shell_cmd(cmd)
-        logger.info("Conda environment %s exported successfully", prefix)
+        cmd = [self._get_conda_exe(), "env", "export", "-p", validated_prefix, "--no-builds"]
+        logger.info("Exporting conda environment: %s", " ".join(cmd))
+        
+        # Capture output and write to file instead of using shell redirection
+        try:
+            process = subprocess.Popen(
+                cmd, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                shell=False
+            )
+            output, error_output = process.communicate()
+            return_code = process.wait()
+            
+            if return_code:
+                error_message = f"Encountered error while running command '{' '.join(cmd)}'. Reason: {error_output.decode('utf-8')}"
+                raise RuntimeEnvironmentError(error_message)
+            
+            # Write the captured output to the file
+            with open(validated_path, 'w') as f:
+                f.write(output.decode('utf-8'))
+                
+            logger.info("Conda environment %s exported successfully", validated_prefix)
+        except Exception as e:
+            raise RuntimeEnvironmentError(f"Failed to export conda environment: {str(e)}")
 
     def _write_conda_env_to_file(self, env_name):
         """Writes conda env to the text file"""
@@ -385,6 +409,7 @@ class RuntimeEnvironmentManager:
         """Returns the current sagemaker python sdk version where program is running"""
         try:
             from importlib import metadata
+
             return metadata.version("sagemaker")
         except Exception:
             return "3.0.0.dev0"  # Development version fallback

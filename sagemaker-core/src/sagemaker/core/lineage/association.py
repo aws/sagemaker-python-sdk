@@ -31,7 +31,7 @@ class Association(_base_types.Record):
     Examples:
         .. code-block:: python
 
-            from sagemaker.lineage import association
+            from sagemaker.core.lineage import association
 
             my_association = association.Association.create(
                 source_arn=artifact_arn,

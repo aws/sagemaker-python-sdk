@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Union
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.training.configs import Tag, Networking, InputData, Channel
+from sagemaker.train.configs import Tag, Networking, InputData, Channel
 from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
 

@@ -1669,21 +1669,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         container_defs,
         vpc_config=None,
         enable_network_isolation=False,
-        primary_container=None,
         tags=None,
     ):  # pylint: disable=redefined-outer-name
         """Placeholder docstring"""
-
-        if container_defs and primary_container:
-            raise ValueError("Both container_defs and primary_container can not be passed as input")
-
-        if primary_container:
-            msg = (
-                "primary_container is going to be deprecated in a future release. Please use "
-                "container_defs instead."
-            )
-            warnings.warn(msg, DeprecationWarning)
-            container_defs = primary_container
 
         role = self.expand_role(role)
 
@@ -1726,7 +1714,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         container_defs=None,
         vpc_config=None,
         enable_network_isolation=None,
-        primary_container=None,
         tags=None,
     ):
         """Create an Amazon SageMaker ``Model``.
@@ -1754,11 +1741,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
             enable_network_isolation (bool): Whether the model requires network isolation or not.
-            primary_container (str or dict[str, str]): Docker image which defines the inference
-                code. You can also specify the return value of ``sagemaker.container_def()``,
-                which is used to create more advanced container configurations, including model
-                containers which need artifacts from S3. This field is deprecated, please use
-                container_defs instead.
             tags(Optional[Tags]): Optional. The list of tags to add to the model.
 
         Example:
@@ -1794,7 +1776,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             container_defs=container_defs,
             vpc_config=vpc_config,
             enable_network_isolation=enable_network_isolation,
-            primary_container=primary_container,
             tags=tags,
         )
 

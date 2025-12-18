@@ -20,7 +20,7 @@ import tarfile
 import tempfile
 from typing import List, Union, Optional, TYPE_CHECKING
 from sagemaker.core import image_uris
-from sagemaker.core.training.configs import InputData
+from sagemaker.train.configs import InputData
 # Lazy import to avoid circular dependency
 if TYPE_CHECKING:
     pass
@@ -152,7 +152,7 @@ class _RepackModelStep(TrainingStep):
         requirements_file = self._requirements if self._requirements and self._requirements.endswith('.txt') else None
 
         # Configure ModelTrainer components for repacking
-        from sagemaker.core.training.configs import SourceCode, Compute, Networking
+        from sagemaker.train.configs import SourceCode, Compute, Networking
         
         source_code = SourceCode(
             source_dir=self._source_dir,

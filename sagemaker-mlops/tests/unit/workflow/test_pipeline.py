@@ -352,8 +352,8 @@ def test_get_function_step_result_wrong_container(mock_session):
 
 def test_get_function_step_result_incomplete_job(mock_session):
     from sagemaker.mlops.workflow.pipeline import get_function_step_result
-    from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
-    from sagemaker.core.remote_function.errors import RemoteFunctionError
+    from sagemaker.train.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
+    from sagemaker.train.remote_function.errors import RemoteFunctionError
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
     mock_session.describe_training_job.return_value = {
@@ -368,7 +368,7 @@ def test_get_function_step_result_incomplete_job(mock_session):
 
 def test_get_function_step_result_success(mock_session):
     from sagemaker.mlops.workflow.pipeline import get_function_step_result
-    from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
+    from sagemaker.train.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
     mock_session.describe_training_job.return_value = {
@@ -431,7 +431,7 @@ def test_pipeline_execution_result_waiter_error(mock_session):
 def test_pipeline_execution_result_terminal_failure(mock_session):
     from sagemaker.mlops.workflow.pipeline import _PipelineExecution
     from botocore.exceptions import WaiterError
-    from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
+    from sagemaker.train.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
     execution = _PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
     mock_session.sagemaker_client.list_pipeline_execution_steps.return_value = {
@@ -451,7 +451,7 @@ def test_pipeline_execution_result_terminal_failure(mock_session):
 
 def test_get_function_step_result_obsolete_s3_path(mock_session):
     from sagemaker.mlops.workflow.pipeline import get_function_step_result
-    from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
+    from sagemaker.train.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
     mock_session.describe_training_job.return_value = {
