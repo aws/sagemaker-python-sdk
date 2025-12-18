@@ -2245,3 +2245,160 @@ class TestGetDomainForRegion(TestCase):
         self.assertEqual(get_domain_for_region("us-iso-east-1"), "c2s.ic.gov")
         self.assertEqual(get_domain_for_region("us-isob-east-1"), "sc2s.sgov.gov")
         self.assertEqual(get_domain_for_region("invalid-region"), "amazonaws.com")
+
+
+
+class TestValidateSourceDirectory(TestCase):
+    """Tests for _validate_source_directory function"""
+
+    def test_validate_source_directory_with_s3_path(self):
+        """S3 paths should be allowed"""
+        from sagemaker.utils import _validate_source_directory
+        # Should not raise any exception
+        _validate_source_directory("s3://my-bucket/my-prefix")
+
+    def test_validate_source_directory_with_none(self):
+        """None should be allowed"""
+        from sagemaker.utils import _validate_source_directory
+        # Should not raise any exception
+        _validate_source_directory(None)
+
+    def test_validate_source_directory_with_safe_local_path(self):
+        """Safe local paths should be allowed"""
+        from sagemaker.utils import _validate_source_directory
+        # Should not raise any exception
+        _validate_source_directory("/tmp/my_code")
+        _validate_source_directory("./my_code")
+        _validate_source_directory("../my_code")
+
+    def test_validate_source_directory_with_sensitive_path_aws(self):
+        """Paths under ~/.aws should be rejected"""
+        from sagemaker.utils import _validate_source_directory
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_source_directory(os.path.expanduser("~/.aws/credentials"))
+
+    def test_validate_source_directory_with_sensitive_path_ssh(self):
+        """Paths under ~/.ssh should be rejected"""
+        from sagemaker.utils import _validate_source_directory
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_source_directory(os.path.expanduser("~/.ssh/id_rsa"))
+
+    def test_validate_source_directory_with_root_directory(self):
+        """Root directory itself should be allowed (not rejected)"""
+        from sagemaker.utils import _validate_source_directory
+        # Should not raise any exception - root directory is explicitly allowed
+        _validate_source_directory("/")
+
+
+class TestValidateDependencyPath(TestCase):
+    """Tests for _validate_dependency_path function"""
+
+    def test_validate_dependency_path_with_none(self):
+        """None should be allowed"""
+        from sagemaker.utils import _validate_dependency_path
+        # Should not raise any exception
+        _validate_dependency_path(None)
+
+    def test_validate_dependency_path_with_safe_local_path(self):
+        """Safe local paths should be allowed"""
+        from sagemaker.utils import _validate_dependency_path
+        # Should not raise any exception
+        _validate_dependency_path("/tmp/my_lib")
+        _validate_dependency_path("./my_lib")
+        _validate_dependency_path("../my_lib")
+
+    def test_validate_dependency_path_with_sensitive_path_aws(self):
+        """Paths under ~/.aws should be rejected"""
+        from sagemaker.utils import _validate_dependency_path
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_dependency_path(os.path.expanduser("~/.aws"))
+
+    def test_validate_dependency_path_with_sensitive_path_docker(self):
+        """Paths under ~/.docker should be rejected"""
+        from sagemaker.utils import _validate_dependency_path
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_dependency_path(os.path.expanduser("~/.docker/config.json"))
+
+    def test_validate_dependency_path_with_root_directory(self):
+        """Root directory itself should be allowed (not rejected)"""
+        from sagemaker.utils import _validate_dependency_path
+        # Should not raise any exception - root directory is explicitly allowed
+        _validate_dependency_path("/")
+
+
+class TestCreateOrUpdateCodeDir(TestCase):
+    """Tests for _create_or_update_code_dir function"""
+
+    @patch("sagemaker.utils._validate_source_directory")
+    @patch("sagemaker.utils._validate_dependency_path")
+    @patch("sagemaker.utils.os.path.exists")
+    @patch("sagemaker.utils.os.mkdir")
+    @patch("sagemaker.utils.shutil.copy2")
+    def test_create_or_update_code_dir_with_inference_script(
+        self, mock_copy, mock_mkdir, mock_exists, mock_validate_dep, mock_validate_src
+    ):
+        """Test creating code dir with inference script"""
+        from sagemaker.utils import _create_or_update_code_dir
+        
+        mock_exists.return_value = False
+        
+        with patch("sagemaker.utils._get_resolved_path") as mock_get_resolved:
+            mock_get_resolved.return_value = "/tmp/model/code"
+            
+            _create_or_update_code_dir(
+                model_dir="/tmp/model",
+                inference_script="inference.py",
+                source_directory=None,
+                dependencies=[],
+                sagemaker_session=None,
+                tmp="/tmp"
+            )
+            
+            mock_mkdir.assert_called()
+            mock_copy.assert_called_once()
+
+    @patch("sagemaker.utils._validate_source_directory")
+    @patch("sagemaker.utils.os.path.exists")
+    @patch("sagemaker.utils.shutil.rmtree")
+    @patch("sagemaker.utils.shutil.copytree")
+    def test_create_or_update_code_dir_with_source_directory(
+        self, mock_copytree, mock_rmtree, mock_exists, mock_validate_src
+    ):
+        """Test creating code dir with source directory"""
+        from sagemaker.utils import _create_or_update_code_dir
+        
+        mock_exists.return_value = True
+        
+        with patch("sagemaker.utils._get_resolved_path") as mock_get_resolved:
+            mock_get_resolved.return_value = "/tmp/model/code"
+            
+            _create_or_update_code_dir(
+                model_dir="/tmp/model",
+                inference_script=None,
+                source_directory="/tmp/my_code",
+                dependencies=[],
+                sagemaker_session=None,
+                tmp="/tmp"
+            )
+            
+            mock_validate_src.assert_called_once_with("/tmp/my_code")
+            mock_rmtree.assert_called_once()
+            mock_copytree.assert_called_once()
+
+    def test_create_or_update_code_dir_with_sensitive_code_dir(self):
+        """Test that code_dir resolving to sensitive path is rejected"""
+        from sagemaker.utils import _create_or_update_code_dir
+        
+        with patch("sagemaker.utils._get_resolved_path") as mock_get_resolved:
+            # Simulate code_dir resolving to a sensitive path
+            mock_get_resolved.return_value = os.path.abspath(os.path.expanduser("~/.aws"))
+            
+            with pytest.raises(ValueError, match="Invalid code_dir path"):
+                _create_or_update_code_dir(
+                    model_dir="/tmp/model",
+                    inference_script="inference.py",
+                    source_directory=None,
+                    dependencies=[],
+                    sagemaker_session=None,
+                    tmp="/tmp"
+                )

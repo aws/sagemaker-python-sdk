@@ -85,11 +85,10 @@ _SENSITIVE_SYSTEM_PATHS = [
     abspath(os.path.expanduser("~/.docker")),
     abspath(os.path.expanduser("~/.config")),
     abspath(os.path.expanduser("~/.credentials")),
-    "/etc",
-    "/root",
-    "/home",
-    "/var/lib",
-    "/opt/ml/metadata",
+    abspath(realpath("/etc")),
+    abspath(realpath("/root")),
+    abspath(realpath("/var/lib")),
+    abspath(realpath("/opt/ml/metadata")),
 ]
 
 logger = logging.getLogger(__name__)
@@ -636,7 +635,7 @@ def _validate_source_directory(source_directory):
 
     # Check if the source path is under any sensitive directory
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if abs_source.startswith(sensitive_path):
+        if abs_source != "/" and abs_source.startswith(sensitive_path):
             raise ValueError(
                 f"source_directory cannot access sensitive system paths. "
                 f"Got: {source_directory} (resolved to {abs_source})"
@@ -662,7 +661,7 @@ def _validate_dependency_path(dependency):
 
     # Check if the dependency path is under any sensitive directory
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if abs_dependency.startswith(sensitive_path):
+        if abs_dependency != "/" and abs_dependency.startswith(sensitive_path):
             raise ValueError(
                 f"dependency path cannot access sensitive system paths. "
                 f"Got: {dependency} (resolved to {abs_dependency})"
@@ -674,6 +673,15 @@ def _create_or_update_code_dir(
 ):
     """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
+    resolved_code_dir = _get_resolved_path(code_dir)
+    
+    # Validate that code_dir does not resolve to a sensitive system path
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
+        if resolved_code_dir.startswith(sensitive_path):
+            raise ValueError(
+                f"Invalid code_dir path: {code_dir} resolves to sensitive system path {resolved_code_dir}"
+            )
+
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
