@@ -2209,3 +2209,43 @@ class TestNestedSetDict:
         d = {}
         nested_set_dict(d, ["a", "b", "c"], "value")
         assert d["a"]["b"]["c"] == "value"
+
+
+class TestCreateOrUpdateCodeDir:
+    """Test _create_or_update_code_dir function."""
+
+    def test_create_or_update_code_dir_rejects_root(self, tmp_path):
+        """Test that root path is rejected."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with patch("sagemaker.core.common_utils._get_resolved_path", return_value="/"):
+            with pytest.raises(ValueError, match="sensitive system root"):
+                _create_or_update_code_dir("/", "script.py", None, [], Mock(), str(tmp_path))
+
+    def test_create_or_update_code_dir_rejects_etc(self, tmp_path):
+        """Test that /etc path is rejected."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with patch("sagemaker.core.common_utils._get_resolved_path", return_value="/etc"):
+            with pytest.raises(ValueError, match="sensitive system root"):
+                _create_or_update_code_dir("/etc", "script.py", None, [], Mock(), str(tmp_path))
+
+    def test_create_or_update_code_dir_rejects_var(self, tmp_path):
+        """Test that /var path is rejected."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with patch("sagemaker.core.common_utils._get_resolved_path", return_value="/var"):
+            with pytest.raises(ValueError, match="sensitive system root"):
+                _create_or_update_code_dir("/var", "script.py", None, [], Mock(), str(tmp_path))
+
+    def test_create_or_update_code_dir_allows_safe_path(self, tmp_path):
+        """Test that safe paths are allowed."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        script = tmp_path / "script.py"
+        script.write_text("# script")
+
+        _create_or_update_code_dir(str(model_dir), str(script), None, [], Mock(), str(tmp_path))
+        assert (model_dir / "code").exists()
