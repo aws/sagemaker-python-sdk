@@ -74,6 +74,21 @@ DEFAULT_SLEEP_TIME_SECONDS = 10
 WAITING_DOT_NUMBER = 10
 MAX_ITEMS = 100
 PAGE_SIZE = 10
+_MAX_BUFFER_SIZE = 100 * 1024 * 1024  # 100 MB - Maximum buffer size for streaming iterators
+
+_SENSITIVE_SYSTEM_PATHS = [
+    abspath(os.path.expanduser("~/.aws")),
+    abspath(os.path.expanduser("~/.ssh")),
+    abspath(os.path.expanduser("~/.kube")),
+    abspath(os.path.expanduser("~/.docker")),
+    abspath(os.path.expanduser("~/.config")),
+    abspath(os.path.expanduser("~/.credentials")),
+    "/etc",
+    "/root",
+    "/home",
+    "/var/lib",
+    "/opt/ml/metadata",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -622,34 +637,16 @@ def _validate_source_directory(source_directory):
         # S3 paths and None are safe
         return
 
-    abs_source = abspath(source_directory)
-
-    # Blocklist of sensitive directories that should not be accessible
-    sensitive_paths = [
-        abspath(os.path.expanduser("~/.aws")),
-        abspath(os.path.expanduser("~/.ssh")),
-        abspath(os.path.expanduser("~/.kube")),
-        abspath(os.path.expanduser("~/.docker")),
-        abspath(os.path.expanduser("~/.config")),
-        abspath(os.path.expanduser("~/.credentials")),
-        "/etc",
-        "/root",
-        "/home",
-        "/var/lib",
-        "/opt/ml/metadata",
-    ]
+    # Resolve symlinks to get the actual path
+    abs_source = abspath(realpath(source_directory))
 
     # Check if the source path is under any sensitive directory
-    for sensitive_path in sensitive_paths:
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
         if abs_source.startswith(sensitive_path):
             raise ValueError(
                 f"source_directory cannot access sensitive system paths. "
                 f"Got: {source_directory} (resolved to {abs_source})"
             )
-
-    # Check for symlinks to prevent symlink-based escapes
-    if os.path.islink(abs_source):
-        raise ValueError(f"source_directory cannot be a symlink: {source_directory}")
 
 
 def _validate_dependency_path(dependency):
@@ -666,34 +663,16 @@ def _validate_dependency_path(dependency):
     if not dependency:
         return
 
-    abs_dependency = abspath(dependency)
-
-    # Blocklist of sensitive directories that should not be accessible
-    sensitive_paths = [
-        abspath(os.path.expanduser("~/.aws")),
-        abspath(os.path.expanduser("~/.ssh")),
-        abspath(os.path.expanduser("~/.kube")),
-        abspath(os.path.expanduser("~/.docker")),
-        abspath(os.path.expanduser("~/.config")),
-        abspath(os.path.expanduser("~/.credentials")),
-        "/etc",
-        "/root",
-        "/home",
-        "/var/lib",
-        "/opt/ml/metadata",
-    ]
+    # Resolve symlinks to get the actual path
+    abs_dependency = abspath(realpath(dependency))
 
     # Check if the dependency path is under any sensitive directory
-    for sensitive_path in sensitive_paths:
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
         if abs_dependency.startswith(sensitive_path):
             raise ValueError(
                 f"dependency path cannot access sensitive system paths. "
                 f"Got: {dependency} (resolved to {abs_dependency})"
             )
-
-    # Check for symlinks to prevent symlink-based escapes
-    if os.path.islink(abs_dependency):
-        raise ValueError(f"dependency path cannot be a symlink: {dependency}")
 
 
 def _create_or_update_code_dir(
