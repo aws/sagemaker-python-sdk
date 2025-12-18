@@ -1319,3 +1319,96 @@ class TestEndpointInServiceOrNot:
         )
         session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
         assert session.endpoint_in_service_or_not("my-endpoint") is False
+
+
+class TestBucketCheckWithPrefix:
+    """Test bucket check methods with default_bucket_prefix."""
+
+    @pytest.fixture
+    def session_with_prefix(self, mock_boto_session, mock_sagemaker_client):
+        """Create session with bucket prefix."""
+        mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_boto_session.client.return_value = mock_sts_client
+
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="test-bucket",
+            default_bucket_prefix="sample-prefix",
+        )
+        mock_s3_resource = Mock()
+        mock_bucket = Mock()
+        mock_bucket.creation_date = None
+        mock_s3_resource.Bucket.return_value = mock_bucket
+        session.s3_resource = mock_s3_resource
+        return session
+
+    def test_default_bucket_with_prefix_forbidden(self, session_with_prefix, caplog):
+        """Test forbidden error when accessing bucket with prefix."""
+        error = ClientError(
+            error_response={"Error": {"Code": "403", "Message": "Forbidden"}},
+            operation_name="ListObjectsV2",
+        )
+        session_with_prefix.s3_resource.meta.client.list_objects_v2.side_effect = error
+
+        with pytest.raises(ClientError):
+            session_with_prefix.default_bucket()
+
+        assert "Please try again after adding appropriate access." in caplog.text
+        assert session_with_prefix._default_bucket is None
+        session_with_prefix.s3_resource.meta.client.list_objects_v2.assert_called_once_with(
+            Bucket="test-bucket", Prefix="sample-prefix"
+        )
+
+    def test_expected_bucket_owner_check_with_prefix(self, session_with_prefix):
+        """Test expected bucket owner check uses list_objects_v2 with prefix."""
+        session_with_prefix.expected_bucket_owner_id_bucket_check(
+            "test-bucket", session_with_prefix.s3_resource, "123456789012"
+        )
+        session_with_prefix.s3_resource.meta.client.list_objects_v2.assert_called_once_with(
+            Bucket="test-bucket", Prefix="sample-prefix", ExpectedBucketOwner="123456789012"
+        )
+
+    def test_expected_bucket_owner_check_without_prefix(self, mock_boto_session, mock_sagemaker_client):
+        """Test expected bucket owner check uses head_bucket without prefix."""
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="test-bucket",
+        )
+        mock_s3_resource = Mock()
+        session.s3_resource = mock_s3_resource
+
+        session.expected_bucket_owner_id_bucket_check(
+            "test-bucket", mock_s3_resource, "123456789012"
+        )
+        mock_s3_resource.meta.client.head_bucket.assert_called_once_with(
+            Bucket="test-bucket", ExpectedBucketOwner="123456789012"
+        )
+
+    def test_general_bucket_check_with_prefix(self, session_with_prefix):
+        """Test general bucket check uses list_objects_v2 with prefix."""
+        mock_bucket = Mock()
+        session_with_prefix.general_bucket_check_if_user_has_permission(
+            "test-bucket", session_with_prefix.s3_resource, mock_bucket, "us-west-2", True
+        )
+        session_with_prefix.s3_resource.meta.client.list_objects_v2.assert_called_once_with(
+            Bucket="test-bucket", Prefix="sample-prefix"
+        )
+
+    def test_general_bucket_check_without_prefix(self, mock_boto_session, mock_sagemaker_client):
+        """Test general bucket check uses head_bucket without prefix."""
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="test-bucket",
+        )
+        mock_s3_resource = Mock()
+        mock_bucket = Mock()
+        session.s3_resource = mock_s3_resource
+
+        session.general_bucket_check_if_user_has_permission(
+            "test-bucket", mock_s3_resource, mock_bucket, "us-west-2", True
+        )
+        mock_s3_resource.meta.client.head_bucket.assert_called_once_with(Bucket="test-bucket")
