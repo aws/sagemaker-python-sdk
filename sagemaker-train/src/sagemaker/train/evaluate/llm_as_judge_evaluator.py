@@ -123,7 +123,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
     custom_metrics: Optional[str] = None
     
     # Template-required fields
-    evaluate_base_model: bool = True
+    evaluate_base_model: bool = False
     
     @validator('dataset', pre=True)
     def _resolve_dataset(cls, v):
