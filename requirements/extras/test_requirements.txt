@@ -4,8 +4,11 @@ pytest-xdist
 mock
 pydantic==2.11.9
 pydantic_core==2.33.2
-pandas
+pandas>=2.3.0
+numpy>=2.0.0, <3.0
+scikit-learn==1.6.1
 scipy
 omegaconf
 graphene
 typing_extensions>=4.9.0
+tensorflow>=2.16.2,<=2.19.0

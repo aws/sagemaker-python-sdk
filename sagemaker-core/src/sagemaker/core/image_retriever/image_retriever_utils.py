@@ -185,9 +185,7 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
 
 def config_for_framework(framework):
     """Loads the JSON config for the given framework."""
-    response = requests.get(s3_url)
-    return response.json()
-    fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
+    fname = os.path.join(os.path.dirname(__file__), "..", "image_uri_config", "{}.json".format(framework))
     with open(fname) as f:
         return json.load(f)
 
