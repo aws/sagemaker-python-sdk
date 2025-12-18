@@ -249,7 +249,7 @@ def _get_studio_tags(model_id: str, hub_name: str):
     ]
 
 
-def get_training_job_name_from_training_job_arn(training_job_arn: str) -> str:
+def _get_training_job_name_from_training_job_arn(training_job_arn: str) -> str:
     """Extract Training job name from Training job arn.
     Args:
         training_job_arn: Training job arn.

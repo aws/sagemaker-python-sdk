@@ -23,7 +23,7 @@ from sagemaker.train.aws_batch.constants import (
 from sagemaker.train.aws_batch.boto_client import get_batch_boto_client
 
 
-def submit_service_job(
+def _submit_service_job(
     training_payload: Dict,
     job_name: str,
     job_queue: str,
@@ -71,7 +71,7 @@ def submit_service_job(
     return client.submit_service_job(**payload)
 
 
-def describe_service_job(job_id: str) -> Dict:
+def _describe_service_job(job_id: str) -> Dict:
     """Batch describe_service_job API helper function.
 
     Args:
@@ -119,7 +119,7 @@ def describe_service_job(job_id: str) -> Dict:
     return client.describe_service_job(jobId=job_id)
 
 
-def terminate_service_job(job_id: str, reason: Optional[str] = "default terminate reason") -> Dict:
+def _terminate_service_job(job_id: str, reason: Optional[str] = "default terminate reason") -> Dict:
     """Batch terminate_service_job API helper function.
 
     Args:
@@ -132,7 +132,7 @@ def terminate_service_job(job_id: str, reason: Optional[str] = "default terminat
     return client.terminate_service_job(jobId=job_id, reason=reason)
 
 
-def list_service_job(
+def _list_service_job(
     job_queue: str,
     job_status: Optional[str] = None,
     filters: Optional[List] = None,
@@ -161,7 +161,7 @@ def list_service_job(
     next_token = part_of_jobs.get("nextToken")
     yield part_of_jobs
     if next_token:
-        yield from list_service_job(job_queue, job_status, filters, next_token)
+        yield from _list_service_job(job_queue, job_status, filters, next_token)
 
 
 def __merge_tags(batch_tags: Optional[Dict], training_tags: Optional[List]) -> Optional[Dict]:

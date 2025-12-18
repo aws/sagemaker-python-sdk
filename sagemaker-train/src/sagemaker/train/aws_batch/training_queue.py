@@ -17,7 +17,7 @@ from typing import Dict, Optional, List
 import logging
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from .training_queued_job import TrainingQueuedJob
-from .batch_api_helper import submit_service_job, list_service_job
+from .batch_api_helper import _submit_service_job, _list_service_job
 from .exception import MissingRequiredArgument
 from .constants import DEFAULT_TIMEOUT, JOB_STATUS_RUNNING
 
@@ -85,7 +85,7 @@ class TrainingQueue:
         if job_name is None:
             job_name = training_payload["TrainingJobName"]
 
-        resp = submit_service_job(
+        resp = _submit_service_job(
             training_payload,
             job_name,
             self.queue_name,
@@ -177,7 +177,7 @@ class TrainingQueue:
             status = None  # job_status is ignored when job_name is specified.
         jobs_to_return = []
         next_token = None
-        for job_result_dict in list_service_job(self.queue_name, status, filters, next_token):
+        for job_result_dict in _list_service_job(self.queue_name, status, filters, next_token):
             for job_result in job_result_dict.get("jobSummaryList", []):
                 if "jobArn" in job_result and "jobName" in job_result:
                     jobs_to_return.append(

@@ -29,9 +29,9 @@ from sagemaker.train.configs import (
     SourceCode,
     TrainingImageConfig,
 )
-from .batch_api_helper import terminate_service_job, describe_service_job
+from .batch_api_helper import _terminate_service_job, _describe_service_job
 from .exception import NoTrainingJob, MissingRequiredArgument
-from ..utils import get_training_job_name_from_training_job_arn
+from ..utils import _get_training_job_name_from_training_job_arn
 from .constants import JOB_STATUS_COMPLETED, JOB_STATUS_FAILED, POLL_IN_SECONDS
 
 logging.basicConfig(
@@ -82,7 +82,7 @@ class TrainingQueuedJob:
         Returns: None
 
         """
-        terminate_service_job(self.job_arn, reason)
+        _terminate_service_job(self.job_arn, reason)
 
     def describe(self) -> Dict:
         """Describe Batch job.
@@ -90,7 +90,7 @@ class TrainingQueuedJob:
         Returns: A dict which includes job parameters, job status, attempts and so on.
 
         """
-        return describe_service_job(self.job_arn)
+        return _describe_service_job(self.job_arn)
 
     def _training_job_created(self, status: str) -> bool:
         """Return True if a Training job has been created
@@ -320,7 +320,7 @@ def _get_new_training_job_name_from_latest_attempt(latest_attempt: Dict) -> str:
 
     """
     training_job_arn = latest_attempt.get("serviceResourceId", {}).get("value", None)
-    return get_training_job_name_from_training_job_arn(training_job_arn)
+    return _get_training_job_name_from_training_job_arn(training_job_arn)
 
 
 def _remove_system_tags_in_place_in_model_trainer_object(model_trainer: ModelTrainer) -> None:
