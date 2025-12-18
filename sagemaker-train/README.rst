@@ -47,7 +47,7 @@ Table of Contents
 
 
 Installing the SageMaker Python SDK Train
------------------------------------
+-----------------------------------------
 
 You can install from source by cloning this repository and running a pip install command in the root directory of the repository:
 
