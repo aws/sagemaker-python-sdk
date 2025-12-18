@@ -24,6 +24,8 @@ from sagemaker.train.common_utils.model_resolution import (
     _ModelResolver,
     _resolve_base_model,
 )
+from sagemaker.train.base_trainer import BaseTrainer
+from sagemaker.core.utils.utils import Unassigned
 
 
 class TestModelType:
@@ -557,3 +559,74 @@ class TestResolveBaseModel:
         _resolve_base_model("test-model", hub_name="CustomHub")
         
         mock_resolver.resolve_model_info.assert_called_once_with("test-model", "CustomHub")
+
+
+class TestBaseTrainerHandling:
+    """Tests for BaseTrainer model handling in _resolve_base_model."""
+    
+    def test_base_trainer_with_valid_training_job(self):
+        """Test BaseTrainer with valid completed training job."""
+        # Create concrete BaseTrainer subclass for testing
+        class TestTrainer(BaseTrainer):
+            def train(self, input_data_config, wait=True, logs=True):
+                pass
+        
+        mock_trainer = TestTrainer()
+        mock_training_job = MagicMock()
+        mock_training_job.output_model_package_arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-package/1"
+        mock_trainer._latest_training_job = mock_training_job
+        
+        with patch('sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn') as mock_resolve_arn:
+            mock_resolve_arn.return_value = MagicMock()
+            
+            result = _resolve_base_model(mock_trainer)
+            
+            # Verify model package ARN resolution was called
+            mock_resolve_arn.assert_called_once_with(
+                "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-package/1"
+            )
+    
+    def test_base_trainer_with_unassigned_arn(self):
+        """Test BaseTrainer with Unassigned output_model_package_arn raises error."""
+        # Create concrete BaseTrainer subclass for testing
+        class TestTrainer(BaseTrainer):
+            def train(self, input_data_config, wait=True, logs=True):
+                pass
+        
+        mock_trainer = TestTrainer()
+        mock_training_job = MagicMock()
+        mock_training_job.output_model_package_arn = Unassigned()
+        mock_trainer._latest_training_job = mock_training_job
+        
+        with pytest.raises(ValueError, match="BaseTrainer must have completed training job"):
+            _resolve_base_model(mock_trainer)
+    
+    def test_base_trainer_without_training_job(self):
+        """Test BaseTrainer without _latest_training_job raises error."""
+        # Create concrete BaseTrainer subclass for testing
+        class TestTrainer(BaseTrainer):
+            def train(self, input_data_config, wait=True, logs=True):
+                pass
+        
+        mock_trainer = TestTrainer()
+        # Don't set _latest_training_job attribute at all
+        
+        with pytest.raises(ValueError, match="BaseTrainer must have completed training job"):
+            _resolve_base_model(mock_trainer)
+    
+    def test_base_trainer_without_output_model_package_arn_attribute(self):
+        """Test BaseTrainer with training job but missing output_model_package_arn attribute."""
+        # Create concrete BaseTrainer subclass for testing
+        class TestTrainer(BaseTrainer):
+            def train(self, input_data_config, wait=True, logs=True):
+                pass
+        
+        # Create a simple object without output_model_package_arn
+        class TrainingJobWithoutArn:
+            pass
+        
+        mock_trainer = TestTrainer()
+        mock_trainer._latest_training_job = TrainingJobWithoutArn()
+        
+        with pytest.raises(ValueError, match="BaseTrainer must have completed training job"):
+            _resolve_base_model(mock_trainer)
