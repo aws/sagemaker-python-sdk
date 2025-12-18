@@ -126,7 +126,7 @@ class LocalFileDataSource(DataSource):
 
         # Validate that the path is not in restricted locations
         for restricted_path in _SENSITIVE_SYSTEM_PATHS:
-            if self.root_path.startswith(restricted_path):
+            if self.root_path != "/" and self.root_path.startswith(restricted_path):
                 raise ValueError(
                     f"Local Mode does not support mounting from restricted system paths. "
                     f"Got: {root_path}"
