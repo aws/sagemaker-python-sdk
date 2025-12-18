@@ -641,7 +641,7 @@ def _validate_source_directory(source_directory):
 
     # Check if the source path is under any sensitive directory
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if abs_source.startswith(sensitive_path):
+        if abs_source != "/" and abs_source.startswith(sensitive_path):
             raise ValueError(
                 f"source_directory cannot access sensitive system paths. "
                 f"Got: {source_directory} (resolved to {abs_source})"
@@ -667,7 +667,7 @@ def _validate_dependency_path(dependency):
 
     # Check if the dependency path is under any sensitive directory
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if abs_dependency.startswith(sensitive_path):
+        if abs_dependency != "/" and abs_dependency.startswith(sensitive_path):
             raise ValueError(
                 f"dependency path cannot access sensitive system paths. "
                 f"Got: {dependency} (resolved to {abs_dependency})"
