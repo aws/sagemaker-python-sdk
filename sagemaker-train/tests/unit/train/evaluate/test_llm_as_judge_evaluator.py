@@ -67,7 +67,7 @@ def test_llm_as_judge_evaluator_initialization_minimal(mock_artifact, mock_resol
     assert evaluator.evaluator_model == DEFAULT_EVALUATOR_MODEL
     assert evaluator.dataset == DEFAULT_DATASET
     assert evaluator.model == DEFAULT_MODEL
-    assert evaluator.evaluate_base_model is True
+    assert evaluator.evaluate_base_model is False
     assert evaluator.builtin_metrics is None
     assert evaluator.custom_metrics is None
 
@@ -472,7 +472,7 @@ def test_llm_as_judge_evaluator_get_llmaj_template_additions(mock_artifact, mock
     assert additions['top_p'] == '1.0'
     # pipeline_name is no longer in template additions - it's resolved dynamically in execution.py
     assert 'pipeline_name' not in additions
-    assert additions['evaluate_base_model'] is True
+    assert additions['evaluate_base_model'] is False
     
     # Verify S3 upload was called
     mock_s3_upload.assert_called_once()

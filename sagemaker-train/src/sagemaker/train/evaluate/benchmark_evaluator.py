@@ -301,7 +301,7 @@ class BenchMarkEvaluator(BaseEvaluator):
     
     benchmark: _Benchmark
     subtasks: Optional[Union[str, List[str]]] = None
-    evaluate_base_model: bool = True
+    evaluate_base_model: bool = False
     _hyperparameters: Optional[Any] = None
 
     
