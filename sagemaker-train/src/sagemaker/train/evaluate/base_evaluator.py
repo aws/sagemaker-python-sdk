@@ -9,10 +9,11 @@ from __future__ import absolute_import
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, validator
 
+from sagemaker.core.common_utils import TagsDict
 from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 
@@ -413,6 +414,13 @@ class BaseEvaluator(BaseModel):
         """Get the resolved source model package ARN (None for JumpStart models)."""
         info = self._get_resolved_model_info()
         return info.source_model_package_arn if info else None
+
+    @property
+    def _is_jumpstart_model(self) -> bool:
+        """Determine if model is a JumpStart model"""
+        from sagemaker.train.common_utils.model_resolution import _ModelType
+        info = self._get_resolved_model_info()
+        return info.model_type == _ModelType.JUMPSTART
     
     def _infer_model_package_group_arn(self) -> Optional[str]:
         """Infer model package group ARN from source model package ARN.
@@ -797,6 +805,12 @@ class BaseEvaluator(BaseModel):
             EvaluationPipelineExecution: Started execution object
         """
         from .execution import EvaluationPipelineExecution
+
+        tags: List[TagsDict] = []
+        
+        if self._is_jumpstart_model:
+            from sagemaker.core.jumpstart.utils import add_jumpstart_model_info_tags
+            tags = add_jumpstart_model_info_tags(tags, self.model, "*")
         
         execution = EvaluationPipelineExecution.start(
             eval_type=eval_type,
@@ -805,7 +819,8 @@ class BaseEvaluator(BaseModel):
             role_arn=role_arn,
             s3_output_path=self.s3_output_path,
             session=self.sagemaker_session.boto_session if hasattr(self.sagemaker_session, 'boto_session') else None,
-            region=region
+            region=region,
+            tags=tags
         )
         
         return execution
