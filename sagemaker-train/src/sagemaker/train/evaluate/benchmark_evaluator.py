@@ -300,18 +300,10 @@ class BenchMarkEvaluator(BaseEvaluator):
     """
     
     benchmark: _Benchmark
-    dataset: Union[str, Any]  # Required field, must come before optional fields
     subtasks: Optional[Union[str, List[str]]] = None
     evaluate_base_model: bool = True
     _hyperparameters: Optional[Any] = None
-    
-    @validator('dataset', pre=True)
-    def _resolve_dataset(cls, v):
-        """Resolve dataset to string (S3 URI or ARN) and validate format.
-        
-        Uses BaseEvaluator's common validation logic to avoid code duplication.
-        """
-        return BaseEvaluator._validate_and_resolve_dataset(v)
+
     
     @validator('benchmark')
     def _validate_benchmark_model_compatibility(cls, v, values):

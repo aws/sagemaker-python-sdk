@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "HuggingFace Prompt-Completion format for supervised fine-tuning",
+  "properties": {
+    "prompt": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "The input prompt as a string"
+        },
+        {
+          "type": "array",
+          "description": "Array of conversation messages",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          }
+        }
+      ]
+    },
+    "completion": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "The target completion as a string"
+        },
+        {
+          "type": "array",
+          "description": "Array of assistant message(s)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          }
+        }
+      ]
+    },
+    "id": {
+      "type": "string",
+      "description": "Optional unique identifier"
+    },
+    "attributes": {
+      "type": "object",
+      "description": "Optional metadata attributes"
+    },
+    "difficulty": {
+      "type": "string",
+      "description": "Optional difficulty level"
+    }
+  },
+  "required": ["prompt", "completion"],
+  "additionalProperties": true
+}

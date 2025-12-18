@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 
 import pandas as pd
 
+from sagemaker.ai_registry.dataset_format_detector import DatasetFormatDetector
 from sagemaker.ai_registry.air_hub import AIRHub
 from sagemaker.ai_registry.air_utils import _determine_new_version, _get_default_bucket
 from sagemaker.ai_registry.air_constants import (
@@ -180,6 +181,21 @@ class DataSet(AIRHubEntity):
                 raise ValueError(f"File size {file_size_mb:.2f} MB exceeds maximum allowed size of {max_size_mb:.0f} MB")
 
     @classmethod
+    def _validate_dataset_format(cls, file_path: str) -> None:
+        """Validate dataset format using DatasetFormatDetector.
+
+        Args:
+            file_path: Path to the dataset file (local path)
+
+        Raises:
+            ValueError: If dataset format cannot be detected
+        """
+        detector = DatasetFormatDetector()
+        format_name = detector.validate_dataset(file_path)
+        if format_name is False:
+            raise ValueError(f"Unable to detect format for {file_path}. Please provide a valid dataset file.")
+
+    @classmethod
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="DataSet.get")
     def get(cls, name: str, sagemaker_session=None) -> "DataSet":
         """Get dataset by name."""
@@ -257,28 +273,25 @@ class DataSet(AIRHubEntity):
             s3_prefix = s3_key  # Use full path including filename
             method = DataSetMethod.GENERATED
             
-            # Download and validate if customization technique is provided
-            if customization_technique:
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=os.path.splitext(s3_key)[1]
-                ) as tmp_file:
-                    local_path = tmp_file.name
-                
-                try:
-                    AIRHub.download_from_s3(source, local_path)
-                    validate_dataset(local_path, customization_technique.value)
-                finally:
-                    if os.path.exists(local_path):
-                        os.remove(local_path)
+            # Download and validate format
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=os.path.splitext(s3_key)[1]
+            ) as tmp_file:
+                local_path = tmp_file.name
+
+            try:
+                AIRHub.download_from_s3(source, local_path)
+                cls._validate_dataset_format(local_path)
+            finally:
+                if os.path.exists(local_path):
+                    os.remove(local_path)
         else:
             # Local file - upload to S3
             bucket_name = _get_default_bucket()
             s3_prefix = _get_default_s3_prefix(name)
             method = DataSetMethod.UPLOADED
             
-            if customization_technique:
-                validate_dataset(source, customization_technique.value)
-            
+            cls._validate_dataset_format(source)
             AIRHub.upload_to_s3(bucket_name, s3_prefix, source)
 
         # Create hub content document
