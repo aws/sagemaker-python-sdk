@@ -48,10 +48,7 @@ def copy_directory_structure(destination_directory, relative_path):
             destination_directory
     """
     full_path = os.path.join(destination_directory, relative_path)
-    if os.path.exists(full_path):
-        return
-
-    os.makedirs(destination_directory, relative_path)
+    os.makedirs(full_path, exist_ok=True)
 
 
 def move_to_destination(source, destination, job_name, sagemaker_session, prefix=""):
