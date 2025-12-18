@@ -9,16 +9,18 @@ from __future__ import absolute_import
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, validator
 
-from sagemaker.core.resources import ModelPackageGroup
+from sagemaker.core.common_utils import TagsDict
+from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 
 if TYPE_CHECKING:
     from sagemaker.core.helper.session_helper import Session
 
+from sagemaker.train.base_trainer import BaseTrainer
 # Module-level logger
 _logger = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ class BaseEvaluator(BaseModel):
             - JumpStart model ID (str): e.g., 'llama3-2-1b-instruct'
             - ModelPackage object: A fine-tuned model package
             - ModelPackage ARN (str): e.g., 'arn:aws:sagemaker:region:account:model-package/name/version'
+            - BaseTrainer object: A completed training job (i.e., it must have _latest_training_job with output_model_package_arn populated)
         base_eval_name (Optional[str]): Optional base name for evaluation jobs. This name is used
             as the PipelineExecutionDisplayName when creating the SageMaker pipeline execution.
             The actual display name will be "{base_eval_name}-{timestamp}". This parameter can
@@ -86,7 +89,7 @@ class BaseEvaluator(BaseModel):
     
     region: Optional[str] = None
     sagemaker_session: Optional[Any] = None
-    model: Union[str, Any]
+    model: Union[str, BaseTrainer, ModelPackage]
     base_eval_name: Optional[str] = None
     s3_output_path: str
     mlflow_resource_arn: Optional[str] = None
@@ -278,7 +281,7 @@ class BaseEvaluator(BaseModel):
         return v
     
     @validator('model')
-    def _resolve_model_info(cls, v: Union[str, Any], values: dict) -> Union[str, Any]:
+    def _resolve_model_info(cls, v: Union[str, BaseTrainer, ModelPackage], values: dict) -> Union[str, Any]:
         """Resolve model information from various input types.
         
         This validator uses the common model resolution utility to extract:
@@ -289,7 +292,7 @@ class BaseEvaluator(BaseModel):
         The resolved information is stored in private attributes for use by subclasses.
         
         Args:
-            v (Union[str, Any]): Model identifier (JumpStart ID, ModelPackage, or ARN).
+            v (Union[str, BaseTrainer, ModelPackage]): Model identifier (JumpStart ID, ModelPackage, ARN, or BaseTrainer).
             values (dict): Dictionary of already-validated fields.
             
         Returns:
@@ -411,6 +414,13 @@ class BaseEvaluator(BaseModel):
         """Get the resolved source model package ARN (None for JumpStart models)."""
         info = self._get_resolved_model_info()
         return info.source_model_package_arn if info else None
+
+    @property
+    def _is_jumpstart_model(self) -> bool:
+        """Determine if model is a JumpStart model"""
+        from sagemaker.train.common_utils.model_resolution import _ModelType
+        info = self._get_resolved_model_info()
+        return info.model_type == _ModelType.JUMPSTART
     
     def _infer_model_package_group_arn(self) -> Optional[str]:
         """Infer model package group ARN from source model package ARN.
@@ -795,6 +805,12 @@ class BaseEvaluator(BaseModel):
             EvaluationPipelineExecution: Started execution object
         """
         from .execution import EvaluationPipelineExecution
+
+        tags: List[TagsDict] = []
+        
+        if self._is_jumpstart_model:
+            from sagemaker.core.jumpstart.utils import add_jumpstart_model_info_tags
+            tags = add_jumpstart_model_info_tags(tags, self.model, "*")
         
         execution = EvaluationPipelineExecution.start(
             eval_type=eval_type,
@@ -803,7 +819,8 @@ class BaseEvaluator(BaseModel):
             role_arn=role_arn,
             s3_output_path=self.s3_output_path,
             session=self.sagemaker_session.boto_session if hasattr(self.sagemaker_session, 'boto_session') else None,
-            region=region
+            region=region,
+            tags=tags
         )
         
         return execution
