@@ -674,7 +674,7 @@ def _create_or_update_code_dir(
     """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
     resolved_code_dir = _get_resolved_path(code_dir)
-    
+
     # Validate that code_dir does not resolve to a sensitive system path
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
         if resolved_code_dir != "/" and resolved_code_dir.startswith(sensitive_path):
