@@ -171,6 +171,7 @@ class Pipeline:
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
+            # TODO: replace with sagemaker-core methods
             return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
         tags = format_tags(tags)
         tags = _append_project_tags(tags)
@@ -180,6 +181,7 @@ class Pipeline:
             kwargs,
             Tags=tags,
         )
+        # TODO: replace with sagemaker-core methods
         return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
 
     def _create_args(
@@ -510,6 +512,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             NextToken=next_token,
             MaxResults=max_results,
         )
+
+        # TODO: replace with sagemaker-core methods
         return self.sagemaker_session.sagemaker_client.list_pipeline_versions(**kwargs)
 
     def _get_latest_execution_arn(self):
