@@ -225,7 +225,7 @@ class TestValidateMpConfig:
 class TestTarAndUploadDir:
     """Test tar_and_upload_dir function."""
 
-    @patch("sagemaker.core.fw_utils.sagemaker_utils.create_tar_file")
+    @patch("sagemaker.core.common_utils.create_tar_file")
     def test_tar_and_upload_dir_s3_source(self, mock_create_tar):
         """Test with S3 source directory."""
         mock_session = Mock()
@@ -242,7 +242,7 @@ class TestTarAndUploadDir:
         assert result.script_name == "train.py"
         mock_create_tar.assert_not_called()
 
-    @patch("sagemaker.core.fw_utils.sagemaker_utils.create_tar_file")
+    @patch("sagemaker.core.common_utils.create_tar_file")
     @patch("sagemaker.core.fw_utils.tempfile.mkdtemp")
     @patch("sagemaker.core.fw_utils.shutil.rmtree")
     def test_tar_and_upload_dir_local_file(
@@ -495,6 +495,8 @@ class TestHelperFunctions:
         assert _is_gpu_instance("ml.p3.2xlarge") is True
         assert _is_gpu_instance("ml.g4dn.xlarge") is True
         assert _is_gpu_instance("local_gpu") is True
+        assert _is_gpu_instance("ml.p6-b200.48xlarge") is True
+        assert _is_gpu_instance("ml.g6e-12xlarge.xlarge") is True
 
     def test_is_gpu_instance_false(self):
         """Test _is_gpu_instance with non-GPU instance."""
@@ -505,6 +507,7 @@ class TestHelperFunctions:
         """Test _is_trainium_instance with Trainium instance."""
         assert _is_trainium_instance("ml.trn1.2xlarge") is True
         assert _is_trainium_instance("ml.trn1.32xlarge") is True
+        assert _is_trainium_instance("ml.trn1-n.2xlarge") is True
 
     def test_is_trainium_instance_false(self):
         """Test _is_trainium_instance with non-Trainium instance."""
@@ -523,6 +526,7 @@ class TestHelperFunctions:
 
     def test_instance_type_supports_profiler(self):
         """Test _instance_type_supports_profiler."""
+        assert _instance_type_supports_profiler("ml.trn1-n.xlarge") is True
         assert _instance_type_supports_profiler("ml.trn1.2xlarge") is True
         assert _instance_type_supports_profiler("ml.p3.2xlarge") is False
 
