@@ -26,6 +26,7 @@ from six.moves.urllib.parse import urlparse
 import sagemaker.amazon.common
 import sagemaker.local.utils
 import sagemaker.utils
+from sagemaker.utils import _SENSITIVE_SYSTEM_PATHS
 
 
 def get_data_source_instance(data_source, sagemaker_session):
@@ -118,28 +119,13 @@ class DataSource(with_metaclass(ABCMeta, object)):
 class LocalFileDataSource(DataSource):
     """Represents a data source within the local filesystem."""
 
-    # Blocklist of sensitive directories that should not be accessible
-    RESTRICTED_PATHS = [
-        os.path.abspath(os.path.expanduser("~/.aws")),
-        os.path.abspath(os.path.expanduser("~/.ssh")),
-        os.path.abspath(os.path.expanduser("~/.kube")),
-        os.path.abspath(os.path.expanduser("~/.docker")),
-        os.path.abspath(os.path.expanduser("~/.config")),
-        os.path.abspath(os.path.expanduser("~/.credentials")),
-        "/etc",
-        "/root",
-        "/home",
-        "/var/lib",
-        "/opt/ml/metadata",
-    ]
-
     def __init__(self, root_path):
         super(LocalFileDataSource, self).__init__()
 
         self.root_path = os.path.abspath(root_path)
 
         # Validate that the path is not in restricted locations
-        for restricted_path in self.RESTRICTED_PATHS:
+        for restricted_path in _SENSITIVE_SYSTEM_PATHS:
             if self.root_path.startswith(restricted_path):
                 raise ValueError(
                     f"Local Mode does not support mounting from restricted system paths. "
