@@ -34,7 +34,13 @@ from sagemaker.core.remote_function.errors import RemoteFunctionError
 from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.core.s3 import s3_path_join
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.common_utils import resolve_value_from_config, retry_with_backoff, format_tags, Tags
+from sagemaker.core.common_utils import (
+    resolve_value_from_config,
+    retry_with_backoff,
+    format_tags,
+    Tags,
+)
+
 # Orchestration imports (now in mlops)
 from sagemaker.mlops.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.mlops.workflow._event_bridge_client_helper import (
@@ -44,19 +50,24 @@ from sagemaker.mlops.workflow._event_bridge_client_helper import (
     EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
 )
 from sagemaker.mlops.workflow.lambda_step import LambdaOutput, LambdaStep
+from sagemaker.mlops.workflow.mlflow_config import MlflowConfig
 from sagemaker.core.helper.pipeline_variable import (
     RequestType,
     PipelineVariable,
 )
+
 # Primitive imports (stay in core)
 from sagemaker.core.workflow.execution_variables import ExecutionVariables
 from sagemaker.core.workflow.parameters import Parameter
+
 # Orchestration imports (now in mlops)
 from sagemaker.core.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.mlops.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.mlops.workflow.parallelism_config import ParallelismConfiguration
+
 # Primitive imports (stay in core)
 from sagemaker.core.workflow.properties import Properties
+
 # Orchestration imports (now in mlops)
 from sagemaker.mlops.workflow.selective_execution_config import SelectiveExecutionConfig
 from sagemaker.core.workflow.step_outputs import StepOutput
@@ -87,6 +98,7 @@ class Pipeline:
         name: str = "",
         parameters: Optional[Sequence[Parameter]] = None,
         pipeline_experiment_config: Optional[PipelineExperimentConfig] = _DEFAULT_EXPERIMENT_CFG,
+        mlflow_config: Optional[MlflowConfig] = None,
         steps: Optional[Sequence[Union[Step, StepOutput]]] = None,
         sagemaker_session: Optional[Session] = None,
         pipeline_definition_config: Optional[PipelineDefinitionConfig] = _DEFAULT_DEFINITION_CFG,
@@ -102,6 +114,8 @@ class Pipeline:
                 the same name already exists. By default, pipeline name is used as
                 experiment name and execution id is used as the trial name.
                 If set to None, no experiment or trial will be created automatically.
+            mlflow_config (Optional[MlflowConfig]): If set, the pipeline will be configured
+                with MLflow tracking for experiment tracking and model versioning.
             steps (Sequence[Union[Step, StepOutput]]): The list of the
                 non-conditional steps associated with the pipeline. Any steps that are within the
                 `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
@@ -118,6 +132,7 @@ class Pipeline:
         self.name = name
         self.parameters = parameters if parameters else []
         self.pipeline_experiment_config = pipeline_experiment_config
+        self.mlflow_config = mlflow_config
         self.steps = steps if steps else []
         self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
         self.pipeline_definition_config = pipeline_definition_config
@@ -337,6 +352,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         execution_description: str = None,
         parallelism_config: ParallelismConfiguration = None,
         selective_execution_config: SelectiveExecutionConfig = None,
+        mlflow_experiment_name: str = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -350,6 +366,10 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 over the parallelism configuration of the parent pipeline.
             selective_execution_config (Optional[SelectiveExecutionConfig]): The configuration for
                 selective step execution.
+            mlflow_experiment_name (str): Optional MLflow experiment name to override
+                the experiment name specified in the pipeline's mlflow_config.
+                If provided, this will override the experiment name for this specific
+                pipeline execution only, without modifying the pipeline definition.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
@@ -371,6 +391,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
             SelectiveExecutionConfig=selective_execution_config,
+            MlflowExperimentName=mlflow_experiment_name,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
@@ -409,14 +430,25 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 if self.pipeline_experiment_config is not None
                 else None
             ),
+            "MlflowConfig": (
+                self.mlflow_config.to_request() if self.mlflow_config is not None else None
+            ),
             "Steps": list_to_request(compiled_steps),
         }
-
-        request_dict["PipelineExperimentConfig"] = interpolate(
-            request_dict["PipelineExperimentConfig"], {}, {}, pipeline_name=self.name
-        )
         callback_output_to_step_map = _map_callback_outputs(self.steps)
         lambda_output_to_step_name = _map_lambda_outputs(self.steps)
+        request_dict["PipelineExperimentConfig"] = interpolate(
+            request_dict["PipelineExperimentConfig"],
+            callback_output_to_step_map=callback_output_to_step_map,
+            lambda_output_to_step_map=lambda_output_to_step_name,
+            pipeline_name=self.name,
+        )
+        request_dict["MlflowConfig"] = interpolate(
+            request_dict["MlflowConfig"],
+            callback_output_to_step_map=callback_output_to_step_map,
+            lambda_output_to_step_map=lambda_output_to_step_name,
+            pipeline_name=self.name,
+        )
         request_dict["Steps"] = interpolate(
             request_dict["Steps"],
             callback_output_to_step_map=callback_output_to_step_map,
@@ -1081,7 +1113,6 @@ class PipelineGraph:
                     if isinstance(child_step, Step):
                         dependency_list[child_step.name].add(step.name)
 
-
         adjacency_list = {}
         for step in dependency_list:
             for step_dependency in dependency_list[step]:
@@ -1119,9 +1150,7 @@ class PipelineGraph:
                     return True
         return False
 
-    def get_steps_in_sub_dag(
-        self, current_step: Step, sub_dag_steps: Set[str] = None
-    ) -> Set[str]:
+    def get_steps_in_sub_dag(self, current_step: Step, sub_dag_steps: Set[str] = None) -> Set[str]:
         """Get names of all steps (including current step) in the sub dag of current step.
 
         Returns a set of step names in the sub dag.

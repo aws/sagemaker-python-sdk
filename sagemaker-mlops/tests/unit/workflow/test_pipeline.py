@@ -375,6 +375,7 @@ def test_get_function_step_result_success(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
+        "Environment": {},
     }
     
     with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result"):
@@ -441,6 +442,7 @@ def test_pipeline_execution_result_terminal_failure(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
+        "Environment": {},
     }
     
     with patch.object(execution, "wait", side_effect=WaiterError("name", "Waiter encountered a terminal failure state", {})):
@@ -458,6 +460,7 @@ def test_get_function_step_result_obsolete_s3_path(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/different/path"},
         "TrainingJobStatus": "Completed",
+        "Environment": {},
     }
     
     with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result"):
