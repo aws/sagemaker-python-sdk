@@ -1877,7 +1877,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if "/" in role:
             return role
         return self.boto_session.resource("iam").Role(role).arn
-
+    
 
 def _expand_container_def(c_def):
     """Placeholder docstring"""
