@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.0 (2025-12-18)
+
+* Update module dependencies
+
 ## v1.1.1 (2025-12-10)
 
 * Update project dependencies to include submodules latest versions: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops

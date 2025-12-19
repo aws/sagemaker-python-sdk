@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.2.0 (2025-12-18)
+
+### Features
+  * Evaluator handshake with trainer
+  * Datasets Format validation
+### Bug fixes and Other Changes
+  * Add xgboost 3.0-5 to release
+  * Fix get_child_process_ids parsing issue
+
 ## v3.1.1 (2025-12-10)
 
 ### Bug fixes and Other Changes
