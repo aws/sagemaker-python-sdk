@@ -2209,3 +2209,293 @@ class TestNestedSetDict:
         d = {}
         nested_set_dict(d, ["a", "b", "c"], "value")
         assert d["a"]["b"]["c"] == "value"
+
+
+
+class TestValidateSourceDirectory:
+    """Test _validate_source_directory function."""
+
+    def test_validate_source_directory_none(self):
+        """Test with None source directory."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        # Should not raise
+        _validate_source_directory(None)
+
+    def test_validate_source_directory_s3_path(self):
+        """Test with S3 path."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        # Should not raise for S3 paths
+        _validate_source_directory("s3://my-bucket/my-code")
+
+    def test_validate_source_directory_valid_local_path(self):
+        """Test with valid local path."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Should not raise for valid local paths
+            _validate_source_directory(tmpdir)
+
+    def test_validate_source_directory_sensitive_path_aws(self):
+        """Test rejection of ~/.aws path."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        aws_dir = os.path.expanduser("~/.aws")
+        if os.path.exists(aws_dir):
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                _validate_source_directory(aws_dir)
+
+    def test_validate_source_directory_sensitive_path_ssh(self):
+        """Test rejection of ~/.ssh path."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        ssh_dir = os.path.expanduser("~/.ssh")
+        if os.path.exists(ssh_dir):
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                _validate_source_directory(ssh_dir)
+
+    def test_validate_source_directory_sensitive_path_root(self):
+        """Test rejection of /root path."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        # Test with /root which is a sensitive path
+        if os.path.exists("/root") and os.access("/root", os.R_OK):
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                _validate_source_directory("/root")
+
+    def test_validate_source_directory_symlink_resolution(self):
+        """Test that symlinks are resolved correctly."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a real directory
+            real_dir = os.path.join(tmpdir, "real_code")
+            os.makedirs(real_dir)
+
+            # Create a symlink to it
+            symlink_path = os.path.join(tmpdir, "link_to_code")
+            os.symlink(real_dir, symlink_path)
+
+            # Should not raise - symlink should be resolved and validated
+            _validate_source_directory(symlink_path)
+
+
+class TestValidateDependencyPath:
+    """Test _validate_dependency_path function."""
+
+    def test_validate_dependency_path_none(self):
+        """Test with None dependency."""
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        # Should not raise
+        _validate_dependency_path(None)
+
+    def test_validate_dependency_path_valid_local_path(self):
+        """Test with valid local path."""
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Should not raise for valid local paths
+            _validate_dependency_path(tmpdir)
+
+    def test_validate_dependency_path_sensitive_path_aws(self):
+        """Test rejection of ~/.aws path."""
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        aws_dir = os.path.expanduser("~/.aws")
+        if os.path.exists(aws_dir):
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                _validate_dependency_path(aws_dir)
+
+    def test_validate_dependency_path_sensitive_path_credentials(self):
+        """Test rejection of ~/.credentials path."""
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        creds_dir = os.path.expanduser("~/.credentials")
+        if os.path.exists(creds_dir):
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                _validate_dependency_path(creds_dir)
+
+    def test_validate_dependency_path_symlink_resolution(self):
+        """Test that symlinks are resolved correctly."""
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a real directory
+            real_dir = os.path.join(tmpdir, "real_lib")
+            os.makedirs(real_dir)
+
+            # Create a symlink to it
+            symlink_path = os.path.join(tmpdir, "link_to_lib")
+            os.symlink(real_dir, symlink_path)
+
+            # Should not raise - symlink should be resolved and validated
+            _validate_dependency_path(symlink_path)
+
+
+class TestCreateOrUpdateCodeDir:
+    """Test _create_or_update_code_dir function."""
+
+    def test_create_or_update_code_dir_basic(self):
+        """Test basic code directory creation."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_dir = os.path.join(tmpdir, "model")
+            os.makedirs(model_dir)
+
+            inference_script = os.path.join(tmpdir, "inference.py")
+            with open(inference_script, "w") as f:
+                f.write("# inference code")
+
+            # Should create code directory and copy inference script
+            _create_or_update_code_dir(
+                model_dir,
+                inference_script,
+                None,
+                [],
+                None,
+                tmpdir,
+            )
+
+            code_dir = os.path.join(model_dir, "code")
+            assert os.path.exists(code_dir)
+            assert os.path.exists(os.path.join(code_dir, "inference.py"))
+
+    def test_create_or_update_code_dir_with_source_directory(self):
+        """Test code directory creation with source directory."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_dir = os.path.join(tmpdir, "model")
+            os.makedirs(model_dir)
+
+            source_dir = os.path.join(tmpdir, "source")
+            os.makedirs(source_dir)
+            with open(os.path.join(source_dir, "app.py"), "w") as f:
+                f.write("# app code")
+
+            # Should copy source directory to code directory
+            _create_or_update_code_dir(
+                model_dir,
+                "inference.py",
+                source_dir,
+                [],
+                None,
+                tmpdir,
+            )
+
+            code_dir = os.path.join(model_dir, "code")
+            assert os.path.exists(code_dir)
+            assert os.path.exists(os.path.join(code_dir, "app.py"))
+
+    def test_create_or_update_code_dir_with_dependencies(self):
+        """Test code directory creation with dependencies."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_dir = os.path.join(tmpdir, "model")
+            os.makedirs(model_dir)
+
+            inference_script = os.path.join(tmpdir, "inference.py")
+            with open(inference_script, "w") as f:
+                f.write("# inference code")
+
+            dep_dir = os.path.join(tmpdir, "my_lib")
+            os.makedirs(dep_dir)
+            with open(os.path.join(dep_dir, "helper.py"), "w") as f:
+                f.write("# helper code")
+
+            # Should create code directory with dependencies
+            _create_or_update_code_dir(
+                model_dir,
+                inference_script,
+                None,
+                [dep_dir],
+                None,
+                tmpdir,
+            )
+
+            code_dir = os.path.join(model_dir, "code")
+            lib_dir = os.path.join(code_dir, "lib")
+            assert os.path.exists(lib_dir)
+            assert os.path.exists(os.path.join(lib_dir, "my_lib", "helper.py"))
+
+    def test_create_or_update_code_dir_rejects_sensitive_paths(self):
+        """Test that code_dir validation rejects sensitive system paths."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a model_dir that would resolve to a sensitive path
+            # This is tricky to test without mocking, so we'll mock _get_resolved_path
+            with patch("sagemaker.core.common_utils._get_resolved_path") as mock_resolve:
+                mock_resolve.return_value = "/etc"
+
+                inference_script = os.path.join(tmpdir, "inference.py")
+                with open(inference_script, "w") as f:
+                    f.write("# inference code")
+
+                model_dir = os.path.join(tmpdir, "model")
+                os.makedirs(model_dir)
+
+                # Should raise ValueError for sensitive path
+                with pytest.raises(ValueError, match="Invalid code_dir path"):
+                    _create_or_update_code_dir(
+                        model_dir,
+                        "inference.py",
+                        None,
+                        [],
+                        None,
+                        tmpdir,
+                    )
+
+    def test_create_or_update_code_dir_validates_source_directory(self):
+        """Test that source_directory is validated."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_dir = os.path.join(tmpdir, "model")
+            os.makedirs(model_dir)
+
+            inference_script = os.path.join(tmpdir, "inference.py")
+            with open(inference_script, "w") as f:
+                f.write("# inference code")
+
+            # Try to use a sensitive path as source_directory
+            aws_dir = os.path.expanduser("~/.aws")
+            if os.path.exists(aws_dir):
+                with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                    _create_or_update_code_dir(
+                        model_dir,
+                        "inference.py",
+                        aws_dir,
+                        [],
+                        None,
+                        tmpdir,
+                    )
+
+    def test_create_or_update_code_dir_validates_dependencies(self):
+        """Test that dependencies are validated."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_dir = os.path.join(tmpdir, "model")
+            os.makedirs(model_dir)
+
+            inference_script = os.path.join(tmpdir, "inference.py")
+            with open(inference_script, "w") as f:
+                f.write("# inference code")
+
+            # Try to use a sensitive path as dependency
+            aws_dir = os.path.expanduser("~/.aws")
+            if os.path.exists(aws_dir):
+                with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                    _create_or_update_code_dir(
+                        model_dir,
+                        inference_script,
+                        None,
+                        [aws_dir],
+                        None,
+                        tmpdir,
+                    )

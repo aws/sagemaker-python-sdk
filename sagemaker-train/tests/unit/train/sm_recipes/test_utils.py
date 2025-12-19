@@ -201,38 +201,72 @@ def test_get_args_from_recipe_compute(
             )
             assert mock_gpu_args.call_count == 0
             assert mock_trainium_args.call_count == 0
-            assert args is None
 
-    @pytest.mark.parametrize(
-        "test_case",
-        [
-            {
-                "model_type": "llama_v3",
-                "script": "llama_pretrain.py",
-                "model_base_name": "llama_v3",
-            },
-            {
-                "model_type": "mistral",
-                "script": "mistral_pretrain.py",
-                "model_base_name": "mistral",
-            },
-            {
-                "model_type": "deepseek_llamav3",
-                "script": "deepseek_pretrain.py",
-                "model_base_name": "deepseek",
-            },
-            {
-                "model_type": "deepseek_qwenv2",
-                "script": "deepseek_pretrain.py",
-                "model_base_name": "deepseek",
-            },
-        ],
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "model_type": "llama_v3",
+            "model_base_name": "llama",
+            "script": "llama_pretrain.py",
+        },
+        {
+            "model_type": "mistral",
+            "model_base_name": "mistral",
+            "script": "mistral_pretrain.py",
+        },
+        {
+            "model_type": "deepseek_llamav3",
+            "model_base_name": "deepseek",
+            "script": "deepseek_pretrain.py",
+        },
+        {
+            "model_type": "deepseek_qwenv2",
+            "model_base_name": "deepseek",
+            "script": "deepseek_pretrain.py",
+        },
+    ],
+)
+def test_get_trainining_recipe_gpu_model_name_and_script(test_case):
+    model_base_name, script = _get_trainining_recipe_gpu_model_name_and_script(
+        test_case["model_type"]
     )
-    def test_get_trainining_recipe_gpu_model_name_and_script(test_case):
-        model_type = test_case["model_type"]
-        script = test_case["script"]
-        model_base_name, script = _get_trainining_recipe_gpu_model_name_and_script(
-            model_type, script
-        )
-        assert model_base_name == test_case["model_base_name"]
-        assert script == test_case["script"]
+    assert model_base_name == test_case["model_base_name"]
+    assert script == test_case["script"]
+
+
+def test_get_args_from_recipe_with_evaluation(temporary_recipe):
+    import tempfile
+    import os
+    from sagemaker.train.configs import SourceCode
+    
+    # Create a recipe with evaluation config
+    recipe_data = {
+        "trainer": {"num_nodes": 1},
+        "model": {"model_type": "llama_v3"},
+        "evaluation": {"task": "gen_qa"},
+        "processor": {"lambda_arn": "arn:aws:lambda:us-east-1:123456789012:function:MyFunc"},
+    }
+    
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as f:
+        with open(f.name, "w") as file:
+            yaml.dump(recipe_data, file)
+        recipe_path = f.name
+    
+    try:
+        compute = Compute(instance_type="ml.p4d.24xlarge", instance_count=1)
+        with patch("sagemaker.train.sm_recipes.utils._configure_gpu_args") as mock_gpu:
+            mock_source = SourceCode()
+            mock_source.source_dir = "/tmp/test"
+            mock_gpu.return_value = {"source_code": mock_source, "hyperparameters": {}}
+            with patch("sagemaker.train.sm_recipes.utils.OmegaConf.save"):
+                args, _ = _get_args_from_recipe(
+                    training_recipe=recipe_path,
+                    compute=compute,
+                    region_name="us-west-2",
+                    recipe_overrides=None,
+                    requirements=None,
+                )
+                assert args["hyperparameters"]["lambda_arn"] == "arn:aws:lambda:us-east-1:123456789012:function:MyFunc"
+    finally:
+        os.unlink(recipe_path)
