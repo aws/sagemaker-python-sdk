@@ -49,7 +49,7 @@ class TestTrainingQueuedJobInit:
 class TestTrainingQueuedJobDescribe:
     """Tests for TrainingQueuedJob.describe method"""
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_describe(self, mock_describe_service_job):
         """Test describe returns job details"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_RUNNING
@@ -64,7 +64,7 @@ class TestTrainingQueuedJobDescribe:
 class TestTrainingQueuedJobTerminate:
     """Tests for TrainingQueuedJob.terminate method"""
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.terminate_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._terminate_service_job")
     def test_terminate(self, mock_terminate_service_job):
         """Test terminate calls terminate API"""
         mock_terminate_service_job.return_value = {}
@@ -74,7 +74,7 @@ class TestTrainingQueuedJobTerminate:
 
         mock_terminate_service_job.assert_called_once_with(JOB_ARN, REASON)
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.terminate_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._terminate_service_job")
     def test_terminate_default_reason(self, mock_terminate_service_job):
         """Test terminate with default reason"""
         mock_terminate_service_job.return_value = {}
@@ -89,7 +89,7 @@ class TestTrainingQueuedJobTerminate:
 class TestTrainingQueuedJobWait:
     """Tests for TrainingQueuedJob.wait method"""
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_wait_immediate_completion(self, mock_describe_service_job):
         """Test wait returns immediately when job is completed"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_SUCCEEDED
@@ -99,7 +99,7 @@ class TestTrainingQueuedJobWait:
 
         assert result["status"] == JOB_STATUS_SUCCEEDED
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_wait_with_polling(self, mock_describe_service_job):
         """Test wait polls until job completes"""
         mock_describe_service_job.side_effect = [
@@ -114,7 +114,7 @@ class TestTrainingQueuedJobWait:
         assert result["status"] == JOB_STATUS_SUCCEEDED
         assert mock_describe_service_job.call_count == 3
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_wait_with_timeout(self, mock_describe_service_job):
         """Test wait respects timeout"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_RUNNING
@@ -128,7 +128,7 @@ class TestTrainingQueuedJobWait:
         assert end_time - start_time >= 2
         assert result["status"] == JOB_STATUS_RUNNING
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_wait_job_failed(self, mock_describe_service_job):
         """Test wait returns failed status"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_FAILED
@@ -144,7 +144,7 @@ class TestTrainingQueuedJobGetModelTrainer:
 
     @patch("sagemaker.train.aws_batch.training_queued_job._remove_system_tags_in_place_in_model_trainer_object")
     @patch("sagemaker.train.aws_batch.training_queued_job._construct_model_trainer_from_training_job_name")
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_get_model_trainer_success(self, mock_describe_service_job, mock_construct_trainer, mock_remove_tags):
         """Test get_model_trainer returns ModelTrainer when training job created"""
         # Return a real dict (not a mock) so nested dict access works
@@ -160,7 +160,7 @@ class TestTrainingQueuedJobGetModelTrainer:
         mock_construct_trainer.assert_called_once()
         mock_remove_tags.assert_called_once_with(mock_trainer)
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_get_model_trainer_no_training_job_pending(self, mock_describe_service_job):
         """Test get_model_trainer raises error when job still pending"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_PENDING
@@ -170,7 +170,7 @@ class TestTrainingQueuedJobGetModelTrainer:
         with pytest.raises(NoTrainingJob):
             queued_job.get_model_trainer()
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_get_model_trainer_no_latest_attempt(self, mock_describe_service_job):
         """Test get_model_trainer raises error when latestAttempt missing"""
         resp = DESCRIBE_SERVICE_JOB_RESP_SUCCEEDED.copy()
@@ -186,7 +186,7 @@ class TestTrainingQueuedJobGetModelTrainer:
 class TestTrainingQueuedJobResult:
     """Tests for TrainingQueuedJob.result method"""
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_result_success(self, mock_describe_service_job):
         """Test result returns job result when completed"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_SUCCEEDED
@@ -196,7 +196,7 @@ class TestTrainingQueuedJobResult:
 
         assert result["status"] == JOB_STATUS_SUCCEEDED
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_result_timeout(self, mock_describe_service_job):
         """Test result raises TimeoutError when timeout exceeded"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_RUNNING
@@ -210,7 +210,7 @@ class TestTrainingQueuedJobResult:
 class TestTrainingQueuedJobAsync:
     """Tests for TrainingQueuedJob async methods"""
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_fetch_job_results_success(self, mock_describe_service_job):
         """Test fetch_job_results returns result when job succeeds"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_SUCCEEDED
@@ -220,7 +220,7 @@ class TestTrainingQueuedJobAsync:
 
         assert result["status"] == JOB_STATUS_SUCCEEDED
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_fetch_job_results_failed(self, mock_describe_service_job):
         """Test fetch_job_results raises error when job fails"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_FAILED
@@ -230,7 +230,7 @@ class TestTrainingQueuedJobAsync:
         with pytest.raises(RuntimeError):
             asyncio.run(queued_job.fetch_job_results())
 
-    @patch("sagemaker.train.aws_batch.training_queued_job.describe_service_job")
+    @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
     def test_fetch_job_results_timeout(self, mock_describe_service_job):
         """Test fetch_job_results raises TimeoutError when timeout exceeded"""
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_RUNNING

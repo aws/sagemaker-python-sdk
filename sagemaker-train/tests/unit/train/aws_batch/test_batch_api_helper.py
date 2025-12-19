@@ -17,10 +17,10 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 
 from sagemaker.train.aws_batch.batch_api_helper import (
-    submit_service_job,
-    describe_service_job,
-    terminate_service_job,
-    list_service_job,
+    _submit_service_job,
+    _describe_service_job,
+    _terminate_service_job,
+    _list_service_job,
 )
 from .conftest import (
     JOB_NAME,
@@ -56,7 +56,7 @@ class TestSubmitServiceJob:
         mock_client.submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
         mock_get_client.return_value = mock_client
 
-        result = submit_service_job(
+        result = _submit_service_job(
             TRAINING_JOB_PAYLOAD,
             JOB_NAME,
             JOB_QUEUE,
@@ -74,7 +74,7 @@ class TestSubmitServiceJob:
         mock_client.submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
         mock_get_client.return_value = mock_client
 
-        result = submit_service_job(
+        result = _submit_service_job(
             TRAINING_JOB_PAYLOAD,
             JOB_NAME,
             JOB_QUEUE,
@@ -103,7 +103,7 @@ class TestSubmitServiceJob:
         payload = TRAINING_JOB_PAYLOAD.copy()
         payload["Tags"] = TRAINING_TAGS
 
-        result = submit_service_job(
+        result = _submit_service_job(
             payload,
             JOB_NAME,
             JOB_QUEUE,
@@ -125,7 +125,7 @@ class TestSubmitServiceJob:
         mock_client.submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
         mock_get_client.return_value = mock_client
 
-        submit_service_job(
+        _submit_service_job(
             TRAINING_JOB_PAYLOAD,
             JOB_NAME,
             JOB_QUEUE,
@@ -148,7 +148,7 @@ class TestDescribeServiceJob:
         mock_client.describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_RUNNING
         mock_get_client.return_value = mock_client
 
-        result = describe_service_job(JOB_ID)
+        result = _describe_service_job(JOB_ID)
 
         assert result["jobId"] == JOB_ID
         assert result["status"] == "RUNNING"
@@ -165,7 +165,7 @@ class TestTerminateServiceJob:
         mock_client.terminate_service_job.return_value = {}
         mock_get_client.return_value = mock_client
 
-        result = terminate_service_job(JOB_ID, REASON)
+        result = _terminate_service_job(JOB_ID, REASON)
 
         assert result == {}
         mock_client.terminate_service_job.assert_called_once_with(
@@ -179,7 +179,7 @@ class TestTerminateServiceJob:
         mock_client.terminate_service_job.return_value = {}
         mock_get_client.return_value = mock_client
 
-        terminate_service_job(JOB_ID)
+        _terminate_service_job(JOB_ID)
 
         call_kwargs = mock_client.terminate_service_job.call_args[1]
         assert call_kwargs["jobId"] == JOB_ID
@@ -196,7 +196,7 @@ class TestListServiceJob:
         mock_client.list_service_jobs.return_value = LIST_SERVICE_JOB_RESP_EMPTY
         mock_get_client.return_value = mock_client
 
-        gen = list_service_job(JOB_QUEUE)
+        gen = _list_service_job(JOB_QUEUE)
         result = next(gen)
 
         assert result["jobSummaryList"] == []
@@ -209,7 +209,7 @@ class TestListServiceJob:
         mock_client.list_service_jobs.return_value = LIST_SERVICE_JOB_RESP_WITH_JOBS
         mock_get_client.return_value = mock_client
 
-        gen = list_service_job(JOB_QUEUE)
+        gen = _list_service_job(JOB_QUEUE)
         result = next(gen)
 
         assert len(result["jobSummaryList"]) == 2
@@ -225,7 +225,7 @@ class TestListServiceJob:
         ]
         mock_get_client.return_value = mock_client
 
-        gen = list_service_job(JOB_QUEUE)
+        gen = _list_service_job(JOB_QUEUE)
         first_result = next(gen)
         assert first_result["nextToken"] == NEXT_TOKEN
 
@@ -240,7 +240,7 @@ class TestListServiceJob:
         mock_get_client.return_value = mock_client
 
         filters = [{"name": "JOB_NAME", "values": [JOB_NAME]}]
-        gen = list_service_job(JOB_QUEUE, filters=filters)
+        gen = _list_service_job(JOB_QUEUE, filters=filters)
         result = next(gen)
 
         call_kwargs = mock_client.list_service_jobs.call_args[1]
@@ -253,7 +253,7 @@ class TestListServiceJob:
         mock_client.list_service_jobs.return_value = LIST_SERVICE_JOB_RESP_WITH_JOBS
         mock_get_client.return_value = mock_client
 
-        gen = list_service_job(JOB_QUEUE, job_status=JOB_STATUS_RUNNING)
+        gen = _list_service_job(JOB_QUEUE, job_status=JOB_STATUS_RUNNING)
         result = next(gen)
 
         call_kwargs = mock_client.list_service_jobs.call_args[1]
