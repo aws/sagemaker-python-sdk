@@ -308,6 +308,10 @@ class CustomScorerEvaluator(BaseEvaluator):
             'evaluator_arn': evaluator_config['evaluator_arn'],
         }
         
+        # Add lambda_type for Nova models
+        if is_nova:
+            custom_scorer_context['lambda_type'] = 'rft'
+        
         # Add preset_reward_function if present
         if evaluator_config['preset_reward_function']:
             custom_scorer_context['preset_reward_function'] = evaluator_config['preset_reward_function']

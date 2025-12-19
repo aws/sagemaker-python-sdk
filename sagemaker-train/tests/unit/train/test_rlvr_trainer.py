@@ -17,8 +17,10 @@ class TestRLVRTrainer:
     @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
     def test_init_with_defaults(self, mock_finetuning_options, mock_validate_group, mock_session):
         mock_validate_group.return_value = "test-group"
-        mock_finetuning_options.return_value = (Mock(), "model-arn", False)
-        trainer = RLVRTrainer(model="test-model", model_package_group_name="test-group")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+        trainer = RLVRTrainer(model="test-model", model_package_group="test-group")
         assert trainer.training_type == TrainingType.LORA
         assert trainer.model == "test-model"
 
@@ -26,8 +28,10 @@ class TestRLVRTrainer:
     @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
     def test_init_with_full_training_type(self, mock_finetuning_options, mock_validate_group, mock_session):
         mock_validate_group.return_value = "test-group"
-        mock_finetuning_options.return_value = (Mock(), "model-arn", False)
-        trainer = RLVRTrainer(model="test-model", training_type=TrainingType.FULL, model_package_group_name="test-group")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+        trainer = RLVRTrainer(model="test-model", training_type=TrainingType.FULL, model_package_group="test-group")
         assert trainer.training_type == TrainingType.FULL
 
     @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
@@ -69,7 +73,7 @@ class TestRLVRTrainer:
         mock_training_job.wait = Mock()
         mock_training_job_create.return_value = mock_training_job
         
-        trainer = RLVRTrainer(model="test-model", training_type=TrainingType.LORA, model_package_group_name="test-group", training_dataset="s3://bucket/train")
+        trainer = RLVRTrainer(model="test-model", training_type=TrainingType.LORA, model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=False)
         
         assert mock_training_job_create.called
@@ -113,7 +117,7 @@ class TestRLVRTrainer:
         mock_training_job.wait = Mock()
         mock_training_job_create.return_value = mock_training_job
         
-        trainer = RLVRTrainer(model="test-model", training_type=TrainingType.FULL, model_package_group_name="test-group", training_dataset="s3://bucket/train")
+        trainer = RLVRTrainer(model="test-model", training_type=TrainingType.FULL, model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=False)
         
         assert mock_training_job_create.called
@@ -122,8 +126,10 @@ class TestRLVRTrainer:
     @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
     def test_training_type_string_value(self, mock_finetuning_options, mock_validate_group, mock_session):
         mock_validate_group.return_value = "test-group"
-        mock_finetuning_options.return_value = (Mock(), "model-arn", False)
-        trainer = RLVRTrainer(model="test-model", training_type="CUSTOM", model_package_group_name="test-group")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+        trainer = RLVRTrainer(model="test-model", training_type="CUSTOM", model_package_group="test-group")
         assert trainer.training_type == "CUSTOM"
 
     @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
@@ -133,7 +139,9 @@ class TestRLVRTrainer:
     def test_model_package_input(self, mock_finetuning_options, mock_validate_group, mock_resolve_model, mock_get_session):
         mock_validate_group.return_value = "test-group"
         mock_get_session.return_value = Mock()
-        mock_finetuning_options.return_value = (Mock(), "model-arn", False)
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
         
         model_package = Mock(spec=ModelPackage)
         model_package.inference_specification = Mock()
@@ -148,10 +156,12 @@ class TestRLVRTrainer:
     @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
     def test_init_with_datasets(self, mock_finetuning_options, mock_validate_group, mock_session):
         mock_validate_group.return_value = "test-group"
-        mock_finetuning_options.return_value = (Mock(), "model-arn", False)
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
         trainer = RLVRTrainer(
             model="test-model",
-            model_package_group_name="test-group",
+            model_package_group="test-group",
             training_dataset="s3://bucket/train",
             validation_dataset="s3://bucket/val"
         )
@@ -162,10 +172,12 @@ class TestRLVRTrainer:
     @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
     def test_init_with_mlflow_config(self, mock_finetuning_options, mock_validate_group, mock_session):
         mock_validate_group.return_value = "test-group"
-        mock_finetuning_options.return_value = (Mock(), "model-arn", False)
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
         trainer = RLVRTrainer(
             model="test-model",
-            model_package_group_name="test-group",
+            model_package_group="test-group",
             mlflow_resource_arn="arn:aws:mlflow:us-east-1:123456789012:tracking-server/test",
             mlflow_experiment_name="test-experiment",
             mlflow_run_name="test-run"
@@ -179,9 +191,11 @@ class TestRLVRTrainer:
     @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
     def test_train_without_datasets_raises_error(self, mock_finetuning_options, mock_validate_group, mock_get_session):
         mock_validate_group.return_value = "test-group"
-        mock_finetuning_options.return_value = (Mock(), "model-arn", False)
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
         mock_get_session.return_value = Mock()
-        trainer = RLVRTrainer(model="test-model", model_package_group_name="test-group")
+        trainer = RLVRTrainer(model="test-model", model_package_group="test-group")
         
         with pytest.raises(Exception):
             trainer.train(wait=False)
@@ -194,22 +208,26 @@ class TestRLVRTrainer:
         mock_validate_group.return_value = "test-group"
         mock_get_session.return_value = Mock()
         mock_resolve_model.return_value = "resolved-model"
-        mock_get_options.return_value = (Mock(), "model-arn", False)
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
         
         trainer = RLVRTrainer(
             model="test-model",
-            model_package_group_name="test-group"
+            model_package_group="test-group"
         )
-        assert trainer.model_package_group_name == "test-group"
+        assert trainer.model_package_group == "test-group"
 
     @patch('sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group')
     @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
     def test_s3_output_path_configuration(self, mock_finetuning_options, mock_validate_group, mock_session):
         mock_validate_group.return_value = "test-group"
-        mock_finetuning_options.return_value = (Mock(), "model-arn", False)
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
         trainer = RLVRTrainer(
             model="test-model",
-            model_package_group_name="test-group",
+            model_package_group="test-group",
             s3_output_path="s3://bucket/output"
         )
         assert trainer.s3_output_path == "s3://bucket/output"
@@ -248,7 +266,7 @@ class TestRLVRTrainer:
         mock_training_job.wait = Mock()
         mock_training_job_create.return_value = mock_training_job
         
-        trainer = RLVRTrainer(model="test-model", model_package_group_name="test-group", training_dataset="s3://bucket/train")
+        trainer = RLVRTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=False)
         
         mock_training_job_create.assert_called_once()
@@ -263,12 +281,82 @@ class TestRLVRTrainer:
     def test_gated_model_eula_validation(self, mock_finetuning_options, mock_validate_group, mock_session):
         """Test EULA validation for gated models"""
         mock_validate_group.return_value = "test-group"
-        mock_finetuning_options.return_value = (Mock(), "model-arn", True)  # is_gated_model=True
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", True)  # is_gated_model=True
         
         # Should raise error when accept_eula=False for gated model
         with pytest.raises(ValueError, match="gated model and requires EULA acceptance"):
-            RLVRTrainer(model="gated-model", model_package_group_name="test-group", accept_eula=False)
+            RLVRTrainer(model="gated-model", model_package_group="test-group", accept_eula=False)
         
         # Should work when accept_eula=True for gated model
-        trainer = RLVRTrainer(model="gated-model", model_package_group_name="test-group", accept_eula=True)
+        trainer = RLVRTrainer(model="gated-model", model_package_group="test-group", accept_eula=True)
         assert trainer.accept_eula == True
+
+    def test_process_hyperparameters_removes_constructor_handled_keys(self):
+        """Test that _process_hyperparameters removes keys handled by constructor inputs."""
+        # Create mock hyperparameters with all possible keys
+        mock_hyperparams = Mock()
+        mock_hyperparams._specs = {
+            'data_s3_path': 'test_data_s3_path',
+            'reward_lambda_arn': 'test_reward_lambda_arn',
+            'data_path': 'test_data_path',
+            'validation_data_path': 'test_validation_data_path',
+            'other_param': 'should_remain'
+        }
+        
+        # Add attributes to mock
+        mock_hyperparams.data_s3_path = 'test_data_s3_path'
+        mock_hyperparams.reward_lambda_arn = 'test_reward_lambda_arn'
+        mock_hyperparams.data_path = 'test_data_path'
+        mock_hyperparams.validation_data_path = 'test_validation_data_path'
+        
+        # Create trainer instance with mock hyperparameters
+        trainer = RLVRTrainer.__new__(RLVRTrainer)
+        trainer.hyperparameters = mock_hyperparams
+        
+        # Call the method
+        trainer._process_hyperparameters()
+        
+        # Verify attributes were removed
+        assert not hasattr(mock_hyperparams, 'data_s3_path')
+        assert not hasattr(mock_hyperparams, 'reward_lambda_arn')
+        assert not hasattr(mock_hyperparams, 'data_path')
+        assert not hasattr(mock_hyperparams, 'validation_data_path')
+        
+        # Verify _specs were updated
+        assert 'data_s3_path' not in mock_hyperparams._specs
+        assert 'reward_lambda_arn' not in mock_hyperparams._specs
+        assert 'data_path' not in mock_hyperparams._specs
+        assert 'validation_data_path' not in mock_hyperparams._specs
+        assert 'other_param' in mock_hyperparams._specs
+
+    def test_process_hyperparameters_handles_missing_attributes(self):
+        """Test that _process_hyperparameters handles missing attributes gracefully."""
+        # Create mock hyperparameters with only some keys
+        mock_hyperparams = Mock()
+        mock_hyperparams._specs = {
+            'data_s3_path': 'test_data_s3_path',
+            'other_param': 'should_remain'
+        }
+        mock_hyperparams.data_s3_path = 'test_data_s3_path'
+        
+        # Create trainer instance
+        trainer = RLVRTrainer.__new__(RLVRTrainer)
+        trainer.hyperparameters = mock_hyperparams
+        
+        # Call the method
+        trainer._process_hyperparameters()
+        
+        # Verify only existing attributes were processed
+        assert not hasattr(mock_hyperparams, 'data_s3_path')
+        assert 'data_s3_path' not in mock_hyperparams._specs
+        assert 'other_param' in mock_hyperparams._specs
+
+    def test_process_hyperparameters_with_none_hyperparameters(self):
+        """Test that _process_hyperparameters handles None hyperparameters."""
+        trainer = RLVRTrainer.__new__(RLVRTrainer)
+        trainer.hyperparameters = None
+        
+        # Should not raise an exception
+        trainer._process_hyperparameters()

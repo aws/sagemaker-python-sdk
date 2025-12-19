@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "HuggingFace Preference format for DPO/RLHF training",
+  "properties": {
+    "input": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "The input prompt or query as a string"
+        },
+        {
+          "type": "array",
+          "description": "Array of conversation messages",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          }
+        }
+      ]
+    },
+    "prompt": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Alternative field for the input prompt as a string"
+        },
+        {
+          "type": "array",
+          "description": "Array of conversation messages",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          }
+        }
+      ]
+    },
+    "chosen": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "The preferred/chosen response as a string"
+        },
+        {
+          "type": "array",
+          "description": "Array of assistant message(s) for chosen response",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          }
+        }
+      ]
+    },
+    "rejected": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "The rejected/non-preferred response as a string"
+        },
+        {
+          "type": "array",
+          "description": "Array of assistant message(s) for rejected response",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          }
+        }
+      ]
+    },
+    "id": {
+      "type": "string",
+      "description": "Optional unique identifier"
+    },
+    "attributes": {
+      "type": "object",
+      "description": "Optional metadata attributes"
+    },
+    "difficulty": {
+      "type": "string",
+      "description": "Optional difficulty level"
+    }
+  },
+  "required": ["chosen", "rejected"],
+  "additionalProperties": true
+}

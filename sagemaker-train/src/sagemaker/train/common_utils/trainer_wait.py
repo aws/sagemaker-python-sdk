@@ -4,13 +4,27 @@ This module provides functionality to wait for training jobs to complete
 with progress tracking and MLflow integration.
 """
 
+import logging
 import time
+from contextlib import contextmanager
 from typing import Optional, Tuple
 
 from sagemaker.core.resources import TrainingJob
 from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededError
 
 from sagemaker.train.common_utils.mlflow_metrics_util import _MLflowMetricsUtil
+
+
+@contextmanager
+def _suppress_info_logging():
+    """Context manager to temporarily suppress INFO level logging."""
+    logger = logging.getLogger()
+    original_level = logger.level
+    logger.setLevel(logging.WARNING)
+    try:
+        yield
+    finally:
+        logger.setLevel(original_level)
 
 
 def _setup_mlflow_integration(training_job: TrainingJob) -> Tuple[
@@ -143,7 +157,7 @@ def _calculate_transition_duration(trans) -> Tuple[str, str]:
 def wait(
         training_job: TrainingJob,
         poll: int = 5,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = 3000
 ) -> None:
     """Wait for training job to complete with progress tracking.
 
@@ -172,124 +186,125 @@ def wait(
             from rich.panel import Panel
             from rich.text import Text
             from rich.console import Group
+            with _suppress_info_logging():
+                console = Console(force_jupyter=True)
 
-            console = Console(force_jupyter=True)
+                iteration = 0
+                while True:
+                    iteration += 1
+                    time.sleep(1)
+                    if iteration == poll:
+                        training_job.refresh()
+                        iteration = 0
+                    clear_output(wait=True)
 
-            iteration = 0
-            while True:
-                iteration += 1
-                time.sleep(poll)
-                training_job.refresh()
-                clear_output(wait=False)
+                    status = training_job.training_job_status
+                    secondary_status = training_job.secondary_status
+                    elapsed = time.time() - start_time
 
-                status = training_job.training_job_status
-                secondary_status = training_job.secondary_status
-                elapsed = time.time() - start_time
+                    # Header section with training job name and MLFlow URL
+                    header_table = Table(show_header=False, box=None, padding=(0, 1))
+                    header_table.add_column("Property", style="cyan bold", width=20)
+                    header_table.add_column("Value", style="white")
+                    header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
+                    if mlflow_url:
+                        header_table.add_row("MLFlow URL",
+                                             f"[link={mlflow_url}][bold bright_blue underline]{mlflow_run_name}(link valid for 5 mins)[/bright_blue bold underline][/link]")
 
-                # Header section with training job name and MLFlow URL
-                header_table = Table(show_header=False, box=None, padding=(0, 1))
-                header_table.add_column("Property", style="cyan bold", width=20)
-                header_table.add_column("Value", style="white")
-                header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
-                if mlflow_url:
-                    header_table.add_row("MLFlow URL",
-                                         f"[link={mlflow_url}][bold bright_blue underline]{mlflow_run_name}(link valid for 5 mins)[/bright_blue bold underline][/link]")
+                    status_table = Table(show_header=False, box=None, padding=(0, 1))
+                    status_table.add_column("Property", style="cyan bold", width=20)
+                    status_table.add_column("Value", style="white")
 
-                status_table = Table(show_header=False, box=None, padding=(0, 1))
-                status_table.add_column("Property", style="cyan bold", width=20)
-                status_table.add_column("Value", style="white")
+                    status_table.add_row("Job Status", f"[bold][orange3]{status}[/][/]")
+                    status_table.add_row("Secondary Status", f"[bold yellow]{secondary_status}[/bold yellow]")
+                    status_table.add_row("Elapsed Time", f"[bold bright_red]{elapsed:.1f}s[/bold bright_red]")
 
-                status_table.add_row("Job Status", f"[bold][orange3]{status}[/][/]")
-                status_table.add_row("Secondary Status", f"[bold yellow]{secondary_status}[/bold yellow]")
-                status_table.add_row("Elapsed Time", f"[bold bright_red]{elapsed:.1f}s[/bold bright_red]")
+                    failure_reason = training_job.failure_reason
+                    if failure_reason and not _is_unassigned_attribute(failure_reason):
+                        status_table.add_row("Failure Reason", f"[bright_red]{failure_reason}[/bright_red]")
 
-                failure_reason = training_job.failure_reason
-                if failure_reason and not _is_unassigned_attribute(failure_reason):
-                    status_table.add_row("Failure Reason", f"[bright_red]{failure_reason}[/bright_red]")
+                    # Calculate training progress
+                    training_progress_pct = None
+                    training_progress_text = ""
+                    if secondary_status == "Training" and training_job.progress_info:
+                        if not progress_started:
+                            progress_started = True
+                            time.sleep(poll)
+                            training_job.refresh()
 
-                # Calculate training progress
-                training_progress_pct = None
-                training_progress_text = ""
-                if secondary_status == "Training" and training_job.progress_info:
-                    if not progress_started:
-                        progress_started = True
-                        time.sleep(10)
-                        continue
-                        # training_job.refresh()
+                        training_progress_pct, training_progress_text = _calculate_training_progress(
+                            training_job.progress_info, metrics_util, mlflow_run_name, training_job
+                        )
 
-                    training_progress_pct, training_progress_text = _calculate_training_progress(
-                        training_job.progress_info, metrics_util, mlflow_run_name, training_job
-                    )
+                    # Build transitions table if available
+                    transitions_table = None
+                    if training_job.secondary_status_transitions:
+                        from rich.box import SIMPLE
+                        transitions_table = Table(show_header=True, header_style="bold magenta", box=SIMPLE, padding=(0, 1))
+                        transitions_table.add_column("", style="green", width=2)
+                        transitions_table.add_column("Step", style="cyan", width=15)
+                        transitions_table.add_column("Details", style="orange3", width=35)
+                        transitions_table.add_column("Duration", style="green", width=12)
 
-                # Build transitions table if available
-                transitions_table = None
-                if training_job.secondary_status_transitions:
-                    from rich.box import SIMPLE
-                    transitions_table = Table(show_header=True, header_style="bold magenta", box=SIMPLE, padding=(0, 1))
-                    transitions_table.add_column("", style="green", width=2)
-                    transitions_table.add_column("Step", style="cyan", width=15)
-                    transitions_table.add_column("Details", style="orange3", width=35)
-                    transitions_table.add_column("Duration", style="green", width=12)
+                        for trans in training_job.secondary_status_transitions:
+                            duration, check = _calculate_transition_duration(trans)
 
-                    for trans in training_job.secondary_status_transitions:
-                        duration, check = _calculate_transition_duration(trans)
+                            # Add progress bar for Training step
+                            if trans.status == "Training" and training_progress_pct is not None:
+                                bar = f"[green][{'█' * int(training_progress_pct / 5)}{'░' * (20 - int(training_progress_pct / 5))}][/green] {training_progress_pct:.1f}% {training_progress_text}"
+                                transitions_table.add_row(check, trans.status, bar, duration)
+                            else:
+                                transitions_table.add_row(check, trans.status, trans.status_message or "", duration)
 
-                        # Add progress bar for Training step
-                        if trans.status == "Training" and training_progress_pct is not None:
-                            bar = f"[green][{'█' * int(training_progress_pct / 5)}{'░' * (20 - int(training_progress_pct / 5))}][/green] {training_progress_pct:.1f}% {training_progress_text}"
-                            transitions_table.add_row(check, trans.status, bar, duration)
+                    # Prepare metrics table for terminal states
+                    metrics_table = None
+                    if status in ["Completed", "Failed", "Stopped"]:
+                        try:
+                            steps_per_epoch = training_job.progress_info.total_step_count_per_epoch
+                            loss_metrics_by_epoch = metrics_util._get_loss_metrics_by_epoch(run_name=mlflow_run_name,
+                                                                                           steps_per_epoch=steps_per_epoch)
+                            if loss_metrics_by_epoch:
+                                metrics_table = Table(show_header=True, header_style="bold magenta", box=SIMPLE,
+                                                      padding=(0, 1))
+                                metrics_table.add_column("Epochs", style="cyan", width=8)
+                                metrics_table.add_column("Loss Metrics", style="white")
+
+                                for epoch, metrics in list(loss_metrics_by_epoch.items())[:-1]:
+                                    metrics_str = ", ".join([f"{k}: {v:.6f}" for k, v in metrics.items()])
+                                    metrics_table.add_row(str(epoch + 1), metrics_str, style="yellow")
+                        except Exception:
+                            pass
+
+                    # Build combined group with metrics if available
+                    if training_job.secondary_status_transitions:
+                        if metrics_table:
+                            combined = Group(header_table, Text(""), status_table, Text(""),
+                                             Text("Status Transitions", style="bold magenta"), transitions_table, Text(""),
+                                             Text("Loss Metrics by Epoch", style="bold magenta"), metrics_table)
                         else:
-                            transitions_table.add_row(check, trans.status, trans.status_message or "", duration)
-
-                # Prepare metrics table for terminal states
-                metrics_table = None
-                if status in ["Completed", "Failed", "Stopped"]:
-                    try:
-                        steps_per_epoch = training_job.progress_info.total_step_count_per_epoch
-                        loss_metrics_by_epoch = metrics_util._get_loss_metrics_by_epoch(run_name=mlflow_run_name,
-                                                                                       steps_per_epoch=steps_per_epoch)
-                        if loss_metrics_by_epoch:
-                            metrics_table = Table(show_header=True, header_style="bold magenta", box=SIMPLE,
-                                                  padding=(0, 1))
-                            metrics_table.add_column("Epochs", style="cyan", width=8)
-                            metrics_table.add_column("Loss Metrics", style="white")
-
-                            for epoch, metrics in list(loss_metrics_by_epoch.items())[:-1]:
-                                metrics_str = ", ".join([f"{k}: {v:.6f}" for k, v in metrics.items()])
-                                metrics_table.add_row(str(epoch + 1), metrics_str, style="yellow")
-                    except Exception:
-                        pass
-
-                # Build combined group with metrics if available
-                if training_job.secondary_status_transitions:
-                    if metrics_table:
-                        combined = Group(header_table, Text(""), status_table, Text(""),
-                                         Text("Status Transitions", style="bold magenta"), transitions_table, Text(""),
-                                         Text("Loss Metrics by Epoch", style="bold magenta"), metrics_table)
+                            combined = Group(header_table, Text(""), status_table, Text(""),
+                                             Text("Status Transitions", style="bold magenta"), transitions_table)
                     else:
-                        combined = Group(header_table, Text(""), status_table, Text(""),
-                                         Text("Status Transitions", style="bold magenta"), transitions_table)
-                else:
-                    if metrics_table:
-                        combined = Group(header_table, Text(""), status_table, Text(""),
-                                         Text("Loss Metrics by Epoch", style="bold magenta"), metrics_table)
-                    else:
-                        combined = Group(header_table, Text(""), status_table)
+                        if metrics_table:
+                            combined = Group(header_table, Text(""), status_table, Text(""),
+                                             Text("Loss Metrics by Epoch", style="bold magenta"), metrics_table)
+                        else:
+                            combined = Group(header_table, Text(""), status_table)
 
-                panel_width = 80
-                if console.width and not _is_unassigned_attribute(console.width):
-                    panel_width = int(console.width * 0.8)
-                console.print(Panel(combined, title="[bold bright_blue]Training Job Status[/bold bright_blue]",
-                                    border_style="orange3", width=panel_width))
+                    panel_width = 80
+                    if console.width and not _is_unassigned_attribute(console.width):
+                        panel_width = int(console.width * 0.8)
+                    console.print(Panel(combined, title="[bold bright_blue]Training Job Status[/bold bright_blue]",
+                                        border_style="orange3", width=panel_width))
 
-                if status in ["Completed", "Failed", "Stopped"]:
-                    return
+                    if status in ["Completed", "Failed", "Stopped"]:
+                        return
 
-                if status == "Failed" or (failure_reason and not _is_unassigned_attribute(failure_reason)):
-                    raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
+                    if status == "Failed" or (failure_reason and not _is_unassigned_attribute(failure_reason)):
+                        raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
 
-                if timeout and elapsed >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrainingJob", status=status)
+                    if timeout and elapsed >= timeout:
+                        raise TimeoutExceededError(resource_type="TrainingJob", status=status)
 
         else:
             print(f"\nTrainingJob Name: {training_job.training_job_name}")
@@ -350,7 +365,7 @@ def wait(
                     raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
 
                 if timeout and elapsed >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrainingJob", status=status)
+                    raise TimeoutExceededError(resource_type="TrainingJob", status=status)
 
 
     except (FailedStatusError, TimeoutExceededError):
