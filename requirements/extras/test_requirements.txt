@@ -35,7 +35,7 @@ opentelemetry-proto==1.27.0
 opentelemetry_exporter_otlp==1.27.0
 protobuf==4.25.8
 tensorboard>=2.16.2,<=2.18.0
-transformers==4.48.0
+transformers==4.53.0
 sentencepiece==0.1.99
 # https://github.com/triton-inference-server/server/issues/6246
 tritonclient[http]<2.37.0
