@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.0 (2025-12-18)
+
+### Features
+
+* Fix pip installation issues
+
 ## v1.1.1 (2025-12-10)
 
 ### Features

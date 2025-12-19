@@ -20,7 +20,69 @@ import tempfile
 import warnings
 import six
 from six.moves import urllib
+import re
+from pathlib import Path
+from urllib.parse import urlparse
 
+def _sanitize_git_url(repo_url):
+    """Sanitize Git repository URL to prevent URL injection attacks.
+
+    Args:
+        repo_url (str): The Git repository URL to sanitize
+
+    Returns:
+        str: The sanitized URL
+
+    Raises:
+        ValueError: If the URL contains suspicious patterns that could indicate injection
+    """
+    at_count = repo_url.count("@")
+
+    if repo_url.startswith("git@"):
+        # git@ format requires exactly one @
+        if at_count != 1:
+            raise ValueError("Invalid SSH URL format: git@ URLs must have exactly one @ symbol")
+    elif repo_url.startswith("ssh://"):
+        # ssh:// format can have 0 or 1 @ symbols
+        if at_count > 1:
+            raise ValueError("Invalid SSH URL format: multiple @ symbols detected")
+    elif repo_url.startswith("https://") or repo_url.startswith("http://"):
+        # HTTPS format allows 0 or 1 @ symbols
+        if at_count > 1:
+            raise ValueError("Invalid HTTPS URL format: multiple @ symbols detected")
+
+        # Check for invalid characters in the URL before parsing
+        # These characters should not appear in legitimate URLs
+        invalid_chars = ["<", ">", "[", "]", "{", "}", "\\", "^", "`", "|"]
+        for char in invalid_chars:
+            if char in repo_url:
+                raise ValueError("Invalid characters in hostname")
+
+        try:
+            parsed = urlparse(repo_url)
+
+            # Check for suspicious characters in hostname that could indicate injection
+            if parsed.hostname:
+                # Check for URL-encoded characters that might be used for obfuscation
+                suspicious_patterns = ["%25", "%40", "%2F", "%3A"]  # encoded %, @, /, :
+                for pattern in suspicious_patterns:
+                    if pattern in parsed.hostname.lower():
+                        raise ValueError(f"Suspicious URL encoding detected in hostname: {pattern}")
+
+                # Validate that the hostname looks legitimate
+                if not re.match(r"^[a-zA-Z0-9.-]+$", parsed.hostname):
+                    raise ValueError("Invalid characters in hostname")
+
+        except Exception as e:
+            if isinstance(e, ValueError):
+                raise
+            raise ValueError(f"Failed to parse URL: {str(e)}")
+    else:
+        raise ValueError(
+            "Unsupported URL scheme: only https://, http://, git@, and ssh:// are allowed"
+        )
+
+    return repo_url
 
 def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     """Git clone repo containing the training code and serving code.
@@ -87,6 +149,10 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     if entry_point is None:
         raise ValueError("Please provide an entry point.")
     _validate_git_config(git_config)
+
+    # SECURITY: Sanitize the repository URL to prevent injection attacks
+    git_config["repo"] = _sanitize_git_url(git_config["repo"])
+
     dest_dir = tempfile.mkdtemp()
     _generate_and_run_clone_command(git_config, dest_dir)
 
