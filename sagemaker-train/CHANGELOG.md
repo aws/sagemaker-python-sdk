@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.0 (2025-12-19)
+
+### Features
+* AWS_Batch: queueing of training jobs with ModelTrainer
+
 ## v1.2.0 (2025-12-18)
 
 ### Features
