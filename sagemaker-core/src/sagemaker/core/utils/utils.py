@@ -273,7 +273,7 @@ def pascal_to_snake(pascal_str):
 
 
 def is_not_primitive(obj):
-    return not isinstance(obj, (int, float, str, bool, datetime.datetime))
+    return not isinstance(obj, (int, float, str, bool, datetime.datetime, bytes))
 
 
 def is_not_str_dict(obj):
