@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.0 (2025-12-19)
+
+* Update module dependencies
+
 ## v1.2.0 (2025-12-18)
 
 * Update module dependencies

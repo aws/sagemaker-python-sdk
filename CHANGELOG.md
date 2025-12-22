@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.3.0 (2025-12-19)
+
+### Features
+  * AWS_Batch: queueing of training jobs with ModelTrainer
+### Bug fixes and Other Changes
+  * Fixes for model registry with ModelBuilder
+
 ## v3.2.0 (2025-12-18)
 
 ### Features
