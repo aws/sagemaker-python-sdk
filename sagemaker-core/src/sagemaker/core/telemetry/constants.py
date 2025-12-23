@@ -30,6 +30,7 @@ class Feature(Enum):
     HYPERPOD = 6  # Added to support telemetry in sagemaker-hyperpod-cli
     HYPERPOD_CLI = 7  # Added to support telemetry in sagemaker-hyperpod-cli
     MODEL_CUSTOMIZATION = 8
+    MLOPS = 9
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""
