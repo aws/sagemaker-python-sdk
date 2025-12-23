@@ -22,15 +22,12 @@ DEFAULT_AWS_REGION = "us-west-2"
 class Feature(Enum):
     """Enumeration of feature names used in telemetry."""
 
-    SDK_DEFAULTS = 1
-    LOCAL_MODE = 2
-    REMOTE_FUNCTION = 3
-    MODEL_TRAINER = 4
-    ESTIMATOR = 5
-    HYPERPOD = 6  # Added to support telemetry in sagemaker-hyperpod-cli
-    HYPERPOD_CLI = 7  # Added to support telemetry in sagemaker-hyperpod-cli
-    MODEL_CUSTOMIZATION = 8
-    MLOPS = 9
+    SDK_DEFAULTS = 11
+    LOCAL_MODE = 12
+    REMOTE_FUNCTION = 13
+    MODEL_TRAINER = 14
+    MODEL_CUSTOMIZATION = 15
+    MLOPS = 16
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""
