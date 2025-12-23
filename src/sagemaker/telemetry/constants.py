@@ -22,14 +22,14 @@ DEFAULT_AWS_REGION = "us-west-2"
 class Feature(Enum):
     """Enumeration of feature names used in telemetry."""
 
-    SDK_DEFAULTS_V2 = 11
-    LOCAL_MODE_V2 = 12
-    REMOTE_FUNCTION_V2 = 13
-    MODEL_TRAINER_V2 = 14
-    ESTIMATOR_V2 = 15
+    SDK_DEFAULTS_V2 = 1
+    LOCAL_MODE_V2 = 2
+    REMOTE_FUNCTION_V2 = 3
+    MODEL_TRAINER_V2 = 4
+    ESTIMATOR_V2 = 5
     # Note: HyperPod CLI uses codes 6 and 7
-    JUMPSTART_V2 = 16  # Added to support JumpStart telemetry
-    MLOPS_V2 = 17  # Added to support MLOps telemetry
+    JUMPSTART_V2 = 8  # Added to support JumpStart telemetry
+    MLOPS_V2 = 9  # Added to support MLOps telemetry
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""

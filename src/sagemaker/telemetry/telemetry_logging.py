@@ -50,14 +50,14 @@ TELEMETRY_OPT_OUT_MESSAGING = (
 )
 
 FEATURE_TO_CODE = {
-    str(Feature.SDK_DEFAULTS_V2): 11,
-    str(Feature.LOCAL_MODE_V2): 12,
-    str(Feature.REMOTE_FUNCTION_V2): 13,
-    str(Feature.MODEL_TRAINER_V2): 14,
-    str(Feature.ESTIMATOR_V2): 15,
+    str(Feature.SDK_DEFAULTS_V2): 1,
+    str(Feature.LOCAL_MODE_V2): 2,
+    str(Feature.REMOTE_FUNCTION_V2): 3,
+    str(Feature.MODEL_TRAINER_V2): 4,
+    str(Feature.ESTIMATOR_V2): 5,
     # Note: HyperPod CLI uses codes 6 and 7
-    str(Feature.JUMPSTART_V2): 16,
-    str(Feature.MLOPS_V2): 17,
+    str(Feature.JUMPSTART_V2): 8,
+    str(Feature.MLOPS_V2): 9,
 }
 
 STATUS_TO_CODE = {
