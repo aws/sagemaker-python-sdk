@@ -50,11 +50,12 @@ TELEMETRY_OPT_OUT_MESSAGING = (
 )
 
 FEATURE_TO_CODE = {
-    str(Feature.SDK_DEFAULTS): 1,
-    str(Feature.LOCAL_MODE): 2,
-    str(Feature.REMOTE_FUNCTION): 3,
-    str(Feature.MODEL_TRAINER): 4,
-    str(Feature.MODEL_CUSTOMIZATION): 8,
+    str(Feature.SDK_DEFAULTS): 11,
+    str(Feature.LOCAL_MODE): 12,
+    str(Feature.REMOTE_FUNCTION): 13,
+    str(Feature.MODEL_TRAINER): 14,
+    str(Feature.MODEL_CUSTOMIZATION): 15,
+    str(Feature.MLOPS): 16,
 }
 
 STATUS_TO_CODE = {
