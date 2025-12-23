@@ -86,7 +86,7 @@ class JumpStartModel(Model):
     This class sets defaults based on the model ID and version.
     """
 
-    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="jumpstart_model.create")
+    @_telemetry_emitter(feature=Feature.JUMPSTART_V2, func_name="jumpstart_model.create")
     def __init__(
         self,
         model_id: Optional[str] = None,
@@ -643,7 +643,7 @@ class JumpStartModel(Model):
                 **kwargs,
             )
 
-    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="jumpstart_model.deploy")
+    @_telemetry_emitter(feature=Feature.JUMPSTART_V2, func_name="jumpstart_model.deploy")
     def deploy(
         self,
         initial_instance_count: Optional[int] = None,

@@ -1350,7 +1350,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             )
         return None
 
-    @_telemetry_emitter(feature=Feature.ESTIMATOR, func_name="estimator.fit")
+    @_telemetry_emitter(feature=Feature.ESTIMATOR_V2, func_name="estimator.fit")
     @runnable_by_pipeline
     def fit(
         self,
