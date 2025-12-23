@@ -807,7 +807,7 @@ class ModelTrainer(BaseModel):
             args["session_chaining_config"] = self._session_chaining_config
             return args
 
-    @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
+    @_telemetry_emitter(feature=Feature.MODEL_TRAINER_V2, func_name="model_trainer.train")
     @validate_call
     def train(
         self,
