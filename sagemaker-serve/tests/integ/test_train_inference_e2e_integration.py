@@ -25,6 +25,7 @@ from sagemaker.serve.utils.types import ModelServer
 from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.train.configs import SourceCode
 from sagemaker.core.resources import EndpointConfig
+from sagemaker.core.helper.session_helper import Session
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,8 @@ TRAINING_JOB_PREFIX = "e2e-v3-pytorch"
 # Configuration
 AWS_REGION = "us-west-2"
 PYTORCH_TRAINING_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.13.1-cpu-py39"
+
+sagemaker_session = Session()
 
 
 @pytest.mark.slow_test
@@ -143,13 +146,6 @@ def create_schema_builder():
 
 def train_model():
     """Train model using ModelTrainer."""
-    from sagemaker.core.helper.session_helper import Session
-    import boto3
-    
-    # Create SageMaker session with AWS region
-    boto_session = boto3.Session(region_name=AWS_REGION)
-    sagemaker_session = Session(boto_session=boto_session)
-    
     training_code_dir = create_pytorch_training_code()
     unique_id = str(uuid.uuid4())[:8]
     
@@ -192,9 +188,10 @@ def build_and_deploy(model_trainer, unique_id):
         inference_spec=SimpleInferenceSpec(),
         image_uri=PYTORCH_TRAINING_IMAGE.replace("training", "inference"),
         dependencies={"auto": False},
+        sagemaker_session=sagemaker_session,
     )
     
-    core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}", region="us-west-2")
+    core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}")
     logger.info(f"Model Successfully Created: {core_model.model_name}")
     
     core_endpoint = model_builder.deploy(
@@ -221,7 +218,9 @@ def make_prediction(core_endpoint):
 
 def cleanup_resources(core_model, core_endpoint):
     """Fully clean up model and endpoint creation - preserving exact logic from manual test"""
-    core_endpoint_config = EndpointConfig.get(endpoint_config_name=core_endpoint.endpoint_name)
+    core_endpoint_config = EndpointConfig.get(
+        endpoint_config_name=core_endpoint.endpoint_name,
+    )
    
     core_model.delete()
     core_endpoint.delete()

@@ -22,6 +22,7 @@ import logging
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.core.resources import EndpointConfig
+from sagemaker.core.helper.session_helper import Session
 
 # PyTorch Imports
 import torch
@@ -32,6 +33,8 @@ logger = logging.getLogger(__name__)
 # Configuration - easily customizable
 MODEL_NAME_PREFIX = "triton-test-model"
 ENDPOINT_NAME_PREFIX = "triton-test-endpoint"
+
+sagemaker_session = Session()
 
 
 # Create a simple PyTorch model 
@@ -96,11 +99,12 @@ def build_and_deploy():
     schema_builder = create_schema_builder()
     
     model_builder = ModelBuilder(
-            model=pytorch_model,
-            model_path=model_path,
-            model_server=ModelServer.TRITON,
-            schema_builder=schema_builder
-        )
+        model=pytorch_model,
+        model_path=model_path,
+        model_server=ModelServer.TRITON,
+        schema_builder=schema_builder,
+        sagemaker_session=sagemaker_session,
+    )
       
     unique_id = str(uuid.uuid4())[:8]
     # Build and deploy your model. Returns SageMaker Core Model and Endpoint objects
@@ -139,7 +143,9 @@ def make_prediction(core_endpoint):
 
 def cleanup_resources(core_model, core_endpoint):
     """Fully clean up model and endpoint creation - preserving exact logic from manual test"""
-    core_endpoint_config = EndpointConfig.get(endpoint_config_name=core_endpoint.endpoint_name)
+    core_endpoint_config = EndpointConfig.get(
+        endpoint_config_name=core_endpoint.endpoint_name,
+    )
    
     core_model.delete()
     core_endpoint.delete()
