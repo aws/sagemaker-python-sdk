@@ -18,6 +18,9 @@ scratch/
 *.egg
 examples/tensorflow/distributed_mnist/data
 *.iml
+
+# Sphinx documentation
+docs/_build/
 doc/_build
 doc/_static
 doc/_templates
