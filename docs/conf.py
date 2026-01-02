@@ -34,6 +34,10 @@ html_theme_options = {
     'announcement': 'This is V3 documentation. <a href="https://sagemaker.readthedocs.io/en/v2/">View V2 docs</a>',
 }
 
+html_theme_options = {
+    "collapse_navigation": True,
+}
+
 html_static_path = ['_static']
 html_css_files = ['custom.css']
 

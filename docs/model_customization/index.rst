@@ -1,6 +1,14 @@
 Model Customization
 ===================
 
+.. raw:: html
+
+   <div class="v3-exclusive-feature">
+   <strong>🆕 V3 EXCLUSIVE FEATURE</strong><br>
+   Model customization with specialized trainers is only available in SageMaker Python SDK V3. 
+   This powerful capability was built from the ground up for foundation model fine-tuning.
+   </div>
+
 SageMaker Python SDK V3 revolutionizes foundation model fine-tuning with specialized trainer classes, making it easier than ever to customize large language models and foundation models for your specific use cases. This modern approach provides powerful fine-tuning capabilities while maintaining simplicity and performance.
 
 Key Benefits of V3 Model Customization
