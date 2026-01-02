@@ -52,28 +52,6 @@ What's New in V3
    </div>
 
 Capabilities
-==============
-
-Model Customization
---------------------
-
-Advanced foundation model fine-tuning with specialized trainer classes for cutting-edge techniques:
-
-.. code-block:: python
-
-   from sagemaker.train import SFTTrainer
-   from sagemaker.train.common import TrainingType
-
-   trainer = SFTTrainer(
-       model="meta-llama/Llama-2-7b-hf",
-       training_type=TrainingType.LORA,
-       model_package_group_name="my-custom-models",
-       training_dataset="s3://my-bucket/training-data.jsonl"
-   )
-
-   training_job = trainer.train()
-
-:doc:`Learn more about Model Customization <model_customization/index>`
 
 Training with ModelTrainer
 ---------------------------
