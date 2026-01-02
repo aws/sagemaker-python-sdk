@@ -2,7 +2,12 @@ import os
 import sys
 from datetime import datetime
 
+# Add the source directories to Python path
 sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../sagemaker-core/src'))
+sys.path.insert(0, os.path.abspath('../sagemaker-train/src'))
+sys.path.insert(0, os.path.abspath('../sagemaker-serve/src'))
+sys.path.insert(0, os.path.abspath('../sagemaker-mlops/src'))
 
 project = 'SageMaker Python SDK V3'
 copyright = f'{datetime.now().year}, Amazon Web Services'
@@ -20,7 +25,20 @@ extensions = [
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'sagemaker-core/docs/*', 'sagemaker-core/CHANGELOG.md', 'sagemaker-core/CONTRIBUTING.md']
+exclude_patterns = [
+    '_build', 
+    'Thumbs.db', 
+    '.DS_Store', 
+    'sagemaker-core/docs/*', 
+    'sagemaker-core/CHANGELOG.md', 
+    'sagemaker-core/CONTRIBUTING.md',
+]
+
+# Suppress specific warnings
+suppress_warnings = [
+    'myst.header',  # Suppress header level warnings from notebooks
+    'toc.not_readable',  # Suppress toctree warnings for symlinked files
+]
 
 html_theme = 'sphinx_book_theme'
 html_theme_options = {
@@ -55,6 +73,16 @@ html_context = {
 nb_execution_mode = 'off'
 nb_execution_allow_errors = True
 
-# Suppress autodoc warnings for missing modules
-autodoc_mock_imports = ['sagemaker']
+# Autodoc configuration
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+}
+
+# Generate autosummary stubs
+autosummary_generate = True
+
+# Don't mock imports - let them fail gracefully and show what's available
+autodoc_mock_imports = []
 suppress_warnings = ['autodoc.import_error']

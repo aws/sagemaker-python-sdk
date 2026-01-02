@@ -209,3 +209,4 @@ Explore comprehensive model customization examples that demonstrate V3 capabilit
    ../v3-examples/model-customization-examples/bedrock-modelbuilder-deployment
    ../v3-examples/model-customization-examples/model_builder_deployment_notebook
    ../v3-examples/model-customization-examples/ai_registry_example
+   ../v3-examples/model-customization-examples/sm-studio-nova-training-job-sample-notebook
