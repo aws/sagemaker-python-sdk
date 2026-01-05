@@ -197,16 +197,13 @@ Model Customization Examples
 Explore comprehensive model customization examples that demonstrate V3 capabilities:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
+   :hidden:
 
-   ../v3-examples/model-customization-examples/sft_finetuning_example_notebook_pysdk_prod_v3
-   ../v3-examples/model-customization-examples/dpo_trainer_example_notebook_v3_prod
-   ../v3-examples/model-customization-examples/rlaif_finetuning_example_notebook_v3_prod
-   ../v3-examples/model-customization-examples/rlvr_finetuning_example_notebook_v3_prod
-   ../v3-examples/model-customization-examples/llm_as_judge_demo
-   ../v3-examples/model-customization-examples/custom_scorer_demo
-   ../v3-examples/model-customization-examples/benchmark_demo
-   ../v3-examples/model-customization-examples/bedrock-modelbuilder-deployment
-   ../v3-examples/model-customization-examples/model_builder_deployment_notebook
-   ../v3-examples/model-customization-examples/ai_registry_example
-   ../v3-examples/model-customization-examples/sm-studio-nova-training-job-sample-notebook
+   nova
+   finetuning
+   registry
+   deployment
+   evaluation
+
+

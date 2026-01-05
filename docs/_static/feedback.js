@@ -21,38 +21,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                 </div>
                 <div class="feedback-options">
-                    <div class="feedback-options-title">What is the reason for your feedback? <span class="required">*</span></div>
-                    <div class="feedback-checkboxes">
-                        <label class="feedback-checkbox">
-                            <input type="checkbox" data-reason="hard-to-understand">
-                            <span class="checkmark"></span>
-                            Content is hard to understand
-                        </label>
-                        <label class="feedback-checkbox">
-                            <input type="checkbox" data-reason="code-doesnt-work">
-                            <span class="checkmark"></span>
-                            Procedure or code doesn't work
-                        </label>
-                        <label class="feedback-checkbox">
-                            <input type="checkbox" data-reason="couldnt-find">
-                            <span class="checkmark"></span>
-                            Couldn't find what I need
-                        </label>
-                        <label class="feedback-checkbox">
-                            <input type="checkbox" data-reason="out-of-date">
-                            <span class="checkmark"></span>
-                            Out of date/obsolete
-                        </label>
-                        <label class="feedback-checkbox">
-                            <input type="checkbox" data-reason="other">
-                            <span class="checkmark"></span>
-                            Other
-                        </label>
-                    </div>
                     <div class="feedback-more">
-                        <div class="feedback-more-title">Tell us more.</div>
-                        <textarea class="feedback-textarea" placeholder="Please provide feedback on how we can improve this content. If applicable, provide the first part of the sentence or string at issue."></textarea>
-                        <button class="feedback-submit-btn">Submit</button>
+                        <a href="https://github.com/aws/sagemaker-python-sdk/issues/new" target="_blank" class="feedback-github-link">
+                            Create GitHub Issue
+                        </a>
                     </div>
                 </div>
                 <div class="feedback-thanks">Thank you for your feedback!</div>
@@ -65,9 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const feedbackBtns = document.querySelectorAll('.feedback-btn');
         const thanksMessage = document.querySelector('.feedback-thanks');
         const feedbackOptions = document.querySelector('.feedback-options');
-        const checkboxes = document.querySelectorAll('.feedback-checkbox input[type="checkbox"]');
-        const submitBtn = document.querySelector('.feedback-submit-btn');
-        const textarea = document.querySelector('.feedback-textarea');
         
         feedbackBtns.forEach(btn => {
             btn.addEventListener('click', function() {
@@ -92,36 +61,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     }
                 } else {
-                    // Show options for negative feedback
+                    // Show GitHub link for negative feedback
                     feedbackOptions.style.display = 'block';
                     thanksMessage.style.display = 'none';
                 }
             });
-        });
-        
-        // Handle submit button
-        submitBtn.addEventListener('click', function() {
-            const selectedReasons = [];
-            checkboxes.forEach(checkbox => {
-                if (checkbox.checked) {
-                    selectedReasons.push(checkbox.dataset.reason);
-                }
-            });
-            const additionalFeedback = textarea.value.trim();
-            
-            // Hide options and show thanks
-            feedbackOptions.style.display = 'none';
-            thanksMessage.style.display = 'block';
-            
-            // Send negative feedback with details
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'page_feedback', {
-                    'feedback_value': 'negative',
-                    'feedback_reasons': selectedReasons,
-                    'feedback_details': additionalFeedback,
-                    'page_location': window.location.href
-                });
-            }
         });
     }
 });
