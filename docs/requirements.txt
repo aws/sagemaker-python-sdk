@@ -1,5 +1,5 @@
 sphinx>=4.0
-sphinx-rtd-theme
+sphinx-book-theme
 myst-parser
 myst-nb
 sphinx-copybutton
