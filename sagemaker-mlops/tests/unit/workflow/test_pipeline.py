@@ -26,6 +26,7 @@ def mock_session():
     session.boto_session.client.return_value = Mock()
     session.sagemaker_client = Mock()
     session.local_mode = False
+    session.sagemaker_config = {}
     return session
 
 
