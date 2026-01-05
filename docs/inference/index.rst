@@ -176,11 +176,11 @@ Explore comprehensive inference examples that demonstrate V3 capabilities:
 .. toctree::
    :maxdepth: 1
 
-   ../v3-examples/inference-examples/inference-spec-example
-   ../v3-examples/inference-examples/jumpstart-example
-   ../v3-examples/inference-examples/optimize-example
-   ../v3-examples/inference-examples/train-inference-e2e-example
-   ../v3-examples/inference-examples/jumpstart-e2e-training-example
-   ../v3-examples/inference-examples/local-mode-example
-   ../v3-examples/inference-examples/huggingface-example
-   ../v3-examples/inference-examples/in-process-mode-example
+   Custom InferenceSpec <../v3-examples/inference-examples/inference-spec-example>
+   ModelBuilder with JumpStart models <../v3-examples/inference-examples/jumpstart-example>
+   Optimize a JumpStart model <../v3-examples/inference-examples/optimize-example>
+   Train-to-Inference E2E <../v3-examples/inference-examples/train-inference-e2e-example>
+   JumpStart E2E <../v3-examples/inference-examples/jumpstart-e2e-training-example>
+   Local Container Mode <../v3-examples/inference-examples/local-mode-example>
+   Deploy HuggingFace Models <../v3-examples/inference-examples/huggingface-example>
+   ModelBuilder in In-Process mode <../v3-examples/inference-examples/in-process-mode-example>

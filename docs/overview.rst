@@ -1,6 +1,9 @@
 Overview
 ========
 
+.. note::
+   This is the documentation for SageMaker Python SDK V3. For legacy V2 documentation, please visit `SageMaker Python SDK V2 Documentation <https://sagemaker.readthedocs.io/en/v2/>`_.
+
 Welcome to SageMaker Python SDK V3 - a revolutionary approach to machine learning on Amazon SageMaker. Version 3.0 represents a significant milestone with modernized architecture, enhanced performance, and powerful new capabilities while maintaining our commitment to user experience and reliability.
 
 What's New in V3
@@ -9,8 +12,7 @@ What's New in V3
 .. raw:: html
 
    <div class="whats-new-container">
-     <div class="new-feature-card exclusive">
-       <div class="feature-icon">🎯</div>
+     <div class="new-feature-card">
        <h3>Model Customization (V3 Exclusive)</h3>
        <p>Revolutionary foundation model fine-tuning with specialized trainers:</p>
        <ul>
@@ -23,19 +25,17 @@ What's New in V3
      </div>
 
      <div class="new-feature-card">
-       <div class="feature-icon">📦</div>
        <h3>Modular Architecture</h3>
        <p>Separate PyPI packages for specialized capabilities:</p>
        <ul>
-         <li><code>sagemaker-core</code> - Low-level SageMaker resource management</li>
-         <li><code>sagemaker-train</code> - Unified training with ModelTrainer</li>
-         <li><code>sagemaker-serve</code> - Simplified inference with ModelBuilder</li>
-         <li><code>sagemaker-mlops</code> - ML operations and pipeline management</li>
+         <li><strong>sagemaker-core</strong> - Low-level SageMaker resource management</li>
+         <li><strong>sagemaker-train</strong> - Unified training with ModelTrainer</li>
+         <li><strong>sagemaker-serve</strong> - Simplified inference with ModelBuilder</li>
+         <li><strong>sagemaker-mlops</strong> - ML operations and pipeline management</li>
        </ul>
      </div>
 
      <div class="new-feature-card">
-       <div class="feature-icon">🔧</div>
        <h3>Unified Classes</h3>
        <p>Single classes replace multiple framework-specific implementations:</p>
        <ul>
@@ -45,7 +45,6 @@ What's New in V3
      </div>
 
      <div class="new-feature-card">
-       <div class="feature-icon">⚡</div>
        <h3>Object-Oriented API</h3>
        <p>Structured interface with auto-generated configs aligned with AWS APIs for better developer experience.</p>
      </div>

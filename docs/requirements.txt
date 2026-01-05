@@ -1,9 +1,7 @@
-sphinx>=4.0.0
-sphinx-book-theme>=1.0.0
-myst-nb>=0.17.0
-jupyter-book>=0.15.0
-sphinx-design>=0.4.0
-ipykernel
-jupyter
-pandas
-numpy
+sphinx>=4.0
+sphinx-rtd-theme
+myst-parser
+myst-nb
+sphinx-copybutton
+sphinx-autobuild
+nbsphinx

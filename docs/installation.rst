@@ -13,14 +13,14 @@ Install the latest version of SageMaker Python SDK V3:
    pip install sagemaker>=3.0.0
 
 Prerequisites
--------------
+---------------
 
 **Python Version**
   SageMaker Python SDK V3 supports Python 3.9, 3.10, 3.11, and 3.12
 
 **Operating Systems**
-  - Linux (recommended for production)
-  - macOS (development and testing)
+  - Linux
+  - macOS
 
 **AWS Credentials**
   Configure AWS credentials using one of these methods:
@@ -30,7 +30,7 @@ Prerequisites
   - IAM roles
 
 Installation Methods
---------------------
+----------------------
 
 Standard Installation
 ~~~~~~~~~~~~~~~~~~~~~

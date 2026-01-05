@@ -22,6 +22,7 @@ extensions = [
     'myst_nb',
     'sphinx_book_theme',
     'sphinx_design',
+    'sphinx_copybutton'
 ]
 
 templates_path = ['_templates']

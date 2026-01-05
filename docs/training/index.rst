@@ -176,9 +176,9 @@ Explore comprehensive training examples that demonstrate V3 capabilities:
 .. toctree::
    :maxdepth: 1
 
-   ../v3-examples/training-examples/local-training-example
-   ../v3-examples/training-examples/distributed-local-training-example
-   ../v3-examples/training-examples/hyperparameter-training-example
-   ../v3-examples/training-examples/jumpstart-training-example
-   ../v3-examples/training-examples/custom-distributed-training-example
-   ../v3-examples/training-examples/aws_batch/sm-training-queues_getting_started_with_model_trainer
+   Local Container mode <../v3-examples/training-examples/local-training-example>
+   Distributed Local Training <../v3-examples/training-examples/distributed-local-training-example>
+   Hyperparameter Training <../v3-examples/training-examples/hyperparameter-training-example>
+   Training with JumpStart Models <../v3-examples/training-examples/jumpstart-training-example>
+   Custom Distributed Training <../v3-examples/training-examples/custom-distributed-training-example>
+   AWS Batch for Training <../v3-examples/training-examples/aws_batch/sm-training-queues_getting_started_with_model_trainer>

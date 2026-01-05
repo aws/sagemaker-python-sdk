@@ -1,3 +1,6 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
 version: 2
 
 build:
@@ -5,16 +8,17 @@ build:
   tools:
     python: "3.10"
 
-python:
-  install:
-    - method: pip
-      path: .
-    - requirements: docs/requirements.txt
-
 sphinx:
   configuration: docs/conf.py
-  fail_on_warning: false
 
 formats:
   - pdf
   - epub
+
+python:
+  install:
+    - requirements: docs/requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
