@@ -5,3 +5,4 @@ myst-nb
 sphinx-copybutton
 sphinx-autobuild
 nbsphinx
+sphinx-design
