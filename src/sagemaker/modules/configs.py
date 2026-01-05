@@ -248,7 +248,8 @@ class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
     The OutputDataConfig class is a subclass of ``sagemaker_core.shapes.OutputDataConfig``
-    and allows the user to specify the output data configuration for the training job.
+    and allows the user to specify the output data configuration for the training job 
+    (will not be carried over to any model repository or deployment).
 
     Parameters:
         s3_output_path (Optional[str]):
