@@ -398,6 +398,7 @@ class CapabilityEnum(StrEnum):
     TRAINING = "TRAINING"
     FINE_TUNING = "FINE_TUNING"
     VALIDATION = "VALIDATION"
+    INCREMENTAL_TRAINING = "INCREMENTAL_TRAINING"
 
 
 class DemoNotebookModel(BaseConfig):
