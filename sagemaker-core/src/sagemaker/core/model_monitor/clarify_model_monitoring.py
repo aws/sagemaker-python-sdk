@@ -1117,6 +1117,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 monitor_schedule_name=monitor_schedule_name,
                 job_definition_name=new_job_definition_name,
                 schedule_cron_expression=schedule_cron_expression,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
             )
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name

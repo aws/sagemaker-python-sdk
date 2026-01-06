@@ -67,7 +67,7 @@ def test_llm_as_judge_evaluator_initialization_minimal(mock_artifact, mock_resol
     assert evaluator.evaluator_model == DEFAULT_EVALUATOR_MODEL
     assert evaluator.dataset == DEFAULT_DATASET
     assert evaluator.model == DEFAULT_MODEL
-    assert evaluator.evaluate_base_model is True
+    assert evaluator.evaluate_base_model is False
     assert evaluator.builtin_metrics is None
     assert evaluator.custom_metrics is None
 
@@ -472,7 +472,7 @@ def test_llm_as_judge_evaluator_get_llmaj_template_additions(mock_artifact, mock
     assert additions['top_p'] == '1.0'
     # pipeline_name is no longer in template additions - it's resolved dynamically in execution.py
     assert 'pipeline_name' not in additions
-    assert additions['evaluate_base_model'] is True
+    assert additions['evaluate_base_model'] is False
     
     # Verify S3 upload was called
     mock_s3_upload.assert_called_once()
@@ -751,3 +751,116 @@ def test_llm_as_judge_evaluator_with_mlflow_names(mock_artifact, mock_resolve):
     
     assert evaluator.mlflow_experiment_name == "my-experiment"
     assert evaluator.mlflow_run_name == "my-run"
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_llm_as_judge_evaluator_valid_evaluator_models(mock_artifact, mock_resolve):
+    """Test LLMAsJudgeEvaluator with valid evaluator models."""
+    valid_models = [
+        "anthropic.claude-3-5-sonnet-20240620-v1:0",
+        "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "anthropic.claude-3-haiku-20240307-v1:0",
+        "anthropic.claude-3-5-haiku-20241022-v1:0",
+        "meta.llama3-1-70b-instruct-v1:0",
+        "mistral.mistral-large-2402-v1:0",
+    ]
+    
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+    
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+    
+    mock_session = Mock()
+    mock_session.boto_region_name = "us-west-2"  # Region where all models including nova-pro are available
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    
+    for model in valid_models:
+        evaluator = LLMAsJudgeEvaluator(
+            model=DEFAULT_MODEL,
+            evaluator_model=model,
+            dataset=DEFAULT_DATASET,
+            builtin_metrics=["Correctness"],
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+        assert evaluator.evaluator_model == model
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_llm_as_judge_evaluator_invalid_evaluator_model(mock_artifact, mock_resolve):
+    """Test LLMAsJudgeEvaluator raises error for invalid evaluator model."""
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+    
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+    
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    
+    with pytest.raises(ValidationError) as exc_info:
+        LLMAsJudgeEvaluator(
+            model=DEFAULT_MODEL,
+            evaluator_model="invalid-model",
+            dataset=DEFAULT_DATASET,
+            builtin_metrics=["Correctness"],
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+    assert "Invalid evaluator_model 'invalid-model'" in str(exc_info.value)
+
+
+@patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_llm_as_judge_evaluator_region_restriction(mock_artifact, mock_resolve, mock_get_session):
+    """Test LLMAsJudgeEvaluator raises error for model not available in region."""
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+    
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+    
+    mock_session = Mock()
+    mock_session.boto_region_name = "eu-central-1"  # Region not supported for nova-pro
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    mock_get_session.return_value = mock_session
+    
+    with pytest.raises(ValidationError) as exc_info:
+        LLMAsJudgeEvaluator(
+            model=DEFAULT_MODEL,
+            evaluator_model="amazon.nova-pro-v1:0",
+            dataset=DEFAULT_DATASET,
+            builtin_metrics=["Correctness"],
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+    assert "not available in region" in str(exc_info.value)

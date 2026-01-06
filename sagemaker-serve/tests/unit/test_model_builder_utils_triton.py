@@ -136,6 +136,14 @@ class TestExportPytorchToOnnx(unittest.TestCase):
     @patch('torch.onnx.export')
     def test_export_pytorch_to_onnx_success(self, mock_export):
         """Test successful PyTorch to ONNX export."""
+        try:
+            import ml_dtypes
+            # Skip test if ml_dtypes doesn't have required attribute
+            if not hasattr(ml_dtypes, 'float4_e2m1fn'):
+                self.skipTest("ml_dtypes version incompatible with current numpy/onnx")
+        except ImportError:
+            pass
+        
         utils = _ModelBuilderUtils()
         mock_model = Mock()
         mock_schema = Mock()

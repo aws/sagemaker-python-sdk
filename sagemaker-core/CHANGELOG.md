@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.3.0 (2025-12-19)
+
+### Feature
+* AWS_Batch: queueing of training jobs with ModelTrainer
+
+## v2.2.0 (2025-12-18)
+
+### Bug Fixes
+* Add xgboost 3.0-5 to release
+* Fix get_child_process_ids parsing issue
+* Fix pip installation issues
+
+## v2.1.1 (2025-12-10)
+
+### Bug fixes
+
+ * Fixed Unit and integ tests
+
 ## v2.0.1 (2025-11-21)
 
  * Fixed telemetry for PySDK V3 and SageMaker Core V2 usage

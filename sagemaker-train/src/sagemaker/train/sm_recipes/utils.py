@@ -129,7 +129,7 @@ def _get_trainining_recipe_gpu_model_name_and_script(model_type: str):
     """Get the model base name and script for the training recipe."""
 
     model_type_to_script = {
-        "llama_v3": ("llama", "llama_pretrain.py"),
+        "llama": ("llama", "llama_pretrain.py"),
         "mistral": ("mistral", "mistral_pretrain.py"),
         "mixtral": ("mixtral", "mixtral_pretrain.py"),
         "deepseek": ("deepseek", "deepseek_pretrain.py"),
@@ -322,10 +322,19 @@ def _get_args_from_recipe(
         args["source_code"].requirements = os.path.basename(requirements)
 
     # Update args with compute and hyperparameters
+    hyperparameters = {"config-path": ".", "config-name": "recipe.yaml"}
+    
+    # Handle eval custom lambda configuration
+    if recipe.get("evaluation", {}):
+        processor = recipe.get("processor", {})
+        lambda_arn = processor.get("lambda_arn", "")
+        if lambda_arn:
+            hyperparameters["lambda_arn"] = lambda_arn
+    
     args.update(
         {
             "compute": compute,
-            "hyperparameters": {"config-path": ".", "config-name": "recipe.yaml"},
+            "hyperparameters": hyperparameters,
         }
     )
 
