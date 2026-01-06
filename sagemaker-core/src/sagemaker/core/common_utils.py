@@ -59,6 +59,7 @@ ALTERNATE_DOMAINS = {
     "us-isob-east-1": "sc2s.sgov.gov",
     "us-isof-south-1": "csp.hci.ic.gov",
     "us-isof-east-1": "csp.hci.ic.gov",
+    "eu-isoe-west-1": "cloud.adc-e.uk",
 }
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -74,6 +75,20 @@ DEFAULT_SLEEP_TIME_SECONDS = 10
 WAITING_DOT_NUMBER = 10
 MAX_ITEMS = 100
 PAGE_SIZE = 10
+_MAX_BUFFER_SIZE = 100 * 1024 * 1024  # 100 MB - Maximum buffer size for streaming iterators
+
+_SENSITIVE_SYSTEM_PATHS = [
+    abspath(os.path.expanduser("~/.aws")),
+    abspath(os.path.expanduser("~/.ssh")),
+    abspath(os.path.expanduser("~/.kube")),
+    abspath(os.path.expanduser("~/.docker")),
+    abspath(os.path.expanduser("~/.config")),
+    abspath(os.path.expanduser("~/.credentials")),
+    "/etc",
+    "/root",
+    "/var/lib",
+    "/opt/ml/metadata",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -409,6 +424,9 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
     prefix = prefix.lstrip("/")
 
+    if ".." in prefix:
+        raise ValueError("Traversal components are not allowed in S3 path!")
+
     # Try to download the prefix as an object first, in case it is a file and not a 'directory'.
     # Do this first, in case the object has broader permissions than the bucket.
     if not prefix.endswith("/"):
@@ -607,11 +625,73 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
         shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
 
 
+def _validate_source_directory(source_directory):
+    """Validate that source_directory is safe to use.
+
+    Ensures the source directory path does not access restricted system locations.
+
+    Args:
+        source_directory (str): The source directory path to validate.
+
+    Raises:
+        ValueError: If the path is not allowed.
+    """
+    if not source_directory or source_directory.lower().startswith("s3://"):
+        # S3 paths and None are safe
+        return
+
+    # Resolve symlinks to get the actual path
+    abs_source = abspath(realpath(source_directory))
+
+    # Check if the source path is under any sensitive directory
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
+        if abs_source != "/" and abs_source.startswith(sensitive_path):
+            raise ValueError(
+                f"source_directory cannot access sensitive system paths. "
+                f"Got: {source_directory} (resolved to {abs_source})"
+            )
+
+
+def _validate_dependency_path(dependency):
+    """Validate that a dependency path is safe to use.
+
+    Ensures the dependency path does not access restricted system locations.
+
+    Args:
+        dependency (str): The dependency path to validate.
+
+    Raises:
+        ValueError: If the path is not allowed.
+    """
+    if not dependency:
+        return
+
+    # Resolve symlinks to get the actual path
+    abs_dependency = abspath(realpath(dependency))
+
+    # Check if the dependency path is under any sensitive directory
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
+        if abs_dependency != "/" and abs_dependency.startswith(sensitive_path):
+            raise ValueError(
+                f"dependency path cannot access sensitive system paths. "
+                f"Got: {dependency} (resolved to {abs_dependency})"
+            )
+
+
 def _create_or_update_code_dir(
     model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
 ):
     """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
+    resolved_code_dir = _get_resolved_path(code_dir)
+    
+    # Validate that code_dir does not resolve to a sensitive system path
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
+        if resolved_code_dir != "/" and resolved_code_dir.startswith(sensitive_path):
+            raise ValueError(
+                f"Invalid code_dir path: {code_dir} resolves to sensitive system path {resolved_code_dir}"
+            )
+
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
@@ -620,6 +700,8 @@ def _create_or_update_code_dir(
             custom_extractall_tarfile(t, code_dir)
 
     elif source_directory:
+        # Validate source_directory for security
+        _validate_source_directory(source_directory)
         if os.path.exists(code_dir):
             shutil.rmtree(code_dir)
         shutil.copytree(source_directory, code_dir)
@@ -635,6 +717,8 @@ def _create_or_update_code_dir(
                 raise
 
     for dependency in dependencies:
+        # Validate dependency path for security
+        _validate_dependency_path(dependency)
         lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
             shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
@@ -1555,7 +1639,7 @@ def get_instance_type_family(instance_type: str) -> str:
     """
     instance_type_family = ""
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match is not None:
             instance_type_family = match[1]
     return instance_type_family
@@ -1646,6 +1730,38 @@ def _get_safe_members(members):
             yield file_info
 
 
+def _validate_extracted_paths(extract_path):
+    """Validate that extracted paths remain within the expected directory.
+
+    Performs post-extraction validation to ensure all extracted files and directories
+    are within the intended extraction path.
+
+    Args:
+        extract_path (str): The path where files were extracted.
+
+    Raises:
+        ValueError: If any extracted file is outside the expected extraction path.
+    """
+    base = _get_resolved_path(extract_path)
+
+    for root, dirs, files in os.walk(extract_path):
+        # Check directories
+        for dir_name in dirs:
+            dir_path = os.path.join(root, dir_name)
+            resolved = _get_resolved_path(dir_path)
+            if not resolved.startswith(base):
+                logger.error("Extracted directory escaped extraction path: %s", dir_path)
+                raise ValueError(f"Extracted path outside expected directory: {dir_path}")
+
+        # Check files
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
+            resolved = _get_resolved_path(file_path)
+            if not resolved.startswith(base):
+                logger.error("Extracted file escaped extraction path: %s", file_path)
+                raise ValueError(f"Extracted path outside expected directory: {file_path}")
+
+
 def custom_extractall_tarfile(tar, extract_path):
     """Extract a tarfile, optionally using data_filter if available.
 
@@ -1666,6 +1782,8 @@ def custom_extractall_tarfile(tar, extract_path):
         tar.extractall(path=extract_path, filter="data")
     else:
         tar.extractall(path=extract_path, members=_get_safe_members(tar))
+        # Re-validate extracted paths to catch symlink race conditions
+        _validate_extracted_paths(extract_path)
 
 
 def can_model_package_source_uri_autopopulate(source_uri: str):

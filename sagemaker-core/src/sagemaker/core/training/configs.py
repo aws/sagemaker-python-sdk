@@ -21,7 +21,7 @@ For more documentation on ``sagemaker.core.shapes``, see:
 
 from __future__ import absolute_import
 
-from typing import Optional, Union
+from typing import Optional, Union, List
 from pydantic import BaseModel, model_validator, ConfigDict
 
 import sagemaker.core.shapes as shapes
@@ -106,18 +106,29 @@ class SourceCode(BaseConfig):
         command (Optional[StrPipeVar]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        ignore_patterns: (Optional[List[str]]) :
+            The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
+            default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
     """
 
     source_dir: Optional[StrPipeVar] = None
     requirements: Optional[StrPipeVar] = None
     entry_script: Optional[StrPipeVar] = None
     command: Optional[StrPipeVar] = None
-
+    ignore_patterns: Optional[List[str]] = [
+        ".env",
+        ".git",
+        "__pycache__",
+        ".DS_Store",
+        ".cache",
+        ".ipynb_checkpoints",
+    ]
 
 class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
-    Provides the configuration for the output data location of the training job.
+    Provides the configuration for the output data location of the training job 
+    (will not be carried over to any model repository or deployment).
 
     Parameters:
         s3_output_path (Optional[StrPipeVar]):
@@ -257,15 +268,16 @@ class InputData(BaseConfig):
     Parameters:
         channel_name (StrPipeVar):
             The name of the input data source channel.
-        data_source (Union[str, S3DataSource, FileSystemDataSource, DatasetSource]):
+        data_source (Union[StrPipeVar, S3DataSource, FileSystemDataSource, DatasetSource]):
             The data source for the channel. Can be an S3 URI string, local file path string,
-            S3DataSource object, or FileSystemDataSource object.
+            S3DataSource object, FileSystemDataSource object, DatasetSource object, or a
+            pipeline variable (Properties) from a previous step.
         content_type (StrPipeVar):
             The MIME type of the data.
     """
 
     channel_name: StrPipeVar = None
-    data_source: Union[str, FileSystemDataSource, S3DataSource, DatasetSource] = None
+    data_source: Union[StrPipeVar, FileSystemDataSource, S3DataSource, DatasetSource] = None
     content_type: StrPipeVar = None
 
 
@@ -273,7 +285,8 @@ class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
     The OutputDataConfig class is a subclass of ``sagemaker.core.shapes.OutputDataConfig``
-    and allows the user to specify the output data configuration for the training job.
+    and allows the user to specify the output data configuration for the training job
+    (will not be carried over to any model repository or deployment).
 
     Parameters:
         s3_output_path (Optional[StrPipeVar]):

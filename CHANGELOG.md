@@ -1,5 +1,32 @@
 # Changelog
 
+## v3.3.0 (2025-12-19)
+
+### Features
+  * AWS_Batch: queueing of training jobs with ModelTrainer
+### Bug fixes and Other Changes
+  * Fixes for model registry with ModelBuilder
+
+## v3.2.0 (2025-12-18)
+
+### Features
+  * Evaluator handshake with trainer
+  * Datasets Format validation
+### Bug fixes and Other Changes
+  * Add xgboost 3.0-5 to release
+  * Fix get_child_process_ids parsing issue
+
+## v3.1.1 (2025-12-10)
+
+### Bug fixes and Other Changes
+* Add validation to bedrock reward models
+* Hyperparameter issue fixes, Add validation s3 output path
+* Fix the recipe selection for multiple recipe scenario
+* Train wait() timeout exception handling
+* Update example notebooks to reflect recent code changes
+* Update `model_package_group_name`  param to `model_package_group`  in finetuning interfaces
+* remove `dataset` param for benchmark evaluator
+
 ## v3.1.0 (2025-12-03)
 
 ### Features

@@ -215,7 +215,19 @@ def test_pipeline_with_train_and_registry(sagemaker_session, pipeline_session, r
                 assert execution_status == "Succeeded"
                 break
             elif execution_status in ["Failed", "Stopped"]:
-                pytest.fail(f"Pipeline execution {execution_status}")
+                # Get detailed failure information
+                steps = sagemaker_session.sagemaker_client.list_pipeline_execution_steps(
+                    PipelineExecutionArn=execution_desc["PipelineExecutionArn"]
+                )["PipelineExecutionSteps"]
+                
+                failed_steps = []
+                for step in steps:
+                    if step.get("StepStatus") == "Failed":
+                        failure_reason = step.get("FailureReason", "Unknown reason")
+                        failed_steps.append(f"{step['StepName']}: {failure_reason}")
+                
+                failure_details = "\n".join(failed_steps) if failed_steps else "No detailed failure information available"
+                pytest.fail(f"Pipeline execution {execution_status}. Failed steps:\n{failure_details}")
             
             time.sleep(60)
         else:

@@ -21,11 +21,12 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_serverless_config,
     _create_mlflow_config,
     _create_model_package_config,
-    _validate_eula_for_gated_model
+    _validate_eula_for_gated_model,
+    _validate_hyperparameter_values
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train.constants import HUB_NAME
+from sagemaker.train.constants import HUB_NAME, _ALLOWED_REWARD_MODEL_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class RLAIFTrainer(BaseTrainer):
         trainer = RLAIFTrainer(
             model="meta-llama/Llama-2-7b-hf",
             training_type=TrainingType.LORA,
-            model_package_group_name="my-model-group",
+            model_package_group="my-model-group",
             reward_model_id="reward-model-id",
             reward_prompt="Rate the helpfulness of this response on a scale of 1-10",
             training_dataset="s3://bucket/rlaif_data.jsonl"
@@ -54,7 +55,7 @@ class RLAIFTrainer(BaseTrainer):
         # Complete workflow: create -> wait -> get model package ARN
         trainer = RLAIFTrainer(
             model="meta-llama/Llama-2-7b-hf",
-            model_package_group_name="my-rlaif-models",
+            model_package_group="my-rlaif-models",
             reward_model_id="reward-model-id",
             reward_prompt="Rate the helpfulness of this response on a scale of 1-10"
         )
@@ -81,12 +82,11 @@ class RLAIFTrainer(BaseTrainer):
         training_type (Union[TrainingType, str]):
             The fine-tuning approach. Valid values are TrainingType.LORA (default),
             TrainingType.FULL.
-        model_package_group_name (Optional[Union[str, ModelPackageGroup]]):
+        model_package_group (Optional[Union[str, ModelPackageGroup]]):
             The model package group for storing the fine-tuned model. Can be a group name,
             ARN, or ModelPackageGroup object. Required when model is not a ModelPackage.
         reward_model_id (str):
             Bedrock model identifier for generating LLM feedback.
-            Evaluator models available: https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation-judge.html
             Required for RLAIF training to provide reward signals.
         reward_prompt (Union[str, Evaluator]):
             The reward prompt or evaluator for AI feedback generation.
@@ -100,9 +100,9 @@ class RLAIFTrainer(BaseTrainer):
         mlflow_run_name (Optional[str]):
             The MLflow run name for this training job.
         training_dataset (Optional[Union[str, DataSet]]):
-            The training dataset. Can be an S3 URI, dataset ARN, or DataSet object.
+            The training dataset. Can be a dataset ARN, or DataSet object.
         validation_dataset (Optional[Union[str, DataSet]]):
-            The validation dataset. Can be an S3 URI, dataset ARN, or DataSet object.
+            The validation dataset. Can be a dataset ARN, or DataSet object.
         s3_output_path (Optional[str]):
             The S3 path for training job outputs.
             If not specified, defaults to s3://sagemaker-<region>-<account>/output.
@@ -116,7 +116,7 @@ class RLAIFTrainer(BaseTrainer):
         self,
         model: Union[str, ModelPackage],
         training_type: Union[TrainingType, str] = TrainingType.LORA,
-        model_package_group_name: Optional[Union[str, ModelPackageGroup]] = None,
+        model_package_group: Optional[Union[str, ModelPackageGroup]] = None,
         reward_model_id: str = None,
         reward_prompt: Union[str, Evaluator] = None,
         mlflow_resource_arn: Optional[Union[str, MlflowTrackingServer]] = None,
@@ -138,9 +138,9 @@ class RLAIFTrainer(BaseTrainer):
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
 
         self.training_type = training_type
-        self.model_package_group_name = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group_name)
-        self.reward_model_id = reward_model_id
+        self.model_package_group = _validate_and_resolve_model_package_group(model,
+                                                                                 model_package_group)
+        self.reward_model_id = self._validate_reward_model_id(reward_model_id)
         self.reward_prompt = reward_prompt
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
@@ -163,7 +163,32 @@ class RLAIFTrainer(BaseTrainer):
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
         
         # Process reward_prompt parameter
-        self._process_reward_prompt()
+        self._process_hyperparameters()
+
+    def _validate_reward_model_id(self, reward_model_id):
+        """Validate reward_model_id is one of the allowed values."""
+        if not reward_model_id:
+            return None
+
+        if reward_model_id not in _ALLOWED_REWARD_MODEL_IDS:
+            raise ValueError(
+                f"Invalid reward_model_id '{reward_model_id}'. "
+                f"Available models are: {list(_ALLOWED_REWARD_MODEL_IDS.keys())}"
+            )
+        
+        # Check region compatibility
+        session = self.sagemaker_session if hasattr(self, 'sagemaker_session') and self.sagemaker_session else TrainDefaults.get_sagemaker_session()
+        current_region = session.boto_region_name
+        allowed_regions = _ALLOWED_REWARD_MODEL_IDS[reward_model_id]
+        
+        if current_region not in allowed_regions:
+            raise ValueError(
+                f"Reward model '{reward_model_id}' is not available in region '{current_region}'. "
+                f"Available regions for this model: {allowed_regions}"
+            )
+        
+        return reward_model_id
+        
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLAIFTrainer.train")
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True):
@@ -223,8 +248,10 @@ class RLAIFTrainer(BaseTrainer):
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
+        _validate_hyperparameter_values(final_hyperparameters)
+
         model_package_config = _create_model_package_config(
-            model_package_group_name=self.model_package_group_name,
+            model_package_group_name=self.model_package_group,
             model=self.model,
             sagemaker_session=sagemaker_session
         )
@@ -253,45 +280,116 @@ class RLAIFTrainer(BaseTrainer):
 
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
-            _wait(training_job)
+            from sagemaker.core.utils.exceptions import TimeoutExceededError
+            try :
+                _wait(training_job)
+            except TimeoutExceededError as e:
+                logger.error("Error: %s", e)
 
-        self.latest_training_job = training_job
+        self._latest_training_job = training_job
         return training_job
 
-    def _process_reward_prompt(self):
-        """Process reward_prompt parameter for builtin vs custom prompts."""
-        if not self.reward_prompt:
+    def _process_hyperparameters(self):
+        """Update hyperparameters based on constructor inputs and process reward_prompt."""
+        if not self.hyperparameters or not hasattr(self.hyperparameters, '_specs') or not self.hyperparameters._specs:
             return
+        
+        # Remove keys that are handled by constructor inputs
+        if hasattr(self.hyperparameters, 'output_path'):
+            delattr(self.hyperparameters, 'output_path')
+            self.hyperparameters._specs.pop('output_path', None)
+        if hasattr(self.hyperparameters, 'data_path'):
+            delattr(self.hyperparameters, 'data_path')
+            self.hyperparameters._specs.pop('data_path', None)
+        if hasattr(self.hyperparameters, 'validation_data_path'):
+            delattr(self.hyperparameters, 'validation_data_path')
+            self.hyperparameters._specs.pop('validation_data_path', None)
+        
+        # Update judge_model_id if reward_model_id is provided
+        if hasattr(self, 'reward_model_id') and self.reward_model_id:
+            judge_model_value = f"bedrock/{self.reward_model_id}"
+            self.hyperparameters.judge_model_id = judge_model_value
+        
+        # Process reward_prompt parameter
+        if hasattr(self, 'reward_prompt') and self.reward_prompt:
+            if isinstance(self.reward_prompt, str):
+                if self.reward_prompt.startswith("Builtin"):
+                    # Handle builtin reward prompts
+                    self._update_judge_prompt_template_direct(self.reward_prompt)
+                else:
+                    # Handle evaluator ARN or hub content name
+                    self._process_non_builtin_reward_prompt()
+            else:
+                # Handle evaluator object
+                if hasattr(self.hyperparameters, 'judge_prompt_template'):
+                    delattr(self.hyperparameters, 'judge_prompt_template')
+                    self.hyperparameters._specs.pop('judge_prompt_template', None)
 
-        # Handle Evaluator object
-        if not isinstance(self.reward_prompt, str):
-            evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
-            self._evaluator_arn = evaluator_arn
-            self._reward_prompt_processed = {"custom_prompt_arn": evaluator_arn}
-            return
+                evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
+                self._evaluator_arn = evaluator_arn
 
-        # Handle string inputs
-        if self.reward_prompt.startswith("Builtin"):
-            # Map to preset_prompt in hyperparameters
-            self._reward_prompt_processed = {"preset_prompt": self.reward_prompt}
-        elif self.reward_prompt.startswith("arn:aws:sagemaker:"):
+    def _process_non_builtin_reward_prompt(self):
+        """Process non-builtin reward prompt (ARN or hub content name)."""
+        # Remove judge_prompt_template for non-builtin prompts
+        if hasattr(self.hyperparameters, 'judge_prompt_template'):
+            delattr(self.hyperparameters, 'judge_prompt_template')
+            self.hyperparameters._specs.pop('judge_prompt_template', None)
+            
+        if self.reward_prompt.startswith("arn:aws:sagemaker:"):
             # Validate and assign ARN
             evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
             self._evaluator_arn = evaluator_arn
-            self._reward_prompt_processed = {"custom_prompt_arn": evaluator_arn}
         else:
             try:
-                session = self.sagemaker_session or _get_beta_session()
+                session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
                 hub_content = _get_hub_content_metadata(
-                    hub_name=HUB_NAME,  # or appropriate hub name
+                    hub_name=HUB_NAME,
                     hub_content_type="JsonDoc",
                     hub_content_name=self.reward_prompt,
                     session=session.boto_session,
-                    region=session.boto_session.region_name or "us-west-2"
+                    region=session.boto_session.region_name
                 )
-                # Store ARN for evaluator_arn in ServerlessJobConfig
+                # Store ARN for evaluator_arn
                 self._evaluator_arn = hub_content.hub_content_arn
-                self._reward_prompt_processed = {"custom_prompt_arn": hub_content.hub_content_arn}
             except Exception as e:
                 raise ValueError(f"Custom prompt '{self.reward_prompt}' not found in HubContent: {e}")
+        
+
+
+    def _update_judge_prompt_template_direct(self, reward_prompt):
+        """Update judge_prompt_template based on Builtin reward function."""
+        # Get available templates from hyperparameters specs
+        judge_prompt_spec = self.hyperparameters._specs.get('judge_prompt_template', {})
+        available_templates = judge_prompt_spec.get('enum', [])
+        
+        if not available_templates:
+            # If no enum found, use the current value as the only available option
+            current_value = getattr(self.hyperparameters, 'judge_prompt_template', None)
+            if current_value:
+                available_templates = [current_value]
+            else:
+                return
+        
+        # Extract template name after "Builtin." and convert to lowercase
+        template_name = reward_prompt.split(".", 1)[1].lower()
+        
+        # Find matching template by extracting filename without extension
+        matching_template = None
+        for template in available_templates:
+            template_filename = template.split("/")[-1].replace(".jinja", "").lower()
+            if template_filename == template_name:
+                matching_template = template
+                break
+        
+        if matching_template:
+            self.hyperparameters.judge_prompt_template = matching_template
+        else:
+            available_options = [f"Builtin.{t.split('/')[-1].replace('.jinja', '')}" for t in available_templates]
+            raise ValueError(
+                f"Selected reward function option '{reward_prompt}' is not available. "
+                f"Choose one from the available options: {available_options}. "
+                f"Example: reward_prompt='Builtin.summarize'"
+            )
 

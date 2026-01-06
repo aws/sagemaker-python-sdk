@@ -330,15 +330,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 user_profile_name = metadata.get("UserProfileName")
                 execution_role_arn = metadata.get("ExecutionRoleArn")
             try:
+                # find execution role from the metadata file if present
+                if execution_role_arn is not None:
+                    return execution_role_arn
+
                 if domain_id is None:
                     instance_desc = self.sagemaker_client.describe_notebook_instance(
                         NotebookInstanceName=instance_name
                     )
                     return instance_desc["RoleArn"]
-
-                # find execution role from the metadata file if present
-                if execution_role_arn is not None:
-                    return execution_role_arn
 
                 user_profile_desc = self.sagemaker_client.describe_user_profile(
                     DomainId=domain_id, UserProfileName=user_profile_name
@@ -666,9 +666,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         try:
-            s3.meta.client.head_bucket(
-                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
-            )
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name,
+                    Prefix=self.default_bucket_prefix,
+                    ExpectedBucketOwner=expected_bucket_owner_id,
+                )
+            else:
+                s3.meta.client.head_bucket(
+                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+                )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
@@ -699,7 +706,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
         """
         try:
-            s3.meta.client.head_bucket(Bucket=bucket_name)
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name, Prefix=self.default_bucket_prefix
+                )
+            else:
+                s3.meta.client.head_bucket(Bucket=bucket_name)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
@@ -1865,7 +1877,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if "/" in role:
             return role
         return self.boto_session.resource("iam").Role(role).arn
-
+    
 
 def _expand_container_def(c_def):
     """Placeholder docstring"""
