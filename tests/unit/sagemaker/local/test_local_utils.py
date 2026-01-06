@@ -25,9 +25,9 @@ from sagemaker.session_settings import SessionSettings
 @patch("sagemaker.local.utils.os.path")
 @patch("sagemaker.local.utils.os")
 def test_copy_directory_structure(m_os, m_os_path):
-    m_os_path.exists.return_value = False
+    m_os_path.join.return_value = "/tmp/code/"
     sagemaker.local.utils.copy_directory_structure("/tmp/", "code/")
-    m_os.makedirs.assert_called_with("/tmp/", "code/")
+    m_os.makedirs.assert_called_with("/tmp/code/", exist_ok=True)
 
 
 @patch("shutil.rmtree", Mock())
