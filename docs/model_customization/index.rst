@@ -51,7 +51,7 @@ Here's how model customization works in V3:
    # Create DPO trainer for preference-based fine-tuning
    dpo_trainer = DPOTrainer(
        model="my-base-model",
-       preference_dataset="s3://my-bucket/preference-data.jsonl",
+       training_dataset="s3://my-bucket/preference-data.jsonl",
        training_type=TrainingType.LORA
    )
 
@@ -79,28 +79,19 @@ SageMaker Python SDK V3 provides four specialized trainer classes for different 
 
    from sagemaker.train import SFTTrainer, DPOTrainer, RLAIFTrainer, RLVRTrainer
    from sagemaker.train.common import TrainingType
-   from sagemaker.train.configs import LoRAConfig
-
-   # Configure LoRA for parameter-efficient fine-tuning
-   lora_config = LoRAConfig(
-       rank=16,
-       alpha=32,
-       dropout=0.1,
-       target_modules=["q_proj", "v_proj"]
-   )
 
    # Choose your fine-tuning approach
    sft_trainer = SFTTrainer(
        model="huggingface-model-id",
        training_dataset="s3://bucket/sft-data.jsonl",
-       lora_config=lora_config
+       training_type=TrainingType.LORA
    )
 
    # Or use preference optimization
    dpo_trainer = DPOTrainer(
        model="base-model",
-       preference_dataset="s3://bucket/preferences.jsonl",
-       lora_config=lora_config
+       training_dataset="s3://bucket/preferences.jsonl",
+       training_type=TrainingType.LORA
    )
 
 Model Customization Capabilities
@@ -121,28 +112,12 @@ V3 supports state-of-the-art fine-tuning methods for foundation models:
 .. code-block:: python
 
    from sagemaker.train import SFTTrainer
-   from sagemaker.train.configs import LoRAConfig, TrainingConfig
-
-   # Configure LoRA for efficient fine-tuning
-   lora_config = LoRAConfig(
-       rank=8,
-       alpha=16,
-       target_modules=["q_proj", "k_proj", "v_proj", "o_proj"]
-   )
-
-   # Set up training configuration
-   training_config = TrainingConfig(
-       learning_rate=2e-4,
-       batch_size=4,
-       gradient_accumulation_steps=4,
-       max_steps=1000
-   )
+   from sagemaker.train.common import TrainingType
 
    trainer = SFTTrainer(
        model="microsoft/DialoGPT-medium",
        training_dataset="s3://bucket/conversation-data.jsonl",
-       lora_config=lora_config,
-       training_config=training_config
+       training_type=TrainingType.LORA
    )
 
 Key Model Customization Features
