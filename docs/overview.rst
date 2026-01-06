@@ -79,7 +79,7 @@ Unified training interface replacing framework-specific estimators with intellig
 Inference with ModelBuilder
 ----------------------------
 
-Simplified model deployment and inference with automatic optimization and flexible deployment options:
+Simplified model deployment and inference with the V3 workflow: ModelBuilder() → build() → deploy() → invoke():
 
 .. code-block:: python
 
@@ -90,8 +90,16 @@ Simplified model deployment and inference with automatic optimization and flexib
        model_path="s3://your-bucket/model-artifacts"
    )
 
-   endpoint = model_builder.build()
-   result = endpoint.invoke({"inputs": "your-input-data"})
+   model = model_builder.build(model_name="my-model")
+   endpoint = model_builder.deploy(
+       endpoint_name="my-endpoint",
+       instance_type="ml.m5.xlarge",
+       initial_instance_count=1
+   )
+   result = endpoint.invoke(
+       body={"inputs": "your-input-data"},
+       content_type="application/json"
+   )
 
 :doc:`Learn more about Inference <inference/index>`
 
