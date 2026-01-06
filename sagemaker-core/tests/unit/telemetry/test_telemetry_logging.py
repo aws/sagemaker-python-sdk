@@ -155,7 +155,7 @@ class TestTelemetryLogging(unittest.TestCase):
         )
 
         mock_send_telemetry_request.assert_called_once_with(
-            1, [1, 2], MOCK_SESSION, None, None, expected_extra_str
+            1, [11, 12], MOCK_SESSION, None, None, expected_extra_str
         )
 
     @pytest.mark.skipif(
