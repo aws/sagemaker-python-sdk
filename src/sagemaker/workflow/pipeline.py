@@ -136,7 +136,7 @@ class Pipeline:
         else:
             return summaries[0].get("PipelineVersionId")
 
-    @_telemetry_emitter(feature=Feature.MLOPS, func_name="pipeline.create")
+    @_telemetry_emitter(feature=Feature.MLOPS_V2, func_name="pipeline.create")
     def create(
         self,
         role_arn: str = None,
@@ -345,7 +345,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
-    @_telemetry_emitter(feature=Feature.MLOPS, func_name="pipeline.start")
+    @_telemetry_emitter(feature=Feature.MLOPS_V2, func_name="pipeline.start")
     def start(
         self,
         parameters: Dict[str, Union[str, bool, int, float]] = None,

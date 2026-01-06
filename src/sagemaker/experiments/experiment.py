@@ -95,7 +95,7 @@ class Experiment(_base_types.Record):
         )
 
     @classmethod
-    @_telemetry_emitter(feature=Feature.MLOPS, func_name="experiment.create")
+    @_telemetry_emitter(feature=Feature.MLOPS_V2, func_name="experiment.create")
     def create(
         cls,
         experiment_name,
