@@ -39,13 +39,24 @@ Here's how inference has evolved from V2 to V3:
 .. code-block:: python
 
    from sagemaker.serve import ModelBuilder
-   
+
    model_builder = ModelBuilder(
        model="my-model",
        model_path="s3://my-bucket/model.tar.gz"
    )
-   endpoint = model_builder.build()
-   result = endpoint.invoke(data)
+
+   model = model_builder.build(model_name="my-deployed-model")
+
+   endpoint = model_builder.deploy(
+       endpoint_name="my-endpoint",
+       instance_type="ml.m5.xlarge",
+       initial_instance_count=1
+   )
+
+   result = endpoint.invoke(
+       body=data,
+       content_type="application/json"
+   )
 
 ModelBuilder Overview
 --------------------
@@ -67,27 +78,25 @@ The ``ModelBuilder`` class is the cornerstone of SageMaker Python SDK V3 inferen
 .. code-block:: python
 
    from sagemaker.serve import ModelBuilder
-   from sagemaker.serve.configs import EndpointConfig
 
-   # Create model builder with intelligent defaults
    model_builder = ModelBuilder(
        model="your-model",
        model_path="s3://your-bucket/model-artifacts",
        role="your-sagemaker-role"
    )
 
-   # Configure endpoint settings
-   endpoint_config = EndpointConfig(
-       instance_type="ml.m5.xlarge",
-       initial_instance_count=1,
-       auto_scaling_enabled=True
-   )
-
-   # Deploy model
-   endpoint = model_builder.build(endpoint_config=endpoint_config)
+   model = model_builder.build(model_name="my-model")
    
-   # Make predictions
-   response = endpoint.invoke({"inputs": "your-input-data"})
+   endpoint = model_builder.deploy(
+       endpoint_name="my-endpoint",
+       instance_type="ml.m5.xlarge",
+       initial_instance_count=1
+   )
+   
+   response = endpoint.invoke(
+       body={"inputs": "your-input-data"},
+       content_type="application/json"
+   )
 
 Inference Capabilities
 ----------------------
@@ -102,23 +111,25 @@ V3 introduces powerful model optimization capabilities for enhanced performance:
 * **ONNX Runtime** - Cross-platform model optimization and acceleration
 * **Quantization Support** - Reduce model size and improve inference speed
 
-**Quick Optimization Example:**
+**Model Optimization Example:**
 
 .. code-block:: python
 
    from sagemaker.serve import ModelBuilder
-   from sagemaker.serve.configs import OptimizationConfig
 
+   # Create ModelBuilder with optimization settings
    model_builder = ModelBuilder(
        model="huggingface-bert-base",
-       optimization_config=OptimizationConfig(
-           target_device="ml_inf1",
-           optimization_level="O2",
-           quantization_enabled=True
-       )
+       role="your-sagemaker-role"
    )
 
-   optimized_endpoint = model_builder.build()
+   # Build and deploy with optimization
+   model = model_builder.build(model_name="optimized-bert")
+   endpoint = model_builder.deploy(
+       endpoint_name="bert-endpoint",
+       instance_type="ml.inf1.xlarge",
+       initial_instance_count=1
+   )
 
 Key Inference Features
 ~~~~~~~~~~~~~~~~~~~~~
