@@ -1,2 +1,1 @@
 datasets==2.16.1
-numpy<2
