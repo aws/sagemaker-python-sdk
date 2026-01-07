@@ -46,15 +46,12 @@ html_theme_options = {
     'repository_url': 'https://github.com/aws/sagemaker-python-sdk',
     'use_repository_button': True,
     'use_issues_button': True,
-    'use_edit_page_button': True,
+    'use_edit_page_button': False,
     'path_to_docs': 'docs/',
     'show_navbar_depth': 2,
     'show_toc_level': 2,
-    'announcement': 'This is V3 documentation. <a href="https://sagemaker.readthedocs.io/en/v2/">View V2 docs</a>',
-}
-
-html_theme_options = {
-    "collapse_navigation": True,
+    'collapse_navigation': True,
+    'announcement': 'This is V3 documentation. <a href="https://sagemaker.readthedocs.io/en/v2/">View legacy V2 docs</a>',
 }
 
 html_static_path = ['_static']
