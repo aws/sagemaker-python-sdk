@@ -50,8 +50,8 @@ html_theme_options = {
     'path_to_docs': 'docs/',
     'show_navbar_depth': 2,
     'show_toc_level': 2,
-    'collapse_navigation': True,
-    'announcement': 'This is V3 documentation. <a href="https://sagemaker.readthedocs.io/en/v2/">View legacy V2 docs</a>',
+    'collapse_navbar': True,
+    'announcement': 'This is V3 documentation. <a href="https://sagemaker.readthedocs.io/en/v2/">View V2 docs</a>',
 }
 
 html_static_path = ['_static']
