@@ -15,4 +15,4 @@ Manage datasets, evaluators, and model artifacts through SageMaker's AI Registry
 .. toctree::
    :maxdepth: 1
 
-   AI Registry Overview <../../v3-examples/model-customization-examples/ai_registry_example>
+   ../../v3-examples/model-customization-examples/ai_registry_example

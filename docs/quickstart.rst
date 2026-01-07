@@ -17,7 +17,7 @@ Install SageMaker Python SDK V3:
 
 .. code-block:: bash
 
-   pip install sagemaker>=3.0.0
+   pip install sagemaker
 
 Basic Setup
 -----------
@@ -40,59 +40,63 @@ Import the SDK and create a session:
 Training Your First Model
 -------------------------
 
-Train a simple model using the unified ModelTrainer:
+Train a custom PyTorch model using the unified ModelTrainer:
 
 .. code-block:: python
 
    from sagemaker.train import ModelTrainer
-   from sagemaker.train.configs import InputData
+   from sagemaker.train.configs import SourceCode
    
-   # Create a ModelTrainer
+   # Create ModelTrainer with custom code
    trainer = ModelTrainer(
-       training_image="382416733822.dkr.ecr.us-east-1.amazonaws.com/xgboost:latest",
+       training_image="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.13.1-cpu-py39",
+       source_code=SourceCode(
+           source_dir="./training_code",
+           entry_script="train.py",
+           requirements="requirements.txt"
+       ),
        role=role
    )
    
-   # Configure training data
-   train_data = InputData(
-       channel_name="training",
-       data_source="s3://sagemaker-sample-data-us-east-1/xgboost/census-income/train.csv"
-   )
-   
    # Start training
-   training_job = trainer.train(
-       input_data_config=[train_data],
-       hyperparameters={
-           "objective": "binary:logistic",
-           "num_round": "100"
-       }
-   )
-   
-   print(f"Training job: {training_job.name}")
+   trainer.train()
+   print(f"Training completed: {training_job.name}")
 
 Deploying Your Model
 --------------------
 
-Deploy the trained model for inference:
+Deploy the trained model using the V3 workflow: build() → deploy() → invoke():
 
 .. code-block:: python
 
    from sagemaker.serve import ModelBuilder
+   from sagemaker.serve.builder.schema_builder import SchemaBuilder
+   from sagemaker.serve.utils.types import ModelServer
    
-   # Create a ModelBuilder from the training job
+   # Create schema for model input/output
+   sample_input = [[0.1, 0.2, 0.3, 0.4]]
+   sample_output = [[0.8, 0.2]]
+   schema_builder = SchemaBuilder(sample_input, sample_output)
+   
+   # Create ModelBuilder from training job
    model_builder = ModelBuilder(
-       model_data=training_job.model_artifacts,
-       image_uri="382416733822.dkr.ecr.us-east-1.amazonaws.com/xgboost:latest",
+       model=trainer,
+       schema_builder=schema_builder,
+       model_server=ModelServer.TORCHSERVE,
        role=role
    )
    
-   # Deploy to an endpoint
-   endpoint = model_builder.build(
+   # Build the model
+   model = model_builder.build(model_name="my-pytorch-model")
+   
+   # Deploy to endpoint
+   endpoint = model_builder.deploy(
+       endpoint_name="my-endpoint",
        instance_type="ml.m5.large",
        initial_instance_count=1
    )
    
-   print(f"Endpoint: {endpoint.endpoint_name}")
+   print(f"Endpoint deployed: {endpoint.endpoint_name}")
 
 Making Predictions
 ------------------
@@ -101,12 +105,20 @@ Use your deployed model to make predictions:
 
 .. code-block:: python
 
-   # Sample data for prediction
-   test_data = "39, State-gov, 77516, Bachelors, 13, Never-married, Adm-clerical, Not-in-family, White, Male, 2174, 0, 40, United-States"
+   import json
+   
+   # Sample tensor data for prediction
+   test_data = [[0.5, 0.3, 0.2, 0.1]]
    
    # Make a prediction
-   result = endpoint.invoke(test_data, content_type="text/csv")
-   print(f"Prediction: {result}")
+   result = endpoint.invoke(
+       body=json.dumps(test_data),
+       content_type="application/json"
+   )
+   
+   # Parse the result
+   prediction = json.loads(result.body.read().decode('utf-8'))
+   print(f"Prediction: {prediction}")
 
 Cleanup
 -------

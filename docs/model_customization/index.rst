@@ -175,10 +175,10 @@ Explore comprehensive model customization examples that demonstrate V3 capabilit
    :maxdepth: 2
    :hidden:
 
+   registry
    nova
    finetuning
-   registry
-   deployment
    evaluation
+   deployment
 
 
