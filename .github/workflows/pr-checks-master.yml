@@ -74,32 +74,79 @@ jobs:
           echo "Changed files:"
           echo "$CHANGES"
           
-          SUBMODULES=[]
+          # Function to extract dependencies from pyproject.toml
+          get_dependencies() {
+            local module=$1
+            grep "sagemaker-" "$module/pyproject.toml" | grep -o 'sagemaker-[a-z]*' | sort -u
+          }
+          
+          # Function to find all modules that depend on a given module (recursively)
+          find_dependents() {
+            local target=$1
+            local all_modules=("sagemaker-core" "sagemaker-train" "sagemaker-serve" "sagemaker-mlops")
+            local dependents=()
+            
+            for module in "${all_modules[@]}"; do
+              if [ "$module" != "$target" ]; then
+                if get_dependencies "$module" | grep -q "^$target$"; then
+                  dependents+=("$module")
+                fi
+              fi
+            done
+            
+            echo "${dependents[@]}"
+          }
+          
+          # Initialize set of submodules to test (using associative array)
+          declare -A SUBMODULES_SET
+          
+          # Function to recursively add module and all its dependents
+          add_module_and_dependents() {
+            local module=$1
+            
+            if [ -z "${SUBMODULES_SET[$module]}" ]; then
+              SUBMODULES_SET["$module"]=1
+              echo "Adding $module to test set"
+              
+              # Find all modules that depend on this one and add them recursively
+              local dependents=$(find_dependents "$module")
+              for dependent in $dependents; do
+                add_module_and_dependents "$dependent"
+              done
+            fi
+          }
+          
+          # Check which submodules changed and add them plus their dependents
+          if echo "$CHANGES" | grep -q "^sagemaker-core/"; then
+            echo "sagemaker-core changed - will add core and all dependents"
+            add_module_and_dependents "sagemaker-core"
+          fi
           
           if echo "$CHANGES" | grep -q "^sagemaker-train/"; then
-            SUBMODULES='["sagemaker-train"]'
+            echo "sagemaker-train changed - will add train and all dependents"
+            add_module_and_dependents "sagemaker-train"
           fi
+          
           if echo "$CHANGES" | grep -q "^sagemaker-serve/"; then
-            if [ "$SUBMODULES" = '[]' ]; then
-              SUBMODULES='["sagemaker-serve"]'
-            else
-              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-serve"\]/')
-            fi
+            echo "sagemaker-serve changed - will add serve and all dependents"
+            add_module_and_dependents "sagemaker-serve"
           fi
+          
           if echo "$CHANGES" | grep -q "^sagemaker-mlops/"; then
-            if [ "$SUBMODULES" = '[]' ]; then
-              SUBMODULES='["sagemaker-mlops"]'
-            else
-              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-mlops"\]/')
-            fi
+            echo "sagemaker-mlops changed - will add mlops"
+            add_module_and_dependents "sagemaker-mlops"
           fi
-          if echo "$CHANGES" | grep -q "^sagemaker-core/"; then
+          
+          # Convert associative array to JSON array
+          SUBMODULES='[]'
+          for submodule in "${!SUBMODULES_SET[@]}"; do
             if [ "$SUBMODULES" = '[]' ]; then
-              SUBMODULES='["sagemaker-core"]'
+              SUBMODULES="[\"$submodule\"]"
             else
-              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-core"\]/')
+              SUBMODULES=$(echo $SUBMODULES | sed "s/\]$/,\"$submodule\"\]/")
             fi
-          fi
+          done
+          
           echo "Final SUBMODULES: $SUBMODULES"
           echo "submodules=$SUBMODULES" >> $GITHUB_OUTPUT
 
