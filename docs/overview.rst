@@ -2,7 +2,7 @@ Overview
 ========
 
 .. note::
-   This is the documentation for SageMaker Python SDK V3. For legacy V2 documentation, please visit `SageMaker Python SDK V2 Documentation <https://sagemaker.readthedocs.io/en/v2/>`_.
+   SageMaker Python SDK V3 contains breaking changes from V2. See the `V3.0.0 release notes <https://github.com/aws/sagemaker-python-sdk/releases/tag/v3.0.0>`_ for migration guidance or visit the `V2 documentation <https://sagemaker.readthedocs.io/en/v2/>`_.
 
 Welcome to SageMaker Python SDK V3 - a revolutionary approach to machine learning on Amazon SageMaker. Version 3.0 represents a significant milestone with modernized architecture, enhanced performance, and powerful new capabilities while maintaining our commitment to user experience and reliability.
 
