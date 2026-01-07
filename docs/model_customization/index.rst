@@ -5,58 +5,156 @@ Model Customization
 
    <div class="v3-exclusive-feature">
    <strong>🆕 V3 EXCLUSIVE FEATURE</strong><br>
-   Model customization with specialized trainers is only available in SageMaker Python SDK V3. 
-   This powerful capability was built from the ground up for foundation model fine-tuning.
+   Model customization with specialized trainers is available only in SageMaker Python SDK V3, built from the ground up for foundation model fine-tuning.
+   It streamlines the complex process of customizing AI models from months to days with a guided UI and serverless infrastructure that removes operational overhead. Whether you are building legal research applications, customer service chatbots, or domain-specific AI agents, this feature accelerates your path from proof-of-concept to production deployment.
    </div>
-
-SageMaker Python SDK V3 revolutionizes foundation model fine-tuning with specialized trainer classes, making it easier than ever to customize large language models and foundation models for your specific use cases. This modern approach provides powerful fine-tuning capabilities while maintaining simplicity and performance.
 
 Key Benefits of V3 Model Customization
 --------------------------------------
 
-* **Specialized Trainers**: Purpose-built classes for different fine-tuning approaches (SFT, DPO, RLAIF, RLVR)
-* **Foundation Model Focus**: Optimized for large language models and transformer architectures
-* **Advanced Techniques**: Support for cutting-edge fine-tuning methods like RLHF and preference optimization
-* **Production Ready**: Built-in evaluation, monitoring, and deployment capabilities
+* **Serverless Training**: Fully managed compute infrastructure that abstracts away all infrastructure complexity, allowing you to focus purely on model development
+* **Advanced Customization Techniques**: Comprehensive set of methods including supervised fine-tuning (SFT), direct preference optimization (DPO), reinforcement learning with verifiable rewards (RLVR), and reinforcement learning with AI feedback (RLAIF)
+* **AI Model Customization Assets**: Integrated datasets and evaluators for training, refining, and evaluating custom models
+* **Production Ready**: Built-in evaluation, monitoring, and deployment capabilities with automatic resource management
+
+Key Concepts
+------------
+
+**Serverless Training**
+  A fully managed compute infrastructure that abstracts away all infrastructure complexity, allowing you to focus purely on model development. This includes automatic provisioning of GPU instances (P5, P4de, P4d, G5) based on model size and training requirements, pre-optimized training recipes that incorporate best practices for each customization technique, real-time monitoring with live metrics and logs accessible through the UI, and automatic cleanup of resources after training completion to optimize costs.
+
+**Model Customization Techniques**
+  Comprehensive set of advanced methods including supervised fine-tuning (SFT), direct preference optimization (DPO), reinforcement learning with verifiable rewards (RLVR), and reinforcement learning with AI feedback (RLAIF).
+
+**Logged Model**
+  A specialized version of a base foundation model that has been adapted to a specific use case by training it on your own data, resulting in an AI model that retains the general capabilities of the original foundation model while adding domain-specific knowledge, terminology, style, or behavior tailored to your requirements.
+
+**AI Model Customization Assets**
+  Resources and artifacts used to train, refine, and evaluate custom models during the model customization process. These assets include:
+  
+  * **Datasets**: Collections of training examples (prompt-response pairs, domain-specific text, or labeled data) used to fine-tune a foundation model to learn specific behaviors, knowledge, or styles
+  * **Evaluators**: Mechanisms for assessing and improving model performance through either reward functions (code-based logic that scores model outputs based on specific criteria, used in RLVR training and custom scorer evaluation) or reward prompts (natural language instructions that guide an LLM to judge the quality of model responses, used in RLAIF training and LLM-as-a-judge evaluation)
+
+Getting Started
+---------------
+
+Prerequisites and Setup
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Before you begin, complete the following prerequisites:
+
+1. **SageMaker AI Domain Setup**: Onboard to a SageMaker AI domain with Studio access. If you don't have permissions to set Studio as the default experience for your domain, contact your administrator.
+
+2. **AWS CLI Configuration**: Update the AWS CLI and configure your credentials:
+
+   .. code-block:: bash
+
+      # Update AWS CLI
+      pip install --upgrade awscli
+      
+      # Configure credentials
+      aws configure
+
+3. **IAM Permissions**: Attach the following AWS managed policies to your execution role:
+
+   * ``AmazonSageMakerFullAccess`` - Full access to SageMaker resources
+   * ``AmazonSageMakerPipelinesIntegrations`` - For pipeline operations
+   * ``AmazonSageMakerModelRegistryFullAccess`` - For model registry features
+
+4. **Additional IAM Permissions**: Add the following inline policy to your SageMaker domain execution role:
+
+   .. code-block:: json
+
+      {
+          "Version": "2012-10-17",
+          "Statement": [
+              {
+                  "Sid": "LambdaCreateDeletePermission",
+                  "Effect": "Allow",
+                  "Action": [
+                      "lambda:CreateFunction",
+                      "lambda:DeleteFunction",
+                      "lambda:InvokeFunction"
+                  ],
+                  "Resource": [
+                      "arn:aws:lambda:*:*:function:*SageMaker*",
+                      "arn:aws:lambda:*:*:function:*sagemaker*",
+                      "arn:aws:lambda:*:*:function:*Sagemaker*"
+                  ]
+              },
+              {
+                  "Sid": "BedrockDeploy",
+                  "Effect": "Allow",
+                  "Action": [
+                      "bedrock:CreateModelImportJob",
+                      "bedrock:GetModelImportJob",
+                      "bedrock:GetImportedModel"
+                  ],
+                  "Resource": ["*"]
+              },
+              {
+                  "Sid": "AIRegistry",
+                  "Effect": "Allow",
+                  "Action": [
+                      "sagemaker:CreateHub",
+                      "sagemaker:DeleteHub",
+                      "sagemaker:DescribeHub",
+                      "sagemaker:ListHubs",
+                      "sagemaker:ImportHubContent",
+                      "sagemaker:DeleteHubContent",
+                      "sagemaker:UpdateHubContent",
+                      "sagemaker:ListHubContents",
+                      "sagemaker:ListHubContentVersions",
+                      "sagemaker:DescribeHubContent"
+                  ],
+                  "Resource": "*"
+              }
+          ]
+      }
+
+Creating Assets for Model Customization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Using the SageMaker Python SDK:**
+
+.. code-block:: python
+
+   from sagemaker.train.common import CustomizationTechnique
+   from sagemaker.assets import DataSet
+
+   # Create a dataset asset
+   dataset = DataSet.create(
+       name="demo-sft-dataset",
+       data_location="s3://your-bucket/dataset/training_dataset.jsonl",
+       customization_technique=CustomizationTechnique.SFT,
+       wait=True
+   )
+   
+   print(f"Dataset ARN: {dataset.arn}")
 
 Quick Start Example
 -------------------
 
-Here's how model customization works in V3:
-
-**Supervised Fine-Tuning (SFT):**
-
-.. code-block:: python
-
-   from sagemaker.train import SFTTrainer
-   from sagemaker.train.common import TrainingType
-
-   # Create SFT trainer for foundation model fine-tuning
-   trainer = SFTTrainer(
-       model="meta-llama/Llama-2-7b-hf",
-       training_type=TrainingType.LORA,
-       model_package_group_name="my-custom-models",
-       training_dataset="s3://my-bucket/training-data.jsonl"
-   )
-
-   # Start fine-tuning
-   training_job = trainer.train()
-
-**Direct Preference Optimization (DPO):**
+**Model Customization via SDK:**
 
 .. code-block:: python
 
    from sagemaker.train import DPOTrainer
+   from sagemaker.train.common import TrainingType
 
-   # Create DPO trainer for preference-based fine-tuning
-   dpo_trainer = DPOTrainer(
-       model="my-base-model",
+   # Submit a DPO model customization job
+   trainer = DPOTrainer(
+       model="meta-llama/Llama-2-7b-hf",
+       training_type=TrainingType.LORA,
+       model_package_group_name="my-custom-models",
        training_dataset="s3://my-bucket/preference-data.jsonl",
-       training_type=TrainingType.LORA
+       s3_output_path="s3://my-bucket/output/",
+       sagemaker_session=sagemaker_session,
+       role=role_arn
    )
-
-   # Train with human preferences
-   dpo_job = dpo_trainer.train()
+   
+   # Start training
+   training_job = trainer.train()
 
 Fine-Tuning Trainers Overview
 -----------------------------
@@ -75,86 +173,45 @@ SageMaker Python SDK V3 provides four specialized trainer classes for different 
 **RLVRTrainer (Reinforcement Learning from Verifiable Rewards)**
   Fine-tune with verifiable reward signals for objective optimization
 
-.. code-block:: python
+Monitoring and Evaluation
+-------------------------
 
-   from sagemaker.train import SFTTrainer, DPOTrainer, RLAIFTrainer, RLVRTrainer
-   from sagemaker.train.common import TrainingType
+**Job Monitoring**
+  After submitting your customization job, you'll be redirected to the training job monitoring page where you can track progress in real-time. Once complete, access your custom model details page to review performance metrics, generated artifacts, training configuration, and logs.
 
-   # Choose your fine-tuning approach
-   sft_trainer = SFTTrainer(
-       model="huggingface-model-id",
-       training_dataset="s3://bucket/sft-data.jsonl",
-       training_type=TrainingType.LORA
-   )
+**Model Evaluation**
+  Launch evaluation jobs directly from your custom model details page with three options:
 
-   # Or use preference optimization
-   dpo_trainer = DPOTrainer(
-       model="base-model",
-       training_dataset="s3://bucket/preferences.jsonl",
-       training_type=TrainingType.LORA
-   )
+  * **LLM as a Judge (LLMAJ) Evaluation** - Use large language models to assess model outputs
+  * **Custom Scorer Evaluation** - Apply previously defined evaluator functions
+  * **Benchmark Evaluation** - Run standardized performance benchmarks
 
-Model Customization Capabilities
---------------------------------
+**Model Deployment**
+  Deploy your fine-tuned models using:
 
-Advanced Fine-Tuning Techniques
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  * **SageMaker Inference Endpoints** - Real-time and batch inference
+  * **Amazon Bedrock Custom Model Import** - Integrate with Bedrock services
 
-V3 supports state-of-the-art fine-tuning methods for foundation models:
+Supported Model Types and Use Cases
+-----------------------------------
 
-* **LoRA (Low-Rank Adaptation)** - Parameter-efficient fine-tuning with minimal memory requirements
-* **Full Fine-Tuning** - Complete model parameter updates for maximum customization
-* **Preference Learning** - Train models using human feedback and preference data
-* **Reinforcement Learning** - Advanced alignment techniques for improved model behavior
+**Foundation Models**
+  * Large Language Models (LLaMA, GPT, BERT, T5)
+  * Conversational AI models and dialogue systems
+  * Domain-specific models (legal, medical, financial, technical)
+  * Multimodal models for vision-language understanding
 
-**Parameter-Efficient Fine-Tuning Example:**
+**Customization Scenarios**
+  * Task-specific adaptation (summarization, QA, classification)
+  * Instruction following and multi-step reasoning
+  * Safety and alignment improvements
+  * Style and persona customization
 
-.. code-block:: python
-
-   from sagemaker.train import SFTTrainer
-   from sagemaker.train.common import TrainingType
-
-   trainer = SFTTrainer(
-       model="microsoft/DialoGPT-medium",
-       training_dataset="s3://bucket/conversation-data.jsonl",
-       training_type=TrainingType.LORA
-   )
-
-Key Model Customization Features
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* **Parameter-Efficient Training** - LoRA and other techniques reduce memory usage by up to 90% while maintaining performance quality
-* **Multi-GPU Support** - Distributed training across multiple GPUs with automatic parallelization and gradient synchronization
-* **Custom Evaluation Metrics** - Built-in support for 11 evaluation benchmarks including BLEU, ROUGE, perplexity, and domain-specific metrics
-* **MLflow Integration** - Comprehensive experiment tracking with real-time metrics, model versioning, and artifact management
-* **Flexible Deployment** - Deploy fine-tuned models to SageMaker endpoints, Bedrock, or export for external use
-
-Supported Model Customization Scenarios
----------------------------------------
-
-Model Types
-~~~~~~~~~~~
-
-* **Large Language Models** - GPT, LLaMA, BERT, T5, and other transformer architectures
-* **Conversational AI** - ChatGPT-style models, dialogue systems, and virtual assistants
-* **Domain-Specific Models** - Legal, medical, financial, and technical domain adaptation
-* **Multimodal Models** - Vision-language models and cross-modal understanding
-
-Fine-Tuning Approaches
-~~~~~~~~~~~~~~~~~~~~~~
-
-* **Task-Specific Adaptation** - Fine-tune for specific downstream tasks like summarization, QA, or classification
-* **Instruction Following** - Train models to follow complex instructions and multi-step reasoning
-* **Safety and Alignment** - Improve model behavior, reduce harmful outputs, and align with human values
-* **Style and Persona** - Customize model personality, writing style, and response patterns
-
-Evaluation and Monitoring
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* **Automated Benchmarking** - Built-in evaluation on standard benchmarks and custom metrics
-* **Human Evaluation Integration** - Tools for collecting and incorporating human feedback
-* **Performance Monitoring** - Track model quality, safety, and alignment metrics during training
-* **A/B Testing Support** - Compare different fine-tuning approaches and model variants
+**Advanced Techniques**
+  * **LoRA (Low-Rank Adaptation)** - Parameter-efficient fine-tuning with minimal memory requirements
+  * **Full Fine-Tuning** - Complete model parameter updates for maximum customization
+  * **Preference Learning** - Train models using human feedback and preference data
+  * **Reinforcement Learning** - Advanced alignment techniques for improved model behavior
 
 Migration from V2
 ------------------
@@ -165,11 +222,6 @@ V3 introduces entirely new capabilities for model customization that weren't ava
 * **Foundation Model Focus**: V2 primarily supported traditional ML models; V3 is optimized for LLMs
 * **Advanced Techniques**: Preference learning and RLHF capabilities are new in V3
 * **Integrated Evaluation**: Built-in benchmarking and evaluation tools replace manual evaluation workflows
-
-Model Customization Examples
-----------------------------
-
-Explore comprehensive model customization examples that demonstrate V3 capabilities:
 
 .. toctree::
    :maxdepth: 2
