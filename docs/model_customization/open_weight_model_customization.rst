@@ -8,9 +8,5 @@ This section walks you through the process to get started with open weight model
 
    ../../v3-examples/model-customization-examples/ai_registry_example
    model_customization
-
-.. toctree::
-   :maxdepth: 1
-
    evaluation
    deployment
