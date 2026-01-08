@@ -9,8 +9,8 @@ Customizing Models
    It streamlines the complex process of customizing AI models from months to days with a guided UI and serverless infrastructure that removes operational overhead. Whether you are building legal research applications, customer service chatbots, or domain-specific AI agents, this feature accelerates your path from proof-of-concept to production deployment.
    </div>
 
-Key Benefits of V3 Model Customization
---------------------------------------
+Key Benefits
+-------------
 
 * **Serverless Training**: Fully managed compute infrastructure that abstracts away all infrastructure complexity, allowing you to focus purely on model development
 * **Advanced Customization Techniques**: Comprehensive set of methods including supervised fine-tuning (SFT), direct preference optimization (DPO), reinforcement learning with verifiable rewards (RLVR), and reinforcement learning with AI feedback (RLAIF)
@@ -156,41 +156,6 @@ Quick Start Example
    # Start training
    training_job = trainer.train()
 
-Fine-Tuning Trainers Overview
------------------------------
-
-SageMaker Python SDK V3 provides four specialized trainer classes for different model customization approaches:
-
-**SFTTrainer (Supervised Fine-Tuning)**
-  Traditional fine-tuning with labeled datasets for task-specific adaptation
-
-**DPOTrainer (Direct Preference Optimization)**
-  Fine-tune models using human preference data without reinforcement learning complexity
-
-**RLAIFTrainer (Reinforcement Learning from AI Feedback)**
-  Use AI-generated feedback to improve model behavior and alignment
-
-**RLVRTrainer (Reinforcement Learning from Verifiable Rewards)**
-  Fine-tune with verifiable reward signals for objective optimization
-
-Monitoring and Evaluation
--------------------------
-
-**Job Monitoring**
-  After submitting your customization job, you'll be redirected to the training job monitoring page where you can track progress in real-time. Once complete, access your custom model details page to review performance metrics, generated artifacts, training configuration, and logs.
-
-**Model Evaluation**
-  Launch evaluation jobs directly from your custom model details page with three options:
-
-  * **LLM as a Judge (LLMAJ) Evaluation** - Use large language models to assess model outputs
-  * **Custom Scorer Evaluation** - Apply previously defined evaluator functions
-  * **Benchmark Evaluation** - Run standardized performance benchmarks
-
-**Model Deployment**
-  Deploy your fine-tuned models using:
-
-  * **SageMaker Inference Endpoints** - Real-time and batch inference
-  * **Amazon Bedrock Custom Model Import** - Integrate with Bedrock services
 
 Supported Model Types and Use Cases
 -----------------------------------
@@ -217,10 +182,7 @@ Supported Model Types and Use Cases
    :maxdepth: 2
    :hidden:
 
-   registry
+   open_weight_model_customization
    nova
-   finetuning
-   evaluation
-   deployment
 
 

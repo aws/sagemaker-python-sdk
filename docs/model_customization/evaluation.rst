@@ -1,16 +1,11 @@
-Evaluation
-==========
+Model Evaluation
+=================
 
-Measure and validate your customized models with comprehensive evaluation metrics, benchmarks, and custom scoring approaches.
+Launch evaluation jobs with three options:
 
-**What you'll accomplish:**
-- Run automated benchmarks and custom evaluations
-- Use LLM-as-a-Judge for qualitative assessment
-- Set up evaluation pipelines with custom scorers
-
-**Prerequisites:** Deployed model or training job, test datasets, evaluation criteria defined
-
-**Choose your approach:** Benchmarks for standardized metrics, LLM-as-Judge for subjective quality, custom scorers for domain-specific evaluation.
+  * **LLM as a Judge (LLMAJ) Evaluation** - Use large language models to assess model outputs
+  * **Custom Scorer Evaluation** - Apply previously defined evaluator functions
+  * **Benchmark Evaluation** - Run standardized performance benchmarks
 
 .. toctree::
    :maxdepth: 1
