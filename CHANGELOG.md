@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.256.0 (2026-01-08)
+
+### Features
+
+* Image for Numpy 2.0 support with XGBoost
+* Bug fixes and Other Changes
+
+### Bug fix for Triton Model server for inference
+
+* Removal of hmac key parameter for remote function
+* Bug fixes for input validation for local mode and resource management for iterators
+
+
 ## v2.255.0 (2025-12-03)
 
 ### Features
