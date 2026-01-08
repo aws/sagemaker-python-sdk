@@ -22,7 +22,7 @@ from sagemaker.mlops.workflow.callback_step import (
     CallbackOutput,
     CallbackOutputTypeEnum,
 )
-from sagemaker.mlops.workflow.mlflow_config import MlflowConfig
+from sagemaker.core.shapes.shapes import MlflowConfig
 from sagemaker.mlops.workflow.pipeline import Pipeline
 
 
@@ -49,7 +49,9 @@ def pipeline_name():
     return f"mlflow-test-pipeline-{int(time.time() * 10 ** 7)}"
 
 
-def test_pipeline_definition_with_mlflow_config(sagemaker_session, role, pipeline_name, region_name):
+def test_pipeline_definition_with_mlflow_config(
+    sagemaker_session, role, pipeline_name, region_name
+):
     """Verify MLflow config appears correctly in pipeline definition when pipeline is created."""
 
     mlflow_config = MlflowConfig(
@@ -139,8 +141,14 @@ def test_pipeline_start_with_mlflow_experiment_override(
         execution_response = execution.describe()
         assert execution_response["PipelineExecutionStatus"] in ["Executing", "Succeeded", "Failed"]
 
-        assert execution_response.get("MLflowConfig", {}).get("MlflowExperimentName") == "runtime-override-experiment"
-        assert execution_response.get("MLflowConfig", {}).get("MlflowResourceArn") == "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/original-server"
+        assert (
+            execution_response.get("MLflowConfig", {}).get("MlflowExperimentName")
+            == "runtime-override-experiment"
+        )
+        assert (
+            execution_response.get("MLflowConfig", {}).get("MlflowResourceArn")
+            == "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/original-server"
+        )
 
     finally:
         try:

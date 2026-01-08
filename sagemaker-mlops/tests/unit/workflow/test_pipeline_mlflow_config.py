@@ -16,8 +16,8 @@ import json
 import pytest
 from unittest.mock import Mock, patch
 
-from sagemaker.mlops.workflow.mlflow_config import MlflowConfig
-from sagemaker.mlops.workflow.pipeline import Pipeline
+from sagemaker.core.shapes.shapes import MlflowConfig
+from sagemaker.mlops.workflow.pipeline import Pipeline, _convert_mlflow_config_to_request
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 
 
@@ -28,6 +28,7 @@ def mock_session():
     session.boto_session.client.return_value = Mock()
     session.sagemaker_client = Mock()
     session.local_mode = False
+    session.sagemaker_config = {}
     return session
 
 
@@ -164,3 +165,60 @@ def test_pipeline_update_with_mlflow_config(mock_session):
         "MlflowResourceArn": "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/update-test",
         "MlflowExperimentName": "update-test-experiment",
     }
+
+
+def test_convert_mlflow_config_to_request_with_valid_config():
+    """Test _convert_mlflow_config_to_request with a valid MlflowConfig."""
+    mlflow_config = MlflowConfig(
+        mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test-server",
+        mlflow_experiment_name="test-experiment",
+    )
+
+    result = _convert_mlflow_config_to_request(mlflow_config)
+
+    expected = {
+        "MlflowResourceArn": "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test-server",
+        "MlflowExperimentName": "test-experiment",
+    }
+
+    assert result == expected
+
+
+def test_convert_mlflow_config_to_request_with_none():
+    """Test _convert_mlflow_config_to_request with None input."""
+    result = _convert_mlflow_config_to_request(None)
+    assert result is None
+
+
+def test_convert_mlflow_config_to_request_with_minimal_config():
+    """Test _convert_mlflow_config_to_request with minimal required fields."""
+    mlflow_config = MlflowConfig(
+        mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/minimal",
+    )
+
+    result = _convert_mlflow_config_to_request(mlflow_config)
+
+    expected = {
+        "MlflowResourceArn": "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/minimal",
+        "MlflowExperimentName": None,
+    }
+
+    assert result == expected
+
+
+def test_convert_mlflow_config_to_request_with_unassigned_values():
+    """Test _convert_mlflow_config_to_request handles Unassigned values properly."""
+    from sagemaker.core.utils.utils import Unassigned
+
+    mlflow_config = MlflowConfig(
+        mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test",
+    )
+
+    result = _convert_mlflow_config_to_request(mlflow_config)
+
+    expected = {
+        "MlflowResourceArn": "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test",
+        "MlflowExperimentName": None,
+    }
+
+    assert result == expected

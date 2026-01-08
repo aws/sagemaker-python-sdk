@@ -50,7 +50,7 @@ from sagemaker.mlops.workflow._event_bridge_client_helper import (
     EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
 )
 from sagemaker.mlops.workflow.lambda_step import LambdaOutput, LambdaStep
-from sagemaker.mlops.workflow.mlflow_config import MlflowConfig
+from sagemaker.core.shapes.shapes import MlflowConfig
 from sagemaker.core.helper.pipeline_variable import (
     RequestType,
     PipelineVariable,
@@ -456,9 +456,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 if self.pipeline_experiment_config is not None
                 else None
             ),
-            "MlflowConfig": (
-                self.mlflow_config.to_request() if self.mlflow_config is not None else None
-            ),
+            "MlflowConfig": _convert_mlflow_config_to_request(self.mlflow_config),
             "Steps": list_to_request(compiled_steps),
         }
         callback_output_to_step_map = _map_callback_outputs(self.steps)
@@ -760,6 +758,34 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                     continue
                 raise e
             logger.info("Deleted Pipeline Schedule: %s ...", trigger_name)
+
+
+def _convert_mlflow_config_to_request(mlflow_config: MlflowConfig) -> dict:
+    """Convert sagemaker-core MlflowConfig to pipeline request format.
+
+    Args:
+        mlflow_config: MlflowConfig instance from sagemaker.core.shapes.shapes
+
+    Returns:
+        dict: Request format for pipeline MLflow configuration
+    """
+    if mlflow_config is None:
+        return None
+
+    from sagemaker.core.utils.utils import Unassigned
+
+    resource_arn = mlflow_config.mlflow_resource_arn
+    if isinstance(resource_arn, Unassigned):
+        resource_arn = None
+
+    experiment_name = mlflow_config.mlflow_experiment_name
+    if isinstance(experiment_name, Unassigned):
+        experiment_name = None
+
+    return {
+        "MlflowResourceArn": resource_arn,
+        "MlflowExperimentName": experiment_name,
+    }
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
