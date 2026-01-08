@@ -26,14 +26,12 @@ Import the SDK and create a session:
 
 .. code-block:: python
 
-   import sagemaker
-   from sagemaker.train import ModelTrainer
-   from sagemaker.serve import ModelBuilder
-   
+   from sagemaker.core.helper.session_helper import Session, get_execution_role
+
    # Create a SageMaker session
-   session = sagemaker.Session()
-   role = sagemaker.get_execution_role()  # Or specify your IAM role ARN
-   
+   session = Session()
+   role = get_execution_role()
+
    print(f"Using role: {role}")
    print(f"Default bucket: {session.default_bucket()}")
 
@@ -48,7 +46,7 @@ Train a custom PyTorch model using the unified ModelTrainer:
    from sagemaker.train.configs import SourceCode
    
    # Create ModelTrainer with custom code
-   trainer = ModelTrainer(
+   model_trainer = ModelTrainer(
        training_image="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.13.1-cpu-py39",
        source_code=SourceCode(
            source_dir="./training_code",
@@ -58,8 +56,8 @@ Train a custom PyTorch model using the unified ModelTrainer:
        role=role
    )
    
-   # Start training
-   trainer.train()
+   # Start training (this will create a training job)
+   training_job = model_trainer.train()
    print(f"Training completed: {training_job.name}")
 
 Deploying Your Model
@@ -69,7 +67,7 @@ Deploy the trained model using the V3 workflow: build() → deploy() → invoke(
 
 .. code-block:: python
 
-   from sagemaker.serve import ModelBuilder
+   from sagemaker.serve.model_builder import ModelBuilder
    from sagemaker.serve.builder.schema_builder import SchemaBuilder
    from sagemaker.serve.utils.types import ModelServer
    
@@ -80,7 +78,7 @@ Deploy the trained model using the V3 workflow: build() → deploy() → invoke(
    
    # Create ModelBuilder from training job
    model_builder = ModelBuilder(
-       model=trainer,
+       model=training_job, # Pass the trained ModelTrainer to use its trained model artifacts
        schema_builder=schema_builder,
        model_server=ModelServer.TORCHSERVE,
        role=role
@@ -164,12 +162,3 @@ Now that you've completed the quickstart:
 3. **Model Customization**: Experiment with :doc:`model_customization/index`
 4. **Build Pipelines**: Create workflows with :doc:`ml_ops/index`
 5. **Use SageMaker Core**: Access low-level resources with :doc:`sagemaker_core/index`
-
-Common Issues
--------------
-
-**ImportError**: Ensure you have the latest version installed
-**Credential errors**: Run ``aws configure`` to set up credentials
-**Permission denied**: Check your IAM role has SageMaker permissions
-
-For detailed troubleshooting, see the :doc:`installation` guide.

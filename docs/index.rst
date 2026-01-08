@@ -25,6 +25,13 @@ SageMaker Python SDK V3
 
 .. toctree::
    :maxdepth: 2
+   :caption: Release
+   :hidden:
+
+   releasenote
+
+.. toctree::
+   :maxdepth: 2
    :caption: API Reference
    :hidden:
    

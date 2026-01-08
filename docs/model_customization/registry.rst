@@ -1,5 +1,5 @@
-AI Registry
-===========
+Dataset and Evaluator Assets
+=============================
 
 Manage datasets, evaluators, and model artifacts through SageMaker's AI Registry for organized model development workflows.
 

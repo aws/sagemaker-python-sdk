@@ -1,5 +1,5 @@
-Training
-========
+Model Training
+===============
 
 SageMaker Python SDK V3 revolutionizes machine learning training with the unified **ModelTrainer** class, replacing the complex framework-specific estimators from V2. This modern approach provides a consistent interface across all training scenarios while maintaining the power and flexibility you need.
 
@@ -9,7 +9,6 @@ Key Benefits of V3 Training
 * **Unified Interface**: Single ``ModelTrainer`` class replaces multiple framework-specific estimators
 * **Simplified Configuration**: Object-oriented API with auto-generated configs aligned with AWS APIs
 * **Reduced Boilerplate**: Streamlined workflows with intuitive interfaces
-* **Enhanced Performance**: Modernized architecture for better training efficiency
 
 Quick Start Example
 -------------------
@@ -92,47 +91,6 @@ The ``ModelTrainer`` class is the cornerstone of SageMaker Python SDK V3, provid
            instance_count=1
        )
    )
-
-Training Capabilities
----------------------
-
-Model Fine-Tuning Support
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-V3 introduces powerful fine-tuning capabilities with four specialized trainer classes:
-
-* **SFTTrainer** - Supervised fine-tuning for foundation models
-* **DPOTrainer** - Direct preference optimization
-* **RLAIFTrainer** - Reinforcement Learning from AI Feedback
-* **RLVRTrainer** - Reinforcement Learning from Verifiable Rewards
-
-**Quick Fine-Tuning Example:**
-
-.. code-block:: python
-
-   from sagemaker.train import SFTTrainer
-   from sagemaker.train.common import TrainingType
-
-   trainer = SFTTrainer(
-       model="meta-llama/Llama-2-7b-hf",
-       training_type=TrainingType.LORA,
-       model_package_group_name="my-models",
-       training_dataset="s3://bucket/train.jsonl"
-   )
-
-   training_job = trainer.train()
-
-Key Fine-Tuning Features
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-* **LoRA & Full Fine-Tuning Support** - Choose between parameter-efficient LoRA (Low-Rank Adaptation) for faster training with reduced memory requirements, or full fine-tuning for maximum model customization and performance
-* **MLflow Integration with Real-Time Metrics** - Monitor training progress with comprehensive metrics tracking, experiment comparison, and model versioning through integrated MLflow support
-* **Multi-Platform Deployment** - Seamlessly deploy your fine-tuned models to Amazon SageMaker endpoints for real-time inference or Amazon Bedrock for foundation model serving
-* **Comprehensive Evaluation Suite** - Validate model performance with 11 built-in benchmark evaluations including accuracy, perplexity, BLEU scores, and domain-specific metrics
-* **Serverless Training Capabilities** - Scale training automatically without managing infrastructure, with pay-per-use pricing and automatic resource optimization
-
-Supported Training Scenarios
-----------------------------
 
 Framework Support
 ~~~~~~~~~~~~~~~~~

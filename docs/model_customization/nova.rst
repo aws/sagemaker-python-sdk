@@ -1,5 +1,5 @@
-Nova
-=====
+Amazon Nova Foundation Model
+==============================
 
 Adapt Amazon Nova foundation models to your specific use cases through fine-tuning, prompt engineering, and RAG techniques.
 

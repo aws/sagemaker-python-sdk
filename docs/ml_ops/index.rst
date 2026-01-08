@@ -1,4 +1,4 @@
-ML Operations
+Implement MLOps
 =============
 
 SageMaker Python SDK V3 provides comprehensive MLOps capabilities for building, deploying, and managing machine learning workflows at scale. This includes advanced pipeline orchestration, model monitoring, data quality checks, and automated deployment strategies for production ML systems.
