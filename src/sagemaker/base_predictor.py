@@ -154,6 +154,7 @@ class Predictor(PredictorBase):
         inference_id=None,
         custom_attributes=None,
         component_name: Optional[str] = None,
+        target_container_hostname=None,
     ):
         """Return the inference from the specified endpoint.
 
@@ -188,6 +189,9 @@ class Predictor(PredictorBase):
                 function (Default: None).
             component_name (str): Optional. Name of the Amazon SageMaker inference component
                 corresponding the predictor.
+            target_container_hostname (str): Optional. If the endpoint hosts multiple containers
+                and is configured to use direct invocation, this parameter specifies the host name
+                of the container to invoke. (Default: None).
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
@@ -203,6 +207,7 @@ class Predictor(PredictorBase):
             target_variant=target_variant,
             inference_id=inference_id,
             custom_attributes=custom_attributes,
+            target_container_hostname=target_container_hostname,
         )
 
         inference_component_name = component_name or self._get_component_name()
