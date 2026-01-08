@@ -1,4 +1,4 @@
-Model Customization
+Customizing Models
 ===================
 
 .. raw:: html
@@ -212,16 +212,6 @@ Supported Model Types and Use Cases
   * **Full Fine-Tuning** - Complete model parameter updates for maximum customization
   * **Preference Learning** - Train models using human feedback and preference data
   * **Reinforcement Learning** - Advanced alignment techniques for improved model behavior
-
-Migration from V2
-------------------
-
-V3 introduces entirely new capabilities for model customization that weren't available in V2:
-
-* **New Specialized Trainers**: SFTTrainer, DPOTrainer, RLAIFTrainer, and RLVRTrainer are V3-exclusive
-* **Foundation Model Focus**: V2 primarily supported traditional ML models; V3 is optimized for LLMs
-* **Advanced Techniques**: Preference learning and RLHF capabilities are new in V3
-* **Integrated Evaluation**: Built-in benchmarking and evaluation tools replace manual evaluation workflows
 
 .. toctree::
    :maxdepth: 2

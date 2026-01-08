@@ -22,13 +22,6 @@ Prerequisites
   - Linux
   - macOS
 
-**AWS Credentials**
-  Configure AWS credentials using one of these methods:
-  
-  - AWS CLI: ``aws configure``
-  - Environment variables: ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY``
-  - IAM roles
-
 Installation Methods
 ----------------------
 
@@ -121,35 +114,13 @@ Verify your installation:
 
 .. code-block:: python
 
-   import sagemaker
-   print(f"SageMaker SDK version: {sagemaker.__version__}")
-   
-   # Check if you can create a session
-   import sagemaker
-   session = sagemaker.Session()
+   from sagemaker.core.helper.session_helper import Session
+   from importlib.metadata import version
+   print(f"SageMaker SDK version: {version('sagemaker')}")
+
+   session = Session()
    print(f"Default bucket: {session.default_bucket()}")
    print(f"Region: {session.boto_region_name}")
-
-Troubleshooting
---------------
-
-**Common Issues:**
-
-*ImportError: No module named 'sagemaker'*
-  - Ensure you're using the correct Python environment
-  - Verify installation with ``pip list | grep sagemaker``
-
-*Permission denied errors*
-  - Use ``pip install --user sagemaker`` for user-level installation
-  - Or use a virtual environment
-
-*AWS credential errors*
-  - Configure AWS credentials: ``aws configure``
-  - Verify with ``aws sts get-caller-identity``
-
-*Version conflicts*
-  - Uninstall old versions: ``pip uninstall sagemaker``
-  - Install fresh: ``pip install sagemaker``
 
 Upgrading from V2
 -----------------

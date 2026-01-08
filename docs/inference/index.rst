@@ -1,5 +1,5 @@
-Inference
-=========
+Deploy Models for Inference
+============================
 
 SageMaker Python SDK V3 transforms model deployment and inference with the unified **ModelBuilder** class, replacing the complex framework-specific model classes from V2. This modern approach provides a consistent interface for all inference scenarios while maintaining the flexibility and performance you need.
 

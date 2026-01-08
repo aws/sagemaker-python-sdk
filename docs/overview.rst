@@ -2,10 +2,9 @@ Overview
 ========
 
 .. note::
-   SageMaker Python SDK V3 contains breaking changes from V2. See the `V3.0.0 release notes <https://github.com/aws/sagemaker-python-sdk/releases/tag/v3.0.0>`_ for migration guidance or visit the `V2 documentation <https://sagemaker.readthedocs.io/en/v2/>`_.
+   SageMaker Python SDK V3 contains breaking changes from V2. See the `V3.0.0 release notes <https://github.com/aws/sagemaker-python-sdk/releases/tag/v3.0.0>`_ for release notes or visit the `V2 documentation <https://sagemaker.readthedocs.io/en/v2/>`_.
 
-Welcome to SageMaker Python SDK V3 - a revolutionary approach to machine learning on Amazon SageMaker. Version 3.0 represents a significant milestone with modernized architecture, enhanced performance, and powerful new capabilities while maintaining our commitment to user experience and reliability.
-
+SageMaker Python SDK v3.0 introduces a modern, modular API for training, fine-tuning, deploying, and managing models on Amazon SageMaker. This release replaces legacy interfaces such as Estimator, Model, and Predictor with unified classes like ModelTrainer and ModelBuilder, reducing boilerplate and simplifying workflows. V3 also introduces comprehensive fine-tuning support with new trainer classes for foundation models.
 What's New in V3
 -----------------
 
@@ -33,24 +32,16 @@ What's New in V3
          <li><strong>sagemaker-serve</strong> - Simplified inference with ModelBuilder</li>
          <li><strong>sagemaker-mlops</strong> - ML operations and pipeline management</li>
        </ul>
-     </div>
-
-     <div class="new-feature-card">
-       <h3>Unified Classes</h3>
        <p>Single classes replace multiple framework-specific implementations:</p>
        <ul>
-         <li><strong>ModelTrainer</strong> replaces PyTorchEstimator, TensorFlowEstimator, SKLearnEstimator, etc.</li>
-         <li><strong>ModelBuilder</strong> replaces PyTorchModel, TensorFlowModel, SKLearnModel, etc.</li>
+        <li><strong>ModelTrainer</strong> replaces PyTorchEstimator, TensorFlowEstimator, SKLearnEstimator, etc.</li>
+        <li><strong>ModelBuilder</strong> replaces PyTorchModel, TensorFlowModel, SKLearnModel, etc.</li>
        </ul>
-     </div>
-
-     <div class="new-feature-card">
-       <h3>Object-Oriented API</h3>
-       <p>Structured interface with auto-generated configs aligned with AWS APIs for better developer experience.</p>
      </div>
    </div>
 
 Capabilities
+==============
 
 Training with ModelTrainer
 ---------------------------
@@ -79,7 +70,7 @@ Unified training interface replacing framework-specific estimators with intellig
 Inference with ModelBuilder
 ----------------------------
 
-Simplified model deployment and inference with the V3 workflow: ModelBuilder() → build() → deploy() → invoke():
+Simplified model deployment and inference with the ModelBuilder
 
 .. code-block:: python
 
@@ -163,7 +154,6 @@ Key changes when migrating from V2:
 * Replace Estimator classes with ``ModelTrainer``
 * Replace Model classes with ``ModelBuilder``
 * Use structured config objects instead of parameter dictionaries
-* Leverage specialized fine-tuning trainers for foundation models
 
 Next Steps
 -----------
