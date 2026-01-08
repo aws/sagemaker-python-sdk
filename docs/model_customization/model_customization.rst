@@ -1,5 +1,5 @@
-Model Customization
-======================
+AI Model Customization Job Submission
+=====================================
 
 SageMaker Python SDK V3 provides four specialized trainer classes for different model customization approaches:
 
