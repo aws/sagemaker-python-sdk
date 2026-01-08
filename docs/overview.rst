@@ -5,6 +5,7 @@ Overview
    SageMaker Python SDK V3 contains breaking changes from V2. See the `V3.0.0 release notes <https://github.com/aws/sagemaker-python-sdk/releases/tag/v3.0.0>`_ for release notes or visit the `V2 documentation <https://sagemaker.readthedocs.io/en/v2/>`_.
 
 SageMaker Python SDK v3.0 introduces a modern, modular API for training, fine-tuning, deploying, and managing models on Amazon SageMaker. This release replaces legacy interfaces such as Estimator, Model, and Predictor with unified classes like ModelTrainer and ModelBuilder, reducing boilerplate and simplifying workflows. V3 also introduces comprehensive fine-tuning support with new trainer classes for foundation models.
+
 What's New in V3
 -----------------
 
