@@ -945,6 +945,21 @@ class TestDownloadFolder:
         with tempfile.TemporaryDirectory() as tmpdir:
             download_folder("bucket", "prefix/", tmpdir, mock_session)
 
+    def test_download_folder_with_traversal_error(self):
+        """Test downloading folder with prefix."""
+        from sagemaker.core.common_utils import download_folder
+
+        mock_session = Mock()
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_session.s3_resource = mock_s3
+        mock_s3.Bucket.return_value = mock_bucket
+        mock_bucket.objects.filter.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError):
+                download_folder("bucket", "/../prefix/", tmpdir, mock_session)
+
 
 class TestRepackModel:
     """Test repack_model function."""

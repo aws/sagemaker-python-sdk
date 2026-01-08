@@ -127,7 +127,8 @@ class SourceCode(BaseConfig):
 class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
-    Provides the configuration for the output data location of the training job.
+    Provides the configuration for the output data location of the training job 
+    (will not be carried over to any model repository or deployment).
 
     Parameters:
         s3_output_path (Optional[StrPipeVar]):
@@ -284,7 +285,8 @@ class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
     The OutputDataConfig class is a subclass of ``sagemaker.core.shapes.OutputDataConfig``
-    and allows the user to specify the output data configuration for the training job.
+    and allows the user to specify the output data configuration for the training job
+    (will not be carried over to any model repository or deployment).
 
     Parameters:
         s3_output_path (Optional[StrPipeVar]):

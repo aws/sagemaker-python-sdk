@@ -80,6 +80,8 @@ from sagemaker.mlops.workflow.triggers import (
 )
 from sagemaker.core.workflow.utilities import list_to_request
 from sagemaker.mlops.workflow._steps_compiler import StepsCompiler
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +156,7 @@ class Pipeline:
         else:
             return summaries[0].get("PipelineVersionId")
 
+    @_telemetry_emitter(feature=Feature.MLOPS, func_name="pipeline.create")
     def create(
         self,
         role_arn: str = None,
@@ -363,6 +366,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
+    @_telemetry_emitter(feature=Feature.MLOPS, func_name="pipeline.start")
     def start(
         self,
         parameters: Dict[str, Union[str, bool, int, float]] = None,

@@ -424,6 +424,9 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
     prefix = prefix.lstrip("/")
 
+    if ".." in prefix:
+        raise ValueError("Traversal components are not allowed in S3 path!")
+
     # Try to download the prefix as an object first, in case it is a file and not a 'directory'.
     # Do this first, in case the object has broader permissions than the bucket.
     if not prefix.endswith("/"):
