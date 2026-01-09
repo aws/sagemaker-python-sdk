@@ -1,0 +1,174 @@
+/* What's New Section Styling */
+.whats-new-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.new-feature-card {
+    background: var(--pst-color-surface);
+    border: 1px solid var(--pst-color-border);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    color: var(--pst-color-text-base);
+}
+
+[data-theme="dark"] .new-feature-card {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.new-feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .new-feature-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.new-feature-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    font-weight: 600;
+    color: inherit;
+}
+
+.new-feature-card ul {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.new-feature-card li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Feedback Component */
+.feedback-container {
+    border-top: 1px solid var(--pst-color-border);
+    margin-top: 40px;
+    padding: 24px;
+    background-color: var(--pst-color-surface);
+    border-radius: 8px;
+    border: 1px solid var(--pst-color-border);
+}
+
+.feedback-question {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--pst-color-text-base);
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.feedback-buttons {
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+}
+
+.feedback-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid var(--pst-color-border);
+    border-radius: 6px;
+    background: var(--pst-color-surface);
+    color: var(--pst-color-text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.feedback-btn:hover {
+    border-color: var(--pst-color-primary);
+    background: var(--pst-color-surface);
+}
+
+.feedback-btn.selected {
+    border-color: var(--pst-color-primary);
+    background: var(--pst-color-primary-bg);
+    color: var(--pst-color-primary);
+}
+
+.feedback-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.feedback-thanks {
+    display: none;
+    color: #059669;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 16px;
+}
+
+/* Feedback Options */
+.feedback-options {
+    display: none;
+    margin-top: 20px;
+}
+
+.feedback-more {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.feedback-github-link {
+    color: #0366d6;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 10px 20px;
+    border: 1px solid #0366d6;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-weight: 500;
+    align-self: flex-start;
+}
+
+.feedback-github-link:hover {
+    background-color: #0366d6;
+    color: white;
+    text-decoration: none;
+}
+
+header {
+    background-color: white;
+
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--pst-color-text-base);
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--pst-color-text-base);
+}
+
+h3 {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--pst-color-text-base);
+}
+
+p {
+    font-size: 1.0rem;
+    color: var(--pst-color-text-base);
+}
