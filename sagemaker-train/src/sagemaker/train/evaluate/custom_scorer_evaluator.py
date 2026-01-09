@@ -137,7 +137,7 @@ class CustomScorerEvaluator(BaseEvaluator):
     _hyperparameters: Optional[Any] = None
     
     # Template-required fields
-    evaluate_base_model: bool = False
+    evaluate_base_model: bool = True
     
     @validator('dataset', pre=True)
     def _resolve_dataset(cls, v):
