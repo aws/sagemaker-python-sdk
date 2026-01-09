@@ -172,9 +172,9 @@ def get_code_hash(step: Entity) -> str:
         source_code = model_trainer.source_code
         if source_code:
             source_dir = source_code.source_dir
-            dependencies = source_code.dependencies
+            requirements = source_code.requirements
             entry_point = source_code.entry_script
-            return get_training_code_hash(entry_point, source_dir, dependencies)
+            return get_training_code_hash(entry_point, source_dir, requirements)
     return None
 
 
