@@ -41,7 +41,6 @@ class TrainingQueue:
         share_identifier: Optional[str] = None,
         timeout: Optional[Dict] = None,
         tags: Optional[Dict] = None,
-        experiment_config: Optional[Dict] = None,
     ) -> TrainingQueuedJob:
         """Submit a queued job and return a QueuedJob object.
 
@@ -54,9 +53,6 @@ class TrainingQueue:
             share_identifier: Share identifier for Batch job.
             timeout: Timeout configuration for Batch job.
             tags: Tags apply to Batch job. These tags are for Batch job only.
-            experiment_config: Experiment management configuration.
-                Optionally, the dict can contain four keys:
-                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
 
         Returns: a TrainingQueuedJob object with Batch job ARN and job name.
 
@@ -70,11 +66,6 @@ class TrainingQueue:
         if training_job.training_mode != Mode.SAGEMAKER_TRAINING_JOB:
             raise ValueError(
                 "TrainingQueue requires using a ModelTrainer with Mode.SAGEMAKER_TRAINING_JOB"
-            )
-        if experiment_config is not None:
-            logging.warning(
-                "ExperimentConfig is not supported for ModelTrainer. "
-                "It will be ignored when submitting the job."
             )
         training_payload = training_job._create_training_job_args(
             input_data_config=inputs, boto3=True
@@ -111,7 +102,6 @@ class TrainingQueue:
         share_identifier: Optional[str] = None,
         timeout: Optional[Dict] = None,
         tags: Optional[Dict] = None,
-        experiment_config: Optional[Dict] = None,
     ) -> List[TrainingQueuedJob]:
         """Submit queued jobs to the provided estimator and return a list of TrainingQueuedJob objects.
 
@@ -124,15 +114,10 @@ class TrainingQueue:
             share_identifier: Share identifier for the Batch jobs.
             timeout: Timeout configuration for the Batch jobs.
             tags: Tags apply to Batch job. These tags are for Batch job only.
-            experiment_config: Experiment management configuration.
-                Optionally, the dict can contain four keys:
-                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
 
         Returns: a list of TrainingQueuedJob objects with each Batch job ARN and job name.
 
         """
-        if experiment_config is None:
-            experiment_config = {}
 
         if job_names is not None:
             if len(job_names) != len(inputs):
@@ -153,7 +138,6 @@ class TrainingQueue:
                 share_identifier,
                 timeout,
                 tags,
-                experiment_config,
             )
             queued_batch_job_list.append(queued_batch_job)
 
