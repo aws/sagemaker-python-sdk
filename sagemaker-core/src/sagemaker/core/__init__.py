@@ -12,5 +12,8 @@ from sagemaker.core.processing import (  # noqa: F401
 )
 from sagemaker.core.transformer import Transformer  # noqa: F401
 
+# Partner App
+from sagemaker.core.partner_app.auth_provider import PartnerAppAuthProvider  # noqa: F401
+
 # Note: HyperparameterTuner and WarmStartTypes are in sagemaker.train.tuner
 # They are not re-exported from core to avoid circular dependencies
