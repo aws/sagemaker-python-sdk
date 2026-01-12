@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.3.1 (2025-01-12)
+## v2.3.1 (2026-01-12)
 
 ### Bug Fixes
 * ProcessingJob fix - Remove tags in Processor while Job creation
