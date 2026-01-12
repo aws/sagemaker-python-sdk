@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.core.training.configs import InputData
 from sagemaker.core.training.utils import _is_valid_s3_uri
+import importlib
 
 HYPERPARAMETER_TUNING_JOB_NAME = "HyperParameterTuningJobName"
 PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
@@ -1203,6 +1204,70 @@ class HyperparameterTuner(object):
         if metric_definitions is not None:
             self.metric_definitions_dict[model_trainer_name] = metric_definitions
 
+    @staticmethod
+    def visualize_jobs(
+        tuning_jobs: Union[
+            str,
+            "sagemaker.train.tuner.HyperparameterTuner",
+            List[Union[str, "sagemaker.train.tuner.HyperparameterTuner"]],
+        ],
+        return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False,
+    ):
+        """Create interactive visualization via altair charts using the sagemaker.amtviz package.
+        Args:
+            tuning_jobs (str or sagemaker.tuner.HyperparameterTuner or list[str, sagemaker.tuner.HyperparameterTuner]): 
+                One or more tuning jobs to create visualization for.
+            return_dfs: (bool): Option to return trials and full dataframe.
+            job_metrics: (list[str]): Metrics to be used in charts.
+            trials_only: (bool): Whether to show trials only or full dataframe.
+            advanced: (bool): Show a cumulative step line in the progress over time chart.
+
+        Returns:
+            A collection of charts (altair.VConcatChart); or charts, trials_df (pandas.DataFrame),
+            full_df (pandas.DataFrame) if ``return_dfs=True``.
+        """
+
+        try:
+            # Check if altair is installed
+            importlib.import_module("altair")
+        except ImportError:
+            print("Altair is not installed. Install Altair to use the visualization feature:")
+            print("  pip install altair")
+            print("After installing Altair, use the methods visualize_jobs or visualize_job.")
+            
+            return None
+
+        # If altair is installed, proceed with visualization
+        from sagemaker.core.amtviz import visualize_tuning_job
+
+        return visualize_tuning_job(
+            tuning_jobs,
+            return_dfs=return_dfs,
+            job_metrics=job_metrics,
+            trials_only=trials_only,
+            advanced=advanced,
+        )
+
+    def visualize_job(
+        self,
+        return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False,
+    ):
+        """Convenience method on instance level for visualize_jobs().
+        See static method visualize_jobs().
+        """
+        return HyperparameterTuner.visualize_jobs(
+            self,
+            return_dfs=return_dfs,
+            job_metrics=job_metrics,
+            trials_only=trials_only,
+            advanced=advanced,
+        )
 
     def _start_tuning_job(self, inputs):
         """Start a new hyperparameter tuning job using HyperParameterTuningJob."""
