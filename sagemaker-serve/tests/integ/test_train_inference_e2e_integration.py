@@ -33,10 +33,6 @@ MODEL_NAME_PREFIX = "train-inf-v3-test-model"
 ENDPOINT_NAME_PREFIX = "train-inf-v3-test-endpoint"
 TRAINING_JOB_PREFIX = "e2e-v3-pytorch"
 
-# Configuration
-AWS_REGION = "us-west-2"
-PYTORCH_TRAINING_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.13.1-cpu-py39"
-
 
 @pytest.mark.slow_test
 def test_train_inference_e2e_build_deploy_invoke_cleanup():
@@ -143,19 +139,28 @@ def create_schema_builder():
 
 def train_model():
     """Train model using ModelTrainer."""
+    from sagemaker.core import image_uris
     from sagemaker.core.helper.session_helper import Session
-    import boto3
     
-    # Create SageMaker session with AWS region
-    boto_session = boto3.Session(region_name=AWS_REGION)
-    sagemaker_session = Session(boto_session=boto_session)
+    # Get the current region from a session
+    session = Session()
+    region = session.boto_region_name
     
     training_code_dir = create_pytorch_training_code()
     unique_id = str(uuid.uuid4())[:8]
     
+    # Get training image for the current region
+    training_image = image_uris.retrieve(
+        framework="pytorch",
+        region=region,
+        version="1.13.1",
+        py_version="py39",
+        instance_type="ml.m5.xlarge",
+        image_scope="training"
+    )
+    
     model_trainer = ModelTrainer(
-        sagemaker_session=sagemaker_session,
-        training_image=PYTORCH_TRAINING_IMAGE,
+        training_image=training_image,
         source_code=SourceCode(
             source_dir=training_code_dir,
             entry_script="train.py",
@@ -173,6 +178,8 @@ def train_model():
 def build_and_deploy(model_trainer, unique_id):
     """Build and deploy model using ModelBuilder."""
     from sagemaker.serve.spec.inference_spec import InferenceSpec
+    from sagemaker.core import image_uris
+    from sagemaker.core.helper.session_helper import Session
     
     class SimpleInferenceSpec(InferenceSpec):
         def load(self, model_dir):
@@ -185,16 +192,30 @@ def build_and_deploy(model_trainer, unique_id):
 
     schema_builder = create_schema_builder()
     
+    # Get the current region from a session
+    session = Session()
+    region = session.boto_region_name
+    
+    # Get inference image for the current region
+    inference_image = image_uris.retrieve(
+        framework="pytorch",
+        region=region,
+        version="1.13.1",
+        py_version="py39",
+        instance_type="ml.m5.xlarge",
+        image_scope="inference"
+    )
+    
     model_builder = ModelBuilder(
         model=model_trainer,
         schema_builder=schema_builder,
         model_server=ModelServer.TORCHSERVE,
         inference_spec=SimpleInferenceSpec(),
-        image_uri=PYTORCH_TRAINING_IMAGE.replace("training", "inference"),
+        image_uri=inference_image,
         dependencies={"auto": False},
     )
     
-    core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}", region="us-west-2")
+    core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}")
     logger.info(f"Model Successfully Created: {core_model.model_name}")
     
     core_endpoint = model_builder.deploy(
