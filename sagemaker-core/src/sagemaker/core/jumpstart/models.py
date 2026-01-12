@@ -129,6 +129,7 @@ class InferenceAmiVersionEnum(StrEnum):
     """InferenceAmiVersionEnum"""
 
     AL2_AMI_SAGEMAKER_INFERENCE_GPU_2 = "al2-ami-sagemaker-inference-gpu-2"
+    AL2_AMI_SAGEMAKER_INFERENCE_GPU_3_1 = "al2-ami-sagemaker-inference-gpu-3-1"
 
 
 class ScopeEnum(StrEnum):
