@@ -705,12 +705,6 @@ class _ModelBuilderServers(object):
                 self.s3_model_data_url, _ = self._prepare_for_mode()
 
 
-        # Clean up empty secret key
-        if (
-            "SAGEMAKER_SERVE_SECRET_KEY" in self.env_vars
-            and not self.env_vars["SAGEMAKER_SERVE_SECRET_KEY"]
-        ):
-            del self.env_vars["SAGEMAKER_SERVE_SECRET_KEY"]
 
         # Instance type validation for SAGEMAKER_ENDPOINT mode
         if self.mode == Mode.SAGEMAKER_ENDPOINT and not self.instance_type:
