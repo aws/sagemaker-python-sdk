@@ -1235,6 +1235,11 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
 
     local_dependencies_path = RuntimeEnvironmentManager().snapshot(job_settings.dependencies)
 
+    # Ensure sagemaker dependency is included to prevent version mismatch issues
+    # Resolves issue where computing hash for integrity check changed in 2.256.0
+    local_dependencies_path = _ensure_sagemaker_dependency(local_dependencies_path)
+    job_settings.dependencies = local_dependencies_path
+
     if step_compilation_context:
         with _tmpdir() as tmp_dir:
             script_and_dependencies_s3uri = _prepare_dependencies_and_pre_execution_scripts(
@@ -1289,6 +1294,113 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
         )
 
     return input_data_config
+
+
+def _check_sagemaker_version_compatibility(sagemaker_requirement: str) -> None:
+    """Check if the sagemaker version requirement uses incompatible hashing.
+
+    Raises ValueError if the requirement would install a version that uses HMAC hashing
+    (which is incompatible with the current SHA256-based integrity checks).
+
+    Args:
+        sagemaker_requirement: The sagemaker requirement string (e.g., "sagemaker>=2.200.0")
+
+    Raises:
+        ValueError: If the requirement would install a version using HMAC hashing
+    """
+    import re
+    from packaging.specifiers import SpecifierSet
+    from packaging import version as pkg_version
+
+    match = re.search(r'sagemaker\s*(.+)$', sagemaker_requirement.strip(), re.IGNORECASE)
+    if not match:
+        return
+
+    specifier_str = match.group(1).strip()
+    
+    try:
+        specifier_set = SpecifierSet(specifier_str)
+    except Exception:
+        return
+
+    # Test if any HMAC version would satisfy the specifier
+    # V2 HMAC versions: < 2.256.0
+    v2_hmac_test_versions = ["2.0.0", "2.100.0", "2.200.0", "2.255.0", "2.255.1", "2.255.99"]
+    for test_version in v2_hmac_test_versions:
+        if test_version in specifier_set:
+            raise ValueError(
+                f"The sagemaker version specified in requirements.txt ({sagemaker_requirement}) "
+                f"could install a version using HMAC-based integrity checks which are incompatible "
+                f"with the current SHA256-based integrity checks. Please update to "
+                f"sagemaker>=2.256.0,<3.0.0 (for V2) or sagemaker>=3.2.0,<4.0.0 (for V3)."
+            )
+    
+    # V3 HMAC versions: < 3.2.0
+    v3_hmac_test_versions = ["3.0.0", "3.0.1", "3.1.0", "3.1.99"]
+    for test_version in v3_hmac_test_versions:
+        if test_version in specifier_set:
+            raise ValueError(
+                f"The sagemaker version specified in requirements.txt ({sagemaker_requirement}) "
+                f"could install a version using HMAC-based integrity checks which are incompatible "
+                f"with the current SHA256-based integrity checks. Please update to "
+                f"sagemaker>=2.256.0,<3.0.0 (for V2) or sagemaker>=3.2.0,<4.0.0 (for V3)."
+            )
+
+
+def _ensure_sagemaker_dependency(local_dependencies_path: str) -> str:
+    """Ensure sagemaker>=2.256.0 is in the dependencies.
+
+    This function ensures that the remote environment has a compatible version of sagemaker
+    that includes the fix for the HMAC key security issue. Versions < 2.256.0 use HMAC-based
+    integrity checks which require the REMOTE_FUNCTION_SECRET_KEY environment variable.
+    Versions >= 2.256.0 use SHA256-based integrity checks which are secure and don't require
+    the secret key.
+
+    If no dependencies are provided, creates a temporary requirements.txt with sagemaker.
+    If dependencies are provided, appends sagemaker if not already present.
+
+    Args:
+        local_dependencies_path: Path to user's dependencies file or None
+
+    Returns:
+        Path to the dependencies file (created or modified)
+
+    Raises:
+        ValueError: If user has pinned sagemaker to a version using HMAC hashing
+    """
+    import tempfile
+
+    SAGEMAKER_MIN_VERSION = "sagemaker>=2.256.0,<3.0.0"
+
+    if local_dependencies_path is None:
+        # Create a temporary requirements.txt in the system temp directory
+        # This avoids overwriting any user files in their working directory
+        fd, req_file = tempfile.mkstemp(suffix=".txt", prefix="sagemaker_requirements_")
+        os.close(fd)  # Close the file descriptor, we'll write to it ourselves
+
+        with open(req_file, "w") as f:
+            f.write(f"{SAGEMAKER_MIN_VERSION}\n")
+        logger.info("Created temporary requirements.txt at %s with %s", req_file, SAGEMAKER_MIN_VERSION)
+        return req_file
+
+    # If dependencies provided, ensure sagemaker is included
+    if local_dependencies_path.endswith(".txt"):
+        with open(local_dependencies_path, "r") as f:
+            content = f.read()
+
+        # Check if sagemaker is already specified
+        if "sagemaker" in content.lower():
+            # Extract the sagemaker requirement line for compatibility check
+            for line in content.split('\n'):
+                if 'sagemaker' in line.lower():
+                    _check_sagemaker_version_compatibility(line.strip())
+                    break
+        else:
+            with open(local_dependencies_path, "a") as f:
+                f.write(f"\n{SAGEMAKER_MIN_VERSION}\n")
+            logger.info("Appended %s to requirements.txt", SAGEMAKER_MIN_VERSION)
+
+    return local_dependencies_path
 
 
 def _prepare_dependencies_and_pre_execution_scripts(
