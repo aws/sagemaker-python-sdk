@@ -77,7 +77,6 @@ class SageMakerEndpointMode(
             upload_artifacts = self._upload_torchserve_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
-                secret_key=secret_key,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
                 should_upload_artifacts=True,
@@ -87,7 +86,6 @@ class SageMakerEndpointMode(
             upload_artifacts = self._upload_triton_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
-                secret_key=secret_key,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
                 should_upload_artifacts=True,
@@ -106,7 +104,6 @@ class SageMakerEndpointMode(
             upload_artifacts = self._upload_tensorflow_serving_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
-                secret_key=secret_key,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
                 should_upload_artifacts=True,
@@ -132,7 +129,6 @@ class SageMakerEndpointMode(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
                 s3_model_data_url=s3_model_data_url,
-                secret_key=secret_key,
                 image=image,
                 should_upload_artifacts=should_upload_artifacts,
             )
@@ -150,7 +146,6 @@ class SageMakerEndpointMode(
             upload_artifacts = self._upload_smd_artifacts(
                 model_path=model_path,
                 sagemaker_session=sagemaker_session,
-                secret_key=secret_key,
                 s3_model_data_url=s3_model_data_url,
                 image=image,
                 should_upload_artifacts=True,

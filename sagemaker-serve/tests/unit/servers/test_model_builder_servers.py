@@ -715,12 +715,11 @@ class TestBuildForTransformers(unittest.TestCase):
     @patch.object(MockModelBuilderServers, '_create_model')
     def test_build_clean_empty_secret_key(self, mock_create, mock_prepare, mock_detect,
                                          mock_dir, mock_nb):
-        """Test cleaning empty secret key from env_vars."""
+        """Test that secret key is not added to env_vars."""
         mock_nb.return_value = None
         mock_create.return_value = Mock()
         mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
         self.builder.model = Mock()
-        self.builder.env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = ""
         
         result = self.builder._build_for_transformers()
         

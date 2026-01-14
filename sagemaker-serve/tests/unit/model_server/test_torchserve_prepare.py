@@ -18,12 +18,11 @@ class TestTorchServePrepare(unittest.TestCase):
             shutil.rmtree(self.temp_dir)
 
     @patch('sagemaker.serve.model_server.torchserve.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.torchserve.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.torchserve.prepare.capture_dependencies')
     @patch('sagemaker.serve.model_server.torchserve.prepare.is_1p_image_uri')
     @patch('shutil.copy2')
     def test_prepare_for_torchserve_standard_image(self, mock_copy, mock_is_1p, mock_capture,
-                                                     mock_gen_key, mock_hash):
+                                                     mock_hash):
         """Test prepare_for_torchserve with standard image."""
         from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
         
@@ -35,33 +34,30 @@ class TestTorchServePrepare(unittest.TestCase):
         serve_pkl.write_bytes(b"test data")
         
         mock_is_1p.return_value = True
-        mock_gen_key.return_value = "test-secret-key"
         mock_hash.return_value = "test-hash"
         mock_session = Mock()
         mock_inference_spec = Mock()
         
-        with patch('builtins.open', mock_open(read_data=b"test data")):
-            secret_key = prepare_for_torchserve(
-                model_path=str(model_path),
-                shared_libs=[],
-                dependencies={},
-                session=mock_session,
-                image_uri="test-pytorch-image",
-                inference_spec=mock_inference_spec
-            )
+        secret_key = prepare_for_torchserve(
+            model_path=str(model_path),
+            shared_libs=[],
+            dependencies={},
+            session=mock_session,
+            image_uri="test-pytorch-image",
+            inference_spec=mock_inference_spec
+        )
         
-        self.assertEqual(secret_key, "test-secret-key")
+        self.assertEqual(secret_key, "")
         mock_inference_spec.prepare.assert_called_once_with(str(model_path))
         mock_capture.assert_called_once()
 
     @patch('os.rename')
     @patch('sagemaker.serve.model_server.torchserve.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.torchserve.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.torchserve.prepare.capture_dependencies')
     @patch('sagemaker.serve.model_server.torchserve.prepare.is_1p_image_uri')
     @patch('shutil.copy2')
     def test_prepare_for_torchserve_xgboost_image(self, mock_copy, mock_is_1p, mock_capture,
-                                                    mock_gen_key, mock_hash, mock_rename):
+                                                    mock_hash, mock_rename):
         """Test prepare_for_torchserve with xgboost image."""
         from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
         
@@ -73,31 +69,28 @@ class TestTorchServePrepare(unittest.TestCase):
         serve_pkl.write_bytes(b"test data")
         
         mock_is_1p.return_value = True
-        mock_gen_key.return_value = "test-secret-key"
         mock_hash.return_value = "test-hash"
         mock_session = Mock()
         
-        with patch('builtins.open', mock_open(read_data=b"test data")):
-            secret_key = prepare_for_torchserve(
-                model_path=str(model_path),
-                shared_libs=[],
-                dependencies={},
-                session=mock_session,
-                image_uri="xgboost-image:latest",
-                inference_spec=None
-            )
+        secret_key = prepare_for_torchserve(
+            model_path=str(model_path),
+            shared_libs=[],
+            dependencies={},
+            session=mock_session,
+            image_uri="xgboost-image",
+            inference_spec=None
+        )
         
-        self.assertEqual(secret_key, "test-secret-key")
-        # Verify xgboost_inference.py was copied and renamed
+        self.assertEqual(secret_key, "")
         mock_rename.assert_called_once()
+        mock_capture.assert_called_once()
 
     @patch('sagemaker.serve.model_server.torchserve.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.torchserve.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.torchserve.prepare.capture_dependencies')
     @patch('sagemaker.serve.model_server.torchserve.prepare.is_1p_image_uri')
     @patch('shutil.copy2')
     def test_prepare_for_torchserve_with_shared_libs(self, mock_copy, mock_is_1p, mock_capture,
-                                                       mock_gen_key, mock_hash):
+                                                       mock_hash):
         """Test prepare_for_torchserve copies shared libraries."""
         from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
         
@@ -112,7 +105,6 @@ class TestTorchServePrepare(unittest.TestCase):
         shared_lib.touch()
         
         mock_is_1p.return_value = False
-        mock_gen_key.return_value = "test-key"
         mock_hash.return_value = "test-hash"
         mock_session = Mock()
         
@@ -149,12 +141,11 @@ class TestTorchServePrepare(unittest.TestCase):
         self.assertIn("not a valid directory", str(context.exception))
 
     @patch('sagemaker.serve.model_server.torchserve.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.torchserve.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.torchserve.prepare.capture_dependencies')
     @patch('sagemaker.serve.model_server.torchserve.prepare.is_1p_image_uri')
     @patch('shutil.copy2')
     def test_prepare_for_torchserve_no_inference_spec(self, mock_copy, mock_is_1p, mock_capture,
-                                                        mock_gen_key, mock_hash):
+                                                        mock_hash):
         """Test prepare_for_torchserve without inference_spec."""
         from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
         
@@ -166,21 +157,19 @@ class TestTorchServePrepare(unittest.TestCase):
         serve_pkl.write_bytes(b"test data")
         
         mock_is_1p.return_value = False
-        mock_gen_key.return_value = "test-key"
         mock_hash.return_value = "test-hash"
         mock_session = Mock()
         
-        with patch('builtins.open', mock_open(read_data=b"test data")):
-            secret_key = prepare_for_torchserve(
-                model_path=str(model_path),
-                shared_libs=[],
-                dependencies={},
-                session=mock_session,
-                image_uri="test-image",
-                inference_spec=None
-            )
+        secret_key = prepare_for_torchserve(
+            model_path=str(model_path),
+            shared_libs=[],
+            dependencies={},
+            session=mock_session,
+            image_uri="test-image",
+            inference_spec=None
+        )
         
-        self.assertEqual(secret_key, "test-key")
+        self.assertEqual(secret_key, "")
 
 
 if __name__ == "__main__":
