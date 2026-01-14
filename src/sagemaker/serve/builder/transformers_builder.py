@@ -267,12 +267,6 @@ class Transformers(ABC):
             self.env_vars.update(env_vars)
             self.pysdk_model.env.update(self.env_vars)
 
-        if (
-            "SAGEMAKER_SERVE_SECRET_KEY" in self.pysdk_model.env
-            and not self.pysdk_model.env["SAGEMAKER_SERVE_SECRET_KEY"]
-        ):
-            del self.pysdk_model.env["SAGEMAKER_SERVE_SECRET_KEY"]
-
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
 

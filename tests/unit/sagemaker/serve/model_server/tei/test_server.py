@@ -51,7 +51,6 @@ class TeiServerTests(TestCase):
         local_tei_server._start_tei_serving(
             client=mock_docker_client,
             model_path=MODEL_PATH,
-            secret_key=SECRET_KEY,
             image=TEI_IMAGE,
             env_vars=ENV_VAR,
         )
@@ -68,7 +67,6 @@ class TeiServerTests(TestCase):
                 "HF_HOME": "/opt/ml/model/",
                 "HUGGINGFACE_HUB_CACHE": "/opt/ml/model/",
                 "KEY": "VALUE",
-                "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
             },
         )
 

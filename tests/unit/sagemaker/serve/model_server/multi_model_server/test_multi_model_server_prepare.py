@@ -52,7 +52,6 @@ class MultiModelServerPrepareTests(TestCase):
         local_multi_model_server._start_serving(
             client=mock_docker_client,
             model_path=MODEL_PATH,
-            secret_key=SECRET_KEY,
             env_vars=ENV_VAR,
             image=CPU_TF_IMAGE,
         )
@@ -68,7 +67,6 @@ class MultiModelServerPrepareTests(TestCase):
                 "KEY": "VALUE",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
                 "LOCAL_PYTHON": platform.python_version(),
             },
         )

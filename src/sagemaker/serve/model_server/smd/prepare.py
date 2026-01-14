@@ -11,10 +11,7 @@ from typing import List
 
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.detector.dependency_manager import capture_dependencies
-from sagemaker.serve.validations.check_integrity import (
-    generate_secret_key,
-    compute_hash,
-)
+from sagemaker.serve.validations.check_integrity import compute_hash
 from sagemaker.remote_function.core.serialization import _MetaData
 from sagemaker.serve.spec.inference_base import CustomOrchestrator, AsyncCustomOrchestrator
 
@@ -64,11 +61,10 @@ def prepare_for_smd(
 
     capture_dependencies(dependencies=dependencies, work_dir=code_dir)
 
-    secret_key = generate_secret_key()
     with open(str(code_dir.joinpath("serve.pkl")), "rb") as f:
         buffer = f.read()
-    hash_value = compute_hash(buffer=buffer, secret_key=secret_key)
+    hash_value = compute_hash(buffer=buffer)
     with open(str(code_dir.joinpath("metadata.json")), "wb") as metadata:
         metadata.write(_MetaData(hash_value).to_json())
 
-    return secret_key
+    return ""

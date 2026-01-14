@@ -22,7 +22,7 @@ class LocalTorchServe:
     """Placeholder docstring"""
 
     def _start_torch_serve(
-        self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
+        self, client: object, image: str, model_path: str, env_vars: dict
     ):
         """Placeholder docstring"""
         self.container = client.containers.run(
@@ -40,7 +40,6 @@ class LocalTorchServe:
             environment={
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
                 **env_vars,
             },
@@ -82,7 +81,6 @@ class SageMakerTorchServe:
         self,
         model_path: str,
         sagemaker_session: Session,
-        secret_key: str,
         s3_model_data_url: str = None,
         image: str = None,
         should_upload_artifacts: bool = False,
@@ -116,7 +114,6 @@ class SageMakerTorchServe:
             "SAGEMAKER_PROGRAM": "inference.py",
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars
