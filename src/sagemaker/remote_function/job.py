@@ -1296,6 +1296,111 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
     return input_data_config
 
 
+def _decrement_version(version_str: str) -> str:
+    """Decrement a version string by one minor or patch version.
+    
+    Rules:
+    - If patch version is 0 (e.g., 2.256.0), decrement minor: 2.256.0 -> 2.255.0
+    - If patch version is not 0 (e.g., 2.254.2), decrement patch: 2.254.2 -> 2.254.1
+    
+    Args:
+        version_str: Version string (e.g., "2.256.0")
+        
+    Returns:
+        Decremented version string
+    """
+    from packaging import version as pkg_version
+    
+    try:
+        parsed = pkg_version.parse(version_str)
+        major = parsed.major
+        minor = parsed.minor
+        patch = parsed.micro
+        
+        if patch == 0:
+            # Decrement minor version
+            minor = max(0, minor - 1)
+        else:
+            # Decrement patch version
+            patch = max(0, patch - 1)
+        
+        return f"{major}.{minor}.{patch}"
+    except Exception:
+        return version_str
+
+
+def _resolve_version_from_specifier(specifier_str: str) -> str:
+    """Resolve the version to check based on upper bounds.
+    
+    Upper bounds take priority. If upper bound is <3.0.0, it's safe (V2 only).
+    If no upper bound exists, it's safe (unbounded).
+    If the decremented upper bound is less than a lower bound, use the lower bound.
+    
+    Args:
+        specifier_str: Version specifier string (e.g., ">=2.256.0", "<2.256.0", "==2.255.0")
+        
+    Returns:
+        The resolved version string to check, or None if safe
+    """
+    import re
+    from packaging import version as pkg_version
+    
+    # Handle exact version pinning (==)
+    match = re.search(r'==\s*([\d.]+)', specifier_str)
+    if match:
+        return match.group(1)
+    
+    # Extract lower bounds for comparison
+    lower_bounds = []
+    for match in re.finditer(r'>=\s*([\d.]+)', specifier_str):
+        lower_bounds.append(match.group(1))
+    
+    # Handle upper bounds - find the most restrictive one
+    upper_bounds = []
+    
+    # Find all <= bounds
+    for match in re.finditer(r'<=\s*([\d.]+)', specifier_str):
+        upper_bounds.append(('<=', match.group(1)))
+    
+    # Find all < bounds
+    for match in re.finditer(r'<\s*([\d.]+)', specifier_str):
+        upper_bounds.append(('<', match.group(1)))
+    
+    if upper_bounds:
+        # Sort by version to find the most restrictive (lowest) upper bound
+        upper_bounds.sort(key=lambda x: pkg_version.parse(x[1]))
+        operator, version = upper_bounds[0]
+        
+        # Special case: if upper bound is <3.0.0, it's safe (V2 only)
+        try:
+            parsed_upper = pkg_version.parse(version)
+            if operator == '<' and parsed_upper.major == 3 and parsed_upper.minor == 0 and parsed_upper.micro == 0:
+                # <3.0.0 means V2 only, which is safe
+                return None
+        except Exception:
+            pass
+        
+        resolved_version = version
+        if operator == '<':
+            resolved_version = _decrement_version(version)
+        
+        # If we have a lower bound and the resolved version is less than it, use the lower bound
+        if lower_bounds:
+            try:
+                resolved_parsed = pkg_version.parse(resolved_version)
+                for lower_bound_str in lower_bounds:
+                    lower_parsed = pkg_version.parse(lower_bound_str)
+                    if resolved_parsed < lower_parsed:
+                        resolved_version = lower_bound_str
+            except Exception:
+                pass
+        
+        return resolved_version
+    
+    # For lower bounds only (>=, >), we don't check
+    return None
+
+
 def _check_sagemaker_version_compatibility(sagemaker_requirement: str) -> None:
     """Check if the sagemaker version requirement uses incompatible hashing.
 
@@ -1309,42 +1414,44 @@ def _check_sagemaker_version_compatibility(sagemaker_requirement: str) -> None:
         ValueError: If the requirement would install a version using HMAC hashing
     """
     import re
-    from packaging.specifiers import SpecifierSet
     from packaging import version as pkg_version
-
+    
     match = re.search(r'sagemaker\s*(.+)$', sagemaker_requirement.strip(), re.IGNORECASE)
     if not match:
         return
 
     specifier_str = match.group(1).strip()
     
+    # Resolve the version that would be installed
+    resolved_version_str = _resolve_version_from_specifier(specifier_str)
+    if not resolved_version_str:
+        # No upper bound or exact version, so we can't determine if it's bad
+        return
+    
     try:
-        specifier_set = SpecifierSet(specifier_str)
+        resolved_version = pkg_version.parse(resolved_version_str)
     except Exception:
         return
-
-    # Test if any HMAC version would satisfy the specifier
-    # V2 HMAC versions: < 2.256.0
-    v2_hmac_test_versions = ["2.0.0", "2.100.0", "2.200.0", "2.255.0", "2.255.1", "2.255.99"]
-    for test_version in v2_hmac_test_versions:
-        if test_version in specifier_set:
-            raise ValueError(
-                f"The sagemaker version specified in requirements.txt ({sagemaker_requirement}) "
-                f"could install a version using HMAC-based integrity checks which are incompatible "
-                f"with the current SHA256-based integrity checks. Please update to "
-                f"sagemaker>=2.256.0,<3.0.0 (for V2) or sagemaker>=3.2.0,<4.0.0 (for V3)."
-            )
     
-    # V3 HMAC versions: < 3.2.0
-    v3_hmac_test_versions = ["3.0.0", "3.0.1", "3.1.0", "3.1.99"]
-    for test_version in v3_hmac_test_versions:
-        if test_version in specifier_set:
-            raise ValueError(
-                f"The sagemaker version specified in requirements.txt ({sagemaker_requirement}) "
-                f"could install a version using HMAC-based integrity checks which are incompatible "
-                f"with the current SHA256-based integrity checks. Please update to "
-                f"sagemaker>=2.256.0,<3.0.0 (for V2) or sagemaker>=3.2.0,<4.0.0 (for V3)."
-            )
+    # Define HMAC thresholds for each major version
+    v2_hmac_threshold = pkg_version.parse("2.256.0")
+    v3_hmac_threshold = pkg_version.parse("3.2.0")
+    
+    # Check if the resolved version uses HMAC hashing
+    uses_hmac = False
+    if resolved_version.major == 2 and resolved_version < v2_hmac_threshold:
+        uses_hmac = True
+    elif resolved_version.major == 3 and resolved_version < v3_hmac_threshold:
+        uses_hmac = True
+    
+    if uses_hmac:
+        raise ValueError(
+            f"The sagemaker version specified in requirements.txt ({sagemaker_requirement}) "
+            f"could install a version using HMAC-based integrity checks which are incompatible "
+            f"with the current SHA256-based integrity checks. Please update to "
+            f"sagemaker>=2.256.0,<3.0.0 (for V2) or sagemaker>=3.2.0,<4.0.0 (for V3)."
+        )
+
 
 
 def _ensure_sagemaker_dependency(local_dependencies_path: str) -> str:

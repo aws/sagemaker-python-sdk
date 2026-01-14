@@ -264,9 +264,9 @@ class TestCheckSagemakerVersionCompatibility(unittest.TestCase):
             _check_sagemaker_version_compatibility("sagemaker<=2.255.0")
 
     def test_v2_bad_greater_than_255_0(self):
-        """Test V2 greater than 2.255.0 (bad - could be 2.255.1 with HMAC)."""
-        with self.assertRaises(ValueError):
-            _check_sagemaker_version_compatibility("sagemaker>2.255.0")
+        """Test V2 greater than 2.255.0 (not checked - treat as lower bound only)."""
+        # Should not raise - > is treated as a lower bound, we don't check those
+        _check_sagemaker_version_compatibility("sagemaker>2.255.0")
 
     def test_v2_bad_range_200_to_255(self):
         """Test V2 range 2.200.0 to 2.255.0 (bad - HMAC)."""
@@ -305,11 +305,16 @@ class TestCheckSagemakerVersionCompatibility(unittest.TestCase):
         # Should not raise
         _check_sagemaker_version_compatibility("sagemaker>=2.256.0,<3.0.0")
 
+    def test_multiple_version_specifiers_good_with_lower_bound(self):
+        """Test multiple version specifiers that are good (upper bound resolves to good version)."""
+        # Should not raise - <2.300.0 decrements to 2.299.0 which is >= 2.256.0
+        _check_sagemaker_version_compatibility("sagemaker>=2.200.0,<2.300.0")
+
     def test_multiple_version_specifiers_bad(self):
         """Test multiple version specifiers that are bad."""
-        # Should raise because lower bound is < 2.256.0
+        # Should raise - <2.256.0 decrements to 2.255.0 which is < 2.256.0 (HMAC)
         with self.assertRaises(ValueError):
-            _check_sagemaker_version_compatibility("sagemaker>=2.200.0,<2.300.0")
+            _check_sagemaker_version_compatibility("sagemaker>=2.200.0,<2.256.0")
 
 
 if __name__ == "__main__":
