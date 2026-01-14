@@ -9,6 +9,12 @@ import sys
 import tempfile
 import pytest
 
+# Skip decorator for AWS configuration
+skip_if_no_aws_region = pytest.mark.skipif(
+    not os.environ.get('AWS_DEFAULT_REGION'),
+    reason="AWS credentials not configured"
+)
+
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../../src'))
 
@@ -19,6 +25,7 @@ class TestRemoteFunctionDependencyInjection:
     """Integration tests for dependency injection in remote functions."""
 
     @pytest.mark.integ
+    @skip_if_no_aws_region
     def test_remote_function_without_dependencies(self):
         """Test remote function execution without explicit dependencies.
         
@@ -42,6 +49,7 @@ class TestRemoteFunctionDependencyInjection:
         print("✓ Remote function without dependencies executed successfully")
 
     @pytest.mark.integ
+    @skip_if_no_aws_region
     def test_remote_function_with_user_dependencies_no_sagemaker(self):
         """Test remote function with user dependencies but no sagemaker.
         
@@ -77,6 +85,7 @@ class TestRemoteFunctionVersionCompatibility:
     """Tests for version compatibility between local and remote environments."""
 
     @pytest.mark.integ
+    @skip_if_no_aws_region
     def test_deserialization_with_injected_sagemaker(self):
         """Test that deserialization works with injected sagemaker dependency.
         
@@ -100,6 +109,7 @@ class TestRemoteFunctionVersionCompatibility:
         print("✓ Deserialization with injected sagemaker works correctly")
 
     @pytest.mark.integ
+    @skip_if_no_aws_region
     def test_multiple_remote_functions_with_dependencies(self):
         """Test multiple remote functions with different dependency configurations.
         
