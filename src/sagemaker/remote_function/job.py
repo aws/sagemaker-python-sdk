@@ -1331,7 +1331,7 @@ def _decrement_version(version_str: str) -> str:
 
 def _resolve_version_from_specifier(specifier_str: str) -> str:
     """Resolve the version to check based on upper bounds.
-    
+
     Upper bounds take priority. If upper bound is <3.0.0, it's safe (V2 only).
     If no upper bound exists, it's safe (unbounded).
     If the decremented upper bound is less than a lower bound, use the lower bound.
@@ -1375,9 +1375,9 @@ def _resolve_version_from_specifier(specifier_str: str) -> str:
         try:
             parsed_upper = pkg_version.parse(version)
             if (
-                operator == "<" 
-                and parsed_upper.major == 3 
-                and parsed_upper.minor == 0 
+                operator == "<"
+                and parsed_upper.major == 3
+                and parsed_upper.minor == 0
                 and parsed_upper.micro == 0
             ):
                 # <3.0.0 means V2 only, which is safe

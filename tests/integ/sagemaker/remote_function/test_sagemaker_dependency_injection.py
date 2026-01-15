@@ -11,7 +11,7 @@ import pytest
 
 # Skip decorator for AWS configuration
 skip_if_no_aws_region = pytest.mark.skipif(
-    not os.environ.get('AWS_DEFAULT_REGION'), reason="AWS credentials not configured"
+    not os.environ.get("AWS_DEFAULT_REGION"), reason="AWS credentials not configured"
 )
 
 # Add src to path
@@ -70,7 +70,7 @@ class TestRemoteFunctionDependencyInjection:
                 """Function that uses numpy."""
                 import numpy as np
 
-                return np.array([x, x*2, x*3]).sum()
+                return np.array([x, x * 2, x * 3]).sum()
 
             # Execute the function
             result = compute_with_numpy(5)

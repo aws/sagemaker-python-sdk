@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
 
 from sagemaker.remote_function.job import (
-    _ensure_sagemaker_dependency, 
+    _ensure_sagemaker_dependency,
     _check_sagemaker_version_compatibility,
 )
 
