@@ -67,12 +67,10 @@ def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool =
         with open(path, "r") as f:
             autodetect_depedencies = f.read().splitlines()
         # Pin sagemaker to 2.257.0+ to ensure SHA256 hashing is used for integrity checks
-        # (version where HMAC vulnerability was fixed). Update this version when 2.257.0 is released.
-        autodetect_depedencies.append("sagemaker[huggingface]>=2.257.0")
+        autodetect_depedencies.append("sagemaker[huggingface]>=2.257.0,<3.0.0")
     else:
         # Pin sagemaker to 2.257.0+ to ensure SHA256 hashing is used for integrity checks
-        # (version where HMAC vulnerability was fixed). Update this version when 2.257.0 is released.
-        autodetect_depedencies = ["sagemaker[huggingface]>=2.257.0"]
+        autodetect_depedencies = ["sagemaker[huggingface]>=2.257.0,<3.0.0"]
 
     module_version_dict = _parse_dependency_list(autodetect_depedencies)
 
