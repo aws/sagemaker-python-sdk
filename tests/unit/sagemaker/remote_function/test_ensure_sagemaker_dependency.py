@@ -11,10 +11,10 @@ import sys
 import tempfile
 import unittest
 
-# Add src to path
+# Add src to path before importing sagemaker
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
 
-from sagemaker.remote_function.job import (
+from sagemaker.remote_function.job import (  # noqa: E402
     _ensure_sagemaker_dependency,
     _check_sagemaker_version_compatibility,
 )

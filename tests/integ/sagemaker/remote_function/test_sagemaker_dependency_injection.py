@@ -8,14 +8,13 @@ from __future__ import absolute_import
 
 import os
 import sys
-import tempfile
 
 import pytest
 
-# Add src to path
+# Add src to path before importing sagemaker
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
 
-from sagemaker.remote_function import remote
+from sagemaker.remote_function import remote  # noqa: E402
 
 # Skip decorator for AWS configuration
 skip_if_no_aws_region = pytest.mark.skipif(
