@@ -3,15 +3,14 @@
 Tests the logic that ensures sagemaker>=2.256.0 is included in remote function dependencies
 to prevent version mismatch issues with HMAC key integrity checks.
 """
+from __future__ import absolute_import
 
 import os
+import sys
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock
 
 # Add src to path
-import sys
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
 
 from sagemaker.remote_function.job import (

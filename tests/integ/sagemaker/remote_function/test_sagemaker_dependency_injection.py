@@ -3,21 +3,23 @@
 These tests verify that the sagemaker>=2.256.0 dependency is properly injected
 into remote function jobs, preventing version mismatch issues.
 """
+from __future__ import absolute_import
 
 import os
 import sys
 import tempfile
-import pytest
 
-# Skip decorator for AWS configuration
-skip_if_no_aws_region = pytest.mark.skipif(
-    not os.environ.get("AWS_DEFAULT_REGION"), reason="AWS credentials not configured"
-)
+import pytest
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
 
 from sagemaker.remote_function import remote
+
+# Skip decorator for AWS configuration
+skip_if_no_aws_region = pytest.mark.skipif(
+    not os.environ.get("AWS_DEFAULT_REGION"), reason="AWS credentials not configured"
+)
 
 
 class TestRemoteFunctionDependencyInjection:
