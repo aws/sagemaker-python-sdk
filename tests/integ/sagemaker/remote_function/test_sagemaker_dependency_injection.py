@@ -62,6 +62,7 @@ class TestRemoteFunctionDependencyInjection:
             req_file = f.name
 
         try:
+
             @remote(
                 instance_type="ml.m5.large",
                 dependencies=req_file,
