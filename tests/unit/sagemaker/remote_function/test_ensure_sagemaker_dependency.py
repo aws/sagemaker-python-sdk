@@ -11,9 +11,13 @@ from unittest.mock import patch, MagicMock
 
 # Add src to path
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../../src'))
 
-from sagemaker.remote_function.job import _ensure_sagemaker_dependency, _check_sagemaker_version_compatibility
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
+
+from sagemaker.remote_function.job import (
+    _ensure_sagemaker_dependency, 
+    _check_sagemaker_version_compatibility,
+)
 
 
 class TestEnsureSagemakerDependency(unittest.TestCase):
@@ -22,51 +26,51 @@ class TestEnsureSagemakerDependency(unittest.TestCase):
     def test_no_dependencies_creates_temp_requirements_file(self):
         """Test that a temp requirements.txt is created when no dependencies provided."""
         result = _ensure_sagemaker_dependency(None)
-        
+
         # Verify file was created
         self.assertTrue(os.path.exists(result), f"Requirements file not created at {result}")
-        
+
         # Verify it's in temp directory
         self.assertIn(tempfile.gettempdir(), result)
-        
+
         # Verify content
         with open(result, "r") as f:
             content = f.read()
         self.assertIn("sagemaker>=2.256.0,<3.0.0", content)
-        
+
         # Cleanup
         os.remove(result)
 
     def test_no_dependencies_file_has_correct_format(self):
         """Test that created requirements.txt has correct format."""
         result = _ensure_sagemaker_dependency(None)
-        
+
         with open(result, "r") as f:
             lines = f.readlines()
-        
+
         # Should have exactly one line with sagemaker dependency
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines[0].strip(), "sagemaker>=2.256.0,<3.0.0")
-        
+
         # Cleanup
         os.remove(result)
 
     def test_appends_sagemaker_to_existing_requirements(self):
         """Test that sagemaker is appended to existing requirements.txt."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("numpy>=1.20.0\npandas>=1.3.0\n")
             temp_file = f.name
-        
+
         try:
             result = _ensure_sagemaker_dependency(temp_file)
-            
+
             # Should return the same file
             self.assertEqual(result, temp_file)
-            
+
             # Verify content
             with open(result, "r") as f:
                 content = f.read()
-            
+
             self.assertIn("numpy>=1.20.0", content)
             self.assertIn("pandas>=1.3.0", content)
             self.assertIn("sagemaker>=2.256.0,<3.0.0", content)
@@ -75,20 +79,20 @@ class TestEnsureSagemakerDependency(unittest.TestCase):
 
     def test_does_not_duplicate_sagemaker_if_already_present(self):
         """Test that sagemaker is not duplicated if already in requirements."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("numpy>=1.20.0\nsagemaker>=2.256.0,<3.0.0\npandas>=1.3.0\n")
             temp_file = f.name
-        
+
         try:
             result = _ensure_sagemaker_dependency(temp_file)
-            
+
             with open(result, "r") as f:
                 content = f.read()
-            
+
             # Count occurrences of sagemaker
             sagemaker_count = content.lower().count("sagemaker")
             self.assertEqual(sagemaker_count, 1, "sagemaker should appear exactly once")
-            
+
             # Verify user's version is preserved
             self.assertIn("sagemaker>=2.256.0,<3.0.0", content)
         finally:
@@ -96,16 +100,16 @@ class TestEnsureSagemakerDependency(unittest.TestCase):
 
     def test_preserves_user_dependencies(self):
         """Test that user's existing dependencies are preserved."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("torch>=1.9.0\ntorchvision>=0.10.0\nscikit-learn>=0.24.0\n")
             temp_file = f.name
-        
+
         try:
             result = _ensure_sagemaker_dependency(temp_file)
-            
+
             with open(result, "r") as f:
                 content = f.read()
-            
+
             # All user dependencies should be present
             self.assertIn("torch>=1.9.0", content)
             self.assertIn("torchvision>=0.10.0", content)
@@ -116,56 +120,56 @@ class TestEnsureSagemakerDependency(unittest.TestCase):
 
     def test_handles_yml_files_gracefully(self):
         """Test that yml files are returned unchanged."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write("name: test-env\nchannels:\n  - conda-forge\ndependencies:\n  - numpy\n")
             temp_file = f.name
-        
+
         try:
             result = _ensure_sagemaker_dependency(temp_file)
-            
+
             # Should return the same file
             self.assertEqual(result, temp_file)
-            
+
             # Content should be unchanged (yml files are not modified)
             with open(result, "r") as f:
                 content = f.read()
-            
+
             self.assertNotIn("sagemaker", content.lower())
         finally:
             os.remove(temp_file)
 
     def test_handles_yaml_files_gracefully(self):
         """Test that yaml files are returned unchanged."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("name: test-env\nchannels:\n  - conda-forge\n")
             temp_file = f.name
-        
+
         try:
             result = _ensure_sagemaker_dependency(temp_file)
-            
+
             # Should return the same file
             self.assertEqual(result, temp_file)
-            
+
             # Content should be unchanged
             with open(result, "r") as f:
                 content = f.read()
-            
+
             self.assertNotIn("sagemaker", content.lower())
         finally:
             os.remove(temp_file)
 
     def test_case_insensitive_sagemaker_detection(self):
         """Test that sagemaker detection is case-insensitive."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("numpy>=1.20.0\nSAGEMAKER>=2.256.0,<3.0.0\n")
             temp_file = f.name
-        
+
         try:
             result = _ensure_sagemaker_dependency(temp_file)
-            
+
             with open(result, "r") as f:
                 content = f.read()
-            
+
             # Should not duplicate even with different case
             sagemaker_count = content.lower().count("sagemaker")
             self.assertEqual(sagemaker_count, 1)
@@ -175,28 +179,28 @@ class TestEnsureSagemakerDependency(unittest.TestCase):
     def test_temp_file_location(self):
         """Test that temp file is created in system temp directory."""
         result = _ensure_sagemaker_dependency(None)
-        
+
         # Should be in system temp directory
         temp_dir = tempfile.gettempdir()
         self.assertTrue(result.startswith(temp_dir))
-        
+
         # Should have correct prefix
         self.assertIn("sagemaker_requirements_", result)
-        
+
         # Cleanup
         os.remove(result)
 
     def test_version_constraint_format(self):
         """Test that version constraint has correct format."""
         result = _ensure_sagemaker_dependency(None)
-        
+
         with open(result, "r") as f:
             content = f.read().strip()
-        
+
         # Should have both lower and upper bounds
         self.assertIn(">=2.256.0", content)
         self.assertIn("<3.0.0", content)
-        
+
         # Cleanup
         os.remove(result)
 
