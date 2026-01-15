@@ -145,7 +145,6 @@ class TestSageMakerTorchServe(unittest.TestCase):
         
         self.assertIsNone(s3_path)
         self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
 
 
 if __name__ == "__main__":

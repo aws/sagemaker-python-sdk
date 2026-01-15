@@ -128,7 +128,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured model ready for TorchServe deployment.
         """
-        self.secret_key = ""
         
         # Save inference spec if we have local artifacts
         self._save_model_inference_spec()
@@ -150,7 +149,7 @@ class _ModelBuilderServers(object):
 
             # Prepare TorchServe artifacts for local container mode
             if self.mode == Mode.LOCAL_CONTAINER and self.model_path:
-                self.secret_key = prepare_for_torchserve(
+                prepare_for_torchserve(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
                     dependencies=self.dependencies,
@@ -159,7 +158,7 @@ class _ModelBuilderServers(object):
                     inference_spec=self.inference_spec,
                 )
             if self.mode == Mode.SAGEMAKER_ENDPOINT and self.model_path:
-                self.secret_key = prepare_for_torchserve(
+                prepare_for_torchserve(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
                     dependencies=self.dependencies,
@@ -187,7 +186,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured model ready for TGI deployment.
         """
-        self.secret_key = ""
         
         # Initialize TGI-specific configuration
         if self.model_server != ModelServer.TGI:
@@ -299,7 +297,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured model ready for DJL Serving deployment.
         """
-        self.secret_key = ""
         self.model_server = ModelServer.DJL_SERVING
         
         # Set MODEL_LOADING_TIMEOUT from instance variable
@@ -408,7 +405,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured model ready for Triton deployment.
         """
-        self.secret_key = ""
         self._validate_for_triton()
 
         if isinstance(self.model, str):
@@ -467,7 +463,6 @@ class _ModelBuilderServers(object):
         Raises:
             ValueError: If image_uri is not provided for TensorFlow Serving.
         """
-        self.secret_key = ""
         if not getattr(self, "_is_mlflow_model", False):
             raise ValueError("Tensorflow Serving is currently only supported for mlflow models.")
         
@@ -481,7 +476,7 @@ class _ModelBuilderServers(object):
             raise ValueError("image_uri is required for TensorFlow Serving deployment")
 
         # Prepare TensorFlow Serving artifacts for local container mode
-        self.secret_key = prepare_for_tf_serving(
+        prepare_for_tf_serving(
             model_path=self.model_path,
             shared_libs=self.shared_libs,
             dependencies=self.dependencies,
@@ -506,7 +501,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured model ready for TEI deployment.
         """
-        self.secret_key = ""
         
         # Set MODEL_LOADING_TIMEOUT from instance variable
         if self.model_data_download_timeout:
@@ -592,7 +586,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured model ready for SMD deployment.
         """
-        self.secret_key = ""
         
         self._save_model_inference_spec()
 
@@ -602,7 +595,7 @@ class _ModelBuilderServers(object):
                 cpu_or_gpu = self._get_processing_unit()
                 self.image_uri = self._get_smd_image_uri(processing_unit=cpu_or_gpu)
 
-            self.secret_key = prepare_for_smd(
+            prepare_for_smd(
                 model_path=self.model_path,
                 shared_libs=self.shared_libs,
                 dependencies=self.dependencies,
@@ -626,7 +619,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured model ready for Transformers deployment.
         """
-        self.secret_key = ""
         self.model_server = ModelServer.MMS
         
         # Set MODEL_LOADING_TIMEOUT from instance variable
@@ -646,7 +638,7 @@ class _ModelBuilderServers(object):
                 self._create_conda_env()
 
             if self.mode in [Mode.LOCAL_CONTAINER] and self.model_path:
-                self.secret_key = prepare_for_mms(
+                prepare_for_mms(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
                     dependencies=self.dependencies,
@@ -655,7 +647,7 @@ class _ModelBuilderServers(object):
                     inference_spec=self.inference_spec,
                 )
             if self.mode == Mode.SAGEMAKER_ENDPOINT and self.model_path:
-                self.secret_key = prepare_for_mms(
+                prepare_for_mms(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
                     dependencies=self.dependencies,
@@ -725,7 +717,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured DJL model for JumpStart deployment.
         """
-        self.secret_key = ""
         self.model_server = ModelServer.DJL_SERVING
 
         from sagemaker.serve.model_server.djl_serving.prepare import _create_dir_structure
@@ -761,7 +752,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured TGI model for JumpStart deployment.
         """
-        self.secret_key = ""
         self.model_server = ModelServer.TGI
 
         from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
@@ -797,7 +787,6 @@ class _ModelBuilderServers(object):
         Returns:
             Model: Configured MMS model for JumpStart deployment.
         """
-        self.secret_key = ""
         self.model_server = ModelServer.MMS
 
         from sagemaker.serve.model_server.multi_model_server.prepare import _create_dir_structure
@@ -840,7 +829,6 @@ class _ModelBuilderServers(object):
         """
         from sagemaker.core.jumpstart.factory.utils import get_init_kwargs
 
-        self.secret_key = ""
         
         # Get JumpStart model configuration
         init_kwargs = get_init_kwargs(

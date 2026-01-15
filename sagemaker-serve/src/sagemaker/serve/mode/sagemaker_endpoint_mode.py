@@ -56,7 +56,6 @@ class SageMakerEndpointMode(
     def prepare(
         self,
         model_path: str,
-        secret_key: str,
         s3_model_data_url: str = None,
         sagemaker_session: Session = None,
         image: str = None,

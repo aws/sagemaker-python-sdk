@@ -233,13 +233,12 @@ class TestBuildForTorchServe(unittest.TestCase):
         """Test building for LOCAL_CONTAINER mode."""
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.model = Mock()
-        mock_ts_prepare.return_value = "secret123"
+        mock_ts_prepare.return_value = None
         mock_create.return_value = Mock()
         
         result = self.builder._build_for_torchserve()
         
         mock_ts_prepare.assert_called_once()
-        self.assertEqual(self.builder.secret_key, "secret123")
         mock_create.assert_called_once()
     
     @patch('sagemaker.serve.model_builder_servers.prepare_for_torchserve')
@@ -251,14 +250,13 @@ class TestBuildForTorchServe(unittest.TestCase):
         """Test building for SAGEMAKER_ENDPOINT mode."""
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
         self.builder.model = Mock()
-        mock_ts_prepare.return_value = "secret456"
+        mock_ts_prepare.return_value = None
         mock_create.return_value = Mock()
         mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
         
         result = self.builder._build_for_torchserve()
         
         mock_ts_prepare.assert_called_once()
-        self.assertEqual(self.builder.secret_key, "secret456")
         mock_prepare.assert_called_with(should_upload_artifacts=True)
 
 
@@ -527,13 +525,12 @@ class TestBuildForTensorFlowServing(unittest.TestCase):
     @patch.object(MockModelBuilderServers, '_create_model')
     def test_build_mlflow_model(self, mock_create, mock_prepare_mode, mock_tf_prepare, mock_save):
         """Test building MLflow model for TensorFlow Serving."""
-        mock_tf_prepare.return_value = "secret789"
+        mock_tf_prepare.return_value = None
         mock_create.return_value = Mock()
         mock_prepare_mode.return_value = ("s3://bucket/model.tar.gz", None)
         
         result = self.builder._build_for_tensorflow_serving()
         
-        self.assertEqual(self.builder.secret_key, "secret789")
         mock_save.assert_called_once()
         mock_create.assert_called_once()
     
@@ -622,7 +619,7 @@ class TestBuildForSMD(unittest.TestCase):
         """Test building with auto-detected image."""
         mock_get_unit.return_value = "gpu"
         mock_get_img.return_value = "smd-image-uri"
-        mock_smd_prepare.return_value = "secret999"
+        mock_smd_prepare.return_value = None
         mock_create.return_value = Mock()
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.image_uri = None
@@ -631,7 +628,6 @@ class TestBuildForSMD(unittest.TestCase):
         result = self.builder._build_for_smd()
         
         self.assertEqual(self.builder.image_uri, "smd-image-uri")
-        self.assertEqual(self.builder.secret_key, "secret999")
         mock_create.assert_called_once()
 
 
@@ -655,7 +651,7 @@ class TestBuildForTransformers(unittest.TestCase):
                                                        mock_nb, mock_mms_prepare, mock_save):
         """Test building with inference_spec for LOCAL_CONTAINER."""
         mock_nb.return_value = None
-        mock_mms_prepare.return_value = "secret111"
+        mock_mms_prepare.return_value = None
         mock_create.return_value = Mock()
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.inference_spec = Mock()
@@ -664,7 +660,6 @@ class TestBuildForTransformers(unittest.TestCase):
         
         mock_save.assert_called_once()
         mock_mms_prepare.assert_called_once()
-        self.assertEqual(self.builder.secret_key, "secret111")
         mock_create.assert_called_once()
     
     @patch('sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf')

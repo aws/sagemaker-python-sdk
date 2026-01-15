@@ -77,9 +77,6 @@ class TestSageMakerSmdServer(unittest.TestCase):
         
         self.assertIsNone(s3_path)
         self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
-        
-        self.assertIsNone(s3_path)
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
 
 
 if __name__ == "__main__":

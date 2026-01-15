@@ -47,7 +47,7 @@ class TestTorchServePrepare(unittest.TestCase):
             inference_spec=mock_inference_spec
         )
         
-        self.assertEqual(secret_key, "")
+        self.assertIsNone(secret_key)
         mock_inference_spec.prepare.assert_called_once_with(str(model_path))
         mock_capture.assert_called_once()
 
@@ -81,7 +81,7 @@ class TestTorchServePrepare(unittest.TestCase):
             inference_spec=None
         )
         
-        self.assertEqual(secret_key, "")
+        self.assertIsNone(secret_key)
         mock_rename.assert_called_once()
         mock_capture.assert_called_once()
 
@@ -169,7 +169,7 @@ class TestTorchServePrepare(unittest.TestCase):
             inference_spec=None
         )
         
-        self.assertEqual(secret_key, "")
+        self.assertIsNone(secret_key)
 
 
 if __name__ == "__main__":

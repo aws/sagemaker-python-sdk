@@ -95,8 +95,8 @@ class TestMultiModelServerPrepare(unittest.TestCase):
             inference_spec=mock_inference_spec
         )
         
-        # Should return empty string now (not secret key)
-        self.assertEqual(secret_key, "")
+        # Should return None now (no longer returns secret key)
+        self.assertIsNone(secret_key)
         mock_inference_spec.prepare.assert_called_once_with(str(model_path))
         mock_capture.assert_called_once()
 

@@ -81,7 +81,7 @@ def prepare_for_mms(
     image_uri: str,
     inference_spec: InferenceSpec = None,
 ) -> str:
-    """Prepares for InferenceSpec using model_path, writes inference.py, and captures dependencies to generate secret_key.
+    """Prepares for InferenceSpec using model_path, writes inference.py, and captures dependencies.
 
     Args:to
         model_path (str) : Argument
@@ -91,7 +91,7 @@ def prepare_for_mms(
         inference_spec (InferenceSpec, optional) : Argument
             (default is None)
     Returns:
-        ( str ) : secret_key
+        ( str ) : Empty string for backward compatibility
     """
     model_path = Path(model_path)
     if not model_path.exists():

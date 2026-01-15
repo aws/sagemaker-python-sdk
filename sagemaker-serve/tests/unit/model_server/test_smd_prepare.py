@@ -42,7 +42,7 @@ class TestSmdPrepare(unittest.TestCase):
             inference_spec=mock_inference_spec
         )
         
-        self.assertEqual(secret_key, "")
+        self.assertIsNone(secret_key)
         mock_inference_spec.prepare.assert_called_once_with(str(model_path))
 
     @patch('os.rename')
@@ -71,7 +71,7 @@ class TestSmdPrepare(unittest.TestCase):
             inference_spec=mock_orchestrator
         )
         
-        self.assertEqual(secret_key, "")
+        self.assertIsNone(secret_key)
         # Verify custom_execution_inference.py was copied and renamed
         mock_rename.assert_called_once()
 

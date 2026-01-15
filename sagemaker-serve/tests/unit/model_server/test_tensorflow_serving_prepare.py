@@ -43,7 +43,7 @@ class TestTensorflowServingPrepare(unittest.TestCase):
             dependencies={}
         )
         
-        self.assertEqual(secret_key, "")
+        self.assertIsNone(secret_key)
         mock_capture.assert_called_once()
         mock_move.assert_called_once()
 
@@ -74,8 +74,6 @@ class TestTensorflowServingPrepare(unittest.TestCase):
             )
         self.assertIn("SavedModel is not found", str(context.exception))
 
-    @patch('sagemaker.serve.model_server.tensorflow_serving.prepare._move_contents')
-    @patch('sagemaker.serve.model_server.tensorflow_serving.prepare._get_saved_model_path_for_tensorflow_and_keras_flavor')
     @patch('sagemaker.serve.model_server.tensorflow_serving.prepare._move_contents')
     @patch('sagemaker.serve.model_server.tensorflow_serving.prepare._get_saved_model_path_for_tensorflow_and_keras_flavor')
     @patch('sagemaker.serve.model_server.tensorflow_serving.prepare.compute_hash')
