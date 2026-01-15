@@ -3,6 +3,7 @@
 These tests verify that the sagemaker>=2.256.0 dependency is properly injected
 into remote function jobs, preventing version mismatch issues.
 """
+
 from __future__ import absolute_import
 
 import os
