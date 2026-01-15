@@ -396,7 +396,7 @@ class Transformers(ABC):
 
             self._auto_detect_container()
 
-            self.secret_key = prepare_for_mms(
+            prepare_for_mms(
                 model_path=self.model_path,
                 shared_libs=self.shared_libs,
                 dependencies=self.dependencies,

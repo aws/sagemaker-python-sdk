@@ -92,7 +92,6 @@ class SageMakerMultiModelServer:
     def _upload_server_artifacts(
         self,
         model_path: str,
-        secret_key: str,
         sagemaker_session: Session,
         s3_model_data_url: str = None,
         image: str = None,

@@ -448,7 +448,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
                 str(Mode.SAGEMAKER_ENDPOINT)
             ].prepare(
                 (model_path or self.model_path),
-                self.secret_key,
                 self.serve_settings.s3_model_data_url,
                 self.sagemaker_session,
                 self.image_uri,
@@ -709,7 +708,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             )
 
             self.modes[str(Mode.LOCAL_CONTAINER)].create_server(
-                self.image_uri, container_timeout_in_second, self.secret_key, predictor
+                self.image_uri, container_timeout_in_second, predictor
             )
             return predictor
 
@@ -778,7 +777,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.mode != Mode.IN_PROCESS:
             self._auto_detect_container()
 
-            self.secret_key = prepare_for_torchserve(
+            prepare_for_torchserve(
                 model_path=self.model_path,
                 shared_libs=self.shared_libs,
                 dependencies=self.dependencies,
@@ -798,7 +797,7 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self.mode != Mode.IN_PROCESS:
             self._auto_detect_container()
 
-            self.secret_key = prepare_for_smd(
+            prepare_for_smd(
                 model_path=self.model_path,
                 shared_libs=self.shared_libs,
                 dependencies=self.dependencies,

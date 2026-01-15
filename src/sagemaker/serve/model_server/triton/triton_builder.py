@@ -210,8 +210,6 @@ class Triton:
             export_path.mkdir(parents=True)
 
         if self.model:
-            self.secret_key = "dummy secret key for onnx backend"
-
             if self._framework == "pytorch":
                 self._export_pytorch_to_onnx(
                     export_path=export_path, model=self.model, schema_builder=self.schema_builder
