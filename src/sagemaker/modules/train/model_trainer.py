@@ -649,7 +649,7 @@ class ModelTrainer(BaseModel):
                 key_prefix=input_data_key_prefix,
             )
             final_input_data_config.append(recipe_channel)
-            if self._is_nova_recipe:
+            if self._is_nova_recipe or self._is_llmft_recipe:
                 self.hyperparameters.update(
                     {"sagemaker_recipe_local_path": SM_RECIPE_CONTAINER_PATH}
                 )
