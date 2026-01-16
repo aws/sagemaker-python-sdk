@@ -27,6 +27,8 @@ from sagemaker.train.sm_recipes.utils import (
     _configure_gpu_args,
     _configure_trainium_args,
     _get_trainining_recipe_gpu_model_name_and_script,
+    _is_nova_recipe,
+    _get_args_from_nova_recipe,
 )
 from sagemaker.train.utils import _run_clone_command_silent
 from sagemaker.train.configs import Compute
