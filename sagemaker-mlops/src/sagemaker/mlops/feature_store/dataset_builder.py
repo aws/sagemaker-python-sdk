@@ -9,7 +9,6 @@ import datetime
 import pandas as pd
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.telemetry import Feature, _telemetry_emitter
 from sagemaker.mlops.feature_store import FeatureGroup
 from sagemaker.mlops.feature_store.feature_definition import FeatureDefinition, FeatureTypeEnum
 from sagemaker.mlops.feature_store.feature_utils import (
@@ -144,7 +143,7 @@ def construct_feature_group_to_be_merged(
         raise RuntimeError(f"No metastore configured for FeatureGroup {fg.feature_group_name}.")
 
     catalog_config = fg.offline_store_config.data_catalog_config
-    disable_glue = getattr(catalog_config, "disable_glue_table_creation", False) or False
+    disable_glue = catalog_config.disable_glue_table_creation or False
 
     features = [fd.feature_name for fd in fg.feature_definitions]
     record_id = fg.record_identifier_feature_name
@@ -179,9 +178,7 @@ def construct_feature_group_to_be_merged(
         database=catalog_config.database,
         table_name=catalog_config.table_name,
         record_identifier_feature_name=record_id,
-        event_time_identifier_feature=FeatureDefinition(
-            feature_name=event_time_name, feature_type=FeatureTypeEnum(event_time_type).value
-        ),
+        event_time_identifier_feature=FeatureDefinition(event_time_name, FeatureTypeEnum(event_time_type)),
         target_feature_name_in_base=target_feature_name_in_base,
         table_type=TableType.FEATURE_GROUP,
         feature_name_in_target=feature_name_in_target,
@@ -258,47 +255,6 @@ class DatasetBuilder:
     _event_time_starting_timestamp: datetime.datetime = field(default=None, init=False)
     _event_time_ending_timestamp: datetime.datetime = field(default=None, init=False)
     _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = field(default_factory=list, init=False)
-
-    @classmethod
-    def create(
-        cls,
-        base: Union[FeatureGroup, pd.DataFrame],
-        output_path: str,
-        session: Session,
-        record_identifier_feature_name: str = None,
-        event_time_identifier_feature_name: str = None,
-        included_feature_names: List[str] = None,
-        kms_key_id: str = None,
-    ) -> "DatasetBuilder":
-        """Create a DatasetBuilder for generating a Dataset.
-
-        Args:
-            base: A FeatureGroup or DataFrame to use as the base.
-            output_path: S3 URI for output.
-            session: SageMaker session.
-            record_identifier_feature_name: Required if base is DataFrame.
-            event_time_identifier_feature_name: Required if base is DataFrame.
-            included_feature_names: Features to include in output.
-            kms_key_id: KMS key for encryption.
-
-        Returns:
-            DatasetBuilder instance.
-        """
-        if isinstance(base, pd.DataFrame):
-            if not record_identifier_feature_name or not event_time_identifier_feature_name:
-                raise ValueError(
-                    "record_identifier_feature_name and event_time_identifier_feature_name "
-                    "are required when base is a DataFrame."
-                )
-        return cls(
-            _sagemaker_session=session,
-            _base=base,
-            _output_path=output_path,
-            _record_identifier_feature_name=record_identifier_feature_name,
-            _event_time_identifier_feature_name=event_time_identifier_feature_name,
-            _included_feature_names=included_feature_names,
-            _kms_key_id=kms_key_id,
-        )
 
     def with_feature_group(
         self,
@@ -423,18 +379,12 @@ class DatasetBuilder:
         self._event_time_ending_timestamp = ending_timestamp
         return self
 
-    @_telemetry_emitter(Feature.FEATURE_STORE, "DatasetBuilder.to_csv_file")
     def to_csv_file(self) -> tuple[str, str]:
         """Get query string and result in .csv format file.
 
         Returns:
-            tuple: A tuple containing:
-                - str: The S3 path of the .csv file
-                - str: The query string executed
-        
-        Note:
-            This method returns a tuple (csv_path, query_string).
-            To get just the CSV path: csv_path, _ = builder.to_csv_file()
+            The S3 path of the .csv file.
+            The query string executed.
         """
         if isinstance(self._base, pd.DataFrame):
             return self._to_csv_from_dataframe()
@@ -442,18 +392,12 @@ class DatasetBuilder:
             return self._to_csv_from_feature_group()
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
 
-    @_telemetry_emitter(Feature.FEATURE_STORE, "DatasetBuilder.to_dataframe")
     def to_dataframe(self) -> tuple[pd.DataFrame, str]:
         """Get query string and result in pandas.DataFrame.
 
         Returns:
-            tuple: A tuple containing:
-                - pd.DataFrame: The pandas DataFrame object
-                - str: The query string executed
-        
-        Note:
-            This method returns a tuple (dataframe, query_string).
-            To get just the DataFrame: df, _ = builder.to_dataframe()
+            The pandas.DataFrame object.
+            The query string executed.
         """
         csv_file, query_string = self.to_csv_file()
         df = download_csv_from_s3(csv_file, self._sagemaker_session, self._kms_key_id)
@@ -484,8 +428,8 @@ class DatasetBuilder:
             table_name=temp_table_name,
             record_identifier_feature_name=self._record_identifier_feature_name,
             event_time_identifier_feature=FeatureDefinition(
-                feature_name=self._event_time_identifier_feature_name,
-                feature_type=self._event_time_identifier_feature_type,
+                self._event_time_identifier_feature_name,
+                self._event_time_identifier_feature_type,
             ),
             table_type=TableType.DATA_FRAME,
         )

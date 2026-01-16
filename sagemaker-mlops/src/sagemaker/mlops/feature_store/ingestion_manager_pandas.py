@@ -6,17 +6,16 @@ import math
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from multiprocessing import Pool
+from multiprocessing.pool import AsyncResult
 from typing import Any, Dict, Iterable, List, Sequence, Union
 
 import pandas as pd
 from pandas import DataFrame
 from pandas.api.types import is_list_like
+from pathos.multiprocessing import ProcessingPool
 
 from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
 from sagemaker.core.shapes import FeatureValue
-from sagemaker.core.utils.utils import Unassigned
-from sagemaker.core.telemetry import Feature, _telemetry_emitter
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +54,8 @@ class IngestionManagerPandas:
     feature_definitions: Dict[str, Dict[Any, Any]]
     max_workers: int = 1
     max_processes: int = 1
-    _async_result: Any = field(default=None, init=False)
-    _processing_pool: Pool = field(default=None, init=False)
+    _async_result: AsyncResult = field(default=None, init=False)
+    _processing_pool: ProcessingPool = field(default=None, init=False)
     _failed_indices: List[int] = field(default_factory=list, init=False)
 
     @property
@@ -68,7 +67,6 @@ class IngestionManagerPandas:
         """
         return self._failed_indices
 
-    @_telemetry_emitter(Feature.FEATURE_STORE, "IngestionManagerPandas.run")
     def run(
         self,
         data_frame: DataFrame,
@@ -85,17 +83,7 @@ class IngestionManagerPandas:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
-        
-        Raises:
-            ValueError: If wait=False with max_workers=1 and max_processes=1.
         """
-        # Validate async ingestion requirements
-        if not wait and self.max_workers == 1 and self.max_processes == 1:
-            raise ValueError(
-                "Async ingestion (wait=False) requires max_processes > 1 or max_workers > 1. "
-                "Single-threaded ingestion only supports synchronous mode (wait=True)."
-            )
-        
         if self.max_workers == 1 and self.max_processes == 1:
             self._run_single_process_single_thread(data_frame=data_frame, target_stores=target_stores)
         else:
@@ -112,11 +100,12 @@ class IngestionManagerPandas:
             results = self._async_result.get(timeout=timeout)
         except KeyboardInterrupt as e:
             self._processing_pool.terminate()
-            self._processing_pool.join()
+            self._processing_pool.close()
+            self._processing_pool.clear()
             raise e
         else:
             self._processing_pool.close()
-            self._processing_pool.join()
+            self._processing_pool.clear()
 
         self._failed_indices = [idx for failed in results for idx in failed]
 
@@ -181,10 +170,11 @@ class IngestionManagerPandas:
         def init_worker():
             signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        self._processing_pool = Pool(self.max_processes, init_worker)
+        self._processing_pool = ProcessingPool(self.max_processes, init_worker)
+        self._processing_pool.restart(force=True)
 
-        self._async_result = self._processing_pool.starmap_async(
-            IngestionManagerPandas._run_multi_threaded,
+        self._async_result = self._processing_pool.amap(
+            lambda x: IngestionManagerPandas._run_multi_threaded(*x),
             args,
         )
 
@@ -306,10 +296,7 @@ class IngestionManagerPandas:
         """Check if the feature is a collection type."""
         feature_def = feature_definitions.get(feature_name)
         if feature_def:
-            collection_type = feature_def.get("CollectionType")
-            if isinstance(collection_type, Unassigned) or collection_type is None or collection_type == "":
-                return False
-            return True
+            return feature_def.get("CollectionType") is not None
         return False
 
     @staticmethod

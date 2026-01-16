@@ -14,7 +14,6 @@ from sagemaker.mlops.feature_store.feature_utils import (
 )
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.telemetry import Feature, _telemetry_emitter
 
 @dataclass
 class AthenaQuery:
@@ -38,7 +37,6 @@ class AthenaQuery:
     _result_bucket: str = field(default=None, init=False)
     _result_file_prefix: str = field(default=None, init=False)
 
-    @_telemetry_emitter(Feature.FEATURE_STORE, "AthenaQuery.run")
     def run(
         self, query_string: str, output_location: str, kms_key: str = None, workgroup: str = None
     ) -> str:
@@ -84,7 +82,6 @@ class AthenaQuery:
         """
         return get_query_execution(self.sagemaker_session, self._current_query_execution_id)
 
-    @_telemetry_emitter(Feature.FEATURE_STORE, "AthenaQuery.as_dataframe")
     def as_dataframe(self, **kwargs) -> DataFrame:
         """Download the result of the current query and load it into a DataFrame.
 
