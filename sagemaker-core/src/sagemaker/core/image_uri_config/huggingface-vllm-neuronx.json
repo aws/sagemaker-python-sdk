@@ -1,7 +1,7 @@
 {
     "inference": {
         "processors": [
-            "inf2"
+            "neuronx"
         ],
         "version_aliases": {
             "0.4": "0.4.1"
@@ -27,7 +27,7 @@
                 "tag_prefix": "0.10.2",
                 "repository": "huggingface-vllm-inference-neuronx",
                 "container_version": {
-                    "inf2": "ubuntu22.04"
+                    "neuronx": "ubuntu22.04"
                 },
                 "sdk_versions": [
                     "sdk2.26.0"
