@@ -178,7 +178,9 @@ def construct_feature_group_to_be_merged(
         database=catalog_config.database,
         table_name=catalog_config.table_name,
         record_identifier_feature_name=record_id,
-        event_time_identifier_feature=FeatureDefinition(event_time_name, FeatureTypeEnum(event_time_type)),
+        event_time_identifier_feature=FeatureDefinition(
+            feature_name=event_time_name, feature_type=FeatureTypeEnum(event_time_type).value
+        ),
         target_feature_name_in_base=target_feature_name_in_base,
         table_type=TableType.FEATURE_GROUP,
         feature_name_in_target=feature_name_in_target,
@@ -255,6 +257,47 @@ class DatasetBuilder:
     _event_time_starting_timestamp: datetime.datetime = field(default=None, init=False)
     _event_time_ending_timestamp: datetime.datetime = field(default=None, init=False)
     _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = field(default_factory=list, init=False)
+
+    @classmethod
+    def create(
+        cls,
+        base: Union[FeatureGroup, pd.DataFrame],
+        output_path: str,
+        session: Session,
+        record_identifier_feature_name: str = None,
+        event_time_identifier_feature_name: str = None,
+        included_feature_names: List[str] = None,
+        kms_key_id: str = None,
+    ) -> "DatasetBuilder":
+        """Create a DatasetBuilder for generating a Dataset.
+
+        Args:
+            base: A FeatureGroup or DataFrame to use as the base.
+            output_path: S3 URI for output.
+            session: SageMaker session.
+            record_identifier_feature_name: Required if base is DataFrame.
+            event_time_identifier_feature_name: Required if base is DataFrame.
+            included_feature_names: Features to include in output.
+            kms_key_id: KMS key for encryption.
+
+        Returns:
+            DatasetBuilder instance.
+        """
+        if isinstance(base, pd.DataFrame):
+            if not record_identifier_feature_name or not event_time_identifier_feature_name:
+                raise ValueError(
+                    "record_identifier_feature_name and event_time_identifier_feature_name "
+                    "are required when base is a DataFrame."
+                )
+        return cls(
+            _sagemaker_session=session,
+            _base=base,
+            _output_path=output_path,
+            _record_identifier_feature_name=record_identifier_feature_name,
+            _event_time_identifier_feature_name=event_time_identifier_feature_name,
+            _included_feature_names=included_feature_names,
+            _kms_key_id=kms_key_id,
+        )
 
     def with_feature_group(
         self,

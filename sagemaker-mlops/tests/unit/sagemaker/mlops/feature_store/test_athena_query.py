@@ -15,7 +15,6 @@ class TestAthenaQuery:
         session = Mock()
         session.boto_session.client.return_value = Mock()
         session.boto_region_name = "us-west-2"
-        session.sagemaker_config = {}
         return session
 
     @pytest.fixture

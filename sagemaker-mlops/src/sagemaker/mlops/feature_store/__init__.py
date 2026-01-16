@@ -3,11 +3,10 @@
 """SageMaker FeatureStore V3 - powered by sagemaker-core."""
 
 # Resources from core
-from sagemaker_core.main.resources import FeatureGroup, FeatureMetadata
-from sagemaker_core.main.resources import FeatureStore
+from sagemaker.core.resources import FeatureGroup, FeatureMetadata
 
 # Shapes from core (Pydantic - no to_dict() needed)
-from sagemaker_core.main.shapes import (
+from sagemaker.core.shapes import (
     DataCatalogConfig,
     FeatureParameter,
     FeatureValue,
@@ -52,7 +51,6 @@ from sagemaker.mlops.feature_store.feature_definition import (
 from sagemaker.mlops.feature_store.feature_utils import (
     as_hive_ddl,
     create_athena_query,
-    create_dataset,
     get_session_from_role,
     ingest_dataframe,
     load_feature_definitions_from_dataframe,
@@ -76,7 +74,6 @@ __all__ = [
     # Resources
     "FeatureGroup",
     "FeatureMetadata",
-    "FeatureStore",
     # Shapes
     "DataCatalogConfig",
     "FeatureParameter",
@@ -113,7 +110,6 @@ __all__ = [
     # Utility functions
     "as_hive_ddl",
     "create_athena_query",
-    "create_dataset",
     "get_session_from_role",
     "ingest_dataframe",
     "load_feature_definitions_from_dataframe",
