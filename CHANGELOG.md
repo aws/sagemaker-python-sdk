@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.3.1 (2026-01-12)
+### Bug fixes and Other Changes
+  * ProcessingJob fix - Remove tags in Processor while Job creation
+  * Telemetry Updates
+  * sagemaker-mlops bug fix - Correct source code 'dependencies' parameter to 'requirements'
+  * aws_batch bug fix - remove experiment config parameter as it Estimator is deprecated.
+
+
+## v3.3.0 (2025-12-19)
+
+### Features
+  * AWS_Batch: queueing of training jobs with ModelTrainer
+### Bug fixes and Other Changes
+  * Fixes for model registry with ModelBuilder
+
 ## v3.2.0 (2025-12-18)
 
 ### Features

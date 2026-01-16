@@ -1088,6 +1088,48 @@ class TestProcessorWithPipelineVariable:
             assert args["role_arn"] == role_var
 
 
+class TestProcessorStartNewWithTags:
+    def test_start_new_removes_tags_from_processing_job(self, mock_session):
+        """Test that tags are removed from transformed dict before ProcessingJob creation"""
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            tags=[("Key", "Value")],
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "test-job"
+
+        with patch.object(
+            processor,
+            "_get_process_args",
+            return_value={
+                "job_name": "test-job",
+                "inputs": [],
+                "output_config": {"Outputs": []},
+                "resources": {"ClusterConfig": {}},
+                "stopping_condition": None,
+                "app_specification": {"ImageUri": "test-image"},
+                "environment": None,
+                "network_config": None,
+                "role_arn": "arn:aws:iam::123456789012:role/SageMakerRole",
+                "tags": [{"Key": "Key", "Value": "Value"}],
+            },
+        ):
+            with patch("sagemaker.core.processing.serialize", return_value={"tags": [{"Key": "Key", "Value": "Value"}]}):
+                with patch("sagemaker.core.processing.ProcessingJob") as mock_job_class:
+                    with patch(
+                        "sagemaker.core.utils.code_injection.codec.transform",
+                        return_value={"processing_job_name": "test-job", "tags": [{"Key": "Key", "Value": "Value"}]},
+                    ):
+                        processor._start_new([], [], None)
+                        # Verify ProcessingJob was called without tags
+                        mock_job_class.assert_called_once()
+                        call_kwargs = mock_job_class.call_args[1]
+                        assert "tags" not in call_kwargs
+
+
 # Additional tests from test_processing_extended.py
 class TestProcessorBasics:
     """Test cases for basic Processor functionality"""

@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.3.1 (2026-01-12)
+
+* sagemaker-mlops bug fix - Correct source code 'dependencies' parameter to 'requirements'
+  
+## v1.3.0 (2025-12-19)
+
+* Update module dependencies
+
 ## v1.2.0 (2025-12-18)
 
 * Update module dependencies

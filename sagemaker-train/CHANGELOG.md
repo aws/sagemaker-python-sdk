@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.1 (2026-01-12)
+
+### Bug fixes and Other Changes
+* Removing experiment_config parameter for aws_batch as it is no longer needed with the removal of Estimator
+
+## v1.3.0 (2025-12-19)
+
+### Features
+* AWS_Batch: queueing of training jobs with ModelTrainer
+
 ## v1.2.0 (2025-12-18)
 
 ### Features

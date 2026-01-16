@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.3.1 (2026-01-12)
+
+### Bug Fixes
+* ProcessingJob fix - Remove tags in Processor while Job creation
+
+## v2.3.0 (2025-12-19)
+
+### Feature
+* AWS_Batch: queueing of training jobs with ModelTrainer
+
 ## v2.2.0 (2025-12-18)
 
 ### Bug Fixes
