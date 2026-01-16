@@ -13,7 +13,6 @@ from pandas import DataFrame, Series
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.client import S3Uploader, S3Downloader
-from sagemaker.mlops.feature_store.dataset_builder import DatasetBuilder
 from sagemaker.mlops.feature_store.feature_definition import (
     FeatureDefinition,
     FractionalFeatureDefinition,
@@ -23,7 +22,7 @@ from sagemaker.mlops.feature_store.feature_definition import (
 )
 from sagemaker.mlops.feature_store.ingestion_manager_pandas import IngestionManagerPandas
 
-from sagemaker import utils
+from sagemaker.core.utils import unique_name_from_base
 
 
 logger = logging.getLogger(__name__)
@@ -207,7 +206,7 @@ def upload_dataframe_to_s3(
         Tuple of (s3_folder, temp_table_name).
     """
 
-    temp_id = utils.unique_name_from_base("dataframe-base")
+    temp_id = unique_name_from_base("dataframe-base")
     local_file = f"{temp_id}.csv"
     s3_folder = os.path.join(output_path, temp_id)
 
@@ -459,30 +458,4 @@ def ingest_dataframe(
     )
     manager.run(data_frame=data_frame, wait=wait, timeout=timeout)
     return manager
-
-def create_dataset(
-    base: Union[FeatureGroup, pd.DataFrame],
-    output_path: str,
-    session: Session,
-    record_identifier_feature_name: str = None,
-    event_time_identifier_feature_name: str = None,
-    included_feature_names: Sequence[str] = None,
-    kms_key_id: str = None,
-) -> DatasetBuilder:
-    """Create a DatasetBuilder for generating a Dataset."""
-    if isinstance(base, pd.DataFrame):
-        if not record_identifier_feature_name or not event_time_identifier_feature_name:
-            raise ValueError(
-                "record_identifier_feature_name and event_time_identifier_feature_name "
-                "are required when base is a DataFrame."
-            )
-    return DatasetBuilder(
-        _sagemaker_session=session,
-        _base=base,
-        _output_path=output_path,
-        _record_identifier_feature_name=record_identifier_feature_name,
-        _event_time_identifier_feature_name=event_time_identifier_feature_name,
-        _included_feature_names=included_feature_names,
-        _kms_key_id=kms_key_id,
-    )
 

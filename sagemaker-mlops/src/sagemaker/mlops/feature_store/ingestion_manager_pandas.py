@@ -6,13 +6,12 @@ import math
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from multiprocessing.pool import AsyncResult
+from multiprocessing import Pool
 from typing import Any, Dict, Iterable, List, Sequence, Union
 
 import pandas as pd
 from pandas import DataFrame
 from pandas.api.types import is_list_like
-from pathos.multiprocessing import ProcessingPool
 
 from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
 from sagemaker.core.shapes import FeatureValue
@@ -54,8 +53,8 @@ class IngestionManagerPandas:
     feature_definitions: Dict[str, Dict[Any, Any]]
     max_workers: int = 1
     max_processes: int = 1
-    _async_result: AsyncResult = field(default=None, init=False)
-    _processing_pool: ProcessingPool = field(default=None, init=False)
+    _async_result: Any = field(default=None, init=False)
+    _processing_pool: Pool = field(default=None, init=False)
     _failed_indices: List[int] = field(default_factory=list, init=False)
 
     @property
@@ -100,12 +99,11 @@ class IngestionManagerPandas:
             results = self._async_result.get(timeout=timeout)
         except KeyboardInterrupt as e:
             self._processing_pool.terminate()
-            self._processing_pool.close()
-            self._processing_pool.clear()
+            self._processing_pool.join()
             raise e
         else:
             self._processing_pool.close()
-            self._processing_pool.clear()
+            self._processing_pool.join()
 
         self._failed_indices = [idx for failed in results for idx in failed]
 
@@ -170,11 +168,10 @@ class IngestionManagerPandas:
         def init_worker():
             signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        self._processing_pool = ProcessingPool(self.max_processes, init_worker)
-        self._processing_pool.restart(force=True)
+        self._processing_pool = Pool(self.max_processes, init_worker)
 
-        self._async_result = self._processing_pool.amap(
-            lambda x: IngestionManagerPandas._run_multi_threaded(*x),
+        self._async_result = self._processing_pool.starmap_async(
+            IngestionManagerPandas._run_multi_threaded,
             args,
         )
 
