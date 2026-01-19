@@ -202,7 +202,7 @@ class Step(Entity):
                 else:
                     dependencies.add(self._get_step_name_from_str(referenced_step, step_map))
 
-            from sagemaker.core.workflow.function_step import DelayedReturn
+            from sagemaker.mlops.workflow.function_step import DelayedReturn
 
             # TODO: we can remove the if-elif once move the validators to JsonGet constructor
             if isinstance(pipeline_variable, JsonGet):
