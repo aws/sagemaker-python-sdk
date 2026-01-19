@@ -625,6 +625,8 @@ class Processor(object):
         from sagemaker.core.utils.code_injection.codec import transform
 
         transformed = transform(serialized_request, "CreateProcessingJobRequest")
+        # Remove tags from transformed dict as ProcessingJob resource doesn't accept it
+        transformed.pop("tags", None)
         return ProcessingJob(**transformed)
 
     def _get_process_args(self, inputs, outputs, experiment_config):

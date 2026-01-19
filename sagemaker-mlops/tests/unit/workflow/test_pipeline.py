@@ -26,6 +26,7 @@ def mock_session():
     session.boto_session.client.return_value = Mock()
     session.sagemaker_client = Mock()
     session.local_mode = False
+    session.sagemaker_config = {}
     return session
 
 
@@ -375,6 +376,7 @@ def test_get_function_step_result_success(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
+        "Environment": {},
     }
     
     with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result"):
@@ -417,6 +419,62 @@ def test_pipeline_graph_iteration(mock_step):
     assert len(steps) == 1
 
 
+
+
+
+def test_generate_step_map_duplicate_names():
+    from sagemaker.mlops.workflow.pipeline import _generate_step_map
+    
+    step1 = Mock(spec=Step)
+    step1.name = "duplicate"
+    step2 = Mock(spec=Step)
+    step2.name = "duplicate"
+    
+    step_map = {}
+    with pytest.raises(ValueError, match="duplicate names"):
+        _generate_step_map([step1, step2], step_map)
+
+
+def test_pipeline_latest_version_id(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    mock_session.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": [{"PipelineVersionId": 123}]
+    }
+    assert pipeline.latest_pipeline_version_id == 123
+
+
+def test_pipeline_latest_version_id_none(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    mock_session.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": []
+    }
+    assert pipeline.latest_pipeline_version_id is None
+
+
+def test_pipeline_describe_with_version_id(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    pipeline.describe(pipeline_version_id=123)
+    mock_session.sagemaker_client.describe_pipeline.assert_called_once_with(
+        PipelineName="test-pipeline", PipelineVersionId=123
+    )
+
+
+def test_pipeline_start_with_version_id(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    mock_session.sagemaker_client.start_pipeline_execution.return_value = {"PipelineExecutionArn": "arn"}
+    pipeline.start(pipeline_version_id=123)
+    call_kwargs = mock_session.sagemaker_client.start_pipeline_execution.call_args[1]
+    assert call_kwargs["PipelineVersionId"] == 123
+
+
+def test_pipeline_list_versions(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    pipeline.list_pipeline_versions(sort_order="Descending", max_results=10)
+    mock_session.sagemaker_client.list_pipeline_versions.assert_called_once_with(
+        PipelineName="test-pipeline", SortOrder="Descending", MaxResults=10
+    )
+
+
 def test_pipeline_execution_result_waiter_error(mock_session):
     from sagemaker.mlops.workflow.pipeline import _PipelineExecution
     from botocore.exceptions import WaiterError
@@ -441,6 +499,7 @@ def test_pipeline_execution_result_terminal_failure(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
+        "Environment": {},
     }
     
     with patch.object(execution, "wait", side_effect=WaiterError("name", "Waiter encountered a terminal failure state", {})):
@@ -458,6 +517,7 @@ def test_get_function_step_result_obsolete_s3_path(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/different/path"},
         "TrainingJobStatus": "Completed",
+        "Environment": {},
     }
     
     with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result"):

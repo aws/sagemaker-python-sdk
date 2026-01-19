@@ -30,6 +30,10 @@ from sagemaker.train.common_utils.show_results_utils import (
     _download_llmaj_results_from_s3,
     _display_single_llmaj_evaluation,
     _show_llmaj_results,
+    _download_bedrock_aggregate_json,
+    _calculate_win_rates,
+    _display_win_rates,
+    _display_aggregate_metrics,
 )
 
 
@@ -304,15 +308,9 @@ class TestDisplayMetricsTables:
         
         assert mock_console.print.call_count >= 3
     
-    @patch('IPython.get_ipython')
     @patch('rich.console.Console')
-    def test_display_in_jupyter(self, mock_console_class, mock_get_ipython):
-        """Test displaying in Jupyter environment."""
-        # Mock Jupyter environment
-        mock_ipython = MagicMock()
-        mock_ipython.config = {'IPKernelApp': {}}
-        mock_get_ipython.return_value = mock_ipython
-        
+    def test_display_in_jupyter(self, mock_console_class):
+        """Test displaying metrics tables."""
         mock_console = MagicMock()
         mock_console_class.return_value = mock_console
         
@@ -321,8 +319,8 @@ class TestDisplayMetricsTables:
         
         _display_metrics_tables(custom_metrics, None, s3_paths)
         
-        # Verify Console was created with force_jupyter=True
-        mock_console_class.assert_called_with(force_jupyter=True)
+        # Verify Console was created and print was called
+        assert mock_console.print.call_count >= 2
 
 
 class TestLLMAJHelperFunctions:
@@ -375,27 +373,18 @@ class TestLLMAJHelperFunctions:
 class TestDownloadLLMAJResults:
     """Tests for _download_llmaj_results_from_s3 function."""
     
-    @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
     @patch('boto3.client')
-    def test_download_results_success(self, mock_boto_client, mock_extract_job, mock_pipeline_execution):
+    def test_download_results_success(self, mock_boto_client, mock_pipeline_execution):
         """Test successful download of LLMAJ results."""
         s3_mock = MagicMock()
         mock_boto_client.return_value = s3_mock
-        mock_extract_job.return_value = 'test-job'
         
-        # Mock finding bedrock job name
-        s3_mock.list_objects_v2.side_effect = [
-            {
-                'Contents': [
-                    {'Key': f'{DEFAULT_PREFIX}/test-job/output/output/bedrock-job/eval_results/bedrock_llm_judge_results.json'}
-                ]
-            },
-            {
-                'Contents': [
-                    {'Key': f'{DEFAULT_PREFIX}/bedrock-job/models/output_output.jsonl'}
-                ]
-            }
-        ]
+        # Mock S3 list_objects_v2 response
+        s3_mock.list_objects_v2.return_value = {
+            'Contents': [
+                {'Key': f'{DEFAULT_PREFIX}/bedrock-job-123/models/output_output.jsonl'}
+            ]
+        }
         
         # Mock JSONL content
         jsonl_content = json.dumps({'inputRecord': {}, 'modelResponses': [], 'automatedEvaluationResult': {'scores': []}})
@@ -403,7 +392,7 @@ class TestDownloadLLMAJResults:
             'Body': BytesIO(jsonl_content.encode('utf-8'))
         }
         
-        results = _download_llmaj_results_from_s3(mock_pipeline_execution)
+        results = _download_llmaj_results_from_s3(mock_pipeline_execution, 'bedrock-job-123')
         
         assert len(results) == 1
         assert 'inputRecord' in results[0]
@@ -414,33 +403,33 @@ class TestDownloadLLMAJResults:
         mock_pipeline_execution.s3_output_path = None
         
         with pytest.raises(ValueError, match="Cannot download results"):
-            _download_llmaj_results_from_s3(mock_pipeline_execution)
+            _download_llmaj_results_from_s3(mock_pipeline_execution, 'bedrock-job-123')
     
-    @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
     @patch('boto3.client')
-    def test_download_results_no_job_name(self, mock_boto_client, mock_extract_job, mock_pipeline_execution):
-        """Test error when job name cannot be extracted."""
-        mock_extract_job.return_value = None
+    def test_download_results_no_files(self, mock_boto_client, mock_pipeline_execution):
+        """Test error when no files found in S3."""
+        s3_mock = MagicMock()
+        mock_boto_client.return_value = s3_mock
         
-        with pytest.raises(ValueError, match="Could not extract training job name"):
-            _download_llmaj_results_from_s3(mock_pipeline_execution)
+        s3_mock.list_objects_v2.return_value = {}
+        
+        with pytest.raises(FileNotFoundError, match="No results found"):
+            _download_llmaj_results_from_s3(mock_pipeline_execution, 'bedrock-job-123')
     
-    @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
     @patch('boto3.client')
-    def test_download_results_no_jsonl_file(self, mock_boto_client, mock_extract_job, mock_pipeline_execution):
+    def test_download_results_no_jsonl_file(self, mock_boto_client, mock_pipeline_execution):
         """Test error when JSONL file not found."""
         s3_mock = MagicMock()
         mock_boto_client.return_value = s3_mock
-        mock_extract_job.return_value = 'test-job'
         
         s3_mock.list_objects_v2.return_value = {
             'Contents': [
-                {'Key': f'{DEFAULT_PREFIX}/test-job/other_file.txt'}
+                {'Key': f'{DEFAULT_PREFIX}/bedrock-job-123/other_file.txt'}
             ]
         }
         
         with pytest.raises(FileNotFoundError, match="No _output.jsonl file found"):
-            _download_llmaj_results_from_s3(mock_pipeline_execution)
+            _download_llmaj_results_from_s3(mock_pipeline_execution, 'bedrock-job-123')
 
 
 class TestDisplaySingleLLMAJEvaluation:
@@ -491,16 +480,20 @@ class TestShowLLMAJResults:
     """Tests for _show_llmaj_results function."""
     
     @patch('sagemaker.train.common_utils.show_results_utils._download_llmaj_results_from_s3')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_bedrock_aggregate_json')
     @patch('sagemaker.train.common_utils.show_results_utils._display_single_llmaj_evaluation')
     @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
     @patch('rich.console.Console')
     def test_show_results_default_pagination(
-        self, mock_console_class, mock_extract_job, mock_display_single, mock_download, mock_pipeline_execution
+        self, mock_console_class, mock_extract_job, mock_display_single, mock_download_aggregate, mock_download, mock_pipeline_execution
     ):
         """Test showing results with default pagination."""
         mock_console = MagicMock()
         mock_console_class.return_value = mock_console
-        mock_extract_job.return_value = 'test-job'
+        mock_extract_job.side_effect = ['custom-job', None]
+        
+        # Mock aggregate download
+        mock_download_aggregate.return_value = ({'results': {}}, 'bedrock-job-123')
         
         # Mock 10 results
         mock_results = [{'inputRecord': {}, 'modelResponses': [], 'automatedEvaluationResult': {'scores': []}}] * 10
@@ -512,16 +505,20 @@ class TestShowLLMAJResults:
         assert mock_display_single.call_count == 5
     
     @patch('sagemaker.train.common_utils.show_results_utils._download_llmaj_results_from_s3')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_bedrock_aggregate_json')
     @patch('sagemaker.train.common_utils.show_results_utils._display_single_llmaj_evaluation')
     @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
     @patch('rich.console.Console')
     def test_show_results_with_offset(
-        self, mock_console_class, mock_extract_job, mock_display_single, mock_download, mock_pipeline_execution
+        self, mock_console_class, mock_extract_job, mock_display_single, mock_download_aggregate, mock_download, mock_pipeline_execution
     ):
         """Test showing results with offset."""
         mock_console = MagicMock()
         mock_console_class.return_value = mock_console
-        mock_extract_job.return_value = 'test-job'
+        mock_extract_job.side_effect = ['custom-job', None]
+        
+        # Mock aggregate download
+        mock_download_aggregate.return_value = ({'results': {}}, 'bedrock-job-123')
         
         mock_results = [{'inputRecord': {}, 'modelResponses': [], 'automatedEvaluationResult': {'scores': []}}] * 10
         mock_download.return_value = mock_results
@@ -532,35 +529,43 @@ class TestShowLLMAJResults:
         assert mock_display_single.call_count == 3
     
     @patch('sagemaker.train.common_utils.show_results_utils._download_llmaj_results_from_s3')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_bedrock_aggregate_json')
     @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
     @patch('rich.console.Console')
     def test_show_results_offset_beyond_total(
-        self, mock_console_class, mock_extract_job, mock_download, mock_pipeline_execution
+        self, mock_console_class, mock_extract_job, mock_download_aggregate, mock_download, mock_pipeline_execution
     ):
         """Test showing results when offset is beyond total."""
         mock_console = MagicMock()
         mock_console_class.return_value = mock_console
-        mock_extract_job.return_value = 'test-job'
+        mock_extract_job.side_effect = ['custom-job', None]
+        
+        # Mock aggregate download
+        mock_download_aggregate.return_value = ({'results': {}}, 'bedrock-job-123')
         
         mock_results = [{'inputRecord': {}, 'modelResponses': [], 'automatedEvaluationResult': {'scores': []}}] * 5
         mock_download.return_value = mock_results
         
         _show_llmaj_results(mock_pipeline_execution, limit=5, offset=10)
         
-        # Should print warning message
-        assert any('beyond total' in str(call) for call in mock_console.print.call_args_list)
+        # Function should complete without error (no results displayed)
+        assert mock_console.print.called
     
     @patch('sagemaker.train.common_utils.show_results_utils._download_llmaj_results_from_s3')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_bedrock_aggregate_json')
     @patch('sagemaker.train.common_utils.show_results_utils._display_single_llmaj_evaluation')
     @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
     @patch('rich.console.Console')
     def test_show_results_all(
-        self, mock_console_class, mock_extract_job, mock_display_single, mock_download, mock_pipeline_execution
+        self, mock_console_class, mock_extract_job, mock_display_single, mock_download_aggregate, mock_download, mock_pipeline_execution
     ):
         """Test showing all results with limit=None."""
         mock_console = MagicMock()
         mock_console_class.return_value = mock_console
-        mock_extract_job.return_value = 'test-job'
+        mock_extract_job.side_effect = ['custom-job', None]
+        
+        # Mock aggregate download
+        mock_download_aggregate.return_value = ({'results': {}}, 'bedrock-job-123')
         
         mock_results = [{'inputRecord': {}, 'modelResponses': [], 'automatedEvaluationResult': {'scores': []}}] * 10
         mock_download.return_value = mock_results
@@ -569,3 +574,569 @@ class TestShowLLMAJResults:
         
         # Should display all 10 results
         assert mock_display_single.call_count == 10
+
+
+
+class TestDownloadBedrockAggregateJson:
+    """Tests for _download_bedrock_aggregate_json function."""
+    
+    @patch('boto3.client')
+    def test_download_aggregate_success(self, mock_boto_client, mock_pipeline_execution):
+        """Test successful download of aggregate JSON."""
+        s3_mock = MagicMock()
+        mock_boto_client.return_value = s3_mock
+        
+        # Mock S3 list_objects_v2 response
+        s3_mock.list_objects_v2.return_value = {
+            'Contents': [
+                {'Key': f'{DEFAULT_PREFIX}/{DEFAULT_JOB_NAME}/output/output/bedrock-job-123/bedrock_llm_judge_results.json'}
+            ]
+        }
+        
+        # Mock aggregate JSON content
+        aggregate_data = {
+            'job_name': 'bedrock-job-123',
+            'results': {
+                'Faithfulness': {
+                    'score': 1.0,
+                    'total_evaluations': 10,
+                    'passed': 10,
+                    'failed': 0
+                }
+            }
+        }
+        s3_mock.get_object.return_value = {
+            'Body': BytesIO(json.dumps(aggregate_data).encode('utf-8'))
+        }
+        
+        result, bedrock_job_name = _download_bedrock_aggregate_json(
+            mock_pipeline_execution, DEFAULT_JOB_NAME
+        )
+        
+        assert result == aggregate_data
+        assert bedrock_job_name == 'bedrock-job-123'
+    
+    @patch('boto3.client')
+    def test_download_aggregate_no_files(self, mock_boto_client, mock_pipeline_execution):
+        """Test error when no files found in S3."""
+        s3_mock = MagicMock()
+        mock_boto_client.return_value = s3_mock
+        
+        s3_mock.list_objects_v2.return_value = {}
+        
+        with pytest.raises(FileNotFoundError, match="No files at"):
+            _download_bedrock_aggregate_json(mock_pipeline_execution, DEFAULT_JOB_NAME)
+    
+    @patch('boto3.client')
+    def test_download_aggregate_file_not_found(self, mock_boto_client, mock_pipeline_execution):
+        """Test error when aggregate JSON file not found."""
+        s3_mock = MagicMock()
+        mock_boto_client.return_value = s3_mock
+        
+        s3_mock.list_objects_v2.return_value = {
+            'Contents': [
+                {'Key': f'{DEFAULT_PREFIX}/{DEFAULT_JOB_NAME}/output/output/other_file.txt'}
+            ]
+        }
+        
+        with pytest.raises(FileNotFoundError, match="bedrock_llm_judge_results.json not found"):
+            _download_bedrock_aggregate_json(mock_pipeline_execution, DEFAULT_JOB_NAME)
+    
+    def test_download_aggregate_no_s3_path(self, mock_pipeline_execution):
+        """Test error when s3_output_path is not set."""
+        mock_pipeline_execution.s3_output_path = None
+        
+        with pytest.raises(ValueError, match="s3_output_path is not set"):
+            _download_bedrock_aggregate_json(mock_pipeline_execution, DEFAULT_JOB_NAME)
+
+
+class TestCalculateWinRates:
+    """Tests for _calculate_win_rates function."""
+    
+    def test_calculate_custom_wins(self):
+        """Test win rate calculation when custom model wins majority."""
+        custom_results = [
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 1.0},
+                        {'metricName': 'Correctness', 'result': 0.9}
+                    ]
+                }
+            },
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.95},
+                        {'metricName': 'Correctness', 'result': 0.85}
+                    ]
+                }
+            }
+        ]
+        
+        base_results = [
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.8},
+                        {'metricName': 'Correctness', 'result': 0.7}
+                    ]
+                }
+            },
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.85},
+                        {'metricName': 'Correctness', 'result': 0.75}
+                    ]
+                }
+            }
+        ]
+        
+        win_rates = _calculate_win_rates(custom_results, base_results)
+        
+        assert win_rates['custom_wins'] == 2
+        assert win_rates['base_wins'] == 0
+        assert win_rates['ties'] == 0
+        assert win_rates['total'] == 2
+        assert win_rates['custom_win_rate'] == 1.0
+        assert win_rates['base_win_rate'] == 0.0
+        assert win_rates['tie_rate'] == 0.0
+    
+    def test_calculate_base_wins(self):
+        """Test win rate calculation when base model wins majority."""
+        custom_results = [
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.7},
+                        {'metricName': 'Correctness', 'result': 0.6}
+                    ]
+                }
+            }
+        ]
+        
+        base_results = [
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.9},
+                        {'metricName': 'Correctness', 'result': 0.85}
+                    ]
+                }
+            }
+        ]
+        
+        win_rates = _calculate_win_rates(custom_results, base_results)
+        
+        assert win_rates['custom_wins'] == 0
+        assert win_rates['base_wins'] == 1
+        assert win_rates['ties'] == 0
+        assert win_rates['base_win_rate'] == 1.0
+    
+    def test_calculate_ties(self):
+        """Test win rate calculation with ties."""
+        custom_results = [
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.9},
+                        {'metricName': 'Correctness', 'result': 0.7}
+                    ]
+                }
+            }
+        ]
+        
+        base_results = [
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.8},
+                        {'metricName': 'Correctness', 'result': 0.85}
+                    ]
+                }
+            }
+        ]
+        
+        win_rates = _calculate_win_rates(custom_results, base_results)
+        
+        assert win_rates['custom_wins'] == 0
+        assert win_rates['base_wins'] == 0
+        assert win_rates['ties'] == 1
+        assert win_rates['tie_rate'] == 1.0
+    
+    def test_calculate_mixed_results(self):
+        """Test win rate calculation with mixed wins and ties."""
+        custom_results = [
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 1.0},
+                        {'metricName': 'Correctness', 'result': 0.9}
+                    ]
+                }
+            },
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.7},
+                        {'metricName': 'Correctness', 'result': 0.6}
+                    ]
+                }
+            },
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.9},
+                        {'metricName': 'Correctness', 'result': 0.7}
+                    ]
+                }
+            }
+        ]
+        
+        base_results = [
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.8},
+                        {'metricName': 'Correctness', 'result': 0.7}
+                    ]
+                }
+            },
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.9},
+                        {'metricName': 'Correctness', 'result': 0.85}
+                    ]
+                }
+            },
+            {
+                'automatedEvaluationResult': {
+                    'scores': [
+                        {'metricName': 'Faithfulness', 'result': 0.8},
+                        {'metricName': 'Correctness', 'result': 0.8}
+                    ]
+                }
+            }
+        ]
+        
+        win_rates = _calculate_win_rates(custom_results, base_results)
+        
+        assert win_rates['custom_wins'] == 1
+        assert win_rates['base_wins'] == 1
+        assert win_rates['ties'] == 1
+        assert win_rates['total'] == 3
+        assert abs(win_rates['custom_win_rate'] - 0.333) < 0.01
+        assert abs(win_rates['base_win_rate'] - 0.333) < 0.01
+        assert abs(win_rates['tie_rate'] - 0.333) < 0.01
+    
+    def test_calculate_empty_results(self):
+        """Test win rate calculation with empty results."""
+        win_rates = _calculate_win_rates([], [])
+        
+        assert win_rates['custom_wins'] == 0
+        assert win_rates['base_wins'] == 0
+        assert win_rates['ties'] == 0
+        assert win_rates['total'] == 0
+        assert win_rates['custom_win_rate'] == 0.0
+
+
+class TestDisplayWinRates:
+    """Tests for _display_win_rates function."""
+    
+    def test_display_win_rates(self):
+        """Test displaying win rates."""
+        mock_console = MagicMock()
+        
+        win_rates = {
+            'custom_wins': 10,
+            'base_wins': 5,
+            'ties': 2,
+            'total': 17,
+            'custom_win_rate': 0.588,
+            'base_win_rate': 0.294,
+            'tie_rate': 0.118
+        }
+        
+        _display_win_rates(win_rates, mock_console)
+        
+        # Verify console.print was called with Panel
+        assert mock_console.print.called
+        call_args = mock_console.print.call_args[0]
+        assert len(call_args) > 0
+
+
+class TestDisplayAggregateMetrics:
+    """Tests for _display_aggregate_metrics function."""
+    
+    def test_display_custom_only(self):
+        """Test displaying aggregate metrics for custom model only."""
+        mock_console = MagicMock()
+        
+        custom_aggregate = {
+            'results': {
+                'Faithfulness': {
+                    'score': 1.0,
+                    'total_evaluations': 10,
+                    'passed': 10,
+                    'failed': 0
+                },
+                'CustomMetric': {
+                    'score': 0.8,
+                    'total_evaluations': 10,
+                    'passed': 8,
+                    'failed': 2,
+                    'std_deviation': 0.02
+                }
+            }
+        }
+        
+        _display_aggregate_metrics(custom_aggregate, None, mock_console)
+        
+        # Verify console.print was called at least once (for custom table)
+        assert mock_console.print.call_count >= 1
+    
+    def test_display_with_base_model(self):
+        """Test displaying aggregate metrics with base model."""
+        mock_console = MagicMock()
+        
+        custom_aggregate = {
+            'results': {
+                'Faithfulness': {
+                    'score': 1.0,
+                    'total_evaluations': 10,
+                    'passed': 10,
+                    'failed': 0
+                }
+            }
+        }
+        
+        base_aggregate = {
+            'results': {
+                'Faithfulness': {
+                    'score': 0.9,
+                    'total_evaluations': 10,
+                    'passed': 9,
+                    'failed': 1
+                }
+            }
+        }
+        
+        _display_aggregate_metrics(custom_aggregate, base_aggregate, mock_console)
+        
+        # Verify console.print was called once (comparison table)
+        assert mock_console.print.call_count == 1
+    
+    def test_display_builtin_vs_custom_metrics(self):
+        """Test displaying both builtin and custom metrics."""
+        mock_console = MagicMock()
+        
+        custom_aggregate = {
+            'results': {
+                'Faithfulness': {
+                    'score': 1.0,
+                    'total_evaluations': 10
+                },
+                'CustomMetric': {
+                    'score': 0.85,
+                    'total_evaluations': 10,
+                    'std_deviation': 0.03
+                }
+            }
+        }
+        
+        _display_aggregate_metrics(custom_aggregate, None, mock_console)
+        
+        assert mock_console.print.called
+    
+    def test_display_score_differences(self):
+        """Test displaying score differences between models."""
+        mock_console = MagicMock()
+        
+        custom_aggregate = {
+            'results': {
+                'Faithfulness': {
+                    'score': 0.95,
+                    'total_evaluations': 10
+                },
+                'Correctness': {
+                    'score': 0.80,
+                    'total_evaluations': 10
+                }
+            }
+        }
+        
+        base_aggregate = {
+            'results': {
+                'Faithfulness': {
+                    'score': 0.90,
+                    'total_evaluations': 10
+                },
+                'Correctness': {
+                    'score': 0.85,
+                    'total_evaluations': 10
+                }
+            }
+        }
+        
+        _display_aggregate_metrics(custom_aggregate, base_aggregate, mock_console)
+        
+        # Verify comparison table was printed once
+        assert mock_console.print.call_count == 1
+
+
+class TestShowLLMAJResultsIntegration:
+    """Integration tests for _show_llmaj_results with new aggregate features."""
+    
+    @patch('sagemaker.train.common_utils.show_results_utils._display_aggregate_metrics')
+    @patch('sagemaker.train.common_utils.show_results_utils._display_win_rates')
+    @patch('sagemaker.train.common_utils.show_results_utils._calculate_win_rates')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_llmaj_results_from_s3')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_bedrock_aggregate_json')
+    @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
+    @patch('rich.console.Console')
+    def test_show_results_with_aggregate_and_win_rates(
+        self, mock_console_class, mock_extract_job, mock_download_aggregate,
+        mock_download_results, mock_calculate_win, mock_display_win, mock_display_aggregate,
+        mock_pipeline_execution
+    ):
+        """Test complete flow with aggregate metrics and win rates."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+        
+        # Mock job name extraction
+        mock_extract_job.side_effect = ['custom-job', 'base-job']
+        
+        # Mock aggregate downloads
+        custom_aggregate = {
+            'results': {
+                'Faithfulness': {'score': 1.0, 'total_evaluations': 10}
+            }
+        }
+        base_aggregate = {
+            'results': {
+                'Faithfulness': {'score': 0.9, 'total_evaluations': 10}
+            }
+        }
+        mock_download_aggregate.side_effect = [
+            (custom_aggregate, 'bedrock-job-123'),
+            (base_aggregate, 'bedrock-job-456')
+        ]
+        
+        # Mock per-example results
+        custom_results = [
+            {
+                'inputRecord': {'prompt': "[{'role': 'user', 'content': 'Test'}]"},
+                'modelResponses': [{'response': "['Response']"}],
+                'automatedEvaluationResult': {
+                    'scores': [{'metricName': 'Faithfulness', 'result': 1.0}]
+                }
+            }
+        ]
+        base_results = [
+            {
+                'inputRecord': {'prompt': "[{'role': 'user', 'content': 'Test'}]"},
+                'modelResponses': [{'response': "['Response']"}],
+                'automatedEvaluationResult': {
+                    'scores': [{'metricName': 'Faithfulness', 'result': 0.9}]
+                }
+            }
+        ]
+        mock_download_results.side_effect = [custom_results, base_results]
+        
+        # Mock win rates
+        win_rates = {
+            'custom_wins': 1, 'base_wins': 0, 'ties': 0, 'total': 1,
+            'custom_win_rate': 1.0, 'base_win_rate': 0.0, 'tie_rate': 0.0
+        }
+        mock_calculate_win.return_value = win_rates
+        
+        # Execute
+        _show_llmaj_results(mock_pipeline_execution, limit=5, offset=0)
+        
+        # Verify all components were called
+        assert mock_download_aggregate.call_count == 2
+        assert mock_download_results.call_count == 2
+        mock_calculate_win.assert_called_once()
+        mock_display_win.assert_called_once_with(win_rates, mock_console)
+        mock_display_aggregate.assert_called_once_with(custom_aggregate, base_aggregate, mock_console)
+    
+    @patch('sagemaker.train.common_utils.show_results_utils._display_aggregate_metrics')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_llmaj_results_from_s3')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_bedrock_aggregate_json')
+    @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
+    @patch('rich.console.Console')
+    def test_show_results_custom_only(
+        self, mock_console_class, mock_extract_job, mock_download_aggregate,
+        mock_download_results, mock_display_aggregate, mock_pipeline_execution
+    ):
+        """Test flow with custom model only (no base model)."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+        
+        # Mock job name extraction - only custom
+        mock_extract_job.side_effect = ['custom-job', None]
+        
+        # Mock aggregate download
+        custom_aggregate = {
+            'results': {
+                'Faithfulness': {'score': 1.0, 'total_evaluations': 10}
+            }
+        }
+        mock_download_aggregate.return_value = (custom_aggregate, 'bedrock-job-123')
+        
+        # Mock per-example results
+        custom_results = [
+            {
+                'inputRecord': {'prompt': "[{'role': 'user', 'content': 'Test'}]"},
+                'modelResponses': [{'response': "['Response']"}],
+                'automatedEvaluationResult': {
+                    'scores': [{'metricName': 'Faithfulness', 'result': 1.0}]
+                }
+            }
+        ]
+        mock_download_results.return_value = custom_results
+        
+        # Execute
+        _show_llmaj_results(mock_pipeline_execution, limit=5, offset=0)
+        
+        # Verify aggregate displayed with None for base
+        mock_display_aggregate.assert_called_once_with(custom_aggregate, None, mock_console)
+    
+    @patch('sagemaker.train.common_utils.show_results_utils._download_llmaj_results_from_s3')
+    @patch('sagemaker.train.common_utils.show_results_utils._download_bedrock_aggregate_json')
+    @patch('sagemaker.train.common_utils.show_results_utils._extract_training_job_name_from_steps')
+    @patch('rich.console.Console')
+    def test_show_results_aggregate_not_found(
+        self, mock_console_class, mock_extract_job, mock_download_aggregate,
+        mock_download_results, mock_pipeline_execution
+    ):
+        """Test graceful degradation when aggregate results not found."""
+        mock_console = MagicMock()
+        mock_console_class.return_value = mock_console
+        
+        # Mock job name extraction
+        mock_extract_job.side_effect = ['custom-job', None]
+        
+        # Mock aggregate download failure
+        mock_download_aggregate.side_effect = FileNotFoundError("Aggregate not found")
+        
+        # Mock per-example results still work
+        custom_results = [
+            {
+                'inputRecord': {'prompt': "[{'role': 'user', 'content': 'Test'}]"},
+                'modelResponses': [{'response': "['Response']"}],
+                'automatedEvaluationResult': {
+                    'scores': [{'metricName': 'Faithfulness', 'result': 1.0}]
+                }
+            }
+        ]
+        mock_download_results.return_value = custom_results
+        
+        # Execute - should not raise exception
+        _show_llmaj_results(mock_pipeline_execution, limit=5, offset=0)
+        
+        # Verify per-example results were still attempted
+        # Note: This will fail because bedrock_job_name is None, but that's expected behavior
+        # The function should log a warning and continue

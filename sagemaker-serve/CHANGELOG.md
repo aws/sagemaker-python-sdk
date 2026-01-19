@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.3.1 (2026-01-12)
+
+* Update Module dependencies
+
+## v1.3.0 (2025-12-19)
+
+### Bug Fixes
+
+* Fixes for model registry with ModelBuilder
+
+## v1.2.0 (2025-12-18)
+
+### Features
+
+* Fix pip installation issues
+
 ## v1.1.1 (2025-12-10)
 
 ### Features

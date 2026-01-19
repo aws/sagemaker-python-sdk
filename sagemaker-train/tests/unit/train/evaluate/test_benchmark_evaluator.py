@@ -130,7 +130,7 @@ def test_benchmark_evaluator_initialization_minimal(mock_artifact, mock_resolve)
     
     assert evaluator.benchmark == _Benchmark.MMLU
     assert evaluator.model == DEFAULT_MODEL
-    assert evaluator.evaluate_base_model is True
+    assert evaluator.evaluate_base_model is False
     assert evaluator.subtasks == "ALL"
 
 
@@ -525,7 +525,7 @@ def test_benchmark_evaluator_get_benchmark_template_additions(mock_artifact, moc
     assert additions['strategy'] == 'zs_cot'
     assert additions['evaluation_metric'] == 'accuracy'
     assert additions['subtask'] == 'abstract_algebra'
-    assert additions['evaluate_base_model'] is True
+    assert additions['evaluate_base_model'] is False
 
 
 @patch('sagemaker.train.common_utils.recipe_utils._is_nova_model')
