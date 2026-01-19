@@ -254,6 +254,8 @@ def mxnet_eia_latest_py_version():
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_training_py_version(pytorch_training_version, request):
+    if Version(pytorch_training_version) >= Version("2.6"):
+        return "py312"
     if Version(pytorch_training_version) >= Version("2.3"):
         return "py311"
     elif Version(pytorch_training_version) >= Version("2.0"):
@@ -270,7 +272,9 @@ def pytorch_training_py_version(pytorch_training_version, request):
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_inference_py_version(pytorch_inference_version, request):
-    if Version(pytorch_inference_version) >= Version("2.3"):
+    if Version(pytorch_inference_version) >= Version("2.6"):
+        return "py312"
+    elif Version(pytorch_inference_version) >= Version("2.3"):
         return "py311"
     elif Version(pytorch_inference_version) >= Version("2.0"):
         return "py310"
@@ -293,6 +297,10 @@ def huggingface_pytorch_training_version(huggingface_training_version):
 
 @pytest.fixture(scope="module")
 def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
+    if Version(huggingface_pytorch_training_version) >= Version("2.6"):
+        return "py312"
+    if Version(huggingface_pytorch_training_version) >= Version("2.3"):
+        return "py311"
     if Version(huggingface_pytorch_training_version) >= Version("2.0"):
         return "py310"
     elif Version(huggingface_pytorch_training_version) >= Version("1.13"):
@@ -355,6 +363,10 @@ def huggingface_training_compiler_pytorch_py_version(
 def huggingface_pytorch_latest_training_py_version(
     huggingface_training_pytorch_latest_version,
 ):
+    if Version(huggingface_training_pytorch_latest_version) >= Version("2.6"):
+        return "py312"
+    if Version(huggingface_training_pytorch_latest_version) >= Version("2.3"):
+        return "py311"
     if Version(huggingface_training_pytorch_latest_version) >= Version("2.0"):
         return "py310"
     elif Version(huggingface_training_pytorch_latest_version) >= Version("1.13"):
@@ -546,7 +558,9 @@ def _tf_py_version(tf_version, request):
         return "py38"
     if Version("2.8") <= version < Version("2.12"):
         return "py39"
-    return "py310"
+    if Version("2.12") <= version < Version("2.19"):
+        return "py310"
+    return "py312"
 
 
 @pytest.fixture(scope="module")
@@ -589,7 +603,9 @@ def tf_full_py_version(tf_full_version):
         return "py38"
     if version < Version("2.12"):
         return "py39"
-    return "py310"
+    if version < Version("2.19"):
+        return "py310"
+    return "py312"
 
 
 @pytest.fixture(scope="module")

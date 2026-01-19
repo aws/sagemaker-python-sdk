@@ -18,6 +18,7 @@ from sagemaker.base_predictor import Predictor
 from sagemaker.config.config_schema import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
+    TELEMETRY_OPT_OUT_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
@@ -75,6 +76,9 @@ def config_value_impl(sagemaker_session: Session, config_path: str, sagemaker_co
     if config_path == MODEL_ENABLE_NETWORK_ISOLATION_PATH:
         return config_inference_enable_network_isolation
 
+    if config_path == TELEMETRY_OPT_OUT_PATH:
+        return False  # Default to telemetry enabled for tests
+
     raise AssertionError(f"Bad config path: {config_path}")
 
 
@@ -123,16 +127,16 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_retrieve_model_init_kwargs.return_value = {}
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), config_role)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_estimator_init.call_args[1].get("role"), config_role)
         assert "enable_network_isolation" not in mock_estimator_init.call_args[1]
         assert "encrypt_inter_container_traffic" not in mock_estimator_init.call_args[1]
 
         estimator.deploy()
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
-        self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), config_inference_role)
+        self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), config_inference_role)
 
         assert "enable_network_isolation" not in mock_estimator_deploy.call_args[1]
 
@@ -181,13 +185,13 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 3)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), config_role)
-        self.assertEquals(
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_estimator_init.call_args[1].get("role"), config_role)
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             config_enable_network_isolation,
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("encrypt_inter_container_traffic"),
             config_intercontainer_encryption,
         )
@@ -200,11 +204,11 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         estimator.deploy()
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 6)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 7)
 
-        self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), config_inference_role)
+        self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), config_inference_role)
 
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_deploy.call_args[1].get("enable_network_isolation"),
             config_inference_enable_network_isolation,
         )
@@ -257,13 +261,13 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             encrypt_inter_container_traffic=override_encrypt_inter_container_traffic,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_estimator_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("encrypt_inter_container_traffic"),
             override_encrypt_inter_container_traffic,
         )
@@ -280,13 +284,13 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_deploy.call_args[1].get("role"), mock_inference_override_role
         )
 
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_deploy.call_args[1].get("enable_network_isolation"),
             override_inference_enable_network_isolation,
         )
@@ -336,13 +340,13 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             encrypt_inter_container_traffic=override_encrypt_inter_container_traffic,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_estimator_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("encrypt_inter_container_traffic"),
             override_encrypt_inter_container_traffic,
         )
@@ -355,13 +359,13 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_deploy.call_args[1].get("role"), mock_inference_override_role
         )
 
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_deploy.call_args[1].get("enable_network_isolation"),
             override_inference_enable_network_isolation,
         )
@@ -412,8 +416,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), execution_role)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_estimator_init.call_args[1].get("role"), execution_role)
         assert "enable_network_isolation" not in mock_estimator_init.call_args[1]
         assert "encrypt_inter_container_traffic" not in mock_estimator_init.call_args[1]
 
@@ -421,9 +425,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_retrieve_model_init_kwargs.return_value = {}
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
-        self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), execution_role)
+        self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), execution_role)
 
         assert "enable_network_isolation" not in mock_estimator_deploy.call_args[1]
 
@@ -475,13 +479,13 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             model_id=model_id,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 3)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), execution_role)
-        self.assertEquals(
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_estimator_init.call_args[1].get("role"), execution_role)
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             metadata_enable_network_isolation,
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("encrypt_inter_container_traffic"),
             metadata_intercontainer_encryption,
         )
@@ -492,11 +496,11 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         estimator.deploy()
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 6)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 7)
 
-        self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), execution_role)
+        self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), execution_role)
 
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_deploy.call_args[1].get("enable_network_isolation"),
             metadata_inference_enable_network_isolation,
         )
@@ -548,13 +552,13 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             encrypt_inter_container_traffic=override_encrypt_inter_container_traffic,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_estimator_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("encrypt_inter_container_traffic"),
             override_encrypt_inter_container_traffic,
         )
@@ -568,11 +572,11 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
-        self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), override_inference_role)
+        self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), override_inference_role)
 
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_deploy.call_args[1].get("enable_network_isolation"),
             override_inference_enable_network_isolation,
         )
@@ -618,13 +622,13 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
             encrypt_inter_container_traffic=override_encrypt_inter_container_traffic,
         )
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), override_role)
-        self.assertEquals(
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 1)
+        self.assertEqual(mock_estimator_init.call_args[1].get("role"), override_role)
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_init.call_args[1].get("encrypt_inter_container_traffic"),
             override_encrypt_inter_container_traffic,
         )
@@ -634,11 +638,11 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 3)
+        self.assertEqual(mock_get_sagemaker_config_value.call_count, 4)
 
-        self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), override_inference_role)
+        self.assertEqual(mock_estimator_deploy.call_args[1].get("role"), override_inference_role)
 
-        self.assertEquals(
+        self.assertEqual(
             mock_estimator_deploy.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
         )

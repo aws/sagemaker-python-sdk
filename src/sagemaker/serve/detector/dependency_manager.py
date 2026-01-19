@@ -34,22 +34,34 @@ def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool =
     """Placeholder docstring"""
     path = work_dir.joinpath("requirements.txt")
     if "auto" in dependencies and dependencies["auto"]:
+        import site
+
+        pkl_path = work_dir.joinpath(PKL_FILE_NAME)
+        dest_path = path
+        site_packages_dir = site.getsitepackages()[0]
+        pickle_command_dir = "/sagemaker/serve/detector"
+
         command = [
             sys.executable,
-            Path(__file__).parent.joinpath("pickle_dependencies.py"),
-            "--pkl_path",
-            work_dir.joinpath(PKL_FILE_NAME),
-            "--dest",
-            path,
+            "-c",
         ]
 
         if capture_all:
-            command.append("--capture_all")
+            command.append(
+                f"from pickle_dependencies import get_all_requirements;"
+                f'get_all_requirements("{dest_path}")'
+            )
+        else:
+            command.append(
+                f"from pickle_dependencies import get_requirements_for_pkl_file;"
+                f'get_requirements_for_pkl_file("{pkl_path}", "{dest_path}")'
+            )
 
         subprocess.run(
             command,
             env={"SETUPTOOLS_USE_DISTUTILS": "stdlib"},
             check=True,
+            cwd=site_packages_dir + pickle_command_dir,
         )
 
         with open(path, "r") as f:

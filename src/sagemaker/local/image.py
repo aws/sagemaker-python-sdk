@@ -50,7 +50,7 @@ DOCKER_COMPOSE_HTTP_TIMEOUT = "120"
 # Environment variables to be set during training
 REGION_ENV_NAME = "AWS_REGION"
 TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
-S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
+S3_ENDPOINT_URL_ENV_NAME = "AWS_ENDPOINT_URL_S3"
 SM_STUDIO_LOCAL_MODE = "SM_STUDIO_LOCAL_MODE"
 
 # SELinux Enabled
@@ -473,7 +473,12 @@ class _SageMakerContainer(object):
         """
         config_path = os.path.join(self.container_root, host, "config")
 
-        resource_config = {"current_host": host, "hosts": self.hosts}
+        resource_config = {
+            "current_host": host,
+            "hosts": self.hosts,
+            "network_interface_name": "eth0",
+            "current_instance_type": self.instance_type,
+        }
         _write_json_file(os.path.join(config_path, "resourceconfig.json"), resource_config)
 
         processing_job_config = {
@@ -519,7 +524,12 @@ class _SageMakerContainer(object):
         """
         config_path = os.path.join(self.container_root, host, "input", "config")
 
-        resource_config = {"current_host": host, "hosts": self.hosts}
+        resource_config = {
+            "current_host": host,
+            "hosts": self.hosts,
+            "network_interface_name": "eth0",
+            "current_instance_type": self.instance_type,
+        }
 
         json_input_data_config = {}
         for c in input_data_config:

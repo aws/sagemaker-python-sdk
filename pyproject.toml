@@ -7,7 +7,7 @@ name = "sagemaker"
 dynamic = ["version", "optional-dependencies"]
 description = "Open source library for training and deploying models on Amazon SageMaker."
 readme = "README.rst"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "Amazon Web Services" },
 ]
@@ -25,37 +25,38 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "attrs>=23.1.0,<24",
-  "boto3>=1.35.75,<2.0",
+  "attrs>=24,<26",
+  "boto3>=1.42.2,<2.0",
   "cloudpickle>=2.2.1",
   "docker",
   "fastapi",
   "google-pasta",
   "importlib-metadata>=1.4.0,<7.0",
   "jsonschema",
-  "numpy>=1.9.0,<2.0",
-  "omegaconf>=2.2,<2.3",
-  "packaging>=20.0",
-  "pandas",
+  "numpy>=1.26.4,<3.0",
+  "omegaconf>=2.2,<3",
+  "packaging>=23.0,<25",
+  "pandas>=2.3.0",
   "pathos",
   "platformdirs",
-  "protobuf>=3.12,<6.0",
+  "protobuf>=3.12,<6.32",
   "psutil",
-  "PyYAML~=6.0",
+  "PyYAML>=6.0.1",
   "requests",
-  "sagemaker-core>=1.0.17,<2.0.0",
+  "sagemaker-core>=1.0.71,<2.0.0",
   "schema",
   "smdebug_rulesconfig==1.0.1",
   "tblib>=1.7.0,<4",
   "tqdm",
   "urllib3>=1.26.8,<3.0.0",
-  "uvicorn"
+  "uvicorn",
+  "graphene>=3,<4"
 ]
 
 [project.scripts]
@@ -73,6 +74,7 @@ pattern = "(?P<version>.+)"
 [tool.hatch.metadata.hooks.custom]
 
 [tool.hatch.build.targets.wheel]
+core-metadata-version = "2.3"
 packages = ["src/sagemaker"]
 exclude = ["src/sagemaker/serve/model_server/triton/pack_conda_env.sh"]
 
@@ -80,6 +82,7 @@ exclude = ["src/sagemaker/serve/model_server/triton/pack_conda_env.sh"]
 "src/sagemaker/serve/model_server/triton/pack_conda_env.sh" = "pack_conda_env.sh"
 
 [tool.hatch.build.targets.sdist]
+core-metadata-version = "2.3"
 only-include = [
   "/requirements/extras",
   "/src",

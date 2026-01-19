@@ -1,0 +1,171 @@
+{
+    "af-south-1": {
+        "content_bucket": "jumpstart-cache-prod-af-south-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-af-south-1"
+    },
+    "ap-east-1": {
+        "content_bucket": "jumpstart-cache-prod-ap-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-east-1"
+    },
+    "ap-east-2": {
+        "content_bucket": "jumpstart-cache-prod-ap-east-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-east-2"
+    },
+    "ap-northeast-1": {
+        "content_bucket": "jumpstart-cache-prod-ap-northeast-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-northeast-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-ap-northeast-1"
+    },
+    "ap-northeast-2": {
+        "content_bucket": "jumpstart-cache-prod-ap-northeast-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-northeast-2",
+        "neo_content_bucket": "sagemaker-sd-models-prod-ap-northeast-2"
+    },
+    "ap-northeast-3": {
+        "content_bucket": "jumpstart-cache-prod-ap-northeast-3",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-northeast-3",
+        "neo_content_bucket": "sagemaker-sd-models-prod-ap-northeast-3"
+    },
+    "ap-south-1": {
+        "content_bucket": "jumpstart-cache-prod-ap-south-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-south-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-ap-south-1"
+    },
+    "ap-south-2": {
+        "content_bucket": "jumpstart-cache-prod-ap-south-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-south-2"
+    },
+    "ap-southeast-1": {
+        "content_bucket": "jumpstart-cache-prod-ap-southeast-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-ap-southeast-1"
+    },
+    "ap-southeast-2": {
+        "content_bucket": "jumpstart-cache-prod-ap-southeast-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-2",
+        "neo_content_bucket": "sagemaker-sd-models-prod-ap-southeast-2"
+    },
+    "ap-southeast-3": {
+        "content_bucket": "jumpstart-cache-prod-ap-southeast-3",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-3"
+    },
+    "ap-southeast-4": {
+        "content_bucket": "jumpstart-cache-prod-ap-southeast-4",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-4"
+    },
+    "ap-southeast-5": {
+        "content_bucket": "jumpstart-cache-prod-ap-southeast-5",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-5"
+    },
+    "ap-southeast-6": {
+        "content_bucket": "jumpstart-cache-prod-ap-southeast-6",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-6"
+    },
+    "ap-southeast-7": {
+        "content_bucket": "jumpstart-cache-prod-ap-southeast-7",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ap-southeast-7"
+    },
+    "ca-central-1": {
+        "content_bucket": "jumpstart-cache-prod-ca-central-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ca-central-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-ca-central-1"
+    },
+    "ca-west-1": {
+        "content_bucket": "jumpstart-cache-prod-ca-west-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-ca-west-1"
+    },
+    "cn-north-1": {
+        "content_bucket": "jumpstart-cache-prod-cn-north-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-cn-north-1"
+    },
+    "cn-northwest-1": {
+        "content_bucket": "jumpstart-cache-prod-cn-northwest-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-cn-northwest-1"
+    },
+    "eu-central-1": {
+        "content_bucket": "jumpstart-cache-prod-eu-central-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-central-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-eu-central-1"
+    },
+    "eu-central-2": {
+        "content_bucket": "jumpstart-cache-prod-eu-central-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-central-2"
+    },
+    "eu-north-1": {
+        "content_bucket": "jumpstart-cache-prod-eu-north-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-north-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-eu-north-1"
+    },
+    "eu-south-1": {
+        "content_bucket": "jumpstart-cache-prod-eu-south-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-south-1"
+    },
+    "eu-south-2": {
+        "content_bucket": "jumpstart-cache-prod-eu-south-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-south-2"
+    },
+    "eu-west-1": {
+        "content_bucket": "jumpstart-cache-prod-eu-west-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-west-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-eu-west-1"
+    },
+    "eu-west-2": {
+        "content_bucket": "jumpstart-cache-prod-eu-west-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-west-2",
+        "neo_content_bucket": "sagemaker-sd-models-prod-eu-west-2"
+    },
+    "eu-west-3": {
+        "content_bucket": "jumpstart-cache-prod-eu-west-3",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-west-3",
+        "neo_content_bucket": "sagemaker-sd-models-prod-eu-west-3"
+    },
+    "il-central-1": {
+        "content_bucket": "jumpstart-cache-prod-il-central-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-il-central-1"
+    },
+    "me-central-1": {
+        "content_bucket": "jumpstart-cache-prod-me-central-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-me-central-1"
+    },
+    "me-south-1": {
+        "content_bucket": "jumpstart-cache-prod-me-south-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-me-south-1"
+    },
+    "mx-central-1": {
+        "content_bucket": "jumpstart-cache-prod-mx-central-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-mx-central-1"
+    },
+    "sa-east-1": {
+        "content_bucket": "jumpstart-cache-prod-sa-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-sa-east-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-sa-east-1"
+    },
+    "us-east-1": {
+        "content_bucket": "jumpstart-cache-prod-us-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-east-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-us-east-1"
+    },
+    "us-east-2": {
+        "content_bucket": "jumpstart-cache-prod-us-east-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-east-2",
+        "neo_content_bucket": "sagemaker-sd-models-prod-us-east-2"
+    },
+    "us-gov-east-1": {
+        "content_bucket": "jumpstart-cache-prod-us-gov-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-gov-east-1"
+    },
+    "us-gov-west-1": {
+        "content_bucket": "jumpstart-cache-prod-us-gov-west-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-gov-west-1"
+    },
+    "us-west-1": {
+        "content_bucket": "jumpstart-cache-prod-us-west-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-west-1",
+        "neo_content_bucket": "sagemaker-sd-models-prod-us-west-1"
+    },
+    "us-west-2": {
+        "content_bucket": "jumpstart-cache-prod-us-west-2",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-west-2",
+        "neo_content_bucket": "sagemaker-sd-models-prod-us-west-2"
+    }
+}

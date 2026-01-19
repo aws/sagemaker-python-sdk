@@ -52,7 +52,7 @@ def test_raise_when_failed_created_package():
             False
         ), "sagemaker.exceptions.UnexpectedStatusException should have been raised but was not"
     except Exception as e:
-        assert type(e) == sagemaker.exceptions.UnexpectedStatusException
+        assert isinstance(e, sagemaker.exceptions.UnexpectedStatusException)
         assert e.actual_status == "EnRoute"
         assert "Completed" in e.allowed_statuses
 
@@ -73,7 +73,7 @@ def test_does_raise_when_incorrect_job_status():
             False
         ), "sagemaker.exceptions.UnexpectedStatusException should have been raised but was not"
     except Exception as e:
-        assert type(e) == sagemaker.exceptions.UnexpectedStatusException
+        assert isinstance(e, sagemaker.exceptions.UnexpectedStatusException)
         assert e.actual_status == "Failed"
         assert "Completed" in e.allowed_statuses
         assert "Stopped" in e.allowed_statuses
@@ -92,7 +92,7 @@ def test_does_raise_capacity_error_when_incorrect_job_status():
         )
         assert False, "sagemaker.exceptions.CapacityError should have been raised but was not"
     except Exception as e:
-        assert type(e) == sagemaker.exceptions.CapacityError
+        assert isinstance(e, sagemaker.exceptions.CapacityError)
         assert e.actual_status == "Failed"
         assert "Completed" in e.allowed_statuses
         assert "Stopped" in e.allowed_statuses
@@ -114,6 +114,6 @@ def test_raise_when_failed_to_deploy_endpoint():
             False
         ), "sagemaker.exceptions.UnexpectedStatusException should have been raised but was not"
     except Exception as e:
-        assert type(e) == sagemaker.exceptions.UnexpectedStatusException
+        assert isinstance(e, sagemaker.exceptions.UnexpectedStatusException)
         assert e.actual_status == "Failed"
         assert "InService" in e.allowed_statuses

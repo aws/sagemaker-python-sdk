@@ -16,15 +16,11 @@ from __future__ import absolute_import
 from datetime import datetime
 import logging
 from typing import Optional, Dict, List, Any, Union
-from botocore import exceptions
 
 from sagemaker.jumpstart.constants import JUMPSTART_MODEL_HUB_NAME
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.session import Session
 
-from sagemaker.jumpstart.constants import (
-    JUMPSTART_LOGGER,
-)
 from sagemaker.jumpstart.types import (
     HubContentType,
 )
@@ -32,9 +28,6 @@ from sagemaker.jumpstart.filters import Constant, Operator, BooleanValues
 from sagemaker.jumpstart.hub.utils import (
     get_hub_model_version,
     get_info_from_hub_resource_arn,
-    create_hub_bucket_if_it_does_not_exist,
-    generate_default_hub_bucket_name,
-    create_s3_object_reference_from_uri,
     construct_hub_arn_from_name,
 )
 
@@ -42,9 +35,6 @@ from sagemaker.jumpstart.notebook_utils import (
     list_jumpstart_models,
 )
 
-from sagemaker.jumpstart.hub.types import (
-    S3ObjectLocation,
-)
 from sagemaker.jumpstart.hub.interfaces import (
     DescribeHubResponse,
     DescribeHubContentResponse,
@@ -66,8 +56,8 @@ class Hub:
     def __init__(
         self,
         hub_name: str,
+        sagemaker_session: Session,
         bucket_name: Optional[str] = None,
-        sagemaker_session: Optional[Session] = None,
     ) -> None:
         """Instantiates a SageMaker ``Hub``.
 
@@ -78,41 +68,11 @@ class Hub:
         """
         self.hub_name = hub_name
         self.region = sagemaker_session.boto_region_name
+        self.bucket_name = bucket_name
         self._sagemaker_session = (
             sagemaker_session
             or utils.get_default_jumpstart_session_with_user_agent_suffix(is_hub_content=True)
         )
-        self.hub_storage_location = self._generate_hub_storage_location(bucket_name)
-
-    def _fetch_hub_bucket_name(self) -> str:
-        """Retrieves hub bucket name from Hub config if exists"""
-        try:
-            hub_response = self._sagemaker_session.describe_hub(hub_name=self.hub_name)
-            hub_output_location = hub_response["S3StorageConfig"].get("S3OutputPath")
-            if hub_output_location:
-                location = create_s3_object_reference_from_uri(hub_output_location)
-                return location.bucket
-            default_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
-            JUMPSTART_LOGGER.warning(
-                "There is not a Hub bucket associated with %s. Using %s",
-                self.hub_name,
-                default_bucket_name,
-            )
-            return default_bucket_name
-        except exceptions.ClientError:
-            hub_bucket_name = generate_default_hub_bucket_name(self._sagemaker_session)
-            JUMPSTART_LOGGER.warning(
-                "There is not a Hub bucket associated with %s. Using %s",
-                self.hub_name,
-                hub_bucket_name,
-            )
-            return hub_bucket_name
-
-    def _generate_hub_storage_location(self, bucket_name: Optional[str] = None) -> None:
-        """Generates an ``S3ObjectLocation`` given a Hub name."""
-        hub_bucket_name = bucket_name or self._fetch_hub_bucket_name()
-        curr_timestamp = datetime.now().timestamp()
-        return S3ObjectLocation(bucket=hub_bucket_name, key=f"{self.hub_name}-{curr_timestamp}")
 
     def _get_latest_model_version(self, model_id: str) -> str:
         """Populates the lastest version of a model from specs no matter what is passed.
@@ -132,19 +92,22 @@ class Hub:
         tags: Optional[str] = None,
     ) -> Dict[str, str]:
         """Creates a hub with the given description"""
+        curr_timestamp = datetime.now().timestamp()
 
-        create_hub_bucket_if_it_does_not_exist(
-            self.hub_storage_location.bucket, self._sagemaker_session
-        )
+        request = {
+            "hub_name": self.hub_name,
+            "hub_description": description,
+            "hub_display_name": display_name,
+            "hub_search_keywords": search_keywords,
+            "tags": tags,
+        }
 
-        return self._sagemaker_session.create_hub(
-            hub_name=self.hub_name,
-            hub_description=description,
-            hub_display_name=display_name,
-            hub_search_keywords=search_keywords,
-            s3_storage_config={"S3OutputPath": self.hub_storage_location.get_uri()},
-            tags=tags,
-        )
+        if self.bucket_name:
+            request["s3_storage_config"] = {
+                "S3OutputPath": (f"s3://{self.bucket_name}/{self.hub_name}-{curr_timestamp}")
+            }
+
+        return self._sagemaker_session.create_hub(**request)
 
     def describe(self, hub_name: Optional[str] = None) -> DescribeHubResponse:
         """Returns descriptive information about the Hub"""
@@ -272,18 +235,21 @@ class Hub:
     def describe_model(
         self, model_name: str, hub_name: Optional[str] = None, model_version: Optional[str] = None
     ) -> DescribeHubContentResponse:
-        """Describe model in the SageMaker Hub."""
+        """Describe Model or ModelReference in a Hub."""
+        hub_name = hub_name or self.hub_name
+
+        # Users only input model id, not contentType, so first try to describe with ModelReference, then with Model
         try:
             model_version = get_hub_model_version(
                 hub_model_name=model_name,
                 hub_model_type=HubContentType.MODEL_REFERENCE.value,
-                hub_name=self.hub_name if not hub_name else hub_name,
+                hub_name=hub_name,
                 sagemaker_session=self._sagemaker_session,
                 hub_model_version=model_version,
             )
 
             hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=self.hub_name if not hub_name else hub_name,
+                hub_name=hub_name,
                 hub_content_name=model_name,
                 hub_content_version=model_version,
                 hub_content_type=HubContentType.MODEL_REFERENCE.value,
@@ -294,19 +260,32 @@ class Hub:
                 "Received exeption while calling APIs for ContentType ModelReference, retrying with ContentType Model: "
                 + str(ex)
             )
-            model_version = get_hub_model_version(
-                hub_model_name=model_name,
-                hub_model_type=HubContentType.MODEL.value,
-                hub_name=self.hub_name if not hub_name else hub_name,
-                sagemaker_session=self._sagemaker_session,
-                hub_model_version=model_version,
-            )
 
-            hub_content_description: Dict[str, Any] = self._sagemaker_session.describe_hub_content(
-                hub_name=self.hub_name if not hub_name else hub_name,
-                hub_content_name=model_name,
-                hub_content_version=model_version,
-                hub_content_type=HubContentType.MODEL.value,
-            )
+            # Failed to describe ModelReference, try with Model
+            try:
+                model_version = get_hub_model_version(
+                    hub_model_name=model_name,
+                    hub_model_type=HubContentType.MODEL.value,
+                    hub_name=hub_name,
+                    sagemaker_session=self._sagemaker_session,
+                    hub_model_version=model_version,
+                )
+
+                hub_content_description: Dict[str, Any] = (
+                    self._sagemaker_session.describe_hub_content(
+                        hub_name=hub_name,
+                        hub_content_name=model_name,
+                        hub_content_version=model_version,
+                        hub_content_type=HubContentType.MODEL.value,
+                    )
+                )
+
+            except Exception as ex:
+                # Failed with both, throw a custom error message
+                raise RuntimeError(
+                    f"Cannot get details for {model_name} in Hub {hub_name}. \
+                        {model_name} does not exist as a Model or ModelReference in {hub_name}: \n"
+                    + str(ex)
+                )
 
         return DescribeHubContentResponse(hub_content_description)

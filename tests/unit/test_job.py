@@ -32,6 +32,10 @@ INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
 KEEP_ALIVE_PERIOD = 1800
 TRAINING_PLAN = "arn:aws:sagemaker:us-west-2:336:training-plan/test_training_plan"
+INSTANCE_PLACEMENT_CONFIG = {
+    "EnableMultipleJobs": True,
+    "PlacementSpecifications": [{"UltraServerId": "us-1", "InstanceCount": "2"}],
+}
 INSTANCE_GROUP = InstanceGroup("group", "ml.c4.xlarge", 1)
 VOLUME_SIZE = 1
 MAX_RUNTIME = 1
@@ -206,6 +210,32 @@ def test_load_config_with_model_channel_no_inputs(estimator):
     assert config["stop_condition"]["MaxRuntimeInSeconds"] == MAX_RUNTIME
 
 
+def test_load_config_with_access_configs(estimator):
+    estimator.model_uri = MODEL_URI
+    estimator.model_channel_name = MODEL_CHANNEL_NAME
+    estimator.model_access_config = {"AcceptEula": True}
+    estimator.hub_access_config = {"HubContentArn": "dummy_arn"}
+
+    config = _Job._load_config(inputs=None, estimator=estimator)
+    assert config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == MODEL_URI
+    assert config["input_config"][0]["ChannelName"] == MODEL_CHANNEL_NAME
+    assert config["role"] == ROLE
+    assert config["output_config"]["S3OutputPath"] == S3_OUTPUT_PATH
+    assert "KmsKeyId" not in config["output_config"]
+    assert config["resource_config"]["InstanceCount"] == INSTANCE_COUNT
+    assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
+    assert config["resource_config"]["VolumeSizeInGB"] == VOLUME_SIZE
+    assert config["stop_condition"]["MaxRuntimeInSeconds"] == MAX_RUNTIME
+    assert (
+        config["input_config"][0]["DataSource"]["S3DataSource"]["ModelAccessConfig"]
+        == estimator.model_access_config
+    )
+    assert (
+        config["input_config"][0]["DataSource"]["S3DataSource"]["HubAccessConfig"]
+        == estimator.hub_access_config
+    )
+
+
 def test_load_config_with_code_channel(framework):
     inputs = TrainingInput(BUCKET_NAME)
 
@@ -347,20 +377,43 @@ def test_format_record_set_list_input():
 
 
 @pytest.mark.parametrize(
-    "channel_uri, channel_name, content_type, input_mode",
+    "channel_uri, channel_name, content_type, input_mode, model_access_config, hub_access_config",
     [
-        [MODEL_URI, MODEL_CHANNEL_NAME, "application/x-sagemaker-model", "File"],
-        [CODE_URI, CODE_CHANNEL_NAME, None, None],
+        [
+            MODEL_URI,
+            MODEL_CHANNEL_NAME,
+            "application/x-sagemaker-model",
+            "File",
+            {"AcceptEula": True},
+            None,
+        ],
+        [CODE_URI, CODE_CHANNEL_NAME, None, None, None, {"HubContentArn": "dummy_arn"}],
     ],
 )
-def test_prepare_channel(channel_uri, channel_name, content_type, input_mode):
+def test_prepare_channel(
+    channel_uri, channel_name, content_type, input_mode, model_access_config, hub_access_config
+):
     channel = _Job._prepare_channel(
-        [], channel_uri, channel_name, content_type=content_type, input_mode=input_mode
+        [],
+        channel_uri,
+        channel_name,
+        content_type=content_type,
+        input_mode=input_mode,
+        model_access_config=model_access_config,
+        hub_access_config=hub_access_config,
     )
 
     assert channel["DataSource"]["S3DataSource"]["S3Uri"] == channel_uri
     assert channel["DataSource"]["S3DataSource"]["S3DataDistributionType"] == "FullyReplicated"
     assert channel["DataSource"]["S3DataSource"]["S3DataType"] == "S3Prefix"
+    if hub_access_config:
+        assert channel["DataSource"]["S3DataSource"]["HubAccessConfig"] == hub_access_config
+    else:
+        assert "HubAccessConfig" not in channel["DataSource"]["S3DataSource"]
+    if model_access_config:
+        assert channel["DataSource"]["S3DataSource"]["ModelAccessConfig"] == model_access_config
+    else:
+        assert "ModelAccessConfig" not in channel["DataSource"]["S3DataSource"]
     assert channel["ChannelName"] == channel_name
     assert "CompressionType" not in channel
     assert "RecordWrapperType" not in channel
@@ -546,6 +599,23 @@ def test_format_string_uri_input_string():
     assert s3_uri_input.config["DataSource"]["S3DataSource"]["S3Uri"] == inputs
 
 
+def test_format_string_uri_input_string_with_access_configs():
+    inputs = BUCKET_NAME
+    model_access_config = {"AcceptEula": True}
+    hub_access_config = {"HubContentArn": "dummy_arn"}
+
+    s3_uri_input = _Job._format_string_uri_input(
+        inputs, model_access_config=model_access_config, hub_access_config=hub_access_config
+    )
+
+    assert s3_uri_input.config["DataSource"]["S3DataSource"]["S3Uri"] == inputs
+    assert s3_uri_input.config["DataSource"]["S3DataSource"]["HubAccessConfig"] == hub_access_config
+    assert (
+        s3_uri_input.config["DataSource"]["S3DataSource"]["ModelAccessConfig"]
+        == model_access_config
+    )
+
+
 def test_format_string_uri_file_system_input():
     file_system_id = "fs-fd85e556"
     file_system_type = "EFS"
@@ -582,6 +652,26 @@ def test_format_string_uri_input():
     assert (
         s3_uri_input.config["DataSource"]["S3DataSource"]["S3Uri"]
         == inputs.config["DataSource"]["S3DataSource"]["S3Uri"]
+    )
+
+
+def test_format_string_uri_input_with_access_configs():
+    inputs = TrainingInput(BUCKET_NAME)
+    model_access_config = {"AcceptEula": True}
+    hub_access_config = {"HubContentArn": "dummy_arn"}
+
+    s3_uri_input = _Job._format_string_uri_input(
+        inputs, model_access_config=model_access_config, hub_access_config=hub_access_config
+    )
+
+    assert (
+        s3_uri_input.config["DataSource"]["S3DataSource"]["S3Uri"]
+        == inputs.config["DataSource"]["S3DataSource"]["S3Uri"]
+    )
+    assert s3_uri_input.config["DataSource"]["S3DataSource"]["HubAccessConfig"] == hub_access_config
+    assert (
+        s3_uri_input.config["DataSource"]["S3DataSource"]["ModelAccessConfig"]
+        == model_access_config
     )
 
 
@@ -667,6 +757,28 @@ def test_prepare_resource_config_with_training_plan():
         "VolumeSizeInGB": VOLUME_SIZE,
         "VolumeKmsKeyId": VOLUME_KMS_KEY,
         "TrainingPlanArn": TRAINING_PLAN,
+    }
+
+
+def test_prepare_resource_config_with_placement_config():
+    resource_config = _Job._prepare_resource_config(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        None,
+        VOLUME_SIZE,
+        VOLUME_KMS_KEY,
+        None,
+        TRAINING_PLAN,
+        INSTANCE_PLACEMENT_CONFIG,
+    )
+
+    assert resource_config == {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": VOLUME_SIZE,
+        "VolumeKmsKeyId": VOLUME_KMS_KEY,
+        "TrainingPlanArn": TRAINING_PLAN,
+        "InstancePlacementConfig": INSTANCE_PLACEMENT_CONFIG,
     }
 
 

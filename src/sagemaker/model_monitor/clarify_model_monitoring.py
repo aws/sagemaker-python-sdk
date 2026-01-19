@@ -86,11 +86,9 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
-        if type(self) == __class__:  # pylint: disable=unidiomatic-typecheck
+        if self.__class__ is __class__:
             raise TypeError(
-                "{} is abstract, please instantiate its subclasses instead.".format(
-                    __class__.__name__
-                )
+                f"{__class__.__name__} is abstract, please instantiate its subclasses instead."
             )
 
         session = sagemaker_session or Session()
@@ -1105,6 +1103,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 monitor_schedule_name=monitor_schedule_name,
                 job_definition_name=new_job_definition_name,
                 schedule_cron_expression=schedule_cron_expression,
+                data_analysis_start_time=data_analysis_start_time,
+                data_analysis_end_time=data_analysis_end_time,
             )
             self.job_definition_name = new_job_definition_name
             self.monitoring_schedule_name = monitor_schedule_name

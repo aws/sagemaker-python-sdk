@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 import sys
 
+import tempfile
 import pytest
 from mock import patch, Mock, ANY, mock_open
 from mock.mock import MagicMock
@@ -49,6 +50,11 @@ from sagemaker.remote_function.job import (
     _prepare_dependencies_and_pre_execution_scripts,
 )
 
+from sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment import (
+    set_env,
+    safe_serialize,
+)
+
 
 REGION = "us-west-2"
 TRAINING_JOB_ARN = "training-job-arn"
@@ -62,20 +68,188 @@ TEST_REGION = "us-west-2"
 RUNTIME_SCRIPTS_CHANNEL_NAME = "sagemaker_remote_function_bootstrap"
 REMOTE_FUNCTION_WORKSPACE = "sm_rf_user_ws"
 SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME = "pre_exec_script_and_dependencies"
-HMAC_KEY = "some-hmac-key"
+
 
 EXPECTED_FUNCTION_URI = S3_URI + "/function.pkl"
 EXPECTED_OUTPUT_URI = S3_URI + "/output"
 EXPECTED_DEPENDENCIES_URI = S3_URI + "/additional_dependencies/requirements.txt"
 
+# flake8: noqa
+EXPECTED_ENV_SINGLE_NODE_CPU = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.t3.xlarge'
+export SM_HOSTS='["algo-1"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='1'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='4'
+export SM_NUM_GPUS='0'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.t3.xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.t3.xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='4'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.t3.xlarge", "hosts": ["algo-1"], "host_count": 1, "nproc_per_node": 4, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 4, "num_gpus": 0, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.t3.xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.t3.xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}}'
+"""
+
+# flake8: noqa
+EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.g5.12xlarge'
+export SM_HOSTS='["algo-1"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='1'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='48'
+export SM_NUM_GPUS='4'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.12xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='4'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"], "host_count": 1, "nproc_per_node": 4, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 48, "num_gpus": 4, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.12xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}}'
+export NCCL_SOCKET_IFNAME='eth0'
+export NCCL_PROTO='simple'
+"""
+
+# flake8: noqa
+EXPECTED_ENV_MULTI_NODE_MULTI_GPUS = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.g5.2xlarge'
+export SM_HOSTS='["algo-1", "algo-2", "algo-3", "algo-4"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='4'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='8'
+export SM_NUM_GPUS='1'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.2xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.2xlarge", "hosts": ["algo-4", "algo-2", "algo-1", "algo-3"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='1'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.g5.2xlarge", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "host_count": 4, "nproc_per_node": 1, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 8, "num_gpus": 1, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.2xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.2xlarge", "hosts": ["algo-4", "algo-2", "algo-1", "algo-3"]}], "network_interface_name": "eth0"}}'
+export NCCL_SOCKET_IFNAME='eth0'
+export NCCL_PROTO='simple'
+"""
+
+# flake8: noqa
+EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS_MPIRUN = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.g5.12xlarge'
+export SM_HOSTS='["algo-1"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='1'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='48'
+export SM_NUM_GPUS='4'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.12xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='4'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"], "host_count": 1, "nproc_per_node": 4, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 48, "num_gpus": 4, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.12xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}}'
+export MASTER_ADDR='algo-1'
+export MASTER_PORT='7777'
+export SM_HOSTS_LIST='algo-1:4'
+export SM_FI_PROVIDER=''
+export SM_NCCL_PROTO=''
+export SM_FI_EFA_USE_DEVICE_RDMA=''
+"""
+
+# flake8: noqa
+EXPECTED_ENV_MULTI_NODE_MULTI_GPUS_MPIRUN = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.g5.2xlarge'
+export SM_HOSTS='["algo-1", "algo-2", "algo-3", "algo-4"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='4'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='8'
+export SM_NUM_GPUS='1'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.2xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.2xlarge", "hosts": ["algo-4", "algo-2", "algo-1", "algo-3"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='1'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.g5.2xlarge", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "host_count": 4, "nproc_per_node": 1, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 8, "num_gpus": 1, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1", "algo-2", "algo-3", "algo-4"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.2xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.2xlarge", "hosts": ["algo-4", "algo-2", "algo-1", "algo-3"]}], "network_interface_name": "eth0"}}'
+export MASTER_ADDR='algo-1'
+export MASTER_PORT='7777'
+export SM_HOSTS_LIST='algo-1:1,algo-2:1,algo-3:1,algo-4:1'
+export SM_FI_PROVIDER=''
+export SM_NCCL_PROTO=''
+export SM_FI_EFA_USE_DEVICE_RDMA=''
+"""
+
+# flake8: noqa
+EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS_MPIRUN_WITH_NPROC_PER_NODE = """
+export SM_MODEL_DIR='/opt/ml/model'
+export SM_INPUT_DIR='/opt/ml/input'
+export SM_INPUT_DATA_DIR='/opt/ml/input/data'
+export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
+export SM_OUTPUT_DIR='/opt/ml/output'
+export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
+export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
+export SM_MASTER_ADDR='algo-1'
+export SM_MASTER_PORT='7777'
+export SM_CURRENT_HOST='algo-1'
+export SM_CURRENT_INSTANCE_TYPE='ml.g5.12xlarge'
+export SM_HOSTS='["algo-1"]'
+export SM_NETWORK_INTERFACE_NAME='eth0'
+export SM_HOST_COUNT='1'
+export SM_CURRENT_HOST_RANK='0'
+export SM_NUM_CPUS='48'
+export SM_NUM_GPUS='4'
+export SM_NUM_NEURONS='0'
+export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.12xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}'
+export SM_NPROC_PER_NODE='2'
+export SM_TRAINING_ENV='{"current_host": "algo-1", "current_instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"], "host_count": 1, "nproc_per_node": 2, "master_addr": "algo-1", "master_port": 7777, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 48, "num_gpus": 4, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1"], "current_group_name": "homogeneousCluster", "current_instance_type": "ml.g5.12xlarge", "instance_groups": [{"instance_group_name": "homogeneousCluster", "instance_type": "ml.g5.12xlarge", "hosts": ["algo-1"]}], "network_interface_name": "eth0"}}'
+export MASTER_ADDR='algo-1'
+export MASTER_PORT='7777'
+export SM_HOSTS_LIST='algo-1:2'
+export SM_FI_PROVIDER=''
+export SM_NCCL_PROTO=''
+export SM_FI_EFA_USE_DEVICE_RDMA=''
+"""
+
 DESCRIBE_TRAINING_JOB_RESPONSE = {
     "TrainingJobArn": TRAINING_JOB_ARN,
     "TrainingJobStatus": "{}",
-    "ResourceConfig": {
-        "InstanceCount": 1,
-        "InstanceType": "ml.c4.xlarge",
-        "VolumeSizeInGB": 30,
-    },
+    "ResourceConfig": {"InstanceCount": 1, "InstanceType": "ml.c4.xlarge", "VolumeSizeInGB": 30},
     "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
 }
 
@@ -112,8 +286,8 @@ def mock_get_current_run():
     return current_run
 
 
-def describe_training_job_response(job_status):
-    return {
+def describe_training_job_response(job_status, disable_output_compression=False):
+    job_response = {
         "TrainingJobArn": TRAINING_JOB_ARN,
         "TrainingJobStatus": job_status,
         "ResourceConfig": {
@@ -121,14 +295,37 @@ def describe_training_job_response(job_status):
             "InstanceType": "ml.c4.xlarge",
             "VolumeSizeInGB": 30,
         },
-        "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
     }
+
+    if disable_output_compression:
+        output_config = {
+            "S3OutputPath": "s3://sagemaker-123/image_uri/output",
+            "CompressionType": "NONE",
+        }
+    else:
+        output_config = {
+            "S3OutputPath": "s3://sagemaker-123/image_uri/output",
+            "CompressionType": "NONE",
+        }
+
+    job_response["OutputDataConfig"] = output_config
+
+    return job_response
 
 
 COMPLETED_TRAINING_JOB = describe_training_job_response("Completed")
 INPROGRESS_TRAINING_JOB = describe_training_job_response("InProgress")
 CANCELLED_TRAINING_JOB = describe_training_job_response("Stopped")
 FAILED_TRAINING_JOB = describe_training_job_response("Failed")
+
+COMPLETED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response(
+    "Completed", True
+)
+INPROGRESS_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response(
+    "InProgress", True
+)
+CANCELLED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response("Stopped", True)
+FAILED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION = describe_training_job_response("Failed", True)
 
 
 def mock_session():
@@ -158,24 +355,19 @@ def serialized_data():
     return _SerializedData(func=b"serialized_func", args=b"serialized_args")
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
-def test_sagemaker_config_job_settings(get_execution_role, session, secret_token):
+def test_sagemaker_config_job_settings(get_execution_role, session):
 
     job_settings = _JobSettings(image_uri="image_uri", instance_type="ml.m5.xlarge")
     assert job_settings.image_uri == "image_uri"
     assert job_settings.s3_root_uri == f"s3://{BUCKET}"
     assert job_settings.role == DEFAULT_ROLE_ARN
-    assert job_settings.environment_variables == {
-        "AWS_DEFAULT_REGION": "us-west-2",
-        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
-    }
+    assert job_settings.environment_variables == {"AWS_DEFAULT_REGION": "us-west-2"}
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch(
     "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
     return_value="some_image_uri",
@@ -183,7 +375,7 @@ def test_sagemaker_config_job_settings(get_execution_role, session, secret_token
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
 def test_sagemaker_config_job_settings_with_spark_config(
-    get_execution_role, session, mock_get_default_spark_image, secret_token
+    get_execution_role, session, mock_get_default_spark_image
 ):
 
     spark_config = SparkConfig()
@@ -192,10 +384,7 @@ def test_sagemaker_config_job_settings_with_spark_config(
     assert job_settings.image_uri == "some_image_uri"
     assert job_settings.s3_root_uri == f"s3://{BUCKET}"
     assert job_settings.role == DEFAULT_ROLE_ARN
-    assert job_settings.environment_variables == {
-        "AWS_DEFAULT_REGION": "us-west-2",
-        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
-    }
+    assert job_settings.environment_variables == {"AWS_DEFAULT_REGION": "us-west-2"}
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
     assert job_settings.spark_config == spark_config
@@ -233,12 +422,9 @@ def test_sagemaker_config_job_settings_with_not_supported_param_by_spark():
         )
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
-def test_sagemaker_config_job_settings_with_configuration_file(
-    get_execution_role, session, secret_token
-):
+def test_sagemaker_config_job_settings_with_configuration_file(get_execution_role, session):
     config_tags = [
         {"Key": "someTagKey", "Value": "someTagValue"},
         {"Key": "someTagKey2", "Value": "someTagValue2"},
@@ -257,7 +443,6 @@ def test_sagemaker_config_job_settings_with_configuration_file(
     assert job_settings.pre_execution_commands == ["command_1", "command_2"]
     assert job_settings.environment_variables == {
         "AWS_DEFAULT_REGION": "us-west-2",
-        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
         "EnvVarKey": "EnvVarValue",
     }
     assert job_settings.job_conda_env == "my_conda_env"
@@ -340,8 +525,8 @@ def test_sagemaker_config_job_settings_studio_image_uri(get_execution_role, sess
     monkeypatch.delenv("SAGEMAKER_INTERNAL_IMAGE_URI")
 
 
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -355,8 +540,10 @@ def test_start(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -374,15 +561,11 @@ def test_start(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=None,
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
 
-    local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
@@ -392,11 +575,11 @@ def test_start(
         s3_kms_key=None,
         sagemaker_session=session(),
         use_torchrun=False,
-        nproc_per_node=1,
+        use_mpirun=False,
     )
 
     mock_dependency_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
         include_local_workdir=True,
         pre_execution_commands=None,
         pre_execution_script_local_path=None,
@@ -449,7 +632,7 @@ def test_start(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--run_in_context",
                 '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
             ],
@@ -463,12 +646,12 @@ def test_start(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -482,8 +665,10 @@ def test_start_with_checkpoint_location(
     mock_runtime_manager,
     mock_script_upload,
     mock_user_workspace_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -508,10 +693,7 @@ def test_start_with_checkpoint_location(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=None,
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     mock_stored_function().save.assert_called_once_with(
@@ -568,7 +750,7 @@ def test_start_with_checkpoint_location(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--run_in_context",
                 '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
             ],
@@ -582,7 +764,7 @@ def test_start_with_checkpoint_location(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
@@ -622,7 +804,7 @@ def test_start_with_checkpoint_location_failed_with_multiple_checkpoint_location
         )
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -636,11 +818,14 @@ def test_start_with_complete_job_settings(
     mock_runtime_manager,
     mock_bootstrap_script_upload,
     mock_user_workspace_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # This test has explicit dependencies, so mock returns the same path
+    dependencies_path = "path/to/dependencies/req.txt"
+    mock_ensure_sagemaker.return_value = dependencies_path
 
     job_settings = _JobSettings(
-        dependencies="path/to/dependencies/req.txt",
+        dependencies=dependencies_path,
         pre_execution_script="path/to/script.sh",
         environment_variables={"AWS_DEFAULT_REGION": "us-east-2"},
         image_uri=IMAGE,
@@ -663,13 +848,9 @@ def test_start_with_complete_job_settings(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=KMS_KEY_ARN,
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
-    local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
@@ -679,11 +860,11 @@ def test_start_with_complete_job_settings(
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
         use_torchrun=False,
-        nproc_per_node=1,
+        use_mpirun=False,
     )
 
     mock_user_workspace_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path=dependencies_path,
         include_local_workdir=False,
         pre_execution_commands=None,
         pre_execution_script_local_path="path/to/script.sh",
@@ -718,7 +899,10 @@ def test_start_with_complete_job_settings(
                 },
             ),
         ],
-        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}", "KmsKeyId": KMS_KEY_ARN},
+        OutputDataConfig={
+            "S3OutputPath": f"{S3_URI}/{job.job_name}",
+            "KmsKeyId": KMS_KEY_ARN,
+        },
         AlgorithmSpecification=dict(
             TrainingImage=IMAGE,
             TrainingInputMode="File",
@@ -754,12 +938,12 @@ def test_start_with_complete_job_settings(
         EnableInterContainerTrafficEncryption=False,
         VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-@patch("secrets.token_hex", MagicMock(return_value=HMAC_KEY))
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch(
     "sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts",
     return_value="some_s3_uri",
@@ -778,7 +962,11 @@ def test_get_train_args_under_pipeline_context(
     mock_bootstrap_scripts_upload,
     mock_user_workspace_upload,
     mock_user_dependencies_upload,
+    mock_ensure_sagemaker,
 ):
+    # This test has explicit dependencies, so mock returns the same path
+    dependencies_path = "path/to/dependencies/req.txt"
+    mock_ensure_sagemaker.return_value = dependencies_path
 
     from sagemaker.workflow.parameters import ParameterInteger
 
@@ -793,7 +981,7 @@ def test_get_train_args_under_pipeline_context(
     function_step._properties.OutputDataConfig.S3OutputPath = func_step_s3_output_prop
 
     job_settings = _JobSettings(
-        dependencies="path/to/dependencies/req.txt",
+        dependencies=dependencies_path,
         pre_execution_script="path/to/script.sh",
         environment_variables={"AWS_DEFAULT_REGION": "us-east-2"},
         image_uri=IMAGE,
@@ -832,14 +1020,11 @@ def test_get_train_args_under_pipeline_context(
     mock_stored_function_ctr.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=s3_base_uri,
-        hmac_key="token-from-pipeline",
         s3_kms_key=KMS_KEY_ARN,
         context=Context(
             step_name=MOCKED_PIPELINE_CONFIG.step_name,
             func_step_s3_dir=MOCKED_PIPELINE_CONFIG.pipeline_build_time,
         ),
-        use_torchrun=False,
-        nproc_per_node=1,
     )
     mock_stored_function.save_pipeline_step_function.assert_called_once_with(mocked_serialized_data)
 
@@ -853,11 +1038,11 @@ def test_get_train_args_under_pipeline_context(
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=session(),
         use_torchrun=False,
-        nproc_per_node=1,
+        use_mpirun=False,
     )
 
     mock_user_workspace_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path=dependencies_path,
         include_local_workdir=False,
         pre_execution_commands=None,
         pre_execution_script_local_path="path/to/script.sh",
@@ -967,14 +1152,10 @@ def test_get_train_args_under_pipeline_context(
         EnableInterContainerTrafficEncryption=False,
         VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
         EnableManagedSpotTraining=False,
-        Environment={
-            "AWS_DEFAULT_REGION": "us-west-2",
-            "REMOTE_FUNCTION_SECRET_KEY": "token-from-pipeline",
-        },
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch(
     "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
     return_value="some_image_uri",
@@ -983,6 +1164,7 @@ def test_get_train_args_under_pipeline_context(
     "sagemaker.remote_function.job._prepare_and_upload_spark_dependent_files",
     return_value=tuple(["jars_s3_uri", "py_files_s3_uri", "files_s3_uri", "config_file_s3_uri"]),
 )
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
@@ -997,10 +1179,13 @@ def test_start_with_spark(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
+    mock_ensure_sagemaker,
     mock_spark_dependency_upload,
     mock_get_default_spark_image,
-    secrete_token,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
+
     spark_config = SparkConfig()
     job_settings = _JobSettings(
         spark_config=spark_config,
@@ -1029,7 +1214,7 @@ def test_start_with_spark(
         s3_kms_key=None,
         sagemaker_session=session(),
         use_torchrun=False,
-        nproc_per_node=1,
+        use_mpirun=False,
     )
 
     session().sagemaker_client.create_training_job.assert_called_once_with(
@@ -1094,7 +1279,7 @@ def test_start_with_spark(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--run_in_context",
                 '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
             ],
@@ -1108,7 +1293,7 @@ def test_start_with_spark(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
@@ -1128,6 +1313,27 @@ def test_describe(session, *args):
 
     job.describe()
     assert job.describe() == COMPLETED_TRAINING_JOB
+
+    session().sagemaker_client.describe_training_job.assert_called_once()
+
+
+@patch("sagemaker.remote_function.job._prepare_and_upload_runtime_scripts")
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_describe_disable_output_compression(session, *args):
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        instance_type="ml.m5.large",
+        disable_output_compression=True,
+    )
+    job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
+
+    job.describe()
+    assert job.describe() == COMPLETED_TRAINING_JOB_DISABLE_OUTPUT_COMPRESSION
 
     session().sagemaker_client.describe_training_job.assert_called_once()
 
@@ -1184,13 +1390,11 @@ def test_prepare_and_upload_runtime_scripts(session, mock_copy, mock_s3_upload):
         s3_base_uri=S3_URI,
         s3_kms_key=KMS_KEY_ARN,
         sagemaker_session=session(),
-        use_torchrun=False,
-        nproc_per_node=1,
     )
 
     assert s3_path == mock_s3_upload.return_value
 
-    assert mock_copy.call_count == 2
+    assert mock_copy.call_count == 3
     mock_s3_upload.assert_called_once()
 
 
@@ -1210,7 +1414,7 @@ def test_prepare_and_upload_runtime_scripts_under_pipeline_context(
     )
     # Bootstrap scripts are uploaded on the first call
     assert s3_path == mock_s3_upload.return_value
-    assert mock_copy.call_count == 2
+    assert mock_copy.call_count == 3
     mock_s3_upload.assert_called_once()
 
     mock_copy.reset_mock()
@@ -1619,3 +1823,848 @@ def test_extend_spark_config_to_request(
             }
         ],
     )
+
+
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
+@patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
+)
+@patch("sagemaker.remote_function.job.RuntimeEnvironmentManager")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_start_with_torchrun_single_node(
+    session,
+    mock_stored_function,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_dependency_upload,
+    mock_ensure_sagemaker,
+):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        include_local_workdir=True,
+        instance_type="ml.g5.12xlarge",
+        encrypt_inter_container_traffic=True,
+        use_torchrun=True,
+        use_mpirun=False,
+    )
+
+    job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
+
+    assert job.job_name.startswith("job-function")
+
+    mock_stored_function.assert_called_once_with(
+        sagemaker_session=session(),
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+    )
+
+    mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
+
+    mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
+
+    mock_script_upload.assert_called_once_with(
+        spark_config=None,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+        use_torchrun=True,
+        use_mpirun=False,
+    )
+
+    mock_dependency_upload.assert_called_once_with(
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
+        include_local_workdir=True,
+        pre_execution_commands=None,
+        pre_execution_script_local_path=None,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+        custom_file_filter=None,
+    )
+
+    session().sagemaker_client.create_training_job.assert_called_once_with(
+        TrainingJobName=job.job_name,
+        RoleArn=ROLE_ARN,
+        StoppingCondition={"MaxRuntimeInSeconds": 86400},
+        RetryStrategy={"MaximumRetryAttempts": 1},
+        InputDataConfig=[
+            dict(
+                ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_script_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+            dict(
+                ChannelName=REMOTE_FUNCTION_WORKSPACE,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_dependency_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+        ],
+        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}"},
+        AlgorithmSpecification=dict(
+            TrainingImage=IMAGE,
+            TrainingInputMode="File",
+            ContainerEntrypoint=[
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+            ],
+            ContainerArguments=[
+                "--s3_base_uri",
+                f"{S3_URI}/{job.job_name}",
+                "--region",
+                TEST_REGION,
+                "--client_python_version",
+                mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
+                "--distribution",
+                "torchrun",
+                "--run_in_context",
+                '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
+            ],
+        ),
+        ResourceConfig=dict(
+            VolumeSizeInGB=30,
+            InstanceCount=1,
+            InstanceType="ml.g5.12xlarge",
+            KeepAlivePeriodInSeconds=0,
+        ),
+        EnableNetworkIsolation=False,
+        EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
+    )
+
+
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
+@patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
+)
+@patch("sagemaker.remote_function.job.RuntimeEnvironmentManager")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_start_with_torchrun_multi_node(
+    session,
+    mock_stored_function,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_dependency_upload,
+    mock_ensure_sagemaker,
+):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        include_local_workdir=True,
+        instance_count=2,
+        instance_type="ml.g5.2xlarge",
+        encrypt_inter_container_traffic=True,
+        use_torchrun=True,
+        use_mpirun=False,
+    )
+
+    job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
+
+    assert job.job_name.startswith("job-function")
+
+    mock_stored_function.assert_called_once_with(
+        sagemaker_session=session(),
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+    )
+
+    mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
+
+    mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
+
+    mock_script_upload.assert_called_once_with(
+        spark_config=None,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+        use_torchrun=True,
+        use_mpirun=False,
+    )
+
+    mock_dependency_upload.assert_called_once_with(
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
+        include_local_workdir=True,
+        pre_execution_commands=None,
+        pre_execution_script_local_path=None,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+        custom_file_filter=None,
+    )
+
+    session().sagemaker_client.create_training_job.assert_called_once_with(
+        TrainingJobName=job.job_name,
+        RoleArn=ROLE_ARN,
+        StoppingCondition={"MaxRuntimeInSeconds": 86400},
+        RetryStrategy={"MaximumRetryAttempts": 1},
+        InputDataConfig=[
+            dict(
+                ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_script_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
+                },
+            ),
+            dict(
+                ChannelName=REMOTE_FUNCTION_WORKSPACE,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_dependency_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
+                },
+            ),
+        ],
+        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}"},
+        AlgorithmSpecification=dict(
+            TrainingImage=IMAGE,
+            TrainingInputMode="File",
+            ContainerEntrypoint=[
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+            ],
+            ContainerArguments=[
+                "--s3_base_uri",
+                f"{S3_URI}/{job.job_name}",
+                "--region",
+                TEST_REGION,
+                "--client_python_version",
+                mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
+                "--distribution",
+                "torchrun",
+                "--run_in_context",
+                '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
+            ],
+        ),
+        ResourceConfig=dict(
+            VolumeSizeInGB=30,
+            InstanceCount=2,
+            InstanceType="ml.g5.2xlarge",
+            KeepAlivePeriodInSeconds=0,
+        ),
+        EnableNetworkIsolation=False,
+        EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
+    )
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=4,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=0,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_single_node_cpu(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.t3.xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.t3.xlarge",
+                            hosts=["algo-1"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution=None,
+                output_file=f.name,
+            )
+
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
+
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_CPU)
+                env_file = _remove_extra_lines(env_file)
+
+                assert env_file == expected_env
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=48,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=4,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_single_node_multi_gpu(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.12xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.12xlarge",
+                            hosts=["algo-1"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="torchrun",
+                output_file=f.name,
+            )
+
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
+
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS)
+                env_file = _remove_extra_lines(env_file)
+
+                assert env_file == expected_env
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=8,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=1,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_multi_node_multi_gpu(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1", "algo-2", "algo-3", "algo-4"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.2xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.2xlarge",
+                            hosts=["algo-4", "algo-2", "algo-1", "algo-3"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="torchrun",
+                output_file=f.name,
+            )
+
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
+
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_MULTI_NODE_MULTI_GPUS)
+                env_file = _remove_extra_lines(env_file)
+
+                assert env_file == expected_env
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=48,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=4,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_single_node_multi_gpu_mpirun(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.12xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.12xlarge",
+                            hosts=["algo-1"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="mpirun",
+                output_file=f.name,
+            )
+
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
+
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS_MPIRUN)
+                env_file = _remove_extra_lines(env_file)
+
+                assert env_file == expected_env
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=8,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=1,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_multi_node_multi_gpu_mpirun(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1", "algo-2", "algo-3", "algo-4"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.2xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.2xlarge",
+                            hosts=["algo-4", "algo-2", "algo-1", "algo-3"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="mpirun",
+                output_file=f.name,
+            )
+
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
+
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(EXPECTED_ENV_MULTI_NODE_MULTI_GPUS_MPIRUN)
+                env_file = _remove_extra_lines(env_file)
+
+                assert env_file == expected_env
+
+
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
+@patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
+)
+@patch("sagemaker.remote_function.job.RuntimeEnvironmentManager")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_start_with_torchrun_single_node_with_nproc_per_node(
+    session,
+    mock_stored_function,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_dependency_upload,
+    mock_ensure_sagemaker,
+):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        include_local_workdir=True,
+        instance_type="ml.g5.12xlarge",
+        encrypt_inter_container_traffic=True,
+        use_torchrun=True,
+        use_mpirun=False,
+        nproc_per_node=2,
+    )
+
+    job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
+
+    assert job.job_name.startswith("job-function")
+
+    mock_stored_function.assert_called_once_with(
+        sagemaker_session=session(),
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+    )
+
+    mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
+
+    mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
+
+    mock_script_upload.assert_called_once_with(
+        spark_config=None,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+        use_torchrun=True,
+        use_mpirun=False,
+    )
+
+    mock_dependency_upload.assert_called_once_with(
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
+        include_local_workdir=True,
+        pre_execution_commands=None,
+        pre_execution_script_local_path=None,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+        custom_file_filter=None,
+    )
+
+    session().sagemaker_client.create_training_job.assert_called_once_with(
+        TrainingJobName=job.job_name,
+        RoleArn=ROLE_ARN,
+        StoppingCondition={"MaxRuntimeInSeconds": 86400},
+        RetryStrategy={"MaximumRetryAttempts": 1},
+        InputDataConfig=[
+            dict(
+                ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_script_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+            dict(
+                ChannelName=REMOTE_FUNCTION_WORKSPACE,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_dependency_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+        ],
+        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}"},
+        AlgorithmSpecification=dict(
+            TrainingImage=IMAGE,
+            TrainingInputMode="File",
+            ContainerEntrypoint=[
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+            ],
+            ContainerArguments=[
+                "--s3_base_uri",
+                f"{S3_URI}/{job.job_name}",
+                "--region",
+                TEST_REGION,
+                "--client_python_version",
+                mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
+                "--distribution",
+                "torchrun",
+                "--user_nproc_per_node",
+                "2",
+                "--run_in_context",
+                '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
+            ],
+        ),
+        ResourceConfig=dict(
+            VolumeSizeInGB=30,
+            InstanceCount=1,
+            InstanceType="ml.g5.12xlarge",
+            KeepAlivePeriodInSeconds=0,
+        ),
+        EnableNetworkIsolation=False,
+        EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
+    )
+
+
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
+@patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
+@patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
+@patch(
+    "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
+)
+@patch("sagemaker.remote_function.job.RuntimeEnvironmentManager")
+@patch("sagemaker.remote_function.job.StoredFunction")
+@patch("sagemaker.remote_function.job.Session", return_value=mock_session())
+def test_start_with_mpirun_single_node_with_nproc_per_node(
+    session,
+    mock_stored_function,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_dependency_upload,
+    mock_ensure_sagemaker,
+):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
+
+    job_settings = _JobSettings(
+        image_uri=IMAGE,
+        s3_root_uri=S3_URI,
+        role=ROLE_ARN,
+        include_local_workdir=True,
+        instance_type="ml.g5.12xlarge",
+        encrypt_inter_container_traffic=True,
+        use_torchrun=False,
+        use_mpirun=True,
+        nproc_per_node=2,
+    )
+
+    job = _Job.start(job_settings, job_function, func_args=(1, 2), func_kwargs={"c": 3, "d": 4})
+
+    assert job.job_name.startswith("job-function")
+
+    mock_stored_function.assert_called_once_with(
+        sagemaker_session=session(),
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+    )
+
+    mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
+
+    mock_python_version = mock_runtime_manager()._current_python_version()
+    mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
+
+    mock_script_upload.assert_called_once_with(
+        spark_config=None,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+        use_torchrun=False,
+        use_mpirun=True,
+    )
+
+    mock_dependency_upload.assert_called_once_with(
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
+        include_local_workdir=True,
+        pre_execution_commands=None,
+        pre_execution_script_local_path=None,
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        s3_kms_key=None,
+        sagemaker_session=session(),
+        custom_file_filter=None,
+    )
+
+    session().sagemaker_client.create_training_job.assert_called_once_with(
+        TrainingJobName=job.job_name,
+        RoleArn=ROLE_ARN,
+        StoppingCondition={"MaxRuntimeInSeconds": 86400},
+        RetryStrategy={"MaximumRetryAttempts": 1},
+        InputDataConfig=[
+            dict(
+                ChannelName=RUNTIME_SCRIPTS_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_script_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+            dict(
+                ChannelName=REMOTE_FUNCTION_WORKSPACE,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": mock_dependency_upload.return_value,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            ),
+        ],
+        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}"},
+        AlgorithmSpecification=dict(
+            TrainingImage=IMAGE,
+            TrainingInputMode="File",
+            ContainerEntrypoint=[
+                "/bin/bash",
+                "/opt/ml/input/data/sagemaker_remote_function_bootstrap/job_driver.sh",
+            ],
+            ContainerArguments=[
+                "--s3_base_uri",
+                f"{S3_URI}/{job.job_name}",
+                "--region",
+                TEST_REGION,
+                "--client_python_version",
+                mock_python_version,
+                "--client_sagemaker_pysdk_version",
+                mock_sagemaker_pysdk_version,
+                "--dependency_settings",
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
+                "--distribution",
+                "mpirun",
+                "--user_nproc_per_node",
+                "2",
+                "--run_in_context",
+                '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
+            ],
+        ),
+        ResourceConfig=dict(
+            VolumeSizeInGB=30,
+            InstanceCount=1,
+            InstanceType="ml.g5.12xlarge",
+            KeepAlivePeriodInSeconds=0,
+        ),
+        EnableNetworkIsolation=False,
+        EnableInterContainerTrafficEncryption=True,
+        EnableManagedSpotTraining=False,
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
+    )
+
+
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_cpus",
+    return_value=48,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_gpus",
+    return_value=4,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.num_neurons",
+    return_value=0,
+)
+@patch(
+    "sagemaker.remote_function.runtime_environment.bootstrap_runtime_environment.safe_serialize",
+    side_effect=safe_serialize,
+)
+def test_set_env_single_node_multi_gpu_mpirun_with_nproc_per_node(
+    mock_safe_serialize, mock_num_cpus, mock_num_gpus, mock_num_neurons
+):
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        with tempfile.NamedTemporaryFile() as f:
+            set_env(
+                resource_config=dict(
+                    current_host="algo-1",
+                    hosts=["algo-1"],
+                    current_group_name="homogeneousCluster",
+                    current_instance_type="ml.g5.12xlarge",
+                    instance_groups=[
+                        dict(
+                            instance_group_name="homogeneousCluster",
+                            instance_type="ml.g5.12xlarge",
+                            hosts=["algo-1"],
+                        )
+                    ],
+                    network_interface_name="eth0",
+                ),
+                distribution="mpirun",
+                user_nproc_per_node=2,
+                output_file=f.name,
+            )
+
+            mock_num_cpus.assert_called_once()
+            mock_num_gpus.assert_called_once()
+            mock_num_neurons.assert_called_once()
+
+            with open(f.name, "r") as f:
+                env_file = f.read().strip()
+                expected_env = _remove_extra_lines(
+                    EXPECTED_ENV_SINGLE_NODE_MULTI_GPUS_MPIRUN_WITH_NPROC_PER_NODE
+                )
+                env_file = _remove_extra_lines(env_file)
+
+                assert env_file == expected_env
+
+
+def _remove_extra_lines(string):
+    """Removes extra blank lines from a string."""
+    return "\n".join([line for line in string.splitlines() if line.strip()])

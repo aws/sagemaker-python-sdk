@@ -18,21 +18,20 @@ import importlib
 import inspect
 import json
 import logging
-
 from enum import Enum
-from typing import Union, Dict, Optional, List, Set
+from typing import Dict, List, Optional, Set, Union
 
 import sagemaker
 from sagemaker.amazon.amazon_estimator import (
-    RecordSet,
     AmazonAlgorithmEstimatorBase,
     FileSystemRecordSet,
+    RecordSet,
 )
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.deprecations import removed_function
-from sagemaker.estimator import Framework, EstimatorBase
-from sagemaker.inputs import TrainingInput, FileSystemInput
+from sagemaker.estimator import EstimatorBase, Framework
+from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
     add_jumpstart_uri_tags,
@@ -44,18 +43,17 @@ from sagemaker.parameter import (
     IntegerParameter,
     ParameterRange,
 )
-from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.pipeline_context import runnable_by_pipeline
-
 from sagemaker.session import Session
 from sagemaker.utils import (
+    Tags,
     base_from_name,
     base_name_from_image,
+    format_tags,
     name_from_base,
     to_string,
-    format_tags,
-    Tags,
 )
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
 AMAZON_ESTIMATOR_CLS_NAMES = {
@@ -133,15 +131,12 @@ class WarmStartConfig(object):
 
         if warm_start_type not in list(WarmStartTypes):
             raise ValueError(
-                "Invalid type: {}, valid warm start types are: {}".format(
-                    warm_start_type, list(WarmStartTypes)
-                )
+                f"Invalid type: {warm_start_type}, "
+                f"valid warm start types are: {list(WarmStartTypes)}"
             )
 
         if not parents:
-            raise ValueError(
-                "Invalid parents: {}, parents should not be None/empty".format(parents)
-            )
+            raise ValueError(f"Invalid parents: {parents}, parents should not be None/empty")
 
         self.type = warm_start_type
         self.parents = set(parents)
@@ -1455,9 +1450,7 @@ class HyperparameterTuner(object):
             return tuning_job_describe_result["BestTrainingJob"]
         except KeyError:
             raise Exception(
-                "Best training job not available for tuning job: {}".format(
-                    self.latest_tuning_job.name
-                )
+                f"Best training job not available for tuning job: {self.latest_tuning_job.name}"
             )
 
     def _ensure_last_tuning_job(self):
@@ -1920,8 +1913,11 @@ class HyperparameterTuner(object):
                 :meth:`~sagemaker.tuner.HyperparameterTuner.fit` method launches.
                 If not specified, a default job name is generated,
                 based on the training image name and current timestamp.
-            strategy (str): Strategy to be used for hyperparameter estimations
-                (default: 'Bayesian').
+            strategy (str or PipelineVariable): Strategy to be used for hyperparameter estimations.
+                More information about different strategies:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-how-it-works.html.
+                Available options are: 'Bayesian', 'Random', 'Hyperband',
+                'Grid' (default: 'Bayesian')
             strategy_config (dict): The configuration for a training job launched by a
                 hyperparameter tuning job.
             completion_criteria_config (dict): The configuration for tuning job completion criteria.
@@ -2080,21 +2076,19 @@ class HyperparameterTuner(object):
             return
 
         if not isinstance(value, dict):
-            raise ValueError(
-                "Argument '{}' must be a dictionary using {} as keys".format(name, allowed_keys)
-            )
+            raise ValueError(f"Argument '{name}' must be a dictionary using {allowed_keys} as keys")
 
         value_keys = sorted(value.keys())
 
         if require_same_keys:
             if value_keys != allowed_keys:
                 raise ValueError(
-                    "The keys of argument '{}' must be the same as {}".format(name, allowed_keys)
+                    f"The keys of argument '{name}' must be the same as {allowed_keys}"
                 )
         else:
             if not set(value_keys).issubset(set(allowed_keys)):
                 raise ValueError(
-                    "The keys of argument '{}' must be a subset of {}".format(name, allowed_keys)
+                    f"The keys of argument '{name}' must be a subset of {allowed_keys}"
                 )
 
     def _add_estimator(
@@ -2122,6 +2116,72 @@ class HyperparameterTuner(object):
             self.metric_definitions_dict[estimator_name] = metric_definitions
 
     delete_endpoint = removed_function("delete_endpoint")
+
+    @staticmethod
+    def visualize_jobs(
+        tuning_jobs: Union[
+            str,
+            "sagemaker.tuner.HyperparameterTuner",
+            List[Union[str, "sagemaker.tuner.HyperparameterTuner"]],
+        ],
+        return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False,
+    ):
+        """Create interactive visualization via altair charts using the sagemaker.amtviz package.
+
+        Args:
+            tuning_jobs (str or sagemaker.tuner.HyperparameterTuner or list[str, sagemaker.tuner.HyperparameterTuner]):
+            One or more tuning jobs to create
+            visualization for.
+            return_dfs: (bool): Option to return trials and full dataframe.
+            job_metrics: (list[str]): Metrics to be used in charts.
+            trials_only: (bool): Whether to show trials only or full dataframe.
+            advanced: (bool): Show a cumulative step line in the progress over time chart.
+        Returns:
+            A collection of charts (altair.VConcatChart); or charts, trials_df (pandas.DataFrame),
+            full_df (pandas.DataFrame) if ``return_dfs=True``.
+        """
+        try:
+            # Check if altair is installed
+            importlib.import_module("altair")
+
+        except ImportError:
+            print("Altair is not installed. Install Altair to use the visualization feature:")
+            print("  pip install altair")
+            print("After installing Altair, use the methods visualize_jobs or visualize_job.")
+            return None
+
+        # If altair is installed, proceed with visualization
+        from sagemaker.amtviz import visualize_tuning_job
+
+        return visualize_tuning_job(
+            tuning_jobs,
+            return_dfs=return_dfs,
+            job_metrics=job_metrics,
+            trials_only=trials_only,
+            advanced=advanced,
+        )
+
+    def visualize_job(
+        self,
+        return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False,
+    ):
+        """Convenience method on instance level for visualize_jobs().
+
+        See static method visualize_jobs().
+        """
+        return HyperparameterTuner.visualize_jobs(
+            self,
+            return_dfs=return_dfs,
+            job_metrics=job_metrics,
+            trials_only=trials_only,
+            advanced=advanced,
+        )
 
 
 class _TuningJob(_Job):

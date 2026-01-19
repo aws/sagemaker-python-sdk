@@ -70,8 +70,8 @@ def create_and_execute_pipeline(
     assert execution_steps[0]["StepStatus"] == step_status
     if step_result_type:
         result = execution.result(execution_steps[0]["StepName"])
-        assert (
-            type(result) == step_result_type
+        assert isinstance(
+            result, step_result_type
         ), f"Expected {step_result_type}, instead found {type(result)}"
 
     if step_result_value:

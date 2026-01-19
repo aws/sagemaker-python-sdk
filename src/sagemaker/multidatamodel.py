@@ -223,7 +223,7 @@ class MultiDataModel(Model):
                 Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of
+            Optional[Callable[[string, sagemaker.session.Session], Any]]: Invocation of
                 ``self.predictor_cls`` on the created endpoint name,
                 if ``self.predictor_cls``
                 is not None. Otherwise, return None.

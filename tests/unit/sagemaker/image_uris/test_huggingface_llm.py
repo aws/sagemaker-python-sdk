@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
+from packaging.version import parse
 
 from sagemaker.huggingface import get_huggingface_llm_image_uri
 from tests.unit.sagemaker.image_uris import expected_uris, conftest
@@ -22,10 +23,23 @@ TEI_VERSIONS_MAPPING = {
     "gpu": {
         "1.2.3": "2.0.1-tei1.2.3-gpu-py310-cu122-ubuntu22.04",
         "1.4.0": "2.0.1-tei1.4.0-gpu-py310-cu122-ubuntu22.04",
+        "1.6.0": "2.0.1-tei1.6.0-gpu-py310-cu122-ubuntu22.04",
+        "1.7.0": "2.0.1-tei1.7.0-gpu-py310-cu122-ubuntu22.04",
+        "1.8.0": "2.0.1-tei1.8.0-gpu-py310-cu122-ubuntu22.04",
+        "1.8.2": "2.0.1-tei1.8.2-gpu-py310-cu122-ubuntu22.04",
     },
     "cpu": {
         "1.2.3": "2.0.1-tei1.2.3-cpu-py310-ubuntu22.04",
         "1.4.0": "2.0.1-tei1.4.0-cpu-py310-ubuntu22.04",
+        "1.6.0": "2.0.1-tei1.6.0-cpu-py310-ubuntu22.04",
+        "1.7.0": "2.0.1-tei1.7.0-cpu-py310-ubuntu22.04",
+        "1.8.0": "2.0.1-tei1.8.0-cpu-py310-ubuntu22.04",
+        "1.8.2": "2.0.1-tei1.8.2-cpu-py310-ubuntu22.04",
+    },
+}
+HF_VLLM_VERSIONS_MAPPING = {
+    "inf2": {
+        "0.4.1": "0.10.2-neuronx-py310-sdk2.26.0-ubuntu22.04",
     },
 }
 HF_VERSIONS_MAPPING = {
@@ -46,6 +60,13 @@ HF_VERSIONS_MAPPING = {
         "2.0.2": "2.3.0-tgi2.0.2-gpu-py310-cu121-ubuntu22.04",
         "2.2.0": "2.3.0-tgi2.2.0-gpu-py310-cu121-ubuntu22.04-v2.0",
         "2.3.1": "2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04",
+        "2.4.0": "2.4.0-tgi2.4.0-gpu-py311-cu124-ubuntu22.04-v2.2",
+        "3.0.1": "2.4.0-tgi3.0.1-gpu-py311-cu124-ubuntu22.04-v2.1",
+        "3.1.1": "2.6.0-tgi3.1.1-gpu-py311-cu124-ubuntu22.04",
+        "3.2.0": "2.6.0-tgi3.2.0-gpu-py311-cu124-ubuntu22.04",
+        "3.2.3": "2.6.0-tgi3.2.3-gpu-py311-cu124-ubuntu22.04",
+        "3.3.4": "2.7.0-tgi3.3.4-gpu-py311-cu124-ubuntu22.04",
+        "3.3.6": "2.7.0-tgi3.3.6-gpu-py311-cu124-ubuntu22.04",
     },
     "inf2": {
         "0.0.16": "1.13.1-optimum0.0.16-neuronx-py310-ubuntu22.04",
@@ -58,6 +79,10 @@ HF_VERSIONS_MAPPING = {
         "0.0.23": "2.1.2-optimum0.0.23-neuronx-py310-ubuntu22.04",
         "0.0.24": "2.1.2-optimum0.0.24-neuronx-py310-ubuntu22.04",
         "0.0.25": "2.1.2-optimum0.0.25-neuronx-py310-ubuntu22.04",
+        "0.0.27": "2.1.2-optimum0.0.27-neuronx-py310-ubuntu22.04",
+        "0.0.28": "2.1.2-optimum0.0.28-neuronx-py310-ubuntu22.04",
+        "0.2.0": "2.5.1-optimum3.3.4-neuronx-py310-ubuntu22.04",
+        "0.3.0": "2.7.0-optimum3.3.6-neuronx-py310-ubuntu22.04",
     },
 }
 
@@ -69,15 +94,60 @@ def test_huggingface_uris(load_config):
     VERSIONS = load_config["inference"]["versions"]
     device = load_config["inference"]["processors"][0]
     backend = "huggingface-neuronx" if device == "inf2" else "huggingface"
+
+    # Fail if device is not in mapping
+    if device not in HF_VERSIONS_MAPPING:
+        raise ValueError(f"Device {device} not found in HF_VERSIONS_MAPPING")
+
+    # Get highest version for the device
+    highest_version = max(HF_VERSIONS_MAPPING[device].keys(), key=lambda x: parse(x))
+
     for version in VERSIONS:
         ACCOUNTS = load_config["inference"]["versions"][version]["registries"]
         for region in ACCOUNTS.keys():
             uri = get_huggingface_llm_image_uri(backend, region=region, version=version)
+
+            # Skip only if test version is higher than highest known version.
+            # There's now automation to add new TGI releases to image_uri_config directory
+            # that doesn't involve a human raising a PR.
+            if parse(version) > parse(highest_version):
+                print(
+                    f"Skipping version check for {version} as there is "
+                    "automation that now updates the image_uri_config "
+                    "without a human raising a PR. Tests will pass for "
+                    f"versions higher than {highest_version} that are not in HF_VERSIONS_MAPPING."
+                )
+                continue
+
             expected = expected_uris.huggingface_llm_framework_uri(
                 "huggingface-pytorch-tgi-inference",
                 ACCOUNTS[region],
                 version,
                 HF_VERSIONS_MAPPING[device][version],
+                region=region,
+            )
+            assert expected == uri
+
+
+@pytest.mark.parametrize("load_config", ["huggingface-vllm-neuronx.json"], indirect=True)
+def test_huggingface_vllm_neuronx_uris(load_config):
+    VERSIONS = load_config["inference"]["versions"]
+    device = load_config["inference"]["processors"][0]
+    assert device == "inf2"
+    backend = "huggingface-vllm-neuronx"
+
+    # Fail if device is not in mapping
+    if device not in HF_VLLM_VERSIONS_MAPPING:
+        raise ValueError(f"Device {device} not found in HF_VLLM_VERSIONS_MAPPING")
+    for version in VERSIONS:
+        ACCOUNTS = load_config["inference"]["versions"][version]["registries"]
+        for region in ACCOUNTS.keys():
+            uri = get_huggingface_llm_image_uri(backend, region=region, version=version)
+            expected = expected_uris.huggingface_llm_framework_uri(
+                "huggingface-vllm-inference-neuronx",
+                ACCOUNTS[region],
+                version,
+                HF_VLLM_VERSIONS_MAPPING[device][version],
                 region=region,
             )
             assert expected == uri

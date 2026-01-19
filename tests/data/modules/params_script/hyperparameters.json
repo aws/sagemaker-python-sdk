@@ -1,0 +1,15 @@
+{
+    "integer": 1,
+    "boolean": true,
+    "float": 3.14,
+    "string": "Hello World",
+    "list": [1, 2, 3],
+    "dict": {
+        "string": "value",
+        "integer": 3,
+        "float": 3.14,
+        "list": [1, 2, 3],
+        "dict": {"key": "value"},
+        "boolean": true
+    }
+}

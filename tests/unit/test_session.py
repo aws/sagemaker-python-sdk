@@ -730,6 +730,25 @@ def test_get_caller_identity_arn_from_metadata_file_for_space(boto_session):
 
 @patch(
     "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"ExecutionRoleArn": "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_metadata_file_with_no_domain_id(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    # Should not call describe_notebook_instance since ExecutionRoleArn is available
+    sess.sagemaker_client.describe_notebook_instance.assert_not_called()
+
+
+@patch(
+    "six.moves.builtins.open",
     mock_open(read_data='{"ResourceName": "SageMakerInstance"}'),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
@@ -4971,6 +4990,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     response_types = ["application/json"]
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
+    model_package_registration_type = "Registered"
     model_metrics = {
         "Bias": {
             "ContentType": "content-type",
@@ -5006,6 +5026,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     domain = "COMPUTER_VISION"
     task = "IMAGE_CLASSIFICATION"
     sample_payload_url = "s3://test-bucket/model"
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -5025,6 +5046,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
         task=task,
         validation_specification=validation_specification,
         skip_model_validation=skip_model_validation,
+        model_package_registration_type=model_package_registration_type,
     )
     expected_kms_key_id = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
         "ValidationSpecification"
@@ -5063,6 +5085,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
             "Task": task,
             "ValidationSpecification": validation_specification,
             "SkipModelValidation": skip_model_validation,
+            "ModelPackageRegistrationType": "Registered",
         }
     )
     expected_args["ValidationSpecification"]["ValidationRole"] = expected_role_arn
@@ -5093,6 +5116,10 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
     approval_status = ("Approved",)
     skip_model_validation = "All"
     source_uri = "dummy-source-uri"
+    model_package_registration_type = "Registered"
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
+
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
     created_versioned_mp_arn = (
         "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
@@ -5112,6 +5139,7 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
         approval_status=approval_status,
         skip_model_validation=skip_model_validation,
         source_uri=source_uri,
+        model_package_registration_type=model_package_registration_type,
     )
     expected_create_mp_args = {
         "ModelPackageGroupName": model_package_group_name,
@@ -5125,6 +5153,7 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
         "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
         "SkipModelValidation": skip_model_validation,
+        "ModelPackageRegistrationType": "Registered",
     }
 
     sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
@@ -5149,6 +5178,7 @@ def test_create_model_package_from_containers_with_source_uri_for_unversioned_mp
     approval_status = ("Approved",)
     skip_model_validation = "All"
     source_uri = "dummy-source-uri"
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
     with pytest.raises(
         ValueError,
@@ -5220,6 +5250,8 @@ def test_create_model_package_from_containers_with_source_uri_set_to_mp(sagemake
     sagemaker_session.sagemaker_client.create_model_package = Mock(
         return_value={"ModelPackageArn": created_versioned_mp_arn}
     )
+
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
     sagemaker_session.create_model_package_from_containers(
         model_package_group_name=model_package_group_name,
@@ -5443,6 +5475,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
     approval_status = ("Approved",)
     description = "description"
     customer_metadata_properties = {"key1": "value1"}
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -5510,6 +5543,7 @@ def test_create_model_package_from_containers_with_one_instance_types(
     approval_status = ("Approved",)
     description = "description"
     customer_metadata_properties = {"key1": "value1"}
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -7183,3 +7217,97 @@ def test_delete_hub_content_reference(sagemaker_session):
     }
 
     sagemaker_session.sagemaker_client.delete_hub_content_reference.assert_called_with(**request)
+
+
+def test_create_model_package_from_containers_to_create_mpg_if_not_present_without_search(
+    sagemaker_session,
+):
+    sagemaker_session.sagemaker_client.search.side_effect = Exception()
+    sagemaker_session.sagemaker_client.search.return_value = {}
+    sagemaker_session.sagemaker_client.list_model_package_groups.side_effect = [
+        {
+            "ModelPackageGroupSummaryList": [{"ModelPackageGroupName": "mock-mpg"}],
+            "NextToken": "NextToken",
+        },
+        {"ModelPackageGroupSummaryList": [{"ModelPackageGroupName": "mock-mpg-test"}]},
+    ]
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri", model_package_group_name="mock-mpg"
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_not_called()
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri",
+        model_package_group_name="arn:aws:sagemaker:us-east-1:215995503607:model-package-group/mock-mpg",
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_not_called()
+    sagemaker_session.sagemaker_client.list_model_package_groups.side_effect = [
+        {"ModelPackageGroupSummaryList": []}
+    ]
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri", model_package_group_name="mock-mpg"
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_called_with(
+        ModelPackageGroupName="mock-mpg"
+    )
+
+
+def test_create_model_package_from_containers_to_create_mpg_if_not_present(sagemaker_session):
+    # with search api
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "ModelPackageGroup": {
+                    "ModelPackageGroupName": "mock-mpg",
+                    "ModelPackageGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/mock-mpg",
+                }
+            }
+        ]
+    }
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri", model_package_group_name="mock-mpg"
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_not_called()
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri",
+        model_package_group_name="arn:aws:sagemaker:us-east-1:215995503607:model-package-group/mock-mpg",
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_not_called()
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
+    sagemaker_session.create_model_package_from_containers(
+        source_uri="mock-source-uri", model_package_group_name="mock-mpg"
+    )
+    sagemaker_session.sagemaker_client.create_model_package_group.assert_called_with(
+        ModelPackageGroupName="mock-mpg"
+    )
+
+
+def test_get_most_recently_created_approved_model_package(sagemaker_session):
+    sagemaker_session.sagemaker_client.list_model_packages.side_effect = [
+        (
+            {
+                "ModelPackageSummaryList": [],
+                "NextToken": "NextToken",
+            }
+        ),
+        (
+            {
+                "ModelPackageSummaryList": [
+                    {
+                        "CreationTime": 1697440162,
+                        "ModelApprovalStatus": "Approved",
+                        "ModelPackageArn": "arn:aws:sagemaker:us-west-2:123456789012:model-package/model-version/3",
+                        "ModelPackageGroupName": "model-version",
+                        "ModelPackageVersion": 3,
+                    },
+                ],
+            }
+        ),
+    ]
+    model_package = sagemaker_session.get_most_recently_created_approved_model_package(
+        model_package_group_name="mpg"
+    )
+    assert model_package is not None
+    assert (
+        model_package.model_package_arn
+        == "arn:aws:sagemaker:us-west-2:123456789012:model-package/model-version/3"
+    )

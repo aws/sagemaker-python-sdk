@@ -693,7 +693,7 @@ def _generate_estimator(
         sagemaker_client_config=sagemaker_client_config,
     )
     return SKLearn(
-        framework_version="1.2-1",
+        framework_version="1.4-2",
         entry_point=_ENTRY_POINT_PATH,
         dependencies=[sdk_tar],
         role=execution_role,
@@ -720,8 +720,8 @@ def _generate_processor(
     )
     return FrameworkProcessor(
         estimator_cls=PyTorch,
-        framework_version="1.10",
-        py_version="py38",
+        framework_version="1.13.1",
+        py_version="py39",
         instance_count=1,
         instance_type="ml.m5.xlarge",
         role=execution_role,

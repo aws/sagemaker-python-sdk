@@ -28,8 +28,6 @@ To train a PyTorch model by using the SageMaker Python SDK:
 Prepare a PyTorch Training Script
 =================================
 
-Your PyTorch training script must be a Python 3.6 compatible source file.
-
 Prepare your script in a separate source file than the notebook, terminal session, or source file you're
 using to submit the script to SageMaker via a ``PyTorch`` Estimator. This will be discussed in further detail below.
 
@@ -375,6 +373,9 @@ To initialize distributed training in your script, call
 `torch.distributed.init_process_group
 <https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
 with the desired backend and the rank of the current host.
+Warning: Some torch features, such as (and likely not limited to) ``torch.nn.SyncBatchNorm``
+is not supported and its existence in ``init_process_group`` will cause an exception during
+distributed training.
 
 .. code:: python
 
@@ -1047,6 +1048,43 @@ see `For versions 1.1 and lower <#for-versions-1.1-and-lower>`_.
 
 Where ``requirements.txt`` is an optional file that specifies dependencies on third-party libraries.
 
+Important Packaging Instructions
+--------------------------------
+
+When creating your model artifact (``model.tar.gz``), follow these steps to avoid common deployment issues:
+
+1. Navigate to the directory containing your model files:
+
+   .. code:: bash
+
+       cd my_model
+
+2. Create the tar archive from within this directory:
+
+   .. code:: bash
+
+       tar czvf ../model.tar.gz *
+
+**Common Mistakes to Avoid:**
+
+* Do NOT create the archive from the parent directory using ``tar czvf model.tar.gz my_model/``.
+  This creates an extra directory level that will cause deployment errors.
+* Ensure ``inference.py`` is directly under the ``code/`` directory in your archive.
+* Verify your archive structure using:
+
+  .. code:: bash
+
+      tar tvf model.tar.gz
+
+  You should see output similar to:
+
+  ::
+
+      model.pth
+      code/
+      code/inference.py
+      code/requirements.txt
+
 Create a ``PyTorchModel`` object
 --------------------------------
 
@@ -1064,6 +1102,15 @@ Now call the :class:`sagemaker.pytorch.model.PyTorchModel` constructor to create
 
 
 Now you can call the ``predict()`` method to get predictions from your deployed model.
+
+Troubleshooting
+---------------
+
+If you encounter a ``FileNotFoundError`` for ``inference.py``, check:
+
+1. That your model artifact is packaged correctly following the instructions above
+2. The structure of your ``model.tar.gz`` file matches the expected layout
+3. You're creating the archive from within the model directory, not from its parent
 
 ***********************************************
 Attach an estimator to an existing training job

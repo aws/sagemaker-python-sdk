@@ -25,6 +25,7 @@ from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.hub.utils import (
     construct_hub_model_arn_from_inputs,
     construct_hub_model_reference_arn_from_inputs,
+    generate_hub_arn_for_init_kwargs,
 )
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.session import Session
@@ -288,8 +289,13 @@ class JumpStartModelsAccessor(object):
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
 
+        # Users only input model id, not contentType, so first try to describe with ModelReference, then with Model
         if hub_arn:
             try:
+                hub_arn = generate_hub_arn_for_init_kwargs(
+                    hub_name=hub_arn, region=region, session=sagemaker_session
+                )
+
                 hub_model_arn = construct_hub_model_reference_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
@@ -308,11 +314,22 @@ class JumpStartModelsAccessor(object):
                 hub_model_arn = construct_hub_model_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
-                model_specs = JumpStartModelsAccessor._cache.get_hub_model(
-                    hub_model_arn=hub_model_arn
-                )
-                model_specs.set_hub_content_type(HubContentType.MODEL)
-                return model_specs
+
+                # Failed to describe ModelReference, try with Model
+                try:
+                    model_specs = JumpStartModelsAccessor._cache.get_hub_model(
+                        hub_model_arn=hub_model_arn
+                    )
+                    model_specs.set_hub_content_type(HubContentType.MODEL)
+
+                    return model_specs
+                except Exception as ex:
+                    # Failed with both, throw a custom error message
+                    raise RuntimeError(
+                        f"Cannot get details for {model_id} in Hub {hub_arn}. \
+                            {model_id} does not exist as a Model or ModelReference: \n"
+                        + str(ex)
+                    )
 
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, version_str=version, model_type=model_type

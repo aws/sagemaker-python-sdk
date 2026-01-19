@@ -1179,7 +1179,7 @@ def test_generate_framework_script(pipeline_session):
             # Some py3 containers has typing, which may breaks pip install
             pip uninstall --yes typing
 
-            pip install -r requirements.txt
+            python -m pip install -r requirements.txt
         fi
 
         python process.py "$@"
@@ -1226,7 +1226,7 @@ def test_generate_framework_script_with_codeartifact(pipeline_session):
             # Some py3 containers has typing, which may breaks pip install
             pip uninstall --yes typing
 
-            pip install -r requirements.txt
+            python -m pip install -r requirements.txt
         fi
 
         python process.py "$@"

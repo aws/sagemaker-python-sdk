@@ -29,7 +29,7 @@ def modules_sagemaker_session():
         os.environ["AWS_DEFAULT_REGION"] = DEFAULT_REGION
         region_manual_set = True
     else:
-        region_manual_set = True
+        region_manual_set = False
 
     boto_session = boto3.Session(region_name=os.environ["AWS_DEFAULT_REGION"])
     sagemaker_session = Session(boto_session=boto_session)

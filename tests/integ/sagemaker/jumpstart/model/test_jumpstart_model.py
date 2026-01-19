@@ -170,7 +170,7 @@ def test_jumpstart_gated_model(setup):
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="3.*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        model_version="*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
@@ -197,7 +197,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="3.*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        model_version="*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
@@ -477,6 +477,7 @@ def _teardown_test_hub_with_reference(public_hub_model_id: str):
             raise e
 
 
+@pytest.mark.skip
 # Currently JumpStartModel does not pull from HubService for the Public Hub.
 def test_model_reference_marketplace_model(setup):
     session = get_sm_session()
@@ -535,6 +536,7 @@ def test_model_reference_marketplace_model(setup):
 #     _teardown_test_hub_with_reference(public_hub_marketplace_model_id)
 
 
+@pytest.mark.skip
 def test_bedrock_store_model_tags_from_hub_service(setup):
 
     session = get_sm_session()

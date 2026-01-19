@@ -27,6 +27,7 @@ from sagemaker.config.config_schema import TELEMETRY_OPT_OUT_PATH
 from sagemaker.telemetry.constants import (
     Feature,
     Status,
+    Region,
     DEFAULT_AWS_REGION,
 )
 from sagemaker.user_agent import SDK_VERSION, process_studio_metadata_file
@@ -49,11 +50,14 @@ TELEMETRY_OPT_OUT_MESSAGING = (
 )
 
 FEATURE_TO_CODE = {
-    str(Feature.SDK_DEFAULTS): 1,
-    str(Feature.LOCAL_MODE): 2,
-    str(Feature.REMOTE_FUNCTION): 3,
-    str(Feature.MODEL_TRAINER): 4,
-    str(Feature.ESTIMATOR): 5,
+    str(Feature.SDK_DEFAULTS_V2): 1,
+    str(Feature.LOCAL_MODE_V2): 2,
+    str(Feature.REMOTE_FUNCTION_V2): 3,
+    str(Feature.MODEL_TRAINER_V2): 4,
+    str(Feature.ESTIMATOR_V2): 5,
+    # Note: HyperPod CLI uses codes 6 and 7
+    str(Feature.JUMPSTART_V2): 8,
+    str(Feature.MLOPS_V2): 9,
 }
 
 STATUS_TO_CODE = {
@@ -79,7 +83,7 @@ def _telemetry_emitter(feature: str, func_name: str):
             if len(args) > 0 and hasattr(args[0], "sagemaker_session"):
                 # Get the sagemaker_session from the instance method args
                 sagemaker_session = args[0].sagemaker_session
-            elif feature == Feature.REMOTE_FUNCTION:
+            elif feature == Feature.REMOTE_FUNCTION_V2:
                 # Get the sagemaker_session from the function keyword arguments for remote function
                 sagemaker_session = kwargs.get(
                     "sagemaker_session", _get_default_sagemaker_session()
@@ -107,16 +111,16 @@ def _telemetry_emitter(feature: str, func_name: str):
                 if (
                     hasattr(sagemaker_session, "sagemaker_config")
                     and sagemaker_session.sagemaker_config
-                    and feature != Feature.SDK_DEFAULTS
+                    and feature != Feature.SDK_DEFAULTS_V2
                 ):
-                    feature_list.append(FEATURE_TO_CODE[str(Feature.SDK_DEFAULTS)])
+                    feature_list.append(FEATURE_TO_CODE[str(Feature.SDK_DEFAULTS_V2)])
 
                 if (
                     hasattr(sagemaker_session, "local_mode")
                     and sagemaker_session.local_mode
-                    and feature != Feature.LOCAL_MODE
+                    and feature != Feature.LOCAL_MODE_V2
                 ):
-                    feature_list.append(FEATURE_TO_CODE[str(Feature.LOCAL_MODE)])
+                    feature_list.append(FEATURE_TO_CODE[str(Feature.LOCAL_MODE_V2)])
 
                 # Construct the extra info to track platform and environment usage metadata
                 extra = (
@@ -189,8 +193,16 @@ def _send_telemetry_request(
     """Make GET request to an empty object in S3 bucket"""
     try:
         accountId = _get_accountId(session) if session else "NotAvailable"
-        # telemetry will be sent to us-west-2 if no session availale
-        region = _get_region_or_default(session) if session else DEFAULT_AWS_REGION
+        region = _get_region_or_default(session)
+
+        try:
+            Region(region)  # Validate the region
+        except ValueError:
+            logger.warning(
+                "Region not found in supported regions. Telemetry request will not be emitted."
+            )
+            return
+
         url = _construct_url(
             accountId,
             region,
@@ -268,6 +280,7 @@ def _get_region_or_default(session):
 
 def _get_default_sagemaker_session():
     """Return the default sagemaker session"""
+
     boto_session = boto3.Session(region_name=DEFAULT_AWS_REGION)
     sagemaker_session = Session(boto_session=boto_session)
 

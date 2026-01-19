@@ -41,6 +41,7 @@ HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
 HUGGING_FACE_TEI_GPU_FRAMEWORK = "huggingface-tei"
 HUGGING_FACE_TEI_CPU_FRAMEWORK = "huggingface-tei-cpu"
 HUGGING_FACE_LLM_NEURONX_FRAMEWORK = "huggingface-llm-neuronx"
+HUGGING_FACE_VLLM_NEURONX_FRAMEWORK = "huggingface-vllm-neuronx"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
@@ -101,6 +102,8 @@ def retrieve(
             https://github.com/aws/deep-learning-containers/blob/master/available_images.md
             (default: None).
         distribution (dict): A dictionary with information on how to run distributed training
+        base_framework_version (str): The base version number of PyTorch or Tensorflow.
+            (default: None).
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler
             (default: None).
@@ -228,7 +231,11 @@ def retrieve(
         container_version = version_config["container_version"][processor]
 
     # Append sdk version in case of trainium instances
-    if repo in ["pytorch-training-neuron", "pytorch-training-neuronx"]:
+    if repo in [
+        "pytorch-training-neuron",
+        "pytorch-training-neuronx",
+        "huggingface-vllm-inference-neuronx",
+    ]:
         if not sdk_version:
             sdk_version = _get_latest_versions(version_config["sdk_versions"])
         container_version = sdk_version + "-" + container_version
@@ -699,12 +706,16 @@ def get_training_image_uri(
             if "modelparallel" in distribution["smdistributed"]:
                 if distribution["smdistributed"]["modelparallel"].get("enabled", True):
                     framework = "pytorch-smp"
-                    if (
-                        "p5" in instance_type
-                        or "2.1" in framework_version
-                        or "2.2" in framework_version
-                        or "2.3" in framework_version
-                        or "2.4" in framework_version
+                    supported_smp_pt_versions_cu124 = ("2.5",)
+                    supported_smp_pt_versions_cu121 = ("2.1", "2.2", "2.3", "2.4")
+                    if any(
+                        pt_version in framework_version
+                        for pt_version in supported_smp_pt_versions_cu124
+                    ):
+                        container_version = "cu124"
+                    elif "p5" in instance_type or any(
+                        pt_version in framework_version
+                        for pt_version in supported_smp_pt_versions_cu121
                     ):
                         container_version = "cu121"
                     else:

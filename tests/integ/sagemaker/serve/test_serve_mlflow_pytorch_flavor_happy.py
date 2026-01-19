@@ -31,7 +31,7 @@ from tests.integ.sagemaker.serve.constants import (
     PYTORCH_SQUEEZENET_MLFLOW_RESOURCE_DIR,
     SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
     # SERVE_LOCAL_CONTAINER_TIMEOUT,
-    PYTHON_VERSION_IS_NOT_310,
+    # PYTHON_VERSION_IS_NOT_310,
 )
 from tests.integ.timeout import timeout
 from tests.integ.utils import cleanup_model_resources
@@ -166,9 +166,9 @@ def model_builder(request):
 #                 ), f"{caught_ex} was thrown when running pytorch squeezenet local container test"
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION_IS_NOT_310,  # or NOT_RUNNING_ON_INF_EXP_DEV_PIPELINE,
-    reason="The goal of these test are to test the serving components of our feature",
+@pytest.mark.skip(
+    reason="Testing against Python version 310 which is not supported anymore"
+    " https://github.com/aws/deep-learning-containers/blob/master/available_images.md",
 )
 def test_happy_pytorch_sagemaker_endpoint_with_torch_serve(
     sagemaker_session,

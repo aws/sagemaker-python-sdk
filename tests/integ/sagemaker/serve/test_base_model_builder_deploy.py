@@ -12,36 +12,70 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pytest
-
-from sagemaker import get_execution_role
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-
 import os
+import uuid
+from typing import Generator
 
+import numpy as np
+import pandas as pd
+import pytest
+from sagemaker_core.main.resources import TrainingJob
 from sagemaker_core.main.shapes import (
     AlgorithmSpecification,
     Channel,
     DataSource,
-    S3DataSource,
     OutputDataConfig,
     ResourceConfig,
+    S3DataSource,
     StoppingCondition,
 )
-import uuid
-from sagemaker.serve.builder.model_builder import ModelBuilder
-import pandas as pd
-import numpy as np
-from sagemaker.serve import InferenceSpec, SchemaBuilder
-from sagemaker_core.main.resources import TrainingJob
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 
-from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
-
-from sagemaker.s3_utils import s3_path_join
+from sagemaker import get_execution_role
 from sagemaker.async_inference import AsyncInferenceConfig
+from sagemaker.s3_utils import s3_path_join
+from sagemaker.serve import InferenceSpec, SchemaBuilder
+from sagemaker.serve.builder.model_builder import ModelBuilder
+from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from tests.integ.utils import cleanup_model_resources
+
+
+@pytest.fixture(autouse=True)
+def cleanup_endpoints(mb_sagemaker_session) -> Generator[None, None, None]:
+    """Clean up any existing endpoints before and after tests."""
+    sagemaker_client = mb_sagemaker_session.sagemaker_client
+
+    # Pre-test cleanup
+    try:
+        endpoints = sagemaker_client.list_endpoints()
+        for endpoint in endpoints["Endpoints"]:
+            try:
+                sagemaker_client.delete_endpoint(EndpointName=endpoint["EndpointName"])
+                sagemaker_client.delete_endpoint_config(
+                    EndpointConfigName=endpoint["EndpointConfigName"]
+                )
+            except Exception as e:
+                print(f"Error cleaning up endpoint {endpoint['EndpointName']}: {e}")
+    except Exception as e:
+        print(f"Error listing endpoints: {e}")
+
+    yield
+
+    # Post-test cleanup
+    try:
+        endpoints = sagemaker_client.list_endpoints()
+        for endpoint in endpoints["Endpoints"]:
+            try:
+                sagemaker_client.delete_endpoint(EndpointName=endpoint["EndpointName"])
+                sagemaker_client.delete_endpoint_config(
+                    EndpointConfigName=endpoint["EndpointConfigName"]
+                )
+            except Exception as e:
+                print(f"Error cleaning up endpoint {endpoint['EndpointName']}: {e}")
+    except Exception as e:
+        print(f"Error listing endpoints: {e}")
 
 
 @pytest.fixture(scope="module")
@@ -151,7 +185,7 @@ def xgboost_model_builder(mb_sagemaker_session):
 
 def test_real_time_deployment(xgboost_model_builder):
     real_time_predictor = xgboost_model_builder.deploy(
-        endpoint_name="test", initial_instance_count=1
+        endpoint_name=f"test-{uuid.uuid1().hex}", initial_instance_count=1
     )
 
     assert real_time_predictor is not None
@@ -164,7 +198,7 @@ def test_real_time_deployment(xgboost_model_builder):
 
 def test_serverless_deployment(xgboost_model_builder):
     serverless_predictor = xgboost_model_builder.deploy(
-        endpoint_name="test1", inference_config=ServerlessInferenceConfig()
+        endpoint_name=f"test1-{uuid.uuid1().hex}", inference_config=ServerlessInferenceConfig()
     )
 
     assert serverless_predictor is not None
@@ -177,7 +211,7 @@ def test_serverless_deployment(xgboost_model_builder):
 
 def test_async_deployment(xgboost_model_builder, mb_sagemaker_session):
     async_predictor = xgboost_model_builder.deploy(
-        endpoint_name="test2",
+        endpoint_name=f"test2-{uuid.uuid1().hex}",
         inference_config=AsyncInferenceConfig(
             output_path=s3_path_join(
                 "s3://", mb_sagemaker_session.default_bucket(), "async_inference/output"

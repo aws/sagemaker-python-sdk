@@ -309,9 +309,6 @@ def test_to_pipeline(
         input_mode="File",
         environment={
             "AWS_DEFAULT_REGION": "us-west-2",
-            "REMOTE_FUNCTION_SECRET_KEY": job_settings.environment_variables[
-                "REMOTE_FUNCTION_SECRET_KEY"
-            ],
             "scheduled_time": Parameter(
                 name="scheduled_time", parameter_type=ParameterTypeEnum.STRING
             ),
@@ -907,7 +904,9 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
         "use_spot_instances",
         "max_wait_time_in_seconds",
         "custom_file_filter",
+        "disable_output_compression",
         "use_torchrun",
+        "use_mpirun",
         "nproc_per_node",
     }
 

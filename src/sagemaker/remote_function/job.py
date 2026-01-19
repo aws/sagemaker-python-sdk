@@ -19,7 +19,6 @@ import re
 import shutil
 import sys
 import json
-import secrets
 
 from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from urllib.parse import urlparse
@@ -81,6 +80,7 @@ if TYPE_CHECKING:
 
 # runtime script names
 BOOTSTRAP_SCRIPT_NAME = "bootstrap_runtime_environment.py"
+MPI_UTILS_SCRIPT_NAME = "mpi_utils_remote.py"
 ENTRYPOINT_SCRIPT_NAME = "job_driver.sh"
 PRE_EXECUTION_SCRIPT_NAME = "pre_exec.sh"
 RUNTIME_MANAGER_SCRIPT_NAME = "runtime_environment_manager.py"
@@ -130,9 +130,12 @@ printf "INFO: CONDA_PKGS_DIRS is set to '$CONDA_PKGS_DIRS'\\n"
 export PIP_CACHE_DIR=${{PERSISTENT_CACHE_DIR}}/sm_remotefunction_user_dependencies_cache/pip
 printf "INFO: PIP_CACHE_DIR is set to '$PIP_CACHE_DIR'\\n"
 
+printf "INFO: /opt/ml/input/config/resourceconfig.json:\\n"
+cat /opt/ml/input/config/resourceconfig.json
 
 printf "INFO: Bootstraping runtime environment.\\n"
 python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{BOOTSTRAP_SCRIPT_NAME} "$@"
+source /opt/ml/input/sm_training.env
 
 if [ -d {JOB_REMOTE_FUNCTION_WORKSPACE} ]
 then
@@ -155,10 +158,105 @@ then
     fi
 
     printf "INFO: Invoking remote function inside conda environment: $conda_env.\\n"
+    printf "INFO: $conda_exe run -n $conda_env python -m sagemaker.remote_function.invoke_function \\n"
     $conda_exe run -n $conda_env python -m sagemaker.remote_function.invoke_function "$@"
 else
     printf "INFO: No conda env provided. Invoking remote function\\n"
+    printf "INFO: python -m sagemaker.remote_function.invoke_function \\n"
     python -m sagemaker.remote_function.invoke_function "$@"
+fi
+"""
+
+ENTRYPOINT_MPIRUN_SCRIPT = f"""
+#!/bin/bash
+
+# Entry point for bootstrapping runtime environment and invoking remote function with mpirun
+
+set -eu
+
+PERSISTENT_CACHE_DIR=${{SAGEMAKER_MANAGED_WARMPOOL_CACHE_DIRECTORY:-/opt/ml/cache}}
+export CONDA_PKGS_DIRS=${{PERSISTENT_CACHE_DIR}}/sm_remotefunction_user_dependencies_cache/conda/pkgs
+printf "INFO: CONDA_PKGS_DIRS is set to '$CONDA_PKGS_DIRS'\\n"
+export PIP_CACHE_DIR=${{PERSISTENT_CACHE_DIR}}/sm_remotefunction_user_dependencies_cache/pip
+printf "INFO: PIP_CACHE_DIR is set to '$PIP_CACHE_DIR'\\n"
+
+printf "INFO: /opt/ml/input/config/resourceconfig.json:\\n"
+cat /opt/ml/input/config/resourceconfig.json
+
+printf "INFO: Bootstraping runtime environment.\\n"
+python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{BOOTSTRAP_SCRIPT_NAME} "$@"
+source /opt/ml/input/sm_training.env
+
+if [ -d {JOB_REMOTE_FUNCTION_WORKSPACE} ]
+then
+    if [ -f "remote_function_conda_env.txt" ]
+    then
+        cp remote_function_conda_env.txt {JOB_REMOTE_FUNCTION_WORKSPACE}/remote_function_conda_env.txt
+    fi
+    printf "INFO: Changing workspace to {JOB_REMOTE_FUNCTION_WORKSPACE}.\\n"
+    cd {JOB_REMOTE_FUNCTION_WORKSPACE}
+fi
+
+if [ -f "remote_function_conda_env.txt" ]
+then
+    conda_env=$(cat remote_function_conda_env.txt)
+
+    if which mamba >/dev/null; then
+        conda_exe="mamba"
+    else
+        conda_exe="conda"
+    fi
+
+    if [ "$SM_CURRENT_HOST" = "$SM_MASTER_ADDR" ]; then
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME}
+
+        printf "INFO: Invoking remote function with mpirun inside conda environment: $conda_env.\\n"
+        printf "INFO: $conda_exe run -n $conda_env mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
+        --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
+        -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
+        -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
+        -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
+
+        python -m mpi4py -m sagemaker.remote_function.invoke_function \\n"
+        $conda_exe run -n $conda_env mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
+        --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
+        -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
+        -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
+        -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
+        $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
+        python -m mpi4py -m sagemaker.remote_function.invoke_function "$@"
+
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME} --job_ended 1
+    else
+        printf "INFO: This is the instance $SM_CURRENT_HOST. mpirun command terminated\\n"
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME}
+    fi
+else
+    if [ "$SM_CURRENT_HOST" = "$SM_MASTER_ADDR" ]; then
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME}
+
+        printf "INFO: No conda env provided. Invoking remote function with mpirun\\n"
+        printf "INFO: mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
+        --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
+        -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
+        -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
+        -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
+        $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
+        python -m mpi4py -m sagemaker.remote_function.invoke_function \\n"
+
+        mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
+        --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
+        -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
+        -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
+        -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
+        $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
+        python -m mpi4py -m sagemaker.remote_function.invoke_function "$@"
+
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME} --job_ended 1
+    else
+        printf "INFO: This is the instance $SM_CURRENT_HOST.\\n"
+        python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME}
+    fi
 fi
 """
 
@@ -175,9 +273,12 @@ printf "INFO: CONDA_PKGS_DIRS is set to '$CONDA_PKGS_DIRS'\\n"
 export PIP_CACHE_DIR=${{PERSISTENT_CACHE_DIR}}/sm_remotefunction_user_dependencies_cache/pip
 printf "INFO: PIP_CACHE_DIR is set to '$PIP_CACHE_DIR'\\n"
 
+printf "INFO: /opt/ml/input/config/resourceconfig.json:\\n"
+cat /opt/ml/input/config/resourceconfig.json
 
 printf "INFO: Bootstraping runtime environment.\\n"
 python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{BOOTSTRAP_SCRIPT_NAME} "$@"
+source /opt/ml/input/sm_training.env
 
 if [ -d {JOB_REMOTE_FUNCTION_WORKSPACE} ]
 then
@@ -200,11 +301,20 @@ then
     fi
 
     printf "INFO: Invoking remote function with torchrun inside conda environment: $conda_env.\\n"
-    $conda_exe run -n $conda_env torchrun --nproc_per_node $NPROC_PER_NODE \
+    printf "INFO: $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
+    --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
+    -m sagemaker.remote_function.invoke_function \\n"
+
+    $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
+    --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
     -m sagemaker.remote_function.invoke_function "$@"
 else
     printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
-    torchrun --nproc_per_node $NPROC_PER_NODE -m sagemaker.remote_function.invoke_function "$@"
+    printf "INFO: torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.remote_function.invoke_function \\n"
+
+    torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.remote_function.invoke_function "$@"
 fi
 """
 
@@ -262,8 +372,10 @@ class _JobSettings:
         spark_config: SparkConfig = None,
         use_spot_instances=False,
         max_wait_time_in_seconds=None,
-        use_torchrun=False,
-        nproc_per_node=1,
+        disable_output_compression: bool = False,
+        use_torchrun: bool = False,
+        use_mpirun: bool = False,
+        nproc_per_node: Optional[int] = None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -445,6 +557,19 @@ class _JobSettings:
             max_wait_time_in_seconds (int): Timeout in seconds waiting for spot training job.
               After this amount of time Amazon SageMaker will stop waiting for managed spot
               training job to complete. Defaults to ``None``.
+
+            disable_output_compression (bool): Optional. When set to true, Model is uploaded to
+              Amazon S3 without compression after training finishes.
+
+            use_torchrun (bool): Specifies whether to use torchrun for distributed training.
+              Defaults to ``False``.
+
+            use_mpirun (bool): Specifies whether to use mpirun for distributed training.
+              Defaults to ``False``.
+
+            nproc_per_node (int): Optional. Specifies the number of processes per node for
+              distributed training. Defaults to ``None``.
+              This is defined automatically configured on the instance type.
         """
         self.sagemaker_session = sagemaker_session or Session()
         self.environment_variables = resolve_value_from_config(
@@ -456,11 +581,6 @@ class _JobSettings:
         self.environment_variables.update(
             {"AWS_DEFAULT_REGION": self.sagemaker_session.boto_region_name}
         )
-
-        # The following will be overridden by the _Job.compile method.
-        # However, it needs to be kept here for feature store SDK.
-        # TODO: update the feature store SDK to set the HMAC key there.
-        self.environment_variables.update({"REMOTE_FUNCTION_SECRET_KEY": secrets.token_hex(32)})
 
         if spark_config and image_uri:
             raise ValueError("spark_config and image_uri cannot be specified at the same time!")
@@ -603,7 +723,9 @@ class _JobSettings:
         tags = format_tags(tags)
         self.tags = self.sagemaker_session._append_sagemaker_config_tags(tags, REMOTE_FUNCTION_TAGS)
 
+        self.disable_output_compression = disable_output_compression
         self.use_torchrun = use_torchrun
+        self.use_mpirun = use_mpirun
         self.nproc_per_node = nproc_per_node
 
     @staticmethod
@@ -671,19 +793,17 @@ class _JobSettings:
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
-    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, hmac_key: str):
+    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session):
         """Initialize a _Job object.
 
         Args:
             job_name (str): The training job name.
             s3_uri (str): The training job output S3 uri.
             sagemaker_session (Session): SageMaker boto session.
-            hmac_key (str): Remote function secret key.
         """
         self.job_name = job_name
         self.s3_uri = s3_uri
         self.sagemaker_session = sagemaker_session
-        self.hmac_key = hmac_key
         self._last_describe_response = None
 
     @staticmethod
@@ -699,9 +819,8 @@ class _Job:
         """
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        hmac_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
 
-        job = _Job(job_name, s3_uri, sagemaker_session, hmac_key)
+        job = _Job(job_name, s3_uri, sagemaker_session)
         job._last_describe_response = describe_training_job_response
         return job
 
@@ -732,13 +851,13 @@ class _Job:
         )
 
         logger.info("Creating job: %s", job_name)
+
         job_settings.sagemaker_session.sagemaker_client.create_training_job(**training_job_request)
 
         return _Job(
             job_name,
             s3_base_uri,
             job_settings.sagemaker_session,
-            training_job_request["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
         )
 
     @staticmethod
@@ -746,7 +865,7 @@ class _Job:
         job_settings: _JobSettings,
         job_name: str,
         s3_base_uri: str,
-        func: callable,
+        func: Callable,
         func_args: tuple,
         func_kwargs: dict,
         run_info=None,
@@ -763,35 +882,23 @@ class _Job:
 
         jobs_container_entrypoint = JOBS_CONTAINER_ENTRYPOINT[:]
 
-        # generate hmac key for integrity check
-        if step_compilation_context is None:
-            hmac_key = secrets.token_hex(32)
-        else:
-            hmac_key = step_compilation_context.function_step_secret_token
-
         # serialize function and arguments
         if step_compilation_context is None:
             stored_function = StoredFunction(
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
-                hmac_key=hmac_key,
                 s3_kms_key=job_settings.s3_kms_key,
-                use_torchrun=job_settings.use_torchrun,
-                nproc_per_node=job_settings.nproc_per_node,
             )
             stored_function.save(func, *func_args, **func_kwargs)
         else:
             stored_function = StoredFunction(
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
-                hmac_key=hmac_key,
                 s3_kms_key=job_settings.s3_kms_key,
                 context=Context(
                     step_name=step_compilation_context.step_name,
                     func_step_s3_dir=step_compilation_context.pipeline_build_time,
                 ),
-                use_torchrun=job_settings.use_torchrun,
-                nproc_per_node=job_settings.nproc_per_node,
             )
 
             stored_function.save_pipeline_step_function(serialized_data)
@@ -834,6 +941,8 @@ class _Job:
             output_config = {"S3OutputPath": s3_base_uri}
         if job_settings.s3_kms_key is not None:
             output_config["KmsKeyId"] = job_settings.s3_kms_key
+        if job_settings.disable_output_compression:
+            output_config["CompressionType"] = "NONE"
         request_dict["OutputDataConfig"] = output_config
 
         container_args = ["--s3_base_uri", s3_base_uri]
@@ -855,6 +964,12 @@ class _Job:
                 ).to_string(),
             ]
         )
+        if job_settings.use_torchrun:
+            container_args.extend(["--distribution", "torchrun"])
+        elif job_settings.use_mpirun:
+            container_args.extend(["--distribution", "mpirun"])
+        if job_settings.nproc_per_node is not None and int(job_settings.nproc_per_node) > 0:
+            container_args.extend(["--user_nproc_per_node", str(job_settings.nproc_per_node)])
         if job_settings.s3_kms_key:
             container_args.extend(["--s3_kms_key", job_settings.s3_kms_key])
 
@@ -928,9 +1043,10 @@ class _Job:
         request_dict["EnableManagedSpotTraining"] = job_settings.use_spot_instances
 
         request_dict["Environment"] = job_settings.environment_variables
-        request_dict["Environment"].update({"REMOTE_FUNCTION_SECRET_KEY": hmac_key})
 
         extended_request = _extend_spark_config_to_request(request_dict, job_settings, s3_base_uri)
+        extended_request = _extend_mpirun_to_request(extended_request, job_settings)
+        extended_request = _extend_torchrun_to_request(extended_request, job_settings)
 
         return extended_request
 
@@ -1011,7 +1127,7 @@ def _prepare_and_upload_runtime_scripts(
     s3_kms_key: str,
     sagemaker_session: Session,
     use_torchrun: bool = False,
-    nproc_per_node: int = 1,
+    use_mpirun: bool = False,
 ):
     """Copy runtime scripts to a folder and upload to S3.
 
@@ -1030,7 +1146,9 @@ def _prepare_and_upload_runtime_scripts(
 
         use_torchrun (bool): Whether to use torchrun or not.
 
-        nproc_per_node (int): Number of processes per node.
+        use_mpirun (bool): Whether to use mpirun or not.
+
+        nproc_per_node (Optional[int]): Number of processes per node
     """
 
     from sagemaker.workflow.utilities import load_step_compilation_context
@@ -1054,7 +1172,9 @@ def _prepare_and_upload_runtime_scripts(
 
         if use_torchrun:
             entry_point_script = ENTRYPOINT_TORCHRUN_SCRIPT
-            entry_point_script = entry_point_script.replace("$NPROC_PER_NODE", str(nproc_per_node))
+
+        if use_mpirun:
+            entry_point_script = ENTRYPOINT_MPIRUN_SCRIPT
 
         with open(entrypoint_script_path, "w", newline="\n") as file:
             file.writelines(entry_point_script)
@@ -1062,12 +1182,16 @@ def _prepare_and_upload_runtime_scripts(
         bootstrap_script_path = os.path.join(
             os.path.dirname(__file__), "runtime_environment", BOOTSTRAP_SCRIPT_NAME
         )
+        mpi_utils_path = os.path.join(
+            os.path.dirname(__file__), "runtime_environment", MPI_UTILS_SCRIPT_NAME
+        )
         runtime_manager_script_path = os.path.join(
             os.path.dirname(__file__), "runtime_environment", RUNTIME_MANAGER_SCRIPT_NAME
         )
 
         # copy runtime scripts to tmpdir
         shutil.copy2(bootstrap_script_path, bootstrap_scripts)
+        shutil.copy2(mpi_utils_path, bootstrap_scripts)
         shutil.copy2(runtime_manager_script_path, bootstrap_scripts)
 
         upload_path = S3Uploader.upload(
@@ -1094,7 +1218,7 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
         s3_kms_key=job_settings.s3_kms_key,
         sagemaker_session=job_settings.sagemaker_session,
         use_torchrun=job_settings.use_torchrun,
-        nproc_per_node=job_settings.nproc_per_node,
+        use_mpirun=job_settings.use_mpirun,
     )
 
     input_data_config = [
@@ -1110,6 +1234,11 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
     ]
 
     local_dependencies_path = RuntimeEnvironmentManager().snapshot(job_settings.dependencies)
+
+    # Ensure sagemaker dependency is included to prevent version mismatch issues
+    # Resolves issue where computing hash for integrity check changed in 2.256.0
+    local_dependencies_path = _ensure_sagemaker_dependency(local_dependencies_path)
+    job_settings.dependencies = local_dependencies_path
 
     if step_compilation_context:
         with _tmpdir() as tmp_dir:
@@ -1165,6 +1294,225 @@ def _generate_input_data_config(job_settings: _JobSettings, s3_base_uri: str):
         )
 
     return input_data_config
+
+
+def _decrement_version(version_str: str) -> str:
+    """Decrement a version string by one minor or patch version.
+
+    Rules:
+    - If patch version is 0 (e.g., 2.256.0), decrement minor: 2.256.0 -> 2.255.0
+    - If patch version is not 0 (e.g., 2.254.2), decrement patch: 2.254.2 -> 2.254.1
+
+    Args:
+        version_str: Version string (e.g., "2.256.0")
+
+    Returns:
+        Decremented version string
+    """
+    from packaging import version as pkg_version
+
+    try:
+        parsed = pkg_version.parse(version_str)
+        major = parsed.major
+        minor = parsed.minor
+        patch = parsed.micro
+
+        if patch == 0:
+            # Decrement minor version
+            minor = max(0, minor - 1)
+        else:
+            # Decrement patch version
+            patch = max(0, patch - 1)
+
+        return f"{major}.{minor}.{patch}"
+    except Exception:
+        return version_str
+
+
+def _resolve_version_from_specifier(specifier_str: str) -> str:
+    """Resolve the version to check based on upper bounds.
+
+    Upper bounds take priority. If upper bound is <3.0.0, it's safe (V2 only).
+    If no upper bound exists, it's safe (unbounded).
+    If the decremented upper bound is less than a lower bound, use the lower bound.
+
+    Args:
+        specifier_str: Version specifier string (e.g., ">=2.256.0", "<2.256.0", "==2.255.0")
+
+    Returns:
+        The resolved version string to check, or None if safe
+    """
+    import re
+    from packaging import version as pkg_version
+
+    # Handle exact version pinning (==)
+    match = re.search(r"==\s*([\d.]+)", specifier_str)
+    if match:
+        return match.group(1)
+
+    # Extract lower bounds for comparison
+    lower_bounds = []
+    for match in re.finditer(r">=\s*([\d.]+)", specifier_str):
+        lower_bounds.append(match.group(1))
+
+    # Handle upper bounds - find the most restrictive one
+    upper_bounds = []
+
+    # Find all <= bounds
+    for match in re.finditer(r"<=\s*([\d.]+)", specifier_str):
+        upper_bounds.append(("<=", match.group(1)))
+
+    # Find all < bounds
+    for match in re.finditer(r"<\s*([\d.]+)", specifier_str):
+        upper_bounds.append(("<", match.group(1)))
+
+    if upper_bounds:
+        # Sort by version to find the most restrictive (lowest) upper bound
+        upper_bounds.sort(key=lambda x: pkg_version.parse(x[1]))
+        operator, version = upper_bounds[0]
+
+        # Special case: if upper bound is <3.0.0, it's safe (V2 only)
+        try:
+            parsed_upper = pkg_version.parse(version)
+            if (
+                operator == "<"
+                and parsed_upper.major == 3
+                and parsed_upper.minor == 0
+                and parsed_upper.micro == 0
+            ):
+                # <3.0.0 means V2 only, which is safe
+                return None
+        except Exception:
+            pass
+
+        resolved_version = version
+        if operator == "<":
+            resolved_version = _decrement_version(version)
+
+        # If we have a lower bound and the resolved version is less than it, use the lower bound
+        if lower_bounds:
+            try:
+                resolved_parsed = pkg_version.parse(resolved_version)
+                for lower_bound_str in lower_bounds:
+                    lower_parsed = pkg_version.parse(lower_bound_str)
+                    if resolved_parsed < lower_parsed:
+                        resolved_version = lower_bound_str
+            except Exception:
+                pass
+
+        return resolved_version
+
+    # For lower bounds only (>=, >), we don't check
+    return None
+
+
+def _check_sagemaker_version_compatibility(sagemaker_requirement: str) -> None:
+    """Check if the sagemaker version requirement uses incompatible hashing.
+
+    Raises ValueError if the requirement would install a version that uses HMAC hashing
+    (which is incompatible with the current SHA256-based integrity checks).
+
+    Args:
+        sagemaker_requirement: The sagemaker requirement string (e.g., "sagemaker>=2.200.0")
+
+    Raises:
+        ValueError: If the requirement would install a version using HMAC hashing
+    """
+    import re
+    from packaging import version as pkg_version
+
+    match = re.search(r"sagemaker\s*(.+)$", sagemaker_requirement.strip(), re.IGNORECASE)
+    if not match:
+        return
+
+    specifier_str = match.group(1).strip()
+
+    # Resolve the version that would be installed
+    resolved_version_str = _resolve_version_from_specifier(specifier_str)
+    if not resolved_version_str:
+        # No upper bound or exact version, so we can't determine if it's bad
+        return
+
+    try:
+        resolved_version = pkg_version.parse(resolved_version_str)
+    except Exception:
+        return
+
+    # Define HMAC thresholds for each major version
+    v2_hmac_threshold = pkg_version.parse("2.256.0")
+    v3_hmac_threshold = pkg_version.parse("3.2.0")
+
+    # Check if the resolved version uses HMAC hashing
+    uses_hmac = False
+    if resolved_version.major == 2 and resolved_version < v2_hmac_threshold:
+        uses_hmac = True
+    elif resolved_version.major == 3 and resolved_version < v3_hmac_threshold:
+        uses_hmac = True
+
+    if uses_hmac:
+        raise ValueError(
+            f"The sagemaker version specified in requirements.txt ({sagemaker_requirement}) "
+            f"could install a version using HMAC-based integrity checks which are incompatible "
+            f"with the current SHA256-based integrity checks. Please update to "
+            f"sagemaker>=2.256.0,<3.0.0 (for V2) or sagemaker>=3.2.0,<4.0.0 (for V3)."
+        )
+
+
+def _ensure_sagemaker_dependency(local_dependencies_path: str) -> str:
+    """Ensure sagemaker>=2.256.0 is in the dependencies.
+
+    This function ensures that the remote environment has a compatible version of sagemaker
+    that includes the fix for the HMAC key security issue. Versions < 2.256.0 use HMAC-based
+    integrity checks which require the REMOTE_FUNCTION_SECRET_KEY environment variable.
+    Versions >= 2.256.0 use SHA256-based integrity checks which are secure and don't require
+    the secret key.
+
+    If no dependencies are provided, creates a temporary requirements.txt with sagemaker.
+    If dependencies are provided, appends sagemaker if not already present.
+
+    Args:
+        local_dependencies_path: Path to user's dependencies file or None
+
+    Returns:
+        Path to the dependencies file (created or modified)
+
+    Raises:
+        ValueError: If user has pinned sagemaker to a version using HMAC hashing
+    """
+    import tempfile
+
+    SAGEMAKER_MIN_VERSION = "sagemaker>=2.256.0,<3.0.0"
+
+    if local_dependencies_path is None:
+        # Create a temporary requirements.txt in the system temp directory
+        fd, req_file = tempfile.mkstemp(suffix=".txt", prefix="sagemaker_requirements_")
+        os.close(fd)
+
+        with open(req_file, "w") as f:
+            f.write(f"{SAGEMAKER_MIN_VERSION}\n")
+        logger.info(
+            "Created temporary requirements.txt at %s with %s", req_file, SAGEMAKER_MIN_VERSION
+        )
+        return req_file
+
+    # If dependencies provided, ensure sagemaker is included
+    if local_dependencies_path.endswith(".txt"):
+        with open(local_dependencies_path, "r") as f:
+            content = f.read()
+
+        # Check if sagemaker is already specified
+        if "sagemaker" in content.lower():
+            # Extract the sagemaker requirement line for compatibility check
+            for line in content.split("\n"):
+                if "sagemaker" in line.lower():
+                    _check_sagemaker_version_compatibility(line.strip())
+                    break
+        else:
+            with open(local_dependencies_path, "a") as f:
+                f.write(f"\n{SAGEMAKER_MIN_VERSION}\n")
+            logger.info("Appended %s to requirements.txt", SAGEMAKER_MIN_VERSION)
+
+    return local_dependencies_path
 
 
 def _prepare_dependencies_and_pre_execution_scripts(
@@ -1433,6 +1781,64 @@ def _upload_serialized_spark_configuration(
     logger.info("Uploaded spark configuration json %s to %s", configuration, config_file_s3_uri)
 
     return config_file_s3_uri
+
+
+def _extend_mpirun_to_request(
+    request_dict: Dict,
+    job_settings: _JobSettings,
+) -> Dict:
+    """Extend the create training job request with mpirun configuration.
+
+    Args:
+        request_dict (Dict): create training job request dict.
+        job_settings (_JobSettings): the job settings.
+    """
+    use_mpirun = job_settings.use_mpirun
+    instance_count = job_settings.instance_count
+
+    if not use_mpirun:
+        return request_dict
+
+    if instance_count == 1:
+        return request_dict
+
+    extended_request = request_dict.copy()
+
+    for input_channel in extended_request["InputDataConfig"]:
+        s3_data_source = input_channel["DataSource"].get("S3DataSource", None)
+        if s3_data_source:
+            s3_data_source["S3DataDistributionType"] = "FullyReplicated"
+
+    return extended_request
+
+
+def _extend_torchrun_to_request(
+    request_dict: Dict,
+    job_settings: _JobSettings,
+) -> Dict:
+    """Extend the create training job request with torchrun configuration.
+
+    Args:
+        request_dict (Dict): create training job request dict.
+        job_settings (_JobSettings): the job settings.
+    """
+    use_torchrun = job_settings.use_torchrun
+    instance_count = job_settings.instance_count
+
+    if not use_torchrun:
+        return request_dict
+
+    if instance_count == 1:
+        return request_dict
+
+    extended_request = request_dict.copy()
+
+    for input_channel in extended_request["InputDataConfig"]:
+        s3_data_source = input_channel["DataSource"].get("S3DataSource", None)
+        if s3_data_source:
+            s3_data_source["S3DataDistributionType"] = "FullyReplicated"
+
+    return extended_request
 
 
 def _extend_spark_config_to_request(

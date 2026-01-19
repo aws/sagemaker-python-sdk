@@ -209,7 +209,7 @@ class IPInsightsPredictor(Predictor):
                 chain.
             serializer (sagemaker.serializers.BaseSerializer): Optional. Default
                 serializes input data to text/csv.
-            deserializer (callable): Optional. Default parses JSON responses
+            deserializer (Callable): Optional. Default parses JSON responses
                 using ``json.load(...)``.
             component_name (str): Optional. Name of the Amazon SageMaker inference
                 component corresponding the predictor.

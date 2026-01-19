@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, List, Optional, Any, Union
+from typing import Callable, Dict, List, Optional, Any, Union
 import pandas as pd
 from botocore.exceptions import ClientError
 
@@ -76,6 +76,9 @@ from sagemaker.model_life_cycle import ModelLifeCycle
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.compute_resource_requirements.resource_requirements import ResourceRequirements
 
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
+
 
 class JumpStartModel(Model):
     """JumpStartModel class.
@@ -83,6 +86,7 @@ class JumpStartModel(Model):
     This class sets defaults based on the model ID and version.
     """
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART_V2, func_name="jumpstart_model.create")
     def __init__(
         self,
         model_id: Optional[str] = None,
@@ -95,7 +99,7 @@ class JumpStartModel(Model):
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_data: Optional[Union[str, PipelineVariable, dict]] = None,
         role: Optional[str] = None,
-        predictor_cls: Optional[callable] = None,
+        predictor_cls: Optional[Callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
@@ -149,7 +153,7 @@ class JumpStartModel(Model):
                 It can be null if this is being used to create a Model to pass
                 to a ``PipelineModel`` which has its own Role field. (Default:
                 None).
-            predictor_cls (Optional[callable[string, sagemaker.session.Session]]): A
+            predictor_cls (Optional[Callable[[string, sagemaker.session.Session], Any]]): A
                 function to call to create a predictor (Default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name. (Default: None).
@@ -178,8 +182,8 @@ class JumpStartModel(Model):
             source_dir (Optional[str]): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
                 point file (Default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory is preserved
-                when training on Amazon SageMaker. If 'git_config' is provided,
+                point to a file with name ``sourcedir.tar.gz``. Structure within this directory is
+                preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code is uploaded and the S3 location
                 is used instead. (Default: None).
@@ -639,6 +643,7 @@ class JumpStartModel(Model):
                 **kwargs,
             )
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART_V2, func_name="jumpstart_model.deploy")
     def deploy(
         self,
         initial_instance_count: Optional[int] = None,

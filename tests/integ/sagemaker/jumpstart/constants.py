@@ -47,7 +47,7 @@ TRAINING_DATASET_MODEL_DICT = {
     ("huggingface-spc-bert-base-cased", "1.0.0"): ("training-datasets/QNLI-tiny/"),
     ("huggingface-spc-bert-base-cased", "1.2.3"): ("training-datasets/QNLI-tiny/"),
     ("huggingface-spc-bert-base-cased", "2.0.3"): ("training-datasets/QNLI-tiny/"),
-    ("huggingface-spc-bert-base-cased", "*"): ("training-datasets/QNLI-tiny/"),
+    ("huggingface-spc-bert-base-cased", "*"): ("training-datasets/QNLI/"),
     ("js-trainable-model", "*"): ("training-datasets/QNLI-tiny/"),
     ("meta-textgeneration-llama-2-7b", "*"): ("training-datasets/sec_amazon/"),
     ("meta-textgeneration-llama-2-7b", "2.*"): ("training-datasets/sec_amazon/"),
@@ -95,31 +95,31 @@ class ClassLabelFile(str, Enum):
 TEST_ASSETS_SPECS: Dict[
     Union[InferenceImageFilename, InferenceTabularDataname, ClassLabelFile], str
 ] = {
-    InferenceImageFilename.DOG: _to_s3_path(InferenceImageFilename.DOG, _NB_ASSETS_S3_FOLDER),
-    InferenceImageFilename.CAT: _to_s3_path(InferenceImageFilename.CAT, _NB_ASSETS_S3_FOLDER),
+    InferenceImageFilename.DOG: _to_s3_path(InferenceImageFilename.DOG.value, _NB_ASSETS_S3_FOLDER),
+    InferenceImageFilename.CAT: _to_s3_path(InferenceImageFilename.CAT.value, _NB_ASSETS_S3_FOLDER),
     InferenceImageFilename.DAISY: _to_s3_path(
-        InferenceImageFilename.DAISY, f"{_TF_FLOWERS_S3_FOLDER}/daisy"
+        InferenceImageFilename.DAISY.value, f"{_TF_FLOWERS_S3_FOLDER}/daisy"
     ),
     InferenceImageFilename.DAISY_2: _to_s3_path(
-        InferenceImageFilename.DAISY_2, f"{_TF_FLOWERS_S3_FOLDER}/daisy"
+        InferenceImageFilename.DAISY_2.value, f"{_TF_FLOWERS_S3_FOLDER}/daisy"
     ),
     InferenceImageFilename.ROSE: _to_s3_path(
-        InferenceImageFilename.ROSE, f"{_TF_FLOWERS_S3_FOLDER}/roses"
+        InferenceImageFilename.ROSE.value, f"{_TF_FLOWERS_S3_FOLDER}/roses"
     ),
     InferenceImageFilename.NAXOS_TAVERNA: _to_s3_path(
-        InferenceImageFilename.NAXOS_TAVERNA, _NB_ASSETS_S3_FOLDER
+        InferenceImageFilename.NAXOS_TAVERNA.value, _NB_ASSETS_S3_FOLDER
     ),
     InferenceImageFilename.PEDESTRIAN: _to_s3_path(
-        InferenceImageFilename.PEDESTRIAN, _NB_ASSETS_S3_FOLDER
+        InferenceImageFilename.PEDESTRIAN.value, _NB_ASSETS_S3_FOLDER
     ),
-    ClassLabelFile.IMAGE_NET: _to_s3_path(ClassLabelFile.IMAGE_NET, _NB_ASSETS_S3_FOLDER),
+    ClassLabelFile.IMAGE_NET: _to_s3_path(ClassLabelFile.IMAGE_NET.value, _NB_ASSETS_S3_FOLDER),
     InferenceTabularDataname.REGRESSION_ONEHOT: _to_s3_path(
-        InferenceTabularDataname.REGRESSION_ONEHOT, _NB_ASSETS_S3_FOLDER
+        InferenceTabularDataname.REGRESSION_ONEHOT.value, _NB_ASSETS_S3_FOLDER
     ),
     InferenceTabularDataname.REGRESSION: _to_s3_path(
-        InferenceTabularDataname.REGRESSION, _NB_ASSETS_S3_FOLDER
+        InferenceTabularDataname.REGRESSION.value, _NB_ASSETS_S3_FOLDER
     ),
     InferenceTabularDataname.MULTICLASS: _to_s3_path(
-        InferenceTabularDataname.MULTICLASS, _NB_ASSETS_S3_FOLDER
+        InferenceTabularDataname.MULTICLASS.value, _NB_ASSETS_S3_FOLDER
     ),
 }
