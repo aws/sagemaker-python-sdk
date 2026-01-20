@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 class LocalTeiServing:
     """LocalTeiServing class"""
 
-    def _start_tei_serving(
-        self, client: object, image: str, model_path: str, env_vars: dict
-    ):
+    def _start_tei_serving(self, client: object, image: str, model_path: str, env_vars: dict):
         """Starts a local tei serving container.
 
         Args:

@@ -1123,10 +1123,7 @@ class TestModelBuilder(unittest.TestCase):
         mock_lc_mode.prepare.side_effect = lambda: None
         mock_lc_mode.create_server.side_effect = (
             lambda image_uri, container_timeout_seconds, predictor, **kwargs: (
-                None
-                if image_uri == mock_image_uri
-                and container_timeout_seconds == 60
-                else None
+                None if image_uri == mock_image_uri and container_timeout_seconds == 60 else None
             )
         )
 

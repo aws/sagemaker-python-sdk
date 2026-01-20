@@ -30,9 +30,7 @@ logger = logging.getLogger(__name__)
 class LocalDJLServing:
     """Placeholder docstring"""
 
-    def _start_djl_serving(
-        self, client: object, image: str, model_path: str, env_vars: dict
-    ):
+    def _start_djl_serving(self, client: object, image: str, model_path: str, env_vars: dict):
         """Placeholder docstring"""
         updated_env_vars = _update_env_vars(env_vars)
 

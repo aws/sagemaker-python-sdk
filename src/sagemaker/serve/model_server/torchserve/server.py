@@ -21,9 +21,7 @@ logger = logging.getLogger(__name__)
 class LocalTorchServe:
     """Placeholder docstring"""
 
-    def _start_torch_serve(
-        self, client: object, image: str, model_path: str, env_vars: dict
-    ):
+    def _start_torch_serve(self, client: object, image: str, model_path: str, env_vars: dict):
         """Placeholder docstring"""
         self.container = client.containers.run(
             image,

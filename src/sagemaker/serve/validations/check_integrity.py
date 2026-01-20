@@ -9,10 +9,10 @@ from sagemaker.remote_function.core.serialization import _MetaData
 
 def compute_hash(buffer: bytes) -> str:
     """Compute SHA256 hash value of buffer.
-    
+
     Args:
         buffer: Bytes to hash
-        
+
     Returns:
         Hexadecimal SHA256 hash string
     """
@@ -21,11 +21,11 @@ def compute_hash(buffer: bytes) -> str:
 
 def perform_integrity_check(buffer: bytes, metadata_path: Path):
     """Validates the integrity of bytes by comparing SHA256 hash.
-    
+
     Args:
         buffer: Bytes to verify
         metadata_path: Path to metadata.json file
-        
+
     Raises:
         ValueError: If metadata file doesn't exist or hash doesn't match
     """

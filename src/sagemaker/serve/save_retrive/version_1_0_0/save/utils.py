@@ -129,10 +129,10 @@ def capture_optimization_metadata(model: Model, framework) -> dict:
 
 def compute_hash(buffer: bytes) -> str:
     """Compute SHA256 hash value of buffer.
-    
+
     Args:
         buffer: Bytes to hash
-        
+
     Returns:
         Hexadecimal SHA256 hash string
     """
